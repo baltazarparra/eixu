@@ -51,10 +51,12 @@ export function Footer() {
           </p>
           <a
             className="cta-link"
-            href="mailto:contato@eixu.com.br?subject=Quero%20falar%20sobre%20um%20projeto"
-            aria-label="Enviar um e-mail para a EIXU"
+            href="https://wa.me/5514997127120?text=Oi%2C%20quero%20falar%20sobre%20um%20projeto%20com%20a%20EIXU."
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Abrir uma conversa com a EIXU no WhatsApp"
           >
-            Vamos conversar
+            WhatsApp · +55 14 99712-7120
             <ArrowUpRight aria-hidden="true" />
           </a>
         </div>
