@@ -1,21 +1,36 @@
 import type { Metadata } from 'next';
 import { ArrowUpRight } from 'lucide-react';
 import { Footer, Header } from '@/components/eixu';
+import { JsonLd } from '@/components/json-ld';
+import { SITE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
-  title: 'naia | Projeto da EIXU',
-  description: 'Como construímos a naia: uma arquitetura multiagente com gateway de IA e modelos escolhidos por tarefa.',
+  title: 'Case naia: arquitetura multiagente com AI Gateway | EIXU',
+  description: 'Como a EIXU construiu uma arquitetura multiagente com AI Gateway, vários modelos, contratos, ferramentas e medição para um produto real.',
+  alternates: { canonical: '/cases/naiacrm' },
   openGraph: {
-    title: 'naia | Projeto da EIXU',
+    title: 'Case naia: arquitetura multiagente com AI Gateway | EIXU',
     description: 'O modelo é detalhe. O sistema é a aposta.',
+    type: 'article',
+    url: `${SITE_URL}/cases/naiacrm`,
     images: [],
   },
   twitter: {
     card: 'summary',
-    title: 'naia | Projeto da EIXU',
+    title: 'Case naia: arquitetura multiagente com AI Gateway | EIXU',
     description: 'O modelo é detalhe. O sistema é a aposta.',
     images: [],
   },
+};
+
+const naiaJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'EIXU', item: SITE_URL },
+    { '@type': 'ListItem', position: 2, name: 'Cases', item: `${SITE_URL}/#cases` },
+    { '@type': 'ListItem', position: 3, name: 'naia' },
+  ],
 };
 
 const lanes = [
@@ -76,9 +91,10 @@ const engineeringProof = [
 export default function NaiaCase() {
   return (
     <main className="case-page case-page--naia">
+      <JsonLd data={naiaJsonLd} />
       <Header casePage />
       <section className="case-hero shell">
-        <p className="eyebrow">Projeto 02 · Sistema nativo de IA</p>
+        <p className="eyebrow">Case · Arquitetura multiagente e AI Gateway</p>
         <h1>naia</h1>
         <div className="case-hero-summary">
           <p>Um CRM onde vários agentes trabalham juntos e cada tarefa usa o modelo certo.</p>

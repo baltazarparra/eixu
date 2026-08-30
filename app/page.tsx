@@ -1,6 +1,41 @@
+import type { Metadata } from 'next';
 import { ArrowDown, ArrowRight, ArrowUpRight, Check } from 'lucide-react';
 import { Footer, Header, Mark } from '@/components/eixu';
+import { JsonLd } from '@/components/json-ld';
 import { TerminalHeadline } from '@/components/terminal-headline';
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
+
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+};
+
+const homeJsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    '@id': `${SITE_URL}/#website`,
+    url: SITE_URL,
+    name: SITE_NAME,
+    alternateName: 'EIXU Product Studio',
+    description: SITE_DESCRIPTION,
+    inLanguage: 'pt-BR',
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    '@id': `${SITE_URL}/#organization`,
+    name: SITE_NAME,
+    url: SITE_URL,
+    description: SITE_DESCRIPTION,
+    areaServed: 'BR',
+    contactPoint: {
+      '@type': 'ContactPoint',
+      telephone: '+55-14-99712-7120',
+      contactType: 'sales',
+      availableLanguage: 'Portuguese',
+    },
+  },
+];
 
 const moments = [
   { quote: 'Tenho uma ideia. Ainda não sei se vale a pena construir.', path: 'Validação' },
@@ -13,13 +48,13 @@ const moments = [
 const offers = [
   {
     index: '01',
-    title: 'Validação',
+    title: 'Discovery e validação',
     result: 'Entendemos o problema e ajudamos você a decidir se vale a pena construir.',
   },
   {
     index: '02',
-    title: 'Primeira versão',
-    result: 'Colocamos uma versão funcional nas mãos de quem vai usar.',
+    title: 'MVP e primeira versão',
+    result: 'Colocamos um MVP funcional nas mãos de quem vai usar.',
   },
   {
     index: '03',
@@ -42,6 +77,7 @@ const brands = [
 export default function Home() {
   return (
     <main>
+      <JsonLd data={homeJsonLd} />
       <section className="hero" id="inicio">
         <Header />
 
@@ -51,8 +87,8 @@ export default function Home() {
 
           <div className="hero-bottom reveal delay-3">
             <p className="hero-copy">
-              Pode ser uma ideia, um protótipo, uma demo ou um plano. Você não precisa
-              montar uma equipe inteira para começar.
+              Planejamos e desenvolvemos produtos digitais e sistemas com IA. Da ideia à
+              produção, sem precisar montar uma equipe inteira.
             </p>
             <a className="round-link" href="#fit" aria-label="Entender quando a EIXU entra">
               <ArrowDown strokeWidth={1.5} />
@@ -109,8 +145,8 @@ export default function Home() {
         <div className="shell section-heading">
           <p className="section-index section-index--light">03 / Como contratar</p>
           <div>
-            <p className="eyebrow">Validação · Primeira versão · Projeto fechado</p>
-            <h2>Três formas simples de trabalhar com a/gente.</h2>
+            <p className="eyebrow">Discovery · MVP · Desenvolvimento de software</p>
+            <h2>Do problema ao produto em produção.</h2>
           </div>
         </div>
         <div className="shell offer-list">

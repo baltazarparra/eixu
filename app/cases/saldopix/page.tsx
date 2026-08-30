@@ -1,29 +1,45 @@
 import type { Metadata } from 'next';
 import { ArrowUpRight, Check } from 'lucide-react';
 import { Footer, Header } from '@/components/eixu';
+import { JsonLd } from '@/components/json-ld';
+import { SITE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
-  title: 'Saldo | Projeto da EIXU',
-  description: 'Um produto financeiro criado do zero e usado no dia a dia por empresas.',
+  title: 'Case Saldo: produto financeiro do zero à produção | EIXU',
+  description: 'Como a EIXU criou um produto financeiro do zero, chegou ao primeiro cliente pagante em poucas semanas e colocou a operação em produção.',
+  alternates: { canonical: '/cases/saldopix' },
   openGraph: {
-    title: 'Saldo | Projeto da EIXU',
-    description: 'Do zero à produção, com o primeiro cliente pagante em poucas semanas.',
+    title: 'Case Saldo: produto financeiro do zero à produção | EIXU',
+    description: 'Do zero ao primeiro cliente pagante em poucas semanas.',
+    type: 'article',
+    url: `${SITE_URL}/cases/saldopix`,
     images: [],
   },
   twitter: {
     card: 'summary',
-    title: 'Saldo | Projeto da EIXU',
-    description: 'Do zero à produção, com o primeiro cliente pagante em poucas semanas.',
+    title: 'Case Saldo: produto financeiro do zero à produção | EIXU',
+    description: 'Do zero ao primeiro cliente pagante em poucas semanas.',
     images: [],
   },
+};
+
+const saldoJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'EIXU', item: SITE_URL },
+    { '@type': 'ListItem', position: 2, name: 'Cases', item: `${SITE_URL}/#cases` },
+    { '@type': 'ListItem', position: 3, name: 'Saldo' },
+  ],
 };
 
 export default function SaldoPixCase() {
   return (
     <main className="case-page case-page--saldo">
+      <JsonLd data={saldoJsonLd} />
       <Header casePage />
       <section className="case-hero shell">
-        <p className="eyebrow">Projeto 01 · Produto financeiro para empresas</p>
+        <p className="eyebrow">Case · Desenvolvimento de produto financeiro</p>
         <h1>Saldo</h1>
         <div className="case-hero-summary">
           <p>Um produto financeiro criado do zero e usado no dia a dia por empresas.</p>
