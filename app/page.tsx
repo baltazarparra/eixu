@@ -2,28 +2,28 @@ import { ArrowDown, ArrowRight, ArrowUpRight, Check } from 'lucide-react';
 import { Footer, Header, Mark } from '@/components/eixu';
 
 const moments = [
-  { quote: 'Tenho uma ideia. Ainda não sei se vale construir.', path: 'Discovery' },
-  { quote: 'A ideia faz sentido. Preciso testar com usuários.', path: 'MVP' },
-  { quote: 'Já sei o que preciso. Falta construir.', path: 'Projeto fechado' },
-  { quote: 'Fiz uma versão. Agora a empresa quer usar de verdade.', path: 'Protótipo para produção' },
-  { quote: 'Minha demo com IA funciona. Agora precisa virar produto.', path: 'IA para produção' },
+  { quote: 'Tenho uma ideia. Ainda não sei se vale a pena construir.', path: 'Validação' },
+  { quote: 'A ideia faz sentido. Quero testar com pessoas de verdade.', path: 'Primeira versão' },
+  { quote: 'Já sei o que precisa ser feito. Falta construir.', path: 'Projeto fechado' },
+  { quote: 'Fiz uma versão. Agora a empresa precisa usar de verdade.', path: 'Do protótipo à produção' },
+  { quote: 'A demo com IA funciona. Agora precisa virar um produto.', path: 'Da demo com IA à produção' },
 ];
 
 const offers = [
   {
     index: '01',
-    title: 'Discovery',
-    result: 'Entendemos o problema e ajudamos você a decidir o que vale construir.',
+    title: 'Validação',
+    result: 'Entendemos o problema e ajudamos você a decidir se vale a pena construir.',
   },
   {
     index: '02',
-    title: 'MVP',
-    result: 'Criamos uma primeira versão real para testar com usuários.',
+    title: 'Primeira versão',
+    result: 'Colocamos uma versão funcional nas mãos de quem vai usar.',
   },
   {
     index: '03',
     title: 'Projeto fechado',
-    result: 'Você já sabe o que precisa. Nós construímos e colocamos no ar.',
+    result: 'Você já sabe o que precisa. A gente constrói e coloca no ar.',
   },
 ];
 
@@ -75,7 +75,7 @@ export default function Home() {
           <p>
             A EIXU entra quando existe um problema real, algum orçamento e uma entrega clara.
           </p>
-          <div className="fit-signals" aria-label="Sinais de que uma iniciativa tem fit com a EIXU">
+          <div className="fit-signals" aria-label="Sinais de que uma iniciativa combina com a EIXU">
             <span>Problema real</span>
             <span>Orçamento</span>
             <span>Prazo</span>
@@ -89,7 +89,7 @@ export default function Home() {
           <p className="section-index">02 / Onde entramos</p>
           <div>
             <p className="eyebrow">O momento importa mais que o cargo</p>
-            <h2>A EIXU entra em cinco momentos.</h2>
+            <h2>Talvez você esteja em um destes momentos.</h2>
           </div>
         </div>
         <div className="shell moment-list">
@@ -112,7 +112,7 @@ export default function Home() {
         <div className="shell section-heading">
           <p className="section-index section-index--light">03 / Como contratar</p>
           <div>
-            <p className="eyebrow">Discovery · MVP · Projeto fechado</p>
+            <p className="eyebrow">Validação · Primeira versão · Projeto fechado</p>
             <h2>Três formas simples de trabalhar com a gente.</h2>
           </div>
         </div>
@@ -133,10 +133,10 @@ export default function Home() {
 
       <section className="cases" id="cases">
         <div className="shell section-heading section-heading--cases">
-          <p className="section-index section-index--light">04 / Trabalho real</p>
+          <p className="section-index section-index--light">04 / Projetos reais</p>
           <div>
-            <p className="eyebrow">Já fizemos isso na prática</p>
-            <h2>Produtos que chegaram à produção.</h2>
+            <p className="eyebrow">Já colocamos produtos no ar</p>
+            <h2>Dois produtos que já estão em uso.</h2>
           </div>
         </div>
 
@@ -155,10 +155,10 @@ export default function Home() {
               <p>~R$ 1 mi / mês</p>
             </div>
             <div className="case-copy">
-              <h3>Produto criado do zero. Cliente pagando nas primeiras semanas.</h3>
+              <h3>Criado do zero. Primeiro cliente pagante em poucas semanas.</h3>
               <p>Cerca de R$ 1 milhão movimentado por mês.</p>
               <span className="case-link">
-                Ver case <ArrowUpRight aria-hidden="true" />
+                Ver projeto <ArrowUpRight aria-hidden="true" />
               </span>
             </div>
           </a>
@@ -178,10 +178,10 @@ export default function Home() {
               <i className="system-line line-three" />
             </div>
             <div className="case-copy">
-              <h3>IA que funciona dentro de um produto real.</h3>
-              <p>Não é só um chat. É um sistema feito para produção.</p>
+              <h3>IA dentro de um produto usado no dia a dia.</h3>
+              <p>Não é só um chat. É um sistema preparado para produção.</p>
               <span className="case-link">
-                Ver case <ArrowUpRight aria-hidden="true" />
+                Ver projeto <ArrowUpRight aria-hidden="true" />
               </span>
             </div>
           </a>
@@ -192,8 +192,8 @@ export default function Home() {
         <div className="shell experience-intro">
           <p className="section-index">Experiência anterior</p>
           <div>
-            <h2>A EIXU é nova.<br />A experiência não é.</h2>
-            <p>A liderança da EIXU já escreveu código para estas marcas.</p>
+            <h2>A EIXU é nova.<br />Nossa experiência não.</h2>
+            <p>Marcas onde a liderança da EIXU já escreveu código.</p>
           </div>
         </div>
         <div className="brand-grid shell" aria-label="Marcas onde já escrevemos código">

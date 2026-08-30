@@ -3,25 +3,25 @@ import { ArrowUpRight } from 'lucide-react';
 import { Footer, Header } from '@/components/eixu';
 
 export const metadata: Metadata = {
-  title: 'NaiaCRM | Case EIXU',
-  description: 'Um CRM com IA feito para uso real.',
+  title: 'NaiaCRM | Projeto da EIXU',
+  description: 'Um CRM com IA feito para o trabalho comercial do dia a dia.',
   openGraph: {
-    title: 'NaiaCRM | Case EIXU',
-    description: 'Modelo é detalhe. O sistema é a aposta.',
+    title: 'NaiaCRM | Projeto da EIXU',
+    description: 'O modelo é só uma parte. O sistema inteiro precisa funcionar.',
     images: [],
   },
   twitter: {
     card: 'summary',
-    title: 'NaiaCRM | Case EIXU',
-    description: 'Modelo é detalhe. O sistema é a aposta.',
+    title: 'NaiaCRM | Projeto da EIXU',
+    description: 'O modelo é só uma parte. O sistema inteiro precisa funcionar.',
     images: [],
   },
 };
 
 const lanes = [
-  { index: '01', title: 'Resposta rápida', copy: 'Para tarefas em que a pessoa está esperando.' },
-  { index: '02', title: 'Ação com revisão', copy: 'Para ações que precisam de confirmação.' },
-  { index: '03', title: 'Segundo plano', copy: 'Para pesquisas e tarefas mais longas.' },
+  { index: '01', title: 'Resposta rápida', copy: 'Quando alguém está esperando a resposta.' },
+  { index: '02', title: 'Ação com revisão', copy: 'Quando a pessoa precisa confirmar antes de seguir.' },
+  { index: '03', title: 'Em segundo plano', copy: 'Para pesquisas e tarefas que levam mais tempo.' },
 ];
 
 export default function NaiaCase() {
@@ -29,7 +29,7 @@ export default function NaiaCase() {
     <main className="case-page case-page--naia">
       <Header casePage />
       <section className="case-hero shell">
-        <p className="eyebrow">Case 02 · Sistemas de IA</p>
+        <p className="eyebrow">Projeto 02 · Produto com IA</p>
         <h1>NaiaCRM</h1>
         <div className="case-hero-summary">
           <p>Um CRM com IA para apoiar o trabalho comercial.</p>
@@ -41,25 +41,25 @@ export default function NaiaCase() {
 
       <section className="naia-statement">
         <div className="shell">
-          <p>Princípio de arquitetura</p>
-          <h2>Modelo é detalhe.<br /><span>O sistema é a aposta.</span></h2>
+          <p>Como pensamos a arquitetura</p>
+          <h2>O modelo é só uma parte.<br /><span>O sistema inteiro precisa funcionar.</span></h2>
         </div>
       </section>
 
       <section className="case-story shell">
         <p className="section-index">O desafio</p>
         <div className="story-body">
-          <h2>Uma demo de IA não basta.</h2>
+          <h2>Uma demo com IA não basta.</h2>
           <p className="story-lead">
-            Para funcionar no dia a dia, a IA precisa ter regras, permissões, histórico e controle de custo.
+            No dia a dia, a IA precisa de regras, permissões, histórico e controle de custos.
           </p>
         </div>
       </section>
 
       <section className="lanes-section">
         <div className="shell lanes-heading">
-          <p className="section-index section-index--light">Três caminhos</p>
-          <h2>Cada tarefa segue um caminho.</h2>
+          <p className="section-index section-index--light">Como funciona</p>
+          <h2>Cada tarefa segue o caminho certo.</h2>
         </div>
         <div className="shell lanes-grid">
           {lanes.map((lane) => (
@@ -75,7 +75,7 @@ export default function NaiaCase() {
       <section className="case-conclusion shell">
         <p className="section-index">O que isso prova</p>
         <blockquote>
-          A Naia mostra como levar IA para um produto real, com controle e segurança.
+          A Naia mostra como colocar IA em um produto usado no dia a dia, com controle e segurança.
         </blockquote>
       </section>
       <Footer />

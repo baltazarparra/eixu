@@ -26,13 +26,13 @@ export function Header({ casePage = false }: { casePage?: boolean }) {
       {casePage ? (
         <a className="nav-back" href="/#cases">
           <ArrowLeft aria-hidden="true" />
-          Cases
+          Projetos
         </a>
       ) : (
         <nav className="nav-links" aria-label="Navegação principal">
           <a href="#momentos">Quando entramos</a>
           <a href="#ofertas">Como contratar</a>
-          <a href="#cases">Cases</a>
+          <a href="#cases">Projetos</a>
         </nav>
       )}
     </header>
