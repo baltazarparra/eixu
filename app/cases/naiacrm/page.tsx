@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import { ArrowUpRight } from 'lucide-react';
 import { Footer, Header } from '@/components/eixu';
 import { JsonLd } from '@/components/json-ld';
@@ -13,13 +14,18 @@ export const metadata: Metadata = {
     description: 'O modelo é detalhe. O sistema é a aposta.',
     type: 'article',
     url: `${SITE_URL}/cases/naiacrm`,
-    images: [],
+    images: [{
+      url: `${SITE_URL}/cases/naia-home.webp`,
+      width: 1440,
+      height: 960,
+      alt: 'Produto naia reunindo contexto comercial e operacional com IA',
+    }],
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: 'Case naia: arquitetura multiagente com AI Gateway | EIXU',
     description: 'O modelo é detalhe. O sistema é a aposta.',
-    images: [],
+    images: [`${SITE_URL}/cases/naia-home.webp`],
   },
 };
 
@@ -104,6 +110,18 @@ export default function NaiaCase() {
         </div>
       </section>
 
+      <figure className="case-hero-media case-hero-media--naia shell-wide">
+        <Image
+          src="/cases/naia-home.webp"
+          alt="Página inicial da naia mostrando um resumo da operação criado com inteligência artificial"
+          width="1440"
+          height="960"
+          priority
+          decoding="async"
+        />
+        <figcaption>Um sistema complexo apresentado de um jeito simples.</figcaption>
+      </figure>
+
       <section className="naia-statement">
         <div className="shell">
           <p>Como pensamos a arquitetura</p>
@@ -119,6 +137,36 @@ export default function NaiaCase() {
             Fazer um chat responder é simples. Difícil é unir agentes, ferramentas, contexto,
             permissões, histórico e custo sem perder o controle.
           </p>
+        </div>
+      </section>
+
+      <section className="case-gallery case-gallery--naia shell-wide" aria-label="Imagens do produto naia">
+        <figure className="case-gallery-wide">
+          <Image
+            src="/cases/naia-context.webp"
+            alt="Página da naia explicando como a pesquisa comercial ganha contexto antes da conversa"
+            width="1440"
+            height="960"
+            loading="lazy"
+            decoding="async"
+          />
+          <figcaption>A comunicação mostra o que a IA faz sem esconder a pessoa do processo.</figcaption>
+        </figure>
+        <figure className="case-gallery-mobile case-gallery-mobile--naia">
+          <Image
+            src="/cases/naia-mobile.webp"
+            alt="Página inicial da naia em um celular"
+            width="390"
+            height="844"
+            loading="lazy"
+            decoding="async"
+          />
+          <figcaption>A mesma história continua clara em uma tela pequena.</figcaption>
+        </figure>
+        <div className="case-gallery-note">
+          <p className="section-index">Produto nativo de IA</p>
+          <h2>A tecnologia faz o trabalho pesado. A interface mostra só o que importa.</h2>
+          <p>O usuário recebe contexto, revisa a sugestão e decide o próximo passo.</p>
         </div>
       </section>
 

@@ -1,4 +1,6 @@
+/* oxlint-disable next/no-html-link-for-pages -- Case links use full navigation for native cross-document transitions. */
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import { ArrowDown, ArrowRight, ArrowUpRight, Check } from 'lucide-react';
 import { Footer, Header, Mark } from '@/components/eixu';
 import { JsonLd } from '@/components/json-ld';
@@ -179,17 +181,20 @@ export default function Home() {
               <p>Saldo</p>
               <span>Produto financeiro</span>
             </div>
-            <div className="case-visual" aria-hidden="true">
-              <div className="saldo-orbit">
-                <span>R$</span>
-                <i />
-                <i />
-              </div>
-              <p>~R$ 1 mi / mês</p>
+            <div className="case-visual case-visual-image">
+              <Image
+                src="/cases/saldo-home.webp"
+                alt="Página inicial da Saldo mostrando o produto financeiro e a organização dos gastos via Pix"
+                width="1440"
+                height="960"
+                loading="lazy"
+                decoding="async"
+              />
+              <span className="case-image-index" aria-hidden="true">01</span>
             </div>
             <div className="case-copy">
-              <h3>Criado do zero. Primeiro cliente pagante em poucas semanas.</h3>
-              <p>Cerca de R$ 1 milhão movimentado por mês.</p>
+              <h3>Um produto financeiro criado do zero e colocado na rotina de empresas.</h3>
+              <p>Produto, engenharia e operação em uma entrega completa.</p>
               <span className="case-link">
                 Ver projeto <ArrowUpRight aria-hidden="true" />
               </span>
@@ -201,18 +206,20 @@ export default function Home() {
               <p>naia</p>
               <span>Sistema nativo de IA</span>
             </div>
-            <div className="case-visual naia-system" aria-hidden="true">
-              <div className="system-node system-node--main">naia</div>
-              <div className="system-node system-node--one">01</div>
-              <div className="system-node system-node--two">02</div>
-              <div className="system-node system-node--three">03</div>
-              <i className="system-line line-one" />
-              <i className="system-line line-two" />
-              <i className="system-line line-three" />
+            <div className="case-visual case-visual-image">
+              <Image
+                src="/cases/naia-home.webp"
+                alt="Página inicial da naia mostrando o resumo da operação criado com contexto de várias áreas"
+                width="1440"
+                height="960"
+                loading="lazy"
+                decoding="async"
+              />
+              <span className="case-image-index" aria-hidden="true">02</span>
             </div>
             <div className="case-copy">
-              <h3>Uma arquitetura multiagente dentro de um produto real.</h3>
-              <p>Vários modelos, regras e ferramentas trabalhando juntos.</p>
+              <h3>Uma arquitetura multiagente trabalhando dentro de um produto real.</h3>
+              <p>Vários modelos, regras e ferramentas no mesmo sistema.</p>
               <span className="case-link">
                 Ver projeto <ArrowUpRight aria-hidden="true" />
               </span>

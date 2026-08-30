@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import { ArrowUpRight, Check } from 'lucide-react';
 import { Footer, Header } from '@/components/eixu';
 import { JsonLd } from '@/components/json-ld';
@@ -13,13 +14,18 @@ export const metadata: Metadata = {
     description: 'Do zero ao primeiro cliente pagante em poucas semanas.',
     type: 'article',
     url: `${SITE_URL}/cases/saldopix`,
-    images: [],
+    images: [{
+      url: `${SITE_URL}/cases/saldo-home.webp`,
+      width: 1440,
+      height: 960,
+      alt: 'Produto financeiro Saldo para organizar gastos de equipes via Pix',
+    }],
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: 'Case Saldo: produto financeiro do zero à produção | EIXU',
     description: 'Do zero ao primeiro cliente pagante em poucas semanas.',
-    images: [],
+    images: [`${SITE_URL}/cases/saldo-home.webp`],
   },
 };
 
@@ -33,7 +39,7 @@ const saldoJsonLd = {
   ],
 };
 
-export default function SaldoPixCase() {
+export default function SaldoCase() {
   return (
     <main className="case-page case-page--saldo">
       <JsonLd data={saldoJsonLd} />
@@ -48,6 +54,18 @@ export default function SaldoPixCase() {
           </a>
         </div>
       </section>
+
+      <figure className="case-hero-media case-hero-media--saldo shell-wide">
+        <Image
+          src="/cases/saldo-home.webp"
+          alt="Página inicial da Saldo com uma visão do produto e dos gastos organizados via Pix"
+          width="1440"
+          height="960"
+          priority
+          decoding="async"
+        />
+        <figcaption>Produto, operação e identidade construídos como uma coisa só.</figcaption>
+      </figure>
 
       <section className="metric-band">
         <div className="shell metrics-grid">
@@ -64,6 +82,36 @@ export default function SaldoPixCase() {
           <p className="story-lead">
             Criamos o aplicativo, o painel interno, a área dos clientes e a base técnica da operação.
           </p>
+        </div>
+      </section>
+
+      <section className="case-gallery shell-wide" aria-label="Imagens do produto Saldo">
+        <figure className="case-gallery-wide">
+          <Image
+            src="/cases/saldo-flow.webp"
+            alt="Página da Saldo com números da plataforma e a comparação da rotina antes e depois do produto"
+            width="1440"
+            height="960"
+            loading="lazy"
+            decoding="async"
+          />
+          <figcaption>O produto explica o problema com números e situações reais da operação.</figcaption>
+        </figure>
+        <figure className="case-gallery-mobile case-gallery-mobile--saldo">
+          <Image
+            src="/cases/saldo-mobile.webp"
+            alt="Página inicial da Saldo em um celular"
+            width="390"
+            height="844"
+            loading="lazy"
+            decoding="async"
+          />
+          <figcaption>A experiência funciona desde a primeira tela no celular.</figcaption>
+        </figure>
+        <div className="case-gallery-note">
+          <p className="section-index">Da ideia à rotina</p>
+          <h2>O produto nasceu para organizar o Pix antes do fim do mês.</h2>
+          <p>A interface deixa o gasto, o comprovante e o responsável no mesmo fluxo.</p>
         </div>
       </section>
 
