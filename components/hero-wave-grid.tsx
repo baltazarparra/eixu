@@ -61,22 +61,22 @@ export function HeroWaveGrid() {
     renderer.setClearColor(0x12120f, 0);
     renderer.outputColorSpace = SRGBColorSpace;
     renderer.toneMapping = ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.04;
+    renderer.toneMappingExposure = 0.86;
     renderer.domElement.setAttribute('aria-hidden', 'true');
     renderer.domElement.tabIndex = -1;
     root.appendChild(renderer.domElement);
 
     const columns = 42;
     const rows = 36;
-    const spacing = 0.88;
-    const geometry = new BoxGeometry(0.79, 0.79, 1, 1, 1, 1);
+    const spacing = 0.98;
+    const geometry = new BoxGeometry(0.88, 0.88, 1, 1, 1, 1);
     const material = new MeshPhongMaterial({
-      color: 0xcdbd9f,
-      emissive: 0x201d17,
-      emissiveIntensity: 0.2,
-      shininess: 38,
+      color: 0x8f8b80,
+      emissive: 0x141410,
+      emissiveIntensity: 0.12,
+      shininess: 24,
       transparent: true,
-      opacity: 0.86,
+      opacity: 0.78,
     });
     const mesh = new InstancedMesh(geometry, material, columns * rows);
     mesh.frustumCulled = false;
@@ -98,8 +98,8 @@ export function HeroWaveGrid() {
     mesh.instanceMatrix.needsUpdate = true;
     scene.add(mesh);
 
-    const ambientLight = new AmbientLight(0xe3d7c1, 0.58);
-    const directionalLight = new DirectionalLight(0xfff4df, 2.7);
+    const ambientLight = new AmbientLight(0xb8b2a5, 0.36);
+    const directionalLight = new DirectionalLight(0xcfc6b5, 1.75);
     directionalLight.position.set(-7, 10, 16);
     scene.add(ambientLight, directionalLight);
 
@@ -110,8 +110,8 @@ export function HeroWaveGrid() {
       shader.uniforms.uWaves = { value: uniformWaves };
       shader.uniforms.uWaveCount = { value: 0 };
       shader.uniforms.uMotion = { value: reducedMotion ? 0 : 1 };
-      shader.uniforms.uColorBase = { value: new Color(0x625a4b) };
-      shader.uniforms.uColorHigh = { value: new Color(0xe3d7c1) };
+      shader.uniforms.uColorBase = { value: new Color(0x3d3c37) };
+      shader.uniforms.uColorHigh = { value: new Color(0x89867d) };
 
       shader.vertexShader = shader.vertexShader
         .replace(
@@ -159,13 +159,13 @@ export function HeroWaveGrid() {
         .replace(
           '#include <color_fragment>',
           `#include <color_fragment>
-          float waveColor = clamp(vWaveLift / 2.4, 0.0, 1.0);
+          float waveColor = clamp(vWaveLift / 2.7, 0.0, 1.0);
           diffuseColor.rgb = mix(uColorBase, uColorHigh, waveColor);`,
         );
 
       shaderRef = shader;
     };
-    material.customProgramCacheKey = () => 'eixu-hero-wave-grid-v1';
+    material.customProgramCacheKey = () => 'eixu-hero-wave-grid-v2';
 
     let waves: Wave[] = [];
     let lastPointerAt = 0;
