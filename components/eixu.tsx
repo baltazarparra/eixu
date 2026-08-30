@@ -30,9 +30,9 @@ export function Header({ casePage = false }: { casePage?: boolean }) {
         </a>
       ) : (
         <nav className="nav-links" aria-label="Navegação principal">
-          <a href="#ofertas">O que fazemos</a>
+          <a href="#momentos">Quando entramos</a>
+          <a href="#ofertas">Como contratar</a>
           <a href="#cases">Cases</a>
-          <a href="#contato">Contato</a>
         </nav>
       )}
     </header>
@@ -43,12 +43,12 @@ export function Footer() {
   return (
     <footer className="site-footer" id="contato">
       <div className="shell footer-top">
-        <p className="section-index section-index--light">05 / Próxima decisão</p>
+        <p className="section-index section-index--light">06 / Próxima decisão</p>
         <div>
-          <h2>Qual ideia parece cara ou complicada demais para começar?</h2>
+          <h2>Você já tem uma ideia, um protótipo, uma demo ou um plano?</h2>
           <p>
-            Uma conversa curta para entender o problema, reduzir a incerteza e descobrir
-            se ele cabe no modelo EIXU.
+            Conte em que ponto está. A primeira conversa serve para entender o que falta
+            para chegar à produção — e se o problema cabe no modelo EIXU.
           </p>
           <a
             className="cta-link"

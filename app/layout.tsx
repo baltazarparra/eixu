@@ -9,11 +9,11 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://eixu.com.br'),
   title: 'EIXU — Product Engineering, AI-native',
   description:
-    'Discovery, MVP e projetos digitais fechados. Produto e tecnologia, do problema à produção.',
+    'Para empresas com uma iniciativa digital concreta que precisa virar decisão ou software de produção.',
   icons: { icon: '/favicon.svg' },
   openGraph: {
     title: 'EIXU — Product Engineering, AI-native',
-    description: 'Produto e tecnologia, do problema à produção.',
+    description: 'Você já tem uma ideia, um protótipo, uma demo ou um plano. A EIXU leva até produção.',
     type: 'website',
     locale: 'pt_BR',
     images: [{ url: '/og.png', width: 1731, height: 909, alt: 'EIXU — Product Engineering, AI-native' }],
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'EIXU — Product Engineering, AI-native',
-    description: 'Produto e tecnologia, do problema à produção.',
+    description: 'Você já tem uma ideia, um protótipo, uma demo ou um plano. A EIXU leva até produção.',
     images: ['/og.png'],
   },
 };
