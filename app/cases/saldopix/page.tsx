@@ -3,16 +3,16 @@ import { ArrowUpRight, Check } from 'lucide-react';
 import { Footer, Header } from '@/components/eixu';
 
 export const metadata: Metadata = {
-  title: 'SaldoPix — Case EIXU',
-  description: 'Como um produto financeiro saiu do zero para uma operação comercial real.',
+  title: 'SaldoPix | Case EIXU',
+  description: 'Um produto financeiro criado do zero e usado por clientes reais.',
   openGraph: {
-    title: 'SaldoPix — Case EIXU',
+    title: 'SaldoPix | Case EIXU',
     description: 'Do zero à produção, com cliente real pagando nas primeiras semanas.',
     images: [],
   },
   twitter: {
     card: 'summary',
-    title: 'SaldoPix — Case EIXU',
+    title: 'SaldoPix | Case EIXU',
     description: 'Do zero à produção, com cliente real pagando nas primeiras semanas.',
     images: [],
   },
@@ -26,7 +26,7 @@ export default function SaldoPixCase() {
         <p className="eyebrow">Case 01 · Fintech B2B</p>
         <h1>SaldoPix</h1>
         <div className="case-hero-summary">
-          <p>Um produto financeiro completo, construído do zero até uma operação real.</p>
+          <p>Um produto financeiro criado do zero e usado por clientes reais.</p>
           <a href="https://saldopix.com.br" target="_blank" rel="noreferrer">
             Visitar produto <ArrowUpRight aria-hidden="true" />
           </a>
@@ -42,25 +42,12 @@ export default function SaldoPixCase() {
       </section>
 
       <section className="case-story shell">
-        <p className="section-index">O que precisava acontecer</p>
+        <p className="section-index">O desafio</p>
         <div className="story-body">
-          <h2>Não era uma landing page. Era uma operação.</h2>
+          <h2>A ideia precisava virar produto.</h2>
           <p className="story-lead">
-            O SaldoPix precisava sair de uma ideia e se tornar um produto capaz de mover
-            dinheiro, organizar clientes e sustentar uma rotina operacional real.
+            Criamos o app, o painel interno, a área dos clientes e a estrutura usada na operação.
           </p>
-          <div className="story-columns">
-            <p>
-              A construção cobriu webapp, painel administrativo, CMS para clientes,
-              gestão de usuários e infraestrutura de operação. Produto, arquitetura,
-              experiência, engenharia e deploy foram tratados como uma única entrega.
-            </p>
-            <p>
-              O resultado não foi medido em telas ou horas consumidas. Foi medido pela
-              chegada do produto à produção, pelo primeiro cliente e pelo volume que ele
-              passou a movimentar.
-            </p>
-          </div>
         </div>
       </section>
 
@@ -68,7 +55,7 @@ export default function SaldoPixCase() {
         <div className="shell proof-grid">
           <p className="section-index section-index--light">O sistema entregue</p>
           <div className="proof-list">
-            {['Webapp transacional', 'Painel administrativo', 'CMS para clientes', 'Gestão de usuários', 'Infraestrutura de operação', 'Produto em produção'].map((item) => (
+            {['App financeiro', 'Painel interno', 'Área do cliente', 'Estrutura de produção'].map((item) => (
               <div key={item}><Check aria-hidden="true" /><span>{item}</span></div>
             ))}
           </div>
@@ -78,7 +65,7 @@ export default function SaldoPixCase() {
       <section className="case-conclusion shell">
         <p className="section-index">O que isso prova</p>
         <blockquote>
-          Capacidade de sair do zero e colocar um produto comercial completo em produção.
+          O SaldoPix mostra que uma equipe pequena pode colocar um produto financeiro real no ar.
         </blockquote>
       </section>
       <Footer />

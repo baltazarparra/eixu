@@ -12,7 +12,7 @@ export function Mark({ small = false }: { small?: boolean }) {
 
 export function Brand({ inverted = false }: { inverted?: boolean }) {
   return (
-    <a className={`brand${inverted ? ' brand--dark' : ''}`} href="/" aria-label="EIXU — início">
+    <a className={`brand${inverted ? ' brand--dark' : ''}`} href="/" aria-label="EIXU, início">
       <Mark small />
       <span>EIXU</span>
     </a>
@@ -43,12 +43,11 @@ export function Footer() {
   return (
     <footer className="site-footer" id="contato">
       <div className="shell footer-top">
-        <p className="section-index section-index--light">06 / Próxima decisão</p>
+        <p className="section-index section-index--light">Vamos conversar</p>
         <div>
-          <h2>Você já tem uma ideia, um protótipo, uma demo ou um plano?</h2>
+          <h2>O que você já tem hoje?</h2>
           <p>
-            Conte em que ponto está. A primeira conversa serve para entender o que falta
-            para chegar à produção — e se o problema cabe no modelo EIXU.
+            Pode ser uma ideia, um protótipo, uma demo ou um plano. Conte para a gente.
           </p>
           <a
             className="cta-link"

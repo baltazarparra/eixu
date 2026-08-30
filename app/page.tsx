@@ -1,55 +1,29 @@
-import { ArrowDown, ArrowRight, ArrowUpRight, Check, Minus } from 'lucide-react';
+import { ArrowDown, ArrowRight, ArrowUpRight, Check } from 'lucide-react';
 import { Footer, Header, Mark } from '@/components/eixu';
 
 const moments = [
-  {
-    quote: 'Tenho uma ideia, mas ainda preciso descobrir se vale construir.',
-    path: 'Discovery',
-    note: 'Reduzir incerteza antes de comprometer uma estrutura maior.',
-  },
-  {
-    quote: 'Já validei a oportunidade. Agora preciso colocar algo real na rua.',
-    path: 'MVP',
-    note: 'Software funcional para encontrar usuários e produzir evidência.',
-  },
-  {
-    quote: 'Já sabemos exatamente o que precisa ser feito.',
-    path: 'Projeto fechado',
-    note: 'Resultado, escopo, preço e prazo combinados antes da execução.',
-  },
-  {
-    quote: 'Fiz funcionar. Agora a empresa precisa poder depender disso.',
-    path: 'Prototype → Production',
-    note: 'Arquitetura, segurança, dados, testes, observabilidade e operação.',
-  },
-  {
-    quote: 'Nossa demo de IA funciona. Agora ela precisa virar sistema.',
-    path: 'AI demo → Production',
-    note: 'Evals, autorização, workflows, custo, latência e evolução de modelos.',
-  },
+  { quote: 'Tenho uma ideia. Ainda não sei se vale construir.', path: 'Discovery' },
+  { quote: 'A ideia faz sentido. Preciso testar com usuários.', path: 'MVP' },
+  { quote: 'Já sei o que preciso. Falta construir.', path: 'Projeto fechado' },
+  { quote: 'Fiz uma versão. Agora a empresa quer usar de verdade.', path: 'Protótipo para produção' },
+  { quote: 'Minha demo com IA funciona. Agora precisa virar produto.', path: 'IA para produção' },
 ];
 
 const offers = [
   {
     index: '01',
     title: 'Discovery',
-    question: 'Existe uma oportunidade concreta, mas a decisão ainda carrega risco demais.',
-    result: 'Transformamos incerteza em uma recomendação defensável: construir, mudar, reduzir ou parar.',
-    deliverables: ['Problema e hipótese', 'Riscos e viabilidade', 'Escopo e recomendação'],
+    result: 'Entendemos o problema e ajudamos você a decidir o que vale construir.',
   },
   {
     index: '02',
     title: 'MVP',
-    question: 'A hipótese está clara o bastante para encontrar usuários reais.',
-    result: 'Construímos software funcional com objetivo, prazo e critério de sucesso definidos.',
-    deliverables: ['Produto funcional', 'Infraestrutura real', 'Evidência para decidir'],
+    result: 'Criamos uma primeira versão real para testar com usuários.',
   },
   {
     index: '03',
     title: 'Projeto fechado',
-    question: 'Já existe um plano, protótipo, Figma, especificação ou sistema incompleto.',
-    result: 'Assumimos uma entrega delimitada — inclusive hardening e productionization — e levamos até produção.',
-    deliverables: ['Aplicações e features', 'Protótipo → produção', 'Demo de IA → sistema'],
+    result: 'Você já sabe o que precisa. Nós construímos e colocamos no ar.',
   },
 ];
 
@@ -80,8 +54,8 @@ export default function Home() {
 
           <div className="hero-bottom reveal delay-3">
             <p className="hero-copy">
-              Uma ideia, um protótipo, uma demo ou um plano. Para iniciativas que já
-              merecem investimento — mas não uma organização inteira ao redor delas.
+              Pode ser uma ideia, um protótipo, uma demo ou um plano. Você não precisa
+              montar uma equipe inteira para começar.
             </p>
             <a className="round-link" href="#fit" aria-label="Entender quando a EIXU entra">
               <ArrowDown strokeWidth={1.5} />
@@ -95,39 +69,27 @@ export default function Home() {
       </section>
 
       <section className="opening shell" id="fit">
-        <p className="section-index">01 / O fit</p>
+        <p className="section-index">01 / Quando faz sentido</p>
         <div className="opening-copy">
-          <h2>O problema já merece investimento. Ainda não merece uma organização inteira.</h2>
-          <div className="opening-columns">
-            <p>
-              A EIXU atende empresas médias, grandes, scale-ups e operações digitais maduras
-              com uma iniciativa concreta: problema real, algum nível de clareza, orçamento,
-              urgência e um resultado que pode ser delimitado.
-            </p>
-            <p>
-              Entramos quando montar uma squad, contratar várias pessoas ou iniciar um
-              programa longo seria desproporcional ao que precisa acontecer agora.
-            </p>
-          </div>
-          <div className="fit-signals" aria-label="Sinais de que uma iniciativa tem fit com a EIXU">
-            <span>Algo concreto</span>
-            <span>Orçamento</span>
-            <span>Urgência</span>
-            <span>Fim delimitável</span>
-          </div>
-          <p className="pull-quote">
-            O cargo muda. O estado do problema não. Entramos entre o que você já tem e o
-            que precisa funcionar em produção.
+          <h2>Seu projeto já é importante. Mas ainda não precisa de uma equipe inteira.</h2>
+          <p>
+            A EIXU entra quando existe um problema real, algum orçamento e uma entrega clara.
           </p>
+          <div className="fit-signals" aria-label="Sinais de que uma iniciativa tem fit com a EIXU">
+            <span>Problema real</span>
+            <span>Orçamento</span>
+            <span>Prazo</span>
+            <span>Entrega clara</span>
+          </div>
         </div>
       </section>
 
       <section className="moments" id="momentos">
         <div className="shell moments-heading">
-          <p className="section-index">02 / Quando entramos</p>
+          <p className="section-index">02 / Onde entramos</p>
           <div>
             <p className="eyebrow">O momento importa mais que o cargo</p>
-            <h2>A EIXU aparece quando alguém diz:</h2>
+            <h2>A EIXU entra em cinco momentos.</h2>
           </div>
         </div>
         <div className="shell moment-list">
@@ -136,7 +98,6 @@ export default function Home() {
               <p className="moment-index">{String(index + 1).padStart(2, '0')}</p>
               <div>
                 <h3>“{moment.quote}”</h3>
-                <p>{moment.note}</p>
               </div>
               <span className="moment-path">
                 {moment.path}
@@ -151,8 +112,8 @@ export default function Home() {
         <div className="shell section-heading">
           <p className="section-index section-index--light">03 / Como contratar</p>
           <div>
-            <p className="eyebrow">Discovery · MVP · Projetos fechados</p>
-            <h2>Uma contratação simples para uma entrega delimitada.</h2>
+            <p className="eyebrow">Discovery · MVP · Projeto fechado</p>
+            <h2>Três formas simples de trabalhar com a gente.</h2>
           </div>
         </div>
         <div className="shell offer-list">
@@ -161,69 +122,21 @@ export default function Home() {
               <p className="offer-index">{offer.index}</p>
               <div>
                 <h3>{offer.title}</h3>
-                <p className="offer-question">{offer.question}</p>
               </div>
               <div className="offer-result">
                 <p>{offer.result}</p>
-                <ul>
-                  {offer.deliverables.map((item) => (
-                    <li key={item}>
-                      <Minus aria-hidden="true" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
               </div>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="method shell">
-        <p className="section-index">04 / O modelo</p>
-        <div className="method-body">
-          <h2>A estrutura fica pequena. A responsabilidade, não.</h2>
-          <div className="method-grid">
-            <div>
-              <span>01</span>
-              <h3>Senioridade concentrada</h3>
-              <p>Quem entende o problema permanece perto das decisões e da implementação.</p>
-            </div>
-            <div>
-              <span>02</span>
-              <h3>AI-native de verdade</h3>
-              <p>IA atravessa planejamento, arquitetura, código, testes, revisão e operação.</p>
-            </div>
-            <div>
-              <span>03</span>
-              <h3>Escopo disciplinado</h3>
-              <p>Resultado, prazo e critério de sucesso são combinados antes da construção.</p>
-            </div>
-            <div>
-              <span>04</span>
-              <h3>Responsabilidade direta</h3>
-              <p>Menos handoffs, menos cerimônia e uma linha clara entre decisão e entrega.</p>
-            </div>
-          </div>
-          <div className="not-list">
-            <p>Não é o nosso modelo</p>
-            <div>
-              <span>body shop</span>
-              <span>horas</span>
-              <span>squads permanentes</span>
-              <span>sustentação contínua</span>
-              <span>transformações gigantes</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section className="cases" id="cases">
         <div className="shell section-heading section-heading--cases">
-          <p className="section-index section-index--light">05 / Trabalho em produção</p>
+          <p className="section-index section-index--light">04 / Trabalho real</p>
           <div>
-            <p className="eyebrow">A tese já foi testada</p>
-            <h2>Da ideia ao produto. Da IA em demo à IA em produção.</h2>
+            <p className="eyebrow">Já fizemos isso na prática</p>
+            <h2>Produtos que chegaram à produção.</h2>
           </div>
         </div>
 
@@ -242,8 +155,8 @@ export default function Home() {
               <p>~R$ 1 mi / mês</p>
             </div>
             <div className="case-copy">
-              <h3>Do zero à produção — e a um cliente real pagando nas primeiras semanas.</h3>
-              <p>Produto completo, operação real e aproximadamente R$ 1 milhão movimentado por mês.</p>
+              <h3>Produto criado do zero. Cliente pagando nas primeiras semanas.</h3>
+              <p>Cerca de R$ 1 milhão movimentado por mês.</p>
               <span className="case-link">
                 Ver case <ArrowUpRight aria-hidden="true" />
               </span>
@@ -265,8 +178,8 @@ export default function Home() {
               <i className="system-line line-three" />
             </div>
             <div className="case-copy">
-              <h3>IA desenhada como sistema de produção, não como uma feature isolada.</h3>
-              <p>Produto, engenharia e AI systems operando como uma disciplina única.</p>
+              <h3>IA que funciona dentro de um produto real.</h3>
+              <p>Não é só um chat. É um sistema feito para produção.</p>
               <span className="case-link">
                 Ver case <ArrowUpRight aria-hidden="true" />
               </span>
@@ -280,10 +193,7 @@ export default function Home() {
           <p className="section-index">Experiência anterior</p>
           <div>
             <h2>A EIXU é nova.<br />A experiência não é.</h2>
-            <p>
-              Marcas onde a liderança tecnológica da EIXU já escreveu código, em produtos e
-              projetos realizados durante experiências profissionais anteriores.
-            </p>
+            <p>A liderança da EIXU já escreveu código para estas marcas.</p>
           </div>
         </div>
         <div className="brand-grid shell" aria-label="Marcas onde já escrevemos código">
@@ -295,7 +205,7 @@ export default function Home() {
           ))}
         </div>
         <p className="shell experience-note">
-          As marcas acima não são apresentadas como clientes da EIXU. São experiências anteriores da liderança.
+          Essas foram experiências anteriores da liderança. As marcas não são clientes da EIXU.
         </p>
       </section>
 

@@ -276,7 +276,7 @@ a { color: inherit; text-decoration: none; }
   }
 }
 
-/* Home — editorial system */
+/* Home: editorial system */
 .opening-columns {
   display: grid;
   grid-template-columns: 1fr 1fr;
