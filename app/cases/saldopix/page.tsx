@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
-import { ArrowUpRight, Check } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import { Footer, Header } from '@/components/eixu';
 import { JsonLd } from '@/components/json-ld';
 import { SITE_URL } from '@/lib/site';
@@ -41,18 +41,12 @@ const saldoJsonLd = {
 
 export default function SaldoCase() {
   return (
-    <main className="case-page case-page--saldo">
+    <main className="case-page case-page--saldo case-editorial">
       <JsonLd data={saldoJsonLd} />
       <Header casePage />
       <section className="case-hero shell">
         <p className="eyebrow">Case · Desenvolvimento de produto financeiro</p>
         <h1>Saldo</h1>
-        <div className="case-hero-summary">
-          <p>Um produto financeiro criado do zero e usado no dia a dia por empresas.</p>
-          <a href="https://saldopix.com.br" target="_blank" rel="noreferrer">
-            Visitar produto <ArrowUpRight aria-hidden="true" />
-          </a>
-        </div>
       </section>
 
       <figure className="case-hero-media case-hero-media--saldo shell-wide">
@@ -64,29 +58,46 @@ export default function SaldoCase() {
           priority
           decoding="async"
         />
-        <figcaption>Produto, operação e identidade construídos como uma coisa só.</figcaption>
       </figure>
 
-      <section className="metric-band">
-        <div className="shell metrics-grid">
-          <div><strong>~R$ 1 mi</strong><span>movimentado por mês</span></div>
-          <div><strong>Poucas semanas</strong><span>até o primeiro cliente pagante</span></div>
-          <div><strong>IA desde o início</strong><span>em todo o desenvolvimento</span></div>
-        </div>
-      </section>
-
-      <section className="case-story shell">
-        <p className="section-index">O desafio</p>
-        <div className="story-body">
-          <h2>A ideia precisava funcionar de verdade.</h2>
-          <p className="story-lead">
-            Criamos o aplicativo, o painel interno, a área dos clientes e a base técnica da operação.
+      <section className="case-intro shell">
+        <h2>O Pix entrou na rotina. A bagunça saiu.</h2>
+        <div className="case-intro-copy">
+          <p>
+            Saldo organiza os gastos de equipes desde o pagamento. Valor, responsável e
+            comprovante nascem juntos, sem deixar a conferência para o fim do mês.
           </p>
+          <p>
+            A/gente criou o produto, o aplicativo, o painel interno e a operação. Em poucas
+            semanas, a primeira versão já tinha cliente pagante.
+          </p>
+          <p>
+            Hoje, a plataforma movimenta cerca de R$ 1 milhão por mês e continua evoluindo como
+            um produto financeiro completo.
+          </p>
+          <a href="https://saldopix.com.br" target="_blank" rel="noreferrer">
+            Visitar produto <ArrowUpRight aria-hidden="true" />
+          </a>
         </div>
       </section>
 
-      <section className="case-gallery shell-wide" aria-label="Imagens do produto Saldo">
-        <figure className="case-gallery-wide">
+      <section className="case-facts shell" aria-label="Resumo do projeto Saldo">
+        <div>
+          <span>Produto</span>
+          <strong>Do zero à produção</strong>
+        </div>
+        <div>
+          <span>Primeiro cliente</span>
+          <strong>Em poucas semanas</strong>
+        </div>
+        <div>
+          <span>Operação</span>
+          <strong>~R$ 1 mi por mês</strong>
+        </div>
+      </section>
+
+      <section className="case-image-story shell-wide" aria-label="Imagens do produto Saldo">
+        <figure className="case-image-wide case-image-surface--saldo">
           <Image
             src="/cases/saldo-flow.webp"
             alt="Página da Saldo com números da plataforma e a comparação da rotina antes e depois do produto"
@@ -95,43 +106,42 @@ export default function SaldoCase() {
             loading="lazy"
             decoding="async"
           />
-          <figcaption>O produto explica o problema com números e situações reais da operação.</figcaption>
         </figure>
-        <figure className="case-gallery-mobile case-gallery-mobile--saldo">
+        <div className="case-image-pair case-image-pair--saldo">
+          <figure className="case-image-phone case-image-surface--saldo">
+            <Image
+              src="/cases/saldo-mobile.webp"
+              alt="Página inicial da Saldo em um celular"
+              width="390"
+              height="844"
+              loading="lazy"
+              decoding="async"
+            />
+          </figure>
+          <figure className="case-image-detail case-image-surface--saldo">
+            <Image
+              src="/cases/saldo-home.webp"
+              alt="Detalhe da interface da Saldo mostrando saldo disponível e pagamentos via Pix"
+              width="1440"
+              height="960"
+              loading="lazy"
+              decoding="async"
+            />
+          </figure>
+        </div>
+        <figure className="case-image-wide case-image-wide--closing case-image-surface--saldo">
           <Image
-            src="/cases/saldo-mobile.webp"
-            alt="Página inicial da Saldo em um celular"
-            width="390"
-            height="844"
+            src="/cases/saldo-home.webp"
+            alt="Experiência completa da Saldo para organizar gastos de equipes via Pix"
+            width="1440"
+            height="960"
             loading="lazy"
             decoding="async"
           />
-          <figcaption>A experiência funciona desde a primeira tela no celular.</figcaption>
         </figure>
-        <div className="case-gallery-note">
-          <p className="section-index">Da ideia à rotina</p>
-          <h2>O produto nasceu para organizar o Pix antes do fim do mês.</h2>
-          <p>A interface deixa o gasto, o comprovante e o responsável no mesmo fluxo.</p>
-        </div>
       </section>
 
-      <section className="proof-section">
-        <div className="shell proof-grid">
-          <p className="section-index section-index--light">O que foi entregue</p>
-          <div className="proof-list">
-            {['Aplicativo financeiro', 'Painel interno', 'Área do cliente', 'Base para operar em produção'].map((item) => (
-              <div key={item}><Check aria-hidden="true" /><span>{item}</span></div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="case-conclusion shell">
-        <p className="section-index">O que isso prova</p>
-        <blockquote>
-          O Saldo mostra que uma equipe pequena consegue colocar um produto financeiro em produção.
-        </blockquote>
-      </section>
+      <p className="case-closing-line shell">O gasto já nasce organizado.</p>
       <Footer />
     </main>
   );

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   alternates: { canonical: '/cases/naiacrm' },
   openGraph: {
     title: 'Case naia: arquitetura multiagente com AI Gateway | EIXU',
-    description: 'O modelo é detalhe. O sistema é a aposta.',
+    description: 'Vários agentes. Um produto sob controle.',
     type: 'article',
     url: `${SITE_URL}/cases/naiacrm`,
     images: [{
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Case naia: arquitetura multiagente com AI Gateway | EIXU',
-    description: 'O modelo é detalhe. O sistema é a aposta.',
+    description: 'Vários agentes. Um produto sob controle.',
     images: [`${SITE_URL}/cases/naia-finance-mobile-iphone.webp`],
   },
 };
@@ -39,75 +39,14 @@ const naiaJsonLd = {
   ],
 };
 
-const lanes = [
-  {
-    index: '01',
-    title: 'Pessoa esperando',
-    copy: 'Respostas rápidas, streaming e poucas chamadas.',
-  },
-  {
-    index: '02',
-    title: 'Ação supervisionada',
-    copy: 'A IA prepara. A pessoa confirma. O servidor autoriza.',
-  },
-  {
-    index: '03',
-    title: 'Trabalho em segundo plano',
-    copy: 'Pesquisa, dossiê e revisão com jobs duráveis.',
-  },
-];
-
-const architecture = [
-  {
-    index: '01',
-    title: 'Entrada',
-    copy: 'O pedido chega com o contexto da tela e da pessoa.',
-  },
-  {
-    index: '02',
-    title: 'Roteador',
-    copy: 'A tarefa entra no caminho certo antes da primeira chamada.',
-  },
-  {
-    index: '03',
-    title: 'Agente',
-    copy: 'Recebe ferramentas, limites e um resultado esperado.',
-  },
-  {
-    index: '04',
-    title: 'Gateway',
-    copy: 'Escolhe provedor, modelo, esforço e fallback.',
-  },
-  {
-    index: '05',
-    title: 'Evidência',
-    copy: 'Mede qualidade, tempo, custo e resultado.',
-  },
-];
-
-const policies = ['Modelo', 'Raciocínio', 'Ferramentas', 'Tempo limite', 'Fallback', 'Schema'];
-
-const engineeringProof = [
-  'Contratos antes do modelo',
-  'Permissões fora da IA',
-  'Jobs com retry e checkpoints',
-  'Qualidade, latência e custo medidos',
-];
-
 export default function NaiaCase() {
   return (
-    <main className="case-page case-page--naia">
+    <main className="case-page case-page--naia case-editorial">
       <JsonLd data={naiaJsonLd} />
       <Header casePage />
       <section className="case-hero shell">
         <p className="eyebrow">Case · Arquitetura multiagente e AI Gateway</p>
         <h1>naia</h1>
-        <div className="case-hero-summary">
-          <p>Um CRM onde vários agentes trabalham juntos e cada tarefa usa o modelo certo.</p>
-          <a href="https://naiacrm.com.br" target="_blank" rel="noreferrer">
-            Visitar produto <ArrowUpRight aria-hidden="true" />
-          </a>
-        </div>
       </section>
 
       <figure className="case-hero-media case-hero-media--naia shell-wide">
@@ -119,29 +58,46 @@ export default function NaiaCase() {
           priority
           decoding="async"
         />
-        <figcaption>O Financeiro da naia, apresentado na versão mobile.</figcaption>
       </figure>
 
-      <section className="naia-statement">
-        <div className="shell">
-          <p>Como pensamos a arquitetura</p>
-          <h2>O modelo é detalhe.<br /><span>O sistema é a aposta.</span></h2>
-        </div>
-      </section>
-
-      <section className="case-story shell">
-        <p className="section-index">O desafio</p>
-        <div className="story-body">
-          <h2>Uma demo responde. Um produto precisa funcionar.</h2>
-          <p className="story-lead">
-            Fazer um chat responder é simples. Difícil é unir agentes, ferramentas, contexto,
-            permissões, histórico e custo sem perder o controle.
+      <section className="case-intro shell">
+        <h2>Vários agentes. Um produto sob controle.</h2>
+        <div className="case-intro-copy">
+          <p>
+            naia é um sistema de operação comercial que conecta prospecção, vendas,
+            relacionamento, financeiro e jurídico no mesmo contexto.
           </p>
+          <p>
+            A/gente construiu um gateway multiagente. Ele envia cada tarefa para o modelo certo.
+            Cada caminho tem suas próprias ferramentas, limites e resultado esperado.
+          </p>
+          <p>
+            Contratos, permissões, fallback e medição ficam fora do modelo. Assim, o modelo pode
+            mudar sem desmontar o produto. É engenharia de software, não vibe coding.
+          </p>
+          <a href="https://naiacrm.com.br" target="_blank" rel="noreferrer">
+            Visitar produto <ArrowUpRight aria-hidden="true" />
+          </a>
         </div>
       </section>
 
-      <section className="case-gallery case-gallery--naia shell-wide" aria-label="Imagens do produto naia">
-        <figure className="case-gallery-wide">
+      <section className="case-facts shell" aria-label="Resumo do projeto naia">
+        <div>
+          <span>Arquitetura</span>
+          <strong>Gateway multiagente</strong>
+        </div>
+        <div>
+          <span>Roteamento</span>
+          <strong>Modelo certo por tarefa</strong>
+        </div>
+        <div>
+          <span>Controle</span>
+          <strong>Contratos, medição e fallback</strong>
+        </div>
+      </section>
+
+      <section className="case-image-story shell-wide" aria-label="Imagens do produto naia">
+        <figure className="case-image-wide case-image-surface--naia">
           <Image
             src="/cases/naia-context.webp"
             alt="Página da naia explicando como a pesquisa comercial ganha contexto antes da conversa"
@@ -150,111 +106,42 @@ export default function NaiaCase() {
             loading="lazy"
             decoding="async"
           />
-          <figcaption>A comunicação mostra o que a IA faz sem esconder a pessoa do processo.</figcaption>
         </figure>
-        <figure className="case-gallery-mobile case-gallery-mobile--naia">
+        <div className="case-image-pair case-image-pair--naia">
+          <figure className="case-image-phone case-image-surface--naia">
+            <Image
+              src="/cases/naia-mobile.webp"
+              alt="Página inicial da naia em um celular"
+              width="390"
+              height="844"
+              loading="lazy"
+              decoding="async"
+            />
+          </figure>
+          <figure className="case-image-detail case-image-surface--naia">
+            <Image
+              src="/cases/naia-home.webp"
+              alt="Detalhe da interface da naia reunindo contexto e próximos passos"
+              width="1440"
+              height="960"
+              loading="lazy"
+              decoding="async"
+            />
+          </figure>
+        </div>
+        <figure className="case-image-wide case-image-wide--closing case-image-surface--naia">
           <Image
-            src="/cases/naia-mobile.webp"
-            alt="Página inicial da naia em um celular"
-            width="390"
-            height="844"
+            src="/cases/naia-home.webp"
+            alt="Experiência completa da naia para organizar a operação comercial com IA"
+            width="1440"
+            height="960"
             loading="lazy"
             decoding="async"
           />
-          <figcaption>A mesma história continua clara em uma tela pequena.</figcaption>
         </figure>
-        <div className="case-gallery-note">
-          <p className="section-index">Produto nativo de IA</p>
-          <h2>A tecnologia faz o trabalho pesado. A interface mostra só o que importa.</h2>
-          <p>O usuário recebe contexto, revisa a sugestão e decide o próximo passo.</p>
-        </div>
       </section>
 
-      <section className="naia-architecture">
-        <div className="shell architecture-heading">
-          <p className="section-index section-index--light">Arquitetura multiagente</p>
-          <div>
-            <p className="eyebrow">Uma entrada · vários agentes · vários modelos</p>
-            <h2>Cada pedido percorre um caminho pensado para ele.</h2>
-          </div>
-        </div>
-        <div className="shell architecture-flow">
-          {architecture.map((step) => (
-            <article key={step.index}>
-              <span>{step.index}</span>
-              <h3>{step.title}</h3>
-              <p>{step.copy}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="lanes-section">
-        <div className="shell lanes-heading">
-          <p className="section-index section-index--light">Três caminhos</p>
-          <h2>A configuração muda conforme o risco e a espera.</h2>
-        </div>
-        <div className="shell lanes-grid">
-          {lanes.map((lane) => (
-            <article key={lane.index}>
-              <span>{lane.index}</span>
-              <h3>{lane.title}</h3>
-              <p>{lane.copy}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="naia-policy shell">
-        <p className="section-index">Configuração por tarefa</p>
-        <div className="policy-body">
-          <h2>O sistema escolhe. O produto não fica preso a um modelo.</h2>
-          <p>
-            Modelos rápidos, modelos mais fortes e modelos abertos podem trabalhar no mesmo
-            produto. A escolha muda junto com as regras de cada tarefa.
-          </p>
-          <div className="policy-grid" aria-label="Configurações definidas para cada tarefa">
-            {policies.map((policy, index) => (
-              <div key={policy}>
-                <span>{String(index + 1).padStart(2, '0')}</span>
-                <strong>{policy}</strong>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="naia-proof">
-        <div className="shell proof-heading">
-          <p className="section-index">O oposto de vibe coding</p>
-          <div>
-            <h2>Nada depende de um prompt mágico.</h2>
-            <p>
-              A/gente construiu contratos, segurança e medição em volta da IA. Assim, trocar um
-              modelo é simples. Trocar o sistema inteiro não é necessário.
-            </p>
-          </div>
-        </div>
-        <div className="shell engineering-grid">
-          {engineeringProof.map((proof, index) => (
-            <div key={proof}>
-              <span>{String(index + 1).padStart(2, '0')}</span>
-              <p>{proof}</p>
-            </div>
-          ))}
-        </div>
-        <p className="shell naia-stack">
-          Next.js · React · TypeScript · Vercel Workflow · AI SDK · AI Gateway · Neon/Postgres
-        </p>
-      </section>
-
-      <section className="case-conclusion shell">
-        <p className="section-index">O que isso prova</p>
-        <blockquote>
-          IA nativa não é colocar um chat no produto. É construir o produto inteiro para trabalhar
-          com IA.
-        </blockquote>
-      </section>
+      <p className="case-closing-line shell">O modelo muda. O sistema continua.</p>
       <Footer />
     </main>
   );
