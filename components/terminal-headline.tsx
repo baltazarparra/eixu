@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-const LINES = ['A/gente tira do papel.', 'E coloca em produção.'] as const;
-const FULL_HEADLINE = LINES.join(' ');
+const HEADLINE = 'A/gente tira do papel.';
 
 function typingDelay(character: string, index: number) {
   if (character === '/') return 150;
@@ -12,15 +11,15 @@ function typingDelay(character: string, index: number) {
 }
 
 export function TerminalHeadline() {
-  const [typedLines, setTypedLines] = useState<[string, string]>(['', '']);
-  const [activeLine, setActiveLine] = useState<0 | 1 | null>(0);
+  const [typedHeadline, setTypedHeadline] = useState('');
+  const [isTyping, setIsTyping] = useState(true);
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     if (prefersReducedMotion) {
-      setTypedLines([...LINES]);
-      setActiveLine(null);
+      setTypedHeadline(HEADLINE);
+      setIsTyping(false);
       return;
     }
 
@@ -39,27 +38,16 @@ export function TerminalHeadline() {
     const typeHeadline = async () => {
       await wait(560);
 
-      for (let lineIndex = 0; lineIndex < LINES.length; lineIndex += 1) {
-        const line = LINES[lineIndex];
-        setActiveLine(lineIndex as 0 | 1);
+      for (let characterIndex = 0; characterIndex < HEADLINE.length; characterIndex += 1) {
+        if (cancelled) return;
 
-        for (let characterIndex = 0; characterIndex < line.length; characterIndex += 1) {
-          if (cancelled) return;
-
-          const nextCharacter = line[characterIndex];
-          setTypedLines((current) => {
-            const next: [string, string] = [...current];
-            next[lineIndex] = line.slice(0, characterIndex + 1);
-            return next;
-          });
-          await wait(typingDelay(nextCharacter, characterIndex));
-        }
-
-        if (lineIndex === 0) await wait(320);
+        const nextCharacter = HEADLINE[characterIndex];
+        setTypedHeadline(HEADLINE.slice(0, characterIndex + 1));
+        await wait(typingDelay(nextCharacter, characterIndex));
       }
 
       await wait(1100);
-      if (!cancelled) setActiveLine(null);
+      if (!cancelled) setIsTyping(false);
     };
 
     void typeHeadline();
@@ -72,20 +60,14 @@ export function TerminalHeadline() {
   }, []);
 
   return (
-    <h1 className="hero-title hero-title--terminal reveal delay-2" aria-label={FULL_HEADLINE}>
-      {LINES.map((line, index) => (
-        <span
-          className={`terminal-line${index === 1 ? ' terminal-line--accent' : ''}`}
-          key={line}
-          aria-hidden="true"
-        >
-          <span className="terminal-ghost">{line}</span>
-          <span className="terminal-typed">
-            {typedLines[index]}
-            {activeLine === index ? <span className="terminal-cursor" /> : null}
-          </span>
+    <h1 className="hero-title hero-title--terminal reveal delay-2" aria-label={HEADLINE}>
+      <span className="terminal-line" aria-hidden="true">
+        <span className="terminal-ghost">{HEADLINE}</span>
+        <span className="terminal-typed">
+          {typedHeadline}
+          {isTyping ? <span className="terminal-cursor" /> : null}
         </span>
-      ))}
+      </span>
     </h1>
   );
 }
