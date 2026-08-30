@@ -1,4 +1,5 @@
 import { ArrowLeft, ArrowUpRight } from 'lucide-react';
+import Link from 'next/link';
 
 export function Mark({ small = false }: { small?: boolean }) {
   return (
@@ -12,22 +13,30 @@ export function Mark({ small = false }: { small?: boolean }) {
 
 export function Brand({ inverted = false }: { inverted?: boolean }) {
   return (
-    <a className={`brand${inverted ? ' brand--dark' : ''}`} href="/" aria-label="EIXU, início">
+    <Link className={`brand${inverted ? ' brand--dark' : ''}`} href="/" aria-label="EIXU, início">
       <Mark small />
       <span>EIXU</span>
-    </a>
+    </Link>
   );
 }
 
-export function Header({ casePage = false }: { casePage?: boolean }) {
+export function Header({
+  casePage = false,
+  backHref = '/#cases',
+  backLabel = 'Projetos',
+}: {
+  casePage?: boolean;
+  backHref?: string;
+  backLabel?: string;
+}) {
   return (
     <header className={`site-nav shell${casePage ? ' site-nav--light' : ''}`}>
       <Brand inverted={casePage} />
       {casePage ? (
-        <a className="nav-back" href="/#cases">
+        <Link className="nav-back" href={backHref}>
           <ArrowLeft aria-hidden="true" />
-          Projetos
-        </a>
+          {backLabel}
+        </Link>
       ) : (
         <nav className="nav-links" aria-label="Navegação principal">
           <a href="#momentos">Quando entramos</a>

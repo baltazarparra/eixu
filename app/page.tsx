@@ -45,7 +45,7 @@ const moments = [
   { quote: 'A ideia faz sentido. Quero testar com pessoas de verdade.', path: 'Primeira versão' },
   { quote: 'Já sei o que precisa ser feito. Falta construir.', path: 'Projeto fechado' },
   { quote: 'Fiz uma versão. Agora a empresa precisa usar de verdade.', path: 'Do protótipo à produção' },
-  { quote: 'A demo com IA funciona. Agora precisa virar um produto.', path: 'Da demo com IA à produção' },
+  { quote: 'Montei uma versão com vibe coding. Agora precisa funcionar de verdade.', path: 'Do vibe coding à produção' },
 ];
 
 const offers = [
@@ -145,9 +145,28 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="vibe-bridge" id="vibe-coding">
+        <div className="shell vibe-bridge-grid">
+          <p className="section-index">03 / Do vibe coding à produção</p>
+          <div className="vibe-bridge-content">
+            <p className="eyebrow">Seu protótipo com IA funcionou</p>
+            <h2>Agora ele precisa virar produto.</h2>
+            <div className="vibe-bridge-bottom">
+              <p>
+                A/gente entra quando o vibe coding validou a ideia, mas ainda faltam código
+                confiável, segurança, dados organizados e uma operação pronta para uso real.
+              </p>
+              <a className="text-link" href="/vibe-coding-para-producao">
+                Entender o próximo passo <ArrowUpRight aria-hidden="true" />
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="offers" id="ofertas">
         <div className="shell section-heading">
-          <p className="section-index section-index--light">03 / Como contratar</p>
+          <p className="section-index section-index--light">04 / Como contratar</p>
           <div>
             <p className="eyebrow">Discovery · MVP · Desenvolvimento de software</p>
             <h2>Do problema ao produto em produção.</h2>
@@ -170,7 +189,7 @@ export default function Home() {
 
       <section className="cases" id="cases">
         <div className="shell section-heading section-heading--cases">
-          <p className="section-index section-index--light">04 / Cases</p>
+          <p className="section-index section-index--light">05 / Cases</p>
           <div>
             <p className="eyebrow">Produto · Engenharia · IA</p>
             <h2>Projetos que a/gente construiu.</h2>
