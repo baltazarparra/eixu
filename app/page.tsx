@@ -47,9 +47,9 @@ export default function Home() {
         <div className="hero-grid shell">
           <p className="eyebrow reveal delay-1">Estúdio de produto e desenvolvimento nativo de IA</p>
           <h1 className="hero-title reveal delay-2">
-            Você já tem alguma coisa.
+            A/gente tira do papel.
             <br />
-            <span>A EIXU leva até produção.</span>
+            <span>E coloca em produção.</span>
           </h1>
 
           <div className="hero-bottom reveal delay-3">
