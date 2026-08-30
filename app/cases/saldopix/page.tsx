@@ -3,16 +3,16 @@ import { ArrowUpRight, Check } from 'lucide-react';
 import { Footer, Header } from '@/components/eixu';
 
 export const metadata: Metadata = {
-  title: 'SaldoPix | Projeto da EIXU',
+  title: 'Saldo | Projeto da EIXU',
   description: 'Um produto financeiro criado do zero e usado no dia a dia por empresas.',
   openGraph: {
-    title: 'SaldoPix | Projeto da EIXU',
+    title: 'Saldo | Projeto da EIXU',
     description: 'Do zero à produção, com o primeiro cliente pagante em poucas semanas.',
     images: [],
   },
   twitter: {
     card: 'summary',
-    title: 'SaldoPix | Projeto da EIXU',
+    title: 'Saldo | Projeto da EIXU',
     description: 'Do zero à produção, com o primeiro cliente pagante em poucas semanas.',
     images: [],
   },
@@ -24,7 +24,7 @@ export default function SaldoPixCase() {
       <Header casePage />
       <section className="case-hero shell">
         <p className="eyebrow">Projeto 01 · Produto financeiro para empresas</p>
-        <h1>SaldoPix</h1>
+        <h1>Saldo</h1>
         <div className="case-hero-summary">
           <p>Um produto financeiro criado do zero e usado no dia a dia por empresas.</p>
           <a href="https://saldopix.com.br" target="_blank" rel="noreferrer">
@@ -65,7 +65,7 @@ export default function SaldoPixCase() {
       <section className="case-conclusion shell">
         <p className="section-index">O que isso prova</p>
         <blockquote>
-          O SaldoPix mostra que uma equipe pequena consegue colocar um produto financeiro em produção.
+          O Saldo mostra que uma equipe pequena consegue colocar um produto financeiro em produção.
         </blockquote>
       </section>
       <Footer />

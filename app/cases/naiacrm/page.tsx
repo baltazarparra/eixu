@@ -3,16 +3,16 @@ import { ArrowUpRight } from 'lucide-react';
 import { Footer, Header } from '@/components/eixu';
 
 export const metadata: Metadata = {
-  title: 'NaiaCRM | Projeto da EIXU',
+  title: 'naia | Projeto da EIXU',
   description: 'Um CRM com IA feito para o trabalho comercial do dia a dia.',
   openGraph: {
-    title: 'NaiaCRM | Projeto da EIXU',
+    title: 'naia | Projeto da EIXU',
     description: 'O modelo é só uma parte. O sistema inteiro precisa funcionar.',
     images: [],
   },
   twitter: {
     card: 'summary',
-    title: 'NaiaCRM | Projeto da EIXU',
+    title: 'naia | Projeto da EIXU',
     description: 'O modelo é só uma parte. O sistema inteiro precisa funcionar.',
     images: [],
   },
@@ -30,7 +30,7 @@ export default function NaiaCase() {
       <Header casePage />
       <section className="case-hero shell">
         <p className="eyebrow">Projeto 02 · Produto com IA</p>
-        <h1>NaiaCRM</h1>
+        <h1>naia</h1>
         <div className="case-hero-summary">
           <p>Um CRM com IA para apoiar o trabalho comercial.</p>
           <a href="https://naiacrm.com.br" target="_blank" rel="noreferrer">
@@ -75,7 +75,7 @@ export default function NaiaCase() {
       <section className="case-conclusion shell">
         <p className="section-index">O que isso prova</p>
         <blockquote>
-          A Naia mostra como colocar IA em um produto usado no dia a dia, com controle e segurança.
+          A naia mostra como colocar IA em um produto usado no dia a dia, com controle e segurança.
         </blockquote>
       </section>
       <Footer />

@@ -140,7 +140,7 @@ export default function Home() {
         <div className="case-list shell">
           <a className="case-card case-card--saldo" href="/cases/saldopix">
             <div className="case-meta">
-              <p>SaldoPix</p>
+              <p>Saldo</p>
               <span>Produto financeiro · 2026</span>
             </div>
             <div className="case-visual" aria-hidden="true">
@@ -162,11 +162,11 @@ export default function Home() {
 
           <a className="case-card case-card--naia" href="/cases/naiacrm">
             <div className="case-meta">
-              <p>NaiaCRM</p>
+              <p>naia</p>
               <span>Sistemas de IA · 2026</span>
             </div>
             <div className="case-visual naia-system" aria-hidden="true">
-              <div className="system-node system-node--main">Naia</div>
+              <div className="system-node system-node--main">naia</div>
               <div className="system-node system-node--one">01</div>
               <div className="system-node system-node--two">02</div>
               <div className="system-node system-node--three">03</div>
