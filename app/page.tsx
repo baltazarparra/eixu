@@ -24,7 +24,7 @@ const offers = [
   {
     index: '03',
     title: 'Projeto fechado',
-    result: 'Você já sabe o que precisa. A gente constrói e coloca no ar.',
+    result: 'Você já sabe o que precisa. A/gente constrói e coloca no ar.',
   },
 ];
 
@@ -110,7 +110,7 @@ export default function Home() {
           <p className="section-index section-index--light">03 / Como contratar</p>
           <div>
             <p className="eyebrow">Validação · Primeira versão · Projeto fechado</p>
-            <h2>Três formas simples de trabalhar com a gente.</h2>
+            <h2>Três formas simples de trabalhar com a/gente.</h2>
           </div>
         </div>
         <div className="shell offer-list">

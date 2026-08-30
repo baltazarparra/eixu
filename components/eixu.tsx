@@ -47,7 +47,7 @@ export function Footer() {
         <div>
           <h2>O que você já tem hoje?</h2>
           <p>
-            Pode ser uma ideia, um protótipo, uma demo ou um plano. Conte para a gente.
+            Pode ser uma ideia, um protótipo, uma demo ou um plano. Conte para a/gente.
           </p>
           <a
             className="cta-link"
