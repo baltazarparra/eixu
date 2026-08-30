@@ -1,38 +1,59 @@
-# dependencies
-/node_modules
-/.pnp
+# Dependencies
+node_modules/
+jspm_packages/
+.pnp
 .pnp.*
+.pnpm-store/
 .yarn/*
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
+!.yarn/sdks
 !.yarn/versions
 
-# testing
-/coverage
+# Builds and framework output
+.next/
+.vinext/
+out/
+dist/
+.output/
+.vercel/
+.wrangler/
+.vite/
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
 
-# next.js
-/.next/
-/.vinext/
-/out/
+# Tests and coverage
+coverage/
+.nyc_output/
+*.lcov
 
-# misc
-.DS_Store
-*.pem
-
-# debug
+# Logs and diagnostics
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+lerna-debug.log*
 .pnpm-debug.log*
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
-# local environment
-.env*
+# Local environment and caches
+.env
+.env.*
+!.env.example
+.cache/
+.parcel-cache/
+.npm/
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
 
-# deployment and generated files
-.vercel
+# Local generated files
 next-env.d.ts
-/dist/
-/.wrangler/
-/outputs/
-/work/
+outputs/
+work/
+
+# System files and credentials
+.DS_Store
+*.pem
