@@ -208,10 +208,10 @@ export default function Home() {
             </div>
             <div className="case-visual case-visual-image">
               <Image
-                src="/cases/naia-home.webp"
-                alt="Página inicial da naia mostrando o resumo da operação criado com contexto de várias áreas"
-                width="1440"
-                height="960"
+                src="/cases/naia-finance-mobile-iphone.webp"
+                alt="Seção financeira da página inicial da naia exibida na versão mobile em um iPhone"
+                width="1800"
+                height="1200"
                 loading="lazy"
                 decoding="async"
               />

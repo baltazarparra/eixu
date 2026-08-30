@@ -15,17 +15,17 @@ export const metadata: Metadata = {
     type: 'article',
     url: `${SITE_URL}/cases/naiacrm`,
     images: [{
-      url: `${SITE_URL}/cases/naia-home.webp`,
-      width: 1440,
-      height: 960,
-      alt: 'Produto naia reunindo contexto comercial e operacional com IA',
+      url: `${SITE_URL}/cases/naia-finance-mobile-iphone.webp`,
+      width: 1800,
+      height: 1200,
+      alt: 'Seção financeira da página inicial da naia na versão mobile em um iPhone',
     }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Case naia: arquitetura multiagente com AI Gateway | EIXU',
     description: 'O modelo é detalhe. O sistema é a aposta.',
-    images: [`${SITE_URL}/cases/naia-home.webp`],
+    images: [`${SITE_URL}/cases/naia-finance-mobile-iphone.webp`],
   },
 };
 
@@ -112,14 +112,14 @@ export default function NaiaCase() {
 
       <figure className="case-hero-media case-hero-media--naia shell-wide">
         <Image
-          src="/cases/naia-home.webp"
-          alt="Página inicial da naia mostrando um resumo da operação criado com inteligência artificial"
-          width="1440"
-          height="960"
+          src="/cases/naia-finance-mobile-iphone.webp"
+          alt="Seção financeira da página inicial da naia exibida na versão mobile em um iPhone"
+          width="1800"
+          height="1200"
           priority
           decoding="async"
         />
-        <figcaption>Um sistema complexo apresentado de um jeito simples.</figcaption>
+        <figcaption>O Financeiro da naia, apresentado na versão mobile.</figcaption>
       </figure>
 
       <section className="naia-statement">
