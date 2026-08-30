@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import { ArrowDown, ArrowRight, ArrowUpRight, Check } from 'lucide-react';
 import { Footer, Header, Mark } from '@/components/eixu';
+import { HeroWaveGrid } from '@/components/hero-wave-grid';
 import { JsonLd } from '@/components/json-ld';
 import { TerminalHeadline } from '@/components/terminal-headline';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
@@ -81,6 +82,7 @@ export default function Home() {
     <main>
       <JsonLd data={homeJsonLd} />
       <section className="hero" id="inicio">
+        <HeroWaveGrid />
         <Header />
 
         <div className="hero-grid shell">
