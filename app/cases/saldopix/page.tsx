@@ -37,7 +37,7 @@ export default function SaldoPixCase() {
         <div className="shell metrics-grid">
           <div><strong>~R$ 1 mi</strong><span>movimentado por mês</span></div>
           <div><strong>Semanas</strong><span>até o primeiro cliente pagante</span></div>
-          <div><strong>100%</strong><span>desenvolvimento AI-native</span></div>
+          <div><strong>100%</strong><span>desenvolvimento nativo de IA</span></div>
         </div>
       </section>
 

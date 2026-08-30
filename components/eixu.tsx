@@ -61,7 +61,7 @@ export function Footer() {
       </div>
       <div className="shell footer-bottom">
         <Brand />
-        <p>Product Engineering, AI-native.</p>
+        <p>Estúdio de produto e desenvolvimento nativo de IA</p>
         <p>Brasil · 2026</p>
       </div>
     </footer>

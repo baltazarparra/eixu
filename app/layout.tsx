@@ -7,20 +7,20 @@ const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin']
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://eixu.com.br'),
-  title: 'EIXU | Product Engineering, AI-native',
+  title: 'EIXU | Estúdio de produto e desenvolvimento nativo de IA',
   description:
     'Você tem uma ideia, protótipo, demo ou plano. A EIXU ajuda a colocar em produção.',
   icons: { icon: '/favicon.svg' },
   openGraph: {
-    title: 'EIXU | Product Engineering, AI-native',
+    title: 'EIXU | Estúdio de produto e desenvolvimento nativo de IA',
     description: 'Você já tem uma ideia, um protótipo, uma demo ou um plano. A EIXU leva até produção.',
     type: 'website',
     locale: 'pt_BR',
-    images: [{ url: '/og.png', width: 1731, height: 909, alt: 'EIXU, Product Engineering, AI-native' }],
+    images: [{ url: '/og.png', width: 1731, height: 909, alt: 'EIXU, Estúdio de produto e desenvolvimento nativo de IA' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'EIXU | Product Engineering, AI-native',
+    title: 'EIXU | Estúdio de produto e desenvolvimento nativo de IA',
     description: 'Você já tem uma ideia, um protótipo, uma demo ou um plano. A EIXU leva até produção.',
     images: ['/og.png'],
   },

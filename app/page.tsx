@@ -45,7 +45,7 @@ export default function Home() {
         <Header />
 
         <div className="hero-grid shell">
-          <p className="eyebrow reveal delay-1">Product Engineering, AI-native.</p>
+          <p className="eyebrow reveal delay-1">Estúdio de produto e desenvolvimento nativo de IA</p>
           <h1 className="hero-title reveal delay-2">
             Você já tem alguma coisa.
             <br />
@@ -166,7 +166,7 @@ export default function Home() {
           <a className="case-card case-card--naia" href="/cases/naiacrm">
             <div className="case-meta">
               <p>NaiaCRM</p>
-              <span>AI systems · 2026</span>
+              <span>Sistemas de IA · 2026</span>
             </div>
             <div className="case-visual naia-system" aria-hidden="true">
               <div className="system-node system-node--main">Naia</div>

@@ -29,7 +29,7 @@ export default function NaiaCase() {
     <main className="case-page case-page--naia">
       <Header casePage />
       <section className="case-hero shell">
-        <p className="eyebrow">Case 02 · AI systems</p>
+        <p className="eyebrow">Case 02 · Sistemas de IA</p>
         <h1>NaiaCRM</h1>
         <div className="case-hero-summary">
           <p>Um CRM com IA para apoiar o trabalho comercial.</p>
