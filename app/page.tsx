@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowRight, ArrowUpRight, Check } from 'lucide-react';
 import { Footer, Header, Mark } from '@/components/eixu';
+import { TerminalHeadline } from '@/components/terminal-headline';
 
 const moments = [
   { quote: 'Tenho uma ideia. Ainda não sei se vale a pena construir.', path: 'Validação' },
@@ -46,11 +47,7 @@ export default function Home() {
 
         <div className="hero-grid shell">
           <p className="eyebrow reveal delay-1">Estúdio de produto e desenvolvimento nativo de IA</p>
-          <h1 className="hero-title reveal delay-2">
-            A/gente tira do papel.
-            <br />
-            <span>E coloca em produção.</span>
-          </h1>
+          <TerminalHeadline />
 
           <div className="hero-bottom reveal delay-3">
             <p className="hero-copy">
