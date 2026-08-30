@@ -130,10 +130,10 @@ export default function Home() {
 
       <section className="cases" id="cases">
         <div className="shell section-heading section-heading--cases">
-          <p className="section-index section-index--light">04 / Projetos reais</p>
+          <p className="section-index section-index--light">04 / Cases</p>
           <div>
-            <p className="eyebrow">Já colocamos produtos no ar</p>
-            <h2>Dois produtos que já estão em uso.</h2>
+            <p className="eyebrow">Produto · Engenharia · IA</p>
+            <h2>Projetos que a/gente construiu.</h2>
           </div>
         </div>
 
@@ -141,7 +141,7 @@ export default function Home() {
           <a className="case-card case-card--saldo" href="/cases/saldopix">
             <div className="case-meta">
               <p>Saldo</p>
-              <span>Produto financeiro · 2026</span>
+              <span>Produto financeiro</span>
             </div>
             <div className="case-visual" aria-hidden="true">
               <div className="saldo-orbit">
@@ -163,7 +163,7 @@ export default function Home() {
           <a className="case-card case-card--naia" href="/cases/naiacrm">
             <div className="case-meta">
               <p>naia</p>
-              <span>Sistemas de IA · 2026</span>
+              <span>Sistema nativo de IA</span>
             </div>
             <div className="case-visual naia-system" aria-hidden="true">
               <div className="system-node system-node--main">naia</div>
@@ -175,8 +175,8 @@ export default function Home() {
               <i className="system-line line-three" />
             </div>
             <div className="case-copy">
-              <h3>IA dentro de um produto usado no dia a dia.</h3>
-              <p>Não é só um chat. É um sistema preparado para produção.</p>
+              <h3>Uma arquitetura multiagente dentro de um produto real.</h3>
+              <p>Vários modelos, regras e ferramentas trabalhando juntos.</p>
               <span className="case-link">
                 Ver projeto <ArrowUpRight aria-hidden="true" />
               </span>
@@ -187,9 +187,9 @@ export default function Home() {
 
       <section className="experience">
         <div className="shell experience-intro">
-          <p className="section-index">Experiência anterior</p>
+          <p className="section-index">Experiência</p>
           <div>
-            <h2>A EIXU é nova.<br />Nossa experiência não.</h2>
+            <h2>Experiência construída em grandes produtos.</h2>
             <p>Marcas onde a liderança da EIXU já escreveu código.</p>
           </div>
         </div>
