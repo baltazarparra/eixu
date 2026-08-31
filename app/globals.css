@@ -670,12 +670,10 @@ a:focus-visible { outline: 2px solid var(--sand); outline-offset: 4px; }
 .experience-intro > .section-index { grid-column: 1 / 4; }
 .experience-intro > div { grid-column: 5 / 12; }
 .experience h2 { margin: 0; font-size: clamp(3rem, 6vw, 6.8rem); font-weight: 430; letter-spacing: -0.07em; line-height: 0.92; }
-.experience-intro > div > p { max-width: 650px; margin: 48px 0 0; color: #625f56; font-size: 1.15rem; line-height: 1.6; }
 .brand-grid { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: clamp(80px, 11vw, 160px); border-top: 1px solid var(--line-light); border-left: 1px solid var(--line-light); }
 .brand-grid > div { display: flex; min-height: 150px; align-items: flex-end; justify-content: space-between; gap: 20px; border-right: 1px solid var(--line-light); border-bottom: 1px solid var(--line-light); padding: 24px; }
 .brand-grid svg { width: 15px; color: #797468; }
 .brand-grid span { font-size: clamp(1rem, 1.5vw, 1.3rem); font-weight: 520; text-align: right; }
-.experience-note { margin-top: 22px; color: #777268; font-size: 11px; line-height: 1.5; }
 
 .site-footer { background: var(--ink); color: var(--paper); }
 .footer-top { display: grid; grid-template-columns: repeat(12, 1fr); gap: 18px; padding-block: clamp(100px, 13vw, 190px); }
@@ -953,12 +951,10 @@ a:focus-visible { outline: 2px solid var(--sand); outline-offset: 4px; }
     letter-spacing: -0.06em;
     line-height: 0.98;
   }
-  .experience-intro > div > p { margin-top: 28px; font-size: 1.05rem; line-height: 1.62; }
   .brand-grid { grid-template-columns: 1fr 1fr; margin-top: 52px; }
   .brand-grid > div { min-height: 96px; gap: 12px; padding: 15px; }
   .brand-grid svg { width: 13px; flex: 0 0 auto; }
   .brand-grid span { font-size: 0.9rem; line-height: 1.25; }
-  .experience-note { margin-top: 18px; font-size: 11px; line-height: 1.55; }
 
   .footer-top { gap: 0; }
   .footer-top > .section-index { margin-bottom: 30px; }

@@ -91,8 +91,7 @@ export default function Home() {
 
           <div className="hero-bottom reveal delay-3">
             <p className="hero-copy">
-              Planejamos e desenvolvemos produtos digitais e sistemas com IA. Da ideia à
-              produção, sem precisar montar uma equipe inteira.
+              Planejamos e desenvolvemos produtos digitais e sistemas com IA. Da ideia à produção.
             </p>
             <a className="round-link" href="#fit" aria-label="Entender quando a EIXU entra">
               <ArrowDown strokeWidth={1.5} />
@@ -108,7 +107,7 @@ export default function Home() {
       <section className="opening shell" id="fit">
         <p className="section-index">01 / Quando faz sentido</p>
         <div className="opening-copy">
-          <h2>Seu projeto já é importante. Mas ainda não precisa de uma equipe inteira.</h2>
+          <h2>Seu projeto já é importante.</h2>
           <p>
             A EIXU entra quando existe um problema real, algum orçamento e uma entrega clara.
           </p>
@@ -250,7 +249,6 @@ export default function Home() {
           <p className="section-index">Experiência</p>
           <div>
             <h2>Experiência construída em grandes produtos.</h2>
-            <p>Marcas onde a liderança da EIXU já escreveu código.</p>
           </div>
         </div>
         <div className="brand-grid shell" aria-label="Marcas onde já escrevemos código">
@@ -261,9 +259,6 @@ export default function Home() {
             </div>
           ))}
         </div>
-        <p className="shell experience-note">
-          Essas foram experiências anteriores da liderança. As marcas não são clientes da EIXU.
-        </p>
       </section>
 
       <Footer />
