@@ -1,10 +1,10 @@
 /* oxlint-disable next/no-html-link-for-pages -- Case links use full navigation for native cross-document transitions. */
 import type { Metadata } from 'next';
-import Image from 'next/image';
 import { ArrowDown, ArrowRight, ArrowUpRight, Check } from 'lucide-react';
 import { Footer, Header, Mark } from '@/components/eixu';
 import { HeroWaveGrid } from '@/components/hero-wave-grid';
 import { JsonLd } from '@/components/json-ld';
+import { LiquidCaseImage } from '@/components/liquid-case-image';
 import { TerminalHeadline } from '@/components/terminal-headline';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
 
@@ -203,13 +203,11 @@ export default function Home() {
               <span>Produto financeiro</span>
             </div>
             <div className="case-visual case-visual-image">
-              <Image
+              <LiquidCaseImage
                 src="/cases/saldo-home.webp"
                 alt="Página inicial da Saldo mostrando o produto financeiro e a organização dos gastos via Pix"
-                width="1440"
-                height="960"
-                loading="lazy"
-                decoding="async"
+                width={1440}
+                height={960}
               />
               <span className="case-image-index" aria-hidden="true">01</span>
             </div>
@@ -228,13 +226,11 @@ export default function Home() {
               <span>Sistema nativo de IA</span>
             </div>
             <div className="case-visual case-visual-image">
-              <Image
+              <LiquidCaseImage
                 src="/cases/naia-finance-mobile-iphone.webp"
                 alt="Seção financeira da página inicial da naia exibida na versão mobile em um iPhone"
-                width="1800"
-                height="1200"
-                loading="lazy"
-                decoding="async"
+                width={1800}
+                height={1200}
               />
               <span className="case-image-index" aria-hidden="true">02</span>
             </div>
