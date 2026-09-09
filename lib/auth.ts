@@ -49,7 +49,23 @@ export async function isAuthenticated(): Promise<boolean> {
 
 export async function signIn(user: string, password: string): Promise<boolean> {
   const expectedUser = process.env.ADMIN_USER || 'admin';
-  const expectedPassword = process.env.ADMIN_PASSWORD || '1234';
+  const expectedPassword = process.env.ADMIN_PASSWORD;
+
+  // Em produção o painel só abre com credencial configurada. Cair num padrão
+  // conhecido num deploy sem env seria deixar a porta encostada.
+  if (!expectedPassword) {
+    if (process.env.NODE_ENV === 'production') return false;
+    return signInWith(user, password, expectedUser, '1234');
+  }
+  return signInWith(user, password, expectedUser, expectedPassword);
+}
+
+async function signInWith(
+  user: string,
+  password: string,
+  expectedUser: string,
+  expectedPassword: string,
+): Promise<boolean> {
   if (!safeEqual(user, expectedUser) || !safeEqual(password, expectedPassword)) return false;
   const jar = await cookies();
   jar.set(COOKIE, await createSessionToken(), {
