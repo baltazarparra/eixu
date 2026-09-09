@@ -57,3 +57,9 @@ work/
 # System files and credentials
 .DS_Store
 *.pem
+.vercel
+.env*
+
+# Artefatos de teste local
+.playwright-mcp/
+*.png.tmp
