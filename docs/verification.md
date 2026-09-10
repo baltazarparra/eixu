@@ -251,8 +251,8 @@ mas não há tratamento de falha de rede dentro da fase.
 
 ### Publicação
 
-O código funcional corresponde a `9ce46391eda6aba40470423a41c1b05f0679e38a`,
-com deployment Vercel `dpl_5fU6eUqiJf3ey6FSUgAzaawWvYT5` em estado `READY` no
+O código funcional corresponde a `8c46587652f55a1148095f84b319167941997657`,
+com deployment Vercel `dpl_9DPc9H16XU6MYPb5t7PaogpbmsYC` em estado `READY` no
 alvo de produção. O smoke público respondeu 200 no institucional, no login do
 painel, na home do Porto Pedras e em uma página interna do Mecânica Sabiá.
 Nenhuma página de cliente foi republicada e nenhum rascunho foi alterado por
