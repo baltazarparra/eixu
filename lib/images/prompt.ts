@@ -1,12 +1,22 @@
 import type { ImageGuide, Tenant, TenantImage } from '@/lib/types';
 
 /** Prompt do agente de imagens. Mesma voz do agente de sites. */
-export function imageAgentPrompt(tenant: Tenant, guide: ImageGuide, library: TenantImage[], pagesSummary: string): string {
-  const guideText = Object.keys(guide).length ? JSON.stringify(guide) : '(ainda não definido)';
+export function imageAgentPrompt(
+  tenant: Tenant,
+  guide: ImageGuide,
+  library: TenantImage[],
+  pagesSummary: string,
+): string {
+  const guideText = Object.keys(guide).length
+    ? JSON.stringify(guide)
+    : '(ainda não definido)';
   const libraryText = library.length
     ? library
         .slice(0, 12)
-        .map((image) => `#${image.seq} ${image.status}, ${image.ratio}, nota ${image.score ?? 'sem'}: ${image.description ?? image.requestText}`)
+        .map(
+          (image) =>
+            `#${image.seq} ${image.status}, ${image.ratio}, nota ${image.score ?? 'sem'}: ${image.description ?? image.requestText}`,
+        )
         .join('\n')
     : '(vazia)';
 
@@ -38,12 +48,17 @@ ${libraryText}
 
 ## Como escolher o bloco de destino
 O pedido diz para onde vai a imagem, e o bloco define a proporção:
-- hero.split, retrato 4:5, a imagem grande ao lado do título.
+- hero.split, retrato 4:5, imagem ao lado do título.
+- hero.cover, paisagem 16:9, imagem de fundo com área limpa para texto.
+- hero.poster, retrato 4:5, imagem gráfica integrada a uma abertura de cor forte.
+- hero.editorial, paisagem 16:9, cena documental abaixo ou ao lado do título.
+- hero.offset, retrato 4:5, imagem descentralizada com espaço negativo.
 - narrative.split, retrato 5:6, a foto ao lado da lista de serviços.
+- feature.bento, paisagem 4:3, imagem para mosaico de conteúdo.
 - media.image, paisagem 16:9, imagem solta no meio da página.
 - media.gallery, paisagem 4:3, fotos em grade.
 - livre, quadrado 1:1, quando o operador não disse onde vai.
-"Imagem para o hero" é hero.split. "Uma foto para a galeria" é media.gallery. Na dúvida, livre.
+"Imagem para o hero" usa a composição registrada em Marca.design.heroComposition; se não houver perfil, use hero.split. "Uma foto para a galeria" é media.gallery. Na dúvida, livre.
 
 ## Logos
 O pedido é de logo quando aparece "logo", "logotipo", "marca", "modernizar o logo", "atualizar a marca" ou "cria um logo".

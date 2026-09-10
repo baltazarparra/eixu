@@ -7,7 +7,11 @@ import { Workspace, type PageState } from './workspace';
 
 export const dynamic = 'force-dynamic';
 
-export default async function TenantWorkspace({ params }: { params: Promise<{ tenant: string }> }) {
+export default async function TenantWorkspace({
+  params,
+}: {
+  params: Promise<{ tenant: string }>;
+}) {
   if (!(await isAuthenticated())) redirect('/admin/login');
   const { tenant: slug } = await params;
   const tenant = await getTenantBySlug(slug);
@@ -20,7 +24,7 @@ export default async function TenantWorkspace({ params }: { params: Promise<{ te
   `) as { role: string; content: string }[];
 
   const pageStates: PageState[] = pages.map((page) => {
-    const findings = lintPage(page);
+    const findings = lintPage(page, tenant.brand.design);
     return {
       slug: page.slug,
       type: page.type,
@@ -28,15 +32,22 @@ export default async function TenantWorkspace({ params }: { params: Promise<{ te
       blocks: page.blocks.length,
       published: Boolean(page.publishedBlocks),
       publishedAt: page.publishedAt,
-      dirty: Boolean(page.publishedBlocks) && JSON.stringify(page.publishedBlocks) !== JSON.stringify(page.blocks),
+      dirty:
+        Boolean(page.publishedBlocks) &&
+        JSON.stringify(page.publishedBlocks) !== JSON.stringify(page.blocks),
       errors: findings.filter((f) => f.level === 'error').map((f) => f.message),
-      warnings: findings.filter((f) => f.level === 'warn').map((f) => f.message),
+      warnings: findings
+        .filter((f) => f.level === 'warn')
+        .map((f) => f.message),
     };
   });
 
   return (
     <Workspace
-      initial={{ tenant: { slug: tenant.slug, name: tenant.name }, pages: pageStates }}
+      initial={{
+        tenant: { slug: tenant.slug, name: tenant.name },
+        pages: pageStates,
+      }}
       history={history}
     />
   );

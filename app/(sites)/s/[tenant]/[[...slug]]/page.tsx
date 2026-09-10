@@ -144,6 +144,13 @@ export default async function TenantPage({ params, searchParams }: Props) {
             : 'normal'
       }
       data-motion={tenant.dials.motion <= 3 ? 'still' : 'gentle'}
+      data-design-version={tenant.brand.design?.version}
+      data-hero={tenant.brand.design?.heroComposition}
+      data-navigation={tenant.brand.design?.navigation}
+      data-rhythm={tenant.brand.design?.rhythm}
+      data-imagery={tenant.brand.design?.imageTreatment}
+      data-surface={tenant.brand.design?.surfaceStyle}
+      data-motif={tenant.brand.design?.motif}
     >
       <JsonLd tenant={tenant} page={page} />
       <RenderBlocks

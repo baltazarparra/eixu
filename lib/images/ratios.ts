@@ -5,7 +5,12 @@
  */
 export const RATIO_BY_BLOCK: Record<string, Ratio> = {
   'hero.split': '4:5',
+  'hero.cover': '16:9',
+  'hero.poster': '4:5',
+  'hero.editorial': '16:9',
+  'hero.offset': '4:5',
   'narrative.split': '5:6',
+  'feature.bento': '4:3',
   'media.image': '16:9',
   'media.gallery': '4:3',
   livre: '1:1',
@@ -18,10 +23,22 @@ export type TargetBlock = keyof typeof RATIO_BY_BLOCK;
 
 /** Dica de composição, para o assunto sobreviver ao recorte de cada bloco. */
 export const FRAMING: Record<string, string> = {
-  'hero.split': 'enquadramento vertical, assunto no terço superior, área respirável em volta',
+  'hero.split':
+    'enquadramento vertical, assunto no terço superior, área respirável em volta',
+  'hero.cover':
+    'enquadramento panorâmico, assunto no terço direito e área limpa à esquerda para texto',
+  'hero.poster':
+    'enquadramento vertical gráfico, assunto inteiro e silhueta legível',
+  'hero.editorial':
+    'enquadramento panorâmico documental, cena com profundidade e leitura lateral',
+  'hero.offset':
+    'enquadramento vertical, assunto descentralizado e espaço negativo intencional',
   'narrative.split': 'enquadramento vertical fechado no assunto',
+  'feature.bento':
+    'enquadramento paisagem, assunto único e recorte forte em tamanhos variados',
   'media.image': 'enquadramento panorâmico, assunto centralizado',
-  'media.gallery': 'enquadramento paisagem, assunto único e legível em miniatura',
+  'media.gallery':
+    'enquadramento paisagem, assunto único e legível em miniatura',
   livre: 'enquadramento quadrado equilibrado',
 };
 
@@ -33,7 +50,10 @@ export const FRAMING: Record<string, string> = {
  * `size` funciona nos três: a OpenAI aceita a lista fixa dela e a BFL deriva a
  * proporção do tamanho. Passar pixels é o único caminho previsível.
  */
-export function dimensionsFor(model: string, ratio: Ratio): { size: `${number}x${number}` } {
+export function dimensionsFor(
+  model: string,
+  ratio: Ratio,
+): { size: `${number}x${number}` } {
   const portrait = ratio === '4:5' || ratio === '5:6';
   const landscape = ratio === '16:9' || ratio === '4:3';
 

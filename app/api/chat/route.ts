@@ -10,6 +10,7 @@ import { annotateAttachments } from '@/lib/ai/attachments';
 import { isAuthenticated } from '@/lib/auth';
 import { buildTools } from '@/lib/ai/tools';
 import { db } from '@/lib/db';
+import { listImages } from '@/lib/images/queries';
 import { systemPrompt } from '@/lib/taste/prompt';
 import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
 
@@ -32,11 +33,21 @@ export async function POST(request: Request) {
   const tenant = await getTenantBySlug(body.tenant);
   if (!tenant) return new Response('Cliente não encontrado', { status: 404 });
 
-  const pages = await listPages(tenant.id);
+  const [pages, approvedImages] = await Promise.all([
+    listPages(tenant.id),
+    listImages(tenant.id, 'aprovada'),
+  ]);
   const summary = pages
     .map(
       (page) =>
         `- /${page.slug} (${page.type}, ${page.blocks.length} blocos${page.publishedBlocks ? ', publicada' : ''}): ${page.title}`,
+    )
+    .join('\n');
+  const imagesSummary = approvedImages
+    .slice(0, 8)
+    .map(
+      (image) =>
+        `- #${image.seq} ${image.ratio}, ${image.targetBlock ?? 'livre'}: ${image.url} | ${image.alt ?? image.description ?? 'sem descrição'}`,
     )
     .join('\n');
 
@@ -67,6 +78,7 @@ export async function POST(request: Request) {
       tenant,
       summary,
       body.page ? `/${body.page}` : '/',
+      imagesSummary,
     ),
     messages: await convertToModelMessages(messages),
     tools: buildTools(tenant),

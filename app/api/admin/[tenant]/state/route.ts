@@ -9,17 +9,26 @@ export const dynamic = 'force-dynamic';
  * publicação. O workspace consulta depois de cada ação do agente, em vez de
  * recarregar a tela inteira.
  */
-export async function GET(_request: Request, { params }: { params: Promise<{ tenant: string }> }) {
-  if (!(await isAuthenticated())) return new Response('Não autorizado', { status: 401 });
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ tenant: string }> },
+) {
+  if (!(await isAuthenticated()))
+    return new Response('Não autorizado', { status: 401 });
   const { tenant: slug } = await params;
   const tenant = await getTenantBySlug(slug);
   if (!tenant) return new Response('Cliente não encontrado', { status: 404 });
 
   const pages = await listPages(tenant.id);
   return Response.json({
-    tenant: { slug: tenant.slug, name: tenant.name, brand: tenant.brand, dials: tenant.dials },
+    tenant: {
+      slug: tenant.slug,
+      name: tenant.name,
+      brand: tenant.brand,
+      dials: tenant.dials,
+    },
     pages: pages.map((page) => {
-      const findings = lintPage(page);
+      const findings = lintPage(page, tenant.brand.design);
       return {
         slug: page.slug,
         type: page.type,
@@ -28,9 +37,15 @@ export async function GET(_request: Request, { params }: { params: Promise<{ ten
         published: Boolean(page.publishedBlocks),
         publishedAt: page.publishedAt,
         // Rascunho difere do publicado quando o agente mexeu depois da publicação.
-        dirty: Boolean(page.publishedBlocks) && JSON.stringify(page.publishedBlocks) !== JSON.stringify(page.blocks),
-        errors: findings.filter((f) => f.level === 'error').map((f) => f.message),
-        warnings: findings.filter((f) => f.level === 'warn').map((f) => f.message),
+        dirty:
+          Boolean(page.publishedBlocks) &&
+          JSON.stringify(page.publishedBlocks) !== JSON.stringify(page.blocks),
+        errors: findings
+          .filter((f) => f.level === 'error')
+          .map((f) => f.message),
+        warnings: findings
+          .filter((f) => f.level === 'warn')
+          .map((f) => f.message),
       };
     }),
   });

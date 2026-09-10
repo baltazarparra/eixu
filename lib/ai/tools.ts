@@ -1,8 +1,15 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import { db } from '@/lib/db';
-import { accessibleAccent } from '@/lib/blocks/contrast';
+import { accessibleAccent, contrastRatio } from '@/lib/blocks/contrast';
 import { BLOCK_TYPES, blockSchemas, isBlockType } from '@/lib/blocks/registry';
+import {
+  completeDesignProfile,
+  designProfileInputSchema,
+  isDesignProfile,
+  nearestDesign,
+} from '@/lib/design/profile';
+import { hasDuplicateComposition } from '@/lib/design/uniqueness';
 import { listImages } from '@/lib/images/queries';
 import { formatFindings, lintPage } from '@/lib/taste/lint';
 import { getPage, listPages } from '@/lib/tenant-queries';
@@ -16,12 +23,20 @@ const pageType = z.enum(['page', 'paid_lp', 'post', 'thank_you']);
 
 const blockInput = z.object({
   type: z.string().describe(`Um destes: ${BLOCK_TYPES.join(', ')}`),
-  props: z.record(z.string(), z.unknown()).describe('Props conforme o schema do bloco.'),
+  props: z
+    .record(z.string(), z.unknown())
+    .describe('Props conforme o schema do bloco.'),
 });
 
 /** Normaliza blocos vindos da IA, atribuindo ids estáveis. */
-function toBlocks(input: { type: string; props: Record<string, unknown> }[]): BlockInstance[] {
-  return input.map((block) => ({ id: newId(), type: block.type, props: block.props }));
+function toBlocks(
+  input: { type: string; props: Record<string, unknown> }[],
+): BlockInstance[] {
+  return input.map((block) => ({
+    id: newId(),
+    type: block.type,
+    props: block.props,
+  }));
 }
 
 export class ToolError extends Error {}
@@ -29,7 +44,10 @@ export class ToolError extends Error {}
 async function requirePage(tenantId: string, slug: string) {
   const clean = slug.replace(/^\/+|\/+$/g, '');
   const page = await getPage(tenantId, clean);
-  if (!page) throw new ToolError(`Página "/${clean}" não existe. Use list_state para ver as páginas ou create_page para criar.`);
+  if (!page)
+    throw new ToolError(
+      `Página "/${clean}" não existe. Use list_state para ver as páginas ou create_page para criar.`,
+    );
   return page;
 }
 
@@ -42,14 +60,22 @@ function findBlock(blocks: BlockInstance[], selector: string): BlockInstance {
   if (byId) return byId;
   const wanted = selector.toLowerCase();
   const matches = blocks.filter(
-    (block) => block.type.toLowerCase() === wanted || block.type.toLowerCase().split('.')[0] === wanted,
+    (block) =>
+      block.type.toLowerCase() === wanted ||
+      block.type.toLowerCase().split('.')[0] === wanted,
   );
   if (matches.length === 1) return matches[0];
-  const inventory = blocks.map((block, index) => `${index}: ${block.type} (id ${block.id})`).join('; ');
+  const inventory = blocks
+    .map((block, index) => `${index}: ${block.type} (id ${block.id})`)
+    .join('; ');
   if (matches.length > 1) {
-    throw new ToolError(`"${selector}" bate com ${matches.length} blocos. Use o id. Blocos: ${inventory}`);
+    throw new ToolError(
+      `"${selector}" bate com ${matches.length} blocos. Use o id. Blocos: ${inventory}`,
+    );
   }
-  throw new ToolError(`Nenhum bloco "${selector}" nesta página. Blocos: ${inventory}`);
+  throw new ToolError(
+    `Nenhum bloco "${selector}" nesta página. Blocos: ${inventory}`,
+  );
 }
 
 /** Envolve o execute para devolver erro como resultado, sem derrubar o passo do agente. */
@@ -60,12 +86,18 @@ export function safe<I, O>(run: (input: I) => Promise<O>) {
     } catch (error) {
       if (error instanceof ToolError) return { error: error.message };
       console.error('[tool] falha inesperada:', error);
-      return { error: error instanceof Error ? error.message : 'Falha inesperada.' };
+      return {
+        error: error instanceof Error ? error.message : 'Falha inesperada.',
+      };
     }
   };
 }
 
 export function buildTools(tenant: Tenant) {
+  let activeBrand = { ...tenant.brand };
+  let activeDials = { ...tenant.dials };
+  let activeBrief = { ...tenant.brief };
+
   return {
     list_images: tool({
       description:
@@ -87,13 +119,15 @@ export function buildTools(tenant: Tenant) {
     }),
 
     list_state: tool({
-      description: 'Lê o estado atual do site: páginas, tipos, quantidade de blocos e se estão publicadas.',
+      description:
+        'Lê o estado atual do site: páginas, tipos, quantidade de blocos e se estão publicadas.',
       inputSchema: z.object({}),
       execute: async () => {
         const pages = await listPages(tenant.id);
         return {
-          brand: tenant.brand,
-          dials: tenant.dials,
+          brief: activeBrief,
+          brand: activeBrand,
+          dials: activeDials,
           pages: pages.map((page) => ({
             slug: `/${page.slug}`,
             type: page.type,
@@ -108,7 +142,9 @@ export function buildTools(tenant: Tenant) {
     get_page: tool({
       description:
         'Lê uma página com os blocos, seus ids, tipos e props completas. Chame antes de update_block, move_block ou remove_block para saber o que existe.',
-      inputSchema: z.object({ page: z.string().describe('Slug. Vazio para a home.') }),
+      inputSchema: z.object({
+        page: z.string().describe('Slug. Vazio para a home.'),
+      }),
       execute: safe(async ({ page: slug }) => {
         const page = await requirePage(tenant.id, slug);
         return {
@@ -116,26 +152,46 @@ export function buildTools(tenant: Tenant) {
           type: page.type,
           title: page.title,
           seo: page.seo,
-          blocks: page.blocks.map((block, index) => ({ index, id: block.id, type: block.type, props: block.props })),
+          blocks: page.blocks.map((block, index) => ({
+            index,
+            id: block.id,
+            type: block.type,
+            props: block.props,
+          })),
         };
       }),
     }),
 
     describe_block: tool({
-      description: 'Mostra o schema exato de props de um bloco. Use antes de preencher um bloco que você não domina.',
+      description:
+        'Mostra o schema exato de props de um bloco. Use antes de preencher um bloco que você não domina.',
       inputSchema: z.object({ type: z.string() }),
       execute: async ({ type }) => {
-        if (!isBlockType(type)) return { error: `Bloco "${type}" não existe.`, available: BLOCK_TYPES };
+        if (!isBlockType(type))
+          return {
+            error: `Bloco "${type}" não existe.`,
+            available: BLOCK_TYPES,
+          };
         return { type, schema: z.toJSONSchema(blockSchemas[type]) };
       },
     }),
 
     set_brand: tool({
-      description: 'Define paleta, raio, fonte e dials do site. Uma cor de acento por site.',
+      description:
+        'Faz um ajuste pontual de marca existente. Para site novo ou reconstrução, use set_design.',
       inputSchema: z.object({
-        accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-        ink: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-        paper: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+        accent: z
+          .string()
+          .regex(/^#[0-9a-fA-F]{6}$/)
+          .optional(),
+        ink: z
+          .string()
+          .regex(/^#[0-9a-fA-F]{6}$/)
+          .optional(),
+        paper: z
+          .string()
+          .regex(/^#[0-9a-fA-F]{6}$/)
+          .optional(),
         radius: z.enum(['none', 'sm', 'md', 'lg', 'full']).optional(),
         font: z.enum(['sans', 'serif', 'mono']).optional(),
         variance: z.number().int().min(1).max(10).optional(),
@@ -144,7 +200,7 @@ export function buildTools(tenant: Tenant) {
       }),
       execute: async (input) => {
         const brand = {
-          ...tenant.brand,
+          ...activeBrand,
           ...(input.accent ? { accent: input.accent } : {}),
           ...(input.ink ? { ink: input.ink } : {}),
           ...(input.paper ? { paper: input.paper } : {}),
@@ -152,9 +208,9 @@ export function buildTools(tenant: Tenant) {
           ...(input.font ? { font: input.font } : {}),
         };
         const dials = {
-          variance: input.variance ?? tenant.dials.variance,
-          motion: input.motion ?? tenant.dials.motion,
-          density: input.density ?? tenant.dials.density,
+          variance: input.variance ?? activeDials.variance,
+          motion: input.motion ?? activeDials.motion,
+          density: input.density ?? activeDials.density,
         };
         await db()`
           update tenants set brand = ${JSON.stringify(brand)}::jsonb,
@@ -162,6 +218,8 @@ export function buildTools(tenant: Tenant) {
                              updated_at = now()
           where id = ${tenant.id}
         `;
+        activeBrand = brand;
+        activeDials = dials;
 
         // O site escurece sozinho um acento que reprova no contraste. Avisar
         // aqui evita o agente insistir numa cor que nunca vai aparecer igual.
@@ -173,6 +231,91 @@ export function buildTools(tenant: Tenant) {
       },
     }),
 
+    set_design: tool({
+      description:
+        'Define briefing e direção de arte v2 em uma chamada. Obrigatória antes de build_site. A direção é recusada quando repete a arquitetura visual de outro cliente.',
+      inputSchema: designProfileInputSchema,
+      execute: safe(async (input) => {
+        if (input.accent.toLowerCase() === input.accentAlt.toLowerCase()) {
+          throw new ToolError(
+            'accent e accentAlt precisam cumprir papéis diferentes. Escolha duas cores distintas.',
+          );
+        }
+        if (input.paper.toLowerCase() === input.surface.toLowerCase()) {
+          throw new ToolError(
+            'paper e surface estão iguais. A página precisa de profundidade tonal perceptível.',
+          );
+        }
+        if (contrastRatio(input.ink, input.paper) < 4.5) {
+          throw new ToolError(
+            'ink e paper não alcançam contraste AA para texto. Ajuste a paleta.',
+          );
+        }
+        if (contrastRatio(input.ink, input.surface) < 4.5) {
+          throw new ToolError(
+            'ink e surface não alcançam contraste AA para texto. Ajuste a superfície.',
+          );
+        }
+
+        const profile = completeDesignProfile(input);
+        const rows = (await db()`
+          select brand->'design' as design
+          from tenants
+          where id <> ${tenant.id} and brand ? 'design'
+        `) as { design?: unknown }[];
+        const nearest = nearestDesign(
+          profile,
+          rows.map((row) => row.design),
+        );
+        if (nearest && nearest.distance < 3) {
+          throw new ToolError(
+            `Direção estrutural muito parecida com outro site: distância ${nearest.distance}/8. Mude pelo menos ${3 - nearest.distance} decisões entre heroComposition, navigation, rhythm, imageTreatment, surfaceStyle, motif e tipografia.`,
+          );
+        }
+
+        const legacyFont =
+          profile.displayFont === 'editorial'
+            ? 'serif'
+            : profile.displayFont === 'mono'
+              ? 'mono'
+              : 'sans';
+        const brand = {
+          ...activeBrand,
+          accent: input.accent,
+          accentAlt: input.accentAlt,
+          ink: input.ink,
+          paper: input.paper,
+          surface: input.surface,
+          radius: input.radius,
+          font: legacyFont as 'sans' | 'serif' | 'mono',
+          design: profile,
+        };
+        const dials = {
+          variance: input.variance,
+          motion: input.motion,
+          density: input.density,
+        };
+        await db()`
+          update tenants
+          set brief = ${JSON.stringify(input.brief)}::jsonb,
+              brand = ${JSON.stringify(brand)}::jsonb,
+              dials = ${JSON.stringify(dials)}::jsonb,
+              updated_at = now()
+          where id = ${tenant.id}
+        `;
+        activeBrief = input.brief;
+        activeBrand = brand;
+        activeDials = dials;
+        return {
+          ok: true,
+          concept: profile.concept,
+          signatureElement: profile.signatureElement,
+          structuralDistance: nearest?.distance ?? null,
+          signature: profile.signature,
+        };
+      }),
+    }),
+
     build_site: tool({
       description:
         'Cria ou substitui várias páginas de uma vez, cada uma já com seus blocos. É a ferramenta certa para um site novo ou para refazer o site inteiro. Uma chamada só.',
@@ -180,7 +323,9 @@ export function buildTools(tenant: Tenant) {
         pages: z
           .array(
             z.object({
-              slug: z.string().describe('Sem barra inicial. Vazio para a home.'),
+              slug: z
+                .string()
+                .describe('Sem barra inicial. Vazio para a home.'),
               type: pageType,
               title: z.string().min(2).max(120),
               seoTitle: z.string().max(70).optional(),
@@ -193,32 +338,77 @@ export function buildTools(tenant: Tenant) {
           .min(1)
           .max(12),
       }),
-      execute: async ({ pages }) => {
-        const report: { page: string; blocks: number; erros: number; preflight: string }[] = [];
-        for (const input of pages) {
+      execute: safe(async ({ pages }) => {
+        if (!isDesignProfile(activeBrand.design)) {
+          throw new ToolError(
+            'build_site exige uma direção v2 persistida. Chame set_design antes de montar as páginas.',
+          );
+        }
+        const staged = pages.map((input) => {
           const slug = input.slug.replace(/^\/+|\/+$/g, '');
-          const noindex = input.type === 'thank_you' || input.type === 'paid_lp';
-          const seo = { title: input.seoTitle ?? input.title, description: input.seoDescription, noindex };
-          const meta = input.type === 'post' ? { excerpt: input.excerpt, date: input.date } : {};
+          const noindex =
+            input.type === 'thank_you' || input.type === 'paid_lp';
+          const seo = {
+            title: input.seoTitle ?? input.title,
+            description: input.seoDescription,
+            noindex,
+          };
+          const meta =
+            input.type === 'post'
+              ? { excerpt: input.excerpt, date: input.date }
+              : {};
           const blocks = toBlocks(input.blocks);
+          const findings = lintPage(
+            { type: input.type, title: input.title, seo, blocks },
+            activeBrand.design,
+          );
+          return { input, slug, seo, meta, blocks, findings };
+        });
+        const invalid = staged.filter((page) =>
+          page.findings.some((finding) => finding.level === 'error'),
+        );
+        if (invalid.length) {
+          return {
+            ok: false,
+            error:
+              'Pre-flight recusou o lote antes de escrever qualquer página.',
+            pages: invalid.map((page) => ({
+              page: `/${page.slug}`,
+              preflight: formatFindings(page.findings),
+            })),
+          };
+        }
+        const home = staged.find((page) => page.slug === '');
+        if (home && (await hasDuplicateComposition(tenant.id, home.blocks))) {
+          throw new ToolError(
+            'A silhueta da home repete outro cliente. Troque tipos, layouts ou ritmo de apresentação antes de salvar.',
+          );
+        }
+
+        const report: {
+          page: string;
+          blocks: number;
+          erros: number;
+          preflight: string;
+        }[] = [];
+        for (const page of staged) {
           await db()`
             insert into pages (tenant_id, slug, type, title, seo, meta, blocks)
-            values (${tenant.id}, ${slug}, ${input.type}, ${input.title},
-                    ${JSON.stringify(seo)}::jsonb, ${JSON.stringify(meta)}::jsonb, ${JSON.stringify(blocks)}::jsonb)
+            values (${tenant.id}, ${page.slug}, ${page.input.type}, ${page.input.title},
+                    ${JSON.stringify(page.seo)}::jsonb, ${JSON.stringify(page.meta)}::jsonb, ${JSON.stringify(page.blocks)}::jsonb)
             on conflict (tenant_id, slug) do update
               set type = excluded.type, title = excluded.title, seo = excluded.seo,
                   meta = excluded.meta, blocks = excluded.blocks, updated_at = now()
           `;
-          const findings = lintPage({ type: input.type, title: input.title, seo, blocks });
           report.push({
-            page: `/${slug}`,
-            blocks: blocks.length,
-            erros: findings.filter((f) => f.level === 'error').length,
-            preflight: formatFindings(findings),
+            page: `/${page.slug}`,
+            blocks: page.blocks.length,
+            erros: 0,
+            preflight: formatFindings(page.findings),
           });
         }
         return { ok: true, pages: report };
-      },
+      }),
     }),
 
     delete_page: tool({
@@ -232,15 +422,23 @@ export function buildTools(tenant: Tenant) {
     }),
 
     create_page: tool({
-      description: 'Cria uma página. Use slug vazio para a home. Tipos: page, paid_lp, post, thank_you.',
+      description:
+        'Cria uma página. Use slug vazio para a home. Tipos: page, paid_lp, post, thank_you.',
       inputSchema: z.object({
-        slug: z.string().describe('Sem barra inicial. Vazio para a home. Ex: "sobre", "blog", "blog/meu-post".'),
+        slug: z
+          .string()
+          .describe(
+            'Sem barra inicial. Vazio para a home. Ex: "sobre", "blog", "blog/meu-post".',
+          ),
         type: pageType,
         title: z.string().min(2).max(120),
         seoTitle: z.string().max(70).optional(),
         seoDescription: z.string().max(170).optional(),
         excerpt: z.string().max(220).optional().describe('Só para posts.'),
-        date: z.string().optional().describe('Só para posts, formato AAAA-MM-DD.'),
+        date: z
+          .string()
+          .optional()
+          .describe('Só para posts, formato AAAA-MM-DD.'),
       }),
       execute: async (input) => {
         const slug = input.slug.replace(/^\/+|\/+$/g, '');
@@ -250,7 +448,10 @@ export function buildTools(tenant: Tenant) {
           description: input.seoDescription,
           noindex,
         };
-        const meta = input.type === 'post' ? { excerpt: input.excerpt, date: input.date } : {};
+        const meta =
+          input.type === 'post'
+            ? { excerpt: input.excerpt, date: input.date }
+            : {};
         await db()`
           insert into pages (tenant_id, slug, type, title, seo, meta, blocks)
           values (${tenant.id}, ${slug}, ${input.type}, ${input.title},
@@ -264,7 +465,8 @@ export function buildTools(tenant: Tenant) {
     }),
 
     set_blocks: tool({
-      description: 'Substitui todos os blocos de uma página. É a forma principal de montar ou refazer uma página.',
+      description:
+        'Substitui todos os blocos de uma página. É a forma principal de montar ou refazer uma página.',
       inputSchema: z.object({
         page: z.string().describe('Slug da página. Vazio para a home.'),
         blocks: z.array(blockInput).min(1).max(20),
@@ -272,11 +474,23 @@ export function buildTools(tenant: Tenant) {
       execute: safe(async ({ page: slug, blocks }) => {
         const page = await requirePage(tenant.id, slug);
         const next = toBlocks(blocks);
+        if (
+          page.slug === '' &&
+          isDesignProfile(activeBrand.design) &&
+          (await hasDuplicateComposition(tenant.id, next))
+        ) {
+          throw new ToolError(
+            'A silhueta da home repete outro cliente. Troque tipos, layouts ou apresentação.',
+          );
+        }
         await db()`
           update pages set blocks = ${JSON.stringify(next)}::jsonb, updated_at = now()
           where id = ${page.id}
         `;
-        const findings = lintPage({ ...page, blocks: next });
+        const findings = lintPage(
+          { ...page, blocks: next },
+          activeBrand.design,
+        );
         return {
           ok: true,
           blocks: next.length,
@@ -287,7 +501,8 @@ export function buildTools(tenant: Tenant) {
     }),
 
     insert_block: tool({
-      description: 'Insere um bloco em uma posição. Índice 0 é o topo. Omita o índice para colocar no fim, antes do rodapé.',
+      description:
+        'Insere um bloco em uma posição. Índice 0 é o topo. Omita o índice para colocar no fim, antes do rodapé.',
       inputSchema: z.object({
         page: z.string(),
         block: blockInput,
@@ -304,33 +519,64 @@ export function buildTools(tenant: Tenant) {
           update pages set blocks = ${JSON.stringify(next)}::jsonb, updated_at = now()
           where id = ${page.id}
         `;
-        return { ok: true, blockId: created.id, position: at, total: next.length };
+        return {
+          ok: true,
+          blockId: created.id,
+          position: at,
+          total: next.length,
+        };
       }),
     }),
 
     update_block: tool({
-      description: 'Atualiza as props de um bloco existente. Passe apenas as props que mudam.',
+      description:
+        'Atualiza as props de um bloco existente. Passe apenas as props que mudam.',
       inputSchema: z.object({
         page: z.string(),
-        block: z.string().describe('Id do bloco, ou o tipo ("hero.split") ou a família ("hero") quando só existe um.'),
-        props: z.record(z.string(), z.unknown()).describe('Só as props que mudam. Objetos e listas são substituídos inteiros.'),
+        block: z
+          .string()
+          .describe(
+            'Id do bloco, ou o tipo ("hero.split") ou a família ("hero") quando só existe um.',
+          ),
+        props: z
+          .record(z.string(), z.unknown())
+          .describe(
+            'Só as props que mudam. Objetos e listas são substituídos inteiros.',
+          ),
         type: z
           .string()
           .optional()
-          .describe('Novo tipo do bloco, para trocar a variante mantendo as props em comum. Ex: hero.statement para hero.split.'),
+          .describe(
+            'Novo tipo do bloco, para trocar a variante mantendo as props em comum. Ex: hero.statement para hero.split.',
+          ),
       }),
       execute: safe(async ({ page: slug, block: selector, props, type }) => {
         const page = await requirePage(tenant.id, slug);
         const target = findBlock(page.blocks, selector);
-        if (type && !isBlockType(type)) throw new ToolError(`Tipo "${type}" não existe. Tipos: ${BLOCK_TYPES.join(', ')}`);
+        if (type && !isBlockType(type))
+          throw new ToolError(
+            `Tipo "${type}" não existe. Tipos: ${BLOCK_TYPES.join(', ')}`,
+          );
         const next = page.blocks.map((block) =>
-          block.id === target.id ? { ...block, type: type ?? block.type, props: { ...block.props, ...props } } : block,
+          block.id === target.id
+            ? {
+                ...block,
+                type: type ?? block.type,
+                props: { ...block.props, ...props },
+              }
+            : block,
         );
         await db()`
           update pages set blocks = ${JSON.stringify(next)}::jsonb, updated_at = now()
           where id = ${page.id}
         `;
-        return { ok: true, blockId: target.id, preflight: formatFindings(lintPage({ ...page, blocks: next })) };
+        return {
+          ok: true,
+          blockId: target.id,
+          preflight: formatFindings(
+            lintPage({ ...page, blocks: next }, activeBrand.design),
+          ),
+        };
       }),
     }),
 
@@ -350,8 +596,13 @@ export function buildTools(tenant: Tenant) {
     }),
 
     move_block: tool({
-      description: 'Move um bloco para outra posição na página. Aceita id, tipo ou família.',
-      inputSchema: z.object({ page: z.string(), block: z.string(), toIndex: z.number().int().min(0) }),
+      description:
+        'Move um bloco para outra posição na página. Aceita id, tipo ou família.',
+      inputSchema: z.object({
+        page: z.string(),
+        block: z.string(),
+        toIndex: z.number().int().min(0),
+      }),
       execute: safe(async ({ page: slug, block: selector, toIndex }) => {
         const page = await requirePage(tenant.id, slug);
         const target = findBlock(page.blocks, selector);
@@ -387,11 +638,12 @@ export function buildTools(tenant: Tenant) {
     }),
 
     lint_page: tool({
-      description: 'Roda o pre-flight de qualidade em uma página. Corrija todo ERRO antes de considerar a página pronta.',
+      description:
+        'Roda o pre-flight de qualidade em uma página. Corrija todo ERRO antes de considerar a página pronta.',
       inputSchema: z.object({ page: z.string() }),
       execute: safe(async ({ page: slug }) => {
         const page = await requirePage(tenant.id, slug);
-        const findings = lintPage(page);
+        const findings = lintPage(page, activeBrand.design);
         return {
           aprovado: !findings.some((f) => f.level === 'error'),
           relatorio: formatFindings(findings),
@@ -400,13 +652,28 @@ export function buildTools(tenant: Tenant) {
     }),
 
     publish_page: tool({
-      description: 'Publica uma página. Só use quando o operador pedir. Bloqueia se o pre-flight tiver erro.',
+      description:
+        'Publica uma página. Só use quando o operador pedir. Bloqueia se o pre-flight tiver erro.',
       inputSchema: z.object({ page: z.string() }),
       execute: safe(async ({ page: slug }) => {
         const page = await requirePage(tenant.id, slug);
-        const findings = lintPage(page);
+        const findings = lintPage(page, activeBrand.design);
         if (findings.some((f) => f.level === 'error')) {
-          return { publicado: false, motivo: 'Pre-flight com erro.', relatorio: formatFindings(findings) };
+          return {
+            publicado: false,
+            motivo: 'Pre-flight com erro.',
+            relatorio: formatFindings(findings),
+          };
+        }
+        if (
+          page.slug === '' &&
+          isDesignProfile(activeBrand.design) &&
+          (await hasDuplicateComposition(tenant.id, page.blocks))
+        ) {
+          return {
+            publicado: false,
+            motivo: 'A composição estrutural repete outro cliente.',
+          };
         }
         await db()`
           update pages
@@ -414,7 +681,10 @@ export function buildTools(tenant: Tenant) {
           where id = ${page.id}
         `;
         await db()`update tenants set status = 'published' where id = ${tenant.id}`;
-        return { publicado: true, url: `https://${tenant.slug}.eixu.com.br/${page.slug}` };
+        return {
+          publicado: true,
+          url: `https://${tenant.slug}.eixu.com.br/${page.slug}`,
+        };
       }),
     }),
   };

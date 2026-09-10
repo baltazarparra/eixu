@@ -196,11 +196,25 @@ function renderList(
         const requested =
           parsed.data.anchor ??
           (block.type === 'form.lead' ? 'contato' : undefined);
+        const presentation =
+          'presentation' in parsed.data && parsed.data.presentation
+            ? parsed.data.presentation
+            : undefined;
         const anchor =
           requested && !usedAnchors.has(requested) ? requested : undefined;
         if (anchor) usedAnchors.add(anchor);
         return (
-          <div key={key} id={anchor} data-block={block.type}>
+          <div
+            key={key}
+            id={anchor}
+            className="site-block"
+            data-block={block.type}
+            data-tone={presentation?.tone}
+            data-width={presentation?.width}
+            data-spacing={presentation?.spacing}
+            data-align={presentation?.align}
+            data-edge={presentation?.edge}
+          >
             {render()}
           </div>
         );

@@ -42,7 +42,8 @@ export type MediaMapProps = S<'media.map'>;
 export type PricingTableProps = S<'pricing.table'>;
 export type FooterCompactProps = S<'footer.compact'>;
 
-const shell = 'mx-auto w-full max-w-[76rem] px-6 md:px-10';
+const shell =
+  'site-shell mx-auto w-full max-w-[var(--site-max,76rem)] px-6 md:px-10';
 
 /** Mapa estático: Tailwind não gera classes montadas em tempo de execução. */
 const statCols: Record<number, string> = {
@@ -81,6 +82,7 @@ function Action({
     <a
       href={href}
       className={`${base} ${styles}`}
+      data-variant={variant}
       {...(external ? { rel: 'noreferrer' } : {})}
       data-track={href.startsWith('/go/wa') ? 'whatsapp' : undefined}
     >
@@ -93,11 +95,15 @@ export function NavBar({
   logoText,
   links,
   cta,
+  layout,
   ctx,
 }: NavBarProps & { ctx: RenderContext }) {
   const logo = ctx.tenant.brand.logoUrl;
+  const resolvedLayout = layout ?? ctx.tenant.brand.design?.navigation ?? 'bar';
   return (
-    <header className="site-nav border-b border-[var(--line)]">
+    <header
+      className={`site-nav site-nav-${resolvedLayout} border-b border-[var(--line)]`}
+    >
       <div
         className={`${shell} flex min-h-20 flex-wrap items-center justify-between gap-4 py-4`}
       >
@@ -174,12 +180,18 @@ export function HeroSplit({
   bullets,
   image,
   imageAlt,
-  layout = 'split',
+  layout,
+  imagePosition = 'right',
+  imageFit = 'cover',
+  focalPoint = 'center',
+  ctx,
 }: HeroSplitProps & { ctx: RenderContext }) {
   const hasImage = Boolean(image && /^https?:\/\//.test(image));
+  const resolvedLayout =
+    layout ?? ctx.tenant.brand.design?.heroComposition ?? 'split';
   return (
     <section
-      className={`site-hero ${hasImage ? `site-hero-${layout}` : 'site-hero-text'}`}
+      className={`site-hero ${hasImage ? `site-hero-${resolvedLayout}` : 'site-hero-text'} site-image-${imagePosition}`}
     >
       <div className={`${shell} site-hero-grid`}>
         <div className="site-hero-copy flex flex-col items-start gap-6">
@@ -220,7 +232,8 @@ export function HeroSplit({
               alt={imageAlt ?? ''}
               width={960}
               height={1080}
-              className="h-full w-full object-cover"
+              className={`h-full w-full ${imageFit === 'contain' ? 'object-contain' : 'object-cover'}`}
+              data-focal={focalPoint}
               fetchPriority="high"
               decoding="async"
             />
@@ -236,9 +249,10 @@ export function HeroStatement({
   headline,
   subtext,
   cta,
+  layout = 'left',
 }: HeroStatementProps & { ctx: RenderContext }) {
   return (
-    <section className="site-hero site-hero-text">
+    <section className={`site-hero site-hero-text site-statement-${layout}`}>
       <div className={`${shell} site-hero-grid`}>
         <div className="site-hero-copy flex flex-col items-start gap-7">
           <Eyebrow>{eyebrow}</Eyebrow>
@@ -255,9 +269,11 @@ export function HeroStatement({
   );
 }
 
-export function ProofLogos({ title, logos }: ProofLogosProps) {
+export function ProofLogos({ title, logos, layout = 'rail' }: ProofLogosProps) {
   return (
-    <section className="border-b border-[var(--line)] py-12">
+    <section
+      className={`site-proof-logos site-proof-logos-${layout} border-b border-[var(--line)] py-12`}
+    >
       <div className={shell}>
         {title ? <p className={`${eyebrowClass} mb-7`}>{title}</p> : null}
         <ul className="flex flex-wrap items-center gap-x-10 gap-y-5">
@@ -275,9 +291,11 @@ export function ProofLogos({ title, logos }: ProofLogosProps) {
   );
 }
 
-export function ProofStats({ items }: ProofStatsProps) {
+export function ProofStats({ items, layout = 'strip' }: ProofStatsProps) {
   return (
-    <section className={`${section} border-b border-[var(--line)]`}>
+    <section
+      className={`${section} site-stats site-stats-${layout} border-b border-[var(--line)]`}
+    >
       <div
         className={`${shell} grid gap-10 sm:grid-cols-2 ${statCols[items.length] ?? 'lg:grid-cols-4'}`}
       >
@@ -300,9 +318,12 @@ export function ProofTestimonial({
   quote,
   author,
   role,
+  layout = 'quote',
 }: ProofTestimonialProps) {
   return (
-    <section className={`${section} border-b border-[var(--line)]`}>
+    <section
+      className={`${section} site-testimonial site-testimonial-${layout} border-b border-[var(--line)]`}
+    >
       <figure className={`${shell} max-w-[54rem]`}>
         <blockquote className="text-balance text-[clamp(1.4rem,3vw,2.1rem)] font-medium leading-[1.32] tracking-[-0.015em]">
           {quote}
@@ -316,7 +337,12 @@ export function ProofTestimonial({
   );
 }
 
-export function FeatureBento({ eyebrow, title, items }: FeatureBentoProps) {
+export function FeatureBento({
+  eyebrow,
+  title,
+  items,
+  layout = 'mosaic',
+}: FeatureBentoProps) {
   return (
     <section className={section}>
       <div className={shell}>
@@ -324,7 +350,7 @@ export function FeatureBento({ eyebrow, title, items }: FeatureBentoProps) {
           <Eyebrow>{eyebrow}</Eyebrow>
           <h2 className={`${h2Class} max-w-[22ch]`}>{title}</h2>
         </div>
-        <div className="site-bento mt-12 grid gap-5">
+        <div className={`site-bento site-bento-${layout} mt-12 grid gap-5`}>
           {items.map((item, index) => (
             <article
               key={item.title}
@@ -357,9 +383,16 @@ export function FeatureBento({ eyebrow, title, items }: FeatureBentoProps) {
   );
 }
 
-export function NarrativeSteps({ eyebrow, title, steps }: NarrativeStepsProps) {
+export function NarrativeSteps({
+  eyebrow,
+  title,
+  steps,
+  layout = 'timeline',
+}: NarrativeStepsProps) {
   return (
-    <section className={`${section} border-b border-[var(--line)]`}>
+    <section
+      className={`${section} site-steps site-steps-${layout} border-b border-[var(--line)]`}
+    >
       <div className={`${shell} grid gap-14 md:grid-cols-12`}>
         <div className="flex flex-col gap-4 md:col-span-4">
           <Eyebrow>{eyebrow}</Eyebrow>
@@ -390,9 +423,15 @@ export function NarrativeSteps({ eyebrow, title, steps }: NarrativeStepsProps) {
   );
 }
 
-export function FaqAccordion({ title, items }: FaqAccordionProps) {
+export function FaqAccordion({
+  title,
+  items,
+  layout = 'split',
+}: FaqAccordionProps) {
   return (
-    <section className={`${section} border-b border-[var(--line)]`}>
+    <section
+      className={`${section} site-faq site-faq-${layout} border-b border-[var(--line)]`}
+    >
       <div className={`${shell} grid gap-12 md:grid-cols-12`}>
         <h2 className={`${h2Class} md:col-span-4`}>{title}</h2>
         <div className="md:col-span-8">
@@ -426,6 +465,7 @@ export function CtaBand({
   body,
   cta,
   whatsapp,
+  layout = 'band',
   ctx,
 }: CtaBandProps & { ctx: RenderContext }) {
   const href =
@@ -434,7 +474,7 @@ export function CtaBand({
       : cta.href;
   return (
     <section
-      className={`${section} site-cta bg-[var(--ink)] text-[var(--paper)]`}
+      className={`${section} site-cta site-cta-${layout} bg-[var(--ink)] text-[var(--paper)]`}
     >
       <div
         className={`${shell} flex flex-col items-start gap-7 md:flex-row md:items-end md:justify-between`}
@@ -466,12 +506,15 @@ export function FormLead({
   consentText,
   whatsappOptIn,
   redirectTo,
+  layout = 'split',
   ctx,
 }: FormLeadProps & { ctx: RenderContext }) {
   const inputClass =
     'w-full rounded-[var(--radius)] border border-[var(--line)] bg-transparent px-4 py-3 text-[0.97rem] outline-none focus:border-[var(--accent)]';
   return (
-    <section className={`${section} border-b border-[var(--line)]`}>
+    <section
+      className={`${section} site-form site-form-${layout} border-b border-[var(--line)]`}
+    >
       <div className={`${shell} grid gap-12 md:grid-cols-12`}>
         <div className="flex flex-col gap-3 md:col-span-5">
           <h2 className={h2Class}>{title}</h2>
@@ -577,9 +620,15 @@ export function FormLead({
   );
 }
 
-export function EditorialText({ title, body }: EditorialTextProps) {
+export function EditorialText({
+  title,
+  body,
+  layout = 'narrow',
+}: EditorialTextProps) {
   return (
-    <section className={`${section} border-b border-[var(--line)]`}>
+    <section
+      className={`${section} site-text site-text-${layout} border-b border-[var(--line)]`}
+    >
       <div className={`${shell} max-w-[48rem]`}>
         {title ? <h2 className={`${h2Class} mb-7`}>{title}</h2> : null}
         <div className="flex flex-col gap-5">
@@ -600,11 +649,14 @@ export function EditorialText({ title, body }: EditorialTextProps) {
 export function EditorialPostList({
   title,
   limit,
+  layout = 'grid',
   ctx,
 }: EditorialPostListProps & { ctx: RenderContext }) {
   const posts = (ctx.posts ?? []).slice(0, limit);
   return (
-    <section className={`${section} border-b border-[var(--line)]`}>
+    <section
+      className={`${section} site-post-list site-post-list-${layout} border-b border-[var(--line)]`}
+    >
       <div className={shell}>
         <h1 className={`${h2Class} mb-12`}>{title}</h1>
         {posts.length === 0 ? (
@@ -704,9 +756,15 @@ export function EditorialPostBody({ body }: EditorialPostBodyProps) {
   );
 }
 
-export function MediaGallery({ title, images }: MediaGalleryProps) {
+export function MediaGallery({
+  title,
+  images,
+  layout = 'grid',
+}: MediaGalleryProps) {
   return (
-    <section className={`${section} border-b border-[var(--line)]`}>
+    <section
+      className={`${section} site-gallery site-gallery-${layout} border-b border-[var(--line)]`}
+    >
       <div className={shell}>
         {title ? <h2 className={`${h2Class} mb-10`}>{title}</h2> : null}
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -729,9 +787,16 @@ export function MediaGallery({ title, images }: MediaGalleryProps) {
   );
 }
 
-export function MediaMap({ title, address, query }: MediaMapProps) {
+export function MediaMap({
+  title,
+  address,
+  query,
+  layout = 'split',
+}: MediaMapProps) {
   return (
-    <section className={`${section} border-b border-[var(--line)]`}>
+    <section
+      className={`${section} site-map site-map-${layout} border-b border-[var(--line)]`}
+    >
       <div className={`${shell} grid gap-10 md:grid-cols-12`}>
         <div className="flex flex-col gap-3 md:col-span-4">
           {title ? <h2 className={h2Class}>{title}</h2> : null}
@@ -760,9 +825,15 @@ export function MediaMap({ title, address, query }: MediaMapProps) {
   );
 }
 
-export function PricingTable({ title, plans }: PricingTableProps) {
+export function PricingTable({
+  title,
+  plans,
+  layout = 'cards',
+}: PricingTableProps) {
   return (
-    <section className={`${section} border-b border-[var(--line)]`}>
+    <section
+      className={`${section} site-pricing site-pricing-${layout} border-b border-[var(--line)]`}
+    >
       <div className={shell}>
         <h2 className={`${h2Class} mb-12 max-w-[20ch]`}>{title}</h2>
         <ul className="grid gap-px overflow-hidden rounded-[var(--radius)] border border-[var(--line)] bg-[var(--line)] md:grid-cols-2 lg:grid-cols-3">
@@ -813,11 +884,12 @@ export function FooterCompact({
   tagline,
   links,
   legal,
+  layout = 'split',
   ctx,
 }: FooterCompactProps & { ctx: RenderContext }) {
   const logo = ctx.tenant.brand.logoUrl;
   return (
-    <footer className="py-14">
+    <footer className={`site-footer site-footer-${layout} py-14`}>
       <div className={`${shell} flex flex-col gap-8`}>
         <div className="flex flex-wrap items-start justify-between gap-8">
           <div className="flex flex-col gap-2">
@@ -869,9 +941,10 @@ export function FeatureNumbered({
   title,
   lead,
   items,
+  layout = 'ledger',
 }: FeatureNumberedProps) {
   return (
-    <section className={`${section} site-services`}>
+    <section className={`${section} site-services site-services-${layout}`}>
       <div className={`${shell} site-services-grid grid gap-12`}>
         <div className="flex max-w-[40rem] flex-col items-start gap-4">
           <Eyebrow>{eyebrow}</Eyebrow>
@@ -924,10 +997,13 @@ export function NarrativeSplit({
   items,
   image,
   imageAlt,
+  layout = 'split',
 }: NarrativeSplitProps) {
   const hasImage = Boolean(image && /^https?:\/\//.test(image));
   return (
-    <section className={section}>
+    <section
+      className={`${section} site-narrative-split site-narrative-${layout}`}
+    >
       <div
         className={`${shell} grid items-start gap-12 ${hasImage ? 'md:grid-cols-2' : ''}`}
       >
@@ -983,10 +1059,11 @@ export function EditorialFacts({
   body,
   facts,
   dark,
+  layout = 'split',
 }: EditorialFactsProps) {
   return (
     <section
-      className={`${section} border-b border-[var(--line)] ${dark ? 'bg-[var(--ink)] text-[var(--paper)]' : ''}`}
+      className={`${section} site-facts site-facts-${layout} border-b border-[var(--line)] ${dark ? 'bg-[var(--ink)] text-[var(--paper)]' : ''}`}
     >
       <div className={`${shell} grid gap-12 md:grid-cols-12`}>
         <div className="flex flex-col gap-4 md:col-span-7">
@@ -1028,9 +1105,16 @@ export function EditorialFacts({
   );
 }
 
-export function MediaImage({ src, alt, caption }: MediaImageProps) {
+export function MediaImage({
+  src,
+  alt,
+  caption,
+  layout = 'wide',
+}: MediaImageProps) {
   return (
-    <section className={`${section} border-b border-[var(--line)]`}>
+    <section
+      className={`${section} site-media-image site-media-${layout} border-b border-[var(--line)]`}
+    >
       <figure className={shell}>
         <img
           src={src}

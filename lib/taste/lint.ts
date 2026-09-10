@@ -1,10 +1,11 @@
-import type { BlockInstance, Page } from '@/lib/types';
+import type { BlockInstance, Page } from '../types';
+import type { DesignProfile } from '../design/profile';
 import {
   blockMeta,
   blockSchemas,
   familyOf,
   isBlockType,
-} from '@/lib/blocks/registry';
+} from '../blocks/registry';
 
 export type Finding = {
   level: 'error' | 'warn';
@@ -74,6 +75,7 @@ function headlineLines(text: string): number {
 
 export function lintPage(
   page: Pick<Page, 'blocks' | 'type' | 'title' | 'seo'>,
+  design?: DesignProfile,
 ): Finding[] {
   const findings: Finding[] = [];
   const blocks = page.blocks ?? [];
@@ -156,6 +158,40 @@ export function lintPage(
       'familias-de-layout',
       `Página com ${content.length} seções usa só ${families.size} famílias de layout. O mínimo é 4.`,
     );
+  }
+
+  // 3b. O perfil v2 só é rico quando chega aos blocos. Sem escolhas locais,
+  // a página volta a ser a mesma sequência genérica pintada com outra paleta.
+  if (
+    design?.version === 2 &&
+    page.type !== 'thank_you' &&
+    page.type !== 'post'
+  ) {
+    const layoutDecisions = content.filter(
+      (block) => typeof block.props.layout === 'string',
+    ).length;
+    const presentationDecisions = content.filter(
+      (block) =>
+        block.props.presentation &&
+        typeof block.props.presentation === 'object' &&
+        Object.keys(block.props.presentation).length > 0,
+    ).length;
+    const requiredLayouts = Math.min(3, Math.ceil(content.length * 0.5));
+    const requiredPresentations = Math.min(2, Math.ceil(content.length * 0.35));
+    if (layoutDecisions < requiredLayouts) {
+      push(
+        'error',
+        'composicao-generica',
+        `Direção v2 exige decisões de layout em pelo menos ${requiredLayouts} seções; há ${layoutDecisions}.`,
+      );
+    }
+    if (presentationDecisions < requiredPresentations) {
+      push(
+        'error',
+        'ritmo-generico',
+        `Direção v2 exige apresentação intencional em pelo menos ${requiredPresentations} seções; há ${presentationDecisions}.`,
+      );
+    }
   }
 
   // 4. Orçamento de eyebrow: no máximo 1 a cada 3 seções.

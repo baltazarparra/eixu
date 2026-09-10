@@ -1,5 +1,7 @@
 export type PageType = 'page' | 'paid_lp' | 'post' | 'thank_you';
 
+import type { DesignProfile } from '@/lib/design/profile';
+
 export type Dials = {
   /** 1 simetria perfeita, 10 caos autoral. */
   variance: number;
@@ -11,10 +13,13 @@ export type Dials = {
 
 export type Brand = {
   accent?: string;
+  accentAlt?: string;
   ink?: string;
   paper?: string;
+  surface?: string;
   radius?: 'none' | 'sm' | 'md' | 'lg' | 'full';
   font?: 'sans' | 'serif' | 'mono';
+  design?: DesignProfile;
   logoText?: string;
   /** URL pública do logo enviado pelo painel. Nav e rodapé usam quando existe. */
   logoUrl?: string;
