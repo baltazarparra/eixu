@@ -1,0 +1,24 @@
+{
+  "name": "Sabiá Oficina Mecânica",
+  "slug": "eval-sabia",
+  "whatsapp": "5511999990000",
+  "intake": {
+    "segment": "oficina mecânica automotiva",
+    "region": "São Paulo, zona norte",
+    "audience": "Motoristas que precisam de manutenção preventiva e corretiva e querem saber o que será feito antes de autorizar",
+    "offer": "Diagnóstico, manutenção preventiva e reparos em carros de passeio",
+    "goal": "Agendar o serviço pelo WhatsApp",
+    "evidence": [
+      "Diagnóstico apresentado ao cliente antes de qualquer serviço",
+      "Orçamento com valores e prazos antes de iniciar",
+      "Atendimento a carros de passeio nacionais e importados"
+    ],
+    "constraints": [
+      "Não afirmar marcas de peças, certificações, parcerias ou tempo de mercado",
+      "Não prometer prazo de entrega, guincho ou carro reserva",
+      "Fotografias geradas são ilustrações, não registram a equipe nem a oficina"
+    ],
+    "references": []
+  },
+  "photos": "reuse:mecanicasabia"
+}

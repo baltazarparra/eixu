@@ -1,0 +1,23 @@
+{
+  "name": "Aquece Lar",
+  "slug": "eval-aquecimento",
+  "whatsapp": null,
+  "intake": {
+    "segment": "instalação e manutenção de aquecedores residenciais",
+    "region": "Região metropolitana",
+    "audience": "Pessoas comparando serviços para aquecedores residenciais em casa ou apartamento",
+    "offer": "Instalação e manutenção de aquecedores residenciais",
+    "goal": "Iniciar uma conversa para avaliar a necessidade do imóvel",
+    "evidence": [
+      "Instalação de aquecedor residencial",
+      "Manutenção de aquecedor já instalado",
+      "Conversa inicial sobre o imóvel antes do serviço"
+    ],
+    "constraints": [
+      "Não inventar marcas, garantias, prazos, plantão, certificação, região nem números",
+      "As imagens são ilustrações de serviço, não fotografias da equipe"
+    ],
+    "references": []
+  },
+  "photos": "reuse:eixu"
+}

@@ -21,13 +21,7 @@ export const PHASE_TOOLS: Record<Phase, string[]> = {
     'set_design',
   ],
   cenas: ['list_images', 'define_image_guide', 'prepare_site_images'],
-  composicao: [
-    'list_images',
-    'list_state',
-    'describe_block',
-    'build_site',
-    'repair_site',
-  ],
+  composicao: ['list_images', 'build_site', 'repair_site', 'lint_site'],
   revisao: [
     'review_pages',
     'get_page',
@@ -62,9 +56,10 @@ Objetivo: produzir o repertório visual que a composição vai usar.
 Chame prepare_site_images uma vez com o plano de cenas completo: a abertura na composição escolhida, o detalhe que dá materialidade, as aplicações da seção protagonista e uma cena para cada página orgânica.
 As candidatas entram no rascunho; a aprovação é do operador, no estúdio. Pare depois do lote.`,
   composicao: `## Fase 3 de 4: composição
-Objetivo: montar o projeto completo com build_site, cumprindo o briefing de composição.
-Use as fotos da biblioteca pelas URLs exatas, com a proporção que o layout exibe. Se build_site recusar, corrija com repair_site apenas os campos apontados.
-Pare quando build_site voltar ok=true. Não publique.`,
+Objetivo: montar o projeto completo em uma única chamada de build_site, cumprindo o briefing de composição.
+O catálogo abaixo já traz as props e os limites de cada bloco. Escreva o projeto inteiro de uma vez, com as fotos da biblioteca pelas URLs exatas e na proporção que o layout exibe.
+Uma página com props inválidas recusa o lote inteiro sem gravar: corrija com repair_site apenas os campos apontados. Uma pendência de projeto não impede a gravação; ela aparece em "pendencias" e você a corrige antes de encerrar.
+Pare quando build_site voltar ok=true sem pendências. Não publique.`,
   revisao: `## Fase 4 de 4: revisão
 Objetivo: olhar o resultado e corrigir o que ficou pobre.
 Chame review_pages uma vez. Trate cada ERRO e os avisos que empobrecem a página: seção sem foto, tom repetido, proporção incoerente, silhueta repetida, headline em três linhas.

@@ -1,0 +1,22 @@
+{
+  "name": "Casa Mineral",
+  "slug": "eval-pedras",
+  "whatsapp": null,
+  "intake": {
+    "segment": "marmoraria e pedras ornamentais",
+    "region": "Não informada",
+    "audience": "Pessoas e arquitetos escolhendo pedras naturais para interiores",
+    "offer": "Mármores, granitos e quartzitos com corte e acabamento sob medida",
+    "goal": "Conversar sobre a escolha do material e o escopo do projeto",
+    "evidence": [
+      "Mármores, granitos e quartzitos",
+      "Corte e acabamento sob medida"
+    ],
+    "constraints": [
+      "Não afirmar instalação, showroom, jazidas, máquinas, prazos ou serviços não informados",
+      "As fotos representam inspiração, não obras executadas"
+    ],
+    "references": []
+  },
+  "photos": "reuse:portopedras"
+}

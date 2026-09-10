@@ -8,13 +8,56 @@ A composição parte do briefing, da marca e de cenas coerentes com o cliente: u
 
 As skills divergem: frontend-design recomenda movimento pontual e identidade específica; taste-v1 propõe animações contínuas e uma estética fixa para certos bentos. Prevalecem a marca e o pedido atual do operador. Framer Motion realiza entradas coordenadas, revelações de seções, seleção visual e respostas a hover/toque em componentes de cliente isolados. O conteúdo sai visível do servidor, continua acessível sem JavaScript e respeita movimento reduzido. Dados inventados e fotos aleatórias sugeridos como placeholders na v1 não servem para sites de clientes reais.
 
-`lib/taste/prompt.ts` contém a orientação operacional resumida. `catalogForPrompt()` deriva campos, enums, obrigatoriedade e limites de strings, arrays e números diretamente dos schemas, em uma notação compacta; `describe_block` oferece o schema completo. Esconder limites no catálogo causou rejeição e reenvio de lotes na avaliação. O agente deve editar apenas o necessário, omitir opcionais vazios e não repetir leituras ou reconstruções sem necessidade. Se `build_site` reprovar, `repair_site` corrige apenas props, SEO ou intenção no lote em memória, preservando o restante; adicionar/remover páginas exige novo lote. Todo reparo passa pelos mesmos gates antes da transação. O histórico e o limite de passos foram preservados.
+`lib/taste/prompt.ts` contém a orientação operacional. `catalogForPrompt()`
+deriva campos, enums, obrigatoriedade e limites dos schemas, e desde 10/09/2026
+emite também para que serve cada bloco e em que proporção ele exibe a foto.
+Esconder essa informação fazia o agente ignorar `feature.explorer` e
+`editorial.resources`, que são as seções que sustentam uma home com imagens.
+`describe_block` continua oferecendo o schema completo.
 
-`nav.bar` e `footer.compact` aceitam `logoHeight`, inteiro opcional de 16 a 160 px. Pedidos como “logo com 50 px de altura” usam `update_block` com `logoHeight: 50`, sem regenerar ou reaplicar a imagem. Sem local indicado, o agente edita o cabeçalho da página em foco. O tamanho acompanha o snapshot de blocos e só chega ao público ao publicar a página; omitir a prop mantém os tamanhos legados. A altura explícita remove o antigo teto fixo de largura, preserva a proporção da arte e limita logos muito largos ao espaço disponível no mobile.
+## Piso de composição
 
-Em site novo ou reconstrução, `set_design` persiste briefing e direção de arte antes de `build_site`. Uma chamada define conceito, elemento-assinatura, cinco cores com papéis definidos, par tipográfico, composição do hero, navegação, ritmo, tratamento de imagem, superfície, motivo e os três dials. Se faltarem as duas cenas geradas da home, `prepare_site_images` usa o pipeline do estúdio para criar candidatas. O agente não precisa gastar um turno descrevendo o plano em texto para depois traduzi-lo em ferramentas.
+Passar nos validadores não era o mesmo que entregar um site rico: uma home com
+cinco seções, três delas só texto, duas fotos na abertura e subpáginas sem
+imagem chegava a zero apontamentos. O contrato passou a medir composição, em
+`lib/taste/metrics.ts`, e a recusar o que fica abaixo disso.
 
-A rota `/api/chat` registra modelo, passos e tokens agregados de entrada/saída/total retornados pelo SDK no evento `[chat] usage`. Não registra conteúdo, nomes de clientes nem credenciais nesse evento. Contagens ausentes do provedor permanecem ausentes, não viram zero. Compare tarefas equivalentes e o total de passos; tamanho do prompt isolado não mede custo final nem qualidade da geração.
+| Regra | Nível | O que exige |
+| --- | --- | --- |
+| `home-protagonista` | erro | Uma seção de conteúdo da home reúne duas fotos do cliente. O hero atelier conta quando outra seção também mostra o negócio. |
+| `pagina-sem-foto` | erro | Toda página orgânica do tipo `page` tem pelo menos uma imagem. |
+| `home-paleta` | erro | A home aplica `accent` ou `secondary` em uma seção. |
+| `home-tons` | aviso | A home alterna pelo menos três tons. |
+| `imagem-proporcao` | aviso | A proporção da foto corresponde ao que o layout exibe, por `expectedRatio`. |
+| `layout-repetido` | aviso | Dois blocos iguais com o mesmo layout em sequência. |
+
+O gate v2 de `lintPage` deixou de parar em três layouts e duas apresentações:
+agora escala com o tamanho da página, até cinco e quatro. `expectedRatio`
+traduz a variante de layout na proporção real exibida, porque o recorte é
+`object-cover`: uma foto 4:3 num hero editorial perde um quarto da cena, que
+foi o defeito observado em produção.
+
+## Geração em etapas
+
+Um único turno fazia briefing, direção, imagens e quatro páginas em 300
+segundos, sem nunca olhar o resultado. `lib/taste/phases.ts` divide o trabalho
+em quatro requisições, cada uma com suas ferramentas, seu limite de passos e o
+contexto que ela precisa. O catálogo só entra na composição e na revisão.
+
+1. **Briefing e direção**: `read_reference`, `define_image_guide`, `set_design`.
+2. **Cenas**: `prepare_site_images`, com o plano de `lib/images/scene-plan.ts`.
+3. **Composição**: `build_site` e `repair_site`.
+4. **Revisão**: `review_pages` e as edições pontuais.
+
+A próxima etapa vem do estado persistido, não da conversa: `nextPhase` lê
+direção, fotos, páginas, erros e rodadas de revisão. Recarregar o painel ou
+interromper no meio não perde o progresso. A aprovação das fotos e a publicação
+continuam sendo do operador, depois da quarta etapa.
+
+`review_pages` devolve o que ficou pobre com página e bloco apontados. Com
+`EIXU_REVIEW_CAPTURE=1`, ela também abre o rascunho em 1440 e 390 com Chromium,
+mede overflow e imagem quebrada e entrega as capturas ao modelo como imagem.
+Sem a variável, a revisão é estrutural, com as mesmas medidas do pre-flight.
 
 ## Contrato visual v2
 
@@ -40,7 +83,7 @@ Essas verificações detectam repetição estrutural; não medem qualidade esté
 
 O pre-flight v2 exige decisões locais de layout e presentation em páginas comerciais; somente escolher motion não conta como decisão de composição. `build_site` valida páginas e projeto antes de gravar o lote em uma transação. Um erro não substitui páginas válidas. Edições incrementais podem produzir rascunho inválido, mas a publicação continua bloqueada.
 
-`lintSite` exige três páginas orgânicas com pelo menos 100 palavras de conteúdo, intenções e SEO distintos, etapas de inbound, links/âncoras válidos e alcance a partir da home. Também confere duas fotos geradas distintas e uma seção de cor na home. A contagem de palavras impede páginas vazias, mas não prova utilidade editorial. `lib/sites/publish.ts` é compartilhado pela API, `publish_page` e `publish_site`: valida o estado que ficará ao vivo e publica o lote atomicamente. Uma publicação pontual não conta rascunhos de outras páginas como conteúdo publicado.
+`lintSite` exige três páginas orgânicas com pelo menos 100 palavras de conteúdo, intenções e SEO distintos, etapas de inbound, links/âncoras válidos e alcance a partir da home. Também aplica o piso de composição descrito acima: duas fotos geradas distintas e uma seção protagonista na home, cor de marca em uma seção e imagem em toda página orgânica. A contagem de palavras impede páginas vazias, mas não prova utilidade editorial. `lib/sites/publish.ts` é compartilhado pela API, `publish_page` e `publish_site`: valida o estado que ficará ao vivo e publica o lote atomicamente. Uma publicação pontual não conta rascunhos de outras páginas como conteúdo publicado.
 
 A proteção de exclusão consulta referências em rascunhos, páginas publicadas e logo, inclusive URLs aninhadas nos itens. A crítica de imagem continua separada da aprovação do operador. Cenas geradas ilustram a proposta; não são evidência de obras, equipe ou instalações reais.
 
@@ -50,4 +93,12 @@ A mudança atua nos componentes compartilhados de `(sites)`, nos agentes de site
 
 A prévia local de comparação usa três clientes sintéticos, sem gravar no tenant. Ela comprovou que o mesmo catálogo forma silhuetas distintas em desktop e mobile, mas não substitui uma avaliação de geração do modelo. Essa avaliação exige briefing controlado, tenant descartável e registro de qualidade, chamadas, latência e tokens.
 
-No estado sintético usado em 10/09/2026, o prompt completo mediu 7.858 caracteres. A versão anterior media 8.285 e a primeira versão documentada, 10.988: redução de 5,2% e 28,5%, respectivamente. É tamanho de texto, não tokens faturados; o evento `[chat] usage` continua sendo a medida operacional.
+Medido em 10/09/2026 com tenant sintético, o prompt de edição livre tem 11.951
+caracteres, contra 12.536 antes da divisão por fases, mesmo com o catálogo
+maior. Por fase: briefing 3.859, cenas 2.758, composição 11.076 e revisão
+9.269. É tamanho de texto, não tokens faturados; o evento `[chat] usage`, agora
+com o campo `phase`, continua sendo a medida operacional.
+
+A régua de avaliação está versionada: `evals/cases/` traz os briefings,
+`docs/eval-rubric.md` a rubrica e `npm run eval:site` roda o fluxo real num
+tenant descartável, gravando o relatório em `outputs/evals/`.

@@ -180,13 +180,6 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
       })),
     ];
     const projectFindings = lintSite(prospective, images, 'draft');
-    if (projectFindings.length)
-      return {
-        ok: false,
-        error:
-          'Projeto incompleto. O lote está em memória; use repair_site para corrigir blocos/SEO/intenção. Para adicionar ou remover páginas, reenvie build_site. Nenhuma página foi gravada.',
-        findings: projectFindings,
-      };
     if (home && (await hasDuplicateComposition(tenant.id, home.blocks))) {
       throw new ToolError(
         'A silhueta da home repete outro cliente. Troque tipos, layouts ou ritmo de apresentação antes de salvar.',
@@ -224,6 +217,9 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
     return {
       ok: true,
       pages: report,
+      // Pendência de projeto não impede a gravação, mas impede a publicação.
+      // Corrija-a com edições pontuais antes de encerrar.
+      ...(projectFindings.length ? { pendencias: projectFindings } : {}),
       publicationPending: lintSite(prospective, images, 'publish'),
     };
   }

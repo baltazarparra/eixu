@@ -121,3 +121,66 @@ Após a correção, as homes automáticas de aquecimento (offset) e pedras (atel
 O HTML dos componentes reais, com props parseadas pelo schema e CSS emitido pelo build de produção, foi servido em fixture isolada. Foram medidas 35 combinações por viewport em 1440, 390 e 320 px: quatro variantes de navegação, três de rodapé, logos quadrados/largos, tamanho máximo e defaults legados. A altura solicitada de 50 px foi preservada, logos largos couberam no espaço disponível, o menu mobile abriu e não houve overflow nem erro de console. A fixture não foi adicionada às rotas do produto.
 
 Uma chamada real de `anthropic/claude-opus-4.5` recebeu “deixa o logo maior, 50px height”, com os schemas e o prompt do produto e executores substituídos por coletores em memória. Chamou apenas `get_page` e `update_block` com `logoHeight: 50` no cabeçalho; preservou as outras props e o rodapé. Consumiu 32.248 tokens de entrada e 186 de saída. Esse ensaio confirma a escolha da ferramenta, sem testar persistência real do chat nem publicar páginas de clientes. Artefatos locais ficam em `outputs/logo-height/`, ignorado pelo Git.
+
+## Piso de composição e geração em etapas, 10/09/2026
+
+Tipos, `npm run test:sites` com 36 casos, build Next.js de produção e formatação
+passaram. O lint global manteve os 20 erros preexistentes nos mesmos 13
+arquivos, sem diagnóstico novo no escopo alterado. O build servido em
+`127.0.0.1:3100` respondeu 200 no institucional, no login e nas páginas de
+cliente com `__tenant`, e 401 nas APIs administrativas sem sessão; o acesso
+direto a `/s/` sem reescrita continua 404.
+
+As regras novas foram aplicadas por leitura aos dois tenants reais, sem
+escrever nada. O contraste é o esperado e reproduz o diagnóstico manual:
+
+| Medida | Mecânica Sabiá | Porto Pedras |
+| --- | --- | --- |
+| Erros de composição | 3 | 0 |
+| Home: seções, fotos, tons | 5, 2, três tons | 6, 3, quatro tons |
+| Seção protagonista na home | nenhuma | `feature.explorer` |
+| Páginas orgânicas sem imagem | 2 | 0 |
+| Avisos de proporção | 2 | 6 |
+
+Os dois avisos do Sabiá são exatamente os defeitos observados no site
+publicado: foto 4:3 num hero editorial que exibe 16:9 e foto 4:5 numa narrativa
+editorial que exibe o mesmo 16:9. Os seis avisos do Porto Pedras mostram que
+nem a composição manual acertou o enquadramento por bloco; são avisos, não
+bloqueios.
+
+A captura da revisão foi exercitada com Chromium local contra o build de
+produção: quatro capturas em 10 segundos, 450 kB, sem overflow e sem imagem
+quebrada em 1440 e 390. Contra o site publicado do Porto Pedras, seis capturas
+em 15 segundos. A primeira versão da medição acusava imagens quebradas em
+`loading="lazy"` ainda decodificando; a checagem passou a exigir `complete` com
+`naturalWidth` zero.
+
+### O que não foi comprovado
+
+A avaliação de geração ficou incompleta. A fase de briefing rodou por inteiro
+no caso `mecanica-sabia`: 3 passos, 18.422 tokens de entrada, 2.458 de saída,
+50 segundos, produzindo guia de imagem com paleta, sujeitos e proibições, mais
+uma direção v2 com distância estrutural aceita.
+
+A fase de composição falhou duas vezes seguidas. Em cada tentativa o modelo
+gastou dez a doze chamadas de `describe_block` antes de montar, e depois entrou
+em ciclo: `build_site` recusava o lote inteiro por pendência de projeto,
+`repair_site` não conseguia resolver e o lote era reenviado. Resultado por
+tentativa: 12 passos, 283 e 308 segundos, 327.544 e 290.645 tokens de entrada.
+Nenhuma página foi gravada. A terceira tentativa parou com falta de créditos no
+AI Gateway.
+
+Duas correções foram feitas a partir dessa evidência. `describe_block` saiu da
+fase de composição, porque o catálogo daquela fase já traz as props. Pendência
+de projeto deixou de recusar a gravação: página com props inválidas continua
+recusando o lote inteiro, mas o lote válido é gravado e as pendências voltam no
+campo `pendencias`, para o agente resolver antes de encerrar. A publicação
+continua exigindo `lintSite` limpo, em ambos os caminhos.
+
+Essas duas correções não foram testadas com o modelo: a conta ficou sem
+créditos no Gateway durante a avaliação. Enquanto elas não rodarem, ficam sem
+comprovação a duração da fase de composição dentro dos 300 segundos da função,
+o custo por site gerado e a qualidade da saída automática pela rubrica de
+`docs/eval-rubric.md`. O tenant descartável `eval-sabia` ficou com a direção da
+primeira fase gravada e nenhuma página; `npm run eval:site -- mecanica-sabia`
+retoma dali.

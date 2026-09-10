@@ -33,6 +33,8 @@ O institucional e a tela de login abrem sem banco. Para usar o painel e os sites
 | `EIXU_MODEL`            | Modelo dos dois chats; fallback no código: `anthropic/claude-opus-4.5`.                          |
 | `EIXU_CRITIC_MODEL`     | Modelo da crítica visual; fallback em `EIXU_MODEL`, depois Opus 4.5.                             |
 | `BLOB_READ_WRITE_TOKEN` | Upload, geração e remoção de imagens no Vercel Blob.                                             |
+| `EIXU_REVIEW_CAPTURE`   | `1` liga a captura com Chromium na revisão do rascunho. Sem ela, a revisão é estrutural.         |
+| `EIXU_CHROME_PATH`      | Caminho do Chrome local para a captura em desenvolvimento.                                       |
 
 Crie o arquivo localmente, sem versionar credenciais. Se já tiver acesso ao projeto Vercel, `vercel link --project eixu` e `vercel env pull .env.local --environment=development` são uma alternativa; confira o destino de `DATABASE_URL` antes de qualquer escrita. O nome do ambiente Vercel não garante que o banco conectado seja de desenvolvimento.
 
@@ -71,7 +73,8 @@ Os três grupos de rotas têm layouts e CSS próprios. A publicação valida pá
 | `npx next start`                                     | Serve o build Next.js local já gerado.                                                                                  |
 | `npx next typegen && npx tsc --noEmit`               | Gera tipos das rotas e verifica TypeScript.                                                                             |
 | `npm run lint`                                       | Analisa código com oxlint; não executa o pre-flight dos sites.                                                          |
-| `npm run test:sites`                                 | Testa o contrato de páginas, imagens, aprovação e links sem banco ou chamadas pagas.                                    |
+| `npm run test:sites`                                 | Testa o contrato de páginas, imagens, aprovação e links sem banco ou chamadas pagas.
+| `npm run eval:site -- <caso>`                        | Roda a geração real num tenant descartável e mede o resultado pela rubrica.                                    |
 | `npm run format -- --check README.md AGENTS.md docs` | Confere a formatação da documentação sem reescrever arquivos.                                                           |
 | `npm run db:migrate`                                 | Aplica statements idempotentes de `db/schema.sql`; escreve no banco.                                                    |
 | `npm run db:seed-demo`                               | Sobrescreve e publica home/obrigado do tenant `vertice` já existente; altera marca e dials. Use só em demo descartável. |
