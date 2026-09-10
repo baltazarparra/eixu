@@ -36,22 +36,58 @@ export type Reference = {
 };
 
 const ENTITIES: Record<string, string> = {
-  '&amp;': '&',
-  '&lt;': '<',
-  '&gt;': '>',
-  '&quot;': '"',
-  '&#39;': "'",
-  '&apos;': "'",
-  '&nbsp;': ' ',
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  nbsp: ' ',
+  aacute: 'á',
+  agrave: 'à',
+  acirc: 'â',
+  atilde: 'ã',
+  auml: 'ä',
+  eacute: 'é',
+  egrave: 'è',
+  ecirc: 'ê',
+  euml: 'ë',
+  iacute: 'í',
+  icirc: 'î',
+  oacute: 'ó',
+  ocirc: 'ô',
+  otilde: 'õ',
+  ouml: 'ö',
+  uacute: 'ú',
+  ucirc: 'û',
+  uuml: 'ü',
+  ccedil: 'ç',
+  ntilde: 'ñ',
+  ordf: 'ª',
+  ordm: 'º',
+  deg: '°',
+  hellip: '…',
+  mdash: '—',
+  ndash: '–',
+  rsquo: '’',
+  lsquo: '‘',
+  ldquo: '“',
+  rdquo: '”',
 };
 
 function decode(text: string): string {
   return text
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
-    .replace(
-      /&[a-z#0-9]+;/gi,
-      (entity) => ENTITIES[entity.toLowerCase()] ?? ' ',
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) =>
+      String.fromCodePoint(Number.parseInt(hex, 16)),
     )
+    .replace(/&#(\d+);/g, (_, code: string) =>
+      String.fromCodePoint(Number(code)),
+    )
+    .replace(/&([a-z]+);/gi, (entity, name: string) => {
+      const value = ENTITIES[name.toLowerCase()];
+      if (!value) return ' ';
+      // Nomes em maiúscula representam a letra maiúscula: &Ccedil; é Ç.
+      return /^[A-Z]/.test(name) ? value.toUpperCase() : value;
+    })
     .replace(/\s+/g, ' ')
     .trim();
 }

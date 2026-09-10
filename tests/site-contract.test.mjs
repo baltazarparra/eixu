@@ -532,7 +532,8 @@ await test('proporção incoerente com o layout vira aviso com o bloco apontado'
   );
   assert.ok(
     atelier.some(
-      (f) => f.rule === 'imagem-proporcao' && f.blockType === 'feature.explorer',
+      (f) =>
+        f.rule === 'imagem-proporcao' && f.blockType === 'feature.explorer',
     ),
   );
 });
@@ -604,7 +605,14 @@ await test('gate de composição v2 acompanha o tamanho da página', () => {
     seo: { title: 'Página' },
     blocks: [
       ...Array.from({ length: count }, (_, i) => section(i)),
-      { id: 'cta', type: 'cta.band', props: { title: 'Fale com a equipe', cta: { label: 'Falar', href: '/#contato' } } },
+      {
+        id: 'cta',
+        type: 'cta.band',
+        props: {
+          title: 'Fale com a equipe',
+          cta: { label: 'Falar', href: '/#contato' },
+        },
+      },
     ],
   });
   const required = (count, rule) =>
@@ -614,4 +622,133 @@ await test('gate de composição v2 acompanha o tamanho da página', () => {
   assert.ok(required(9, 'composicao-generica').includes('pelo menos 5'));
   assert.ok(required(9, 'ritmo-generico').includes('pelo menos 4'));
   assert.ok(required(3, 'composicao-generica').includes('pelo menos 2'));
+});
+
+const { extractReference, readReference } = await j.import(
+  '../lib/ai/reference.ts',
+);
+const { intakeSchema, intakeSummary, lines } = await j.import(
+  '../lib/tenant-intake.ts',
+);
+const { scenePlan } = await j.import('../lib/images/scene-plan.ts');
+const { nextPhase, PHASE_TOOLS } = await j.import('../lib/taste/phases.ts');
+
+await test('referência em rede social com login volta inacessível sem requisição', async () => {
+  let called = 0;
+  const fetchSpy = async () => {
+    called += 1;
+    return new Response('<html></html>');
+  };
+  for (const url of [
+    'https://www.facebook.com/oficina/?locale=pt_BR',
+    'https://instagram.com/oficina',
+  ]) {
+    const reference = await readReference(url, { fetch: fetchSpy });
+    assert.equal(reference.status, 'inacessivel');
+    assert.ok(reference.motivo.includes('login'));
+  }
+  assert.equal(called, 0);
+});
+
+await test('referência para rede interna ou protocolo estranho é recusada', async () => {
+  let called = 0;
+  const fetchSpy = async () => {
+    called += 1;
+    return new Response('<html></html>');
+  };
+  const local = await readReference('http://intranet.local/', {
+    fetch: fetchSpy,
+    lookup: async () => ({ address: '10.0.0.5', family: 4 }),
+  });
+  assert.equal(local.status, 'inacessivel');
+  assert.equal(local.motivo, 'Endereço de rede interna');
+  const scheme = await readReference('file:///etc/passwd', { fetch: fetchSpy });
+  assert.equal(scheme.status, 'inacessivel');
+  assert.equal(called, 0);
+});
+
+await test('extração de referência devolve título, texto e contatos reais', () => {
+  const reference = extractReference(
+    'https://oficina.test/',
+    `<html><head><title>Oficina Sabi&aacute;</title>
+     <meta name="description" content="Manuten&ccedil;&atilde;o e diagn&oacute;stico"></head>
+     <body><script>var x = "ignorar"</script>
+     <h1>Mec&acirc;nica de confian&ccedil;a</h1>
+     <p>Atendemos carros nacionais e importados com diagnóstico eletrônico e revisão programada.</p>
+     <p>curto</p>
+     <a href="https://wa.me/5511999998888">WhatsApp</a>
+     <span>(11) 4002-8922</span></body></html>`,
+  );
+  assert.equal(reference.status, 'ok');
+  assert.equal(reference.titulo, 'Oficina Sabiá');
+  assert.equal(reference.descricao, 'Manutenção e diagnóstico');
+  assert.ok(reference.texto.includes('Mecânica de confiança'));
+  assert.ok(reference.texto.includes('diagnóstico eletrônico'));
+  assert.equal(reference.texto.includes('ignorar'), false);
+  assert.equal(reference.texto.includes('curto'), false);
+  assert.deepEqual(reference.whatsapp, ['wa.me/5511999998888']);
+  assert.ok(reference.telefones.includes('(11) 4002-8922'));
+});
+
+await test('intake do operador vira resumo legível e ignora linha vazia', () => {
+  const intake = intakeSchema.parse({
+    segment: 'oficina mecânica',
+    audience: 'motoristas de São Paulo',
+    evidence: lines('Diagnóstico eletrônico\n\n  \nRevisão programada'),
+    references: [],
+  });
+  assert.deepEqual(intake.evidence, [
+    'Diagnóstico eletrônico',
+    'Revisão programada',
+  ]);
+  const summary = intakeSummary(intake);
+  assert.ok(summary.includes('Segmento: oficina mecânica'));
+  assert.ok(summary.includes('Diagnóstico eletrônico; Revisão programada'));
+  assert.equal(intakeSummary({}), '');
+});
+
+await test('plano de cenas cobre abertura, protagonista e páginas internas', () => {
+  const atelier = scenePlan({ heroComposition: 'atelier' }, 3);
+  assert.deepEqual(
+    atelier.map((scene) => scene.role),
+    [
+      'hero',
+      'hero-detail',
+      'protagonista',
+      'protagonista',
+      'subpagina',
+      'subpagina',
+    ],
+  );
+  assert.equal(atelier[0].ratio, '4:5');
+  assert.equal(atelier[2].targetBlock, 'feature.explorer');
+  assert.equal(atelier[2].ratio, '4:3');
+  const editorial = scenePlan({ heroComposition: 'editorial' }, 3);
+  assert.equal(editorial[0].targetBlock, 'hero.editorial');
+  assert.equal(editorial[0].ratio, '16:9');
+  assert.equal(
+    editorial.some((scene) => scene.role === 'hero-detail'),
+    false,
+  );
+});
+
+await test('a próxima etapa vem do estado persistido, não da conversa', () => {
+  const base = {
+    hasDesign: true,
+    generatedPhotos: 6,
+    targetScenes: 6,
+    organicPages: 3,
+    blockingErrors: 0,
+    reviewRounds: 1,
+  };
+  assert.equal(nextPhase({ ...base, hasDesign: false }), 'briefing');
+  assert.equal(nextPhase({ ...base, generatedPhotos: 1 }), 'cenas');
+  assert.equal(nextPhase({ ...base, organicPages: 1 }), 'composicao');
+  assert.equal(nextPhase({ ...base, reviewRounds: 0 }), 'revisao');
+  assert.equal(nextPhase({ ...base, blockingErrors: 2 }), 'revisao');
+  assert.equal(nextPhase(base), 'pronto');
+  // A composição não fica disponível antes da direção existir.
+  assert.equal(PHASE_TOOLS.briefing.includes('build_site'), false);
+  assert.equal(PHASE_TOOLS.composicao.includes('publish_site'), false);
+  assert.equal(PHASE_TOOLS.revisao.includes('review_pages'), true);
 });

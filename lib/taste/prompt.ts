@@ -1,4 +1,5 @@
 import { catalogForPrompt } from '../blocks/registry';
+import { intakeSummary } from '../tenant-intake';
 import { PHASE_BRIEF, type Phase } from './phases';
 import type { Tenant } from '../types';
 
@@ -23,7 +24,7 @@ const COMPOSITION = `## Briefing de composição
 - Não repita o mesmo tipo com o mesmo layout em seções seguidas.`;
 
 const FACTS = `## Base factual
-O briefing e as referências lidas delimitam a oferta. Uma categoria ampla não confirma seus subtipos: "aquecedores residenciais" não prova atendimento a gás, solar e elétrico; "pedras" não prova instalação. Não transforme uma explicação educativa em serviço da empresa, nem prometa visita, orçamento gratuito ou etapas não informadas. Respeite essa fronteira também no SEO, formulários e FAQs.
+O intake do operador e as referências lidas delimitam a oferta. Copie para brief.evidence só o que está confirmado ali. Uma categoria ampla não confirma seus subtipos: "aquecedores residenciais" não prova atendimento a gás, solar e elétrico; "pedras" não prova instalação. Não transforme uma explicação educativa em serviço da empresa, nem prometa visita, orçamento gratuito ou etapas não informadas. Respeite essa fronteira também no SEO, formulários e FAQs.
 Fonte inacessível não vira conteúdo: declare a lacuna em brief.gaps e trabalhe com o que foi confirmado. Não preencha evidence com deduções suas.`;
 
 const DIRECTION = `## Direção de design
@@ -64,6 +65,15 @@ export function systemPrompt(
   context: PromptContext = {},
 ): string {
   const { phase, scenePlan, sources, review } = context;
+  const intake = intakeSummary(tenant.brief.intake);
+  // Fontes e progresso já aparecem em seções próprias; repetir o JSON inteiro
+  // só gastaria contexto.
+  const {
+    sources: _sources,
+    generation: _generation,
+    intake: _intake,
+    ...brief
+  } = tenant.brief as Record<string, unknown>;
   // Contexto podado por fase: catálogo só onde há blocos para escrever.
   const wantsCatalog = !phase || phase === 'composicao' || phase === 'revisao';
   const wantsDirection =
@@ -81,12 +91,13 @@ export function systemPrompt(
     scenePlan ? `## Plano de cenas\n${scenePlan}` : '',
     sources ? `## Referências lidas\n${sources}` : '',
     review ? `## Apontamentos da revisão\n${review}` : '',
+    intake ? `## Intake do operador\n${intake}` : '',
     `## Estado atual
 Cliente: ${tenant.name}; host: ${tenant.slug}.eixu.com.br
 WhatsApp: ${tenant.whatsapp ?? 'não configurado'}
 Marca: ${JSON.stringify(tenant.brand)}
 Dials: ${JSON.stringify(tenant.dials)}
-Briefing persistido: ${JSON.stringify(tenant.brief)}
+Briefing persistido: ${JSON.stringify(brief)}
 Direção de imagens: ${JSON.stringify(tenant.imageGuide)}
 Biblioteca de imagens (status explícito):
 ${imagesSummary || '(nenhuma)'}
