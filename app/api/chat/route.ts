@@ -63,7 +63,8 @@ export async function POST(request: Request) {
       .join(' ');
     if (text) {
       await db()`
-        insert into chat_messages (tenant_id, role, content) values (${tenant.id}, 'user', ${text})
+        insert into chat_messages (tenant_id, role, content, channel)
+        values (${tenant.id}, 'user', ${text}, 'site')
       `;
     }
   }
@@ -80,7 +81,8 @@ export async function POST(request: Request) {
     onEnd: async ({ text }) => {
       if (text) {
         await db()`
-          insert into chat_messages (tenant_id, role, content) values (${tenant.id}, 'assistant', ${text})
+          insert into chat_messages (tenant_id, role, content, channel)
+          values (${tenant.id}, 'assistant', ${text}, 'site')
         `;
       }
     },

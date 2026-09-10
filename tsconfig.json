@@ -15,8 +15,7 @@
     "moduleResolution": "bundler",
     "types": [
       "node",
-      "@cloudflare/workers-types",
-      "vinext/types"
+      "@cloudflare/workers-types"
     ],
     "resolveJsonModule": true,
     "isolatedModules": true,

@@ -20,6 +20,60 @@ export type Brand = {
   logoUrl?: string;
 };
 
+/**
+ * Direção de imagem do cliente. Definida uma vez pelo agente a partir do
+ * briefing e da marca; todo prompt de geração é composto a partir dela, que é
+ * o que mantém as imagens do site coerentes entre si.
+ */
+export type ImageGuide = {
+  estilo?: 'fotografia' | 'ilustracao' | '3d';
+  luz?: string;
+  paleta?: string[];
+  ambientes?: string[];
+  sujeitos?: string[];
+  /** O que nunca pode aparecer. Vira negativa no prompt e regra do crítico. */
+  nunca?: string[];
+  notas?: string;
+  definedAt?: string;
+};
+
+export type ImageStatus = 'candidata' | 'aprovada' | 'rejeitada';
+
+export type Critique = {
+  fidelidade?: number;
+  coerencia_guia?: number;
+  realismo?: number;
+  sem_alucinacao?: number;
+  autenticidade?: number;
+  adequacao_bloco?: number;
+  nota?: number;
+  aprovado?: boolean;
+  tem_texto?: boolean;
+  pontos_fortes?: string[];
+  problemas?: string[];
+  alt_sugerido?: string;
+  descricao?: string;
+  erro?: string;
+};
+
+export type TenantImage = {
+  id: string;
+  seq: number;
+  batchId: string;
+  requestText: string;
+  targetBlock: string | null;
+  ratio: string;
+  model: string;
+  url: string;
+  blobPath: string;
+  status: ImageStatus;
+  score: number | null;
+  critique: Critique;
+  alt: string | null;
+  description: string | null;
+  createdAt: string;
+};
+
 export type Tenant = {
   id: string;
   slug: string;
@@ -28,6 +82,7 @@ export type Tenant = {
   brief: Record<string, unknown>;
   brand: Brand;
   dials: Dials;
+  imageGuide: ImageGuide;
   whatsapp: string | null;
   contactEmail: string | null;
   ga4Id: string | null;

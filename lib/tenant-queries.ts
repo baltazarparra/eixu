@@ -20,6 +20,7 @@ function toTenant(row: Row): Tenant {
     brief: (row.brief ?? {}) as Record<string, unknown>,
     brand: (row.brand ?? {}) as Tenant['brand'],
     dials: (row.dials ?? { variance: 7, motion: 5, density: 4 }) as Tenant['dials'],
+    imageGuide: (row.image_guide ?? {}) as Tenant['imageGuide'],
     whatsapp: (row.whatsapp as string) ?? null,
     contactEmail: (row.contact_email as string) ?? null,
     ga4Id: (row.ga4_id as string) ?? null,

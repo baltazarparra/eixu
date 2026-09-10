@@ -16,7 +16,7 @@ export default async function TenantWorkspace({ params }: { params: Promise<{ te
   const pages = await listPages(tenant.id);
   const history = (await db()`
     select role, content from chat_messages
-    where tenant_id = ${tenant.id} order by created_at asc limit 60
+    where tenant_id = ${tenant.id} and channel = 'site' order by created_at asc limit 60
   `) as { role: string; content: string }[];
 
   const pageStates: PageState[] = pages.map((page) => {

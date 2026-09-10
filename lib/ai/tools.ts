@@ -2,6 +2,7 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { BLOCK_TYPES, blockSchemas, isBlockType } from '@/lib/blocks/registry';
+import { listImages } from '@/lib/images/queries';
 import { formatFindings, lintPage } from '@/lib/taste/lint';
 import { getPage, listPages } from '@/lib/tenant-queries';
 import type { BlockInstance, Tenant } from '@/lib/types';
@@ -22,7 +23,7 @@ function toBlocks(input: { type: string; props: Record<string, unknown> }[]): Bl
   return input.map((block) => ({ id: newId(), type: block.type, props: block.props }));
 }
 
-class ToolError extends Error {}
+export class ToolError extends Error {}
 
 async function requirePage(tenantId: string, slug: string) {
   const clean = slug.replace(/^\/+|\/+$/g, '');
@@ -51,7 +52,7 @@ function findBlock(blocks: BlockInstance[], selector: string): BlockInstance {
 }
 
 /** Envolve o execute para devolver erro como resultado, sem derrubar o passo do agente. */
-function safe<I, O>(run: (input: I) => Promise<O>) {
+export function safe<I, O>(run: (input: I) => Promise<O>) {
   return async (input: I): Promise<O | { error: string }> => {
     try {
       return await run(input);
@@ -65,6 +66,25 @@ function safe<I, O>(run: (input: I) => Promise<O>) {
 
 export function buildTools(tenant: Tenant) {
   return {
+    list_images: tool({
+      description:
+        'Lista as imagens aprovadas do cliente. Use quando o operador falar "imagem 3", "a foto do forno" ou pedir para colocar uma imagem da biblioteca num bloco.',
+      inputSchema: z.object({}),
+      execute: safe(async () => {
+        const images = await listImages(tenant.id, 'aprovada');
+        return {
+          imagens: images.map((image) => ({
+            numero: `#${image.seq}`,
+            url: image.url,
+            alt: image.alt,
+            ratio: image.ratio,
+            bloco_sugerido: image.targetBlock,
+            descricao: image.description ?? image.requestText,
+          })),
+        };
+      }),
+    }),
+
     list_state: tool({
       description: 'Lê o estado atual do site: páginas, tipos, quantidade de blocos e se estão publicadas.',
       inputSchema: z.object({}),

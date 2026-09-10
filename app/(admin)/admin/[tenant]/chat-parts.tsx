@@ -1,0 +1,208 @@
+'use client';
+
+import type { UIMessage } from 'ai';
+
+const str = (value: unknown): string => (typeof value === 'string' ? value : '');
+const num = (value: unknown): number => (typeof value === 'number' ? value : 0);
+
+/**
+ * Texto legível para cada ferramenta. Cobre o agente de sites e o de imagens,
+ * porque os dois workspaces renderizam o progresso do mesmo jeito.
+ */
+export function describeTool(name: string, input: unknown, output: unknown, state: string): string {
+  const inp = (input ?? {}) as Record<string, unknown>;
+  const out = (output ?? {}) as Record<string, unknown>;
+  const page = typeof inp.page === 'string' ? `/${inp.page}` : '';
+  const slug = str(inp.slug);
+  const erros = num(out.erros);
+  const pending = state !== 'output-available';
+
+  switch (name) {
+    // Agente de sites
+    case 'build_site': {
+      const pages = Array.isArray(inp.pages) ? inp.pages.length : 0;
+      if (pending) return `Montando o site${pages ? `, ${pages} páginas` : ''}`;
+      const report = (out.pages ?? []) as { page: string; blocks: number; erros: number }[];
+      const errors = report.reduce((sum, item) => sum + item.erros, 0);
+      return `Site montado: ${report.map((item) => `${item.page} (${item.blocks} blocos)`).join(', ')}${
+        errors ? `. ${errors} apontamentos para corrigir` : '. Pre-flight aprovado'
+      }`;
+    }
+    case 'set_blocks':
+      return pending ? `Refazendo ${page}` : `Refez ${page}${erros ? `, ${erros} apontamentos` : ', pre-flight aprovado'}`;
+    case 'update_block':
+      return pending ? `Ajustando um bloco em ${page}` : `Ajustou um bloco em ${page}`;
+    case 'insert_block': {
+      const type = (inp.block as { type?: string } | undefined)?.type ?? 'bloco';
+      return pending ? `Inserindo ${type} em ${page}` : `Inseriu ${type} em ${page}`;
+    }
+    case 'remove_block':
+      return pending ? `Removendo um bloco de ${page}` : `Removeu um bloco de ${page}`;
+    case 'move_block':
+      return pending ? `Reordenando ${page}` : `Reordenou ${page}`;
+    case 'create_page':
+      return pending ? `Criando /${slug}` : `Criou /${slug}`;
+    case 'delete_page':
+      return pending ? `Apagando ${page}` : `Apagou ${page}`;
+    case 'set_brand':
+      return pending ? 'Definindo marca e dials' : 'Definiu marca e dials';
+    case 'set_seo':
+      return pending ? `Ajustando SEO de ${page}` : `Ajustou SEO de ${page}`;
+    case 'lint_page':
+      return pending
+        ? `Rodando pre-flight em ${page}`
+        : out.aprovado
+          ? `Pre-flight aprovado em ${page}`
+          : `Pre-flight com apontamentos em ${page}`;
+    case 'publish_page':
+      return pending ? `Publicando ${page}` : out.publicado ? `Publicou ${page}` : `Publicação bloqueada em ${page}`;
+    case 'list_state':
+      return pending ? 'Lendo o site' : 'Leu o site';
+    case 'get_page':
+      return pending ? `Lendo ${page}` : `Leu ${page}`;
+    case 'describe_block':
+      return pending ? 'Consultando o catálogo' : 'Consultou o catálogo';
+
+    // Agente de imagens
+    case 'define_guide':
+      return pending ? 'Definindo o guia de imagem' : 'Definiu o guia de imagem';
+    case 'generate_candidates': {
+      const ratio = str(inp.ratio) || str(inp.targetBlock);
+      if (pending) return `Gerando candidatas${ratio ? ` para ${ratio}` : ''} e avaliando cada uma`;
+      const list = (out.candidatas ?? []) as { numero: string; nota: number | null }[];
+      if (!list.length) return 'Nenhuma candidata gerada';
+      const best = list[0];
+      return `${list.length} candidatas avaliadas, melhor ${best.numero} com nota ${best.nota ?? 'sem'}`;
+    }
+    case 'approve_image':
+      return pending ? 'Aprovando a imagem' : `Aprovou ${str(out.numero) || 'a imagem'}`;
+    case 'reject_image':
+      return pending ? 'Rejeitando a imagem' : `Rejeitou ${str(out.numero) || 'a imagem'}`;
+    case 'list_images':
+      return pending ? 'Lendo a biblioteca de imagens' : 'Leu a biblioteca de imagens';
+    case 'delete_image':
+      return pending ? 'Apagando a imagem' : `Apagou ${str(out.apagada) || 'a imagem'}`;
+
+    default:
+      return name;
+  }
+}
+
+type ToolPart = { type: string; state?: string; input?: unknown; output?: unknown; errorText?: string };
+
+/** Junta chamadas repetidas de consulta numa linha só, para a lista não virar ruído. */
+const REPEATABLE = new Set(['describe_block', 'list_state', 'get_page', 'list_images']);
+
+function collapse(parts: ToolPart[]) {
+  const out: { label: string; done: boolean; failed: boolean; count: number }[] = [];
+  for (const raw of parts) {
+    const name = raw.type.replace('tool-', '');
+    const done = raw.state === 'output-available';
+    const failed = raw.state === 'output-error';
+    const label = failed ? `Falhou: ${raw.errorText ?? name}` : describeTool(name, raw.input, raw.output, raw.state ?? '');
+    const last = out[out.length - 1];
+    if (last && REPEATABLE.has(name) && last.label.startsWith(label.replace(/ \(\d+\)$/, ''))) {
+      last.count += 1;
+      last.done = last.done && done;
+      last.label = `${label} (${last.count})`;
+      continue;
+    }
+    out.push({ label, done, failed, count: 1 });
+  }
+  return out;
+}
+
+export function Message({ message }: { message: UIMessage }) {
+  if (message.role === 'user') {
+    const text = message.parts
+      .filter((part) => part.type === 'text')
+      .map((part) => (part as { text: string }).text)
+      .join('');
+    const images = message.parts.filter((part) => part.type === 'file') as { url: string; filename?: string }[];
+    return (
+      <Bubble from="user">
+        {images.length ? (
+          <span className="mb-2 flex flex-wrap gap-2">
+            {images.map((image) => (
+              // oxlint-disable-next-line next/no-img-element
+              <img
+                key={image.url}
+                src={image.url}
+                alt={image.filename ?? 'imagem anexada'}
+                className="h-16 w-16 rounded-md object-cover"
+              />
+            ))}
+          </span>
+        ) : null}
+        {text}
+      </Bubble>
+    );
+  }
+
+  // Renderiza na ordem em que o agente trabalhou: pensa, age, pensa, age, resume.
+  const groups: ({ kind: 'text'; text: string } | { kind: 'tools'; parts: ToolPart[] })[] = [];
+  for (const part of message.parts) {
+    if (part.type === 'text') {
+      const text = (part as { text: string }).text;
+      if (!text.trim()) continue;
+      const last = groups[groups.length - 1];
+      if (last?.kind === 'text') last.text += text;
+      else groups.push({ kind: 'text', text });
+    } else if (part.type.startsWith('tool-')) {
+      const last = groups[groups.length - 1];
+      if (last?.kind === 'tools') last.parts.push(part as ToolPart);
+      else groups.push({ kind: 'tools', parts: [part as ToolPart] });
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {groups.map((group, index) =>
+        group.kind === 'text' ? (
+          <Bubble key={index} from="assistant">
+            {group.text.trim()}
+          </Bubble>
+        ) : (
+          <ol key={index} className="flex flex-col gap-1 rounded-md border bg-[var(--color-surface)] px-3 py-2">
+            {collapse(group.parts).map((item, itemIndex) => (
+              <li key={itemIndex} className="flex items-start gap-2 text-[0.75rem]">
+                <span
+                  className={`mt-1.5 size-1.5 shrink-0 rounded-full ${
+                    item.failed
+                      ? 'bg-[var(--color-err)]'
+                      : item.done
+                        ? 'bg-[var(--color-ok)]'
+                        : 'animate-pulse bg-[var(--color-warn)]'
+                  }`}
+                />
+                <span className={item.done || item.failed ? 'text-[var(--color-muted)]' : ''}>{item.label}</span>
+              </li>
+            ))}
+          </ol>
+        ),
+      )}
+    </div>
+  );
+}
+
+export function Bubble({ from, children }: { from: string; children: React.ReactNode }) {
+  const isUser = from === 'user';
+  return (
+    <div className={`flex flex-col gap-1 ${isUser ? 'items-end' : 'items-start'}`}>
+      <div
+        className={`max-w-[94%] whitespace-pre-wrap rounded-lg px-3.5 py-2.5 text-sm leading-relaxed ${
+          isUser ? 'bg-[var(--color-surface-2)]' : 'border bg-[var(--color-surface)]'
+        }`}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** Erro do gateway em linguagem de gente. */
+export function chatErrorMessage(message: string): string {
+  return /rate.?limit|429|free tier|not have access/i.test(message)
+    ? 'O AI Gateway recusou a chamada. Verifique créditos e o modelo em EIXU_MODEL.'
+    : message;
+}

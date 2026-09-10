@@ -82,7 +82,39 @@ create table if not exists chat_messages (
   created_at timestamptz not null default now()
 );
 
+-- Imagens geradas pelo módulo de imagens. Ficam no Vercel Blob; aqui vive o
+-- metadado, a crítica e o estado de aprovação.
+create table if not exists images (
+  id             uuid primary key default gen_random_uuid(),
+  tenant_id      uuid not null references tenants(id) on delete cascade,
+  seq            int not null,
+  batch_id       uuid not null,
+  request_text   text not null,
+  target_block   text,
+  ratio          text not null,
+  width          int,
+  height         int,
+  model          text not null,
+  prompt_final   text not null,
+  url            text not null,
+  blob_path      text not null,
+  status         text not null default 'candidata',
+  score          numeric(3,1),
+  critique       jsonb not null default '{}'::jsonb,
+  alt            text,
+  description    text,
+  reference_urls jsonb not null default '[]'::jsonb,
+  created_at     timestamptz not null default now(),
+  unique (tenant_id, seq)
+);
+
+-- Colunas acrescentadas depois da primeira versão do schema.
+alter table tenants       add column if not exists image_guide jsonb not null default '{}'::jsonb;
+alter table chat_messages add column if not exists channel text not null default 'site';
+
 create index if not exists pages_tenant_idx        on pages (tenant_id);
+create index if not exists images_tenant_time_idx  on images (tenant_id, created_at desc);
+create index if not exists images_batch_idx        on images (batch_id);
 create index if not exists leads_tenant_time_idx   on leads (tenant_id, created_at desc);
 create index if not exists events_tenant_time_idx  on events (tenant_id, created_at desc);
 create index if not exists events_tenant_type_idx  on events (tenant_id, type);
