@@ -53,6 +53,22 @@ function mix(hex: string, target: string, amount: number): string {
 }
 
 /**
+ * Cor de texto secundário: começa na mistura desejada com o fundo e volta em
+ * direção à tinta até alcançar o contraste mínimo.
+ *
+ * O texto de apoio é a maior parte do corpo da página. Uma mistura fixa passa
+ * com uma marca e reprova com a seguinte, então a proporção precisa sair de
+ * medição, não de um número escolhido a olho.
+ */
+export function readableMuted(ink: string, paper: string, start = 0.62): string {
+  for (let amount = start; amount <= 1.0001; amount += 0.04) {
+    const candidate = mix(paper, ink, Math.min(amount, 1));
+    if (contrastRatio(candidate, paper) >= AA_NORMAL) return candidate;
+  }
+  return ink;
+}
+
+/**
  * Devolve a cor de fundo mais próxima da escolhida que passe no AA com alguma
  * cor de texto legível, escurecendo em passos pequenos.
  *

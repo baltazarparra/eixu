@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { RenderBlocks } from '@/lib/blocks/render';
-import { accessibleAccent } from '@/lib/blocks/contrast';
+import { accessibleAccent, readableMuted } from '@/lib/blocks/contrast';
 import { getPage, getTenantBySlug, listPublishedPosts } from '@/lib/tenant-queries';
 import { attributionScript } from '@/lib/tracking';
 import type { Brand, Page, Tenant } from '@/lib/types';
@@ -38,7 +38,7 @@ function themeVars(brand: Brand): Record<string, string> {
     '--paper': paper,
     '--accent': accent,
     '--accent-ink': accentInk,
-    '--muted': `color-mix(in oklab, ${ink} 62%, ${paper})`,
+    '--muted': readableMuted(ink, paper),
     '--line': `color-mix(in oklab, ${ink} 14%, ${paper})`,
     '--radius': RADIUS[brand.radius ?? 'md'] ?? '0.5rem',
     '--font-site': font,
