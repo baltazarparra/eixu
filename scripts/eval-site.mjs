@@ -45,7 +45,10 @@ if (!caseName) {
 const fresh = flags.includes('--fresh');
 const generateScenes = flags.includes('--generate');
 const spec = JSON.parse(
-  await readFile(new URL(`../evals/cases/${caseName}.json`, import.meta.url), 'utf8'),
+  await readFile(
+    new URL(`../evals/cases/${caseName}.json`, import.meta.url),
+    'utf8',
+  ),
 );
 if (!spec.slug.startsWith('eval-')) {
   console.error('O slug do caso precisa começar com "eval-".');
@@ -64,7 +67,11 @@ async function prepareTenant() {
       whatsapp = excluded.whatsapp, brief = excluded.brief, updated_at = now()
   `;
   const tenant = await getTenantBySlug(spec.slug);
-  if (!generateScenes && typeof spec.photos === 'string' && spec.photos.startsWith('reuse:')) {
+  if (
+    !generateScenes &&
+    typeof spec.photos === 'string' &&
+    spec.photos.startsWith('reuse:')
+  ) {
     const source = await getTenantBySlug(spec.photos.slice('reuse:'.length));
     if (!source) throw new Error(`Tenant de fotos ausente: ${spec.photos}`);
     const existing = await listImages(tenant.id);
@@ -83,7 +90,9 @@ async function prepareTenant() {
                   ${photo.url}, ${photo.blobPath}, 'aprovada', ${photo.alt}, ${photo.description}, 'foto')
         `;
       }
-      console.log(`[eval] biblioteca semeada com ${photos.length} fotos de ${spec.photos}`);
+      console.log(
+        `[eval] biblioteca semeada com ${photos.length} fotos de ${spec.photos}`,
+      );
     }
   }
   return getTenantBySlug(spec.slug);
@@ -92,7 +101,10 @@ async function prepareTenant() {
 async function runPhase(tenant, phase, images) {
   const pages = await listPages(tenant.id);
   const summary = pages
-    .map((page) => `- /${page.slug} (${page.type}, ${page.blocks.length} blocos): ${page.title}`)
+    .map(
+      (page) =>
+        `- /${page.slug} (${page.type}, ${page.blocks.length} blocos): ${page.title}`,
+    )
     .join('\n');
   const imagesSummary = images
     .filter((image) => image.kind === 'foto' && image.status !== 'rejeitada')
@@ -105,7 +117,10 @@ async function runPhase(tenant, phase, images) {
   const context = { phase };
   if (phase === 'cenas')
     context.scenePlan = scenePlanText(
-      scenePlan(isDesignProfile(tenant.brand.design) ? tenant.brand.design : undefined, 3),
+      scenePlan(
+        isDesignProfile(tenant.brand.design) ? tenant.brand.design : undefined,
+        3,
+      ),
     );
   const tools = buildTools(tenant, { origin: process.env.EIXU_EVAL_ORIGIN });
   const started = Date.now();
@@ -117,14 +132,18 @@ async function runPhase(tenant, phase, images) {
     activeTools: PHASE_TOOLS[phase].filter((name) => name in tools),
     stopWhen: isStepCount(PHASE_STEPS[phase]),
     maxRetries: 0,
-    abortSignal: AbortSignal.timeout(Number(process.env.EIXU_EVAL_TIMEOUT ?? 280_000)),
+    abortSignal: AbortSignal.timeout(
+      Number(process.env.EIXU_EVAL_TIMEOUT ?? 280_000),
+    ),
   });
   return {
     phase,
     elapsedMs: Date.now() - started,
     usage: result.usage,
     steps: result.steps.length,
-    calls: result.steps.flatMap((step) => (step.toolCalls ?? []).map((call) => call.toolName)),
+    calls: result.steps.flatMap((step) =>
+      (step.toolCalls ?? []).map((call) => call.toolName),
+    ),
     // Guarda o retorno inteiro das recusas: a mensagem truncada não permitia
     // descobrir qual regra bloqueou o lote.
     rejected: result.steps.flatMap((step) =>
@@ -143,9 +162,17 @@ async function runPhase(tenant, phase, images) {
 
 const started = Date.now();
 let tenant = await prepareTenant();
-const report = { case: caseName, slug: spec.slug, model: process.env.EIXU_MODEL || 'anthropic/claude-opus-4.5', phases: [] };
+const report = {
+  case: caseName,
+  slug: spec.slug,
+  model: process.env.EIXU_MODEL || 'anthropic/claude-opus-4.5',
+  phases: [],
+};
 for (let step = 0; step < 6; step += 1) {
-  const [pages, images] = await Promise.all([listPages(tenant.id), listImages(tenant.id)]);
+  const [pages, images] = await Promise.all([
+    listPages(tenant.id),
+    listImages(tenant.id),
+  ]);
   const state = generationState(tenant, pages, images);
   let next = state.next;
   // Sem --generate a biblioteca já veio semeada; pular cenas evita custo.
@@ -157,8 +184,17 @@ for (let step = 0; step < 6; step += 1) {
     outcome = await runPhase(tenant, next, images);
   } catch (error) {
     const cause = error?.cause ?? error;
-    console.error(`[eval] fase ${next} falhou:`, error?.name, error?.message, cause?.message ?? '');
-    report.phases.push({ phase: next, error: String(error?.message ?? error), cause: String(cause?.message ?? '') });
+    console.error(
+      `[eval] fase ${next} falhou:`,
+      error?.name,
+      error?.message,
+      cause?.message ?? '',
+    );
+    report.phases.push({
+      phase: next,
+      error: String(error?.message ?? error),
+      cause: String(cause?.message ?? ''),
+    });
     break;
   }
   report.phases.push(outcome);
@@ -174,7 +210,10 @@ for (let step = 0; step < 6; step += 1) {
   tenant = await getTenantBySlug(spec.slug);
 }
 
-const [pages, images] = await Promise.all([listPages(tenant.id), listImages(tenant.id)]);
+const [pages, images] = await Promise.all([
+  listPages(tenant.id),
+  listImages(tenant.id),
+]);
 report.elapsedMs = Date.now() - started;
 report.metrics = siteMetrics(pages, images);
 report.site = lintSite(pages, images, 'draft');
@@ -193,16 +232,48 @@ report.usage = report.phases.reduce(
   { inputTokens: 0, outputTokens: 0 },
 );
 
-const dir = new URL(`../outputs/evals/${new Date().toISOString().slice(0, 10)}/`, import.meta.url);
+const dir = new URL(
+  `../outputs/evals/${new Date().toISOString().slice(0, 10)}/`,
+  import.meta.url,
+);
 await mkdir(dir, { recursive: true });
-await writeFile(new URL(`${caseName}-${Date.now()}.json`, dir), JSON.stringify(report, null, 2));
+await writeFile(
+  new URL(`${caseName}-${Date.now()}.json`, dir),
+  JSON.stringify(report, null, 2),
+);
 
 const home = report.metrics.home;
 console.log('\n=== resultado');
-console.log('páginas orgânicas:', report.metrics.organic, '| fotos geradas:', report.metrics.generatedPhotos);
-console.log('home: seções', home?.sections, '| fotos', home?.images, '| tons', home?.tones?.join('/'), '| protagonista', home?.protagonist);
+console.log(
+  'páginas orgânicas:',
+  report.metrics.organic,
+  '| fotos geradas:',
+  report.metrics.generatedPhotos,
+);
+console.log(
+  'home: seções',
+  home?.sections,
+  '| fotos',
+  home?.images,
+  '| tons',
+  home?.tones?.join('/'),
+  '| protagonista',
+  home?.protagonist,
+);
 for (const page of report.metrics.pages)
-  console.log(`  /${page.slug}: ${page.sections} seções, ${page.images} fotos, ${page.words} palavras, motion ${page.motionMoments}`);
-console.log('erros de projeto:', report.site.filter((f) => f.level === 'error').length);
+  console.log(
+    `  /${page.slug}: ${page.sections} seções, ${page.images} fotos, ${page.words} palavras, motion ${page.motionMoments}`,
+  );
+console.log(
+  'erros de projeto:',
+  report.site.filter((f) => f.level === 'error').length,
+);
 console.log('erros de página:', report.pageFindings.length);
-console.log('tokens:', report.usage.inputTokens, 'in /', report.usage.outputTokens, 'out |', Math.round(report.elapsedMs / 1000) + 's');
+console.log(
+  'tokens:',
+  report.usage.inputTokens,
+  'in /',
+  report.usage.outputTokens,
+  'out |',
+  Math.round(report.elapsedMs / 1000) + 's',
+);
