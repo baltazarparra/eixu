@@ -63,6 +63,9 @@ objetivo, decisões, autorização, arquivos alterados e verificações pendente
   O admin atual é global, sem autorização individual por tenant.
 - Novo bloco exige schema/catálogo, renderizador, componente e pre-flight coerentes
   em `lib/blocks/` e `lib/taste/`. Não afrouxe validação para aceitar uma geração.
+- Site novo sai pelo fluxo em etapas de `lib/taste/phases.ts` e cumpre o piso de
+  composição de `lib/taste/metrics.ts`: seção protagonista com fotos na home,
+  imagem em toda página orgânica, ritmo tonal e proporção coerente com o layout.
 - Preserve a separação `blocks`/`seo` e `published_blocks`/`published_seo`, com
   pre-flight nos dois caminhos de publicação. Marca e metadados fora desse snapshot
   têm limites descritos na arquitetura. Preview por query não é controle de acesso.
