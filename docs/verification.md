@@ -184,3 +184,16 @@ o custo por site gerado e a qualidade da saída automática pela rubrica de
 `docs/eval-rubric.md`. O tenant descartável `eval-sabia` ficou com a direção da
 primeira fase gravada e nenhuma página; `npm run eval:site -- mecanica-sabia`
 retoma dali.
+
+### Publicação
+
+O código funcional corresponde a `9ce46391eda6aba40470423a41c1b05f0679e38a`,
+com deployment Vercel `dpl_5fU6eUqiJf3ey6FSUgAzaawWvYT5` em estado `READY` no
+alvo de produção. O smoke público respondeu 200 no institucional, no login do
+painel, na home do Porto Pedras e em uma página interna do Mecânica Sabiá.
+Nenhuma página de cliente foi republicada e nenhum rascunho foi alterado por
+esta entrega: ela muda o gerador, não o conteúdo já publicado.
+
+`EIXU_REVIEW_CAPTURE` não foi configurada em produção. Sem ela a revisão é
+estrutural; para ligar a captura, defina a variável no projeto e confira o
+tempo da função na primeira execução.
