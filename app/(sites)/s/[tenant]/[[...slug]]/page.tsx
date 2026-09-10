@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { RenderBlocks } from '@/lib/blocks/render';
+import { accessibleAccent } from '@/lib/blocks/contrast';
 import { getPage, getTenantBySlug, listPublishedPosts } from '@/lib/tenant-queries';
 import { attributionScript } from '@/lib/tracking';
 import type { Brand, Page, Tenant } from '@/lib/types';
@@ -24,7 +25,8 @@ const RADIUS: Record<string, string> = {
 function themeVars(brand: Brand): Record<string, string> {
   const ink = brand.ink || '#14161a';
   const paper = brand.paper || '#ffffff';
-  const accent = brand.accent || '#1f6feb';
+  // O acento vira a cor mais próxima que passe no contraste mínimo.
+  const { accent, ink: accentInk } = accessibleAccent(brand.accent || '#1f6feb');
   const font =
     brand.font === 'serif'
       ? 'var(--font-serif)'
@@ -35,7 +37,7 @@ function themeVars(brand: Brand): Record<string, string> {
     '--ink': ink,
     '--paper': paper,
     '--accent': accent,
-    '--accent-ink': brand.accent ? contrastInk(accent) : '#ffffff',
+    '--accent-ink': accentInk,
     '--muted': `color-mix(in oklab, ${ink} 62%, ${paper})`,
     '--line': `color-mix(in oklab, ${ink} 14%, ${paper})`,
     '--radius': RADIUS[brand.radius ?? 'md'] ?? '0.5rem',
@@ -43,19 +45,6 @@ function themeVars(brand: Brand): Record<string, string> {
   };
 }
 
-/** Escolhe preto ou branco sobre o acento, pela luminância relativa. */
-function contrastInk(hex: string): string {
-  const value = hex.replace('#', '');
-  if (value.length !== 6) return '#ffffff';
-  const [r, g, b] = [0, 2, 4].map((i) => parseInt(value.slice(i, i + 2), 16) / 255);
-  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  return lum > 0.6 ? '#14161a' : '#ffffff';
-}
-
-/**
- * Memoizado por requisição: `generateMetadata` e o componente pedem os mesmos
- * dados, e sem isso o banco seria consultado duas vezes por página.
- */
 const resolve = cache(async (tenantSlug: string, slugParts: string[]) => {
   const tenant = await getTenantBySlug(tenantSlug);
   if (!tenant) return null;

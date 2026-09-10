@@ -1,6 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import { db } from '@/lib/db';
+import { accessibleAccent } from '@/lib/blocks/contrast';
 import { BLOCK_TYPES, blockSchemas, isBlockType } from '@/lib/blocks/registry';
 import { listImages } from '@/lib/images/queries';
 import { formatFindings, lintPage } from '@/lib/taste/lint';
@@ -161,7 +162,14 @@ export function buildTools(tenant: Tenant) {
                              updated_at = now()
           where id = ${tenant.id}
         `;
-        return { brand, dials };
+
+        // O site escurece sozinho um acento que reprova no contraste. Avisar
+        // aqui evita o agente insistir numa cor que nunca vai aparecer igual.
+        const contrast = accessibleAccent(brand.accent ?? '#1f6feb');
+        const aviso = contrast.adjusted
+          ? `O acento ${brand.accent} reprovava no contraste mínimo. O site vai usar ${contrast.accent}, a cor mais próxima que passa.`
+          : null;
+        return { brand, dials, ...(aviso ? { aviso } : {}) };
       },
     }),
 
