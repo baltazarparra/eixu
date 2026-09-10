@@ -3,6 +3,7 @@ import { blockSchemas, isBlockType } from '@/lib/blocks/registry';
 import * as B from '@/lib/blocks/components';
 import { SiteMotion } from '@/lib/blocks/motion';
 import { VisualExplorer, type ExplorerProps } from '@/lib/blocks/explorer';
+import { previewProps } from '@/lib/sites/preview';
 
 export type RenderContext = {
   tenant: Tenant;
@@ -11,6 +12,7 @@ export type RenderContext = {
   pagePath: string;
   /** Só em preview: propaga o tenant porque não há subdomínio. */
   previewTenant?: string;
+  isPreview?: boolean;
 };
 
 /**
@@ -59,7 +61,7 @@ function renderList(
         if (!isBlockType(block.type)) return null;
         const parsed = blockSchemas[block.type].safeParse(block.props);
         if (!parsed.success) return null;
-        const props = parsed.data as never;
+        const props = previewProps(parsed.data, ctx) as never;
         const key = block.id;
 
         const render = () => {

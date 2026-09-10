@@ -7,10 +7,13 @@ Com dependências instaladas por `npm ci`, execute os checks separadamente para 
 ```bash
 npm run lint
 npm run test:sites
+npm run test:admin
 npx next typegen && npx tsc --noEmit
 npm run build:vercel
 git diff --check
 ```
+
+Para incluir a prova de isolamento do cookie na captura, rode `test:admin` com `EIXU_CHROME_PATH` apontando para o executável local do Chrome. Sem ele, esse caso é pulado; os outros 17 não precisam de navegador.
 
 `next typegen` prepara tipos de rotas e `next-env.d.ts` em um checkout limpo. O guia da versão instalada está em `node_modules/next/dist/docs/01-app/03-api-reference/06-cli/next.md`. O build pode precisar de rede para `next/font/google`. Nenhum desses comandos executa o seed, migrações ou chamadas de geração pagas.
 
@@ -20,9 +23,13 @@ Para documentação, confira links locais, comandos e fatos contra o código e r
 npm run format -- --check README.md AGENTS.md docs
 ```
 
-O projeto possui `test:sites`, com testes de contrato sem banco e sem geração paga. Não possui script genérico `test`, `verify` ou CI versionada. Não trate um comando inexistente como gate nem substitua falhas por uma declaração do modelo.
+O projeto possui `test:sites` e `test:admin`, com testes de contrato sem banco e sem geração paga. Não possui script genérico `test`, `verify` ou CI versionada. Não trate um comando inexistente como gate nem substitua falhas por uma declaração do modelo.
 
-## Referência desta revisão
+## Revisão do admin, 10/09/2026
+
+O escopo, comparação de custo, verificações e limitações estão em [Revisão do admin](admin-review.md). O manual de operação está em [Admin](admin.md). Os registros abaixo preservam as evidências de cada entrega anterior e não devem ser lidos como uma medição da versão atual.
+
+## Referência documental de 09/09/2026
 
 Checks executados em 09/09/2026 no código de `6a86807`, com Node.js 24.15.0:
 
@@ -248,7 +255,7 @@ passo da fase. `review_pages` passou a devolver só a medição do navegador
 revisão estrutural não alcança. O módulo de captura continua no repositório e
 serve à avaliação local, onde as imagens são gravadas em arquivo.
 
-### O que ainda não foi comprovado
+### Tentativas anteriores e limites da avaliação
 
 A avaliação de geração ficou incompleta. A fase de briefing rodou por inteiro
 no caso `mecanica-sabia`: 3 passos, 18.422 tokens de entrada, 2.458 de saída,
@@ -271,13 +278,13 @@ campo `pendencias`, para o agente resolver antes de encerrar. A publicação
 continua exigindo `lintSite` limpo, em ambos os caminhos.
 
 A avaliação parou nesse ponto por falta de créditos no Gateway. Os resultados
-depois de restabelecidos estão nas seções seguintes.
+depois de restabelecidos estão nas seções anteriores.
 
 Continua sem comprovação a nota pela rubrica de `docs/eval-rubric.md`, que
 depende de revisão humana, e a repetição do mesmo caso, para separar acerto de
 variação entre execuções. Uma queda de DNS do banco interrompeu uma das rodadas de
 revisão no meio, e a rodada seguinte terminou o trabalho: o fluxo é retomável,
-mas não há tratamento de falha de rede dentro da fase.
+mas isso não prova tolerância a falhas dentro de cada ferramenta. A revisão posterior do admin interrompe a sequência ao receber erro e permite retomada explícita.
 
 ### Publicação
 

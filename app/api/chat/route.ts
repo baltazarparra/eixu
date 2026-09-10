@@ -7,6 +7,13 @@ import {
   type UIMessage,
 } from 'ai';
 import { annotateAttachments } from '@/lib/ai/attachments';
+import { chatRequestSchema, economicalMessages } from '@/lib/ai/context';
+import {
+  gatewayOptions,
+  usageRecord,
+  usageMetadata,
+  sumGatewayCosts,
+} from '@/lib/ai/usage';
 import { isAuthenticated } from '@/lib/auth';
 import { buildTools } from '@/lib/ai/tools';
 import { db } from '@/lib/db';
@@ -50,11 +57,17 @@ export async function POST(request: Request) {
     return new Response('Não autorizado', { status: 401 });
   }
 
-  const body = (await request.json()) as {
-    messages: UIMessage[];
-    tenant: string;
-    page?: string;
-    phase?: string;
+  const parsed = chatRequestSchema.safeParse(
+    await request.json().catch(() => null),
+  );
+  if (!parsed.success)
+    return Response.json(
+      { error: 'Mensagem inválida. Confira o cliente e tente novamente.' },
+      { status: 400 },
+    );
+  const body = {
+    ...parsed.data,
+    messages: parsed.data.messages as UIMessage[],
   };
 
   const tenant = await getTenantBySlug(body.tenant);
@@ -118,7 +131,7 @@ export async function POST(request: Request) {
       : {}),
   };
 
-  const messages = annotateAttachments(body.messages);
+  const messages = annotateAttachments(economicalMessages(body.messages));
 
   // Guarda a mensagem do operador para o histórico do painel.
   // Persiste o texto que o operador escreveu, não a versão anotada com a URL
@@ -141,7 +154,10 @@ export async function POST(request: Request) {
 
   // A revisão renderiza o rascunho pela própria origem da requisição.
   const origin = new URL(request.url).origin;
-  const tools = buildTools(tenant, { origin });
+  const tools = buildTools(tenant, {
+    origin,
+    cookie: request.headers.get('cookie') ?? undefined,
+  });
   // Fora da geração o chat mantém todas as ferramentas; dentro dela, só as da
   // etapa, para o modelo não pular direto para a composição.
   const activeTools = phase
@@ -164,8 +180,12 @@ export async function POST(request: Request) {
     `;
   }
 
+  const model = MODEL();
+  const started = Date.now();
   const result = streamText({
-    model: MODEL(),
+    model,
+    providerOptions: gatewayOptions(tenant.id, 'site', phase),
+    abortSignal: request.signal,
     instructions: systemPrompt(
       tenant,
       summary,
@@ -178,17 +198,25 @@ export async function POST(request: Request) {
     ...(activeTools ? { activeTools } : {}),
     stopWhen: isStepCount(phase ? PHASE_STEPS[phase] : 30),
     onError: ({ error }) => {
-      console.error('[chat] falha do modelo:', error);
+      console.error(
+        '[chat] falha do modelo:',
+        error instanceof Error ? error.name : 'unknown',
+      );
     },
-    onEnd: async ({ text, usage, stepNumber }) => {
+    onEnd: async ({ text, usage, stepNumber, steps }) => {
       // Apenas contagens: nenhum prompt, conteúdo do cliente ou credencial.
+      const measured = usageRecord(
+        usage,
+        model,
+        phase ?? 'livre',
+        stepNumber + 1,
+        started,
+      );
       console.info('[chat] usage', {
-        model: MODEL(),
-        phase: phase ?? 'livre',
-        steps: stepNumber + 1,
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens,
-        totalTokens: usage.totalTokens,
+        ...measured,
+        costUsd: sumGatewayCosts(
+          steps.map((step) => step.providerMetadata?.gateway?.cost),
+        ),
       });
       if (text) {
         await db()`
@@ -200,6 +228,9 @@ export async function POST(request: Request) {
   });
 
   return createUIMessageStreamResponse({
-    stream: toUIMessageStream({ stream: result.stream }),
+    stream: toUIMessageStream({
+      stream: result.stream,
+      messageMetadata: usageMetadata(model, phase ?? 'livre', started),
+    }),
   });
 }

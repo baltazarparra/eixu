@@ -1,13 +1,17 @@
 import { notFound, redirect } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { chatHistory } from '@/lib/ai/history';
 import { getGuide, listImages } from '@/lib/images/queries';
 import { getTenantBySlug } from '@/lib/tenant-queries';
 import { ImagesWorkspace } from './images-workspace';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ImagesPage({ params }: { params: Promise<{ tenant: string }> }) {
+export default async function ImagesPage({
+  params,
+}: {
+  params: Promise<{ tenant: string }>;
+}) {
   if (!(await isAuthenticated())) redirect('/admin/login');
   const { tenant: slug } = await params;
   const tenant = await getTenantBySlug(slug);
@@ -16,13 +20,9 @@ export default async function ImagesPage({ params }: { params: Promise<{ tenant:
   const [images, guide, rows] = await Promise.all([
     listImages(tenant.id),
     getGuide(tenant.id),
-    db()`
-      select role, content from chat_messages
-      where tenant_id = ${tenant.id} and channel = 'imagens'
-      order by created_at asc limit 60
-    `,
+    chatHistory(tenant.id, 'imagens'),
   ]);
-  const history = rows as { role: string; content: string }[];
+  const history = rows;
 
   return (
     <ImagesWorkspace

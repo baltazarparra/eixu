@@ -103,3 +103,11 @@ com o campo `phase`, continua sendo a medida operacional.
 A régua de avaliação está versionada: `evals/cases/` traz os briefings,
 `docs/eval-rubric.md` a rubrica e `npm run eval:site` roda o fluxo real num
 tenant descartável, gravando o relatório em `outputs/evals/`.
+
+## Interface de operação do admin
+
+O painel usa Geist, superfícies escuras, texto claro e acento areia, com CSS isolado em `(admin)`. A hierarquia privilegia a tarefa: encontrar cliente; abrir Site, Imagens, Tráfego ou Dados; revisar antes de publicar. Cadastro novo fica recolhido até ser solicitado. Em desktop, conversa e prévia/biblioteca ficam lado a lado e ocupam a altura da tela. Abaixo de 1024 px, alternam por botões, mantendo navegação, publicação e avisos acessíveis.
+
+Sugestões preenchem o compositor e aguardam envio. A prévia oferece seletor de página, largura desktop/celular e pendências de projeto e página. Erros HTTP aparecem como avisos, exclusão de imagem pede confirmação local e ações em andamento ficam desabilitadas. Dados simples e briefing têm formulário direto, sem chamada ao modelo. Tokens e custo do chat ficam em detalhes recolhidos, com seu escopo declarado.
+
+A aplicação das duas referências prioriza hierarquia, contraste e feedback. O painel não precisa das animações expressivas dos sites de clientes para operar bem. O [manual](admin.md) descreve a jornada e a [revisão](admin-review.md) registra a verificação em 320, 390 e 1440 px.

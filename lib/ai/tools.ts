@@ -105,6 +105,8 @@ export function safe<I, O>(run: (input: I) => Promise<O>) {
 export type ToolContext = {
   /** Origem HTTP para a revisão renderizar o rascunho. */
   origin?: string;
+  /** Sessão apenas para o navegador de revisão, nunca para o modelo. */
+  cookie?: string;
 };
 
 export function buildTools(tenant: Tenant, context: ToolContext = {}) {
@@ -419,6 +421,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
               pages
                 .filter((page) => page.type !== 'thank_you')
                 .map((page) => page.slug),
+              { cookie: context.cookie },
             );
           } catch (error) {
             console.error('[review] captura indisponível:', error);

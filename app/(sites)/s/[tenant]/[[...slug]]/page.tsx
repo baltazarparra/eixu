@@ -10,7 +10,8 @@ import {
   listPublishedPosts,
 } from '@/lib/tenant-queries';
 import { attributionScript } from '@/lib/tracking';
-import type { Page, Tenant } from '@/lib/types';
+import { isAuthenticated } from '@/lib/auth';
+import { structuredData } from '@/lib/sites/structured-data';
 
 type Params = { tenant: string; slug?: string[] };
 type Props = {
@@ -28,15 +29,24 @@ const resolve = cache(async (tenantSlug: string, slugParts: string[]) => {
   return { tenant, page };
 });
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+  searchParams,
+}: Props): Promise<Metadata> {
+  const preview = (await searchParams).preview === '1';
+  if (preview && !(await isAuthenticated())) notFound();
   const { tenant: tenantSlug, slug } = await params;
   const resolved = await resolve(tenantSlug, slug ?? []);
   if (!resolved) return { title: 'Página não encontrada' };
   const { tenant, page } = resolved;
-  const seo = page.publishedSeo ?? page.seo;
+  if (!preview && !page.publishedBlocks) notFound();
+  const seo = preview ? page.seo : (page.publishedSeo ?? {});
   const title = seo.title || page.title;
   const noindex =
-    seo.noindex || page.type === 'thank_you' || page.type === 'paid_lp';
+    preview ||
+    seo.noindex ||
+    page.type === 'thank_you' ||
+    page.type === 'paid_lp';
 
   // Canônica absoluta: relativa é ignorada pelos buscadores.
   const host = (await headers()).get('host') ?? `${tenant.slug}.eixu.com.br`;
@@ -63,57 +73,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-function JsonLd({ tenant, page }: { tenant: Tenant; page: Page }) {
-  const graph: Record<string, unknown>[] = [
-    {
-      '@type': 'Organization',
-      '@id': `#organization`,
-      name: tenant.name,
-      ...(tenant.whatsapp ? { telephone: tenant.whatsapp } : {}),
-    },
-  ];
-  if (page.type === 'post') {
-    graph.push({
-      '@type': 'Article',
-      headline: page.title,
-      description: page.seo.description,
-      datePublished: page.meta.date ?? page.publishedAt ?? undefined,
-      author: page.meta.author
-        ? { '@type': 'Person', name: page.meta.author }
-        : { '@id': '#organization' },
-      publisher: { '@id': '#organization' },
-    });
-  }
-  const blocks = page.publishedBlocks ?? page.blocks;
-  const faq = blocks.find((b) => b.type === 'faq.accordion');
-  if (faq) {
-    const items = (faq.props.items ?? []) as { q: string; a: string }[];
-    graph.push({
-      '@type': 'FAQPage',
-      mainEntity: items.map((item) => ({
-        '@type': 'Question',
-        name: item.q,
-        acceptedAnswer: { '@type': 'Answer', text: item.a },
-      })),
-    });
-  }
-  return (
-    <script
-      type="application/ld+json"
-      // JSON serializado, sem entrada de usuário não escapada.
-      dangerouslySetInnerHTML={{
-        __html: JSON.stringify({
-          '@context': 'https://schema.org',
-          '@graph': graph,
-        }).replace(/</g, '\\u003c'),
-      }}
-    />
-  );
-}
-
 export default async function TenantPage({ params, searchParams }: Props) {
   const resolvedParams = await params;
   const query = await searchParams;
+  const isPreview = query.preview === '1';
+  if (isPreview && !(await isAuthenticated())) notFound();
   const resolved = await resolve(
     resolvedParams.tenant,
     resolvedParams.slug ?? [],
@@ -122,7 +86,6 @@ export default async function TenantPage({ params, searchParams }: Props) {
   const { tenant, page } = resolved;
 
   // O painel pede `?preview=1` para ver o rascunho; o público vê o publicado.
-  const isPreview = query.preview === '1';
   const blocks = isPreview ? page.blocks : (page.publishedBlocks ?? []);
   if (!isPreview && !page.publishedBlocks) notFound();
 
@@ -152,7 +115,14 @@ export default async function TenantPage({ params, searchParams }: Props) {
       data-surface={tenant.brand.design?.surfaceStyle}
       data-motif={tenant.brand.design?.motif}
     >
-      <JsonLd tenant={tenant} page={page} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(
+            structuredData(tenant, page, isPreview),
+          ).replace(/</g, '\\u003c'),
+        }}
+      />
       <RenderBlocks
         blocks={blocks}
         ctx={{
@@ -160,6 +130,7 @@ export default async function TenantPage({ params, searchParams }: Props) {
           posts,
           pagePath,
           previewTenant: query.__tenant ? tenant.slug : undefined,
+          isPreview,
         }}
       />
       {!isPreview ? (

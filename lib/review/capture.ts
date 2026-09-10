@@ -63,10 +63,33 @@ export async function capturePages(
             height: viewport.height,
             deviceScaleFactor: 1,
           });
-          if (options.cookie)
-            await page.setExtraHTTPHeaders({ cookie: options.cookie });
+          // O header Cookie global também iria para fotos de outros domínios.
+          // O cookie jar limita a sessão ao host da prévia e ignora os demais.
+          const session = options.cookie
+            ?.split(';')
+            .map((part) => part.trim())
+            .find((part) => part.startsWith('eixu_admin='))
+            ?.slice('eixu_admin='.length);
+          if (session)
+            await page.browserContext().setCookie({
+              name: 'eixu_admin',
+              value: session,
+              domain: new URL(origin).hostname,
+              path: '/',
+              httpOnly: true,
+              secure: new URL(origin).protocol === 'https:',
+              sameSite: 'Strict',
+            });
           const url = `${origin}/s/${tenant}/${slug}?preview=1&__tenant=${tenant}`;
-          await page.goto(url, { waitUntil: 'networkidle2', timeout: 25_000 });
+          const response = await page.goto(url, {
+            waitUntil: 'networkidle2',
+            timeout: 25_000,
+          });
+          if (!response?.ok())
+            throw new Error(
+              'A prévia não pôde ser aberta para revisão. Confira a sessão e a página.',
+            );
+          await page.waitForSelector('.site-theme', { timeout: 8000 });
           // Rola até o fim para disparar lazy loading e as entradas de seção.
           await page.evaluate(async () => {
             const step = window.innerHeight;

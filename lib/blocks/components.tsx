@@ -8,6 +8,7 @@ import { ArrowUpRight, BookOpen, Layers3 } from 'lucide-react';
 import { MotionLink } from '@/lib/blocks/motion';
 import { blockSchemas } from '@/lib/blocks/registry';
 import type { RenderContext } from '@/lib/blocks/render';
+import { previewHref } from '@/lib/sites/preview';
 
 type S<K extends keyof typeof blockSchemas> = z.infer<(typeof blockSchemas)[K]>;
 
@@ -518,7 +519,7 @@ export function CtaBand({
           ) : null}
         </div>
         <MotionLink
-          href={href}
+          href={previewHref(href, ctx)}
           className="site-action inline-flex shrink-0 items-center rounded-[var(--radius)] bg-[var(--accent)] px-7 py-3.5 text-[0.98rem] font-medium text-[var(--accent-ink)]"
           data-track={whatsapp ? 'whatsapp' : undefined}
           {...(whatsapp ? { rel: 'noreferrer' } : {})}
@@ -561,9 +562,11 @@ export function FormLead({
         <form
           method="post"
           action={
-            ctx.previewTenant
-              ? `/api/form?__tenant=${ctx.previewTenant}`
-              : '/api/form'
+            ctx.isPreview
+              ? `/api/form?preview=1&__tenant=${ctx.tenant.slug}`
+              : ctx.previewTenant
+                ? `/api/form?__tenant=${ctx.previewTenant}`
+                : '/api/form'
           }
           className="flex flex-col gap-5 md:col-span-7"
         >
@@ -643,10 +646,16 @@ export function FormLead({
           ) : null}
           <button
             type="submit"
+            disabled={ctx.isPreview}
             className="mt-1 self-start rounded-[var(--radius)] bg-[var(--accent)] px-7 py-3.5 text-[0.98rem] font-medium text-[var(--accent-ink)]"
           >
             {submitLabel}
           </button>
+          {ctx.isPreview ? (
+            <p className="text-sm text-[var(--muted)]">
+              Envios desativados na prévia.
+            </p>
+          ) : null}
         </form>
       </div>
     </section>
@@ -1238,7 +1247,7 @@ export function FloatingWhatsapp({ ctx }: { ctx: RenderContext }) {
   if (!ctx.tenant.whatsapp) return null;
   return (
     <a
-      href={`/go/wa?from=${encodeURIComponent(ctx.pagePath)}`}
+      href={previewHref(`/go/wa?from=${encodeURIComponent(ctx.pagePath)}`, ctx)}
       rel="noreferrer"
       aria-label="Falar no WhatsApp"
       data-track="whatsapp"

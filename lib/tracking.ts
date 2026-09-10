@@ -3,7 +3,10 @@
  * Sem dependências, sem requisição extra, roda antes de qualquer interação.
  * Guarda primeiro e último toque e alimenta o campo oculto dos formulários.
  */
-export function attributionScript(tenantSlug: string, pagePath: string): string {
+export function attributionScript(
+  tenantSlug: string,
+  pagePath: string,
+): string {
   return `(function(){
 try{
 var P=['utm_source','utm_medium','utm_campaign','utm_term','utm_content','gclid','fbclid','ttclid','msclkid'];
@@ -22,6 +25,19 @@ if(!sid){sid=Math.random().toString(36).slice(2)+Date.now().toString(36);LS.setI
 var attr=Object.assign({},last||{},{first:first||undefined});
 var payload=JSON.stringify(attr);
 document.querySelectorAll('input[data-attribution]').forEach(function(i){i.value=payload;});
+// O redirecionador é a única fonte deste clique. A URL leva atribuição e
+// identificador também em abrir-nova-aba, sem um segundo evento por beacon.
+function prepareWhatsApp(a){
+  try{
+    var u=new URL(a.getAttribute('href')||'',location.href);
+    if(u.origin!==location.origin||u.pathname!=='/go/wa')return false;
+    u.searchParams.set('t',${JSON.stringify(tenantSlug)});
+    u.searchParams.set('from',PATH);u.searchParams.set('sid',sid);
+    P.forEach(function(k){if(typeof attr[k]==='string')u.searchParams.set(k,attr[k]);});
+    a.setAttribute('href',u.pathname+u.search);return true;
+  }catch(e){return false;}
+}
+document.querySelectorAll('a[href]').forEach(prepareWhatsApp);
 function send(type,extra){
   try{
     var body=JSON.stringify({tenant:${JSON.stringify(tenantSlug)},type:type,path:PATH,session:sid,source:attr,extra:extra||null});
@@ -33,6 +49,7 @@ send('page_view');
 document.addEventListener('click',function(e){
   var a=e.target&&e.target.closest?e.target.closest('a'):null;if(!a)return;
   var t=a.getAttribute('data-track');
+  if(prepareWhatsApp(a))return;
   if(t==='whatsapp')send('whatsapp_click',{href:a.getAttribute('href')});
   else if((a.getAttribute('href')||'').indexOf('tel:')===0)send('phone_click');
 },true);

@@ -4,7 +4,12 @@ const COOKIE = 'eixu_admin';
 const MAX_AGE = 60 * 60 * 12;
 
 function secret(): string {
-  return process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_PASSWORD || 'eixu-dev-secret';
+  const configured =
+    process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_PASSWORD;
+  if (configured) return configured;
+  if (process.env.NODE_ENV === 'production')
+    throw new Error('Sessão administrativa não configurada.');
+  return 'eixu-dev-secret';
 }
 
 async function hmac(payload: string): Promise<string> {
@@ -15,7 +20,11 @@ async function hmac(payload: string): Promise<string> {
     false,
     ['sign'],
   );
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+  const sig = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    new TextEncoder().encode(payload),
+  );
   return Buffer.from(new Uint8Array(sig)).toString('base64url');
 }
 
@@ -23,7 +32,8 @@ async function hmac(payload: string): Promise<string> {
 function safeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let diff = 0;
-  for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  for (let i = 0; i < a.length; i += 1)
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return diff === 0;
 }
 
@@ -33,12 +43,26 @@ export async function createSessionToken(): Promise<string> {
   return `${payload}.${await hmac(payload)}`;
 }
 
-export async function verifySessionToken(token: string | undefined): Promise<boolean> {
+export async function verifySessionToken(
+  token: string | undefined,
+): Promise<boolean> {
   if (!token) return false;
+  if (
+    process.env.NODE_ENV === 'production' &&
+    !process.env.ADMIN_SESSION_SECRET &&
+    !process.env.ADMIN_PASSWORD
+  )
+    return false;
   const parts = token.split('.');
   if (parts.length !== 3) return false;
   const [user, expires, sig] = parts;
-  if (Number(expires) < Date.now()) return false;
+  if (
+    user !== 'admin' ||
+    !/^\d+$/.test(expires) ||
+    !Number.isSafeInteger(Number(expires)) ||
+    Number(expires) <= Date.now()
+  )
+    return false;
   return safeEqual(sig, await hmac(`${user}.${expires}`));
 }
 
@@ -66,7 +90,8 @@ async function signInWith(
   expectedUser: string,
   expectedPassword: string,
 ): Promise<boolean> {
-  if (!safeEqual(user, expectedUser) || !safeEqual(password, expectedPassword)) return false;
+  if (!safeEqual(user, expectedUser) || !safeEqual(password, expectedPassword))
+    return false;
   const jar = await cookies();
   jar.set(COOKIE, await createSessionToken(), {
     httpOnly: true,

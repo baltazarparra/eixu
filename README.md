@@ -5,7 +5,7 @@ Site institucional da EIXU e MVP de uma plataforma operada por agentes para cria
 ## O que já existe
 
 - Institucional com home, oferta de passagem de vibe coding para produção e cases de SaldoPix e NaiaCRM.
-- Painel com login de operador, cadastro de clientes, chat de edição, preview em desktop/mobile, upload de logo e publicação.
+- Painel com login de operador, busca e filtros de clientes, chat com histórico recente, prévia em desktop/mobile, dados e briefing editáveis, upload de logo e publicação.
 - Páginas orgânicas, landing pages pagas, posts e páginas de agradecimento compostas por blocos com schemas Zod. O agente edita conteúdo por ferramentas; o painel também permite ajustar dados do cliente e gerenciar imagens.
 - Estúdio de imagens com guia por cliente, geração de fotos e logos, crítica, aprovação, rejeição e remoção. Aprovar um logo e aplicá-lo são ações distintas.
 - Formulários, WhatsApp rastreado, atribuição de campanhas, exportação de contatos em CSV e painel de tráfego com gastos informados à mão.
@@ -47,7 +47,7 @@ npm run dev:vercel
 
 Entre em [localhost:3000/admin](http://localhost:3000/admin) com as credenciais configuradas. Apenas em desenvolvimento, sem `ADMIN_PASSWORD`, o código permite a senha `1234` para `ADMIN_USER` (ou `admin`); esse fallback não serve para ambientes compartilhados.
 
-Após criar o tenant, veja seu rascunho em `http://localhost:3000/s/cliente?preview=1&__tenant=cliente`. A versão publicada fica em `http://cliente.localhost:3000` ou `http://localhost:3000/s/cliente?__tenant=cliente`. `__tenant` resolve o cliente; `preview=1` seleciona o rascunho. Essas flags não são autenticação.
+Após criar o tenant, veja seu rascunho em `http://localhost:3000/s/cliente?preview=1&__tenant=cliente`. A versão publicada fica em `http://cliente.localhost:3000` ou `http://localhost:3000/s/cliente?__tenant=cliente`. `__tenant` resolve o cliente; `preview=1` seleciona o rascunho. O rascunho exige uma sessão administrativa válida e recebe `noindex`; as flags sozinhas não dão acesso. A prévia mantém os links internos no cliente e desativa formulários e tracking.
 
 ## Stack e mapa do projeto
 
@@ -66,22 +66,26 @@ Os três grupos de rotas têm layouts e CSS próprios. A publicação valida pá
 
 ## Comandos e validação
 
-| Comando                                              | Efeito                                                                                                                  |
-| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `npm run dev:vercel`                                 | Desenvolvimento em Next.js, caminho usado para este MVP.                                                                |
-| `npm run build:vercel`                               | Build de produção configurado em `vercel.json`.                                                                         |
-| `npx next start`                                     | Serve o build Next.js local já gerado.                                                                                  |
-| `npx next typegen && npx tsc --noEmit`               | Gera tipos das rotas e verifica TypeScript.                                                                             |
-| `npm run lint`                                       | Analisa código com oxlint; não executa o pre-flight dos sites.                                                          |
-| `npm run test:sites`                                 | Testa o contrato de páginas, imagens, aprovação e links sem banco ou chamadas pagas.
-| `npm run eval:site -- <caso>`                        | Roda a geração real num tenant descartável e mede o resultado pela rubrica.                                    |
-| `npm run format -- --check README.md AGENTS.md docs` | Confere a formatação da documentação sem reescrever arquivos.                                                           |
-| `npm run db:migrate`                                 | Aplica statements idempotentes de `db/schema.sql`; escreve no banco.                                                    |
-| `npm run db:seed-demo`                               | Sobrescreve e publica home/obrigado do tenant `vertice` já existente; altera marca e dials. Use só em demo descartável. |
-| `npm run db:requantize-logos`                        | Recomprime logos de todos os tenants do banco conectado, sobrescrevendo arquivos no Blob.                               |
-| `npm run dev` / `npm run build` / `npm start`        | Caminho Vinext/Cloudflare herdado; não valida o deploy Next.js da Vercel.                                               |
+| Comando                                              | Efeito                                                                                                                                               |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev:vercel`                                 | Desenvolvimento em Next.js, caminho usado para este MVP.                                                                                             |
+| `npm run build:vercel`                               | Build de produção configurado em `vercel.json`.                                                                                                      |
+| `npx next start`                                     | Serve o build Next.js local já gerado.                                                                                                               |
+| `npx next typegen && npx tsc --noEmit`               | Gera tipos das rotas e verifica TypeScript.                                                                                                          |
+| `npm run lint`                                       | Analisa código com oxlint; não executa o pre-flight dos sites.                                                                                       |
+| `npm run test:sites`                                 | Testa o contrato de páginas, imagens, aprovação e links sem banco ou chamadas pagas.                                                                 |
+| `npm run test:admin`                                 | Testa contexto, estado editorial, autenticação, logos, datas, custos, CSV e tracking sem banco ou chamadas pagas. Captura requer `EIXU_CHROME_PATH`. |
+| `npm run eval:admin-cost`                            | Compara o payload de histórico em memória; `-- --live` executa três chamadas pagas controladas, sem escrever no banco/Blob.                          |
+| `npm run eval:site -- <caso>`                        | Roda a geração real num tenant descartável e mede o resultado pela rubrica.                                                                          |
+| `npm run format -- --check README.md AGENTS.md docs` | Confere a formatação da documentação sem reescrever arquivos.                                                                                        |
+| `npm run db:migrate`                                 | Aplica statements idempotentes de `db/schema.sql`; escreve no banco.                                                                                 |
+| `npm run db:seed-demo`                               | Sobrescreve e publica home/obrigado do tenant `vertice` já existente; altera marca e dials. Use só em demo descartável.                              |
+| `npm run db:requantize-logos`                        | Recomprime logos de todos os tenants do banco conectado, sobrescrevendo arquivos no Blob.                                                            |
+| `npm run dev` / `npm run build` / `npm start`        | Caminho Vinext/Cloudflare herdado; não valida o deploy Next.js da Vercel.                                                                            |
 
-Há testes do contrato de sites; não há workflow de CI versionado. Na revisão de 09/09/2026, tipos e build passaram; o lint apresentou 20 erros preexistentes em 13 arquivos. O [guia de validação](docs/verification.md) registra as referências e os checks por tipo de mudança. Build aprovado não equivale a fluxo com banco ou IA testado.
+Há testes dos contratos de sites e admin; não há workflow de CI versionado. A revisão do admin mantém registrada a dívida de 20 erros de lint em 13 arquivos externos ao escopo. O [guia de validação](docs/verification.md) registra as referências e os checks por tipo de mudança. Build aprovado não equivale a fluxo com banco ou IA testado.
+
+O [manual do operador](docs/admin.md) explica a jornada de cadastro, geração, revisão, publicação e acompanhamento. A [revisão do admin](docs/admin-review.md) registra o escopo e a comparação controlada de custo.
 
 ## Agentes e modelos de desenvolvimento
 

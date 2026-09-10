@@ -1,18 +1,25 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
+import { AdminHeader, MobileViews } from '@/components/admin/navigation';
+import { ChatUsageDetails } from '@/components/admin/chat-usage';
+import { adminFetch } from '@/lib/admin/http';
+import type { ChatMessage } from '@/lib/ai/usage';
 import { Message, chatErrorMessage } from '../chat-parts';
 import type { ImageGuide, TenantImage } from '@/lib/types';
 
-type LibraryState = { guide: ImageGuide; images: TenantImage[]; logoUrl?: string | null };
+type LibraryState = {
+  guide: ImageGuide;
+  images: TenantImage[];
+  logoUrl?: string | null;
+};
 
 type Props = {
   tenant: { slug: string; name: string };
   initial: LibraryState;
-  history: { role: string; content: string }[];
+  history: ChatMessage[];
 };
 
 const SUGGESTIONS = [
@@ -43,22 +50,35 @@ function scoreTone(score: number | null): string {
 export function ImagesWorkspace({ tenant, initial, history }: Props) {
   const [library, setLibrary] = useState<LibraryState>(initial);
   const [input, setInput] = useState('');
+  const [view, setView] = useState<'chat' | 'content'>(
+    initial.images.length ? 'content' : 'chat',
+  );
+  const [actionId, setActionId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'todas' | 'aprovada' | 'candidata' | 'rejeitada' | 'logo'>('todas');
-  const [attachments, setAttachments] = useState<{ url: string; name: string; type: string }[]>([]);
+  const [filter, setFilter] = useState<
+    'todas' | 'aprovada' | 'candidata' | 'rejeitada' | 'logo'
+  >('todas');
+  const [attachments, setAttachments] = useState<
+    { url: string; name: string; type: string }[]
+  >([]);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const toolCountRef = useRef(0);
 
-  const { messages, sendMessage, status, error, stop } = useChat({
-    transport: new DefaultChatTransport({ api: '/api/images/chat', body: () => ({ tenant: tenant.slug }) }),
+  const { messages, sendMessage, status, error, stop } = useChat<ChatMessage>({
+    messages: history,
+    transport: new DefaultChatTransport({
+      api: '/api/images/chat',
+      body: () => ({ tenant: tenant.slug }),
+    }),
   });
 
   const refresh = useCallback(async () => {
-    const response = await fetch(`/api/admin/${tenant.slug}/images`, { cache: 'no-store' });
-    if (!response.ok) return;
-    setLibrary((await response.json()) as LibraryState);
+    setLibrary(
+      await adminFetch<LibraryState>(`/api/admin/${tenant.slug}/images`),
+    );
   }, [tenant.slug]);
 
   // Cada ferramenta concluída mexeu no banco: recarrega a biblioteca.
@@ -68,7 +88,9 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
         (count, message) =>
           count +
           message.parts.filter(
-            (part) => part.type.startsWith('tool-') && (part as { state?: string }).state === 'output-available',
+            (part) =>
+              part.type.startsWith('tool-') &&
+              (part as { state?: string }).state === 'output-available',
           ).length,
         0,
       ),
@@ -77,7 +99,7 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
   useEffect(() => {
     if (completedTools !== toolCountRef.current) {
       toolCountRef.current = completedTools;
-      void refresh();
+      void refresh().catch((error: Error) => setNotice(error.message));
     }
   }, [completedTools, refresh]);
 
@@ -87,12 +109,18 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
   // busca sozinha para as candidatas aparecerem conforme cada modelo responde.
   useEffect(() => {
     if (!busy) return;
-    const timer = setInterval(() => void refresh(), 3000);
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible')
+        void refresh().catch((error: Error) => setNotice(error.message));
+    }, 5000);
     return () => clearInterval(timer);
   }, [busy, refresh]);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: 'smooth',
+    });
   }, [messages, status]);
 
   /** Sobe para o Blob: o agente e o gerador só trabalham com URL pública. */
@@ -106,10 +134,20 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
         const form = new FormData();
         form.append('file', file);
         form.append('kind', 'referencia');
-        const response = await fetch(`/api/admin/${tenant.slug}/upload`, { method: 'POST', body: form });
-        const result = (await response.json()) as { url?: string; error?: string };
-        if (!response.ok || !result.url) throw new Error(result.error ?? 'Falha no upload.');
-        setAttachments((list) => [...list, { url: result.url as string, name: file.name, type: file.type }]);
+        const response = await fetch(`/api/admin/${tenant.slug}/upload`, {
+          method: 'POST',
+          body: form,
+        });
+        const result = (await response.json()) as {
+          url?: string;
+          error?: string;
+        };
+        if (!response.ok || !result.url)
+          throw new Error(result.error ?? 'Falha no upload.');
+        setAttachments((list) => [
+          ...list,
+          { url: result.url as string, name: file.name, type: file.type },
+        ]);
       }
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Falha no upload.');
@@ -131,50 +169,66 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
     setAttachments([]);
   }
 
-  async function applyAsLogo(url: string, seq: number) {
+  async function runAction(id: string, run: () => Promise<void>) {
+    if (actionId) return;
+    setActionId(id);
     setNotice(null);
-    const response = await fetch(`/api/admin/${tenant.slug}/settings`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ logoUrl: url }),
-    });
-    if (!response.ok) {
-      setNotice('Não consegui aplicar o logo.');
-      return;
+    try {
+      await run();
+      await refresh();
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível concluir a ação.',
+      );
+    } finally {
+      setActionId(null);
+      setDeleteTarget(null);
     }
-    setNotice(`Logo #${seq} aplicado no site.`);
-    await refresh();
+  }
+
+  async function applyAsLogo(url: string, seq: number) {
+    await runAction(url, async () => {
+      await adminFetch(`/api/admin/${tenant.slug}/settings`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ logoUrl: url }),
+      });
+      setNotice(`Logo #${seq} aplicado no site.`);
+    });
   }
 
   async function act(id: string, next: 'aprovada' | 'rejeitada' | 'candidata') {
-    setNotice(null);
-    const response = await fetch(`/api/admin/${tenant.slug}/images`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id, status: next }),
+    await runAction(id, async () => {
+      await adminFetch(`/api/admin/${tenant.slug}/images`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id, status: next }),
+      });
+      setNotice(
+        next === 'aprovada' ? 'Imagem aprovada.' : 'Imagem atualizada.',
+      );
     });
-    if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as { error?: string };
-      setNotice(body.error ?? 'Não consegui atualizar a imagem.');
-      return;
-    }
-    await refresh();
   }
 
   async function remove(id: string, seq: number) {
-    setNotice(null);
-    const response = await fetch(`/api/admin/${tenant.slug}/images`, {
-      method: 'DELETE',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id }),
+    await runAction(id, async () => {
+      await adminFetch(`/api/admin/${tenant.slug}/images`, {
+        method: 'DELETE',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      setNotice(`Imagem #${seq} apagada.`);
     });
-    const body = (await response.json().catch(() => ({}))) as { error?: string };
-    setNotice(response.ok ? `Imagem #${seq} apagada.` : (body.error ?? 'Não consegui apagar.'));
-    await refresh();
   }
 
   const visible = library.images.filter((image) =>
-    filter === 'todas' ? true : filter === 'logo' ? image.kind === 'logo' : image.status === filter,
+    filter === 'todas'
+      ? true
+      : filter === 'logo'
+        ? image.kind === 'logo'
+        : image.status === filter,
   );
   const batches = useMemo(() => {
     const map = new Map<string, TenantImage[]>();
@@ -184,7 +238,8 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
       map.set(image.batchId, list);
     }
     // Dentro do lote, melhor nota primeiro: é a ordem em que se decide.
-    for (const list of map.values()) list.sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+    for (const list of map.values())
+      list.sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
     return [...map.values()];
   }, [visible]);
 
@@ -192,48 +247,40 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
   const hasGuide = Boolean(guide.estilo || guide.luz || guide.paleta?.length);
 
   return (
-    <div className="grid h-screen grid-rows-[auto_1fr] overflow-hidden">
-      <header className="flex items-center gap-4 border-b px-4 py-2.5">
-        <Link href="/admin" className="text-xs text-[var(--color-muted)] hover:text-[var(--color-text)]">
-          Clientes
-        </Link>
-        <span className="text-xs text-[var(--color-muted)]">/</span>
-        <span className="text-sm font-medium">{tenant.name}</span>
-        <span className="text-xs text-[var(--color-muted)]">Imagens</span>
-        <nav className="ml-auto flex items-center gap-4 text-xs">
-          <Link href={`/admin/${tenant.slug}`} className="text-[var(--color-muted)] hover:text-[var(--color-text)]">
-            Site
-          </Link>
-          <Link href={`/admin/${tenant.slug}/trafego`} className="text-[var(--color-muted)] hover:text-[var(--color-text)]">
-            Tráfego
-          </Link>
-        </nav>
-      </header>
-
-      <div className="grid min-h-0 grid-cols-1 lg:grid-cols-[400px_1fr]">
-        <section className="flex min-h-0 flex-col border-r">
+    <div className="admin-workspace" data-view={view}>
+      <AdminHeader tenant={tenant} active="imagens" />
+      <MobileViews value={view} onChange={setView} second="Biblioteca" />
+      {notice ? (
+        <output className="admin-notice" aria-live="polite">
+          {notice}
+        </output>
+      ) : null}
+      <div className="admin-workspace-body">
+        <section
+          className="admin-conversation"
+          aria-label="Conversa de imagens"
+        >
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5">
-            {history.length === 0 && messages.length === 0 ? (
+            {messages.length === 0 ? (
               <div className="flex flex-col gap-3 text-sm">
-                <p className="text-base font-medium">Que imagem este cliente precisa?</p>
+                <p className="text-base font-medium">
+                  Que imagem este cliente precisa?
+                </p>
                 <p className="text-[var(--color-muted)]">
-                  O agente define uma direção de imagem a partir do briefing, gera três candidatas, critica cada uma e
-                  mostra ranqueado. Você escolhe qual entra no site.
+                  O agente define uma direção de imagem a partir do briefing,
+                  gera três candidatas, critica cada uma e mostra ranqueado.
+                  Você escolhe qual entra no site.
                 </p>
               </div>
             ) : null}
 
             <div className="flex flex-col gap-5">
-              {history.map((message, index) => (
-                <Message
-                  key={`h${index}`}
-                  message={{ id: `h${index}`, role: message.role as 'user' | 'assistant', parts: [{ type: 'text', text: message.content }] }}
-                />
-              ))}
               {messages.map((message) => (
                 <Message key={message.id} message={message} />
               ))}
-              {status === 'submitted' ? <p className="text-xs text-[var(--color-muted)]">Pensando</p> : null}
+              {status === 'submitted' ? (
+                <p className="text-xs text-[var(--color-muted)]">Pensando</p>
+              ) : null}
               {error ? (
                 <p className="rounded-md border border-[var(--color-err)] px-3 py-2 text-xs text-[var(--color-err)]">
                   {chatErrorMessage(error.message)}
@@ -247,7 +294,7 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
                   <button
                     key={suggestion}
                     type="button"
-                    onClick={() => submit(suggestion)}
+                    onClick={() => setInput(suggestion)}
                     className="rounded-full border px-3 py-1.5 text-left text-[0.72rem] text-[var(--color-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text)]"
                   >
                     {suggestion}
@@ -277,11 +324,19 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
                   {attachments.map((item) => (
                     <li key={item.url} className="relative">
                       {/* oxlint-disable-next-line next/no-img-element */}
-                      <img src={item.url} alt={item.name} className={`h-14 w-14 rounded-md border object-contain ${CHECKER}`} />
+                      <img
+                        src={item.url}
+                        alt={item.name}
+                        className={`h-14 w-14 rounded-md border object-contain ${CHECKER}`}
+                      />
                       <button
                         type="button"
                         aria-label={`Remover ${item.name}`}
-                        onClick={() => setAttachments((list) => list.filter((entry) => entry.url !== item.url))}
+                        onClick={() =>
+                          setAttachments((list) =>
+                            list.filter((entry) => entry.url !== item.url),
+                          )
+                        }
                         className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full border bg-[var(--color-bg)] text-[0.65rem]"
                       >
                         ×
@@ -291,17 +346,24 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
                 </ul>
               ) : null}
               <textarea
+                aria-label="Pedido de imagem"
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 onPaste={(event) => {
-                  const files = Array.from(event.clipboardData.files).filter((file) => file.type.startsWith('image/'));
+                  const files = Array.from(event.clipboardData.files).filter(
+                    (file) => file.type.startsWith('image/'),
+                  );
                   if (files.length) {
                     event.preventDefault();
                     void attach(files);
                   }
                 }}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
+                  if (
+                    event.key === 'Enter' &&
+                    !event.shiftKey &&
+                    !event.nativeEvent.isComposing
+                  ) {
                     event.preventDefault();
                     submit(input);
                   }
@@ -336,13 +398,19 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
                   </span>
                 </div>
                 {busy ? (
-                  <button type="button" onClick={() => stop()} className="rounded-md border px-3 py-1.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => stop()}
+                    className="rounded-md border px-3 py-1.5 text-xs"
+                  >
                     Parar
                   </button>
                 ) : (
                   <button
                     type="submit"
-                    disabled={(!input.trim() && attachments.length === 0) || uploading}
+                    disabled={
+                      (!input.trim() && attachments.length === 0) || uploading
+                    }
                     className="rounded-md bg-[var(--color-accent)] px-3.5 py-1.5 text-xs font-medium text-[var(--color-accent-ink)] disabled:opacity-40"
                   >
                     Enviar
@@ -351,56 +419,82 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
               </div>
             </div>
           </form>
+          <ChatUsageDetails messages={messages} />
         </section>
 
-        <section className="flex min-h-0 flex-col bg-[var(--color-surface)]">
+        <section className="admin-content" aria-label="Biblioteca de imagens">
           <div className="flex flex-wrap items-center gap-3 border-b px-4 py-2.5">
             {hasGuide ? (
               <div className="flex flex-wrap items-center gap-2 text-[0.72rem] text-[var(--color-muted)]">
-                <span className="rounded-md bg-[var(--color-surface-2)] px-2 py-1">{guide.estilo}</span>
+                <span className="rounded-md bg-[var(--color-surface-2)] px-2 py-1">
+                  {guide.estilo}
+                </span>
                 {guide.luz ? <span>{guide.luz}</span> : null}
                 {(guide.paleta ?? []).map((color) => (
                   <span key={color} className="rounded-md border px-2 py-1">
                     {color}
                   </span>
                 ))}
-                {guide.nunca?.length ? <span className="text-[var(--color-err)]">nunca: {guide.nunca.join(', ')}</span> : null}
+                {guide.nunca?.length ? (
+                  <span className="text-[var(--color-err)]">
+                    nunca: {guide.nunca.join(', ')}
+                  </span>
+                ) : null}
               </div>
             ) : (
-              <span className="text-[0.72rem] text-[var(--color-muted)]">Guia de imagem ainda não definido.</span>
+              <span className="text-[0.72rem] text-[var(--color-muted)]">
+                Guia de imagem ainda não definido.
+              </span>
             )}
-            <div className="ml-auto flex items-center gap-1">
-              {(['todas', 'logo', 'aprovada', 'candidata', 'rejeitada'] as const).map((option) => (
+            <div className="flex flex-wrap items-center gap-1">
+              {(
+                ['todas', 'logo', 'aprovada', 'candidata', 'rejeitada'] as const
+              ).map((option) => (
                 <button
                   key={option}
                   type="button"
                   onClick={() => setFilter(option)}
+                  aria-pressed={filter === option}
                   className={`rounded-md px-2.5 py-1.5 text-xs ${
-                    filter === option ? 'bg-[var(--color-surface-2)]' : 'text-[var(--color-muted)]'
+                    filter === option
+                      ? 'bg-[var(--color-surface-2)]'
+                      : 'text-[var(--color-muted)]'
                   }`}
                 >
-                  {option === 'todas' ? 'Todas' : option === 'logo' ? 'Logos' : STATUS_LABEL[option]}
+                  {option === 'todas'
+                    ? 'Todas'
+                    : option === 'logo'
+                      ? 'Logos'
+                      : STATUS_LABEL[option]}
                 </button>
               ))}
             </div>
           </div>
 
-          {notice ? <p className="border-b px-4 py-2 text-xs text-[var(--color-muted)]">{notice}</p> : null}
-
           <div className="min-h-0 flex-1 overflow-y-auto p-4">
             {batches.length === 0 ? (
               <p className="flex h-full items-center justify-center text-center text-sm text-[var(--color-muted)]">
-                {busy ? 'O agente está gerando e avaliando as imagens' : 'Nenhuma imagem ainda. Peça uma no chat.'}
+                {busy
+                  ? 'O agente está gerando e avaliando as imagens'
+                  : filter !== 'todas'
+                    ? 'Nenhuma imagem neste filtro. Selecione Todas para ver a biblioteca.'
+                    : 'Sua biblioteca está vazia. Abra a conversa para criar a primeira imagem.'}
               </p>
             ) : (
               <div className="flex flex-col gap-8">
                 {batches.map((batch) => (
-                  <section key={batch[0].batchId} className="flex flex-col gap-3">
+                  <section
+                    key={batch[0].batchId}
+                    className="flex flex-col gap-3"
+                  >
                     <h2 className="text-xs text-[var(--color-muted)]">
                       {batch[0].requestText}
                       <span className="ml-2 font-mono">{batch[0].ratio}</span>
-                      {batch[0].targetBlock && batch[0].targetBlock !== 'livre' ? (
-                        <span className="ml-2 font-mono">{batch[0].targetBlock}</span>
+                      {batch[0].targetBlock &&
+                      batch[0].targetBlock !== 'livre' ? (
+                        <span className="ml-2 font-mono">
+                          {batch[0].targetBlock}
+                        </span>
                       ) : null}
                     </h2>
                     <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -429,15 +523,21 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
                           <div className="flex flex-col gap-2 p-3">
                             <div className="flex items-center gap-2 text-xs">
                               <span className="font-mono">#{image.seq}</span>
-                              <span className={`font-medium ${scoreTone(image.score)}`}>
-                                {image.score === null ? 'sem nota' : image.score.toFixed(1)}
+                              <span
+                                className={`font-medium ${scoreTone(image.score)}`}
+                              >
+                                {image.score === null
+                                  ? 'sem nota'
+                                  : image.score.toFixed(1)}
                               </span>
                               <span className="text-[var(--color-muted)]">
                                 {image.kind === 'logo'
                                   ? (image.critique.variante ?? 'logo')
                                   : image.model.split('/')[1]}
                               </span>
-                              {image.kind === 'logo' && typeof image.critique.fidelidade_original === 'number' ? (
+                              {image.kind === 'logo' &&
+                              typeof image.critique.fidelidade_original ===
+                                'number' ? (
                                 <span
                                   className="text-[var(--color-muted)]"
                                   title="Quanto a variante ainda lembra o logo original, de 0 a 10"
@@ -463,26 +563,36 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
 
                             {image.critique.problemas?.length ? (
                               <ul className="flex flex-col gap-0.5">
-                                {image.critique.problemas.slice(0, 3).map((problem) => (
-                                  <li key={problem} className="text-[0.7rem] leading-snug text-[var(--color-err)]">
-                                    {problem}
-                                  </li>
-                                ))}
+                                {image.critique.problemas
+                                  .slice(0, 3)
+                                  .map((problem) => (
+                                    <li
+                                      key={problem}
+                                      className="text-[0.7rem] leading-snug text-[var(--color-err)]"
+                                    >
+                                      {problem}
+                                    </li>
+                                  ))}
                               </ul>
                             ) : null}
                             {image.critique.pontos_fortes?.length ? (
                               <p className="text-[0.7rem] leading-snug text-[var(--color-muted)]">
-                                {image.critique.pontos_fortes.slice(0, 2).join('. ')}
+                                {image.critique.pontos_fortes
+                                  .slice(0, 2)
+                                  .join('. ')}
                               </p>
                             ) : null}
                             {image.critique.erro ? (
-                              <p className="text-[0.7rem] text-[var(--color-warn)]">Crítica falhou: {image.critique.erro}</p>
+                              <p className="text-[0.7rem] text-[var(--color-warn)]">
+                                Crítica falhou: {image.critique.erro}
+                              </p>
                             ) : null}
 
                             <div className="mt-1 flex flex-wrap gap-1.5">
                               {image.status !== 'aprovada' ? (
                                 <button
                                   type="button"
+                                  disabled={Boolean(actionId) || busy}
                                   onClick={() => void act(image.id, 'aprovada')}
                                   className="rounded-md bg-[var(--color-accent)] px-2.5 py-1 text-[0.7rem] font-medium text-[var(--color-accent-ink)]"
                                 >
@@ -492,27 +602,48 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
                               {image.status !== 'rejeitada' ? (
                                 <button
                                   type="button"
-                                  onClick={() => void act(image.id, 'rejeitada')}
+                                  disabled={Boolean(actionId) || busy}
+                                  onClick={() =>
+                                    void act(image.id, 'rejeitada')
+                                  }
                                   className="rounded-md border px-2.5 py-1 text-[0.7rem] text-[var(--color-muted)]"
                                 >
                                   Rejeitar
                                 </button>
                               ) : null}
-                              {image.status === 'aprovada' && image.kind === 'logo' && image.url !== library.logoUrl ? (
+                              {image.status === 'aprovada' &&
+                              image.kind === 'logo' &&
+                              image.url !== library.logoUrl ? (
                                 <button
                                   type="button"
-                                  onClick={() => void applyAsLogo(image.url, image.seq)}
+                                  disabled={Boolean(actionId) || busy}
+                                  onClick={() =>
+                                    void applyAsLogo(image.url, image.seq)
+                                  }
                                   className="rounded-md border px-2.5 py-1 text-[0.7rem] text-[var(--color-muted)] hover:text-[var(--color-text)]"
                                 >
                                   Usar como logo
                                 </button>
                               ) : null}
-                              {image.status === 'aprovada' && image.kind !== 'logo' ? (
+                              {image.status === 'aprovada' &&
+                              image.kind !== 'logo' ? (
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    void navigator.clipboard.writeText(`usa a imagem #${image.seq} no hero`);
-                                    setNotice(`Copiado: "usa a imagem #${image.seq} no hero". Cole no chat do site.`);
+                                    void navigator.clipboard
+                                      .writeText(
+                                        `usa a imagem #${image.seq} no hero`,
+                                      )
+                                      .then(
+                                        () =>
+                                          setNotice(
+                                            `Pedido copiado. Cole na conversa do site para aplicar a imagem #${image.seq}.`,
+                                          ),
+                                        () =>
+                                          setNotice(
+                                            `No chat do site, peça: use a imagem #${image.seq} no hero.`,
+                                          ),
+                                      );
                                   }}
                                   className="rounded-md border px-2.5 py-1 text-[0.7rem] text-[var(--color-muted)]"
                                 >
@@ -521,11 +652,27 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
                               ) : null}
                               <button
                                 type="button"
-                                onClick={() => void remove(image.id, image.seq)}
+                                disabled={Boolean(actionId) || busy}
+                                onClick={() =>
+                                  deleteTarget === image.id
+                                    ? void remove(image.id, image.seq)
+                                    : setDeleteTarget(image.id)
+                                }
                                 className="ml-auto rounded-md px-2 py-1 text-[0.7rem] text-[var(--color-muted)] hover:text-[var(--color-err)]"
                               >
-                                Apagar
+                                {deleteTarget === image.id
+                                  ? 'Confirmar exclusão'
+                                  : 'Apagar'}
                               </button>
+                              {deleteTarget === image.id ? (
+                                <button
+                                  type="button"
+                                  className="admin-secondary"
+                                  onClick={() => setDeleteTarget(null)}
+                                >
+                                  Cancelar
+                                </button>
+                              ) : null}
                             </div>
                           </div>
                         </li>

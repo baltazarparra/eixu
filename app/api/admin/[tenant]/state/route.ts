@@ -1,8 +1,5 @@
 import { isAuthenticated } from '@/lib/auth';
-import { isDesignProfile } from '@/lib/design/profile';
-import { generationState } from '@/lib/sites/generation';
-import { lintPage } from '@/lib/taste/lint';
-import { lintSite } from '@/lib/taste/site';
+import { workspaceState } from '@/lib/admin/state';
 import { listImages } from '@/lib/images/queries';
 import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
 
@@ -27,43 +24,5 @@ export async function GET(
     listPages(tenant.id),
     listImages(tenant.id),
   ]);
-  const siteFindings = lintSite(pages, images, 'publish');
-  const design = isDesignProfile(tenant.brand.design)
-    ? tenant.brand.design
-    : undefined;
-
-  return Response.json({
-    tenant: {
-      slug: tenant.slug,
-      name: tenant.name,
-      brand: tenant.brand,
-      dials: tenant.dials,
-      hasDesign: Boolean(design),
-    },
-    generation: generationState(tenant, pages, images, siteFindings),
-    pages: pages.map((page) => {
-      const findings = [
-        ...lintPage(page, design),
-        ...siteFindings.filter((f) => f.page === `/${page.slug}`),
-      ];
-      return {
-        slug: page.slug,
-        type: page.type,
-        title: page.title,
-        blocks: page.blocks.length,
-        published: Boolean(page.publishedBlocks),
-        publishedAt: page.publishedAt,
-        // Rascunho difere do publicado quando o agente mexeu depois da publicação.
-        dirty:
-          Boolean(page.publishedBlocks) &&
-          JSON.stringify(page.publishedBlocks) !== JSON.stringify(page.blocks),
-        errors: findings
-          .filter((f) => f.level === 'error')
-          .map((f) => f.message),
-        warnings: findings
-          .filter((f) => f.level === 'warn')
-          .map((f) => f.message),
-      };
-    }),
-  });
+  return Response.json(workspaceState(tenant, pages, images));
 }

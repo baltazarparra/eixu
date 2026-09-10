@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { getTenantBySlug } from '@/lib/tenant-queries';
+import { tenantFromHost } from '@/lib/tenant-host';
 
 /**
  * Redirecionador de WhatsApp rastreado. Registra o clique e injeta a origem
@@ -8,7 +9,8 @@ import { getTenantBySlug } from '@/lib/tenant-queries';
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const host = request.headers.get('host') ?? '';
-  const slug = url.searchParams.get('t') || host.split(':')[0].split('.')[0];
+  const slug = url.searchParams.get('t') || tenantFromHost(host);
+  if (!slug) return Response.redirect(new URL('/', request.url), 302);
   const tenant = await getTenantBySlug(slug);
 
   if (!tenant?.whatsapp) {
@@ -17,6 +19,7 @@ export async function GET(request: Request) {
 
   const campaign = url.searchParams.get('utm_campaign') || '';
   const from = url.searchParams.get('from') || '/';
+  const session = url.searchParams.get('sid')?.slice(0, 160) || null;
   const number = tenant.whatsapp.replace(/\D/g, '');
   const text = campaign
     ? `Oi! Vim pelo site (${from}), campanha ${campaign}.`
@@ -24,13 +27,16 @@ export async function GET(request: Request) {
 
   try {
     await db()`
-      insert into events (tenant_id, type, path, source)
-      values (${tenant.id}, 'whatsapp_click', ${from},
+      insert into events (tenant_id, type, path, session_id, source)
+      values (${tenant.id}, 'whatsapp_click', ${from}, ${session},
               ${JSON.stringify(Object.fromEntries(url.searchParams))}::jsonb)
     `;
   } catch {
     // Falha de registro não pode impedir o contato.
   }
 
-  return Response.redirect(`https://wa.me/${number}?text=${encodeURIComponent(text)}`, 302);
+  return Response.redirect(
+    `https://wa.me/${number}?text=${encodeURIComponent(text)}`,
+    302,
+  );
 }

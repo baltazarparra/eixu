@@ -48,6 +48,7 @@ const LIMITS = `## Conteúdo e limites
 - Imagens: use a biblioteca e as URLs fornecidas, exatas. Nunca invente URL. Imagem rejeitada não entra nem no rascunho.`;
 
 const FREE = `## Execução econômica
+- O estado atual abaixo é a fonte editorial. Turnos encerrados mantêm texto e recibos compactos, não snapshots antigos de ferramentas. Releia a página quando uma alteração depender de props ou IDs que não estão neste turno.
 - Site novo ou reconstrução: set_design; se faltarem cenas, prepare_site_images; depois build_site com o projeto completo. Não use set_brand antes.
 - Edição: get_page na página em foco, depois a menor alteração: update_block, insert_block, move_block ou remove_block. set_blocks só para recompor a página. Não releia estado já recebido neste turno nem reenvie blocos inalterados.
 - Tamanho do logo: update_block em nav.bar com logoHeight em pixels. footer.compact aceita a mesma prop. Preserve a imagem aplicada.

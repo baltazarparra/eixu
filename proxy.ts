@@ -8,30 +8,14 @@ import type { NextRequest } from 'next/server';
 function notFound(): NextResponse {
   return new NextResponse('Not Found', {
     status: 404,
-    headers: { 'content-type': 'text/plain; charset=utf-8', 'x-robots-tag': 'noindex' },
+    headers: {
+      'content-type': 'text/plain; charset=utf-8',
+      'x-robots-tag': 'noindex',
+    },
   });
 }
 
-/** Hosts que servem o site institucional da EIXU, não sites de clientes. */
-const RESERVED = new Set(['www', 'admin', 'api', 'app']);
-
-/**
- * Extrai o slug do tenant a partir do host.
- * Produção: `cliente.eixu.com.br`. Desenvolvimento: `cliente.localhost:3000`.
- * Preview da Vercel: `?__tenant=slug` porque não há wildcard de domínio.
- */
-function tenantFromHost(host: string): string | null {
-  const hostname = host.split(':')[0];
-  if (hostname.endsWith('.localhost')) {
-    const slug = hostname.replace('.localhost', '');
-    return RESERVED.has(slug) ? null : slug;
-  }
-  const parts = hostname.split('.');
-  // eixu.com.br tem 3 partes; um subdomínio de tenant tem 4.
-  if (parts.length < 4) return null;
-  const slug = parts[0];
-  return RESERVED.has(slug) ? null : slug;
-}
+import { tenantFromHost } from '@/lib/tenant-host';
 
 export function proxy(request: NextRequest) {
   const url = request.nextUrl;
@@ -50,7 +34,11 @@ export function proxy(request: NextRequest) {
 
   const slug = tenantFromHost(host) ?? url.searchParams.get('__tenant');
   if (!slug) return NextResponse.next();
-  if (path.startsWith('/api/') || path.startsWith('/go/') || path.startsWith('/_next/')) {
+  if (
+    path.startsWith('/api/') ||
+    path.startsWith('/go/') ||
+    path.startsWith('/_next/')
+  ) {
     return NextResponse.next();
   }
   // O painel existe só no domínio principal. No subdomínio de um cliente ele

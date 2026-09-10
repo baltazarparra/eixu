@@ -2,13 +2,26 @@ import { db } from '@/lib/db';
 import { checked, text } from '@/lib/form-data';
 import { getPage, getTenantBySlug } from '@/lib/tenant-queries';
 
-const RESERVED = new Set(['tenant', 'page', 'redirect', 'attribution', 'consent', 'company_website', 'whatsapp_optin']);
+const RESERVED = new Set([
+  'tenant',
+  'page',
+  'redirect',
+  'attribution',
+  'consent',
+  'company_website',
+  'whatsapp_optin',
+]);
 
 /**
  * Recebe o POST nativo do bloco de formulário. Sem JavaScript de cliente:
  * grava o lead, registra o evento e redireciona para a página de obrigado.
  */
 export async function POST(request: Request) {
+  if (new URL(request.url).searchParams.get('preview') === '1')
+    return Response.json(
+      { error: 'Envios desativados na prévia.' },
+      { status: 409 },
+    );
   const form = await request.formData();
   const origin = new URL(request.url).origin;
   const slug = text(form, 'tenant');
@@ -18,7 +31,9 @@ export async function POST(request: Request) {
   // Em preview não há subdomínio, então o tenant viaja na query.
   const carry = new URL(request.url).searchParams.get('__tenant') ?? '';
   const target = (path: string) =>
-    carry ? `${origin}${path}${path.includes('?') ? '&' : '?'}__tenant=${carry}` : `${origin}${path}`;
+    carry
+      ? `${origin}${path}${path.includes('?') ? '&' : '?'}__tenant=${carry}`
+      : `${origin}${path}`;
 
   // Campo-armadilha: preenchido significa robô.
   if (text(form, 'company_website')) {
