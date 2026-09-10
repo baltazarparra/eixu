@@ -47,8 +47,13 @@ export function generationState(
     (tenant.brief.generation as { reviewRounds?: number } | undefined)
       ?.reviewRounds ?? 0,
   );
+  // A aprovação de imagem é do operador, não do agente: contá-la como erro
+  // mantinha a geração presa na fase de revisão, que não tem o que corrigir.
   const blockingErrors = [
-    ...siteFindings.filter((finding) => finding.level === 'error'),
+    ...siteFindings.filter(
+      (finding) =>
+        finding.level === 'error' && finding.rule !== 'imagens-aprovacao',
+    ),
     ...pages.flatMap((page) =>
       lintPage(page, design).filter((finding) => finding.level === 'error'),
     ),

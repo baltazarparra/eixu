@@ -185,6 +185,38 @@ A comparação com a saída anterior do mesmo negócio é direta: a home tinha c
 seções, três delas só texto, duas fotos concentradas na abertura, nenhuma seção
 protagonista e duas subpáginas sem imagem alguma.
 
+### Segundo negócio, com geração real de cenas
+
+O caso `aquecimento` rodou o fluxo inteiro em tenant descartável, desta vez
+gerando as imagens em vez de reaproveitar biblioteca existente.
+
+| Fase               | Passos | Entrada | Saída | Tempo |
+| ------------------ | ------ | ------- | ----- | ----- |
+| Briefing e direção | 3      | 17.062  | 2.280 | 33 s  |
+| Cenas              | 2      | 9.027   | 612   | 76 s  |
+| Composição         | 3      | 37.079  | 7.366 | 85 s  |
+
+Total de 118.878 tokens de entrada, 10.777 de saída e 226 segundos. A fase de
+cenas produziu cinco fotos em uma chamada, nas proporções que os blocos exibem:
+4:5 para o hero offset, 4:3 para as duas cenas do explorador, 5:6 para a
+narrativa e 16:9 para a imagem solta. A composição teve uma recusa por
+`ritmo-generico` e foi corrigida por `repair_site` no mesmo turno.
+
+Resultado automático: três páginas orgânicas, home com seis seções, três fotos,
+quatro tons e `feature.explorer` como seção protagonista; `/aquecedor-residencial`
+com sete seções e `/como-funciona` com cinco. Zero erros de projeto e de página.
+
+A execução expôs um laço: a fase de revisão repetiu três vezes sem ter o que
+corrigir. A causa era o cálculo de progresso contar a aprovação de imagem
+pendente como erro bloqueante, e ela é decisão do operador, não trabalho do
+agente. Corrigido, com teste que compara o progresso com as mesmas páginas e
+imagens candidatas ou aprovadas.
+
+As cinco imagens desse caso aparecem aprovadas na biblioteca. Não há caminho de
+código que aprove imagem automaticamente: `setStatus` só é chamado pelas
+ferramentas do estúdio, que exigem pedido do operador, e pela API do painel,
+que é ação direta dele. A aprovação veio pelo checkpoint do painel.
+
 ### Contraste das seções de cor
 
 A primeira geração expôs um defeito real do renderizador, não do agente: o
@@ -241,11 +273,9 @@ continua exigindo `lintSite` limpo, em ambos os caminhos.
 A avaliação parou nesse ponto por falta de créditos no Gateway. Os resultados
 depois de restabelecidos estão nas seções seguintes.
 
-Continua sem comprovação: a geração de cenas pelo fluxo real, porque a
-avaliação reutilizou as duas fotos existentes em vez de gerar seis; o
-comportamento com mais de um negócio, porque só o caso da oficina foi executado
-de ponta a ponta; e a nota pela rubrica de `docs/eval-rubric.md`, que depende de
-revisão humana. Uma queda de DNS do banco interrompeu uma das rodadas de
+Continua sem comprovação a nota pela rubrica de `docs/eval-rubric.md`, que
+depende de revisão humana, e a repetição do mesmo caso, para separar acerto de
+variação entre execuções. Uma queda de DNS do banco interrompeu uma das rodadas de
 revisão no meio, e a rodada seguinte terminou o trabalho: o fluxo é retomável,
 mas não há tratamento de falha de rede dentro da fase.
 

@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createJiti } from 'jiti';
-const j = createJiti(import.meta.url);
+// O alias resolve os módulos que importam por '@', como lib/sites/.
+const j = createJiti(import.meta.url, { alias: { '@': process.cwd() } });
 const { lintSite, pageImageUrls, publicationState } = await j.import(
   '../lib/taste/site.ts',
 );
@@ -751,4 +752,38 @@ await test('a próxima etapa vem do estado persistido, não da conversa', () => 
   assert.equal(PHASE_TOOLS.briefing.includes('build_site'), false);
   assert.equal(PHASE_TOOLS.composicao.includes('publish_site'), false);
   assert.equal(PHASE_TOOLS.revisao.includes('review_pages'), true);
+});
+
+const { generationState } = await j.import('../lib/sites/generation.ts');
+
+await test('aprovação de imagem pendente não prende a geração na revisão', () => {
+  const tenant = {
+    brand: { design: { version: 2, heroComposition: 'split' } },
+    brief: { generation: { reviewRounds: 1 } },
+  };
+  const pages = rich().map((page) => ({
+    ...page,
+    id: page.slug || 'home',
+    publishedBlocks: null,
+    publishedSeo: null,
+  }));
+  const aprovadas = generationState(tenant, pages, images);
+  const candidatas = generationState(
+    tenant,
+    pages,
+    images.map((image) => ({ ...image, status: 'candidata' })),
+  );
+  // A candidata continua bloqueando a publicação, mas não é trabalho do
+  // agente: ela não pode mudar a fase nem a contagem de erros.
+  assert.equal(candidatas.blockingErrors, aprovadas.blockingErrors);
+  assert.equal(candidatas.next, aprovadas.next);
+  assert.equal(candidatas.pendingImages.length, 2);
+  assert.equal(aprovadas.pendingImages.length, 0);
+  // Um erro que o agente resolve continua levando de volta para a revisão.
+  const semFoto = structuredClone(pages);
+  semFoto[1].blocks = semFoto[1].blocks.filter((b) => b.type !== 'hero.split');
+  assert.ok(
+    generationState(tenant, semFoto, images).blockingErrors >
+      aprovadas.blockingErrors,
+  );
 });
