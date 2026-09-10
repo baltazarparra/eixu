@@ -10,6 +10,8 @@ function newId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
+const pageType = z.enum(['page', 'paid_lp', 'post', 'thank_you']);
+
 const blockInput = z.object({
   type: z.string().describe(`Um destes: ${BLOCK_TYPES.join(', ')}`),
   props: z.record(z.string(), z.unknown()).describe('Props conforme o schema do bloco.'),
@@ -92,11 +94,69 @@ export function buildTools(tenant: Tenant) {
       },
     }),
 
+    build_site: tool({
+      description:
+        'Cria ou substitui várias páginas de uma vez, cada uma já com seus blocos. É a ferramenta certa para um site novo ou para refazer o site inteiro. Uma chamada só.',
+      inputSchema: z.object({
+        pages: z
+          .array(
+            z.object({
+              slug: z.string().describe('Sem barra inicial. Vazio para a home.'),
+              type: pageType,
+              title: z.string().min(2).max(120),
+              seoTitle: z.string().max(70).optional(),
+              seoDescription: z.string().max(170).optional(),
+              excerpt: z.string().max(220).optional(),
+              date: z.string().optional(),
+              blocks: z.array(blockInput).min(1).max(20),
+            }),
+          )
+          .min(1)
+          .max(12),
+      }),
+      execute: async ({ pages }) => {
+        const report: { page: string; blocks: number; erros: number; preflight: string }[] = [];
+        for (const input of pages) {
+          const slug = input.slug.replace(/^\/+|\/+$/g, '');
+          const noindex = input.type === 'thank_you' || input.type === 'paid_lp';
+          const seo = { title: input.seoTitle ?? input.title, description: input.seoDescription, noindex };
+          const meta = input.type === 'post' ? { excerpt: input.excerpt, date: input.date } : {};
+          const blocks = toBlocks(input.blocks);
+          await db()`
+            insert into pages (tenant_id, slug, type, title, seo, meta, blocks)
+            values (${tenant.id}, ${slug}, ${input.type}, ${input.title},
+                    ${JSON.stringify(seo)}::jsonb, ${JSON.stringify(meta)}::jsonb, ${JSON.stringify(blocks)}::jsonb)
+            on conflict (tenant_id, slug) do update
+              set type = excluded.type, title = excluded.title, seo = excluded.seo,
+                  meta = excluded.meta, blocks = excluded.blocks, updated_at = now()
+          `;
+          const findings = lintPage({ type: input.type, title: input.title, seo, blocks });
+          report.push({
+            page: `/${slug}`,
+            blocks: blocks.length,
+            erros: findings.filter((f) => f.level === 'error').length,
+            preflight: formatFindings(findings),
+          });
+        }
+        return { ok: true, pages: report };
+      },
+    }),
+
+    delete_page: tool({
+      description: 'Apaga uma página. Use só quando o operador pedir.',
+      inputSchema: z.object({ page: z.string() }),
+      execute: async ({ page: slug }) => {
+        const page = await requirePage(tenant.id, slug);
+        await db()`delete from pages where id = ${page.id}`;
+        return { ok: true, removida: `/${page.slug}` };
+      },
+    }),
+
     create_page: tool({
       description: 'Cria uma página. Use slug vazio para a home. Tipos: page, paid_lp, post, thank_you.',
       inputSchema: z.object({
         slug: z.string().describe('Sem barra inicial. Vazio para a home. Ex: "sobre", "blog", "blog/meu-post".'),
-        type: z.enum(['page', 'paid_lp', 'post', 'thank_you']),
+        type: pageType,
         title: z.string().min(2).max(120),
         seoTitle: z.string().max(70).optional(),
         seoDescription: z.string().max(170).optional(),

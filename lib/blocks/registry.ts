@@ -47,7 +47,7 @@ export const blockSchemas = {
     subtext: z.string().max(160).optional(),
     cta: link,
     secondary: link.optional(),
-    image: z.string().optional(),
+    image: z.url().startsWith('http').optional().describe('URL http(s) de uma imagem real. Omita se não tiver.'),
     imageAlt: z.string().max(140).optional(),
   }),
 
@@ -135,7 +135,10 @@ export const blockSchemas = {
 
   'media.gallery': z.object({
     title: z.string().max(90).optional(),
-    images: z.array(z.object({ src: z.string(), alt: z.string().max(140) })).min(2).max(8),
+    images: z
+      .array(z.object({ src: z.url().startsWith('http'), alt: z.string().max(140) }))
+      .min(2)
+      .max(8),
   }),
 
   'media.map': z.object({
@@ -224,10 +227,40 @@ export function familyOf(type: string): Family | null {
   return isBlockType(type) ? blockMeta[type].family : null;
 }
 
-/** Catálogo compacto injetado no prompt da IA. */
+const typeName = (value: unknown): string => (typeof value === 'string' ? value : 'string');
+
+/** Resume um schema JSON em uma linha legível: `campo: tipo (limites)`. */
+function summarize(schema: Record<string, unknown>, depth = 0): string {
+  const props = (schema.properties ?? {}) as Record<string, Record<string, unknown>>;
+  const required = new Set((schema.required ?? []) as string[]);
+  return Object.entries(props)
+    .map(([key, def]) => {
+      const opt = required.has(key) ? '' : '?';
+      const limits: string[] = [];
+      if (typeof def.maxLength === 'number') limits.push(`até ${def.maxLength}`);
+      const minItems = typeof def.minItems === 'number' ? def.minItems : 0;
+      const maxItems = typeof def.maxItems === 'number' ? String(def.maxItems) : '∞';
+      if (typeof def.minItems === 'number' || typeof def.maxItems === 'number') {
+        limits.push(`${minItems} a ${maxItems} itens`);
+      }
+      if (Array.isArray(def.enum)) limits.push((def.enum as string[]).join('|'));
+      const lim = limits.length ? ` (${limits.join(', ')})` : '';
+      if (def.type === 'array' && def.items && typeof def.items === 'object') {
+        const items = def.items as Record<string, unknown>;
+        if (items.type === 'object') return `${key}${opt}: [{ ${summarize(items, depth + 1)} }]${lim}`;
+        return `${key}${opt}: [${typeName(items.type)}]${lim}`;
+      }
+      if (def.type === 'object') return `${key}${opt}: { ${summarize(def, depth + 1)} }`;
+      return `${key}${opt}: ${typeName(def.type)}${lim}`;
+    })
+    .join(depth ? ', ' : '; ');
+}
+
+/** Catálogo com uso e props de cada bloco, injetado no prompt do agente. */
 export function catalogForPrompt(): string {
   return BLOCK_TYPES.map((type) => {
     const meta = blockMeta[type];
-    return `- ${type} (família ${meta.family}): ${meta.use}`;
+    const json = z.toJSONSchema(blockSchemas[type]) as Record<string, unknown>;
+    return `- ${type} (${meta.family}): ${meta.use}\n    props: ${summarize(json)}`;
   }).join('\n');
 }

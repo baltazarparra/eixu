@@ -4,9 +4,11 @@ Site institucional da EIXU e o gerador de sites multi-tenant que roda em `/admin
 
 ## O que é
 
-Um gerador de sites focado em inbound e tráfego pago. O operador descreve o site
-em linguagem natural, o modelo monta uma árvore de blocos, um lint determinístico
-reprova o que não atende às regras de qualidade e a página só publica quando passa.
+Um gerador de sites focado em inbound e tráfego pago, operado por um agente. O
+operador descreve o site no chat, o agente monta a árvore de blocos numa chamada
+só, mostra no preview ao lado e vai aplicando cada ajuste que o operador pede. Um
+lint determinístico reprova o que não atende às regras de qualidade e a página só
+publica quando passa. Não há edição visual: tudo passa pelo agente.
 
 Os sites gerados vivem em subdomínios (`cliente.eixu.com.br`) e compartilham o
 mesmo código e o mesmo banco. Não existe infraestrutura por cliente.
@@ -35,7 +37,7 @@ Para ver um site em desenvolvimento use `cliente.localhost:3000` ou
 | Componentes | `lib/blocks/components.tsx` | Render sem JavaScript de cliente |
 | Lint de qualidade | `lib/taste/lint.ts` | Pre-flight determinístico, destilado do Taste Skill |
 | Prompt | `lib/taste/prompt.ts` | Regras de julgamento passadas ao modelo |
-| Ferramentas da IA | `lib/ai/tools.ts` | Operações tipadas sobre a árvore de blocos |
+| Ferramentas do agente | `lib/ai/tools.ts` | `build_site` monta tudo de uma vez; as demais editam bloco a bloco |
 | Rastreamento | `lib/tracking.ts` | UTM, click IDs, primeiro e último toque |
 | Painel | `app/(admin)` | Chat, preview, leads e tráfego |
 | Sites | `app/(sites)` | Renderizador, sitemap e robots por tenant |
@@ -53,9 +55,9 @@ publicação, aviso não.
 
 ## Modelo de IA
 
-O modelo vem de `EIXU_MODEL`. O padrão funciona no plano gratuito do AI Gateway,
-que é limitado por taxa. Com créditos no gateway, use `anthropic/claude-sonnet-4.5`,
-que decide layout e escreve copy num nível bem acima dos modelos gratuitos.
+O modelo vem de `EIXU_MODEL`, hoje `anthropic/claude-opus-4.5` pelo AI Gateway da
+Vercel. Precisa de créditos no gateway: o plano gratuito bloqueia Claude e limita
+por taxa os poucos modelos que libera.
 
 ## Scripts
 

@@ -128,7 +128,7 @@ export function HeroSplit({ eyebrow, headline, subtext, cta, secondary, image, i
           </div>
         </div>
         <div className="md:col-span-5">
-          {image ? (
+          {image && /^https?:\/\//.test(image) ? (
             <img
               src={image}
               alt={imageAlt ?? ''}

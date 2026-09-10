@@ -14,26 +14,33 @@ import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
 
 export const maxDuration = 300;
 
+/** Modelo do agente. Com créditos no AI Gateway, Claude é o padrão. */
+const MODEL = () => process.env.EIXU_MODEL || 'anthropic/claude-opus-4.5';
+
 export async function POST(request: Request) {
   if (!(await isAuthenticated())) {
     return new Response('Não autorizado', { status: 401 });
   }
 
-  const { messages, tenant: slug } = (await request.json()) as {
+  const body = (await request.json()) as {
     messages: UIMessage[];
     tenant: string;
+    page?: string;
   };
 
-  const tenant = await getTenantBySlug(slug);
+  const tenant = await getTenantBySlug(body.tenant);
   if (!tenant) return new Response('Cliente não encontrado', { status: 404 });
 
   const pages = await listPages(tenant.id);
   const summary = pages
-    .map((page) => `- /${page.slug || ''} (${page.type}, ${page.blocks.length} blocos${page.publishedBlocks ? ', publicada' : ''})`)
+    .map(
+      (page) =>
+        `- /${page.slug} (${page.type}, ${page.blocks.length} blocos${page.publishedBlocks ? ', publicada' : ''}): ${page.title}`,
+    )
     .join('\n');
 
-  // Guarda a última mensagem do operador para o histórico do painel.
-  const lastUser = [...messages].reverse().find((message) => message.role === 'user');
+  // Guarda a mensagem do operador para o histórico do painel.
+  const lastUser = [...body.messages].reverse().find((message) => message.role === 'user');
   if (lastUser) {
     const text = lastUser.parts
       .filter((part) => part.type === 'text')
@@ -47,13 +54,11 @@ export async function POST(request: Request) {
   }
 
   const result = streamText({
-    // Trocável por env. Com créditos no AI Gateway, use anthropic/claude-sonnet-4.5,
-    // que decide layout e escreve copy muito melhor que os modelos do free tier.
-    model: process.env.EIXU_MODEL || 'openai/gpt-oss-120b',
-    instructions: systemPrompt(tenant, summary),
-    messages: await convertToModelMessages(messages),
+    model: MODEL(),
+    instructions: systemPrompt(tenant, summary, body.page ? `/${body.page}` : '/'),
+    messages: await convertToModelMessages(body.messages),
     tools: buildTools(tenant),
-    stopWhen: isStepCount(24),
+    stopWhen: isStepCount(30),
     onError: ({ error }) => {
       console.error('[chat] falha do modelo:', error);
     },

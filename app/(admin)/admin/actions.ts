@@ -4,9 +4,8 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { isAuthenticated, signIn, signOut } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { lintPage } from '@/lib/taste/lint';
 import { text } from '@/lib/form-data';
-import { getPage, getTenantBySlug } from '@/lib/tenant-queries';
+import { getTenantBySlug } from '@/lib/tenant-queries';
 
 async function guard() {
   if (!(await isAuthenticated())) redirect('/admin/login');
@@ -43,23 +42,6 @@ export async function createTenantAction(formData: FormData) {
   `;
   revalidatePath('/admin');
   redirect(`/admin/${slug}`);
-}
-
-export async function publishPageAction(formData: FormData) {
-  await guard();
-  const slug = text(formData, 'tenant');
-  const pageSlug = text(formData, 'page');
-  const tenant = await getTenantBySlug(slug);
-  if (!tenant) return;
-  const page = await getPage(tenant.id, pageSlug);
-  if (!page) return;
-  if (lintPage(page).some((finding) => finding.level === 'error')) return;
-  await db()`
-    update pages set published_blocks = blocks, published_seo = seo, published_at = now()
-    where id = ${page.id}
-  `;
-  await db()`update tenants set status = 'published' where id = ${tenant.id}`;
-  revalidatePath(`/admin/${slug}`);
 }
 
 export async function updateLeadStatusAction(formData: FormData) {
