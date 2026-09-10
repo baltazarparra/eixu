@@ -125,7 +125,8 @@ export async function deleteImage(tenantId: string, id: string): Promise<void> {
  */
 export async function referenceReason(tenantId: string, url: string): Promise<'pagina' | 'logo' | null> {
   const inPages = (await db()`
-    select 1 from pages where tenant_id = ${tenantId} and blocks::text like ${'%' + url + '%'} limit 1
+    select 1 from pages where tenant_id = ${tenantId}
+      and (blocks::text like ${'%' + url + '%'} or published_blocks::text like ${'%' + url + '%'}) limit 1
   `) as Row[];
   if (inPages.length) return 'pagina';
   const asLogo = (await db()`

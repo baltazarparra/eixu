@@ -22,6 +22,7 @@ Codex/GPT-6 Astra e Claude Code/Fable 5.1; `CLAUDE.md` o importa.
 | Ao trabalhar em                            | Leia                                                                                                          |
 | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
 | Rotas, publicação, dados ou limites do MVP | [Arquitetura](docs/architecture.md) e os arquivos do fluxo afetado                                            |
+| Frontend e composição visual               | [Design e aplicação das duas skills](docs/design.md)                                                          |
 | Prompts, ferramentas, modelos ou contexto  | [Harness e modelos](docs/harness.md)                                                                          |
 | Validação e release                        | [Verificação](docs/verification.md)                                                                           |
 | Neon ou schema                             | `db/schema.sql`, `lib/db.ts` e a skill relevante em `.agents/skills/neon/` ou `.agents/skills/neon-postgres/` |

@@ -45,7 +45,9 @@ export async function POST(request: Request) {
   // Guarda a mensagem do operador para o histórico do painel.
   // Persiste o texto que o operador escreveu, não a versão anotada com a URL
   // do anexo: a anotação é detalhe de implementação e polui o histórico.
-  const lastUser = [...body.messages].reverse().find((message) => message.role === 'user');
+  const lastUser = [...body.messages]
+    .reverse()
+    .find((message) => message.role === 'user');
   if (lastUser) {
     const text = lastUser.parts
       .filter((part) => part.type === 'text')
@@ -61,14 +63,26 @@ export async function POST(request: Request) {
 
   const result = streamText({
     model: MODEL(),
-    instructions: systemPrompt(tenant, summary, body.page ? `/${body.page}` : '/'),
+    instructions: systemPrompt(
+      tenant,
+      summary,
+      body.page ? `/${body.page}` : '/',
+    ),
     messages: await convertToModelMessages(messages),
     tools: buildTools(tenant),
     stopWhen: isStepCount(30),
     onError: ({ error }) => {
       console.error('[chat] falha do modelo:', error);
     },
-    onEnd: async ({ text }) => {
+    onEnd: async ({ text, usage, stepNumber }) => {
+      // Apenas contagens: nenhum prompt, conteúdo do cliente ou credencial.
+      console.info('[chat] usage', {
+        model: MODEL(),
+        steps: stepNumber + 1,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        totalTokens: usage.totalTokens,
+      });
       if (text) {
         await db()`
           insert into chat_messages (tenant_id, role, content, channel)

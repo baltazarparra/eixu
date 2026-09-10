@@ -50,9 +50,10 @@ const statCols: Record<number, string> = {
   3: 'lg:grid-cols-3',
   4: 'lg:grid-cols-4',
 };
-const section = 'py-20 md:py-28';
-const eyebrowClass = 'text-[0.72rem] font-medium uppercase tracking-[0.18em] text-[var(--muted)]';
-const h2Class = 'text-balance text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.08] tracking-[-0.02em]';
+const section = 'site-section';
+const eyebrowClass = 'text-[0.85rem] font-medium text-[var(--muted)]';
+const h2Class =
+  'text-balance text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.08] tracking-[-0.02em]';
 
 function Eyebrow({ children }: { children?: string }) {
   if (!children) return null;
@@ -70,7 +71,7 @@ function Action({
   variant?: 'solid' | 'ghost';
 }) {
   const base =
-    'inline-flex items-center justify-center gap-2 rounded-[var(--radius)] px-6 py-3 text-[0.95rem] font-medium transition-colors';
+    'site-action inline-flex items-center justify-center gap-2 rounded-[var(--radius)] px-6 py-3 text-[0.95rem] font-medium transition-colors';
   const styles =
     variant === 'solid'
       ? 'bg-[var(--accent)] text-[var(--accent-ink)] hover:opacity-90'
@@ -88,21 +89,46 @@ function Action({
   );
 }
 
-export function NavBar({ logoText, links, cta, ctx }: NavBarProps & { ctx: RenderContext }) {
+export function NavBar({
+  logoText,
+  links,
+  cta,
+  ctx,
+}: NavBarProps & { ctx: RenderContext }) {
   const logo = ctx.tenant.brand.logoUrl;
   return (
-    <header className="border-b border-[var(--line)]">
-      <div className={`${shell} flex h-20 items-center justify-between gap-6`}>
-        <a href="/" className="flex items-center text-[1.05rem] font-semibold tracking-[-0.01em]" aria-label={`${logoText}, início`}>
+    <header className="site-nav border-b border-[var(--line)]">
+      <div
+        className={`${shell} flex min-h-20 flex-wrap items-center justify-between gap-4 py-4`}
+      >
+        <a
+          href="/"
+          className="flex items-center text-[1.05rem] font-semibold tracking-[-0.01em]"
+          aria-label={`${logoText}, início`}
+        >
           {logo ? (
-            <img src={logo} alt={logoText} width={160} height={40} className="h-9 w-auto max-w-[180px] object-contain" decoding="async" />
+            <img
+              src={logo}
+              alt={logoText}
+              width={160}
+              height={40}
+              className="h-12 w-auto max-w-[140px] object-contain"
+              decoding="async"
+            />
           ) : (
             logoText
           )}
         </a>
-        <nav className="hidden items-center gap-8 md:flex" aria-label="Navegação principal">
+        <nav
+          className="hidden items-center gap-6 lg:flex"
+          aria-label="Navegação principal"
+        >
           {links.map((link) => (
-            <a key={link.href + link.label} href={link.href} className="text-[0.92rem] text-[var(--muted)] hover:text-[var(--ink)]">
+            <a
+              key={link.href + link.label}
+              href={link.href}
+              className="text-[0.92rem] text-[var(--muted)] hover:text-[var(--ink)]"
+            >
               {link.label}
             </a>
           ))}
@@ -116,69 +142,112 @@ export function NavBar({ logoText, links, cta, ctx }: NavBarProps & { ctx: Rende
             {cta.label}
           </a>
         ) : null}
+        {links.length ? (
+          <details className="site-mobile-nav w-full lg:hidden">
+            <summary className="flex min-h-11 cursor-pointer items-center justify-between text-sm font-medium">
+              Menu<span aria-hidden="true">+</span>
+            </summary>
+            <nav aria-label="Navegação mobile" className="grid gap-1 pb-2">
+              {links.map((link) => (
+                <a
+                  key={link.href + link.label}
+                  href={link.href}
+                  className="py-3 text-sm"
+                >
+                  {link.label}
+                </a>
+              ))}
+            </nav>
+          </details>
+        ) : null}
       </div>
     </header>
   );
 }
 
-export function HeroSplit({ eyebrow, headline, subtext, cta, secondary, bullets, image, imageAlt }: HeroSplitProps & { ctx: RenderContext }) {
+export function HeroSplit({
+  eyebrow,
+  headline,
+  subtext,
+  cta,
+  secondary,
+  bullets,
+  image,
+  imageAlt,
+  layout = 'split',
+}: HeroSplitProps & { ctx: RenderContext }) {
+  const hasImage = Boolean(image && /^https?:\/\//.test(image));
   return (
-    <section className="border-b border-[var(--line)] pt-16 pb-20 md:pt-24 md:pb-28">
-      <div className={`${shell} grid items-center gap-12 md:grid-cols-12 md:gap-16`}>
-        <div className="flex flex-col gap-6 md:col-span-7">
+    <section
+      className={`site-hero ${hasImage ? `site-hero-${layout}` : 'site-hero-text'}`}
+    >
+      <div className={`${shell} site-hero-grid`}>
+        <div className="site-hero-copy flex flex-col items-start gap-6">
           <Eyebrow>{eyebrow}</Eyebrow>
-          <h1 className="text-balance text-[clamp(2.4rem,6vw,4.4rem)] font-semibold leading-[1.02] tracking-[-0.03em]">
-            {headline}
-          </h1>
-          {subtext ? <p className="max-w-[46ch] text-[1.05rem] leading-relaxed text-[var(--muted)]">{subtext}</p> : null}
+          <h1 className="site-headline text-balance">{headline}</h1>
+          {subtext ? (
+            <p className="max-w-[44ch] text-[1.08rem] leading-relaxed text-[var(--muted)]">
+              {subtext}
+            </p>
+          ) : null}
           <div className="flex flex-wrap gap-3 pt-2">
             <Action href={cta.href} label={cta.label} />
-            {secondary ? <Action href={secondary.href} label={secondary.label} variant="ghost" /> : null}
+            {secondary ? (
+              <Action
+                href={secondary.href}
+                label={secondary.label}
+                variant="ghost"
+              />
+            ) : null}
           </div>
           {bullets?.length ? (
-            <ul className="flex flex-wrap gap-x-5 gap-y-2 pt-3 text-[0.85rem] text-[var(--muted)]">
+            <ul className="site-hero-bullets flex flex-wrap gap-x-6 gap-y-3 pt-4 text-sm text-[var(--muted)]">
               {bullets.map((bullet) => (
-                <li key={bullet} className="flex items-center gap-2">
-                  <span aria-hidden="true" className="size-1.5 rounded-full bg-[var(--accent)]" />
+                <li
+                  key={bullet}
+                  className="border-l-2 border-[var(--line)] pl-3"
+                >
                   {bullet}
                 </li>
               ))}
             </ul>
           ) : null}
         </div>
-        <div className="md:col-span-5">
-          {image && /^https?:\/\//.test(image) ? (
+        {hasImage ? (
+          <figure className="site-hero-media">
             <img
               src={image}
               alt={imageAlt ?? ''}
-              width={720}
-              height={900}
-              className="aspect-[4/5] w-full rounded-[var(--radius)] object-cover"
+              width={960}
+              height={1080}
+              className="h-full w-full object-cover"
               fetchPriority="high"
               decoding="async"
             />
-          ) : (
-            <div
-              aria-hidden="true"
-              className="aspect-[4/5] w-full rounded-[var(--radius)] border border-[var(--line)] bg-[linear-gradient(160deg,var(--line),transparent)]"
-            />
-          )}
-        </div>
+          </figure>
+        ) : null}
       </div>
     </section>
   );
 }
 
-export function HeroStatement({ eyebrow, headline, subtext, cta }: HeroStatementProps & { ctx: RenderContext }) {
+export function HeroStatement({
+  eyebrow,
+  headline,
+  subtext,
+  cta,
+}: HeroStatementProps & { ctx: RenderContext }) {
   return (
-    <section className="border-b border-[var(--line)] pt-20 pb-24 md:pt-28 md:pb-32">
-      <div className={`${shell} flex max-w-[60rem] flex-col gap-7`}>
-        <Eyebrow>{eyebrow}</Eyebrow>
-        <h1 className="text-balance text-[clamp(2.6rem,7vw,5rem)] font-semibold leading-[1.0] tracking-[-0.035em]">
-          {headline}
-        </h1>
-        {subtext ? <p className="max-w-[48ch] text-[1.1rem] leading-relaxed text-[var(--muted)]">{subtext}</p> : null}
-        <div className="pt-2">
+    <section className="site-hero site-hero-text">
+      <div className={`${shell} site-hero-grid`}>
+        <div className="site-hero-copy flex flex-col items-start gap-7">
+          <Eyebrow>{eyebrow}</Eyebrow>
+          <h1 className="site-headline text-balance">{headline}</h1>
+          {subtext ? (
+            <p className="max-w-[48ch] text-[1.1rem] leading-relaxed text-[var(--muted)]">
+              {subtext}
+            </p>
+          ) : null}
           <Action href={cta.href} label={cta.label} />
         </div>
       </div>
@@ -193,7 +262,10 @@ export function ProofLogos({ title, logos }: ProofLogosProps) {
         {title ? <p className={`${eyebrowClass} mb-7`}>{title}</p> : null}
         <ul className="flex flex-wrap items-center gap-x-10 gap-y-5">
           {logos.map((logo) => (
-            <li key={logo} className="text-[1.05rem] font-medium tracking-[-0.01em] text-[var(--muted)]">
+            <li
+              key={logo}
+              className="text-[1.05rem] font-medium tracking-[-0.01em] text-[var(--muted)]"
+            >
               {logo}
             </li>
           ))}
@@ -206,13 +278,17 @@ export function ProofLogos({ title, logos }: ProofLogosProps) {
 export function ProofStats({ items }: ProofStatsProps) {
   return (
     <section className={`${section} border-b border-[var(--line)]`}>
-      <div className={`${shell} grid gap-10 sm:grid-cols-2 ${statCols[items.length] ?? 'lg:grid-cols-4'}`}>
+      <div
+        className={`${shell} grid gap-10 sm:grid-cols-2 ${statCols[items.length] ?? 'lg:grid-cols-4'}`}
+      >
         {items.map((item) => (
           <div key={item.label} className="flex flex-col gap-2">
             <p className="text-[clamp(2.4rem,5vw,3.6rem)] font-semibold leading-none tracking-[-0.03em] text-[var(--accent)]">
               {item.value}
             </p>
-            <p className="text-[0.95rem] leading-snug text-[var(--muted)]">{item.label}</p>
+            <p className="text-[0.95rem] leading-snug text-[var(--muted)]">
+              {item.label}
+            </p>
           </div>
         ))}
       </div>
@@ -220,7 +296,11 @@ export function ProofStats({ items }: ProofStatsProps) {
   );
 }
 
-export function ProofTestimonial({ quote, author, role }: ProofTestimonialProps) {
+export function ProofTestimonial({
+  quote,
+  author,
+  role,
+}: ProofTestimonialProps) {
   return (
     <section className={`${section} border-b border-[var(--line)]`}>
       <figure className={`${shell} max-w-[54rem]`}>
@@ -238,20 +318,37 @@ export function ProofTestimonial({ quote, author, role }: ProofTestimonialProps)
 
 export function FeatureBento({ eyebrow, title, items }: FeatureBentoProps) {
   return (
-    <section className={`${section} border-b border-[var(--line)]`}>
+    <section className={section}>
       <div className={shell}>
         <div className="flex flex-col gap-4">
           <Eyebrow>{eyebrow}</Eyebrow>
           <h2 className={`${h2Class} max-w-[22ch]`}>{title}</h2>
         </div>
-        <div className="mt-14 grid gap-px overflow-hidden rounded-[var(--radius)] border border-[var(--line)] bg-[var(--line)] sm:grid-cols-2 lg:grid-cols-6">
+        <div className="site-bento mt-12 grid gap-5">
           {items.map((item, index) => (
             <article
               key={item.title}
-              className={`flex flex-col gap-3 bg-[var(--paper)] p-8 ${index % 3 === 0 ? 'lg:col-span-4' : 'lg:col-span-2'}`}
+              className={`site-bento-item ${index === 0 ? 'site-bento-featured' : ''}`}
             >
-              <h3 className="text-[1.15rem] font-semibold tracking-[-0.01em]">{item.title}</h3>
-              <p className="text-[0.97rem] leading-relaxed text-[var(--muted)]">{item.body}</p>
+              {item.image ? (
+                <img
+                  src={item.image}
+                  alt={item.imageAlt ?? ''}
+                  width={960}
+                  height={640}
+                  loading="lazy"
+                  decoding="async"
+                  className="aspect-[3/2] w-full object-cover"
+                />
+              ) : null}
+              <div className="flex flex-col gap-3 p-7 md:p-9">
+                <h3 className="text-[1.3rem] font-semibold leading-tight tracking-[-0.02em]">
+                  {item.title}
+                </h3>
+                <p className="max-w-[52ch] text-base leading-relaxed text-[var(--muted)]">
+                  {item.body}
+                </p>
+              </div>
             </article>
           ))}
         </div>
@@ -270,13 +367,20 @@ export function NarrativeSteps({ eyebrow, title, steps }: NarrativeStepsProps) {
         </div>
         <ol className="flex flex-col md:col-span-8">
           {steps.map((step, index) => (
-            <li key={step.title} className="flex gap-6 border-t border-[var(--line)] py-7 first:border-t-0 first:pt-0">
+            <li
+              key={step.title}
+              className="flex gap-6 border-t border-[var(--line)] py-7 first:border-t-0 first:pt-0"
+            >
               <span className="pt-1 font-mono text-[0.85rem] text-[var(--muted)]">
                 {String(index + 1).padStart(2, '0')}
               </span>
               <div className="flex flex-col gap-2">
-                <h3 className="text-[1.15rem] font-semibold tracking-[-0.01em]">{step.title}</h3>
-                <p className="max-w-[54ch] text-[0.97rem] leading-relaxed text-[var(--muted)]">{step.body}</p>
+                <h3 className="text-[1.15rem] font-semibold tracking-[-0.01em]">
+                  {step.title}
+                </h3>
+                <p className="max-w-[54ch] text-[0.97rem] leading-relaxed text-[var(--muted)]">
+                  {step.body}
+                </p>
               </div>
             </li>
           ))}
@@ -293,11 +397,22 @@ export function FaqAccordion({ title, items }: FaqAccordionProps) {
         <h2 className={`${h2Class} md:col-span-4`}>{title}</h2>
         <div className="md:col-span-8">
           {items.map((item) => (
-            <details key={item.q} className="group border-t border-[var(--line)] py-5 first:border-t-0 first:pt-0">
-              <summary className="cursor-pointer list-none text-[1.05rem] font-medium marker:hidden">
+            <details
+              key={item.q}
+              className="group border-t border-[var(--line)] py-5 first:border-t-0 first:pt-0"
+            >
+              <summary className="site-faq-summary flex cursor-pointer list-none items-center justify-between gap-5 text-[1.05rem] font-medium marker:hidden">
                 {item.q}
+                <span
+                  aria-hidden="true"
+                  className="site-disclosure shrink-0 text-xl"
+                >
+                  +
+                </span>
               </summary>
-              <p className="mt-3 max-w-[62ch] text-[0.97rem] leading-relaxed text-[var(--muted)]">{item.a}</p>
+              <p className="mt-3 max-w-[62ch] text-[0.97rem] leading-relaxed text-[var(--muted)]">
+                {item.a}
+              </p>
             </details>
           ))}
         </div>
@@ -306,18 +421,33 @@ export function FaqAccordion({ title, items }: FaqAccordionProps) {
   );
 }
 
-export function CtaBand({ title, body, cta, whatsapp, ctx }: CtaBandProps & { ctx: RenderContext }) {
-  const href = whatsapp && ctx.tenant.whatsapp ? `/go/wa?from=${encodeURIComponent(ctx.pagePath)}` : cta.href;
+export function CtaBand({
+  title,
+  body,
+  cta,
+  whatsapp,
+  ctx,
+}: CtaBandProps & { ctx: RenderContext }) {
+  const href =
+    whatsapp && ctx.tenant.whatsapp
+      ? `/go/wa?from=${encodeURIComponent(ctx.pagePath)}`
+      : cta.href;
   return (
-    <section className={`${section} border-b border-[var(--line)] bg-[var(--ink)] text-[var(--paper)]`}>
-      <div className={`${shell} flex flex-col items-start gap-7 md:flex-row md:items-end md:justify-between`}>
+    <section
+      className={`${section} site-cta bg-[var(--ink)] text-[var(--paper)]`}
+    >
+      <div
+        className={`${shell} flex flex-col items-start gap-7 md:flex-row md:items-end md:justify-between`}
+      >
         <div className="flex max-w-[34ch] flex-col gap-3">
           <h2 className={h2Class}>{title}</h2>
-          {body ? <p className="text-[1.02rem] leading-relaxed opacity-75">{body}</p> : null}
+          {body ? (
+            <p className="text-[1.02rem] leading-relaxed opacity-75">{body}</p>
+          ) : null}
         </div>
         <a
           href={href}
-          className="inline-flex shrink-0 items-center rounded-[var(--radius)] bg-[var(--accent)] px-7 py-3.5 text-[0.98rem] font-medium text-[var(--accent-ink)]"
+          className="site-action inline-flex shrink-0 items-center rounded-[var(--radius)] bg-[var(--accent)] px-7 py-3.5 text-[0.98rem] font-medium text-[var(--accent-ink)]"
           data-track={whatsapp ? 'whatsapp' : undefined}
           {...(whatsapp ? { rel: 'noreferrer' } : {})}
         >
@@ -341,16 +471,24 @@ export function FormLead({
   const inputClass =
     'w-full rounded-[var(--radius)] border border-[var(--line)] bg-transparent px-4 py-3 text-[0.97rem] outline-none focus:border-[var(--accent)]';
   return (
-    <section id="contato" className={`${section} border-b border-[var(--line)]`}>
+    <section className={`${section} border-b border-[var(--line)]`}>
       <div className={`${shell} grid gap-12 md:grid-cols-12`}>
         <div className="flex flex-col gap-3 md:col-span-5">
           <h2 className={h2Class}>{title}</h2>
-          {body ? <p className="max-w-[40ch] text-[1rem] leading-relaxed text-[var(--muted)]">{body}</p> : null}
+          {body ? (
+            <p className="max-w-[40ch] text-[1rem] leading-relaxed text-[var(--muted)]">
+              {body}
+            </p>
+          ) : null}
         </div>
         {/* POST nativo: sem JavaScript de cliente, funciona com JS desligado. */}
         <form
           method="post"
-          action={ctx.previewTenant ? `/api/form?__tenant=${ctx.previewTenant}` : '/api/form'}
+          action={
+            ctx.previewTenant
+              ? `/api/form?__tenant=${ctx.previewTenant}`
+              : '/api/form'
+          }
           className="flex flex-col gap-5 md:col-span-7"
         >
           <input type="hidden" name="tenant" value={ctx.tenant.slug} />
@@ -362,19 +500,35 @@ export function FormLead({
           <p className="hidden" aria-hidden="true">
             <label>
               Não preencha este campo
-              <input type="text" name="company_website" tabIndex={-1} autoComplete="off" />
+              <input
+                type="text"
+                name="company_website"
+                tabIndex={-1}
+                autoComplete="off"
+              />
             </label>
           </p>
           {fields.map((f) => (
             <label key={f.name} className="flex flex-col gap-2">
               <span className="text-[0.88rem] font-medium">
                 {f.label}
-                {f.required ? <span className="text-[var(--accent)]"> *</span> : null}
+                {f.required ? (
+                  <span className="text-[var(--accent)]"> *</span>
+                ) : null}
               </span>
               {f.type === 'textarea' ? (
-                <textarea name={f.name} required={f.required} rows={4} className={inputClass} />
+                <textarea
+                  name={f.name}
+                  required={f.required}
+                  rows={4}
+                  className={inputClass}
+                />
               ) : f.type === 'select' ? (
-                <select name={f.name} required={f.required} className={inputClass}>
+                <select
+                  name={f.name}
+                  required={f.required}
+                  className={inputClass}
+                >
                   <option value="">Selecione</option>
                   {(f.options ?? []).map((option) => (
                     <option key={option} value={option}>
@@ -383,17 +537,31 @@ export function FormLead({
                   ))}
                 </select>
               ) : (
-                <input type={f.type} name={f.name} required={f.required} className={inputClass} />
+                <input
+                  type={f.type}
+                  name={f.name}
+                  required={f.required}
+                  className={inputClass}
+                />
               )}
             </label>
           ))}
           <label className="flex items-start gap-3 text-[0.85rem] leading-relaxed text-[var(--muted)]">
-            <input type="checkbox" name="consent" required className="mt-1 size-4 accent-[var(--accent)]" />
+            <input
+              type="checkbox"
+              name="consent"
+              required
+              className="mt-1 size-4 accent-[var(--accent)]"
+            />
             <span>{consentText}</span>
           </label>
           {whatsappOptIn ? (
             <label className="flex items-start gap-3 text-[0.85rem] leading-relaxed text-[var(--muted)]">
-              <input type="checkbox" name="whatsapp_optin" className="mt-1 size-4 accent-[var(--accent)]" />
+              <input
+                type="checkbox"
+                name="whatsapp_optin"
+                className="mt-1 size-4 accent-[var(--accent)]"
+              />
               <span>Quero receber contato por WhatsApp.</span>
             </label>
           ) : null}
@@ -416,7 +584,10 @@ export function EditorialText({ title, body }: EditorialTextProps) {
         {title ? <h2 className={`${h2Class} mb-7`}>{title}</h2> : null}
         <div className="flex flex-col gap-5">
           {body.split('\n\n').map((paragraph) => (
-            <p key={paragraph.slice(0, 40)} className="text-[1.05rem] leading-[1.75] text-[var(--muted)]">
+            <p
+              key={paragraph.slice(0, 40)}
+              className="text-[1.05rem] leading-[1.75] text-[var(--muted)]"
+            >
               {paragraph}
             </p>
           ))}
@@ -426,26 +597,45 @@ export function EditorialText({ title, body }: EditorialTextProps) {
   );
 }
 
-export function EditorialPostList({ title, limit, ctx }: EditorialPostListProps & { ctx: RenderContext }) {
+export function EditorialPostList({
+  title,
+  limit,
+  ctx,
+}: EditorialPostListProps & { ctx: RenderContext }) {
   const posts = (ctx.posts ?? []).slice(0, limit);
   return (
     <section className={`${section} border-b border-[var(--line)]`}>
       <div className={shell}>
         <h1 className={`${h2Class} mb-12`}>{title}</h1>
         {posts.length === 0 ? (
-          <p className="text-[var(--muted)]">Nenhum conteúdo publicado ainda.</p>
+          <p className="text-[var(--muted)]">
+            Nenhum conteúdo publicado ainda.
+          </p>
         ) : (
           <ul className="grid gap-px overflow-hidden rounded-[var(--radius)] border border-[var(--line)] bg-[var(--line)] md:grid-cols-2">
             {posts.map((post) => (
               <li key={post.slug} className="bg-[var(--paper)]">
-                <a href={`/${post.slug}`} className="flex h-full flex-col gap-3 p-8 hover:bg-[color-mix(in_oklab,var(--line)_40%,transparent)]">
+                <a
+                  href={`/${post.slug}`}
+                  className="flex h-full flex-col gap-3 p-8 hover:bg-[color-mix(in_oklab,var(--line)_40%,transparent)]"
+                >
                   {post.date ? (
                     <time className={eyebrowClass} dateTime={post.date}>
-                      {new Date(post.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      {new Date(post.date).toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
                     </time>
                   ) : null}
-                  <h2 className="text-[1.3rem] font-semibold leading-snug tracking-[-0.015em]">{post.title}</h2>
-                  {post.excerpt ? <p className="text-[0.97rem] leading-relaxed text-[var(--muted)]">{post.excerpt}</p> : null}
+                  <h2 className="text-[1.3rem] font-semibold leading-snug tracking-[-0.015em]">
+                    {post.title}
+                  </h2>
+                  {post.excerpt ? (
+                    <p className="text-[0.97rem] leading-relaxed text-[var(--muted)]">
+                      {post.excerpt}
+                    </p>
+                  ) : null}
                 </a>
               </li>
             ))}
@@ -457,7 +647,10 @@ export function EditorialPostList({ title, limit, ctx }: EditorialPostListProps 
 }
 
 export function EditorialPostBody({ body }: EditorialPostBodyProps) {
-  const nodes = body.split('\n\n').map((chunk) => chunk.trim()).filter(Boolean);
+  const nodes = body
+    .split('\n\n')
+    .map((chunk) => chunk.trim())
+    .filter(Boolean);
   return (
     <article className={`${section} border-b border-[var(--line)]`}>
       <div className={`${shell} flex max-w-[44rem] flex-col gap-6`}>
@@ -465,14 +658,20 @@ export function EditorialPostBody({ body }: EditorialPostBodyProps) {
           const key = node.slice(0, 48);
           if (node.startsWith('## ')) {
             return (
-              <h2 key={key} className="mt-6 text-[1.6rem] font-semibold tracking-[-0.02em]">
+              <h2
+                key={key}
+                className="mt-6 text-[1.6rem] font-semibold tracking-[-0.02em]"
+              >
                 {node.slice(3)}
               </h2>
             );
           }
           if (node.startsWith('### ')) {
             return (
-              <h3 key={key} className="mt-4 text-[1.25rem] font-semibold tracking-[-0.015em]">
+              <h3
+                key={key}
+                className="mt-4 text-[1.25rem] font-semibold tracking-[-0.015em]"
+              >
                 {node.slice(4)}
               </h3>
             );
@@ -481,7 +680,10 @@ export function EditorialPostBody({ body }: EditorialPostBodyProps) {
             return (
               <ul key={key} className="flex list-disc flex-col gap-2 pl-5">
                 {node.split('\n').map((line) => (
-                  <li key={line} className="text-[1.03rem] leading-[1.75] text-[var(--muted)]">
+                  <li
+                    key={line}
+                    className="text-[1.03rem] leading-[1.75] text-[var(--muted)]"
+                  >
                     {line.replace(/^[-*] /, '')}
                   </li>
                 ))}
@@ -489,7 +691,10 @@ export function EditorialPostBody({ body }: EditorialPostBodyProps) {
             );
           }
           return (
-            <p key={key} className="text-[1.05rem] leading-[1.78] text-[var(--muted)]">
+            <p
+              key={key}
+              className="text-[1.05rem] leading-[1.78] text-[var(--muted)]"
+            >
               {node}
             </p>
           );
@@ -530,7 +735,9 @@ export function MediaMap({ title, address, query }: MediaMapProps) {
       <div className={`${shell} grid gap-10 md:grid-cols-12`}>
         <div className="flex flex-col gap-3 md:col-span-4">
           {title ? <h2 className={h2Class}>{title}</h2> : null}
-          <address className="text-[1rem] not-italic leading-relaxed text-[var(--muted)]">{address}</address>
+          <address className="text-[1rem] not-italic leading-relaxed text-[var(--muted)]">
+            {address}
+          </address>
           <a
             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`}
             rel="noreferrer"
@@ -566,12 +773,19 @@ export function PricingTable({ title, plans }: PricingTableProps) {
             >
               <div className="flex flex-col gap-1">
                 <h3 className="text-[1.1rem] font-semibold">{plan.name}</h3>
-                <p className="text-[2rem] font-semibold tracking-[-0.03em]">{plan.price}</p>
-                {plan.note ? <p className="text-[0.88rem] opacity-70">{plan.note}</p> : null}
+                <p className="text-[2rem] font-semibold tracking-[-0.03em]">
+                  {plan.price}
+                </p>
+                {plan.note ? (
+                  <p className="text-[0.88rem] opacity-70">{plan.note}</p>
+                ) : null}
               </div>
               <ul className="flex flex-col gap-2.5">
                 {plan.features.map((feature) => (
-                  <li key={feature} className="text-[0.95rem] leading-snug opacity-80">
+                  <li
+                    key={feature}
+                    className="text-[0.95rem] leading-snug opacity-80"
+                  >
                     {feature}
                   </li>
                 ))}
@@ -594,7 +808,13 @@ export function PricingTable({ title, plans }: PricingTableProps) {
   );
 }
 
-export function FooterCompact({ logoText, tagline, links, legal, ctx }: FooterCompactProps & { ctx: RenderContext }) {
+export function FooterCompact({
+  logoText,
+  tagline,
+  links,
+  legal,
+  ctx,
+}: FooterCompactProps & { ctx: RenderContext }) {
   const logo = ctx.tenant.brand.logoUrl;
   return (
     <footer className="py-14">
@@ -602,118 +822,204 @@ export function FooterCompact({ logoText, tagline, links, legal, ctx }: FooterCo
         <div className="flex flex-wrap items-start justify-between gap-8">
           <div className="flex flex-col gap-2">
             {logo ? (
-              <img src={logo} alt={logoText} width={140} height={36} className="h-8 w-auto max-w-[160px] object-contain" loading="lazy" decoding="async" />
+              <img
+                src={logo}
+                alt={logoText}
+                width={140}
+                height={36}
+                className="h-8 w-auto max-w-[160px] object-contain"
+                loading="lazy"
+                decoding="async"
+              />
             ) : (
-              <p className="text-[1.05rem] font-semibold tracking-[-0.01em]">{logoText}</p>
+              <p className="text-[1.05rem] font-semibold tracking-[-0.01em]">
+                {logoText}
+              </p>
             )}
-            {tagline ? <p className="max-w-[36ch] text-[0.95rem] text-[var(--muted)]">{tagline}</p> : null}
+            {tagline ? (
+              <p className="max-w-[36ch] text-[0.95rem] text-[var(--muted)]">
+                {tagline}
+              </p>
+            ) : null}
           </div>
           {links.length ? (
             <nav className="flex flex-wrap gap-x-7 gap-y-3" aria-label="Rodapé">
               {links.map((link) => (
-                <a key={link.href + link.label} href={link.href} className="text-[0.92rem] text-[var(--muted)] hover:text-[var(--ink)]">
+                <a
+                  key={link.href + link.label}
+                  href={link.href}
+                  className="text-[0.92rem] text-[var(--muted)] hover:text-[var(--ink)]"
+                >
                   {link.label}
                 </a>
               ))}
             </nav>
           ) : null}
         </div>
-        {legal ? <p className="text-[0.82rem] text-[var(--muted)]">{legal}</p> : null}
+        {legal ? (
+          <p className="text-[0.82rem] text-[var(--muted)]">{legal}</p>
+        ) : null}
       </div>
     </footer>
   );
 }
 
-export function FeatureNumbered({ eyebrow, title, lead, items }: FeatureNumberedProps) {
+export function FeatureNumbered({
+  eyebrow,
+  title,
+  lead,
+  items,
+}: FeatureNumberedProps) {
   return (
-    <section className={`${section} border-b border-[var(--line)] bg-[color-mix(in_oklab,var(--line)_35%,var(--paper))]`}>
-      <div className={shell}>
-        <div className="flex max-w-[40rem] flex-col gap-4">
+    <section className={`${section} site-services`}>
+      <div className={`${shell} site-services-grid grid gap-12`}>
+        <div className="flex max-w-[40rem] flex-col items-start gap-4">
           <Eyebrow>{eyebrow}</Eyebrow>
           <h2 className={h2Class}>{title}</h2>
-          {lead ? <p className="text-[1.02rem] leading-relaxed text-[var(--muted)]">{lead}</p> : null}
+          {lead ? (
+            <p className="text-[1.02rem] leading-relaxed text-[var(--muted)]">
+              {lead}
+            </p>
+          ) : null}
         </div>
-        <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((item, index) => {
+        <ul className="grid gap-x-8 md:grid-cols-2">
+          {items.map((item) => {
             const inner = (
               <>
-                <span className="font-mono text-[0.8rem] text-[var(--accent)]">{String(index + 1).padStart(2, '0')}</span>
-                <h3 className="mt-3 text-[1.1rem] font-semibold tracking-[-0.01em]">{item.title}</h3>
-                <p className="mt-2 text-[0.95rem] leading-relaxed text-[var(--muted)]">{item.body}</p>
+                <h3 className="text-[1.15rem] font-semibold tracking-[-0.01em]">
+                  {item.title}
+                </h3>
+                <p className="mt-3 text-[0.97rem] leading-relaxed text-[var(--muted)]">
+                  {item.body}
+                </p>
               </>
             );
-            const cls = 'flex h-full flex-col rounded-[var(--radius)] border border-[var(--line)] bg-[var(--paper)] p-6';
             return (
-              <li key={item.title}>
+              <li
+                key={item.title}
+                className="border-t border-[var(--line)] py-7"
+              >
                 {item.href ? (
-                  <a href={item.href} className={`${cls} hover:border-[var(--accent)]`}>
+                  <a
+                    href={item.href}
+                    className="block underline-offset-4 hover:underline"
+                  >
                     {inner}
                   </a>
                 ) : (
-                  <div className={cls}>{inner}</div>
+                  inner
                 )}
               </li>
             );
           })}
-        </ol>
+        </ul>
       </div>
     </section>
   );
 }
 
-export function NarrativeSplit({ eyebrow, title, items, image, imageAlt }: NarrativeSplitProps) {
+export function NarrativeSplit({
+  eyebrow,
+  title,
+  items,
+  image,
+  imageAlt,
+}: NarrativeSplitProps) {
+  const hasImage = Boolean(image && /^https?:\/\//.test(image));
   return (
-    <section className={`${section} border-b border-[var(--line)]`}>
-      <div className={`${shell} grid items-center gap-12 md:grid-cols-12`}>
-        <div className="md:col-span-7">
+    <section className={section}>
+      <div
+        className={`${shell} grid items-start gap-12 ${hasImage ? 'md:grid-cols-2' : ''}`}
+      >
+        {hasImage ? (
+          <figure className="overflow-hidden rounded-[var(--panel-radius)]">
+            <img
+              src={image}
+              alt={imageAlt ?? ''}
+              width={720}
+              height={860}
+              loading="lazy"
+              decoding="async"
+              className="aspect-[5/6] w-full object-cover"
+            />
+          </figure>
+        ) : null}
+        <div>
           <Eyebrow>{eyebrow}</Eyebrow>
-          <h2 className={`${h2Class} mt-4 mb-8`}>{title}</h2>
-          <ol className="flex flex-col">
-            {items.map((item, index) => (
-              <li key={item.title} className="flex gap-5 border-t border-[var(--line)] py-5 first:border-t-0 first:pt-0">
-                <span className="pt-1 font-mono text-[0.8rem] text-[var(--accent)]">{String(index + 1).padStart(2, '0')}</span>
-                <div>
-                  <h3 className="text-[1.08rem] font-semibold tracking-[-0.01em]">
-                    {item.href ? (
-                      <a href={item.href} className="underline-offset-4 hover:underline">
-                        {item.title}
-                      </a>
-                    ) : (
-                      item.title
-                    )}
-                  </h3>
-                  <p className="mt-1 max-w-[52ch] text-[0.95rem] leading-relaxed text-[var(--muted)]">{item.body}</p>
-                </div>
+          <h2 className={`${h2Class} mt-4 mb-8 max-w-[24ch]`}>{title}</h2>
+          <ul className={`grid gap-x-10 ${hasImage ? '' : 'md:grid-cols-2'}`}>
+            {items.map((item) => (
+              <li
+                key={item.title}
+                className="border-t border-[var(--line)] py-6"
+              >
+                <h3 className="text-lg font-semibold tracking-[-0.01em]">
+                  {item.href ? (
+                    <a
+                      href={item.href}
+                      className="underline-offset-4 hover:underline"
+                    >
+                      {item.title}
+                    </a>
+                  ) : (
+                    item.title
+                  )}
+                </h3>
+                <p className="mt-2 max-w-[52ch] text-base leading-relaxed text-[var(--muted)]">
+                  {item.body}
+                </p>
               </li>
             ))}
-          </ol>
-        </div>
-        <div className="md:col-span-5">
-          {image && /^https?:\/\//.test(image) ? (
-            <img src={image} alt={imageAlt ?? ''} width={720} height={860} loading="lazy" decoding="async" className="aspect-[5/6] w-full rounded-[var(--radius)] object-cover" />
-          ) : (
-            <div aria-hidden="true" className="aspect-[5/6] w-full rounded-[var(--radius)] border border-[var(--line)] bg-[linear-gradient(160deg,var(--line),transparent)]" />
-          )}
+          </ul>
         </div>
       </div>
     </section>
   );
 }
 
-export function EditorialFacts({ eyebrow, title, body, facts, dark }: EditorialFactsProps) {
+export function EditorialFacts({
+  eyebrow,
+  title,
+  body,
+  facts,
+  dark,
+}: EditorialFactsProps) {
   return (
-    <section className={`${section} border-b border-[var(--line)] ${dark ? 'bg-[var(--ink)] text-[var(--paper)]' : ''}`}>
+    <section
+      className={`${section} border-b border-[var(--line)] ${dark ? 'bg-[var(--ink)] text-[var(--paper)]' : ''}`}
+    >
       <div className={`${shell} grid gap-12 md:grid-cols-12`}>
         <div className="flex flex-col gap-4 md:col-span-7">
-          {eyebrow ? <p className={`${eyebrowClass} ${dark ? 'text-[var(--paper)] opacity-60' : ''}`}>{eyebrow}</p> : null}
+          {eyebrow ? (
+            <p
+              className={`${eyebrowClass} ${dark ? 'text-[var(--paper)] opacity-60' : ''}`}
+            >
+              {eyebrow}
+            </p>
+          ) : null}
           <h2 className={h2Class}>{title}</h2>
-          {body ? <p className={`max-w-[56ch] text-[1.02rem] leading-relaxed ${dark ? 'opacity-75' : 'text-[var(--muted)]'}`}>{body}</p> : null}
+          {body ? (
+            <p
+              className={`max-w-[56ch] text-[1.02rem] leading-relaxed ${dark ? 'opacity-75' : 'text-[var(--muted)]'}`}
+            >
+              {body}
+            </p>
+          ) : null}
         </div>
         <dl className="flex flex-col md:col-span-5">
           {facts.map((fact) => (
-            <div key={fact.label} className={`flex justify-between gap-6 border-t py-4 first:border-t-0 first:pt-0 ${dark ? 'border-[color-mix(in_oklab,var(--paper)_20%,transparent)]' : 'border-[var(--line)]'}`}>
-              <dt className={`text-[0.85rem] uppercase tracking-[0.12em] ${dark ? 'opacity-60' : 'text-[var(--muted)]'}`}>{fact.label}</dt>
-              <dd className="text-right text-[0.98rem] font-medium">{fact.value}</dd>
+            <div
+              key={fact.label}
+              className={`flex justify-between gap-6 border-t py-4 first:border-t-0 first:pt-0 ${dark ? 'border-[color-mix(in_oklab,var(--paper)_20%,transparent)]' : 'border-[var(--line)]'}`}
+            >
+              <dt
+                className={`text-[0.9rem] ${dark ? 'opacity-60' : 'text-[var(--muted)]'}`}
+              >
+                {fact.label}
+              </dt>
+              <dd className="text-right text-[0.98rem] font-medium">
+                {fact.value}
+              </dd>
             </div>
           ))}
         </dl>
@@ -726,8 +1032,20 @@ export function MediaImage({ src, alt, caption }: MediaImageProps) {
   return (
     <section className={`${section} border-b border-[var(--line)]`}>
       <figure className={shell}>
-        <img src={src} alt={alt} width={1400} height={800} loading="lazy" decoding="async" className="aspect-[16/9] w-full rounded-[var(--radius)] object-cover" />
-        {caption ? <figcaption className="mt-3 text-[0.88rem] text-[var(--muted)]">{caption}</figcaption> : null}
+        <img
+          src={src}
+          alt={alt}
+          width={1400}
+          height={800}
+          loading="lazy"
+          decoding="async"
+          className="aspect-[16/9] w-full rounded-[var(--radius)] object-cover"
+        />
+        {caption ? (
+          <figcaption className="mt-3 text-[0.88rem] text-[var(--muted)]">
+            {caption}
+          </figcaption>
+        ) : null}
       </figure>
     </section>
   );
@@ -744,7 +1062,13 @@ export function FloatingWhatsapp({ ctx }: { ctx: RenderContext }) {
       data-track="whatsapp"
       className="fixed right-5 bottom-5 z-40 flex size-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-[0_10px_30px_-10px_rgba(0,0,0,0.45)]"
     >
-      <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor" aria-hidden="true">
+      <svg
+        viewBox="0 0 24 24"
+        width="28"
+        height="28"
+        fill="currentColor"
+        aria-hidden="true"
+      >
         <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 12 12 0 0 0 4.6 4c1.7.7 2.1.6 2.8.5a2.4 2.4 0 0 0 1.6-1.1 2 2 0 0 0 .1-1.1c0-.2-.2-.2-.5-.4Z" />
       </svg>
     </a>

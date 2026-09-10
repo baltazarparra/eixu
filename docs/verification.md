@@ -72,3 +72,11 @@ vercel logs URL_DO_DEPLOYMENT --level error --since 20m --json --no-branch
 Para servir o build local, use `npx next start --hostname 127.0.0.1 --port 3100` e acesse `http://localhost:3100`; o proxy interpreta o host numérico `127.0.0.1` como tenant. Um smoke mínimo cobre `/`, cases, `/vibe-coding-para-producao`, `/admin/login`, redirecionamento de `/admin` sem sessão e 401 nas APIs administrativas e chats. Não exporte contatos nem imprima respostas autenticadas com dados de clientes.
 
 Deploy de código não migra o banco e não publica rascunhos. Alterações de banco, Blob, domínio ou variáveis exigem seu próprio escopo operacional. Não use `db:seed-demo` ou `db:requantize-logos` como validação de release.
+
+## Design do gerador, 10/09/2026
+
+Validação local das alterações descritas em [Design dos sites gerados](design.md): tipos e build Next.js passaram, assim como lint dos arquivos funcionais alterados. O lint global reproduziu os 20 erros preexistentes acima. Foi necessário reconstruir sem o cache anterior para conferir que o CSS novo estava presente nos artefatos.
+
+A fixture local usa texto e foto visíveis do site de exemplo, sem escrita no banco. Foram conferidos schemas legados e novos, recusa de props/layout/imagem inválidos, bloqueio de âncora duplicada, preservação do limite de headline, formulário com âncora padrão e personalizada, hero/lista sem imagem e bentos de 2–6 itens. No navegador: larguras de 320, 390, 768 e 1440 px sem overflow nos cenários visitados, menu mobile e FAQ nativos, destinos de âncoras, fontes e movimento reduzido. São verificações locais; não houve submissão de formulário, geração paga ou publicação remota.
+
+No mesmo estado sintético de cliente, o prompt completo com catálogo passou de 10.988 para 8.285 caracteres, redução de 24,6%. Isso mede texto do prompt, não tokens faturados ou custo total. O evento `[chat] usage` permite a comparação futura de gerações equivalentes. Nenhuma avaliação comparativa de modelos foi executada.

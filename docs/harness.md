@@ -30,7 +30,7 @@ Em uma futura integração direta, o guia de Fable exige atenção ao histórico
 
 As rotas dos chats leem `EIXU_MODEL`; os críticos usam `EIXU_CRITIC_MODEL` com fallback. Nenhum desses valores é alterado por `AGENTS.md`. Os prompts efetivos estão em `lib/taste/prompt.ts` e `lib/images/prompt.ts`, as ferramentas em `lib/ai/` e os contratos de dados em `lib/blocks/registry.ts` e `db/schema.sql`.
 
-A aplicação já tem boas bases: leitura de estado por ferramentas, schemas consultáveis, erros que orientam correção e publicação bloqueada por lint determinístico. Há espaço para evoluir: regras duplicadas entre prompt e lint, alegação incorreta de que toda edição devolve pre-flight, histórico textual sem trace completo e autorização de publicação dependente da instrução ao modelo. Os [limites de arquitetura](architecture.md#limites-atuais) detalham a evidência.
+A aplicação já tem boas bases: leitura de estado por ferramentas, schemas consultáveis, erros que orientam correção e publicação bloqueada por lint determinístico. A orientação visual e a redução do contexto estão em [Design dos sites gerados](design.md). O prompt distingue ferramentas que devolvem pre-flight e edições que exigem `lint_page`; a rota registra uso agregado de tokens. Permanecem limites como histórico textual sem trace completo e autorização de publicação dependente da instrução ao modelo. Os [limites de arquitetura](architecture.md#limites-atuais) detalham a evidência.
 
 Trocar o modelo do produto exige verificar o ID no Gateway, acesso da conta, compatibilidade com AI SDK 7, tool calling, streaming, imagens e limites de tempo. Um modelo disponível no editor ou na API direta não prova disponibilidade no Gateway. Avalie qualidade, latência e custo por tarefa antes da alteração.
 
