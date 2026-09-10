@@ -44,7 +44,28 @@ async function requireImage(tenant: Tenant, ref: string) {
   return image;
 }
 
-export function buildImageTools(tenant: Tenant) {
+/**
+ * Aprovar uma imagem e trocar o logo do site são decisões do operador. O
+ * prompt já diz isso, e mesmo assim o agente aprovou sozinho e aplicou como
+ * logo uma variante que o próprio crítico tinha reprovado. Instrução não é
+ * garantia: o código exige que o pedido esteja na última mensagem do operador.
+ */
+function operatorAsked(lastUserText: string): boolean {
+  return /\b(aprov\w*|usa\w*|use\w*|aplic\w*|defin\w*|coloc\w*|escolh\w*|pode\s+ser|essa\s+mesma?)\b/i.test(
+    lastUserText,
+  );
+}
+
+export function buildImageTools(tenant: Tenant, lastUserText = '') {
+  const requireOperator = (acao: string) => {
+    if (!operatorAsked(lastUserText)) {
+      console.warn(`[imagens] ${acao} bloqueado: o operador não pediu. Mensagem: ${JSON.stringify(lastUserText.slice(0, 80))}`);
+      throw new ToolError(
+        `${acao} é decisão do operador. Apresente as opções e pergunte qual ele quer, em vez de decidir sozinho.`,
+      );
+    }
+  };
+
   return {
     define_guide: tool({
       description:
@@ -213,14 +234,17 @@ export function buildImageTools(tenant: Tenant) {
         'Define uma imagem da biblioteca como o logo do site, na navegação e no rodapé. Use só quando o operador pedir.',
       inputSchema: z.object({ image: z.string().describe('O número ("#3") ou o id da imagem.') }),
       execute: safe(async ({ image: ref }) => {
+        requireOperator('Trocar o logo do site');
         const image = await requireImage(tenant, ref);
         if (image.kind !== 'logo') {
           throw new ToolError(`A imagem #${image.seq} é uma foto, não um logo. Gere um logo com generate_logo.`);
         }
-        if (image.status === 'rejeitada') {
-          throw new ToolError(`A imagem #${image.seq} está rejeitada. Escolha outra variante.`);
+        // Sem aprovar por tabela: aplicar o logo são dois passos deliberados.
+        if (image.status !== 'aprovada') {
+          throw new ToolError(
+            `A imagem #${image.seq} ainda não foi aprovada. Peça a aprovação do operador antes de aplicar como logo.`,
+          );
         }
-        if (image.status !== 'aprovada') await setStatus(tenant.id, image.id, 'aprovada');
         await setBrandLogo(tenant.id, image.url);
         return { ok: true, numero: `#${image.seq}`, logoUrl: image.url };
       }),
@@ -234,6 +258,7 @@ export function buildImageTools(tenant: Tenant) {
         description: z.string().max(200).optional(),
       }),
       execute: safe(async ({ image: ref, alt, description }) => {
+        requireOperator('Aprovar uma imagem');
         const image = await requireImage(tenant, ref);
         const updated = await setStatus(tenant.id, image.id, 'aprovada', { alt, description });
         return { ok: true, numero: `#${updated?.seq}`, url: updated?.url, alt: updated?.alt };

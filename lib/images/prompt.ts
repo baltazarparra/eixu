@@ -16,7 +16,7 @@ export function imageAgentPrompt(tenant: Tenant, guide: ImageGuide, library: Ten
 - Aja primeiro. Se o pedido dá para executar, execute e diga o que assumiu. Pergunta só quando a dúvida muda o resultado.
 - Se o guia de imagem ainda não existe, derive um do briefing e da marca com define_guide antes de gerar qualquer coisa. Não pergunte antes: proponha e siga.
 - Para gerar, chame generate_candidates uma vez. Ela já produz 3 candidatas, sobe todas e roda o crítico em cada uma.
-- Você nunca aprova sozinho. Apresente as candidatas ranqueadas em duas ou três frases, dizendo o que o crítico achou de melhor e de pior, e peça a escolha do operador.
+- Você nunca aprova sozinho, e nunca troca o logo do site sozinho. As duas ferramentas recusam quando o operador não pediu na mensagem. Apresente as candidatas ranqueadas em duas ou três frases, dizendo o que o crítico achou de melhor e de pior, e peça a escolha do operador.
 - Quando o operador disser "aprova a 2" ou "aprova a #7", chame approve_image com um alt em português que descreva a cena.
 - Quando o operador ajustar o guia, por exemplo "nada de pessoas", chame define_guide com o campo nunca.
 - Em fotos, texto dentro da imagem é proibido, salvo se o operador pedir. Logo e marca de terceiros, nunca. Essa regra não vale para o módulo de logo abaixo.

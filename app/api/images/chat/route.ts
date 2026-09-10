@@ -35,11 +35,14 @@ export async function POST(request: Request) {
   // Persiste o texto que o operador escreveu, não a versão anotada com a URL
   // do anexo: a anotação é detalhe de implementação e polui o histórico.
   const lastUser = [...body.messages].reverse().find((message) => message.role === 'user');
+  const lastUserText = lastUser
+    ? lastUser.parts
+        .filter((part) => part.type === 'text')
+        .map((part) => (part as { text: string }).text)
+        .join(' ')
+    : '';
   if (lastUser) {
-    const text = lastUser.parts
-      .filter((part) => part.type === 'text')
-      .map((part) => (part as { text: string }).text)
-      .join(' ');
+    const text = lastUserText;
     if (text) {
       await db()`
         insert into chat_messages (tenant_id, role, content, channel)
@@ -52,7 +55,7 @@ export async function POST(request: Request) {
     model: process.env.EIXU_MODEL || 'anthropic/claude-opus-4.5',
     instructions: imageAgentPrompt(tenant, guide, library, pagesSummary),
     messages: await convertToModelMessages(messages),
-    tools: buildImageTools(tenant),
+    tools: buildImageTools(tenant, lastUserText),
     stopWhen: isStepCount(14),
     onError: ({ error }) => {
       console.error('[imagens] falha do modelo:', error);
