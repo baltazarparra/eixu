@@ -11,7 +11,11 @@ import {
 } from '@/lib/design/profile';
 import { hasDuplicateComposition } from '@/lib/design/uniqueness';
 import { listImages } from '@/lib/images/queries';
+import { prepareSiteImages } from '@/lib/images/site-assets';
+import { RATIOS } from '@/lib/images/ratios';
+import { publishSite } from '@/lib/sites/publish';
 import { formatFindings, lintPage } from '@/lib/taste/lint';
+import { inboundSchema, lintSite, type SitePage } from '@/lib/taste/site';
 import { getPage, listPages } from '@/lib/tenant-queries';
 import type { BlockInstance, Tenant } from '@/lib/types';
 
@@ -97,17 +101,74 @@ export function buildTools(tenant: Tenant) {
   let activeBrand = { ...tenant.brand };
   let activeDials = { ...tenant.dials };
   let activeBrief = { ...tenant.brief };
+  let imagesPrepared = false;
 
   return {
-    list_images: tool({
+    prepare_site_images: tool({
       description:
-        'Lista as imagens aprovadas do cliente. Use quando o operador falar "imagem 3", "a foto do forno" ou pedir para colocar uma imagem da biblioteca num bloco.',
+        'Gera até duas cenas distintas pelo estúdio EIXU, com guia do cliente e crítica. Use quando faltam as 2 imagens da home. Candidatas podem entrar no rascunho, mas só o operador aprova para publicação. Uma chamada por turno.',
+      inputSchema: z.object({
+        scenes: z
+          .array(
+            z.object({
+              request: z.string().min(30).max(500),
+              targetBlock: z.enum([
+                'hero.cover',
+                'hero.split',
+                'hero.atelier',
+                'narrative.split',
+                'feature.explorer',
+                'media.image',
+              ]),
+              ratio: z.enum(RATIOS),
+            }),
+          )
+          .min(1)
+          .max(2),
+      }),
+      execute: safe(async ({ scenes }) => {
+        if (imagesPrepared)
+          throw new ToolError(
+            'As cenas deste turno já foram solicitadas. Consulte a biblioteca e reutilize as candidatas.',
+          );
+        imagesPrepared = true;
+        return prepareSiteImages(
+          {
+            ...tenant,
+            brand: activeBrand,
+            dials: activeDials,
+            brief: activeBrief,
+          },
+          scenes,
+        );
+      }),
+    }),
+
+    lint_site: tool({
+      description:
+        'Valida o projeto completo: 3 páginas orgânicas, jornada de inbound, links internos e 2 fotos geradas na home. Indica aprovação de imagens pendente.',
       inputSchema: z.object({}),
       execute: safe(async () => {
-        const images = await listImages(tenant.id, 'aprovada');
+        const [pages, images] = await Promise.all([
+          listPages(tenant.id),
+          listImages(tenant.id),
+        ]);
+        return { findings: lintSite(pages, images, 'publish') };
+      }),
+    }),
+    list_images: tool({
+      description:
+        'Lista imagens aprovadas e candidatas do cliente, com status explícito. Candidatas só entram no rascunho. Use quando a imagem citada não está no resumo recebido.',
+      inputSchema: z.object({}),
+      execute: safe(async () => {
+        const images = (await listImages(tenant.id)).filter(
+          (image) => image.status !== 'rejeitada',
+        );
         return {
           imagens: images.map((image) => ({
             numero: `#${image.seq}`,
+            status: image.status,
+            kind: image.kind,
             url: image.url,
             alt: image.alt,
             ratio: image.ratio,
@@ -332,6 +393,9 @@ export function buildTools(tenant: Tenant) {
               seoDescription: z.string().max(170).optional(),
               excerpt: z.string().max(220).optional(),
               date: z.string().optional(),
+              inbound: inboundSchema.describe(
+                'Obrigatório para páginas orgânicas: intenção de busca e etapa da jornada.',
+              ),
               blocks: z.array(blockInput).min(1).max(20),
             }),
           )
@@ -353,10 +417,12 @@ export function buildTools(tenant: Tenant) {
             description: input.seoDescription,
             noindex,
           };
-          const meta =
-            input.type === 'post'
+          const meta = {
+            ...(input.type === 'post'
               ? { excerpt: input.excerpt, date: input.date }
-              : {};
+              : {}),
+            ...(input.inbound ? { inbound: input.inbound } : {}),
+          };
           const blocks = toBlocks(input.blocks);
           const findings = lintPage(
             { type: input.type, title: input.title, seo, blocks },
@@ -371,7 +437,7 @@ export function buildTools(tenant: Tenant) {
           return {
             ok: false,
             error:
-              'Pre-flight recusou o lote antes de escrever qualquer página.',
+              'Nenhuma página foi gravada. Corrija os erros e reenvie build_site com o lote completo. Não use update_block em páginas que ainda não existem.',
             pages: invalid.map((page) => ({
               page: `/${page.slug}`,
               preflight: formatFindings(page.findings),
@@ -379,6 +445,30 @@ export function buildTools(tenant: Tenant) {
           };
         }
         const home = staged.find((page) => page.slug === '');
+        const [existing, images] = await Promise.all([
+          listPages(tenant.id),
+          listImages(tenant.id),
+        ]);
+        const stagedSlugs = new Set(staged.map((p) => p.slug));
+        const prospective: SitePage[] = [
+          ...existing.filter((p) => !stagedSlugs.has(p.slug)),
+          ...staged.map((p) => ({
+            slug: p.slug,
+            title: p.input.title,
+            type: p.input.type,
+            seo: p.seo,
+            blocks: p.blocks,
+            meta: p.meta,
+          })),
+        ];
+        const projectFindings = lintSite(prospective, images, 'draft');
+        if (projectFindings.length)
+          return {
+            ok: false,
+            error:
+              'Projeto incompleto. Nenhuma página foi gravada. Corrija e reenvie build_site com o lote completo.',
+            findings: projectFindings,
+          };
         if (home && (await hasDuplicateComposition(tenant.id, home.blocks))) {
           throw new ToolError(
             'A silhueta da home repete outro cliente. Troque tipos, layouts ou ritmo de apresentação antes de salvar.',
@@ -391,15 +481,20 @@ export function buildTools(tenant: Tenant) {
           erros: number;
           preflight: string;
         }[] = [];
-        for (const page of staged) {
-          await db()`
+        const sql = db();
+        await sql.transaction(
+          staged.map(
+            (page) => sql`
             insert into pages (tenant_id, slug, type, title, seo, meta, blocks)
             values (${tenant.id}, ${page.slug}, ${page.input.type}, ${page.input.title},
                     ${JSON.stringify(page.seo)}::jsonb, ${JSON.stringify(page.meta)}::jsonb, ${JSON.stringify(page.blocks)}::jsonb)
             on conflict (tenant_id, slug) do update
               set type = excluded.type, title = excluded.title, seo = excluded.seo,
                   meta = excluded.meta, blocks = excluded.blocks, updated_at = now()
-          `;
+          `,
+          ),
+        );
+        for (const page of staged) {
           report.push({
             page: `/${page.slug}`,
             blocks: page.blocks.length,
@@ -407,7 +502,11 @@ export function buildTools(tenant: Tenant) {
             preflight: formatFindings(page.findings),
           });
         }
-        return { ok: true, pages: report };
+        return {
+          ok: true,
+          pages: report,
+          publicationPending: lintSite(prospective, images, 'publish'),
+        };
       }),
     }),
 
@@ -435,6 +534,7 @@ export function buildTools(tenant: Tenant) {
         seoTitle: z.string().max(70).optional(),
         seoDescription: z.string().max(170).optional(),
         excerpt: z.string().max(220).optional().describe('Só para posts.'),
+        inbound: inboundSchema.optional(),
         date: z
           .string()
           .optional()
@@ -448,10 +548,12 @@ export function buildTools(tenant: Tenant) {
           description: input.seoDescription,
           noindex,
         };
-        const meta =
-          input.type === 'post'
+        const meta = {
+          ...(input.type === 'post'
             ? { excerpt: input.excerpt, date: input.date }
-            : {};
+            : {}),
+          ...(input.inbound ? { inbound: input.inbound } : {}),
+        };
         await db()`
           insert into pages (tenant_id, slug, type, title, seo, meta, blocks)
           values (${tenant.id}, ${slug}, ${input.type}, ${input.title},
@@ -625,12 +727,13 @@ export function buildTools(tenant: Tenant) {
         title: z.string().max(70).optional(),
         description: z.string().max(170).optional(),
         noindex: z.boolean().optional(),
+        inbound: inboundSchema.optional(),
       }),
-      execute: safe(async ({ page: slug, ...seoInput }) => {
+      execute: safe(async ({ page: slug, inbound, ...seoInput }) => {
         const page = await requirePage(tenant.id, slug);
         const seo = { ...page.seo, ...seoInput };
         await db()`
-          update pages set seo = ${JSON.stringify(seo)}::jsonb, updated_at = now()
+          update pages set seo = ${JSON.stringify(seo)}::jsonb, meta = ${JSON.stringify({ ...page.meta, ...(inbound ? { inbound } : {}) })}::jsonb, updated_at = now()
           where id = ${page.id}
         `;
         return { ok: true, seo };
@@ -656,36 +759,14 @@ export function buildTools(tenant: Tenant) {
         'Publica uma página. Só use quando o operador pedir. Bloqueia se o pre-flight tiver erro.',
       inputSchema: z.object({ page: z.string() }),
       execute: safe(async ({ page: slug }) => {
-        const page = await requirePage(tenant.id, slug);
-        const findings = lintPage(page, activeBrand.design);
-        if (findings.some((f) => f.level === 'error')) {
-          return {
-            publicado: false,
-            motivo: 'Pre-flight com erro.',
-            relatorio: formatFindings(findings),
-          };
-        }
-        if (
-          page.slug === '' &&
-          isDesignProfile(activeBrand.design) &&
-          (await hasDuplicateComposition(tenant.id, page.blocks))
-        ) {
-          return {
-            publicado: false,
-            motivo: 'A composição estrutural repete outro cliente.',
-          };
-        }
-        await db()`
-          update pages
-          set published_blocks = blocks, published_seo = seo, published_at = now(), updated_at = now()
-          where id = ${page.id}
-        `;
-        await db()`update tenants set status = 'published' where id = ${tenant.id}`;
-        return {
-          publicado: true,
-          url: `https://${tenant.slug}.eixu.com.br/${page.slug}`,
-        };
+        return publishSite({ ...tenant, brand: activeBrand }, slug);
       }),
+    }),
+    publish_site: tool({
+      description:
+        'Publica todas as páginas em uma transação após validar jornada, imagens e pre-flight. Use somente quando o operador pedir publicação.',
+      inputSchema: z.object({}),
+      execute: safe(async () => publishSite({ ...tenant, brand: activeBrand })),
     }),
   };
 }

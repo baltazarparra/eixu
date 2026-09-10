@@ -6,6 +6,7 @@ Com dependências instaladas por `npm ci`, execute os checks separadamente para 
 
 ```bash
 npm run lint
+npm run test:sites
 npx next typegen && npx tsc --noEmit
 npm run build:vercel
 git diff --check
@@ -19,7 +20,7 @@ Para documentação, confira links locais, comandos e fatos contra o código e r
 npm run format -- --check README.md AGENTS.md docs
 ```
 
-O projeto não possui script `test`, `verify` ou CI versionada. Não trate um comando inexistente como gate nem substitua falhas por uma declaração do modelo.
+O projeto possui `test:sites`, com testes de contrato sem banco e sem geração paga. Não possui script genérico `test`, `verify` ou CI versionada. Não trate um comando inexistente como gate nem substitua falhas por uma declaração do modelo.
 
 ## Referência desta revisão
 
@@ -82,3 +83,15 @@ Três fixtures sintéticas reutilizaram os mesmos componentes em direções deli
 Os checks puros confirmaram aceitação e recusa de schemas, distância estrutural, bloqueio de página v2 genérica e assinatura de composição independente de texto e imagem. Uma execução real do modelo configurado, com um briefing sintético de climatização e imagens já resumidas no contexto, chamou `set_design` e `build_site`, gerou uma página com sete blocos, sete decisões de layout e quatro de apresentação, consumindo 16.840 tokens de entrada e 2.194 de saída. Não houve escrita porque as ferramentas foram substituídas por coletores na avaliação.
 
 O prompt-base com catálogo mede 7.858 caracteres, contra 8.285 na revisão anterior e 10.988 antes da compactação do catálogo. A geração passou a receber até oito imagens aprovadas no primeiro contexto, eliminando uma rodada de `list_images` no caso comum. Os números de tokens observados em execuções com quantidades diferentes de páginas não formam um benchmark controlado; o evento `[chat] usage` continua sendo a fonte para comparar gerações equivalentes.
+
+## Riqueza visual, motion e inbound, 10/09/2026
+
+`npm run test:sites` passou em 14 casos: mínimo orgânico, imagens distintas do tenant, candidatura/aprovação, imagens ocultas ou inválidas, conteúdo/SEO/intenção repetidos, links e âncoras, ciclos desconectados e estado prospectivo de publicação pontual. Os testes não usam banco nem geração paga. Uma chamada real de publicação no Porto Pedras antigo retornou bloqueios e preservou o hash dos snapshots antes/depois; a consulta de duplicação também foi executada no Neon, incluindo rascunhos e publicados.
+
+Tipos, build Next.js/Turbopack, formatação e lint do escopo alterado passaram. O lint global reproduziu os 20 erros preexistentes nos 13 arquivos da referência, sem diagnósticos novos. O build servido localmente passou em 14 verificações HTTP de páginas, sites legados, redirecionamento administrativo e recusas sem sessão; a rota temporária respondeu 404. Mais Um e EIXU foram conferidos no navegador em desktop/mobile, sem overflow ou erro de console. Com sessão autenticada, API e ferramenta recusaram a publicação do Porto Pedras antigo (zero páginas publicadas, cinco bloqueios cada); um lote inválido de `build_site` também foi recusado. O hash de rascunhos e snapshots permaneceu igual antes/depois desses checks.
+
+A composição de revisão do Porto Pedras tem home, materiais, guia de escolha e obrigado. Home/materiais/guia foram inspecionados em 1440 e 390 px; a home também em 320 e 768 px, sem overflow horizontal. Foram exercitados menu mobile, clique e setas nas abas, hover dos botões, transição de imagem e movimento reduzido. A medição registrou deslocamento de hover e opacidades intermediárias no crossfade; com movimento reduzido não havia animação rodando após a seleção. Sem JavaScript, a home manteve texto visível, imagens, formulário e links alternativos do explorador. Uma divergência de `tabIndex` na hidratação foi corrigida e a repetição ficou sem erros de console.
+
+Duas avaliações reais usaram `anthropic/claude-opus-4.5`, briefing do Porto Pedras e ferramentas substituídas por coletores/validadores, sem publicar nem gravar páginas. A primeira consumiu 117.566 tokens de entrada e 17.250 de saída; erros no lote induziram tentativas de editar páginas inexistentes. Após explicitar limites e recuperação, a segunda chegou a quatro páginas válidas com `set_design`, dois `build_site` e `lint_site`: 96.975 tokens de entrada e 16.701 de saída. Houve reenvio por campos obrigatórios e limite de texto. Esses números não demonstram economia controlada nem custo resolvido. A saída do modelo foi renderizada em desktop/mobile; a revisão editorial encontrou capacidades operacionais sem evidência, que foram removidas da proposta de publicação e explicitamente proibidas no prompt. O relatório de `build_site` passou a incluir pendências de publicação para evitar uma leitura redundante. Essas últimas orientações não receberam uma terceira avaliação paga.
+
+O pipeline real gerou duas fotos candidatas complementares no Blob/Neon e executou a crítica, mantendo o status `candidata`. A proposta passou no gate de rascunho; sua publicação depende da aprovação explícita dessas imagens pelo operador. A crítica não foi usada como aprovação. Capturas e saídas completas da avaliação ficam em `outputs/creative-v3/`, ignorado pelo Git; a rota temporária de revisão é removida antes do build de produção. A validade deste registro visual não equivale à publicação das páginas do cliente.

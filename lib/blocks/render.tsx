@@ -1,6 +1,8 @@
 import type { BlockInstance, Tenant } from '@/lib/types';
 import { blockSchemas, isBlockType } from '@/lib/blocks/registry';
 import * as B from '@/lib/blocks/components';
+import { SiteMotion } from '@/lib/blocks/motion';
+import { VisualExplorer, type ExplorerProps } from '@/lib/blocks/explorer';
 
 export type RenderContext = {
   tenant: Tenant;
@@ -37,12 +39,12 @@ export function RenderBlocks({
   }
   const usedAnchors = new Set<string>();
   return (
-    <>
+    <SiteMotion intensity={ctx.tenant.dials.motion}>
       {renderList(leading, ctx, usedAnchors)}
       <main>{renderList(content, ctx, usedAnchors)}</main>
       {renderList(trailing, ctx, usedAnchors)}
       <B.FloatingWhatsapp ctx={ctx} />
-    </>
+    </SiteMotion>
   );
 }
 
@@ -62,6 +64,14 @@ function renderList(
 
         const render = () => {
           switch (block.type) {
+            case 'feature.explorer':
+              return <VisualExplorer {...(props as ExplorerProps)} />;
+            case 'editorial.resources':
+              return (
+                <B.EditorialResources
+                  {...(props as B.EditorialResourcesProps)}
+                />
+              );
             case 'nav.bar':
               return (
                 <B.NavBar key={key} {...(props as B.NavBarProps)} ctx={ctx} />
@@ -214,6 +224,7 @@ function renderList(
             data-spacing={presentation?.spacing}
             data-align={presentation?.align}
             data-edge={presentation?.edge}
+            data-animation={presentation?.motion}
           >
             {render()}
           </div>

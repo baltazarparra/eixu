@@ -1,5 +1,7 @@
 import { isAuthenticated } from '@/lib/auth';
 import { lintPage } from '@/lib/taste/lint';
+import { lintSite } from '@/lib/taste/site';
+import { listImages } from '@/lib/images/queries';
 import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +21,11 @@ export async function GET(
   const tenant = await getTenantBySlug(slug);
   if (!tenant) return new Response('Cliente não encontrado', { status: 404 });
 
-  const pages = await listPages(tenant.id);
+  const [pages, images] = await Promise.all([
+    listPages(tenant.id),
+    listImages(tenant.id),
+  ]);
+  const siteFindings = lintSite(pages, images, 'publish');
   return Response.json({
     tenant: {
       slug: tenant.slug,
@@ -28,7 +34,10 @@ export async function GET(
       dials: tenant.dials,
     },
     pages: pages.map((page) => {
-      const findings = lintPage(page, tenant.brand.design);
+      const findings = [
+        ...lintPage(page, tenant.brand.design),
+        ...siteFindings.filter((f) => f.page === `/${page.slug}`),
+      ];
       return {
         slug: page.slug,
         type: page.type,

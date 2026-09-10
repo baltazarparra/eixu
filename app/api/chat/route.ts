@@ -33,9 +33,9 @@ export async function POST(request: Request) {
   const tenant = await getTenantBySlug(body.tenant);
   if (!tenant) return new Response('Cliente não encontrado', { status: 404 });
 
-  const [pages, approvedImages] = await Promise.all([
+  const [pages, libraryImages] = await Promise.all([
     listPages(tenant.id),
-    listImages(tenant.id, 'aprovada'),
+    listImages(tenant.id),
   ]);
   const summary = pages
     .map(
@@ -43,11 +43,12 @@ export async function POST(request: Request) {
         `- /${page.slug} (${page.type}, ${page.blocks.length} blocos${page.publishedBlocks ? ', publicada' : ''}): ${page.title}`,
     )
     .join('\n');
-  const imagesSummary = approvedImages
+  const imagesSummary = libraryImages
+    .filter((image) => image.kind === 'foto' && image.status !== 'rejeitada')
     .slice(0, 8)
     .map(
       (image) =>
-        `- #${image.seq} ${image.ratio}, ${image.targetBlock ?? 'livre'}: ${image.url} | ${image.alt ?? image.description ?? 'sem descrição'}`,
+        `- #${image.seq} ${image.status}, ${image.ratio}, ${image.targetBlock ?? 'livre'}: ${image.url} | ${image.alt ?? image.description ?? 'sem descrição'}`,
     )
     .join('\n');
 

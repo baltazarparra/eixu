@@ -60,7 +60,7 @@ Produção usa Next.js 16.3.3, React 19.2.6, TypeScript, Tailwind 4, AI SDK 7, A
 | Agentes do produto    | `app/api/chat/`, `app/api/images/chat/`, `lib/ai/`, `lib/images/`                            |
 | Dados e atribuição    | `db/schema.sql`, `lib/db.ts`, `lib/tracking.ts`, `app/api/form/`, `app/api/e/`, `app/go/wa/` |
 
-Os três grupos de rotas têm layouts e CSS próprios. A publicação copia blocos e SEO do rascunho para os campos publicados depois de `lintPage`; isso não versiona a marca inteira. Veja o [mapa de arquitetura](docs/architecture.md).
+Os três grupos de rotas têm layouts e CSS próprios. A publicação valida páginas e projeto por `lintPage` e `lintSite`, incluindo três páginas de inbound e duas fotos geradas na home, e copia blocos/SEO para o snapshot em uma transação; isso não versiona a marca inteira. Veja o [mapa de arquitetura](docs/architecture.md).
 
 ## Comandos e validação
 
@@ -71,13 +71,14 @@ Os três grupos de rotas têm layouts e CSS próprios. A publicação copia bloc
 | `npx next start`                                     | Serve o build Next.js local já gerado.                                                                                  |
 | `npx next typegen && npx tsc --noEmit`               | Gera tipos das rotas e verifica TypeScript.                                                                             |
 | `npm run lint`                                       | Analisa código com oxlint; não executa o pre-flight dos sites.                                                          |
+| `npm run test:sites`                                 | Testa o contrato de páginas, imagens, aprovação e links sem banco ou chamadas pagas.                                    |
 | `npm run format -- --check README.md AGENTS.md docs` | Confere a formatação da documentação sem reescrever arquivos.                                                           |
 | `npm run db:migrate`                                 | Aplica statements idempotentes de `db/schema.sql`; escreve no banco.                                                    |
 | `npm run db:seed-demo`                               | Sobrescreve e publica home/obrigado do tenant `vertice` já existente; altera marca e dials. Use só em demo descartável. |
 | `npm run db:requantize-logos`                        | Recomprime logos de todos os tenants do banco conectado, sobrescrevendo arquivos no Blob.                               |
 | `npm run dev` / `npm run build` / `npm start`        | Caminho Vinext/Cloudflare herdado; não valida o deploy Next.js da Vercel.                                               |
 
-Não há suíte de testes nem workflow de CI versionados. Na revisão de 09/09/2026, tipos e build passaram; o lint apresentou 20 erros preexistentes em 13 arquivos. O [guia de validação](docs/verification.md) registra a referência e os checks por tipo de mudança. Build aprovado não equivale a fluxo com banco ou IA testado.
+Há testes do contrato de sites; não há workflow de CI versionado. Na revisão de 09/09/2026, tipos e build passaram; o lint apresentou 20 erros preexistentes em 13 arquivos. O [guia de validação](docs/verification.md) registra as referências e os checks por tipo de mudança. Build aprovado não equivale a fluxo com banco ou IA testado.
 
 ## Agentes e modelos de desenvolvimento
 

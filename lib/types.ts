@@ -1,6 +1,7 @@
 export type PageType = 'page' | 'paid_lp' | 'post' | 'thank_you';
 
 import type { DesignProfile } from '@/lib/design/profile';
+import type { Inbound } from '@/lib/taste/site';
 
 export type Dials = {
   /** 1 simetria perfeita, 10 caos autoral. */
@@ -119,6 +120,7 @@ export type Seo = {
 };
 
 export type PostMeta = {
+  inbound?: Inbound;
   excerpt?: string;
   author?: string;
   date?: string;

@@ -38,7 +38,8 @@ const link = z.object({
  */
 const presentation = z
   .object({
-    tone: z.enum(['paper', 'soft', 'ink', 'accent']).optional(),
+    tone: z.enum(['paper', 'soft', 'ink', 'accent', 'secondary']).optional(),
+    motion: z.enum(['none', 'reveal', 'stagger', 'image']).optional(),
     width: z.enum(['narrow', 'normal', 'wide', 'full']).optional(),
     spacing: z.enum(['tight', 'normal', 'airy']).optional(),
     align: z.enum(['left', 'center', 'offset']).optional(),
@@ -72,11 +73,15 @@ export const blockSchemas = {
     anchor,
     presentation,
     layout: z
-      .enum(['split', 'cover', 'poster', 'editorial', 'offset'])
+      .enum(['split', 'cover', 'poster', 'editorial', 'offset', 'atelier'])
       .optional(),
     imagePosition: z.enum(['left', 'right']).optional(),
     imageFit: z.enum(['cover', 'contain']).optional(),
     focalPoint: z.enum(['center', 'top', 'bottom', 'left', 'right']).optional(),
+    secondaryImage: z.url().startsWith('http').optional(),
+    secondaryImageAlt: z.string().max(140).optional(),
+    imageCaption: z.string().max(140).optional(),
+    secondaryCaption: z.string().max(100).optional(),
     eyebrow: z.string().max(48).optional(),
     headline: z.string().min(4).max(90),
     subtext: z.string().max(160).optional(),
@@ -204,6 +209,50 @@ export const blockSchemas = {
       .optional()
       .describe('Foto real ao lado da lista. Omita se não tiver.'),
     imageAlt: z.string().max(140).optional(),
+  }),
+
+  'feature.explorer': z.object({
+    anchor,
+    presentation,
+    layout: z.enum(['showroom', 'panorama']).default('showroom'),
+    title: z.string().min(4).max(90),
+    body: z.string().max(260).optional(),
+    items: z
+      .array(
+        z.object({
+          title: z.string().min(2).max(48),
+          headline: z.string().min(8).max(100),
+          body: z.string().min(20).max(420),
+          image: z.url().startsWith('http'),
+          imageAlt: z.string().min(5).max(140),
+          caption: z.string().max(140).optional(),
+          facts: z.array(z.string().min(3).max(80)).max(3).default([]),
+          cta: link,
+        }),
+      )
+      .min(2)
+      .max(5),
+  }),
+
+  'editorial.resources': z.object({
+    anchor,
+    presentation,
+    layout: z.enum(['feature', 'list']).default('feature'),
+    title: z.string().min(4).max(90),
+    body: z.string().max(260).optional(),
+    items: z
+      .array(
+        z.object({
+          title: z.string().min(4).max(90),
+          body: z.string().min(20).max(220),
+          category: z.string().max(40),
+          href: z.string().startsWith('/'),
+          image: z.url().startsWith('http').optional(),
+          imageAlt: z.string().max(140).optional(),
+        }),
+      )
+      .min(2)
+      .max(4),
   }),
 
   'editorial.facts': z.object({
@@ -356,6 +405,16 @@ type Meta = {
 };
 
 export const blockMeta: Record<BlockType, Meta> = {
+  'feature.explorer': {
+    family: 'feature',
+    label: 'Explorador visual',
+    use: 'Compara aplicações, produtos ou serviços com foto, seleção por abas e CTA específico. Fotos de inspiração precisam de legenda; nunca simule obra executada.',
+  },
+  'editorial.resources': {
+    family: 'editorial',
+    label: 'Próxima leitura',
+    use: 'Conecta guias, soluções e páginas de consideração com imagens e links. Use para a jornada de inbound, sem cards repetindo a home.',
+  },
   'nav.bar': {
     family: 'nav',
     label: 'Navegação',
@@ -518,11 +577,12 @@ function summarize(schema: Record<string, unknown>, depth = 0): string {
         const items = def.items as Record<string, unknown>;
         if (items.type === 'object')
           return `${key}${opt}${range}{${summarize(items, depth + 1)}}`;
-        return `${key}${opt}${range}${items.type === 'string' ? '' : `:${typeName(items.type)}`}`;
+        return `${key}${opt}${range}${items.type === 'string' ? (typeof items.maxLength === 'number' ? `≤${items.maxLength}` : '') : `:${typeName(items.type)}`}`;
       }
       if (def.type === 'object')
         return `${key}${opt}{${summarize(def, depth + 1)}}`;
-      if (def.type === 'string') return `${key}${opt}${choices}`;
+      if (def.type === 'string')
+        return `${key}${opt}${choices}${typeof def.maxLength === 'number' ? `≤${def.maxLength}` : ''}${key === 'subtext' ? '/20palavras' : ''}`;
       return `${key}${opt}:${typeName(def.type)}${choices}`;
     })
     .join(depth ? ', ' : '; ');
@@ -531,7 +591,7 @@ function summarize(schema: Record<string, unknown>, depth = 0): string {
 /** Catálogo com uso e props de cada bloco, injetado no prompt do agente. */
 export function catalogForPrompt(): string {
   return (
-    'Comum a todos: anchor?; presentation? { tone?: paper|soft|ink|accent, width?: narrow|normal|wide|full, spacing?: tight|normal|airy, align?: left|center|offset, edge?: none|line|panel|bleed }. ? = opcional.\n' +
+    `Comum a todos: anchor?; presentation? { ${summarize(z.toJSONSchema(presentation.unwrap()) as Record<string, unknown>, 1)} }. ? = opcional; ≤ = máximo de caracteres.\n` +
     BLOCK_TYPES.map((type) => {
       const json = z.toJSONSchema(blockSchemas[type]) as Record<
         string,

@@ -1,19 +1,11 @@
-/*
- * Os sites de clientes não embarcam JavaScript de cliente. Duas consequências
- * deliberadas nesta biblioteca:
- *
- * 1. Âncoras nativas em vez de `next/link`. O componente de link traz o roteador
- *    e o prefetch junto, e é justamente o bundle zerado que segura o Lighthouse.
- *    A navegação entre páginas do site é sempre um carregamento novo.
- * 2. `<img>` em vez de `next/image`. As imagens vêm de URLs informadas pelo
- *    operador, de hosts arbitrários. Liberar o otimizador para qualquer host
- *    abriria um proxy de imagem para a internet inteira. Todas as imagens levam
- *    largura e altura explícitas, então o deslocamento de layout fica em zero.
- *    Quando o upload por Vercel Blob entrar, isto passa para `next/image`.
- */
+/* HTML servido no servidor; ilhas de Framer Motion cuidam das interações.
+ * Âncoras e formulários mantêm navegação nativa. Imagens do pipeline já saem
+ * em WebP e carregam dimensões explícitas, sem proxy para hosts arbitrários. */
 // oxlint-disable next/no-html-link-for-pages
 // oxlint-disable next/no-img-element
 import { z } from 'zod';
+import { ArrowUpRight, BookOpen, Layers3 } from 'lucide-react';
+import { MotionLink } from '@/lib/blocks/motion';
 import { blockSchemas } from '@/lib/blocks/registry';
 import type { RenderContext } from '@/lib/blocks/render';
 
@@ -41,6 +33,7 @@ export type MediaGalleryProps = S<'media.gallery'>;
 export type MediaMapProps = S<'media.map'>;
 export type PricingTableProps = S<'pricing.table'>;
 export type FooterCompactProps = S<'footer.compact'>;
+export type EditorialResourcesProps = S<'editorial.resources'>;
 
 const shell =
   'site-shell mx-auto w-full max-w-[var(--site-max,76rem)] px-6 md:px-10';
@@ -79,7 +72,7 @@ function Action({
       : 'border border-[var(--line)] text-[var(--ink)] hover:bg-[var(--line)]';
   const external = href.startsWith('http') || href.startsWith('/go/');
   return (
-    <a
+    <MotionLink
       href={href}
       className={`${base} ${styles}`}
       data-variant={variant}
@@ -87,7 +80,12 @@ function Action({
       data-track={href.startsWith('/go/wa') ? 'whatsapp' : undefined}
     >
       {label}
-    </a>
+      <ArrowUpRight
+        className="site-action-arrow"
+        size={18}
+        aria-hidden="true"
+      />
+    </MotionLink>
   );
 }
 
@@ -133,6 +131,7 @@ export function NavBar({
             <a
               key={link.href + link.label}
               href={link.href}
+              aria-current={link.href === ctx.pagePath ? 'page' : undefined}
               className="text-[0.92rem] text-[var(--muted)] hover:text-[var(--ink)]"
             >
               {link.label}
@@ -184,6 +183,10 @@ export function HeroSplit({
   imagePosition = 'right',
   imageFit = 'cover',
   focalPoint = 'center',
+  secondaryImage,
+  secondaryImageAlt,
+  imageCaption,
+  secondaryCaption,
   ctx,
 }: HeroSplitProps & { ctx: RenderContext }) {
   const hasImage = Boolean(image && /^https?:\/\//.test(image));
@@ -226,18 +229,39 @@ export function HeroSplit({
           ) : null}
         </div>
         {hasImage ? (
-          <figure className="site-hero-media">
-            <img
-              src={image}
-              alt={imageAlt ?? ''}
-              width={960}
-              height={1080}
-              className={`h-full w-full ${imageFit === 'contain' ? 'object-contain' : 'object-cover'}`}
-              data-focal={focalPoint}
-              fetchPriority="high"
-              decoding="async"
-            />
-          </figure>
+          <div className="site-hero-visual">
+            <figure className="site-hero-media">
+              <img
+                src={image}
+                alt={imageAlt ?? ''}
+                width={960}
+                height={1080}
+                className={`h-full w-full ${imageFit === 'contain' ? 'object-contain' : 'object-cover'}`}
+                data-focal={focalPoint}
+                fetchPriority="high"
+                decoding="async"
+              />
+              {imageCaption && (
+                <figcaption className="site-hero-caption">
+                  {imageCaption}
+                </figcaption>
+              )}
+            </figure>
+            {secondaryImage && (
+              <figure className="site-hero-detail">
+                <img
+                  src={secondaryImage}
+                  alt={secondaryImageAlt ?? ''}
+                  width={480}
+                  height={600}
+                  decoding="async"
+                />
+                {secondaryCaption && (
+                  <figcaption>{secondaryCaption}</figcaption>
+                )}
+              </figure>
+            )}
+          </div>
         ) : null}
       </div>
     </section>
@@ -404,10 +428,10 @@ export function NarrativeSteps({
               key={step.title}
               className="flex gap-6 border-t border-[var(--line)] py-7 first:border-t-0 first:pt-0"
             >
-              <span className="pt-1 font-mono text-[0.85rem] text-[var(--muted)]">
+              <span className="shrink-0 whitespace-nowrap pt-1 font-mono text-[0.85rem] text-[var(--muted)]">
                 {String(index + 1).padStart(2, '0')}
               </span>
-              <div className="flex flex-col gap-2">
+              <div className="flex min-w-0 flex-col gap-2">
                 <h3 className="text-[1.15rem] font-semibold tracking-[-0.01em]">
                   {step.title}
                 </h3>
@@ -485,14 +509,15 @@ export function CtaBand({
             <p className="text-[1.02rem] leading-relaxed opacity-75">{body}</p>
           ) : null}
         </div>
-        <a
+        <MotionLink
           href={href}
           className="site-action inline-flex shrink-0 items-center rounded-[var(--radius)] bg-[var(--accent)] px-7 py-3.5 text-[0.98rem] font-medium text-[var(--accent-ink)]"
           data-track={whatsapp ? 'whatsapp' : undefined}
           {...(whatsapp ? { rel: 'noreferrer' } : {})}
         >
           {cta.label}
-        </a>
+          <ArrowUpRight size={18} aria-hidden="true" />
+        </MotionLink>
       </div>
     </section>
   );
@@ -639,6 +664,63 @@ export function EditorialText({
             >
               {paragraph}
             </p>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function EditorialResources({
+  title,
+  body,
+  items,
+  layout,
+}: EditorialResourcesProps) {
+  return (
+    <section className={`${section} site-resources site-resources-${layout}`}>
+      <div className={shell}>
+        <div className="site-resources-heading">
+          <h2 className={h2Class}>{title}</h2>
+          {body && <p>{body}</p>}
+        </div>
+        <div className="site-resources-grid">
+          {items.map((item, index) => (
+            <article key={item.href} className="site-resource">
+              <a href={item.href} className="site-resource-link">
+                {item.image ? (
+                  <div className="site-resource-photo">
+                    <img
+                      src={item.image}
+                      alt={item.imageAlt ?? ''}
+                      width={760}
+                      height={520}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </div>
+                ) : (
+                  <div className="site-resource-symbol" aria-hidden="true">
+                    {index % 2 === 0 ? (
+                      <Layers3 strokeWidth={1.25} size={76} />
+                    ) : (
+                      <BookOpen strokeWidth={1.25} size={76} />
+                    )}
+                  </div>
+                )}
+                <div className="site-resource-copy">
+                  <span className="site-resource-category">
+                    {item.category}
+                  </span>
+                  <h3>{item.title}</h3>
+                  <p>{item.body}</p>
+                  <span className="site-resource-read">
+                    Explorar
+                    <ArrowUpRight size={20} aria-hidden="true" />
+                  </span>
+                </div>
+              </a>
+            </article>
           ))}
         </div>
       </div>

@@ -9,8 +9,10 @@ export const RATIO_BY_BLOCK: Record<string, Ratio> = {
   'hero.poster': '4:5',
   'hero.editorial': '16:9',
   'hero.offset': '4:5',
+  'hero.atelier': '4:5',
   'narrative.split': '5:6',
   'feature.bento': '4:3',
+  'feature.explorer': '4:3',
   'media.image': '16:9',
   'media.gallery': '4:3',
   livre: '1:1',
@@ -33,6 +35,10 @@ export const FRAMING: Record<string, string> = {
     'enquadramento panorâmico documental, cena com profundidade e leitura lateral',
   'hero.offset':
     'enquadramento vertical, assunto descentralizado e espaço negativo intencional',
+  'hero.atelier':
+    'enquadramento vertical de ambiente ou produto com materialidade, profundidade e margens para recorte',
+  'feature.explorer':
+    'cena de aplicação em paisagem, assunto legível ao lado de descrição; sem texto na foto',
   'narrative.split': 'enquadramento vertical fechado no assunto',
   'feature.bento':
     'enquadramento paisagem, assunto único e recorte forte em tamanhos variados',

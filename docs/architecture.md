@@ -15,16 +15,16 @@ Mapa conferido no código em 09/09/2026. Descreve o comportamento implementado; 
 
 Next.js roda páginas, Server Actions e Route Handlers. `lib/db.ts` cria o cliente Neon sob demanda; importar módulos no build não exige conexão ativa. O schema está em `db/schema.sql`, sem ORM. Imagens ficam em Blob público, e o banco guarda URL, estado, crítica e referência. O AI SDK usa o AI Gateway para modelos de texto e imagem.
 
-O [contrato visual](design.md) descreve variantes, dials, âncoras e a aplicação das duas skills no gerador. Os grupos `(main)`, `(admin)` e `(sites)` têm layouts raiz e folhas de estilo próprios. O institucional usa componentes e efeitos próprios; os sites gerados usam blocos renderizados no servidor, HTML nativo e um script de atribuição.
+O [contrato visual](design.md) descreve variantes, dials, âncoras e a aplicação das duas skills no gerador. Os grupos `(main)`, `(admin)` e `(sites)` têm layouts raiz e folhas de estilo próprios. O institucional usa componentes e efeitos próprios; os sites gerados combinam blocos renderizados no servidor, componentes interativos de Framer Motion, HTML nativo e um script de atribuição.
 
 ## Edição e publicação
 
 1. O operador autentica em `lib/auth.ts`: cookie `eixu_admin`, HMAC e validade de 12 horas. As páginas administrativas, ações e APIs verificam a sessão.
 2. A criação do tenant grava nome, slug e contatos. O workspace carrega páginas e histórico textual do canal `site`; `useChat` envia a conversa da sessão atual para `/api/chat`, junto de tenant e página em foco.
-3. A rota resolve o tenant, inclui briefing/direção no prompt e oferece `buildTools(tenant)`. Em site novo ou reconstrução, `set_design` persiste o perfil v2 e `build_site` aceita até 12 páginas com 1–20 blocos por página; ferramentas menores leem, alteram, movem ou removem blocos. As páginas são resolvidas dentro do tenant.
-4. Schemas e catálogo vivem em `lib/blocks/registry.ts`; o perfil e as assinaturas ficam em `lib/design/`; `lib/blocks/render.tsx` despacha para `lib/blocks/components.tsx`. `build_site` recusa o lote inteiro antes de escrever quando o pre-flight falha ou a home duplica outra composição. Edições menores ainda podem salvar rascunho inválido, que é omitido no render e apontado por `lintPage`.
+3. A rota resolve o tenant, inclui briefing/direção no prompt e oferece `buildTools(tenant)`. Em site novo ou reconstrução, `set_design` persiste o perfil v2, `prepare_site_images` cria cenas faltantes pelo estúdio e `build_site` aceita até 12 páginas com 1–20 blocos por página, incluindo intenção/etapa de inbound em `meta`. Ferramentas menores leem, alteram, movem ou removem blocos. As páginas são resolvidas dentro do tenant.
+4. Schemas e catálogo vivem em `lib/blocks/registry.ts`; o perfil e as assinaturas ficam em `lib/design/`; `lib/blocks/render.tsx` despacha para componentes de servidor e de interação. `build_site` valida páginas, contrato de projeto e duplicação da home antes de gravar o lote em uma transação. Edições menores ainda podem salvar rascunho inválido, que é omitido no render e apontado por `lintPage`.
 5. O painel atualiza `/api/admin/[tenant]/state` após resultados das ferramentas e recarrega o iframe com `preview=1&__tenant=...`.
-6. A ferramenta `publish_page` e a API `/api/admin/[tenant]/publish` executam `lintPage` e a trava estrutural da home antes de copiar `blocks`/`seo` para `published_blocks`/`published_seo`. A API pode publicar páginas válidas e retornar outras em `blocked`: o lote não é uma transação única. O painel desabilita seu botão se houver erros.
+6. `publish_page`, `publish_site` e a API `/api/admin/[tenant]/publish` usam `lib/sites/publish.ts`. O serviço executa `lintPage`, `lintSite` e a trava estrutural antes de copiar os valores validados de `blocks`/`seo` para o snapshot em uma única transação. Um erro recusa o lote inteiro. Na publicação pontual, páginas fora do lote contam pelo snapshot publicado. O painel recebe também os erros de projeto e desabilita seu botão quando há erros.
 7. A página pública usa os blocos publicados; sem publicação, retorna 404. Marca, título, tipo e `meta` não têm uma versão publicada própria.
 
 `lintPage` bloqueia tipos/props inválidos, duplicação de singletons, múltiplos heroes, baixa diversidade em páginas longas, ausência de decisões locais no perfil v2, headline estimada acima de 56 caracteres, subtexto acima de 20 palavras, copy genérico, placeholders, travessão e falta de conversão, com exceções para post/obrigado. Ausência de hero/nav/rodapé, orçamento de eyebrows e parte das regras de SEO são avisos. A estimativa textual de headline não mede quebra de linha no navegador. Fonte: `lib/taste/lint.ts`.
@@ -32,6 +32,8 @@ O [contrato visual](design.md) descreve variantes, dials, âncoras e a aplicaç�
 ## Imagens e logos
 
 O chat de imagens usa `lib/images/prompt.ts` e `buildImageTools`. Fotos exigem guia de imagem e geram candidatas, com falhas parciais reportadas; cada resultado recebe crítica estruturada. Logos podem ser criados ou modernizados a partir de referência, passam por Sharp e por um crítico específico de legibilidade/fidelidade.
+
+O chat de site também pode chamar esse pipeline por `prepare_site_images`: até duas cenas por turno, uma candidata GPT Image 2 por cena, geradas sequencialmente com guia do tenant. Isso preserva crítica, biblioteca, numeração e aprovação existentes. Fotos produzidas não são aprovadas automaticamente.
 
 | Papel                     | Configuração no código                                        |
 | ------------------------- | ------------------------------------------------------------- |
@@ -42,7 +44,7 @@ O chat de imagens usa `lib/images/prompt.ts` e `buildImageTools`. Fotos exigem g
 
 As rotas dos chats têm duração máxima de 300 segundos e limites de 30 passos (site) e 14 (imagens). Esses limites encerram a geração; não provam conclusão.
 
-O estado da biblioteca é `candidata`, `aprovada` ou `rejeitada`. Nas ferramentas, aprovar e aplicar logo exigem um pedido detectado na última mensagem do operador; aplicar também exige imagem de tipo logo já aprovada. A API da biblioteca aceita a ação direta de um operador autenticado. Remoção verifica uso nos blocos de rascunho, publicados e na marca. O agente de site lista apenas imagens aprovadas, mas também aceita URLs enviadas pelo operador. Fontes: `lib/ai/image-tools.ts`, `lib/images/queries.ts` e `app/api/admin/[tenant]/images/route.ts`.
+O estado da biblioteca é `candidata`, `aprovada` ou `rejeitada`. Nas ferramentas, aprovar e aplicar logo exigem um pedido detectado na última mensagem do operador; aplicar também exige imagem de tipo logo já aprovada. A API da biblioteca aceita a ação direta de um operador autenticado. Remoção verifica uso nos blocos de rascunho, publicados e na marca. O agente de site recebe fotos aprovadas/candidatas com status explícito e lista imagens não rejeitadas; candidatas podem entrar no rascunho, mas bloqueiam a publicação. A home exige duas fotos geradas distintas da biblioteca do tenant; uploads não completam esse mínimo. Fontes: `lib/ai/image-tools.ts`, `lib/images/queries.ts`, `lib/taste/site.ts` e `app/api/admin/[tenant]/images/route.ts`.
 
 ## Dados, conversão e tráfego
 
@@ -64,7 +66,7 @@ O painel chama de “Leads” a soma de envios de formulário e cliques de Whats
 
 - **Acesso e preview:** admin global, sem vínculo usuário–tenant ou RLS no schema versionado. `preview=1` não verifica sessão e `__tenant` não é limitado ao ambiente de preview. Não trate rascunhos acessíveis por essas URLs como privados.
 - **Domínios e SEO:** `proxy.ts` infere tenant pelo formato do host, sem allowlist de sufixo; o host `127.0.0.1` é interpretado como tenant `127`, portanto use `localhost` no navegador. `lib/site.ts` ainda aponta para o endereço legado `chatgpt.site`, usado no sitemap/robots institucional. Metadados do preview podem usar SEO publicado; não há `noindex` dedicado ao modo preview. Conferir esses caminhos antes de prometer isolamento por domínio ou SEO pronto para lançamento.
-- **Snapshot parcial:** mudar marca, direção visual ou logo pode afetar o site ao vivo sem publicar páginas. Título, tipo, metadados de post e parte do JSON-LD também usam dados compartilhados. Publicação em lote e a escrita de um `build_site` válido não são transações únicas.
+- **Snapshot parcial:** mudar marca, direção visual ou logo pode afetar o site ao vivo sem publicar páginas. Título, tipo, metadados de post/inbound e parte do JSON-LD também usam dados compartilhados. As transações de `build_site` e publicação tornam seus lotes atômicos, mas não versionam esses campos compartilhados.
 - **Autorização do agente:** pedido para publicar é uma regra de prompt/tool description; o executor de `publish_page` não valida uma confirmação estruturada. A detecção de aprovação de imagem usa regex de palavras, sem garantia de interpretação de negação ou intenção. Não confundir esses mecanismos com autorização formal.
 - **Histórico:** o banco guarda texto, não o trace completo de ferramentas ou raciocínio. O histórico exibido não é reidratado em `useChat`; recarregar o painel não restaura a conversa completa do modelo. Não há evals ou suíte E2E versionados.
 - **Medição:** cliques de WhatsApp podem ser registrados no navegador e no redirecionador. As consultas não filtram o período informado no gasto; os totais usam até 50 campanhas e o mapa de gasto por campanha não agrega canais repetidos. Validar deduplicação e denominadores antes de usar conversão/CPL como base decisória.

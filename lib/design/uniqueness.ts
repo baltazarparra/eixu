@@ -33,12 +33,13 @@ export async function hasDuplicateComposition(
       ) order by item.ordinality
     ) as blocks
     from pages p
-    cross join lateral jsonb_array_elements(p.blocks)
+    cross join lateral (values ('draft', p.blocks), ('published', p.published_blocks)) as snapshot(kind, blocks)
+    cross join lateral jsonb_array_elements(snapshot.blocks)
       with ordinality as item(block, ordinality)
     where p.tenant_id <> ${tenantId}
       and p.slug = ''
-      and jsonb_array_length(p.blocks) >= 4
-    group by p.id
+      and jsonb_array_length(snapshot.blocks) >= 4
+    group by p.id, snapshot.kind
   `) as Row[];
   return rows.some((row) =>
     Array.isArray(row.blocks)
