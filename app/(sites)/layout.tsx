@@ -8,6 +8,7 @@ import {
   Space_Grotesk,
 } from 'next/font/google';
 import './site.css';
+import './creative.css';
 
 const sans = Geist({
   subsets: ['latin'],

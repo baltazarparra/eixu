@@ -20,3 +20,11 @@ Pedido de 10/09/2026. Entrega autorizada: analisar, implementar, validar e publi
 ## Sequência
 
 Contratos e componentes; cenas pelo gerador; composição das páginas; validação técnica e visual; aprovação das candidatas pelo operador; publicação do código e das páginas autorizadas; smoke em produção.
+
+## Publicação
+
+A base funcional foi publicada em `03aa858`; a inspeção posterior identificou e corrigiu o carregamento do CSS criativo no build de produção. Após aprovação explícita das imagens e da composição, o [Porto Pedras](https://portopedras.eixu.com.br/) recebeu home, [materiais](https://portopedras.eixu.com.br/materiais), [guia de escolha](https://portopedras.eixu.com.br/guia-escolher-pedra) e obrigado. A home usa as fotos geradas #1, #4 e #5, todas aprovadas. Os resultados e limites das verificações estão em [Verificação](verification.md#riqueza-visual-motion-e-inbound-10092026).
+
+## Critério de conclusão do gerador
+
+O Porto Pedras é uma referência de aceite, não a entrega inteira. Uma composição ajustada manualmente demonstra o renderer, mas não comprova o gerador. A validação restante exige saídas automáticas do modelo para briefings de negócios diferentes, renderizadas sem correção manual, comparando identidade, coerência, imagens, motion, percurso entre páginas e tokens. As travas de assinatura detectam repetição estrutural; não garantem qualidade estética por si só.
