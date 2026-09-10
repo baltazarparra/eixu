@@ -425,12 +425,15 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           }
         }
         return {
-          capturas: capturas.map((shot) => ({
+          // Só a medição volta para o modelo. Enviar as capturas em base64
+          // levou o contexto a 697 mil tokens contra 200 mil de limite, e a
+          // fase inteira falhava antes do primeiro passo.
+          medicoes: capturas.map((shot) => ({
             pagina: shot.page,
             viewport: shot.viewport,
+            larguraDaPagina: shot.scrollWidth,
             overflow: shot.overflow,
             imagensQuebradas: shot.brokenImages,
-            jpeg: shot.jpeg.toString('base64'),
           })),
           rodada: reviewRounds,
           paginas: pages.map((page) => {
@@ -456,30 +459,6 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           erros: apontamentos.filter((item) => item.nivel === 'error').length,
         };
       }),
-      toModelOutput: (output: unknown) => {
-        const value = (output ?? {}) as {
-          capturas?: { pagina: string; viewport: string; jpeg: string }[];
-        };
-        const capturas = value.capturas ?? [];
-        const { capturas: _omit, ...rest } = value as Record<string, unknown>;
-        return {
-          type: 'content' as const,
-          value: [
-            { type: 'text' as const, text: JSON.stringify(rest) },
-            ...capturas.flatMap((shot) => [
-              {
-                type: 'text' as const,
-                text: `${shot.pagina} em ${shot.viewport}`,
-              },
-              {
-                type: 'file' as const,
-                mediaType: 'image/jpeg',
-                data: { type: 'data' as const, data: shot.jpeg },
-              },
-            ]),
-          ],
-        };
-      },
     }),
 
     lint_site: tool({

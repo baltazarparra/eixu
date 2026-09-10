@@ -19,9 +19,8 @@ const jiti = createJiti(import.meta.url, { alias: { '@': process.cwd() } });
 const { db } = await jiti.import('../lib/db.ts');
 const { buildTools } = await jiti.import('../lib/ai/tools.ts');
 const { systemPrompt } = await jiti.import('../lib/taste/prompt.ts');
-const { PHASE_MESSAGE, PHASE_STEPS, PHASE_TOOLS } = await jiti.import(
-  '../lib/taste/phases.ts',
-);
+const { PHASE_MESSAGE, PHASE_STEPS, PHASE_TOOLS, nextPhase } =
+  await jiti.import('../lib/taste/phases.ts');
 const { generationState } = await jiti.import('../lib/sites/generation.ts');
 const { siteMetrics, structuralFindings } = await jiti.import(
   '../lib/taste/metrics.ts',
@@ -175,8 +174,17 @@ for (let step = 0; step < 6; step += 1) {
   ]);
   const state = generationState(tenant, pages, images);
   let next = state.next;
-  // Sem --generate a biblioteca já veio semeada; pular cenas evita custo.
-  if (next === 'cenas' && !generateScenes) next = 'composicao';
+  // Sem --generate a biblioteca já veio semeada. Pular a fase de cenas exige
+  // recalcular a próxima, senão o runner volta para a composição toda vez.
+  if (next === 'cenas' && !generateScenes)
+    next = nextPhase({
+      hasDesign: true,
+      generatedPhotos: state.targetScenes,
+      targetScenes: state.targetScenes,
+      organicPages: state.organicPages,
+      blockingErrors: state.blockingErrors,
+      reviewRounds: state.reviewRounds,
+    });
   if (next === 'pronto') break;
   console.log(`[eval] fase ${next}`);
   let outcome;

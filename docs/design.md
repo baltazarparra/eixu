@@ -55,9 +55,10 @@ interromper no meio não perde o progresso. A aprovação das fotos e a publica�
 continuam sendo do operador, depois da quarta etapa.
 
 `review_pages` devolve o que ficou pobre com página e bloco apontados. Com
-`EIXU_REVIEW_CAPTURE=1`, ela também abre o rascunho em 1440 e 390 com Chromium,
-mede overflow e imagem quebrada e entrega as capturas ao modelo como imagem.
-Sem a variável, a revisão é estrutural, com as mesmas medidas do pre-flight.
+`EIXU_REVIEW_CAPTURE=1`, ela também abre o rascunho em 1440 e 390 com Chromium e
+acrescenta a medição do navegador: largura da página, overflow e imagem
+quebrada. As capturas não voltam ao modelo como imagem; medido, o base64 no
+histórico da fase levou a entrada a 697 mil tokens contra 200 mil de limite.
 
 ## Contrato visual v2
 

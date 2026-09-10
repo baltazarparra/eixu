@@ -155,7 +155,68 @@ em 15 segundos. A primeira versão da medição acusava imagens quebradas em
 `loading="lazy"` ainda decodificando; a checagem passou a exigir `complete` com
 `naturalWidth` zero.
 
-### O que não foi comprovado
+### Geração completa, 10/09/2026
+
+Com créditos restabelecidos, o caso `mecanica-sabia` rodou o fluxo inteiro em
+tenant descartável, com `anthropic/claude-opus-4.5`. As duas correções acima
+resolveram o ciclo: a composição caiu de doze passos e mais de 300 mil tokens,
+sem gravar nada, para seis passos que gravaram o projeto.
+
+| Fase               | Passos | Entrada | Saída  | Tempo |
+| ------------------ | ------ | ------- | ------ | ----- |
+| Briefing e direção | 3      | 18.422  | 2.458  | 50 s  |
+| Composição         | 6      | 94.167  | 15.340 | 177 s |
+| Revisão            | 10     | 117.417 | 2.841  | 92 s  |
+
+Cada fase coube nos 300 segundos da função. A fase de revisão exerceu o ciclo
+completo: chamou `review_pages`, leu a página, corrigiu blocos, chamou
+`review_pages` de novo e conferiu. Numa das rodadas ela detectou que a home
+tinha perdido a seção protagonista, removeu o bloco responsável e inseriu uma
+galeria com as duas fotos, zerando os erros.
+
+Resultado automático, sem edição manual entre a geração e a medição: três
+páginas orgânicas, home com sete seções, duas fotos, quatro tons e seção
+protagonista, 270 palavras; `/servicos` com seis seções, duas fotos e três
+momentos de motion; `/duvidas-frequentes` com seis seções e uma foto. Zero
+erros de projeto, zero erros de página e zero avisos estruturais. Em 1440 e
+390 px não houve overflow nem imagem quebrada.
+
+A comparação com a saída anterior do mesmo negócio é direta: a home tinha cinco
+seções, três delas só texto, duas fotos concentradas na abertura, nenhuma seção
+protagonista e duas subpáginas sem imagem alguma.
+
+### Contraste das seções de cor
+
+A primeira geração expôs um defeito real do renderizador, não do agente: o
+texto de apoio das seções coloridas vinha de uma mistura fixa no CSS. Medido na
+paleta gerada, dava 3,56 contra a cor de marca, abaixo do mínimo AA. Como o
+contrato agora empurra seções em accent e secondary, o defeito aparecia em toda
+página. O token passou a ser calculado por medição, como já era feito na paleta
+base, com um valor por tom.
+
+| Tom       | Texto de apoio | Fundo   | Contraste |
+| --------- | -------------- | ------- | --------- |
+| paper     | #68707d        | #f8fafc | 4,78      |
+| soft      | #5d6675        | #e2e8f0 | 4,70      |
+| ink       | #b2b7be        | #1e293b | 7,25      |
+| accent    | #251b19        | #ea580c | 4,72      |
+| secondary | #eef3fd        | #2563eb | 4,65      |
+
+No mesmo ciclo, a legenda do card em destaque da grade bento caía sobre a foto
+e ficava ilegível quando a seção tinha cor; o bloco de texto ganhou fundo
+próprio.
+
+### Captura em pixels foi medida e recusada
+
+A revisão chegou a devolver as capturas ao modelo como imagem. A tentativa
+falhou antes do primeiro passo: 697.374 tokens de entrada contra 200.000 de
+limite do modelo, porque o conteúdo em base64 permanece no histórico a cada
+passo da fase. `review_pages` passou a devolver só a medição do navegador
+(largura da página, overflow e imagens quebradas por viewport), que é o que a
+revisão estrutural não alcança. O módulo de captura continua no repositório e
+serve à avaliação local, onde as imagens são gravadas em arquivo.
+
+### O que ainda não foi comprovado
 
 A avaliação de geração ficou incompleta. A fase de briefing rodou por inteiro
 no caso `mecanica-sabia`: 3 passos, 18.422 tokens de entrada, 2.458 de saída,
@@ -177,13 +238,16 @@ recusando o lote inteiro, mas o lote válido é gravado e as pendências voltam 
 campo `pendencias`, para o agente resolver antes de encerrar. A publicação
 continua exigindo `lintSite` limpo, em ambos os caminhos.
 
-Essas duas correções não foram testadas com o modelo: a conta ficou sem
-créditos no Gateway durante a avaliação. Enquanto elas não rodarem, ficam sem
-comprovação a duração da fase de composição dentro dos 300 segundos da função,
-o custo por site gerado e a qualidade da saída automática pela rubrica de
-`docs/eval-rubric.md`. O tenant descartável `eval-sabia` ficou com a direção da
-primeira fase gravada e nenhuma página; `npm run eval:site -- mecanica-sabia`
-retoma dali.
+A avaliação parou nesse ponto por falta de créditos no Gateway. Os resultados
+depois de restabelecidos estão nas seções seguintes.
+
+Continua sem comprovação: a geração de cenas pelo fluxo real, porque a
+avaliação reutilizou as duas fotos existentes em vez de gerar seis; o
+comportamento com mais de um negócio, porque só o caso da oficina foi executado
+de ponta a ponta; e a nota pela rubrica de `docs/eval-rubric.md`, que depende de
+revisão humana. Uma queda de DNS do banco interrompeu uma das rodadas de
+revisão no meio, e a rodada seguinte terminou o trabalho: o fluxo é retomável,
+mas não há tratamento de falha de rede dentro da fase.
 
 ### Publicação
 

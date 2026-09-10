@@ -9,7 +9,9 @@ function channel(value: number): number {
 export function relativeLuminance(hex: string): number {
   const value = hex.replace('#', '');
   if (value.length !== 6) return 0;
-  const [r, g, b] = [0, 2, 4].map((i) => channel(parseInt(value.slice(i, i + 2), 16)));
+  const [r, g, b] = [0, 2, 4].map((i) =>
+    channel(parseInt(value.slice(i, i + 2), 16)),
+  );
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
@@ -29,7 +31,11 @@ const NEAR_WHITE = '#ffffff';
  * limiar de luminância. Um laranja médio como #c45c26 dá 4,28 com branco e
  * 4,90 com preto: o chute pela luminância erra, a razão de contraste acerta.
  */
-export function bestInk(background: string): { ink: string; ratio: number; passesAA: boolean } {
+export function bestInk(background: string): {
+  ink: string;
+  ratio: number;
+  passesAA: boolean;
+} {
   const onWhite = contrastRatio(background, NEAR_WHITE);
   const onBlack = contrastRatio(background, NEAR_BLACK);
   const ink = onBlack >= onWhite ? NEAR_BLACK : NEAR_WHITE;
@@ -39,17 +45,38 @@ export function bestInk(background: string): { ink: string; ratio: number; passe
 
 function toRgb(hex: string): [number, number, number] {
   const value = hex.replace('#', '');
-  return [0, 2, 4].map((i) => parseInt(value.slice(i, i + 2), 16)) as [number, number, number];
+  return [0, 2, 4].map((i) => parseInt(value.slice(i, i + 2), 16)) as [
+    number,
+    number,
+    number,
+  ];
 }
 
 function toHex(rgb: [number, number, number]): string {
-  return `#${rgb.map((c) => Math.round(Math.min(255, Math.max(0, c))).toString(16).padStart(2, '0')).join('')}`;
+  return `#${rgb
+    .map((c) =>
+      Math.round(Math.min(255, Math.max(0, c)))
+        .toString(16)
+        .padStart(2, '0'),
+    )
+    .join('')}`;
+}
+
+/** Mistura sRGB entre duas cores, para tokens que precisam de hex resolvido. */
+export function mixHex(hex: string, target: string, amount: number): string {
+  return mix(hex, target, amount);
 }
 
 function mix(hex: string, target: string, amount: number): string {
   const from = toRgb(hex);
   const to = toRgb(target);
-  return toHex([0, 1, 2].map((i) => from[i] + (to[i] - from[i]) * amount) as [number, number, number]);
+  return toHex(
+    [0, 1, 2].map((i) => from[i] + (to[i] - from[i]) * amount) as [
+      number,
+      number,
+      number,
+    ],
+  );
 }
 
 /**
@@ -60,7 +87,11 @@ function mix(hex: string, target: string, amount: number): string {
  * com uma marca e reprova com a seguinte, então a proporção precisa sair de
  * medição, não de um número escolhido a olho.
  */
-export function readableMuted(ink: string, paper: string, start = 0.62): string {
+export function readableMuted(
+  ink: string,
+  paper: string,
+  start = 0.62,
+): string {
   for (let amount = start; amount <= 1.0001; amount += 0.04) {
     const candidate = mix(paper, ink, Math.min(amount, 1));
     if (contrastRatio(candidate, paper) >= AA_NORMAL) return candidate;
@@ -77,14 +108,26 @@ export function readableMuted(ink: string, paper: string, start = 0.62): string 
  * principal do cliente reprovar em acessibilidade e sumir no sol do celular.
  * Escurecer alguns por cento preserva a matiz e resolve.
  */
-export function accessibleAccent(accent: string): { accent: string; ink: string; ratio: number; adjusted: boolean } {
+export function accessibleAccent(accent: string): {
+  accent: string;
+  ink: string;
+  ratio: number;
+  adjusted: boolean;
+} {
   const direct = bestInk(accent);
-  if (direct.passesAA) return { accent, ink: direct.ink, ratio: direct.ratio, adjusted: false };
+  if (direct.passesAA)
+    return { accent, ink: direct.ink, ratio: direct.ratio, adjusted: false };
 
   for (let step = 1; step <= 14; step += 1) {
     const candidate = mix(accent, '#000000', step * 0.04);
     const result = bestInk(candidate);
-    if (result.passesAA) return { accent: candidate, ink: result.ink, ratio: result.ratio, adjusted: true };
+    if (result.passesAA)
+      return {
+        accent: candidate,
+        ink: result.ink,
+        ratio: result.ratio,
+        adjusted: true,
+      };
   }
   // Nada passou: devolve o melhor par possível, e o painel avisa.
   return { accent, ink: direct.ink, ratio: direct.ratio, adjusted: false };

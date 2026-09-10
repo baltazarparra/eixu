@@ -1,4 +1,4 @@
-import { accessibleAccent, readableMuted } from '@/lib/blocks/contrast';
+import { accessibleAccent, mixHex, readableMuted } from '@/lib/blocks/contrast';
 import type { Brand } from '@/lib/types';
 
 const RADIUS: Record<string, string> = {
@@ -20,6 +20,9 @@ export function themeVars(brand: Brand): Record<string, string> {
   const { accent: accentAlt, ink: accentAltInk } = accessibleAccent(
     brand.accentAlt || brand.accent || '#1f6feb',
   );
+  // A superfície precisa ser uma cor resolvida: readableMuted mede contraste
+  // e não sabe ler um color-mix.
+  const surface = brand.surface || mixHex(ink, paper, 0.04);
   const legacyFont =
     brand.font === 'serif'
       ? 'var(--font-serif)'
@@ -54,8 +57,15 @@ export function themeVars(brand: Brand): Record<string, string> {
     '--accent-ink': accentInk,
     '--accent-2': accentAlt,
     '--accent-2-ink': accentAltInk,
-    '--surface': brand.surface || `color-mix(in oklab, ${ink} 4%, ${paper})`,
+    '--surface': surface,
     '--muted': readableMuted(ink, paper),
+    // Cada tom de seção troca ink e paper, então o texto de apoio precisa do
+    // seu próprio valor medido. A mistura fixa do CSS dava 3,56 contra a cor
+    // de marca, e o miolo das seções coloridas ficava ilegível.
+    '--muted-soft': readableMuted(ink, surface, 0.64),
+    '--muted-ink': readableMuted(paper, ink, 0.68),
+    '--muted-accent': readableMuted(accentInk, accent, 0.72),
+    '--muted-accent-2': readableMuted(accentAltInk, accentAlt, 0.72),
     '--line': `color-mix(in oklab, ${ink} 14%, ${paper})`,
     '--radius': RADIUS[brand.radius ?? 'md'] ?? '0.5rem',
     '--font-site': bodyFont,

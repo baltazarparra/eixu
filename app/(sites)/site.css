@@ -135,6 +135,13 @@ details[open] > summary {
 .site-bento-featured img {
   flex: 1;
   min-height: 0;
+  object-fit: cover;
+}
+/* O texto do card em destaque precisa do próprio fundo: sem ele a legenda
+   caía sobre a foto e ficava ilegível quando a seção tem cor. */
+.site-bento-featured > div {
+  background: var(--ink);
+  position: relative;
 }
 .site-cta {
   border-block: 1px solid color-mix(in oklab, var(--paper) 15%, transparent);
@@ -241,7 +248,7 @@ details[open] > summary .site-disclosure {
 .site-block[data-tone='paper'] {
   --ink: var(--brand-ink);
   --paper: var(--brand-paper);
-  --muted: color-mix(in oklab, var(--ink) 62%, var(--paper));
+  /* --muted vem da raiz, já medido contra o papel da marca. */
   --line: color-mix(in oklab, var(--ink) 14%, var(--paper));
   background: var(--paper);
   color: var(--ink);
@@ -249,7 +256,7 @@ details[open] > summary .site-disclosure {
 .site-block[data-tone='soft'] {
   --ink: var(--brand-ink);
   --paper: var(--surface);
-  --muted: color-mix(in oklab, var(--ink) 64%, var(--paper));
+  --muted: var(--muted-soft);
   --line: color-mix(in oklab, var(--ink) 16%, var(--paper));
   background: var(--paper);
   color: var(--ink);
@@ -257,7 +264,7 @@ details[open] > summary .site-disclosure {
 .site-block[data-tone='ink'] {
   --ink: var(--brand-paper);
   --paper: var(--brand-ink);
-  --muted: color-mix(in oklab, var(--ink) 68%, var(--paper));
+  --muted: var(--muted-ink);
   --line: color-mix(in oklab, var(--ink) 22%, var(--paper));
   background: var(--paper);
   color: var(--ink);
@@ -265,7 +272,7 @@ details[open] > summary .site-disclosure {
 .site-block[data-tone='accent'] {
   --ink: var(--accent-ink);
   --paper: var(--accent);
-  --muted: color-mix(in oklab, var(--ink) 72%, var(--paper));
+  --muted: var(--muted-accent);
   --line: color-mix(in oklab, var(--ink) 24%, var(--paper));
   background: var(--paper);
   color: var(--ink);
@@ -339,7 +346,7 @@ details[open] > summary .site-disclosure {
 .site-nav-contrast {
   --ink: var(--brand-paper);
   --paper: var(--brand-ink);
-  --muted: color-mix(in oklab, var(--ink) 70%, var(--paper));
+  --muted: var(--muted-ink);
   --line: color-mix(in oklab, var(--ink) 20%, var(--paper));
   background: var(--paper);
   color: var(--ink);

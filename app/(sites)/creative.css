@@ -8,7 +8,7 @@
 .site-block[data-tone='secondary'] {
   --ink: var(--accent-2-ink);
   --paper: var(--accent-2);
-  --muted: color-mix(in oklab, var(--ink) 82%, var(--paper));
+  --muted: var(--muted-accent-2);
   --line: color-mix(in oklab, var(--ink) 24%, var(--paper));
   background: var(--paper);
   color: var(--ink);
