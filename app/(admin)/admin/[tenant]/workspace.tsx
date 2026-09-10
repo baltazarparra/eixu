@@ -81,6 +81,8 @@ function describeTool(name: string, input: unknown, output: unknown, state: stri
       return pending ? `Publicando ${page}` : out.publicado ? `Publicou ${page}` : `Publicação bloqueada em ${page}`;
     case 'list_state':
       return pending ? 'Lendo o site' : 'Leu o site';
+    case 'get_page':
+      return pending ? `Lendo ${page}` : `Leu ${page}`;
     case 'describe_block':
       return pending ? 'Consultando o catálogo' : 'Consultou o catálogo';
     default:
@@ -97,6 +99,10 @@ export function Workspace({ initial, history }: Props) {
   const [nonce, setNonce] = useState(0);
   const [publishing, setPublishing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [attachments, setAttachments] = useState<{ url: string; name: string; type: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const toolCountRef = useRef(0);
 
@@ -162,10 +168,66 @@ export function Workspace({ initial, history }: Props) {
     }
   }
 
+  /** Sobe para o Blob e devolve a URL pública. O agente só entende URL. */
+  async function upload(file: File, kind: 'media' | 'logo' = 'media') {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('kind', kind);
+    const response = await fetch(`/api/admin/${tenantSlug}/upload`, { method: 'POST', body: form });
+    const result = (await response.json()) as { url?: string; error?: string };
+    if (!response.ok || !result.url) throw new Error(result.error ?? 'Falha no upload.');
+    return result.url;
+  }
+
+  async function attach(files: FileList | File[] | null) {
+    if (!files?.length) return;
+    setUploading(true);
+    setNotice(null);
+    try {
+      for (const file of Array.from(files)) {
+        if (!file.type.startsWith('image/')) continue;
+        const url = await upload(file);
+        setAttachments((list) => [...list, { url, name: file.name, type: file.type }]);
+      }
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Falha no upload.');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function setLogo(files: FileList | null) {
+    if (!files?.[0]) return;
+    setUploading(true);
+    setNotice(null);
+    try {
+      const url = await upload(files[0], 'logo');
+      const response = await fetch(`/api/admin/${tenantSlug}/settings`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ logoUrl: url }),
+      });
+      if (!response.ok) throw new Error('Não consegui salvar o logo.');
+      setNotice('Logo atualizado. A navegação e o rodapé já usam a imagem.');
+      setNonce((value) => value + 1);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Falha no upload do logo.');
+    } finally {
+      setUploading(false);
+    }
+  }
+
   function submit(text: string) {
-    if (!text.trim() || busy) return;
-    void sendMessage({ text });
+    if ((!text.trim() && attachments.length === 0) || busy || uploading) return;
+    const files = attachments.map((item) => ({
+      type: 'file' as const,
+      mediaType: item.type,
+      url: item.url,
+      filename: item.name,
+    }));
+    void sendMessage({ text: text.trim() || 'Use a imagem anexada.', files });
     setInput('');
+    setAttachments([]);
   }
 
   return (
@@ -178,9 +240,24 @@ export function Workspace({ initial, history }: Props) {
         <span className="text-sm font-medium">{site.tenant.name}</span>
         <span className="font-mono text-xs text-[var(--color-muted)]">{tenantSlug}.eixu.com.br</span>
         <nav className="ml-auto flex items-center gap-4 text-xs">
-          <Link href={`/admin/${tenantSlug}/leads`} className="text-[var(--color-muted)] hover:text-[var(--color-text)]">
-            Leads
-          </Link>
+          <button
+            type="button"
+            onClick={() => logoInputRef.current?.click()}
+            disabled={uploading}
+            className="text-[var(--color-muted)] hover:text-[var(--color-text)] disabled:opacity-50"
+          >
+            Logo do cliente
+          </button>
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml"
+            className="hidden"
+            onChange={(event) => {
+              void setLogo(event.target.files);
+              event.target.value = '';
+            }}
+          />
           <Link href={`/admin/${tenantSlug}/trafego`} className="text-[var(--color-muted)] hover:text-[var(--color-text)]">
             Tráfego
           </Link>
@@ -270,10 +347,43 @@ export function Workspace({ initial, history }: Props) {
             }}
             className="border-t p-3"
           >
-            <div className="flex flex-col gap-2 rounded-lg border bg-[var(--color-surface)] p-2 focus-within:border-[var(--color-accent)]">
+            <div
+              className="flex flex-col gap-2 rounded-lg border bg-[var(--color-surface)] p-2 focus-within:border-[var(--color-accent)]"
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault();
+                void attach(event.dataTransfer.files);
+              }}
+            >
+              {attachments.length ? (
+                <ul className="flex flex-wrap gap-2 px-1 pt-1">
+                  {attachments.map((item) => (
+                    <li key={item.url} className="relative">
+                      {/* Miniatura de arquivo recém-enviado ao Blob; o otimizador não agrega nada aqui. */}
+                      {/* oxlint-disable-next-line next/no-img-element */}
+                      <img src={item.url} alt={item.name} className="h-14 w-14 rounded-md border object-cover" />
+                      <button
+                        type="button"
+                        aria-label={`Remover ${item.name}`}
+                        onClick={() => setAttachments((list) => list.filter((entry) => entry.url !== item.url))}
+                        className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full border bg-[var(--color-bg)] text-[0.65rem]"
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
               <textarea
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
+                onPaste={(event) => {
+                  const files = Array.from(event.clipboardData.files).filter((file) => file.type.startsWith('image/'));
+                  if (files.length) {
+                    event.preventDefault();
+                    void attach(files);
+                  }
+                }}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' && !event.shiftKey) {
                     event.preventDefault();
@@ -285,9 +395,30 @@ export function Workspace({ initial, history }: Props) {
                 className="w-full resize-none bg-transparent px-1.5 py-1 text-sm outline-none"
               />
               <div className="flex items-center justify-between">
-                <span className="px-1.5 text-[0.68rem] text-[var(--color-muted)]">
-                  {page ? `Falando sobre /${page.slug}` : 'Enter envia, Shift+Enter quebra linha'}
-                </span>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading || busy}
+                    className="rounded-md border px-2.5 py-1 text-[0.72rem] text-[var(--color-muted)] hover:text-[var(--color-text)] disabled:opacity-50"
+                  >
+                    {uploading ? 'Enviando' : 'Imagem'}
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(event) => {
+                      void attach(event.target.files);
+                      event.target.value = '';
+                    }}
+                  />
+                  <span className="text-[0.68rem] text-[var(--color-muted)]">
+                    {page ? `Falando sobre /${page.slug}` : 'Enter envia, Shift+Enter quebra linha'}
+                  </span>
+                </div>
                 {busy ? (
                   <button type="button" onClick={() => stop()} className="rounded-md border px-3 py-1.5 text-xs">
                     Parar
@@ -295,7 +426,7 @@ export function Workspace({ initial, history }: Props) {
                 ) : (
                   <button
                     type="submit"
-                    disabled={!input.trim()}
+                    disabled={(!input.trim() && attachments.length === 0) || uploading}
                     className="rounded-md bg-[var(--color-accent)] px-3.5 py-1.5 text-xs font-medium text-[var(--color-accent-ink)] disabled:opacity-40"
                   >
                     Enviar
@@ -399,7 +530,20 @@ function Message({ message }: { message: UIMessage }) {
       .filter((part) => part.type === 'text')
       .map((part) => (part as { text: string }).text)
       .join('');
-    return <Bubble from="user">{text}</Bubble>;
+    const images = message.parts.filter((part) => part.type === 'file') as { url: string; filename?: string }[];
+    return (
+      <Bubble from="user">
+        {images.length ? (
+          <span className="mb-2 flex flex-wrap gap-2">
+            {images.map((image) => (
+              // oxlint-disable-next-line next/no-img-element
+              <img key={image.url} src={image.url} alt={image.filename ?? 'imagem anexada'} className="h-16 w-16 rounded-md object-cover" />
+            ))}
+          </span>
+        ) : null}
+        {text}
+      </Bubble>
+    );
   }
 
   // Renderiza na ordem em que o agente trabalhou: pensa, age, pensa, age, resume.
@@ -458,7 +602,7 @@ function collapse(parts: { type: string; state?: string; input?: unknown; output
     const failed = raw.state === 'output-error';
     const label = failed ? `Falhou: ${raw.errorText ?? name}` : describeTool(name, raw.input, raw.output, raw.state ?? '');
     const last = out[out.length - 1];
-    if (last && (name === 'describe_block' || name === 'list_state') && last.label.startsWith(label.replace(/ \(\d+\)$/, ''))) {
+    if (last && (name === 'describe_block' || name === 'list_state' || name === 'get_page') && last.label.startsWith(label.replace(/ \(\d+\)$/, ''))) {
       last.count += 1;
       last.done = last.done && done;
       last.label = `${label} (${last.count})`;

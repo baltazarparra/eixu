@@ -26,6 +26,10 @@ export type ProofLogosProps = S<'proof.logos'>;
 export type ProofStatsProps = S<'proof.stats'>;
 export type ProofTestimonialProps = S<'proof.testimonial'>;
 export type FeatureBentoProps = S<'feature.bento'>;
+export type FeatureNumberedProps = S<'feature.numbered'>;
+export type NarrativeSplitProps = S<'narrative.split'>;
+export type EditorialFactsProps = S<'editorial.facts'>;
+export type MediaImageProps = S<'media.image'>;
 export type NarrativeStepsProps = S<'narrative.steps'>;
 export type FaqAccordionProps = S<'faq.accordion'>;
 export type CtaBandProps = S<'cta.band'>;
@@ -84,12 +88,17 @@ function Action({
   );
 }
 
-export function NavBar({ logoText, links, cta }: NavBarProps) {
+export function NavBar({ logoText, links, cta, ctx }: NavBarProps & { ctx: RenderContext }) {
+  const logo = ctx.tenant.brand.logoUrl;
   return (
     <header className="border-b border-[var(--line)]">
       <div className={`${shell} flex h-20 items-center justify-between gap-6`}>
-        <a href="/" className="text-[1.05rem] font-semibold tracking-[-0.01em]">
-          {logoText}
+        <a href="/" className="flex items-center text-[1.05rem] font-semibold tracking-[-0.01em]" aria-label={`${logoText}, início`}>
+          {logo ? (
+            <img src={logo} alt={logoText} width={160} height={40} className="h-9 w-auto max-w-[180px] object-contain" decoding="async" />
+          ) : (
+            logoText
+          )}
         </a>
         <nav className="hidden items-center gap-8 md:flex" aria-label="Navegação principal">
           {links.map((link) => (
@@ -112,7 +121,7 @@ export function NavBar({ logoText, links, cta }: NavBarProps) {
   );
 }
 
-export function HeroSplit({ eyebrow, headline, subtext, cta, secondary, image, imageAlt }: HeroSplitProps & { ctx: RenderContext }) {
+export function HeroSplit({ eyebrow, headline, subtext, cta, secondary, bullets, image, imageAlt }: HeroSplitProps & { ctx: RenderContext }) {
   return (
     <section className="border-b border-[var(--line)] pt-16 pb-20 md:pt-24 md:pb-28">
       <div className={`${shell} grid items-center gap-12 md:grid-cols-12 md:gap-16`}>
@@ -126,6 +135,16 @@ export function HeroSplit({ eyebrow, headline, subtext, cta, secondary, image, i
             <Action href={cta.href} label={cta.label} />
             {secondary ? <Action href={secondary.href} label={secondary.label} variant="ghost" /> : null}
           </div>
+          {bullets?.length ? (
+            <ul className="flex flex-wrap gap-x-5 gap-y-2 pt-3 text-[0.85rem] text-[var(--muted)]">
+              {bullets.map((bullet) => (
+                <li key={bullet} className="flex items-center gap-2">
+                  <span aria-hidden="true" className="size-1.5 rounded-full bg-[var(--accent)]" />
+                  {bullet}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
         <div className="md:col-span-5">
           {image && /^https?:\/\//.test(image) ? (
@@ -575,13 +594,18 @@ export function PricingTable({ title, plans }: PricingTableProps) {
   );
 }
 
-export function FooterCompact({ logoText, tagline, links, legal }: FooterCompactProps) {
+export function FooterCompact({ logoText, tagline, links, legal, ctx }: FooterCompactProps & { ctx: RenderContext }) {
+  const logo = ctx.tenant.brand.logoUrl;
   return (
     <footer className="py-14">
       <div className={`${shell} flex flex-col gap-8`}>
         <div className="flex flex-wrap items-start justify-between gap-8">
           <div className="flex flex-col gap-2">
-            <p className="text-[1.05rem] font-semibold tracking-[-0.01em]">{logoText}</p>
+            {logo ? (
+              <img src={logo} alt={logoText} width={140} height={36} className="h-8 w-auto max-w-[160px] object-contain" loading="lazy" decoding="async" />
+            ) : (
+              <p className="text-[1.05rem] font-semibold tracking-[-0.01em]">{logoText}</p>
+            )}
             {tagline ? <p className="max-w-[36ch] text-[0.95rem] text-[var(--muted)]">{tagline}</p> : null}
           </div>
           {links.length ? (
@@ -597,5 +621,132 @@ export function FooterCompact({ logoText, tagline, links, legal }: FooterCompact
         {legal ? <p className="text-[0.82rem] text-[var(--muted)]">{legal}</p> : null}
       </div>
     </footer>
+  );
+}
+
+export function FeatureNumbered({ eyebrow, title, lead, items }: FeatureNumberedProps) {
+  return (
+    <section className={`${section} border-b border-[var(--line)] bg-[color-mix(in_oklab,var(--line)_35%,var(--paper))]`}>
+      <div className={shell}>
+        <div className="flex max-w-[40rem] flex-col gap-4">
+          <Eyebrow>{eyebrow}</Eyebrow>
+          <h2 className={h2Class}>{title}</h2>
+          {lead ? <p className="text-[1.02rem] leading-relaxed text-[var(--muted)]">{lead}</p> : null}
+        </div>
+        <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((item, index) => {
+            const inner = (
+              <>
+                <span className="font-mono text-[0.8rem] text-[var(--accent)]">{String(index + 1).padStart(2, '0')}</span>
+                <h3 className="mt-3 text-[1.1rem] font-semibold tracking-[-0.01em]">{item.title}</h3>
+                <p className="mt-2 text-[0.95rem] leading-relaxed text-[var(--muted)]">{item.body}</p>
+              </>
+            );
+            const cls = 'flex h-full flex-col rounded-[var(--radius)] border border-[var(--line)] bg-[var(--paper)] p-6';
+            return (
+              <li key={item.title}>
+                {item.href ? (
+                  <a href={item.href} className={`${cls} hover:border-[var(--accent)]`}>
+                    {inner}
+                  </a>
+                ) : (
+                  <div className={cls}>{inner}</div>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+    </section>
+  );
+}
+
+export function NarrativeSplit({ eyebrow, title, items, image, imageAlt }: NarrativeSplitProps) {
+  return (
+    <section className={`${section} border-b border-[var(--line)]`}>
+      <div className={`${shell} grid items-center gap-12 md:grid-cols-12`}>
+        <div className="md:col-span-7">
+          <Eyebrow>{eyebrow}</Eyebrow>
+          <h2 className={`${h2Class} mt-4 mb-8`}>{title}</h2>
+          <ol className="flex flex-col">
+            {items.map((item, index) => (
+              <li key={item.title} className="flex gap-5 border-t border-[var(--line)] py-5 first:border-t-0 first:pt-0">
+                <span className="pt-1 font-mono text-[0.8rem] text-[var(--accent)]">{String(index + 1).padStart(2, '0')}</span>
+                <div>
+                  <h3 className="text-[1.08rem] font-semibold tracking-[-0.01em]">
+                    {item.href ? (
+                      <a href={item.href} className="underline-offset-4 hover:underline">
+                        {item.title}
+                      </a>
+                    ) : (
+                      item.title
+                    )}
+                  </h3>
+                  <p className="mt-1 max-w-[52ch] text-[0.95rem] leading-relaxed text-[var(--muted)]">{item.body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+        <div className="md:col-span-5">
+          {image && /^https?:\/\//.test(image) ? (
+            <img src={image} alt={imageAlt ?? ''} width={720} height={860} loading="lazy" decoding="async" className="aspect-[5/6] w-full rounded-[var(--radius)] object-cover" />
+          ) : (
+            <div aria-hidden="true" className="aspect-[5/6] w-full rounded-[var(--radius)] border border-[var(--line)] bg-[linear-gradient(160deg,var(--line),transparent)]" />
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function EditorialFacts({ eyebrow, title, body, facts, dark }: EditorialFactsProps) {
+  return (
+    <section className={`${section} border-b border-[var(--line)] ${dark ? 'bg-[var(--ink)] text-[var(--paper)]' : ''}`}>
+      <div className={`${shell} grid gap-12 md:grid-cols-12`}>
+        <div className="flex flex-col gap-4 md:col-span-7">
+          {eyebrow ? <p className={`${eyebrowClass} ${dark ? 'text-[var(--paper)] opacity-60' : ''}`}>{eyebrow}</p> : null}
+          <h2 className={h2Class}>{title}</h2>
+          {body ? <p className={`max-w-[56ch] text-[1.02rem] leading-relaxed ${dark ? 'opacity-75' : 'text-[var(--muted)]'}`}>{body}</p> : null}
+        </div>
+        <dl className="flex flex-col md:col-span-5">
+          {facts.map((fact) => (
+            <div key={fact.label} className={`flex justify-between gap-6 border-t py-4 first:border-t-0 first:pt-0 ${dark ? 'border-[color-mix(in_oklab,var(--paper)_20%,transparent)]' : 'border-[var(--line)]'}`}>
+              <dt className={`text-[0.85rem] uppercase tracking-[0.12em] ${dark ? 'opacity-60' : 'text-[var(--muted)]'}`}>{fact.label}</dt>
+              <dd className="text-right text-[0.98rem] font-medium">{fact.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </section>
+  );
+}
+
+export function MediaImage({ src, alt, caption }: MediaImageProps) {
+  return (
+    <section className={`${section} border-b border-[var(--line)]`}>
+      <figure className={shell}>
+        <img src={src} alt={alt} width={1400} height={800} loading="lazy" decoding="async" className="aspect-[16/9] w-full rounded-[var(--radius)] object-cover" />
+        {caption ? <figcaption className="mt-3 text-[0.88rem] text-[var(--muted)]">{caption}</figcaption> : null}
+      </figure>
+    </section>
+  );
+}
+
+/** Botão flutuante de WhatsApp. Sai em todo site que tem número, fora do fluxo de blocos. */
+export function FloatingWhatsapp({ ctx }: { ctx: RenderContext }) {
+  if (!ctx.tenant.whatsapp) return null;
+  return (
+    <a
+      href={`/go/wa?from=${encodeURIComponent(ctx.pagePath)}`}
+      rel="noreferrer"
+      aria-label="Falar no WhatsApp"
+      data-track="whatsapp"
+      className="fixed right-5 bottom-5 z-40 flex size-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-[0_10px_30px_-10px_rgba(0,0,0,0.45)]"
+    >
+      <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor" aria-hidden="true">
+        <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 12 12 0 0 0 4.6 4c1.7.7 2.1.6 2.8.5a2.4 2.4 0 0 0 1.6-1.1 2 2 0 0 0 .1-1.1c0-.2-.2-.2-.5-.4Z" />
+      </svg>
+    </a>
   );
 }

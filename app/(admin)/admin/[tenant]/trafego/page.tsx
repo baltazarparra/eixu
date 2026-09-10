@@ -62,7 +62,15 @@ export default async function TrafficPage({ params }: { params: Promise<{ tenant
         <a href={`/admin/${tenant.slug}`} className="text-xs text-[var(--color-muted)] hover:text-[var(--color-text)]">
           {tenant.name}
         </a>
-        <h1 className="mt-1 text-2xl font-semibold tracking-[-0.02em]">Tráfego</h1>
+        <div className="mt-1 flex items-end justify-between gap-4">
+          <h1 className="text-2xl font-semibold tracking-[-0.02em]">Tráfego</h1>
+          <a
+            href={`/api/admin/${tenant.slug}/contatos.csv`}
+            className="rounded-md border px-3 py-1.5 text-xs text-[var(--color-muted)] hover:text-[var(--color-text)]"
+          >
+            Baixar contatos (CSV)
+          </a>
+        </div>
       </header>
 
       <section className="mb-12 grid gap-px overflow-hidden rounded-lg border bg-[var(--color-line)] sm:grid-cols-4">

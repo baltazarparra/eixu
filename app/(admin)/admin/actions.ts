@@ -44,15 +44,6 @@ export async function createTenantAction(formData: FormData) {
   redirect(`/admin/${slug}`);
 }
 
-export async function updateLeadStatusAction(formData: FormData) {
-  await guard();
-  const id = text(formData, 'id');
-  const status = text(formData, 'status', 'new');
-  const tenantSlug = text(formData, 'tenant');
-  await db()`update leads set status = ${status} where id = ${id}`;
-  revalidatePath(`/admin/${tenantSlug}/leads`);
-}
-
 export async function saveSpendAction(formData: FormData) {
   await guard();
   const tenantSlug = text(formData, 'tenant');

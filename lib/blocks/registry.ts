@@ -36,7 +36,7 @@ const field = z.object({
 
 export const blockSchemas = {
   'nav.bar': z.object({
-    logoText: z.string().min(1).max(24),
+    logoText: z.string().min(1).max(24).describe('Nome exibido quando o cliente não tem logo enviado.'),
     links: z.array(link).max(5).default([]),
     cta: link.optional(),
   }),
@@ -47,6 +47,7 @@ export const blockSchemas = {
     subtext: z.string().max(160).optional(),
     cta: link,
     secondary: link.optional(),
+    bullets: z.array(z.string().max(48)).max(3).optional().describe('Até 3 selos curtos de confiança sob os botões.'),
     image: z.url().startsWith('http').optional().describe('URL http(s) de uma imagem real. Omita se não tiver.'),
     imageAlt: z.string().max(140).optional(),
   }),
@@ -76,6 +77,16 @@ export const blockSchemas = {
     role: z.string().max(80).optional(),
   }),
 
+  'feature.numbered': z.object({
+    eyebrow: z.string().max(48).optional(),
+    title: z.string().min(4).max(90),
+    lead: z.string().max(200).optional(),
+    items: z
+      .array(z.object({ title: z.string().max(60), body: z.string().max(160), href: z.string().optional() }))
+      .min(3)
+      .max(8),
+  }),
+
   'feature.bento': z.object({
     eyebrow: z.string().max(48).optional(),
     title: z.string().min(4).max(90),
@@ -92,6 +103,25 @@ export const blockSchemas = {
       .array(z.object({ title: z.string().max(60), body: z.string().max(220) }))
       .min(2)
       .max(5),
+  }),
+
+  'narrative.split': z.object({
+    eyebrow: z.string().max(48).optional(),
+    title: z.string().min(4).max(90),
+    items: z
+      .array(z.object({ title: z.string().max(60), body: z.string().max(160), href: z.string().optional() }))
+      .min(2)
+      .max(6),
+    image: z.url().startsWith('http').optional().describe('Foto real ao lado da lista. Omita se não tiver.'),
+    imageAlt: z.string().max(140).optional(),
+  }),
+
+  'editorial.facts': z.object({
+    eyebrow: z.string().max(48).optional(),
+    title: z.string().min(4).max(90),
+    body: z.string().max(600).optional(),
+    facts: z.array(z.object({ label: z.string().max(40), value: z.string().max(80) })).min(2).max(8),
+    dark: z.boolean().default(false),
   }),
 
   'faq.accordion': z.object({
@@ -139,6 +169,12 @@ export const blockSchemas = {
       .array(z.object({ src: z.url().startsWith('http'), alt: z.string().max(140) }))
       .min(2)
       .max(8),
+  }),
+
+  'media.image': z.object({
+    src: z.url().startsWith('http'),
+    alt: z.string().max(140),
+    caption: z.string().max(160).optional(),
   }),
 
   'media.map': z.object({
@@ -204,7 +240,22 @@ export const blockMeta: Record<BlockType, Meta> = {
   'proof.stats': { family: 'proof', label: 'Números', use: 'Dois a quatro números concretos do negócio.' },
   'proof.testimonial': { family: 'proof', label: 'Depoimento', use: 'Uma citação real de cliente com nome e cargo.' },
   'feature.bento': { family: 'feature', label: 'Grade de recursos', use: 'Serviços ou diferenciais em grade irregular.' },
+  'feature.numbered': {
+    family: 'feature',
+    label: 'Grade numerada',
+    use: 'Problemas que o cliente sente, sintomas ou serviços, em cards numerados. Ótimo para "o que está acontecendo com o seu X".',
+  },
   'narrative.steps': { family: 'narrative', label: 'Passos', use: 'Como funciona, em sequência.' },
+  'narrative.split': {
+    family: 'narrative',
+    label: 'Lista com foto',
+    use: 'Lista numerada de serviços ao lado de uma foto real. Use quando houver imagem do trabalho ou da equipe.',
+  },
+  'editorial.facts': {
+    family: 'editorial',
+    label: 'Sobre com fatos',
+    use: 'Bloco "sobre" com parágrafo e pares rótulo e valor: onde atende, horário, contato, marcas. Pode ser escuro.',
+  },
   'faq.accordion': { family: 'faq', label: 'Perguntas frequentes', use: 'Dúvidas reais. Ajuda em busca e em conversão.' },
   'cta.band': { family: 'cta', label: 'Faixa de chamada', use: 'Convite direto para ação, com WhatsApp quando houver.' },
   'form.lead': { family: 'form', label: 'Formulário', use: 'Captura de lead com campos configuráveis e consentimento LGPD.' },
@@ -212,6 +263,7 @@ export const blockMeta: Record<BlockType, Meta> = {
   'editorial.postList': { family: 'editorial', label: 'Lista de posts', use: 'Índice do blog. Use na página /blog.', singleton: true },
   'editorial.postBody': { family: 'editorial', label: 'Corpo do post', use: 'Conteúdo de um post. Use apenas em páginas do tipo post.', singleton: true },
   'media.gallery': { family: 'media', label: 'Galeria', use: 'Fotos reais do negócio.' },
+  'media.image': { family: 'media', label: 'Imagem', use: 'Uma foto grande com legenda. Use quando o operador mandar uma imagem que não é do hero.' },
   'media.map': { family: 'media', label: 'Mapa', use: 'Endereço com mapa embutido, carregado sob demanda.' },
   'pricing.table': { family: 'pricing', label: 'Planos', use: 'Tabela de preços ou pacotes.' },
   'footer.compact': { family: 'footer', label: 'Rodapé', use: 'Rodapé com links e aviso legal. Uma por página.', singleton: true },

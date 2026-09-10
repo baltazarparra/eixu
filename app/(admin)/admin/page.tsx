@@ -73,7 +73,7 @@ export default async function AdminHome() {
                 </div>
                 <span className="font-mono text-xs text-[var(--color-muted)]">{tenant.slug}.eixu.com.br</span>
                 <span className="text-xs text-[var(--color-muted)]">
-                  {tenant.pageCount} páginas · {tenant.leadCount} leads
+                  {tenant.pageCount} páginas · {tenant.leadCount} contatos recebidos
                 </span>
               </a>
             </li>

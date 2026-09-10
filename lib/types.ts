@@ -16,6 +16,8 @@ export type Brand = {
   radius?: 'none' | 'sm' | 'md' | 'lg' | 'full';
   font?: 'sans' | 'serif' | 'mono';
   logoText?: string;
+  /** URL pública do logo enviado pelo painel. Nav e rodapé usam quando existe. */
+  logoUrl?: string;
 };
 
 export type Tenant = {

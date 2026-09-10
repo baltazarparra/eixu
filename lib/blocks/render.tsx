@@ -34,6 +34,7 @@ export function RenderBlocks({ blocks, ctx }: { blocks: BlockInstance[]; ctx: Re
       {renderList(leading, ctx)}
       <main>{renderList(content, ctx)}</main>
       {renderList(trailing, ctx)}
+      <B.FloatingWhatsapp ctx={ctx} />
     </>
   );
 }
@@ -50,7 +51,7 @@ function renderList(blocks: BlockInstance[], ctx: RenderContext) {
 
         switch (block.type) {
           case 'nav.bar':
-            return <B.NavBar key={key} {...(props as B.NavBarProps)} />;
+            return <B.NavBar key={key} {...(props as B.NavBarProps)} ctx={ctx} />;
           case 'hero.split':
             return <B.HeroSplit key={key} {...(props as B.HeroSplitProps)} ctx={ctx} />;
           case 'hero.statement':
@@ -61,6 +62,14 @@ function renderList(blocks: BlockInstance[], ctx: RenderContext) {
             return <B.ProofStats key={key} {...(props as B.ProofStatsProps)} />;
           case 'proof.testimonial':
             return <B.ProofTestimonial key={key} {...(props as B.ProofTestimonialProps)} />;
+          case 'feature.numbered':
+            return <B.FeatureNumbered key={key} {...(props as B.FeatureNumberedProps)} />;
+          case 'narrative.split':
+            return <B.NarrativeSplit key={key} {...(props as B.NarrativeSplitProps)} />;
+          case 'editorial.facts':
+            return <B.EditorialFacts key={key} {...(props as B.EditorialFactsProps)} />;
+          case 'media.image':
+            return <B.MediaImage key={key} {...(props as B.MediaImageProps)} />;
           case 'feature.bento':
             return <B.FeatureBento key={key} {...(props as B.FeatureBentoProps)} />;
           case 'narrative.steps':
@@ -84,7 +93,7 @@ function renderList(blocks: BlockInstance[], ctx: RenderContext) {
           case 'pricing.table':
             return <B.PricingTable key={key} {...(props as B.PricingTableProps)} />;
           case 'footer.compact':
-            return <B.FooterCompact key={key} {...(props as B.FooterCompactProps)} />;
+            return <B.FooterCompact key={key} {...(props as B.FooterCompactProps)} ctx={ctx} />;
           default:
             return null;
         }

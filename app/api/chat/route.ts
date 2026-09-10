@@ -39,8 +39,23 @@ export async function POST(request: Request) {
     )
     .join('\n');
 
+  // Imagens anexadas chegam como partes de arquivo com URL pública do Blob. O
+  // modelo vê a imagem, mas não lê a URL: anotamos a URL no texto para ele
+  // usar exatamente essa string nas props dos blocos.
+  const messages = body.messages.map((message) => {
+    if (message.role !== 'user') return message;
+    const files = message.parts.filter((part) => part.type === 'file') as { url: string; mediaType?: string }[];
+    if (!files.length) return message;
+    const note = files.map((file) => `[imagem anexada: ${file.url}]`).join('\n');
+    const hasText = message.parts.some((part) => part.type === 'text');
+    const parts = hasText
+      ? message.parts.map((part) => (part.type === 'text' ? { ...part, text: `${(part as { text: string }).text}\n${note}` } : part))
+      : [...message.parts, { type: 'text' as const, text: note }];
+    return { ...message, parts };
+  });
+
   // Guarda a mensagem do operador para o histórico do painel.
-  const lastUser = [...body.messages].reverse().find((message) => message.role === 'user');
+  const lastUser = [...messages].reverse().find((message) => message.role === 'user');
   if (lastUser) {
     const text = lastUser.parts
       .filter((part) => part.type === 'text')
@@ -56,7 +71,7 @@ export async function POST(request: Request) {
   const result = streamText({
     model: MODEL(),
     instructions: systemPrompt(tenant, summary, body.page ? `/${body.page}` : '/'),
-    messages: await convertToModelMessages(body.messages),
+    messages: await convertToModelMessages(messages),
     tools: buildTools(tenant),
     stopWhen: isStepCount(30),
     onError: ({ error }) => {

@@ -22,10 +22,45 @@ function toBlocks(input: { type: string; props: Record<string, unknown> }[]): Bl
   return input.map((block) => ({ id: newId(), type: block.type, props: block.props }));
 }
 
+class ToolError extends Error {}
+
 async function requirePage(tenantId: string, slug: string) {
-  const page = await getPage(tenantId, slug.replace(/^\//, ''));
-  if (!page) throw new Error(`Página "${slug}" não existe. Crie com create_page antes.`);
+  const clean = slug.replace(/^\/+|\/+$/g, '');
+  const page = await getPage(tenantId, clean);
+  if (!page) throw new ToolError(`Página "/${clean}" não existe. Use list_state para ver as páginas ou create_page para criar.`);
   return page;
+}
+
+/**
+ * Localiza um bloco por id, por tipo ("hero.split") ou por família ("hero").
+ * O erro lista o que existe, para o agente acertar na próxima chamada.
+ */
+function findBlock(blocks: BlockInstance[], selector: string): BlockInstance {
+  const byId = blocks.find((block) => block.id === selector);
+  if (byId) return byId;
+  const wanted = selector.toLowerCase();
+  const matches = blocks.filter(
+    (block) => block.type.toLowerCase() === wanted || block.type.toLowerCase().split('.')[0] === wanted,
+  );
+  if (matches.length === 1) return matches[0];
+  const inventory = blocks.map((block, index) => `${index}: ${block.type} (id ${block.id})`).join('; ');
+  if (matches.length > 1) {
+    throw new ToolError(`"${selector}" bate com ${matches.length} blocos. Use o id. Blocos: ${inventory}`);
+  }
+  throw new ToolError(`Nenhum bloco "${selector}" nesta página. Blocos: ${inventory}`);
+}
+
+/** Envolve o execute para devolver erro como resultado, sem derrubar o passo do agente. */
+function safe<I, O>(run: (input: I) => Promise<O>) {
+  return async (input: I): Promise<O | { error: string }> => {
+    try {
+      return await run(input);
+    } catch (error) {
+      if (error instanceof ToolError) return { error: error.message };
+      console.error('[tool] falha inesperada:', error);
+      return { error: error instanceof Error ? error.message : 'Falha inesperada.' };
+    }
+  };
 }
 
 export function buildTools(tenant: Tenant) {
@@ -39,14 +74,30 @@ export function buildTools(tenant: Tenant) {
           brand: tenant.brand,
           dials: tenant.dials,
           pages: pages.map((page) => ({
-            slug: page.slug || '(home)',
+            slug: `/${page.slug}`,
             type: page.type,
             title: page.title,
-            blocks: page.blocks.length,
+            blocks: page.blocks.map((block) => `${block.type}#${block.id}`),
             published: Boolean(page.publishedBlocks),
           })),
         };
       },
+    }),
+
+    get_page: tool({
+      description:
+        'Lê uma página com os blocos, seus ids, tipos e props completas. Chame antes de update_block, move_block ou remove_block para saber o que existe.',
+      inputSchema: z.object({ page: z.string().describe('Slug. Vazio para a home.') }),
+      execute: safe(async ({ page: slug }) => {
+        const page = await requirePage(tenant.id, slug);
+        return {
+          slug: `/${page.slug}`,
+          type: page.type,
+          title: page.title,
+          seo: page.seo,
+          blocks: page.blocks.map((block, index) => ({ index, id: block.id, type: block.type, props: block.props })),
+        };
+      }),
     }),
 
     describe_block: tool({
@@ -145,11 +196,11 @@ export function buildTools(tenant: Tenant) {
     delete_page: tool({
       description: 'Apaga uma página. Use só quando o operador pedir.',
       inputSchema: z.object({ page: z.string() }),
-      execute: async ({ page: slug }) => {
+      execute: safe(async ({ page: slug }) => {
         const page = await requirePage(tenant.id, slug);
         await db()`delete from pages where id = ${page.id}`;
         return { ok: true, removida: `/${page.slug}` };
-      },
+      }),
     }),
 
     create_page: tool({
@@ -190,7 +241,7 @@ export function buildTools(tenant: Tenant) {
         page: z.string().describe('Slug da página. Vazio para a home.'),
         blocks: z.array(blockInput).min(1).max(20),
       }),
-      execute: async ({ page: slug, blocks }) => {
+      execute: safe(async ({ page: slug, blocks }) => {
         const page = await requirePage(tenant.id, slug);
         const next = toBlocks(blocks);
         await db()`
@@ -204,7 +255,7 @@ export function buildTools(tenant: Tenant) {
           preflight: formatFindings(findings),
           erros: findings.filter((f) => f.level === 'error').length,
         };
-      },
+      }),
     }),
 
     insert_block: tool({
@@ -214,7 +265,7 @@ export function buildTools(tenant: Tenant) {
         block: blockInput,
         index: z.number().int().min(0).optional(),
       }),
-      execute: async ({ page: slug, block, index }) => {
+      execute: safe(async ({ page: slug, block, index }) => {
         const page = await requirePage(tenant.id, slug);
         const next = [...page.blocks];
         const [created] = toBlocks([block]);
@@ -226,53 +277,57 @@ export function buildTools(tenant: Tenant) {
           where id = ${page.id}
         `;
         return { ok: true, blockId: created.id, position: at, total: next.length };
-      },
+      }),
     }),
 
     update_block: tool({
       description: 'Atualiza as props de um bloco existente. Passe apenas as props que mudam.',
       inputSchema: z.object({
         page: z.string(),
-        blockId: z.string(),
-        props: z.record(z.string(), z.unknown()),
+        block: z.string().describe('Id do bloco, ou o tipo ("hero.split") ou a família ("hero") quando só existe um.'),
+        props: z.record(z.string(), z.unknown()).describe('Só as props que mudam. Objetos e listas são substituídos inteiros.'),
+        type: z
+          .string()
+          .optional()
+          .describe('Novo tipo do bloco, para trocar a variante mantendo as props em comum. Ex: hero.statement para hero.split.'),
       }),
-      execute: async ({ page: slug, blockId, props }) => {
+      execute: safe(async ({ page: slug, block: selector, props, type }) => {
         const page = await requirePage(tenant.id, slug);
-        if (!page.blocks.some((block) => block.id === blockId)) {
-          throw new Error(`Bloco ${blockId} não encontrado nesta página.`);
-        }
+        const target = findBlock(page.blocks, selector);
+        if (type && !isBlockType(type)) throw new ToolError(`Tipo "${type}" não existe. Tipos: ${BLOCK_TYPES.join(', ')}`);
         const next = page.blocks.map((block) =>
-          block.id === blockId ? { ...block, props: { ...block.props, ...props } } : block,
+          block.id === target.id ? { ...block, type: type ?? block.type, props: { ...block.props, ...props } } : block,
         );
         await db()`
           update pages set blocks = ${JSON.stringify(next)}::jsonb, updated_at = now()
           where id = ${page.id}
         `;
-        return { ok: true, preflight: formatFindings(lintPage({ ...page, blocks: next })) };
-      },
+        return { ok: true, blockId: target.id, preflight: formatFindings(lintPage({ ...page, blocks: next })) };
+      }),
     }),
 
     remove_block: tool({
-      description: 'Remove um bloco da página.',
-      inputSchema: z.object({ page: z.string(), blockId: z.string() }),
-      execute: async ({ page: slug, blockId }) => {
+      description: 'Remove um bloco da página. Aceita id, tipo ou família.',
+      inputSchema: z.object({ page: z.string(), block: z.string() }),
+      execute: safe(async ({ page: slug, block: selector }) => {
         const page = await requirePage(tenant.id, slug);
-        const next = page.blocks.filter((block) => block.id !== blockId);
+        const target = findBlock(page.blocks, selector);
+        const next = page.blocks.filter((block) => block.id !== target.id);
         await db()`
           update pages set blocks = ${JSON.stringify(next)}::jsonb, updated_at = now()
           where id = ${page.id}
         `;
         return { ok: true, remaining: next.length };
-      },
+      }),
     }),
 
     move_block: tool({
-      description: 'Move um bloco para outra posição na página.',
-      inputSchema: z.object({ page: z.string(), blockId: z.string(), toIndex: z.number().int().min(0) }),
-      execute: async ({ page: slug, blockId, toIndex }) => {
+      description: 'Move um bloco para outra posição na página. Aceita id, tipo ou família.',
+      inputSchema: z.object({ page: z.string(), block: z.string(), toIndex: z.number().int().min(0) }),
+      execute: safe(async ({ page: slug, block: selector, toIndex }) => {
         const page = await requirePage(tenant.id, slug);
-        const from = page.blocks.findIndex((block) => block.id === blockId);
-        if (from < 0) throw new Error(`Bloco ${blockId} não encontrado.`);
+        const target = findBlock(page.blocks, selector);
+        const from = page.blocks.findIndex((block) => block.id === target.id);
         const next = [...page.blocks];
         const [moved] = next.splice(from, 1);
         next.splice(Math.min(toIndex, next.length), 0, moved);
@@ -281,7 +336,7 @@ export function buildTools(tenant: Tenant) {
           where id = ${page.id}
         `;
         return { ok: true, from, to: toIndex };
-      },
+      }),
     }),
 
     set_seo: tool({
@@ -292,7 +347,7 @@ export function buildTools(tenant: Tenant) {
         description: z.string().max(170).optional(),
         noindex: z.boolean().optional(),
       }),
-      execute: async ({ page: slug, ...seoInput }) => {
+      execute: safe(async ({ page: slug, ...seoInput }) => {
         const page = await requirePage(tenant.id, slug);
         const seo = { ...page.seo, ...seoInput };
         await db()`
@@ -300,26 +355,26 @@ export function buildTools(tenant: Tenant) {
           where id = ${page.id}
         `;
         return { ok: true, seo };
-      },
+      }),
     }),
 
     lint_page: tool({
       description: 'Roda o pre-flight de qualidade em uma página. Corrija todo ERRO antes de considerar a página pronta.',
       inputSchema: z.object({ page: z.string() }),
-      execute: async ({ page: slug }) => {
+      execute: safe(async ({ page: slug }) => {
         const page = await requirePage(tenant.id, slug);
         const findings = lintPage(page);
         return {
           aprovado: !findings.some((f) => f.level === 'error'),
           relatorio: formatFindings(findings),
         };
-      },
+      }),
     }),
 
     publish_page: tool({
       description: 'Publica uma página. Só use quando o operador pedir. Bloqueia se o pre-flight tiver erro.',
       inputSchema: z.object({ page: z.string() }),
-      execute: async ({ page: slug }) => {
+      execute: safe(async ({ page: slug }) => {
         const page = await requirePage(tenant.id, slug);
         const findings = lintPage(page);
         if (findings.some((f) => f.level === 'error')) {
@@ -332,7 +387,7 @@ export function buildTools(tenant: Tenant) {
         `;
         await db()`update tenants set status = 'published' where id = ${tenant.id}`;
         return { publicado: true, url: `https://${tenant.slug}.eixu.com.br/${page.slug}` };
-      },
+      }),
     }),
   };
 }

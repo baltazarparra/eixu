@@ -78,7 +78,8 @@ export function lintPage(page: Pick<Page, 'blocks' | 'type' | 'title' | 'seo'>):
       push('error', 'bloco-desconhecido', `Bloco "${block.type}" não existe na biblioteca.`, block.id);
       continue;
     }
-    const parsed = blockSchemas[block.type].safeParse(block.props);
+    // Estrito: prop que o bloco não conhece é erro, senão o agente acha que aplicou algo que sumiu.
+    const parsed = blockSchemas[block.type].strict().safeParse(block.props);
     if (!parsed.success) {
       const issue = parsed.error.issues[0];
       push(
