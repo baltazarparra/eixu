@@ -28,3 +28,5 @@ A base funcional foi publicada em `03aa858`; a inspeção posterior identificou 
 ## Critério de conclusão do gerador
 
 O Porto Pedras é uma referência de aceite, não a entrega inteira. Uma composição ajustada manualmente demonstra o renderer, mas não comprova o gerador. A validação restante exige saídas automáticas do modelo para briefings de negócios diferentes, renderizadas sem correção manual, comparando identidade, coerência, imagens, motion, percurso entre páginas e tokens. As travas de assinatura detectam repetição estrutural; não garantem qualidade estética por si só.
+
+A avaliação automática entre negócios foi executada e registrou limitações concretas do modelo atual. Foram corrigidos o overflow do hero offset, a aceitação de motion como única decisão visual, o reenvio integral de lotes recusados e a mensagem do painel que anunciava sucesso em uma recusa. A comparação adicional com Fable 5.1 não alterou o modelo de produção. As evidências e o que ainda não foi comprovado estão em [Verificação](verification.md#avaliação-entre-negócios-e-reparos-10092026).

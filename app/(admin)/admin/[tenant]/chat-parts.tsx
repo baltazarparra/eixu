@@ -2,14 +2,20 @@
 
 import type { UIMessage } from 'ai';
 
-const str = (value: unknown): string => (typeof value === 'string' ? value : '');
+const str = (value: unknown): string =>
+  typeof value === 'string' ? value : '';
 const num = (value: unknown): number => (typeof value === 'number' ? value : 0);
 
 /**
  * Texto legível para cada ferramenta. Cobre o agente de sites e o de imagens,
  * porque os dois workspaces renderizam o progresso do mesmo jeito.
  */
-export function describeTool(name: string, input: unknown, output: unknown, state: string): string {
+export function describeTool(
+  name: string,
+  input: unknown,
+  output: unknown,
+  state: string,
+): string {
   const inp = (input ?? {}) as Record<string, unknown>;
   const out = (output ?? {}) as Record<string, unknown>;
   const page = typeof inp.page === 'string' ? `/${inp.page}` : '';
@@ -19,25 +25,66 @@ export function describeTool(name: string, input: unknown, output: unknown, stat
 
   switch (name) {
     // Agente de sites
-    case 'build_site': {
-      const pages = Array.isArray(inp.pages) ? inp.pages.length : 0;
-      if (pending) return `Montando o site${pages ? `, ${pages} páginas` : ''}`;
-      const report = (out.pages ?? []) as { page: string; blocks: number; erros: number }[];
-      const errors = report.reduce((sum, item) => sum + item.erros, 0);
-      return `Site montado: ${report.map((item) => `${item.page} (${item.blocks} blocos)`).join(', ')}${
-        errors ? `. ${errors} apontamentos para corrigir` : '. Pre-flight aprovado'
-      }`;
+    case 'build_site':
+    case 'repair_site': {
+      if (pending)
+        return name === 'repair_site'
+          ? 'Ajustando as páginas'
+          : 'Montando o projeto';
+      if (out.ok !== true)
+        return 'O projeto precisa de ajustes antes de salvar';
+      const pages = Array.isArray(out.pages) ? out.pages.length : 0;
+      const approvals =
+        Array.isArray(out.publicationPending) &&
+        out.publicationPending.length > 0;
+      return `Projeto salvo: ${pages} páginas${approvals ? '. Há pendências para publicar' : ''}`;
     }
+    case 'set_design':
+      return pending
+        ? 'Definindo a identidade visual'
+        : out.ok === true
+          ? 'Identidade visual definida'
+          : 'A identidade visual precisa de ajustes';
+    case 'lint_site':
+      return pending
+        ? 'Verificando o projeto'
+        : Array.isArray(out.findings) && out.findings.length
+          ? 'O projeto tem ajustes pendentes'
+          : 'Verificação do projeto concluída';
+    case 'publish_site':
+      return pending
+        ? 'Publicando o projeto'
+        : Array.isArray(out.published) && out.published.length
+          ? 'Projeto publicado'
+          : 'Publicação bloqueada';
+    case 'prepare_site_images':
+      return pending
+        ? 'Preparando as imagens do projeto'
+        : out.error ||
+            (Array.isArray(out.falhas) && out.falhas.length > 0) ||
+            !Array.isArray(out.candidatas) ||
+            !out.candidatas.length
+          ? 'As imagens precisam de atenção'
+          : 'Imagens preparadas para revisão';
     case 'set_blocks':
-      return pending ? `Refazendo ${page}` : `Refez ${page}${erros ? `, ${erros} apontamentos` : ', pre-flight aprovado'}`;
+      return pending
+        ? `Refazendo ${page}`
+        : `Refez ${page}${erros ? `, ${erros} apontamentos` : ', pre-flight aprovado'}`;
     case 'update_block':
-      return pending ? `Ajustando um bloco em ${page}` : `Ajustou um bloco em ${page}`;
+      return pending
+        ? `Ajustando um bloco em ${page}`
+        : `Ajustou um bloco em ${page}`;
     case 'insert_block': {
-      const type = (inp.block as { type?: string } | undefined)?.type ?? 'bloco';
-      return pending ? `Inserindo ${type} em ${page}` : `Inseriu ${type} em ${page}`;
+      const type =
+        (inp.block as { type?: string } | undefined)?.type ?? 'bloco';
+      return pending
+        ? `Inserindo ${type} em ${page}`
+        : `Inseriu ${type} em ${page}`;
     }
     case 'remove_block':
-      return pending ? `Removendo um bloco de ${page}` : `Removeu um bloco de ${page}`;
+      return pending
+        ? `Removendo um bloco de ${page}`
+        : `Removeu um bloco de ${page}`;
     case 'move_block':
       return pending ? `Reordenando ${page}` : `Reordenou ${page}`;
     case 'create_page':
@@ -55,7 +102,11 @@ export function describeTool(name: string, input: unknown, output: unknown, stat
           ? `Pre-flight aprovado em ${page}`
           : `Pre-flight com apontamentos em ${page}`;
     case 'publish_page':
-      return pending ? `Publicando ${page}` : out.publicado ? `Publicou ${page}` : `Publicação bloqueada em ${page}`;
+      return pending
+        ? `Publicando ${page}`
+        : out.publicado
+          ? `Publicou ${page}`
+          : `Publicação bloqueada em ${page}`;
     case 'list_state':
       return pending ? 'Lendo o site' : 'Leu o site';
     case 'get_page':
@@ -65,52 +116,102 @@ export function describeTool(name: string, input: unknown, output: unknown, stat
 
     // Agente de imagens
     case 'define_guide':
-      return pending ? 'Definindo o guia de imagem' : 'Definiu o guia de imagem';
+      return pending
+        ? 'Definindo o guia de imagem'
+        : 'Definiu o guia de imagem';
     case 'generate_candidates': {
       const ratio = str(inp.ratio) || str(inp.targetBlock);
-      if (pending) return `Gerando candidatas${ratio ? ` para ${ratio}` : ''} e avaliando cada uma`;
-      const list = (out.candidatas ?? []) as { numero: string; nota: number | null }[];
+      if (pending)
+        return `Gerando candidatas${ratio ? ` para ${ratio}` : ''} e avaliando cada uma`;
+      const list = (out.candidatas ?? []) as {
+        numero: string;
+        nota: number | null;
+      }[];
       if (!list.length) return 'Nenhuma candidata gerada';
       const best = list[0];
       return `${list.length} candidatas avaliadas, melhor ${best.numero} com nota ${best.nota ?? 'sem'}`;
     }
     case 'approve_image':
-      return pending ? 'Aprovando a imagem' : `Aprovou ${str(out.numero) || 'a imagem'}`;
+      return pending
+        ? 'Aprovando a imagem'
+        : `Aprovou ${str(out.numero) || 'a imagem'}`;
     case 'reject_image':
-      return pending ? 'Rejeitando a imagem' : `Rejeitou ${str(out.numero) || 'a imagem'}`;
+      return pending
+        ? 'Rejeitando a imagem'
+        : `Rejeitou ${str(out.numero) || 'a imagem'}`;
     case 'generate_logo': {
-      const mode = str(inp.mode) === 'modernizar' ? 'modernizando o logo' : 'criando o logo';
+      const mode =
+        str(inp.mode) === 'modernizar'
+          ? 'modernizando o logo'
+          : 'criando o logo';
       if (pending) return `Gerando variantes e ${mode}`;
-      const list = (out.variantes ?? []) as { numero: string; variante: string; nota: number | null }[];
+      const list = (out.variantes ?? []) as {
+        numero: string;
+        variante: string;
+        nota: number | null;
+      }[];
       if (!list.length) return 'Nenhuma variante gerada';
       return `${list.length} variantes avaliadas, melhor ${list[0].numero} (${list[0].variante}) com nota ${list[0].nota ?? 'sem'}`;
     }
     case 'set_site_logo':
-      return pending ? 'Definindo o logo do site' : `Definiu ${str(out.numero) || 'a imagem'} como logo do site`;
+      return pending
+        ? 'Definindo o logo do site'
+        : `Definiu ${str(out.numero) || 'a imagem'} como logo do site`;
     case 'list_images':
-      return pending ? 'Lendo a biblioteca de imagens' : 'Leu a biblioteca de imagens';
+      return pending
+        ? 'Lendo a biblioteca de imagens'
+        : 'Leu a biblioteca de imagens';
     case 'delete_image':
-      return pending ? 'Apagando a imagem' : `Apagou ${str(out.apagada) || 'a imagem'}`;
+      return pending
+        ? 'Apagando a imagem'
+        : `Apagou ${str(out.apagada) || 'a imagem'}`;
 
     default:
       return name;
   }
 }
 
-type ToolPart = { type: string; state?: string; input?: unknown; output?: unknown; errorText?: string };
+type ToolPart = {
+  type: string;
+  state?: string;
+  input?: unknown;
+  output?: unknown;
+  errorText?: string;
+};
 
 /** Junta chamadas repetidas de consulta numa linha só, para a lista não virar ruído. */
-const REPEATABLE = new Set(['describe_block', 'list_state', 'get_page', 'list_images']);
+const REPEATABLE = new Set([
+  'describe_block',
+  'list_state',
+  'get_page',
+  'list_images',
+]);
 
 function collapse(parts: ToolPart[]) {
-  const out: { label: string; done: boolean; failed: boolean; count: number }[] = [];
+  const out: {
+    label: string;
+    done: boolean;
+    failed: boolean;
+    count: number;
+  }[] = [];
   for (const raw of parts) {
     const name = raw.type.replace('tool-', '');
     const done = raw.state === 'output-available';
-    const failed = raw.state === 'output-error';
-    const label = failed ? `Falhou: ${raw.errorText ?? name}` : describeTool(name, raw.input, raw.output, raw.state ?? '');
+    const output = (raw.output ?? {}) as Record<string, unknown>;
+    const failed =
+      raw.state === 'output-error' ||
+      output.ok === false ||
+      Boolean(output.error);
+    const label =
+      raw.state === 'output-error'
+        ? `Falhou: ${raw.errorText ?? name}`
+        : describeTool(name, raw.input, raw.output, raw.state ?? '');
     const last = out[out.length - 1];
-    if (last && REPEATABLE.has(name) && last.label.startsWith(label.replace(/ \(\d+\)$/, ''))) {
+    if (
+      last &&
+      REPEATABLE.has(name) &&
+      last.label.startsWith(label.replace(/ \(\d+\)$/, ''))
+    ) {
       last.count += 1;
       last.done = last.done && done;
       last.label = `${label} (${last.count})`;
@@ -127,7 +228,10 @@ export function Message({ message }: { message: UIMessage }) {
       .filter((part) => part.type === 'text')
       .map((part) => (part as { text: string }).text)
       .join('');
-    const images = message.parts.filter((part) => part.type === 'file') as { url: string; filename?: string }[];
+    const images = message.parts.filter((part) => part.type === 'file') as {
+      url: string;
+      filename?: string;
+    }[];
     return (
       <Bubble from="user">
         {images.length ? (
@@ -149,7 +253,10 @@ export function Message({ message }: { message: UIMessage }) {
   }
 
   // Renderiza na ordem em que o agente trabalhou: pensa, age, pensa, age, resume.
-  const groups: ({ kind: 'text'; text: string } | { kind: 'tools'; parts: ToolPart[] })[] = [];
+  const groups: (
+    | { kind: 'text'; text: string }
+    | { kind: 'tools'; parts: ToolPart[] }
+  )[] = [];
   for (const part of message.parts) {
     if (part.type === 'text') {
       const text = (part as { text: string }).text;
@@ -172,9 +279,15 @@ export function Message({ message }: { message: UIMessage }) {
             {group.text.trim()}
           </Bubble>
         ) : (
-          <ol key={index} className="flex flex-col gap-1 rounded-md border bg-[var(--color-surface)] px-3 py-2">
+          <ol
+            key={index}
+            className="flex flex-col gap-1 rounded-md border bg-[var(--color-surface)] px-3 py-2"
+          >
             {collapse(group.parts).map((item, itemIndex) => (
-              <li key={itemIndex} className="flex items-start gap-2 text-[0.75rem]">
+              <li
+                key={itemIndex}
+                className="flex items-start gap-2 text-[0.75rem]"
+              >
                 <span
                   className={`mt-1.5 size-1.5 shrink-0 rounded-full ${
                     item.failed
@@ -184,7 +297,13 @@ export function Message({ message }: { message: UIMessage }) {
                         : 'animate-pulse bg-[var(--color-warn)]'
                   }`}
                 />
-                <span className={item.done || item.failed ? 'text-[var(--color-muted)]' : ''}>{item.label}</span>
+                <span
+                  className={
+                    item.done || item.failed ? 'text-[var(--color-muted)]' : ''
+                  }
+                >
+                  {item.label}
+                </span>
               </li>
             ))}
           </ol>
@@ -194,13 +313,23 @@ export function Message({ message }: { message: UIMessage }) {
   );
 }
 
-export function Bubble({ from, children }: { from: string; children: React.ReactNode }) {
+export function Bubble({
+  from,
+  children,
+}: {
+  from: string;
+  children: React.ReactNode;
+}) {
   const isUser = from === 'user';
   return (
-    <div className={`flex flex-col gap-1 ${isUser ? 'items-end' : 'items-start'}`}>
+    <div
+      className={`flex flex-col gap-1 ${isUser ? 'items-end' : 'items-start'}`}
+    >
       <div
         className={`max-w-[94%] whitespace-pre-wrap rounded-lg px-3.5 py-2.5 text-sm leading-relaxed ${
-          isUser ? 'bg-[var(--color-surface-2)]' : 'border bg-[var(--color-surface)]'
+          isUser
+            ? 'bg-[var(--color-surface-2)]'
+            : 'border bg-[var(--color-surface)]'
         }`}
       >
         {children}

@@ -197,3 +197,213 @@ await test('novos blocos aceitam composição válida e recusam imagem inválida
     false,
   );
 });
+
+const { repairSiteDraft, repairSiteInput, buildSiteInput } = await j.import(
+  '../lib/ai/site-draft.ts',
+);
+const { lintPage } = await j.import('../lib/taste/lint.ts');
+function draft() {
+  return {
+    pages: project().map((p) => ({
+      slug: p.slug,
+      type: p.type,
+      title: p.title,
+      inbound: p.meta.inbound,
+      seoTitle: p.seo.title,
+      seoDescription: p.seo.description,
+      blocks: p.blocks.map(({ type, props }) => ({ type, props })),
+    })),
+  };
+}
+await test('reparo conserva páginas e props inalteradas, mescla apresentação e revalida o lote', () => {
+  const original = draft();
+  original.pages[0].blocks[1].props.presentation = {
+    tone: 'accent',
+    motion: 'image',
+  };
+  const before = structuredClone(original);
+  const result = repairSiteDraft(
+    original,
+    repairSiteInput.parse({
+      changes: [
+        {
+          kind: 'block',
+          page: '/',
+          block: 1,
+          props: {
+            headline: 'Outra composição',
+            presentation: { width: 'wide' },
+          },
+        },
+        {
+          kind: 'page',
+          page: 'materiais',
+          seoTitle: 'Materiais para o projeto',
+        },
+      ],
+    }),
+  );
+  assert.deepEqual(original, before);
+  assert.deepEqual(result.pages[2], original.pages[2]);
+  assert.equal(
+    result.pages[0].blocks[1].props.image,
+    original.pages[0].blocks[1].props.image,
+  );
+  assert.deepEqual(result.pages[0].blocks[1].props.presentation, {
+    tone: 'accent',
+    motion: 'image',
+    width: 'wide',
+  });
+  assert.equal(result.pages[1].seoTitle, 'Materiais para o projeto');
+  assert.ok(buildSiteInput.safeParse(result).success);
+});
+await test('reparo inválido não altera o lote nem alcança outra página', () => {
+  const original = draft(),
+    before = structuredClone(original);
+  assert.throws(
+    () =>
+      repairSiteDraft(original, {
+        changes: [
+          {
+            kind: 'block',
+            page: '',
+            block: 1,
+            props: { headline: 'Tentativa' },
+          },
+          { kind: 'block', page: 'fora-do-lote', block: 0, props: {} },
+        ],
+      }),
+    /ausente/,
+  );
+  assert.deepEqual(original, before);
+  assert.throws(
+    () =>
+      repairSiteDraft(original, {
+        changes: [{ kind: 'block', page: '', block: 99, props: {} }],
+      }),
+    /não existe/,
+  );
+});
+await test('reparo remove props inválidas sem afrouxar o schema do bloco', () => {
+  const original = draft();
+  original.pages[0].blocks[1].props.inexistente = true;
+  assert.ok(
+    lintPage({ ...project()[0], blocks: original.pages[0].blocks }).some(
+      (f) => f.rule === 'props-invalidas',
+    ),
+  );
+  const result = repairSiteDraft(original, {
+    changes: [
+      { kind: 'block', page: '', block: 1, props: {}, unset: ['inexistente'] },
+    ],
+  });
+  assert.equal(
+    lintPage({ ...project()[0], blocks: result.pages[0].blocks }).some(
+      (f) => f.rule === 'props-invalidas',
+    ),
+    false,
+  );
+});
+await test('motion sozinho não substitui decisões de composição v2', () => {
+  const page = project()[0];
+  page.blocks[1].props.presentation = { motion: 'image' };
+  page.blocks[2].props.presentation = { motion: 'reveal' };
+  assert.ok(
+    lintPage(page, { version: 2 }).some((f) => f.rule === 'ritmo-generico'),
+  );
+  page.blocks[1].props.presentation.tone = 'paper';
+  page.blocks[2].props.presentation.tone = 'accent';
+  assert.equal(
+    lintPage(page, { version: 2 }).some((f) => f.rule === 'ritmo-generico'),
+    false,
+  );
+});
+
+await test('ferramenta de reparo isola o lote por instância e preserva a recusa antes de gravar', async () => {
+  const jt = createJiti(import.meta.url, {
+    alias: { '@': new URL('..', import.meta.url).pathname.replace(/\/$/, '') },
+  });
+  const { buildTools } = await jt.import('../lib/ai/tools.ts');
+  const tenant = {
+    id: 'test-draft-only',
+    slug: 'test-draft-only',
+    name: 'Teste',
+    brief: {},
+    dials: { motion: 6, variance: 7, density: 5 },
+    brand: {
+      design: {
+        version: 2,
+        concept: 'Composição para o teste',
+        signatureElement: 'Recorte fotográfico no hero',
+        displayFont: 'geometric',
+        bodyFont: 'sans',
+        heroComposition: 'split',
+        navigation: 'bar',
+        rhythm: 'compact',
+        imageTreatment: 'full-bleed',
+        surfaceStyle: 'flat',
+        motif: 'none',
+      },
+    },
+  };
+  const first = buildTools(tenant),
+    other = buildTools({ ...tenant, id: 'test-other' });
+  const rejected = await first.build_site.execute(draft());
+  assert.equal(rejected.ok, false, JSON.stringify(rejected));
+  assert.ok(rejected.pages.every((p) => p.preflight.includes('sem-conversao')));
+  assert.deepEqual(rejected.pages[0].blocks[1], {
+    index: 1,
+    type: 'hero.split',
+  });
+  const change = {
+    changes: [
+      {
+        kind: 'block',
+        page: '',
+        block: 1,
+        props: { presentation: { tone: 'paper' } },
+      },
+    ],
+  };
+  assert.match((await other.repair_site.execute(change)).error, /Não há lote/);
+  assert.match(
+    (
+      await first.repair_site.execute({
+        changes: [{ kind: 'block', page: 'outro-tenant', block: 0, props: {} }],
+      })
+    ).error,
+    /ausente/,
+  );
+  const stillRejected = await first.repair_site.execute(change);
+  assert.equal(stillRejected.ok, false);
+  assert.ok(
+    stillRejected.pages.some((p) => p.preflight.includes('sem-conversao')),
+  );
+});
+
+await test('painel distingue lote recusado de projeto salvo', async () => {
+  const jui = createJiti(import.meta.url, { jsx: true });
+  const { describeTool } = await jui.import(
+    '../app/(admin)/admin/[tenant]/chat-parts.tsx',
+  );
+  for (const name of ['build_site', 'repair_site']) {
+    assert.equal(
+      describeTool(
+        name,
+        {},
+        { ok: false, pages: [{ page: '/', preflight: 'ERRO' }] },
+        'output-available',
+      ),
+      'O projeto precisa de ajustes antes de salvar',
+    );
+    assert.equal(
+      describeTool(
+        name,
+        {},
+        { ok: true, pages: [{}, {}, {}], publicationPending: [] },
+        'output-available',
+      ),
+      'Projeto salvo: 3 páginas',
+    );
+  }
+});

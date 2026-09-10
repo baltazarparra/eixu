@@ -174,7 +174,7 @@ export function lintPage(
       (block) =>
         block.props.presentation &&
         typeof block.props.presentation === 'object' &&
-        Object.keys(block.props.presentation).length > 0,
+        Object.keys(block.props.presentation).some((key) => key !== 'motion'),
     ).length;
     const requiredLayouts = Math.min(3, Math.ceil(content.length * 0.5));
     const requiredPresentations = Math.min(2, Math.ceil(content.length * 0.35));

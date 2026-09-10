@@ -1,6 +1,14 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import { db } from '@/lib/db';
+import {
+  blockInput,
+  buildSiteInput,
+  pageType,
+  repairSiteDraft,
+  repairSiteInput,
+  type SiteDraft,
+} from '@/lib/ai/site-draft';
 import { accessibleAccent, contrastRatio } from '@/lib/blocks/contrast';
 import { BLOCK_TYPES, blockSchemas, isBlockType } from '@/lib/blocks/registry';
 import {
@@ -22,15 +30,6 @@ import type { BlockInstance, Tenant } from '@/lib/types';
 function newId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
-
-const pageType = z.enum(['page', 'paid_lp', 'post', 'thank_you']);
-
-const blockInput = z.object({
-  type: z.string().describe(`Um destes: ${BLOCK_TYPES.join(', ')}`),
-  props: z
-    .record(z.string(), z.unknown())
-    .describe('Props conforme o schema do bloco.'),
-});
 
 /** Normaliza blocos vindos da IA, atribuindo ids estáveis. */
 function toBlocks(
@@ -102,6 +101,119 @@ export function buildTools(tenant: Tenant) {
   let activeDials = { ...tenant.dials };
   let activeBrief = { ...tenant.brief };
   let imagesPrepared = false;
+  let pendingDraft: SiteDraft | undefined;
+
+  async function saveSiteDraft(input: SiteDraft) {
+    const { pages } = input;
+    if (!isDesignProfile(activeBrand.design)) {
+      throw new ToolError(
+        'build_site exige uma direção v2 persistida. Chame set_design antes de montar as páginas.',
+      );
+    }
+    const staged = pages.map((input) => {
+      const slug = input.slug.replace(/^\/+|\/+$/g, '');
+      const noindex = input.type === 'thank_you' || input.type === 'paid_lp';
+      const seo = {
+        title: input.seoTitle ?? input.title,
+        description: input.seoDescription,
+        noindex,
+      };
+      const meta = {
+        ...(input.type === 'post'
+          ? { excerpt: input.excerpt, date: input.date }
+          : {}),
+        ...(input.inbound ? { inbound: input.inbound } : {}),
+      };
+      const blocks = toBlocks(input.blocks);
+      const findings = lintPage(
+        { type: input.type, title: input.title, seo, blocks },
+        activeBrand.design,
+      );
+      return { input, slug, seo, meta, blocks, findings };
+    });
+    const invalid = staged.filter((page) =>
+      page.findings.some((finding) => finding.level === 'error'),
+    );
+    if (invalid.length) {
+      return {
+        ok: false,
+        error:
+          'Nenhuma página foi gravada. O lote está em memória neste turno. Use repair_site com somente as correções e os índices abaixo; não reenvie páginas inalteradas nem use update_block.',
+        pages: invalid.map((page) => ({
+          page: `/${page.slug}`,
+          preflight: formatFindings(page.findings),
+          blocks: page.blocks.map((block, index) => ({
+            index,
+            type: block.type,
+          })),
+        })),
+      };
+    }
+    const home = staged.find((page) => page.slug === '');
+    const [existing, images] = await Promise.all([
+      listPages(tenant.id),
+      listImages(tenant.id),
+    ]);
+    const stagedSlugs = new Set(staged.map((p) => p.slug));
+    const prospective: SitePage[] = [
+      ...existing.filter((p) => !stagedSlugs.has(p.slug)),
+      ...staged.map((p) => ({
+        slug: p.slug,
+        title: p.input.title,
+        type: p.input.type,
+        seo: p.seo,
+        blocks: p.blocks,
+        meta: p.meta,
+      })),
+    ];
+    const projectFindings = lintSite(prospective, images, 'draft');
+    if (projectFindings.length)
+      return {
+        ok: false,
+        error:
+          'Projeto incompleto. O lote está em memória; use repair_site para corrigir blocos/SEO/intenção. Para adicionar ou remover páginas, reenvie build_site. Nenhuma página foi gravada.',
+        findings: projectFindings,
+      };
+    if (home && (await hasDuplicateComposition(tenant.id, home.blocks))) {
+      throw new ToolError(
+        'A silhueta da home repete outro cliente. Troque tipos, layouts ou ritmo de apresentação antes de salvar.',
+      );
+    }
+
+    const report: {
+      page: string;
+      blocks: number;
+      erros: number;
+      preflight: string;
+    }[] = [];
+    const sql = db();
+    await sql.transaction(
+      staged.map(
+        (page) => sql`
+            insert into pages (tenant_id, slug, type, title, seo, meta, blocks)
+            values (${tenant.id}, ${page.slug}, ${page.input.type}, ${page.input.title},
+                    ${JSON.stringify(page.seo)}::jsonb, ${JSON.stringify(page.meta)}::jsonb, ${JSON.stringify(page.blocks)}::jsonb)
+            on conflict (tenant_id, slug) do update
+              set type = excluded.type, title = excluded.title, seo = excluded.seo,
+                  meta = excluded.meta, blocks = excluded.blocks, updated_at = now()
+          `,
+      ),
+    );
+    for (const page of staged) {
+      report.push({
+        page: `/${page.slug}`,
+        blocks: page.blocks.length,
+        erros: 0,
+        preflight: formatFindings(page.findings),
+      });
+    }
+    if (pendingDraft === input) pendingDraft = undefined;
+    return {
+      ok: true,
+      pages: report,
+      publicationPending: lintSite(prospective, images, 'publish'),
+    };
+  }
 
   return {
     prepare_site_images: tool({
@@ -379,134 +491,31 @@ export function buildTools(tenant: Tenant) {
 
     build_site: tool({
       description:
-        'Cria ou substitui várias páginas de uma vez, cada uma já com seus blocos. É a ferramenta certa para um site novo ou para refazer o site inteiro. Uma chamada só.',
-      inputSchema: z.object({
-        pages: z
-          .array(
-            z.object({
-              slug: z
-                .string()
-                .describe('Sem barra inicial. Vazio para a home.'),
-              type: pageType,
-              title: z.string().min(2).max(120),
-              seoTitle: z.string().max(70).optional(),
-              seoDescription: z.string().max(170).optional(),
-              excerpt: z.string().max(220).optional(),
-              date: z.string().optional(),
-              inbound: inboundSchema.describe(
-                'Obrigatório para páginas orgânicas: intenção de busca e etapa da jornada.',
-              ),
-              blocks: z.array(blockInput).min(1).max(20),
-            }),
-          )
-          .min(1)
-          .max(12),
+        'Cria ou substitui o projeto completo. Valida antes de gravar. Se houver erro, o lote fica em memória para repair_site neste turno.',
+      inputSchema: buildSiteInput,
+      execute: safe(async (input) => {
+        pendingDraft = input;
+        return saveSiteDraft(input);
       }),
-      execute: safe(async ({ pages }) => {
-        if (!isDesignProfile(activeBrand.design)) {
-          throw new ToolError(
-            'build_site exige uma direção v2 persistida. Chame set_design antes de montar as páginas.',
-          );
-        }
-        const staged = pages.map((input) => {
-          const slug = input.slug.replace(/^\/+|\/+$/g, '');
-          const noindex =
-            input.type === 'thank_you' || input.type === 'paid_lp';
-          const seo = {
-            title: input.seoTitle ?? input.title,
-            description: input.seoDescription,
-            noindex,
-          };
-          const meta = {
-            ...(input.type === 'post'
-              ? { excerpt: input.excerpt, date: input.date }
-              : {}),
-            ...(input.inbound ? { inbound: input.inbound } : {}),
-          };
-          const blocks = toBlocks(input.blocks);
-          const findings = lintPage(
-            { type: input.type, title: input.title, seo, blocks },
-            activeBrand.design,
-          );
-          return { input, slug, seo, meta, blocks, findings };
-        });
-        const invalid = staged.filter((page) =>
-          page.findings.some((finding) => finding.level === 'error'),
-        );
-        if (invalid.length) {
-          return {
-            ok: false,
-            error:
-              'Nenhuma página foi gravada. Corrija os erros e reenvie build_site com o lote completo. Não use update_block em páginas que ainda não existem.',
-            pages: invalid.map((page) => ({
-              page: `/${page.slug}`,
-              preflight: formatFindings(page.findings),
-            })),
-          };
-        }
-        const home = staged.find((page) => page.slug === '');
-        const [existing, images] = await Promise.all([
-          listPages(tenant.id),
-          listImages(tenant.id),
-        ]);
-        const stagedSlugs = new Set(staged.map((p) => p.slug));
-        const prospective: SitePage[] = [
-          ...existing.filter((p) => !stagedSlugs.has(p.slug)),
-          ...staged.map((p) => ({
-            slug: p.slug,
-            title: p.input.title,
-            type: p.input.type,
-            seo: p.seo,
-            blocks: p.blocks,
-            meta: p.meta,
-          })),
-        ];
-        const projectFindings = lintSite(prospective, images, 'draft');
-        if (projectFindings.length)
-          return {
-            ok: false,
-            error:
-              'Projeto incompleto. Nenhuma página foi gravada. Corrija e reenvie build_site com o lote completo.',
-            findings: projectFindings,
-          };
-        if (home && (await hasDuplicateComposition(tenant.id, home.blocks))) {
-          throw new ToolError(
-            'A silhueta da home repete outro cliente. Troque tipos, layouts ou ritmo de apresentação antes de salvar.',
-          );
-        }
+    }),
 
-        const report: {
-          page: string;
-          blocks: number;
-          erros: number;
-          preflight: string;
-        }[] = [];
-        const sql = db();
-        await sql.transaction(
-          staged.map(
-            (page) => sql`
-            insert into pages (tenant_id, slug, type, title, seo, meta, blocks)
-            values (${tenant.id}, ${page.slug}, ${page.input.type}, ${page.input.title},
-                    ${JSON.stringify(page.seo)}::jsonb, ${JSON.stringify(page.meta)}::jsonb, ${JSON.stringify(page.blocks)}::jsonb)
-            on conflict (tenant_id, slug) do update
-              set type = excluded.type, title = excluded.title, seo = excluded.seo,
-                  meta = excluded.meta, blocks = excluded.blocks, updated_at = now()
-          `,
-          ),
-        );
-        for (const page of staged) {
-          report.push({
-            page: `/${page.slug}`,
-            blocks: page.blocks.length,
-            erros: 0,
-            preflight: formatFindings(page.findings),
-          });
+    repair_site: tool({
+      description:
+        'Corrige apenas campos de um build_site recusado neste turno. Revalida o lote completo e grava atomicamente se válido. Não edita páginas fora do lote nem publica.',
+      inputSchema: repairSiteInput,
+      execute: safe(async (input) => {
+        if (!pendingDraft)
+          throw new ToolError(
+            'Não há lote recusado neste turno. Para editar páginas salvas, use get_page e update_block.',
+          );
+        try {
+          pendingDraft = repairSiteDraft(pendingDraft, input);
+        } catch (error) {
+          throw new ToolError(
+            error instanceof Error ? error.message : 'Reparo inválido.',
+          );
         }
-        return {
-          ok: true,
-          pages: report,
-          publicationPending: lintSite(prospective, images, 'publish'),
-        };
+        return saveSiteDraft(pendingDraft);
       }),
     }),
 

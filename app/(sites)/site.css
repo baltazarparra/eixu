@@ -77,6 +77,9 @@ details[open] > summary {
 .site-hero {
   padding-block: calc(var(--section-space) * 0.75) var(--section-space);
 }
+.site-hero-grid > * {
+  min-width: 0;
+}
 .site-hero-grid {
   display: grid;
   gap: 3rem;
@@ -90,6 +93,7 @@ details[open] > summary {
   font-weight: 600;
 }
 .site-hero-media {
+  width: 100%;
   aspect-ratio: 1 / 1;
   overflow: hidden;
   border-radius: var(--panel-radius);
@@ -430,7 +434,7 @@ details[open] > summary .site-disclosure {
 .site-image-left .site-hero-copy {
   order: 2;
 }
-.site-image-left .site-hero-media {
+.site-image-left :is(.site-hero-visual, .site-hero-media) {
   order: 1;
 }
 .site-hero-media img[data-focal='top'] {
@@ -890,12 +894,12 @@ details[open] > summary .site-disclosure {
 @media (min-width: 768px) {
   .site-hero-poster .site-hero-grid,
   .site-hero-offset .site-hero-grid {
-    grid-template-columns: 1.15fr 0.85fr;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
     gap: clamp(2rem, 6vw, 6rem);
   }
   .site-hero-poster.site-image-left .site-hero-grid,
   .site-hero-offset.site-image-left .site-hero-grid {
-    grid-template-columns: 0.85fr 1.15fr;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
   }
   .site-proof-logos-grid ul {
     grid-template-columns: repeat(4, 1fr);
@@ -940,7 +944,7 @@ details[open] > summary .site-disclosure {
   .site-image-left .site-hero-copy {
     order: 1;
   }
-  .site-image-left .site-hero-media {
+  .site-image-left :is(.site-hero-visual, .site-hero-media) {
     order: 2;
   }
   .site-bento-gallery,
