@@ -1,70 +1,90 @@
 # EIXU
 
-Site institucional da EIXU e o gerador de sites multi-tenant que roda em `/admin`.
+Site institucional da EIXU e MVP de uma plataforma operada por agentes para criar sites de clientes, captar contatos e acompanhar tráfego. O operador trabalha em `/admin`; cada cliente tem conteúdo e imagens próprios no mesmo banco e aplicação, com endereço previsto em `cliente.eixu.com.br`.
 
-## O que é
+## O que já existe
 
-Um gerador de sites focado em inbound e tráfego pago, operado por um agente. O
-operador descreve o site no chat, o agente monta a árvore de blocos numa chamada
-só, mostra no preview ao lado e vai aplicando cada ajuste que o operador pede. Um
-lint determinístico reprova o que não atende às regras de qualidade e a página só
-publica quando passa. Não há edição visual: tudo passa pelo agente.
+- Institucional com home, oferta de passagem de vibe coding para produção e cases de SaldoPix e NaiaCRM.
+- Painel com login de operador, cadastro de clientes, chat de edição, preview em desktop/mobile, upload de logo e publicação.
+- Páginas orgânicas, landing pages pagas, posts e páginas de agradecimento compostas por blocos com schemas Zod. O agente edita conteúdo por ferramentas; o painel também permite ajustar dados do cliente e gerenciar imagens.
+- Estúdio de imagens com guia por cliente, geração de fotos e logos, crítica, aprovação, rejeição e remoção. Aprovar um logo e aplicá-lo são ações distintas.
+- Formulários, WhatsApp rastreado, atribuição de campanhas, exportação de contatos em CSV e painel de tráfego com gastos informados à mão.
 
-Os sites gerados vivem em subdomínios (`cliente.eixu.com.br`) e compartilham o
-mesmo código e o mesmo banco. Não existe infraestrutura por cliente.
+É um MVP de operação centralizada: há uma credencial administrativa compartilhada, sem contas ou permissões por cliente, cobrança ou integração automática com plataformas de anúncios. Os [limites atuais](docs/architecture.md#limites-atuais) fazem parte do contrato de desenvolvimento.
 
-## Como rodar
+## Rodar localmente
+
+Use Node.js 24.x para acompanhar a Vercel; o mínimo declarado é 22.13.0. O gerenciador é npm, com versões resolvidas em `package-lock.json`.
 
 ```bash
-npm install
-vercel env pull .env.local --yes
+npm ci
+npm run dev:vercel
+```
+
+O institucional e a tela de login abrem sem banco. Para usar o painel e os sites, configure `.env.local` com recursos de desenvolvimento:
+
+| Variável                | Uso                                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------------ |
+| `DATABASE_URL`          | Conexão Postgres/Neon das rotas dinâmicas e scripts de banco.                                    |
+| `ADMIN_USER`            | Usuário do operador; fallback `admin`.                                                           |
+| `ADMIN_PASSWORD`        | Senha do operador. Produção recusa login se estiver ausente.                                     |
+| `ADMIN_SESSION_SECRET`  | Segredo de assinatura da sessão; configure um valor próprio. O código usa a senha como fallback. |
+| `AI_GATEWAY_API_KEY`    | Autenticação explícita do AI Gateway, útil localmente. O SDK também aceita OIDC da Vercel.       |
+| `EIXU_MODEL`            | Modelo dos dois chats; fallback no código: `anthropic/claude-opus-4.5`.                          |
+| `EIXU_CRITIC_MODEL`     | Modelo da crítica visual; fallback em `EIXU_MODEL`, depois Opus 4.5.                             |
+| `BLOB_READ_WRITE_TOKEN` | Upload, geração e remoção de imagens no Vercel Blob.                                             |
+
+Crie o arquivo localmente, sem versionar credenciais. Se já tiver acesso ao projeto Vercel, `vercel link --project eixu` e `vercel env pull .env.local --environment=development` são uma alternativa; confira o destino de `DATABASE_URL` antes de qualquer escrita. O nome do ambiente Vercel não garante que o banco conectado seja de desenvolvimento.
+
+No banco de desenvolvimento escolhido, aplique o schema e inicie o servidor:
+
+```bash
 npm run db:migrate
 npm run dev:vercel
 ```
 
-O painel fica em `http://localhost:3000/admin`. Usuário e senha vêm de
-`ADMIN_USER` e `ADMIN_PASSWORD`.
+Entre em [localhost:3000/admin](http://localhost:3000/admin) com as credenciais configuradas. Apenas em desenvolvimento, sem `ADMIN_PASSWORD`, o código permite a senha `1234` para `ADMIN_USER` (ou `admin`); esse fallback não serve para ambientes compartilhados.
 
-Para ver um site em desenvolvimento use `cliente.localhost:3000` ou
-`localhost:3000/s/cliente?__tenant=cliente`.
+Após criar o tenant, veja seu rascunho em `http://localhost:3000/s/cliente?preview=1&__tenant=cliente`. A versão publicada fica em `http://cliente.localhost:3000` ou `http://localhost:3000/s/cliente?__tenant=cliente`. `__tenant` resolve o cliente; `preview=1` seleciona o rascunho. Essas flags não são autenticação.
 
-## Arquitetura
+## Stack e mapa do projeto
 
-| Camada | Onde | O que faz |
-| --- | --- | --- |
-| Roteamento por host | `proxy.ts` | Resolve o subdomínio e reescreve para `/s/{tenant}` |
-| Biblioteca de blocos | `lib/blocks/registry.ts` | Schema Zod e família de layout de cada bloco |
-| Componentes | `lib/blocks/components.tsx` | Render sem JavaScript de cliente |
-| Lint de qualidade | `lib/taste/lint.ts` | Pre-flight determinístico, destilado do Taste Skill |
-| Prompt | `lib/taste/prompt.ts` | Regras de julgamento passadas ao modelo |
-| Ferramentas do agente | `lib/ai/tools.ts` | `build_site` monta tudo de uma vez; as demais editam bloco a bloco |
-| Rastreamento | `lib/tracking.ts` | UTM, click IDs, primeiro e último toque |
-| Painel | `app/(admin)` | Chat, preview, leads e tráfego |
-| Sites | `app/(sites)` | Renderizador, sitemap e robots por tenant |
+Produção usa Next.js 16.3.3, React 19.2.6, TypeScript, Tailwind 4, AI SDK 7, AI Gateway, Neon e Vercel Blob. A origem do projeto em Sites/Vinext continua na configuração Vite/Cloudflare e nos scripts sem sufixo `:vercel`.
 
-O site institucional fica isolado em `app/(main)`, com CSS próprio, para que os
-1.500 linhas de estilo dele nunca cheguem aos sites gerados.
+| Área                  | Entrada                                                                                      |
+| --------------------- | -------------------------------------------------------------------------------------------- |
+| Institucional         | `app/(main)/`, `components/eixu.tsx`, `lib/site.ts`                                          |
+| Painel e autenticação | `app/(admin)/`, `lib/auth.ts`, `app/api/admin/`                                              |
+| Sites por tenant      | `proxy.ts`, `app/(sites)/`, `lib/tenant-queries.ts`                                          |
+| Blocos e qualidade    | `lib/blocks/`, `lib/taste/`                                                                  |
+| Agentes do produto    | `app/api/chat/`, `app/api/images/chat/`, `lib/ai/`, `lib/images/`                            |
+| Dados e atribuição    | `db/schema.sql`, `lib/db.ts`, `lib/tracking.ts`, `app/api/form/`, `app/api/e/`, `app/go/wa/` |
 
-## Regras que o lint aplica
+Os três grupos de rotas têm layouts e CSS próprios. A publicação copia blocos e SEO do rascunho para os campos publicados depois de `lintPage`; isso não versiona a marca inteira. Veja o [mapa de arquitetura](docs/architecture.md).
 
-Um hero por página, headline em até duas linhas, subtexto em até vinte palavras,
-mínimo de quatro famílias de layout em páginas com oito ou mais seções, orçamento
-de um eyebrow a cada três seções, caminho de conversão obrigatório, travessão
-proibido, sem texto de exemplo e sem expressões genéricas. Erro bloqueia a
-publicação, aviso não.
+## Comandos e validação
 
-## Modelo de IA
+| Comando                                              | Efeito                                                                                                                  |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev:vercel`                                 | Desenvolvimento em Next.js, caminho usado para este MVP.                                                                |
+| `npm run build:vercel`                               | Build de produção configurado em `vercel.json`.                                                                         |
+| `npx next start`                                     | Serve o build Next.js local já gerado.                                                                                  |
+| `npx next typegen && npx tsc --noEmit`               | Gera tipos das rotas e verifica TypeScript.                                                                             |
+| `npm run lint`                                       | Analisa código com oxlint; não executa o pre-flight dos sites.                                                          |
+| `npm run format -- --check README.md AGENTS.md docs` | Confere a formatação da documentação sem reescrever arquivos.                                                           |
+| `npm run db:migrate`                                 | Aplica statements idempotentes de `db/schema.sql`; escreve no banco.                                                    |
+| `npm run db:seed-demo`                               | Sobrescreve e publica home/obrigado do tenant `vertice` já existente; altera marca e dials. Use só em demo descartável. |
+| `npm run db:requantize-logos`                        | Recomprime logos de todos os tenants do banco conectado, sobrescrevendo arquivos no Blob.                               |
+| `npm run dev` / `npm run build` / `npm start`        | Caminho Vinext/Cloudflare herdado; não valida o deploy Next.js da Vercel.                                               |
 
-O modelo vem de `EIXU_MODEL`, hoje `anthropic/claude-opus-4.5` pelo AI Gateway da
-Vercel. Precisa de créditos no gateway: o plano gratuito bloqueia Claude e limita
-por taxa os poucos modelos que libera.
+Não há suíte de testes nem workflow de CI versionados. Na revisão de 09/09/2026, tipos e build passaram; o lint apresentou 20 erros preexistentes em 13 arquivos. O [guia de validação](docs/verification.md) registra a referência e os checks por tipo de mudança. Build aprovado não equivale a fluxo com banco ou IA testado.
 
-## Scripts
+## Agentes e modelos de desenvolvimento
 
-| Comando | Uso |
-| --- | --- |
-| `npm run dev:vercel` | Desenvolvimento com Next.js |
-| `npm run build:vercel` | Build de produção, o mesmo que a Vercel roda |
-| `npm run db:migrate` | Aplica `db/schema.sql`, idempotente |
-| `npm run db:seed-demo` | Publica um site de demonstração no tenant `vertice` |
-| `npm run lint` | oxlint |
+GPT-6 Astra e Claude Fable 5.1 são os modelos de trabalho considerados pelo [harness de desenvolvimento](docs/harness.md). Eles seguem o mesmo [AGENTS.md](AGENTS.md); `CLAUDE.md` importa esse arquivo, sem duplicar as regras. Selecionar um modelo no editor não altera `EIXU_MODEL` nem os geradores de imagem do produto. Os fallbacks documentados acima vêm do código, não de uma leitura das variáveis de produção.
+
+## Publicação
+
+O repositório [baltazarparra/eixu](https://github.com/baltazarparra/eixu) está ligado ao projeto `eixu` da Vercel, com `main` como branch de produção e `npm run build:vercel` como build. Valide o diff, publique pelo fluxo Git e confira o deployment do mesmo SHA até `READY`, seguido de smoke no domínio servido. O [procedimento completo](docs/verification.md#publicação) inclui os comandos.
+
+Publicar código na Vercel e publicar páginas de clientes são operações distintas. O deploy não executa migrações, não roda o seed e não publica rascunhos. Subdomínios dependem de domínio, DNS e certificado configurados na Vercel.
