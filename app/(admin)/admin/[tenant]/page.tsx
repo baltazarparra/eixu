@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { lintPage } from '@/lib/taste/lint';
 import { lintSite } from '@/lib/taste/site';
 import { listImages } from '@/lib/images/queries';
+import { generationState } from '@/lib/sites/generation';
 import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
 import { Workspace, type PageState } from './workspace';
 
@@ -54,8 +55,13 @@ export default async function TenantWorkspace({
   return (
     <Workspace
       initial={{
-        tenant: { slug: tenant.slug, name: tenant.name },
+        tenant: {
+          slug: tenant.slug,
+          name: tenant.name,
+          hasDesign: Boolean(tenant.brand.design),
+        },
         pages: pageStates,
+        generation: generationState(tenant, pages, images, siteFindings),
       }}
       history={history}
     />

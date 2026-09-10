@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { expectedRatio } from '../images/ratios';
 
 /**
  * Famílias de layout. A regra do Taste Skill exige pelo menos 4 famílias
@@ -480,7 +481,7 @@ export const blockMeta: Record<BlockType, Meta> = {
   'narrative.split': {
     family: 'narrative',
     label: 'Lista com foto',
-    use: 'Lista de serviços ao lado de uma foto real. Use quando houver imagem do trabalho ou da equipe.',
+    use: 'Lista de serviços ao lado de uma foto. Cena gerada entra com legenda de inspiração, nunca como registro da equipe.',
   },
   'editorial.facts': {
     family: 'editorial',
@@ -522,12 +523,12 @@ export const blockMeta: Record<BlockType, Meta> = {
   'media.gallery': {
     family: 'media',
     label: 'Galeria',
-    use: 'Fotos reais do negócio.',
+    use: 'Duas a oito fotos em grade. Fotos do negócio ou cenas geradas identificadas como inspiração na legenda.',
   },
   'media.image': {
     family: 'media',
     label: 'Imagem',
-    use: 'Uma foto grande com legenda. Use quando o operador mandar uma imagem que não é do hero.',
+    use: 'Uma foto grande com legenda. Serve para o upload do operador e para a cena gerada que ilustra a página.',
   },
   'media.map': {
     family: 'media',
@@ -602,6 +603,33 @@ function summarize(schema: Record<string, unknown>, depth = 0): string {
     .join(depth ? ', ' : '; ');
 }
 
+/** Layouts que mudam a proporção exibida. O recorte é object-cover. */
+const IMAGE_LAYOUTS: Partial<Record<BlockType, string[]>> = {
+  'hero.split': ['split', 'cover', 'poster', 'editorial', 'offset', 'atelier'],
+  'narrative.split': ['split', 'reverse', 'overlap', 'editorial'],
+  'media.image': ['wide', 'bleed', 'portrait', 'offset'],
+  'feature.bento': [],
+  'feature.explorer': [],
+  'media.gallery': [],
+  'editorial.resources': [],
+};
+
+/** Diz em que proporção a foto será exibida, por variante de layout. */
+function ratioHint(type: BlockType): string {
+  const layouts = IMAGE_LAYOUTS[type];
+  if (!layouts) return '';
+  if (!layouts.length) return ` [foto ${expectedRatio(type)}]`;
+  const groups = new Map<string, string[]>();
+  for (const layout of layouts) {
+    const ratio = expectedRatio(type, layout);
+    groups.set(ratio, [...(groups.get(ratio) ?? []), layout]);
+  }
+  const parts = [...groups].map(
+    ([ratio, names]) => `${ratio} em ${names.join('/')}`,
+  );
+  return ` [foto ${parts.join(', ')}]`;
+}
+
 /** Catálogo com uso e props de cada bloco, injetado no prompt do agente. */
 export function catalogForPrompt(): string {
   return (
@@ -611,7 +639,9 @@ export function catalogForPrompt(): string {
         string,
         unknown
       >;
-      return `${type}: ${summarize(json)}`;
+      // O uso vem junto: sem ele o agente ignora explorer e resources, que são
+      // justamente as seções que sustentam uma home com fotos.
+      return `${type} · ${blockMeta[type].use}${ratioHint(type)}\n  ${summarize(json)}`;
     }).join('\n')
   );
 }

@@ -5,6 +5,13 @@ import Link from 'next/link';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { Bubble, Message, chatErrorMessage } from './chat-parts';
+import {
+  PHASES,
+  PHASE_LABEL,
+  PHASE_MESSAGE,
+  type Phase,
+} from '@/lib/taste/phases';
+import type { GenerationState } from '@/lib/sites/generation';
 
 export type PageState = {
   slug: string;
@@ -19,8 +26,9 @@ export type PageState = {
 };
 
 type SiteState = {
-  tenant: { slug: string; name: string };
+  tenant: { slug: string; name: string; hasDesign?: boolean };
   pages: PageState[];
+  generation?: GenerationState;
 };
 
 type Props = {
@@ -44,12 +52,17 @@ export function Workspace({ initial, history }: Props) {
   const [nonce, setNonce] = useState(0);
   const [publishing, setPublishing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const [attachments, setAttachments] = useState<{ url: string; name: string; type: string }[]>([]);
+  const [attachments, setAttachments] = useState<
+    { url: string; name: string; type: string }[]
+  >([]);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const toolCountRef = useRef(0);
+  const [generating, setGenerating] = useState(false);
+  const [phase, setPhase] = useState<Phase | null>(null);
+  const stopGeneration = useRef(false);
 
   const { messages, sendMessage, status, error, stop } = useChat({
     transport: new DefaultChatTransport({
@@ -59,12 +72,19 @@ export function Workspace({ initial, history }: Props) {
   });
 
   const refresh = useCallback(async () => {
-    const response = await fetch(`/api/admin/${tenantSlug}/state`, { cache: 'no-store' });
-    if (!response.ok) return;
+    const response = await fetch(`/api/admin/${tenantSlug}/state`, {
+      cache: 'no-store',
+    });
+    if (!response.ok) return null;
     const next = (await response.json()) as SiteState;
     setSite(next);
-    setCurrent((slug) => (next.pages.some((page) => page.slug === slug) ? slug : (next.pages[0]?.slug ?? '')));
+    setCurrent((slug) =>
+      next.pages.some((page) => page.slug === slug)
+        ? slug
+        : (next.pages[0]?.slug ?? ''),
+    );
     setNonce((value) => value + 1);
+    return next;
   }, [tenantSlug]);
 
   // Cada ferramenta concluída pelo agente muda o site no banco: atualiza o preview na hora.
@@ -73,8 +93,11 @@ export function Workspace({ initial, history }: Props) {
       messages.reduce(
         (count, message) =>
           count +
-          message.parts.filter((part) => part.type.startsWith('tool-') && (part as { state?: string }).state === 'output-available')
-            .length,
+          message.parts.filter(
+            (part) =>
+              part.type.startsWith('tool-') &&
+              (part as { state?: string }).state === 'output-available',
+          ).length,
         0,
       ),
     [messages],
@@ -87,21 +110,34 @@ export function Workspace({ initial, history }: Props) {
   }, [completedTools, refresh]);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: 'smooth',
+    });
   }, [messages, status]);
 
   const busy = status === 'submitted' || status === 'streaming';
   const page = site.pages.find((item) => item.slug === current);
   const previewUrl = `/s/${tenantSlug}/${current}?preview=1&__tenant=${tenantSlug}&v=${nonce}`;
-  const totalErrors = site.pages.reduce((sum, item) => sum + item.errors.length, 0);
+  const totalErrors = site.pages.reduce(
+    (sum, item) => sum + item.errors.length,
+    0,
+  );
   const publishable = site.pages.length > 0 && totalErrors === 0 && !busy;
 
   async function publishAll() {
     setPublishing(true);
     setNotice(null);
     try {
-      const response = await fetch(`/api/admin/${tenantSlug}/publish`, { method: 'POST', body: '{}' });
-      const result = (await response.json()) as { published: string[]; blocked: { page: string }[]; url: string };
+      const response = await fetch(`/api/admin/${tenantSlug}/publish`, {
+        method: 'POST',
+        body: '{}',
+      });
+      const result = (await response.json()) as {
+        published: string[];
+        blocked: { page: string }[];
+        url: string;
+      };
       setNotice(
         result.blocked.length
           ? `Bloqueado em ${result.blocked.map((item) => item.page).join(', ')}. Peça ao agente para corrigir.`
@@ -118,9 +154,13 @@ export function Workspace({ initial, history }: Props) {
     const form = new FormData();
     form.append('file', file);
     form.append('kind', kind);
-    const response = await fetch(`/api/admin/${tenantSlug}/upload`, { method: 'POST', body: form });
+    const response = await fetch(`/api/admin/${tenantSlug}/upload`, {
+      method: 'POST',
+      body: form,
+    });
     const result = (await response.json()) as { url?: string; error?: string };
-    if (!response.ok || !result.url) throw new Error(result.error ?? 'Falha no upload.');
+    if (!response.ok || !result.url)
+      throw new Error(result.error ?? 'Falha no upload.');
     return result.url;
   }
 
@@ -132,7 +172,10 @@ export function Workspace({ initial, history }: Props) {
       for (const file of Array.from(files)) {
         if (!file.type.startsWith('image/')) continue;
         const url = await upload(file);
-        setAttachments((list) => [...list, { url, name: file.name, type: file.type }]);
+        setAttachments((list) => [
+          ...list,
+          { url, name: file.name, type: file.type },
+        ]);
       }
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Falha no upload.');
@@ -156,10 +199,68 @@ export function Workspace({ initial, history }: Props) {
       setNotice('Logo atualizado. A navegação e o rodapé já usam a imagem.');
       setNonce((value) => value + 1);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Falha no upload do logo.');
+      setNotice(
+        error instanceof Error ? error.message : 'Falha no upload do logo.',
+      );
     } finally {
       setUploading(false);
     }
+  }
+
+  /**
+   * Geração em etapas. Cada fase é uma requisição própria, dentro do limite de
+   * 300 segundos, e a próxima é decidida pelo estado persistido: interromper e
+   * retomar não perde o progresso.
+   */
+  async function generate() {
+    if (busy || generating) return;
+    stopGeneration.current = false;
+    setGenerating(true);
+    setNotice(null);
+    try {
+      let previous: Phase | null = null;
+      let repeated = 0;
+      for (let step = 0; step < 8; step++) {
+        if (stopGeneration.current) break;
+        const state = await refresh();
+        const next = state?.generation?.next;
+        if (!next || next === 'pronto') break;
+        // A mesma fase duas vezes seguidas significa que ela não avançou:
+        // parar e mostrar o motivo é melhor que repetir e gastar tokens.
+        repeated = next === previous ? repeated + 1 : 0;
+        if (repeated >= 2) {
+          setNotice(
+            `A etapa "${PHASE_LABEL[next]}" não avançou. Leia a resposta do agente e continue pelo chat.`,
+          );
+          break;
+        }
+        previous = next;
+        setPhase(next);
+        await sendMessage(
+          { text: PHASE_MESSAGE[next] },
+          { body: { tenant: tenantSlug, page: current, phase: next } },
+        );
+      }
+      await refresh();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Falha na geração.');
+    } finally {
+      setPhase(null);
+      setGenerating(false);
+    }
+  }
+
+  async function reviewImage(id: string, status: 'aprovada' | 'rejeitada') {
+    const response = await fetch(`/api/admin/${tenantSlug}/images`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id, status }),
+    });
+    if (!response.ok) {
+      setNotice('Não consegui atualizar a imagem.');
+      return;
+    }
+    await refresh();
   }
 
   function submit(text: string) {
@@ -178,12 +279,17 @@ export function Workspace({ initial, history }: Props) {
   return (
     <div className="grid h-screen grid-rows-[auto_1fr] overflow-hidden">
       <header className="flex items-center gap-4 border-b px-4 py-2.5">
-        <Link href="/admin" className="text-xs text-[var(--color-muted)] hover:text-[var(--color-text)]">
+        <Link
+          href="/admin"
+          className="text-xs text-[var(--color-muted)] hover:text-[var(--color-text)]"
+        >
           Clientes
         </Link>
         <span className="text-xs text-[var(--color-muted)]">/</span>
         <span className="text-sm font-medium">{site.tenant.name}</span>
-        <span className="font-mono text-xs text-[var(--color-muted)]">{tenantSlug}.eixu.com.br</span>
+        <span className="font-mono text-xs text-[var(--color-muted)]">
+          {tenantSlug}.eixu.com.br
+        </span>
         <nav className="ml-auto flex items-center gap-4 text-xs">
           <button
             type="button"
@@ -203,10 +309,16 @@ export function Workspace({ initial, history }: Props) {
               event.target.value = '';
             }}
           />
-          <Link href={`/admin/${tenantSlug}/imagens`} className="text-[var(--color-muted)] hover:text-[var(--color-text)]">
+          <Link
+            href={`/admin/${tenantSlug}/imagens`}
+            className="text-[var(--color-muted)] hover:text-[var(--color-text)]"
+          >
             Imagens
           </Link>
-          <Link href={`/admin/${tenantSlug}/trafego`} className="text-[var(--color-muted)] hover:text-[var(--color-text)]">
+          <Link
+            href={`/admin/${tenantSlug}/trafego`}
+            className="text-[var(--color-muted)] hover:text-[var(--color-text)]"
+          >
             Tráfego
           </Link>
           <a
@@ -221,7 +333,11 @@ export function Workspace({ initial, history }: Props) {
             type="button"
             onClick={publishAll}
             disabled={!publishable || publishing}
-            title={totalErrors ? `${totalErrors} erros de pre-flight bloqueiam a publicação` : 'Publicar todas as páginas'}
+            title={
+              totalErrors
+                ? `${totalErrors} erros de pre-flight bloqueiam a publicação`
+                : 'Publicar todas as páginas'
+            }
             className="rounded-md bg-[var(--color-accent)] px-3.5 py-1.5 text-xs font-medium text-[var(--color-accent-ink)] disabled:opacity-40"
           >
             {publishing ? 'Publicando' : 'Publicar'}
@@ -234,22 +350,140 @@ export function Workspace({ initial, history }: Props) {
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5">
             {history.length === 0 && messages.length === 0 ? (
               <div className="flex flex-col gap-3 text-sm">
-                <p className="text-base font-medium">O que este cliente precisa?</p>
-                <p className="text-[var(--color-muted)]">
-                  Diga o segmento, a cidade, para quem vende e o que o visitante deve fazer. O agente monta o site,
-                  mostra ao lado e você vai pedindo ajustes.
+                <p className="text-base font-medium">
+                  O que este cliente precisa?
                 </p>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setInput(
-                      'Clínica de fisioterapia e pilates em Bauru, adultos de 35 a 65 anos com dor na coluna e pós-operatório. Home, página sobre e uma de agradecimento. Conversão principal por WhatsApp, e um formulário com nome, telefone e a queixa. Tom sóbrio, sem clichê de bem-estar.',
-                    )
-                  }
-                  className="self-start rounded-md border px-3 py-2 text-left text-xs text-[var(--color-muted)] hover:bg-[var(--color-surface)]"
-                >
-                  Usar um exemplo
-                </button>
+                <p className="text-[var(--color-muted)]">
+                  Descreva o negócio e as referências, ou peça a geração
+                  completa. Ela roda em quatro etapas: briefing e direção,
+                  cenas, composição e revisão. No fim você aprova as fotos e
+                  publica.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void generate()}
+                    disabled={generating || busy}
+                    className="rounded-md bg-[var(--color-accent)] px-3.5 py-2 text-xs font-medium text-[var(--color-accent-ink)] disabled:opacity-40"
+                  >
+                    {generating ? 'Gerando' : 'Gerar site'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setInput(
+                        'Clínica de fisioterapia e pilates em Bauru, adultos de 35 a 65 anos com dor na coluna e pós-operatório. Home, página sobre e uma de agradecimento. Conversão principal por WhatsApp, e um formulário com nome, telefone e a queixa. Tom sóbrio, sem clichê de bem-estar.',
+                      )
+                    }
+                    className="rounded-md border px-3 py-2 text-left text-xs text-[var(--color-muted)] hover:bg-[var(--color-surface)]"
+                  >
+                    Usar um exemplo
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {generating ||
+            (site.generation &&
+              site.generation.next !== 'pronto' &&
+              site.pages.length > 0) ? (
+              <div className="mb-4 rounded-lg border p-3 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium">Geração em etapas</span>
+                  {generating ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        stopGeneration.current = true;
+                        void stop();
+                      }}
+                      className="text-[var(--color-muted)] hover:text-[var(--color-text)]"
+                    >
+                      Parar
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void generate()}
+                      disabled={busy}
+                      className="text-[var(--color-accent)] disabled:opacity-40"
+                    >
+                      Continuar
+                    </button>
+                  )}
+                </div>
+                <ol className="mt-2 flex flex-col gap-1">
+                  {PHASES.map((item) => {
+                    const done =
+                      site.generation &&
+                      PHASES.indexOf(item) <
+                        PHASES.indexOf(site.generation.next as Phase)
+                        ? true
+                        : site.generation?.next === 'pronto';
+                    const active = phase === item;
+                    return (
+                      <li
+                        key={item}
+                        className={
+                          active
+                            ? 'text-[var(--color-text)]'
+                            : done
+                              ? 'text-[var(--color-muted)] line-through'
+                              : 'text-[var(--color-muted)]'
+                        }
+                      >
+                        {active ? '• ' : done ? '✓ ' : '· '}
+                        {PHASE_LABEL[item]}
+                      </li>
+                    );
+                  })}
+                </ol>
+                {site.generation ? (
+                  <p className="mt-2 text-[var(--color-muted)]">
+                    {site.generation.photos} de {site.generation.targetScenes}{' '}
+                    cenas · {site.generation.organicPages} páginas orgânicas ·{' '}
+                    {site.generation.blockingErrors} erros de pre-flight
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
+            {site.generation?.pendingImages.length ? (
+              <div className="mb-4 rounded-lg border p-3 text-xs">
+                <p className="font-medium">Fotos no rascunho aguardando você</p>
+                <p className="mt-1 text-[var(--color-muted)]">
+                  A crítica da IA não aprova imagem. Publicar exige sua
+                  aprovação de cada foto em uso.
+                </p>
+                <ul className="mt-2 flex flex-col gap-2">
+                  {site.generation.pendingImages.map((image) => (
+                    <li key={image.id} className="flex items-center gap-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={image.url}
+                        alt=""
+                        className="h-10 w-10 rounded object-cover"
+                      />
+                      <span className="flex-1 truncate text-[var(--color-muted)]">
+                        #{image.seq} {image.alt ?? ''}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void reviewImage(image.id, 'aprovada')}
+                        className="rounded border px-2 py-1 hover:bg-[var(--color-surface)]"
+                      >
+                        Aprovar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void reviewImage(image.id, 'rejeitada')}
+                        className="rounded border px-2 py-1 text-[var(--color-muted)] hover:bg-[var(--color-surface)]"
+                      >
+                        Rejeitar
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               </div>
             ) : null}
 
@@ -262,7 +496,9 @@ export function Workspace({ initial, history }: Props) {
               {messages.map((message) => (
                 <Message key={message.id} message={message} />
               ))}
-              {status === 'submitted' ? <p className="text-xs text-[var(--color-muted)]">Pensando</p> : null}
+              {status === 'submitted' ? (
+                <p className="text-xs text-[var(--color-muted)]">Pensando</p>
+              ) : null}
               {error ? (
                 <p className="rounded-md border border-[var(--color-err)] px-3 py-2 text-xs text-[var(--color-err)]">
                   {chatErrorMessage(error.message)}
@@ -307,11 +543,19 @@ export function Workspace({ initial, history }: Props) {
                     <li key={item.url} className="relative">
                       {/* Miniatura de arquivo recém-enviado ao Blob; o otimizador não agrega nada aqui. */}
                       {/* oxlint-disable-next-line next/no-img-element */}
-                      <img src={item.url} alt={item.name} className="h-14 w-14 rounded-md border object-cover" />
+                      <img
+                        src={item.url}
+                        alt={item.name}
+                        className="h-14 w-14 rounded-md border object-cover"
+                      />
                       <button
                         type="button"
                         aria-label={`Remover ${item.name}`}
-                        onClick={() => setAttachments((list) => list.filter((entry) => entry.url !== item.url))}
+                        onClick={() =>
+                          setAttachments((list) =>
+                            list.filter((entry) => entry.url !== item.url),
+                          )
+                        }
                         className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full border bg-[var(--color-bg)] text-[0.65rem]"
                       >
                         ×
@@ -324,7 +568,9 @@ export function Workspace({ initial, history }: Props) {
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 onPaste={(event) => {
-                  const files = Array.from(event.clipboardData.files).filter((file) => file.type.startsWith('image/'));
+                  const files = Array.from(event.clipboardData.files).filter(
+                    (file) => file.type.startsWith('image/'),
+                  );
                   if (files.length) {
                     event.preventDefault();
                     void attach(files);
@@ -337,7 +583,9 @@ export function Workspace({ initial, history }: Props) {
                   }
                 }}
                 rows={3}
-                placeholder={site.pages.length ? 'Peça uma mudança' : 'Descreva o site'}
+                placeholder={
+                  site.pages.length ? 'Peça uma mudança' : 'Descreva o site'
+                }
                 className="w-full resize-none bg-transparent px-1.5 py-1 text-sm outline-none"
               />
               <div className="flex items-center justify-between">
@@ -362,17 +610,25 @@ export function Workspace({ initial, history }: Props) {
                     }}
                   />
                   <span className="text-[0.68rem] text-[var(--color-muted)]">
-                    {page ? `Falando sobre /${page.slug}` : 'Enter envia, Shift+Enter quebra linha'}
+                    {page
+                      ? `Falando sobre /${page.slug}`
+                      : 'Enter envia, Shift+Enter quebra linha'}
                   </span>
                 </div>
                 {busy ? (
-                  <button type="button" onClick={() => stop()} className="rounded-md border px-3 py-1.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => stop()}
+                    className="rounded-md border px-3 py-1.5 text-xs"
+                  >
                     Parar
                   </button>
                 ) : (
                   <button
                     type="submit"
-                    disabled={(!input.trim() && attachments.length === 0) || uploading}
+                    disabled={
+                      (!input.trim() && attachments.length === 0) || uploading
+                    }
                     className="rounded-md bg-[var(--color-accent)] px-3.5 py-1.5 text-xs font-medium text-[var(--color-accent-ink)] disabled:opacity-40"
                   >
                     Enviar
@@ -395,7 +651,9 @@ export function Workspace({ initial, history }: Props) {
                     ? 'bg-[var(--color-surface-2)] text-[var(--color-text)]'
                     : 'text-[var(--color-muted)] hover:bg-[var(--color-surface-2)]'
                 }`}
-                title={[...item.errors, ...item.warnings].join('\n') || item.title}
+                title={
+                  [...item.errors, ...item.warnings].join('\n') || item.title
+                }
               >
                 /{item.slug}
                 {item.errors.length ? (
@@ -414,7 +672,9 @@ export function Workspace({ initial, history }: Props) {
                   type="button"
                   onClick={() => setDevice(option)}
                   className={`rounded-md px-2.5 py-1.5 text-xs ${
-                    device === option ? 'bg-[var(--color-surface-2)]' : 'text-[var(--color-muted)]'
+                    device === option
+                      ? 'bg-[var(--color-surface-2)]'
+                      : 'text-[var(--color-muted)]'
                   }`}
                 >
                   {option === 'desktop' ? 'Desktop' : 'Celular'}
@@ -432,7 +692,9 @@ export function Workspace({ initial, history }: Props) {
           </div>
 
           {notice ? (
-            <p className="border-b px-4 py-2 text-xs text-[var(--color-muted)]">{notice}</p>
+            <p className="border-b px-4 py-2 text-xs text-[var(--color-muted)]">
+              {notice}
+            </p>
           ) : page && (page.errors.length || page.warnings.length) ? (
             <ul className="flex flex-wrap gap-x-4 gap-y-1 border-b px-4 py-2 font-mono text-[0.68rem]">
               {page.errors.map((message) => (
@@ -460,7 +722,9 @@ export function Workspace({ initial, history }: Props) {
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-center text-sm text-[var(--color-muted)]">
-                {busy ? 'O agente está montando o site' : 'O preview aparece assim que o agente criar a primeira página.'}
+                {busy
+                  ? 'O agente está montando o site'
+                  : 'O preview aparece assim que o agente criar a primeira página.'}
               </div>
             )}
           </div>

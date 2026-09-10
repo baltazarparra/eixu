@@ -69,7 +69,7 @@ function strings(block: BlockInstance): string[] {
 }
 
 /** Estimativa de linhas do headline no desktop, ~28 caracteres por linha. */
-function headlineLines(text: string): number {
+export function headlineLines(text: string): number {
   return Math.ceil(text.length / 28);
 }
 
@@ -176,8 +176,10 @@ export function lintPage(
         typeof block.props.presentation === 'object' &&
         Object.keys(block.props.presentation).some((key) => key !== 'motion'),
     ).length;
-    const requiredLayouts = Math.min(3, Math.ceil(content.length * 0.5));
-    const requiredPresentations = Math.min(2, Math.ceil(content.length * 0.35));
+    // O teto antigo (3 e 2) deixava uma página de 8 seções passar com cinco
+    // blocos no default. A exigência acompanha o tamanho da página.
+    const requiredLayouts = Math.min(5, Math.ceil(content.length * 0.5));
+    const requiredPresentations = Math.min(4, Math.ceil(content.length * 0.4));
     if (layoutDecisions < requiredLayouts) {
       push(
         'error',

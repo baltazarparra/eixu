@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { generateImage } from 'ai';
 import { put } from '@vercel/blob';
 import sharp from 'sharp';
-import { insertImage, nextSeq } from '@/lib/images/queries';
+import { insertImage } from '@/lib/images/queries';
 import type { ImageGuide, Tenant, TenantImage } from '@/lib/types';
 
 /**
@@ -144,10 +144,8 @@ export async function generateLogoCandidates(input: {
       const blobPath = `tenants/${input.tenant.slug}/logo/${batchId}/${variant}.png`;
       const blob = await put(blobPath, png, { access: 'public', addRandomSuffix: false, contentType: 'image/png' });
 
-      const seq = await nextSeq(input.tenant.id);
       const row = await insertImage({
         tenantId: input.tenant.id,
-        seq,
         batchId,
         requestText,
         targetBlock: 'logo',

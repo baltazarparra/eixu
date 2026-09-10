@@ -2,6 +2,7 @@ import { del } from '@vercel/blob';
 import { tool } from 'ai';
 import { z } from 'zod';
 import { ToolError, safe } from '@/lib/ai/tools';
+import { guideTool } from '@/lib/ai/guide-tool';
 import { critique } from '@/lib/images/critic';
 import { DEFAULT_MODELS, generateCandidates } from '@/lib/images/generate';
 import { fetchReference, generateLogoCandidates } from '@/lib/images/logo';
@@ -14,7 +15,6 @@ import {
   referenceMessage,
   referenceReason,
   listImages,
-  setGuide,
   setStatus,
 } from '@/lib/images/queries';
 import { RATIOS, ratioForBlock, type Ratio } from '@/lib/images/ratios';
@@ -89,36 +89,7 @@ export function buildImageTools(tenant: Tenant, lastUserText = '') {
   };
 
   return {
-    define_guide: tool({
-      description:
-        'Define ou ajusta o guia de imagem do cliente. Passe só os campos que mudam; o resto é preservado. Toda imagem gerada depois obedece a este guia.',
-      inputSchema: z.object({
-        estilo: z.enum(['fotografia', 'ilustracao', '3d']).optional(),
-        luz: z
-          .string()
-          .max(200)
-          .optional()
-          .describe('Ex: luz natural de manhã, sombra suave.'),
-        paleta: z.array(z.string().max(40)).max(6).optional(),
-        ambientes: z.array(z.string().max(60)).max(8).optional(),
-        sujeitos: z
-          .array(z.string().max(60))
-          .max(8)
-          .optional()
-          .describe('Quem ou o que costuma aparecer.'),
-        nunca: z
-          .array(z.string().max(60))
-          .max(12)
-          .optional()
-          .describe('O que nunca pode aparecer.'),
-        notas: z.string().max(400).optional(),
-      }),
-      execute: safe(async (input) => {
-        const current = await getGuide(tenant.id);
-        const guide = await setGuide(tenant.id, { ...current, ...input });
-        return { guia: guide };
-      }),
-    }),
+    define_guide: guideTool(tenant, safe),
 
     generate_candidates: tool({
       description:

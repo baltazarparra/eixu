@@ -3,7 +3,7 @@ import { generateImage } from 'ai';
 import { put } from '@vercel/blob';
 import sharp from 'sharp';
 import { FRAMING, dimensionsFor, type Ratio } from '@/lib/images/ratios';
-import { insertImage, nextSeq } from '@/lib/images/queries';
+import { insertImage } from '@/lib/images/queries';
 import type { ImageGuide, Tenant, TenantImage } from '@/lib/types';
 
 /** Modelos padrão: dois motores diferentes dão variedade real de composição. */
@@ -114,10 +114,8 @@ export async function generateCandidates(input: {
         contentType: 'image/webp',
       });
 
-      const seq = await nextSeq(input.tenant.id);
       const row = await insertImage({
         tenantId: input.tenant.id,
-        seq,
         batchId,
         requestText: input.request,
         targetBlock: input.targetBlock,

@@ -19,11 +19,16 @@ import {
 } from '@/lib/design/profile';
 import { hasDuplicateComposition } from '@/lib/design/uniqueness';
 import { listImages } from '@/lib/images/queries';
+import { guideTool } from '@/lib/ai/guide-tool';
+import { getGuide, guideIsEmpty } from '@/lib/images/queries';
 import { prepareSiteImages } from '@/lib/images/site-assets';
-import { RATIOS } from '@/lib/images/ratios';
+import { SCENE_ROLES, scenePlan } from '@/lib/images/scene-plan';
+import { RATIOS, expectedRatio } from '@/lib/images/ratios';
 import { publishSite } from '@/lib/sites/publish';
 import { formatFindings, lintPage } from '@/lib/taste/lint';
 import { inboundSchema, lintSite, type SitePage } from '@/lib/taste/site';
+import { siteMetrics, structuralFindings } from '@/lib/taste/metrics';
+import { readReference } from '@/lib/ai/reference';
 import { getPage, listPages } from '@/lib/tenant-queries';
 import type { BlockInstance, Tenant } from '@/lib/types';
 
@@ -100,7 +105,9 @@ export function buildTools(tenant: Tenant) {
   let activeBrand = { ...tenant.brand };
   let activeDials = { ...tenant.dials };
   let activeBrief = { ...tenant.brief };
-  let imagesPrepared = false;
+  let scenesPrepared = 0;
+  let referencesRead = 0;
+  let reviewRounds = 0;
   let pendingDraft: SiteDraft | undefined;
 
   async function saveSiteDraft(input: SiteDraft) {
@@ -216,43 +223,213 @@ export function buildTools(tenant: Tenant) {
   }
 
   return {
+    define_image_guide: guideTool(tenant, safe),
+
     prepare_site_images: tool({
       description:
-        'Gera até duas cenas distintas pelo estúdio EIXU, com guia do cliente e crítica. Use quando faltam as 2 imagens da home. Candidatas podem entrar no rascunho, mas só o operador aprova para publicação. Uma chamada por turno.',
+        'Gera as cenas do site pelo estúdio EIXU, com o guia do cliente e crítica por imagem. Até 6 cenas por chamada e 8 por turno. Candidatas entram no rascunho; só o operador aprova para publicação.',
       inputSchema: z.object({
         scenes: z
           .array(
             z.object({
-              request: z.string().min(30).max(500),
+              request: z
+                .string()
+                .min(30)
+                .max(500)
+                .describe(
+                  'A cena concreta: quem ou o que aparece, fazendo o quê, onde. Sem adjetivo publicitário.',
+                ),
+              role: z
+                .enum(SCENE_ROLES)
+                .describe(
+                  'O papel da cena no site, conforme o plano de cenas.',
+                ),
               targetBlock: z.enum([
-                'hero.cover',
                 'hero.split',
+                'hero.cover',
+                'hero.poster',
+                'hero.editorial',
+                'hero.offset',
                 'hero.atelier',
                 'narrative.split',
+                'feature.bento',
                 'feature.explorer',
+                'editorial.resources',
                 'media.image',
+                'media.gallery',
               ]),
-              ratio: z.enum(RATIOS),
+              ratio: z
+                .enum(RATIOS)
+                .optional()
+                .describe('Derivada do bloco quando omitida.'),
             }),
           )
           .min(1)
-          .max(2),
+          .max(6),
       }),
       execute: safe(async ({ scenes }) => {
-        if (imagesPrepared)
+        const design = activeBrand.design;
+        if (!isDesignProfile(design))
           throw new ToolError(
-            'As cenas deste turno já foram solicitadas. Consulte a biblioteca e reutilize as candidatas.',
+            'prepare_site_images exige a direção v2. Chame set_design antes de gerar cenas.',
           );
-        imagesPrepared = true;
-        return prepareSiteImages(
+        const guide = await getGuide(tenant.id);
+        if (guideIsEmpty(guide))
+          throw new ToolError(
+            'O guia de imagem ainda não existe. Chame define_image_guide antes de gerar: sem ele as cenas saem genéricas.',
+          );
+        if (scenesPrepared + scenes.length > 8)
+          throw new ToolError(
+            `Orçamento de cenas deste turno esgotado: ${scenesPrepared} de 8 já foram pedidas. Reutilize as candidatas da biblioteca.`,
+          );
+        const prepared = scenes.map((scene) => {
+          // A proporção nasce da composição decidida, não de um palpite: foto
+          // 4:3 num hero editorial 16:9 perde o assunto no recorte.
+          if (
+            scene.targetBlock.startsWith('hero.') &&
+            scene.targetBlock !== `hero.${design.heroComposition}`
+          )
+            throw new ToolError(
+              `A abertura deste cliente é ${design.heroComposition}. Use targetBlock hero.${design.heroComposition} para a cena do hero.`,
+            );
+          if (
+            scene.role === 'hero-detail' &&
+            design.heroComposition !== 'atelier'
+          )
+            throw new ToolError(
+              'O papel hero-detail existe só na composição atelier, que mostra ambiente e detalhe juntos.',
+            );
+          const ratio = expectedRatio(scene.targetBlock);
+          if (scene.ratio && scene.ratio !== ratio)
+            throw new ToolError(
+              `${scene.targetBlock} exibe ${ratio}. A proporção ${scene.ratio} seria recortada; envie ${ratio} ou omita o campo.`,
+            );
+          return { ...scene, ratio };
+        });
+        scenesPrepared += prepared.length;
+        const result = await prepareSiteImages(
           {
             ...tenant,
             brand: activeBrand,
             dials: activeDials,
             brief: activeBrief,
           },
-          scenes,
+          prepared,
         );
+        const covered = new Set(prepared.map((scene) => scene.role));
+        const faltando = scenePlan(design)
+          .map((scene) => scene.role)
+          .filter((role) => !covered.has(role));
+        return {
+          ...result,
+          ...(faltando.length
+            ? {
+                cobertura: `Papéis do plano ainda sem cena: ${[...new Set(faltando)].join(', ')}.`,
+              }
+            : {}),
+        };
+      }),
+    }),
+
+    read_reference: tool({
+      description:
+        'Lê uma página de referência informada pelo operador e devolve título, descrição e texto real. Rede social com login volta inacessível: nesse caso declare a lacuna em brief.gaps e trabalhe com o que foi confirmado, sem deduzir a empresa.',
+      inputSchema: z.object({ url: z.url() }),
+      execute: safe(async ({ url }) => {
+        if (referencesRead >= 3)
+          throw new ToolError(
+            'Limite de três referências por turno. Use o que já foi lido.',
+          );
+        referencesRead += 1;
+        const reference = await readReference(url);
+        const previous = Array.isArray(activeBrief.sources)
+          ? (activeBrief.sources as { url?: string }[])
+          : [];
+        const sources = [
+          ...previous.filter((source) => source?.url !== reference.url),
+          reference,
+        ];
+        activeBrief = { ...activeBrief, sources };
+        await db()`
+          update tenants set brief = ${JSON.stringify(activeBrief)}::jsonb, updated_at = now()
+          where id = ${tenant.id}
+        `;
+        return reference;
+      }),
+    }),
+
+    review_pages: tool({
+      description:
+        'Revisa o rascunho inteiro e devolve o que ficou pobre, com página e bloco apontados: página sem foto, home sem seção protagonista, tom repetido, proporção incoerente com o layout, silhueta repetida e erros de pre-flight. Use na fase de revisão, antes de considerar o site pronto.',
+      inputSchema: z.object({}),
+      execute: safe(async () => {
+        const [pages, images] = await Promise.all([
+          listPages(tenant.id),
+          listImages(tenant.id),
+        ]);
+        if (!pages.length)
+          throw new ToolError(
+            'Não há páginas para revisar. Monte o projeto com build_site antes.',
+          );
+        reviewRounds += 1;
+        const generation = {
+          ...(activeBrief.generation as Record<string, unknown>),
+          reviewRounds,
+          updatedAt: new Date().toISOString(),
+        };
+        activeBrief = { ...activeBrief, generation };
+        await db()`
+          update tenants set brief = ${JSON.stringify(activeBrief)}::jsonb, updated_at = now()
+          where id = ${tenant.id}
+        `;
+        const apontamentos = [
+          ...structuralFindings(pages, images).map((finding) => ({
+            pagina: finding.page,
+            nivel: finding.level,
+            regra: finding.rule,
+            bloco:
+              finding.blockIndex === undefined
+                ? undefined
+                : `${finding.blockIndex}: ${finding.blockType}#${finding.blockId}`,
+            correcao: finding.message,
+          })),
+          ...pages.flatMap((page) =>
+            lintPage(page, activeBrand.design)
+              .filter((finding) => finding.level === 'error')
+              .map((finding) => ({
+                pagina: `/${page.slug}`,
+                nivel: finding.level,
+                regra: finding.rule,
+                bloco: finding.blockId,
+                correcao: finding.message,
+              })),
+          ),
+        ];
+        const metrics = siteMetrics(pages, images);
+        return {
+          rodada: reviewRounds,
+          paginas: pages.map((page) => {
+            const measured = metrics.pages.find((m) => m.slug === page.slug);
+            return {
+              pagina: `/${page.slug}`,
+              secoes: measured?.sections ?? 0,
+              fotos: measured?.images ?? 0,
+              tons: measured?.tones ?? [],
+              protagonista: measured?.protagonist ?? null,
+              motion: measured?.motionMoments ?? 0,
+              blocos: page.blocks.map(
+                (block, index) =>
+                  `${index}: ${block.type}#${block.id}${
+                    typeof block.props.layout === 'string'
+                      ? ` (${block.props.layout})`
+                      : ''
+                  }`,
+              ),
+            };
+          }),
+          apontamentos,
+          erros: apontamentos.filter((item) => item.nivel === 'error').length,
+        };
       }),
     }),
 
@@ -430,6 +607,22 @@ export function buildTools(tenant: Tenant) {
           );
         }
 
+        // Sem fonte legível, o que sobra é o que o operador informou. A
+        // lacuna precisa estar declarada, senão ela vira texto inventado.
+        const sources = Array.isArray(activeBrief.sources)
+          ? (activeBrief.sources as { status?: string }[])
+          : [];
+        const readable = sources.filter((source) => source?.status === 'ok');
+        const blocked = sources.length - readable.length;
+        if (
+          !input.brief.gaps.length &&
+          (blocked > 0 || (!input.brief.evidence.length && !readable.length))
+        ) {
+          throw new ToolError(
+            'Nenhuma fonte confirmada sustenta os fatos deste cliente. Liste em brief.gaps o que ainda precisa ser confirmado (serviços, estrutura, região, prazos) antes de definir a direção.',
+          );
+        }
+
         const profile = completeDesignProfile(input);
         const rows = (await db()`
           select brand->'design' as design
@@ -468,15 +661,18 @@ export function buildTools(tenant: Tenant) {
           motion: input.motion,
           density: input.density,
         };
+        // O brief guarda também intake, fontes lidas e progresso da geração:
+        // sobrescrever o objeto inteiro apagaria esse contexto.
+        const brief = { ...activeBrief, ...input.brief };
         await db()`
           update tenants
-          set brief = ${JSON.stringify(input.brief)}::jsonb,
+          set brief = ${JSON.stringify(brief)}::jsonb,
               brand = ${JSON.stringify(brand)}::jsonb,
               dials = ${JSON.stringify(dials)}::jsonb,
               updated_at = now()
           where id = ${tenant.id}
         `;
-        activeBrief = input.brief;
+        activeBrief = brief;
         activeBrand = brand;
         activeDials = dials;
         return {

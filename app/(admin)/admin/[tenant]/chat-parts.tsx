@@ -57,6 +57,25 @@ export function describeTool(
         : Array.isArray(out.published) && out.published.length
           ? 'Projeto publicado'
           : 'Publicação bloqueada';
+    case 'read_reference':
+      return pending
+        ? 'Lendo a referência'
+        : out.status === 'ok'
+          ? `Referência lida: ${str(out.titulo) || str(inp.url)}`
+          : `Referência inacessível: ${str(out.motivo) || 'sem acesso'}`;
+    case 'define_image_guide':
+      return pending ? 'Definindo o guia de imagem' : 'Guia de imagem definido';
+    case 'review_pages': {
+      if (pending) return 'Revisando o resultado';
+      const erradas = num(out.erros);
+      const apontamentos = Array.isArray(out.apontamentos)
+        ? out.apontamentos.length
+        : 0;
+      if (erradas) return `Revisão: ${erradas} erros para corrigir`;
+      return apontamentos
+        ? `Revisão: ${apontamentos} pontos de atenção`
+        : 'Revisão sem apontamentos';
+    }
     case 'prepare_site_images':
       return pending
         ? 'Preparando as imagens do projeto'

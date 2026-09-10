@@ -9,6 +9,8 @@ export const creativeBriefSchema = z.object({
   personality: z.array(z.string().min(2).max(32)).min(2).max(5),
   evidence: z.array(z.string().min(3).max(140)).max(8).default([]),
   constraints: z.array(z.string().min(3).max(140)).max(8).default([]),
+  /** O que não foi confirmado por fonte alguma. Impede afirmação sem evidência. */
+  gaps: z.array(z.string().min(3).max(140)).max(6).default([]),
 });
 
 export const designProfileInputSchema = z.object({

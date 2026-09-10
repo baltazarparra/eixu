@@ -1,17 +1,20 @@
 import { z } from 'zod';
-import { blockSchemas, isBlockType } from '../blocks/registry';
 import type { BlockInstance, Page, TenantImage } from '../types';
 import type { Finding } from './lint';
+import {
+  contentText,
+  pageImageUrls,
+  structuralFindings,
+  type SitePage,
+} from './metrics';
 
 export const inboundSchema = z.object({
   stage: z.enum(['discovery', 'consideration', 'conversion']),
   intent: z.string().min(12).max(180),
 });
 export type Inbound = z.infer<typeof inboundSchema>;
-export type SitePage = Pick<
-  Page,
-  'slug' | 'type' | 'title' | 'seo' | 'blocks' | 'meta'
->;
+export type { SitePage } from './metrics';
+export { pageImageUrls } from './metrics';
 export type SiteFinding = Finding & { page: string };
 
 /** Estado prospectivo: só os alvos selecionados contam pelo rascunho. */
@@ -30,66 +33,6 @@ export function publicationState(
             seo: page.publishedSeo ?? {},
           },
     );
-}
-
-/** Somente imagens renderizadas por schemas válidos. Logo, link e texto não contam. */
-export function pageImageUrls(blocks: BlockInstance[]): string[] {
-  const urls = new Set<string>();
-  const walk = (value: unknown) => {
-    if (Array.isArray(value)) value.forEach(walk);
-    else if (value && typeof value === 'object') {
-      for (const [key, child] of Object.entries(value)) {
-        if (
-          ['image', 'secondaryImage', 'src'].includes(key) &&
-          typeof child === 'string'
-        )
-          urls.add(child);
-        else if (typeof child === 'object') walk(child);
-      }
-    }
-  };
-  for (const block of blocks) {
-    if (!isBlockType(block.type) || /^(nav|footer)\./.test(block.type))
-      continue;
-    const parsed = blockSchemas[block.type].strict().safeParse(block.props);
-    if (parsed.success) {
-      const props = { ...parsed.data } as Record<string, unknown>;
-      // A segunda imagem do hero só é exibida pela composição atelier.
-      if (block.type === 'hero.split' && props.layout !== 'atelier')
-        delete props.secondaryImage;
-      walk(props);
-    }
-  }
-  return [...urls];
-}
-
-function contentText(blocks: BlockInstance[]): string {
-  const copy: string[] = [];
-  const walk = (value: unknown) => {
-    if (Array.isArray(value)) value.forEach(walk);
-    else if (value && typeof value === 'object') {
-      for (const [key, child] of Object.entries(value)) {
-        if (
-          [
-            'title',
-            'headline',
-            'subtext',
-            'body',
-            'description',
-            'q',
-            'a',
-          ].includes(key) &&
-          typeof child === 'string'
-        )
-          copy.push(child);
-        else if (typeof child === 'object') walk(child);
-      }
-    }
-  };
-  blocks
-    .filter((b) => !/^(nav|footer)\./.test(b.type))
-    .forEach((b) => walk(b.props));
-  return copy.join(' ').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
 function destinations(blocks: BlockInstance[]): string[] {
@@ -237,37 +180,10 @@ export function lintSite(
       'inbound-jornada',
       'Cubra descoberta, consideração e conversão com páginas conectadas.',
     );
-  if (home) {
-    const tones = new Set(
-      home.blocks
-        .filter((b) => !/^(nav|footer)\./.test(b.type))
-        .map(
-          (b) => (b.props.presentation as { tone?: string } | undefined)?.tone,
-        ),
-    );
-    if (![...tones].some((t) => t === 'accent' || t === 'secondary'))
-      fail(
-        '',
-        'home-paleta',
-        'Aplique a cor principal ou complementar em uma seção da home, além das áreas de leitura.',
-      );
-    const used = pageImageUrls(home.blocks);
-    const generated = images.filter(
-      (i) =>
-        i.kind === 'foto' &&
-        i.blobPath.includes('/gerado/') &&
-        i.model &&
-        i.status !== 'rejeitada' &&
-        used.includes(i.url),
-    );
-    const distinct = new Set(generated.map((i) => i.url));
-    if (distinct.size < 2)
-      fail(
-        '',
-        'home-imagens-geradas',
-        'A home precisa de 2 fotos geradas distintas da biblioteca deste cliente, com cenas coerentes. Logos, uploads e repetição da mesma foto não contam.',
-      );
-  }
+  // Composição: fotos por página, seção protagonista e ritmo tonal. Estas
+  // regras vivem em metrics porque a revisão do agente usa as mesmas medidas.
+  for (const finding of structuralFindings(pages, images))
+    findings.push(finding);
   if (mode === 'publish') {
     const used = new Set(pages.flatMap((p) => pageImageUrls(p.blocks)));
     const unapproved = images.filter(

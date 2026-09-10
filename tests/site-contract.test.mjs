@@ -72,11 +72,35 @@ function project() {
     ],
   }));
 }
+/**
+ * O contrato exige uma seção protagonista com fotos na home. project() é o
+ * piso estrutural antigo, que hoje reprova; rich() é o projeto conforme.
+ */
+function rich() {
+  const pages = project();
+  pages[0].blocks.push({
+    id: 'explorer',
+    type: 'feature.explorer',
+    props: {
+      title: 'Escolha pelo ambiente',
+      items: [1, 2].map((n) => ({
+        title: `Ambiente ${n}`,
+        headline: 'Textura e luz no espaço',
+        body: 'Uma composição coerente com a aplicação e o uso previsto.',
+        image: scene(n),
+        imageAlt: 'Ambiente ilustrativo gerado',
+        cta: { label: 'Ver materiais', href: '/materiais' },
+      })),
+      presentation: { tone: 'soft' },
+    },
+  });
+  return pages;
+}
 const rules = (pages, library = images, mode = 'publish') =>
   lintSite(pages, library, mode).map((f) => f.rule);
 
 await test('aceita três páginas úteis conectadas e duas fotos geradas aprovadas', () =>
-  assert.deepEqual(rules(project()), []));
+  assert.deepEqual(rules(rich()), []));
 await test('obrigado e paid_lp não completam o mínimo orgânico', () => {
   const pages = project();
   pages[1].type = 'thank_you';
@@ -105,8 +129,8 @@ await test('candidatas podem ser compostas no rascunho e bloqueiam publicação'
     status: 'candidata',
     critique: { aprovado: true },
   }));
-  assert.deepEqual(rules(project(), candidates, 'draft'), []);
-  assert.ok(rules(project(), candidates).includes('imagens-aprovacao'));
+  assert.deepEqual(rules(rich(), candidates, 'draft'), []);
+  assert.ok(rules(rich(), candidates).includes('imagens-aprovacao'));
 });
 await test('imagem em props inválidas ou segunda imagem oculta não conta', () => {
   const pages = project();
@@ -137,7 +161,7 @@ await test('link com codificação inválida vira recusa, sem derrubar o pre-fli
   assert.ok(rules(pages).includes('link-interno'));
 });
 await test('publicação pontual não conta páginas disponíveis apenas em rascunho', () => {
-  const pages = project().map((p, i) => ({
+  const pages = rich().map((p, i) => ({
     ...p,
     id: `p${i}`,
     publishedBlocks: null,
@@ -152,7 +176,7 @@ await test('publicação pontual não conta páginas disponíveis apenas em rasc
   );
 });
 await test('páginas fora do lote são verificadas com os blocos e SEO publicados', () => {
-  const pages = project().map((p, i) => ({
+  const pages = rich().map((p, i) => ({
     ...p,
     id: `p${i}`,
     publishedBlocks: structuredClone(p.blocks),
@@ -225,10 +249,10 @@ await test('altura do logo é opcional, limitada e disponível no catálogo e pr
       page.blocks = [{ id: 'logo', type, props }];
       assert.ok(lintPage(page).some((f) => f.rule === 'props-invalidas'));
     }
-    const entry = catalogForPrompt()
-      .split('\n')
-      .find((line) => line.startsWith(`${type}:`));
-    assert.ok(entry.includes('logoHeight?:int[16..160]'));
+    const lines = catalogForPrompt().split('\n');
+    const at = lines.findIndex((line) => line.startsWith(`${type} · `));
+    assert.ok(at >= 0, `catálogo sem entrada de ${type}`);
+    assert.ok(lines[at + 1].includes('logoHeight?:int[16..160]'));
   }
 });
 
@@ -436,4 +460,158 @@ await test('painel distingue lote recusado de projeto salvo', async () => {
       'Projeto salvo: 3 páginas',
     );
   }
+});
+
+const { siteMetrics, structuralFindings } = await j.import(
+  '../lib/taste/metrics.ts',
+);
+const { expectedRatio, ratioFits } = await j.import('../lib/images/ratios.ts');
+
+await test('home sem seção protagonista com fotos é recusada', () => {
+  // project() é a home pobre: hero com fotos e o resto em texto.
+  assert.ok(rules(project()).includes('home-protagonista'));
+  assert.equal(rules(rich()).includes('home-protagonista'), false);
+  assert.equal(siteMetrics(project(), images).home.protagonist, null);
+  assert.equal(
+    siteMetrics(rich(), images).home.protagonist,
+    'feature.explorer',
+  );
+});
+
+await test('hero atelier sustenta a home quando o miolo também mostra o negócio', () => {
+  const pages = project();
+  pages[0].blocks.push({
+    id: 'media',
+    type: 'media.image',
+    props: {
+      src: scene(2),
+      alt: 'Cena ilustrativa gerada',
+      caption: 'Ambiente ilustrativo gerado para inspiração.',
+      presentation: { tone: 'soft' },
+    },
+  });
+  assert.equal(rules(pages).includes('home-protagonista'), false);
+  assert.equal(siteMetrics(pages, images).home.protagonist, 'hero.split');
+});
+
+await test('página orgânica sem nenhuma imagem é recusada', () => {
+  const pages = rich();
+  delete pages[1].blocks[1].props.image;
+  delete pages[1].blocks[1].props.imageAlt;
+  delete pages[1].blocks[1].props.secondaryImage;
+  delete pages[1].blocks[1].props.secondaryImageAlt;
+  const found = lintSite(pages, images, 'draft').filter(
+    (f) => f.rule === 'pagina-sem-foto',
+  );
+  assert.equal(found.length, 1);
+  assert.equal(found[0].page, '/materiais');
+  assert.equal(rules(rich()).includes('pagina-sem-foto'), false);
+});
+
+await test('proporção incoerente com o layout vira aviso com o bloco apontado', () => {
+  // O defeito real: foto 4:3 servida num hero editorial, que exibe 16:9.
+  const library = images.map((i) => ({ ...i, ratio: '4:5' }));
+  const pages = rich();
+  pages[0].blocks[1].props.layout = 'editorial';
+  const found = structuralFindings(pages, library).filter(
+    (f) => f.rule === 'imagem-proporcao',
+  );
+  assert.ok(found.length >= 1);
+  assert.equal(found[0].level, 'warn');
+  assert.equal(found[0].blockType, 'hero.split');
+  assert.equal(found[0].blockIndex, 0);
+  assert.ok(found[0].message.includes('16:9'));
+  // Na composição atelier a mesma foto vertical está correta; o aviso que
+  // sobra é do explorer, que exibe paisagem e recebeu retrato.
+  const atelier = structuralFindings(rich(), library);
+  assert.equal(
+    atelier.some(
+      (f) => f.rule === 'imagem-proporcao' && f.blockType === 'hero.split',
+    ),
+    false,
+  );
+  assert.ok(
+    atelier.some(
+      (f) => f.rule === 'imagem-proporcao' && f.blockType === 'feature.explorer',
+    ),
+  );
+});
+
+await test('proporção esperada acompanha a variante de layout', () => {
+  assert.equal(expectedRatio('hero.split', 'atelier'), '4:5');
+  assert.equal(expectedRatio('hero.split', 'editorial'), '16:9');
+  assert.equal(expectedRatio('hero.split', 'cover'), '16:9');
+  assert.equal(expectedRatio('narrative.split'), '5:6');
+  assert.equal(expectedRatio('narrative.split', 'editorial'), '16:9');
+  assert.equal(expectedRatio('media.image', 'portrait'), '4:5');
+  assert.equal(expectedRatio('media.image', 'bleed'), '16:9');
+  assert.equal(expectedRatio('feature.explorer'), '4:3');
+  assert.equal(expectedRatio('editorial.resources'), '16:9');
+  assert.equal(expectedRatio('hero.atelier'), '4:5');
+  assert.equal(ratioFits('4:5', '5:6'), true);
+  assert.equal(ratioFits('4:3', '16:9'), false);
+  assert.equal(ratioFits('16:9', '4:5'), false);
+});
+
+await test('home com um tom só recebe aviso de ritmo', () => {
+  const pages = rich();
+  pages[0].blocks[2].props.presentation = { tone: 'accent' };
+  pages[0].blocks[3].props.presentation = { tone: 'accent' };
+  const found = lintSite(pages, images, 'draft').filter(
+    (f) => f.rule === 'home-tons',
+  );
+  assert.equal(found.length, 1);
+  assert.equal(found[0].level, 'warn');
+  assert.equal(rules(rich()).includes('home-tons'), false);
+});
+
+await test('duas seções iguais em sequência viram aviso de repetição', () => {
+  const pages = rich();
+  pages[0].blocks.splice(3, 0, structuredClone(pages[0].blocks[2]));
+  pages[0].blocks[3].id = 'text-2';
+  const found = structuralFindings(pages, images).filter(
+    (f) => f.rule === 'layout-repetido',
+  );
+  assert.equal(found.length, 1);
+  assert.equal(found[0].blockType, 'editorial.text');
+});
+
+await test('catálogo entrega uso e proporção de cada bloco ao agente', () => {
+  const catalog = catalogForPrompt();
+  assert.ok(catalog.includes('feature.explorer · Compara aplicações'));
+  assert.ok(catalog.includes('feature.explorer'));
+  const explorer = catalog
+    .split('\n')
+    .find((line) => line.startsWith('feature.explorer · '));
+  assert.ok(explorer.includes('[foto 4:3]'));
+  const hero = catalog
+    .split('\n')
+    .find((line) => line.startsWith('hero.split · '));
+  assert.ok(hero.includes('4:5 em split/poster/offset/atelier'));
+  assert.ok(hero.includes('16:9 em cover/editorial'));
+});
+
+await test('gate de composição v2 acompanha o tamanho da página', () => {
+  const design = { version: 2 };
+  const section = (n) => ({
+    id: `s${n}`,
+    type: 'editorial.text',
+    props: { body: `Conteúdo específico da seção ${n}.` },
+  });
+  const page = (count) => ({
+    type: 'page',
+    title: 'Página',
+    seo: { title: 'Página' },
+    blocks: [
+      ...Array.from({ length: count }, (_, i) => section(i)),
+      { id: 'cta', type: 'cta.band', props: { title: 'Fale com a equipe', cta: { label: 'Falar', href: '/#contato' } } },
+    ],
+  });
+  const required = (count, rule) =>
+    lintPage(page(count), design).find((f) => f.rule === rule)?.message ?? '';
+  // 8 seções: o teto antigo pedia 3 layouts; agora pede 5 e 4 apresentações.
+  assert.ok(required(7, 'composicao-generica').includes('pelo menos 4'));
+  assert.ok(required(9, 'composicao-generica').includes('pelo menos 5'));
+  assert.ok(required(9, 'ritmo-generico').includes('pelo menos 4'));
+  assert.ok(required(3, 'composicao-generica').includes('pelo menos 2'));
 });

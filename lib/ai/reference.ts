@@ -1,0 +1,210 @@
+import { lookup } from 'node:dns/promises';
+
+/** Redes que nunca devem ser alcançadas por uma URL vinda do chat. */
+function isPrivateAddress(address: string, family: number): boolean {
+  if (family === 6)
+    return /^(::1|fe80:|fc|fd)/i.test(address) || address === '::';
+  const [a, b] = address.split('.').map(Number);
+  if (a === 10 || a === 127 || a === 0) return true;
+  if (a === 169 && b === 254) return true;
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  if (a === 192 && b === 168) return true;
+  return false;
+}
+
+/** Domínios que servem uma parede de login para quem não está autenticado. */
+const LOGIN_WALLED = [
+  'facebook.com',
+  'fb.com',
+  'instagram.com',
+  'tiktok.com',
+  'linkedin.com',
+  'x.com',
+  'twitter.com',
+];
+
+export type Reference = {
+  url: string;
+  status: 'ok' | 'inacessivel';
+  motivo?: string;
+  titulo?: string;
+  descricao?: string;
+  texto?: string;
+  telefones?: string[];
+  whatsapp?: string[];
+  lidoEm: string;
+};
+
+const ENTITIES: Record<string, string> = {
+  '&amp;': '&',
+  '&lt;': '<',
+  '&gt;': '>',
+  '&quot;': '"',
+  '&#39;': "'",
+  '&apos;': "'",
+  '&nbsp;': ' ',
+};
+
+function decode(text: string): string {
+  return text
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(
+      /&[a-z#0-9]+;/gi,
+      (entity) => ENTITIES[entity.toLowerCase()] ?? ' ',
+    )
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function strip(html: string): string {
+  return decode(html.replace(/<[^>]*>/g, ' '));
+}
+
+export function extractReference(url: string, html: string): Reference {
+  const clean = html
+    .replace(/<(script|style|noscript|svg)[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ');
+  const meta = (name: string) => {
+    const pattern = new RegExp(
+      `<meta[^>]+(?:name|property)=["']${name}["'][^>]*content=["']([^"']+)["']`,
+      'i',
+    );
+    const alt = new RegExp(
+      `<meta[^>]+content=["']([^"']+)["'][^>]*(?:name|property)=["']${name}["']`,
+      'i',
+    );
+    const found = pattern.exec(clean) ?? alt.exec(clean);
+    return found ? decode(found[1]) : undefined;
+  };
+  const titulo =
+    decode(/<title[^>]*>([\s\S]*?)<\/title>/i.exec(clean)?.[1] ?? '') ||
+    meta('og:title');
+  const descricao = meta('description') ?? meta('og:description');
+  const headings = [...clean.matchAll(/<h[1-3][^>]*>([\s\S]*?)<\/h[1-3]>/gi)]
+    .map((match) => strip(match[1]))
+    .filter((text) => text.length > 2 && text.length < 140);
+  const paragraphs = [...clean.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
+    .map((match) => strip(match[1]))
+    .filter((text) => text.length > 40);
+  const telefones = [
+    ...new Set(
+      (clean.match(/\(?\d{2}\)?[\s.-]?\d{4,5}[\s.-]?\d{4}/g) ?? []).map((t) =>
+        t.trim(),
+      ),
+    ),
+  ].slice(0, 4);
+  const whatsapp = [
+    ...new Set(
+      clean.match(/(?:wa\.me|api\.whatsapp\.com)\/[^"'\s<>]+/gi) ?? [],
+    ),
+  ].slice(0, 2);
+  const texto = [...new Set([...headings, ...paragraphs])]
+    .join(' | ')
+    .slice(0, 1200);
+  return {
+    url,
+    status: 'ok',
+    lidoEm: new Date().toISOString(),
+    ...(titulo ? { titulo: titulo.slice(0, 160) } : {}),
+    ...(descricao ? { descricao: descricao.slice(0, 300) } : {}),
+    ...(texto ? { texto } : {}),
+    ...(telefones.length ? { telefones } : {}),
+    ...(whatsapp.length ? { whatsapp } : {}),
+  };
+}
+
+const MAX_BYTES = 1_500_000;
+
+/**
+ * Lê uma referência informada pelo operador. Quem não consegue ler diz que não
+ * conseguiu: o resultado anterior era o agente deduzir a empresa inteira a
+ * partir de uma URL de rede social que ele nunca abriu.
+ */
+export async function readReference(
+  url: string,
+  deps: {
+    fetch?: typeof globalThis.fetch;
+    lookup?: typeof lookup;
+  } = {},
+): Promise<Reference> {
+  const request = deps.fetch ?? globalThis.fetch;
+  const resolve = deps.lookup ?? lookup;
+  const lidoEm = new Date().toISOString();
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return { url, status: 'inacessivel', motivo: 'URL inválida', lidoEm };
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:')
+    return {
+      url,
+      status: 'inacessivel',
+      motivo: 'Protocolo não suportado',
+      lidoEm,
+    };
+  const host = parsed.hostname.toLowerCase();
+  if (
+    LOGIN_WALLED.some(
+      (domain) => host === domain || host.endsWith(`.${domain}`),
+    )
+  )
+    return {
+      url,
+      status: 'inacessivel',
+      motivo:
+        'A rede social exige login e não entrega o conteúdo. Peça ao operador os dados que essa página traria.',
+      lidoEm,
+    };
+  try {
+    const address = await resolve(host, { all: false });
+    if (isPrivateAddress(address.address, address.family))
+      return {
+        url,
+        status: 'inacessivel',
+        motivo: 'Endereço de rede interna',
+        lidoEm,
+      };
+  } catch {
+    return {
+      url,
+      status: 'inacessivel',
+      motivo: 'Domínio não resolvido',
+      lidoEm,
+    };
+  }
+  try {
+    const response = await request(parsed.toString(), {
+      redirect: 'follow',
+      signal: AbortSignal.timeout(8000),
+      headers: { 'user-agent': 'EIXU-SiteAgent/1.0 (+https://eixu.com.br)' },
+    });
+    if (!response.ok)
+      return {
+        url,
+        status: 'inacessivel',
+        motivo: `A página respondeu ${response.status}`,
+        lidoEm,
+      };
+    const type = response.headers.get('content-type') ?? '';
+    if (!/text\/html|text\/plain|application\/xhtml/i.test(type))
+      return {
+        url,
+        status: 'inacessivel',
+        motivo: `Conteúdo ${type || 'desconhecido'}`,
+        lidoEm,
+      };
+    const body = await response.text();
+    return extractReference(parsed.toString(), body.slice(0, MAX_BYTES));
+  } catch (error) {
+    return {
+      url,
+      status: 'inacessivel',
+      motivo:
+        error instanceof Error && error.name === 'TimeoutError'
+          ? 'Tempo esgotado'
+          : 'Falha ao buscar a página',
+      lidoEm,
+    };
+  }
+}

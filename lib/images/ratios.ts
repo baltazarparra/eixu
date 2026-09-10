@@ -13,6 +13,7 @@ export const RATIO_BY_BLOCK: Record<string, Ratio> = {
   'narrative.split': '5:6',
   'feature.bento': '4:3',
   'feature.explorer': '4:3',
+  'editorial.resources': '16:9',
   'media.image': '16:9',
   'media.gallery': '4:3',
   livre: '1:1',
@@ -39,6 +40,8 @@ export const FRAMING: Record<string, string> = {
     'enquadramento vertical de ambiente ou produto com materialidade, profundidade e margens para recorte',
   'feature.explorer':
     'cena de aplicação em paisagem, assunto legível ao lado de descrição; sem texto na foto',
+  'editorial.resources':
+    'enquadramento panorâmico de apoio editorial, assunto à esquerda e área calma para o título',
   'narrative.split': 'enquadramento vertical fechado no assunto',
   'feature.bento':
     'enquadramento paisagem, assunto único e recorte forte em tamanhos variados',
@@ -94,4 +97,50 @@ export function dimensionsFor(
 
 export function ratioForBlock(block: string | undefined): Ratio {
   return RATIO_BY_BLOCK[block ?? 'livre'] ?? '1:1';
+}
+
+/**
+ * Proporção que o bloco realmente exibe, considerando a variante de layout.
+ * O recorte é `object-cover`: uma foto vertical num slot panorâmico perde o
+ * assunto. `ratioForBlock` só conhece o tipo; aqui entra a composição.
+ */
+export function expectedRatio(type: string, layout?: string): Ratio {
+  switch (type) {
+    case 'hero.split':
+      // O layout do bloco é a composição: cover e editorial são panorâmicos.
+      return layout === 'cover' || layout === 'editorial' ? '16:9' : '4:5';
+    case 'narrative.split':
+      return layout === 'editorial' ? '16:9' : '5:6';
+    case 'media.image':
+      return layout === 'portrait' ? '4:5' : '16:9';
+    case 'feature.bento':
+    case 'feature.explorer':
+    case 'media.gallery':
+      return '4:3';
+    case 'editorial.resources':
+      return '16:9';
+    default:
+      return ratioForBlock(type);
+  }
+}
+
+const VALUE: Record<string, number> = {
+  '4:5': 0.8,
+  '5:6': 0.8333,
+  '1:1': 1,
+  '4:3': 1.3333,
+  '16:9': 1.7778,
+};
+
+/**
+ * Aceita só o que sobrevive ao `object-cover`. 4:5 e 5:6 se substituem; 4:3
+ * dentro de um slot 16:9 perde um quarto da cena, que foi o defeito observado
+ * num hero editorial servido com foto 4:3.
+ */
+export function ratioFits(actual: string, expected: Ratio): boolean {
+  const from = VALUE[actual];
+  const to = VALUE[expected];
+  if (!from || !to) return true;
+  const factor = from > to ? from / to : to / from;
+  return factor <= 1.15;
 }
