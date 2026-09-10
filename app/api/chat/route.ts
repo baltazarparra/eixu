@@ -139,7 +139,9 @@ export async function POST(request: Request) {
     }
   }
 
-  const tools = buildTools(tenant);
+  // A revisão renderiza o rascunho pela própria origem da requisição.
+  const origin = new URL(request.url).origin;
+  const tools = buildTools(tenant, { origin });
   // Fora da geração o chat mantém todas as ferramentas; dentro dela, só as da
   // etapa, para o modelo não pular direto para a composição.
   const activeTools = phase

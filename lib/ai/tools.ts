@@ -29,6 +29,7 @@ import { formatFindings, lintPage } from '@/lib/taste/lint';
 import { inboundSchema, lintSite, type SitePage } from '@/lib/taste/site';
 import { siteMetrics, structuralFindings } from '@/lib/taste/metrics';
 import { readReference } from '@/lib/ai/reference';
+import { capturePages, type Shot } from '@/lib/review/capture';
 import { getPage, listPages } from '@/lib/tenant-queries';
 import type { BlockInstance, Tenant } from '@/lib/types';
 
@@ -101,7 +102,12 @@ export function safe<I, O>(run: (input: I) => Promise<O>) {
   };
 }
 
-export function buildTools(tenant: Tenant) {
+export type ToolContext = {
+  /** Origem HTTP para a revisão renderizar o rascunho. */
+  origin?: string;
+};
+
+export function buildTools(tenant: Tenant, context: ToolContext = {}) {
   let activeBrand = { ...tenant.brand };
   let activeDials = { ...tenant.dials };
   let activeBrief = { ...tenant.brief };
@@ -406,7 +412,30 @@ export function buildTools(tenant: Tenant) {
           ),
         ];
         const metrics = siteMetrics(pages, images);
+        // A captura mostra o que os validadores não medem: recorte, equilíbrio
+        // e overflow. Fica atrás de variável porque carrega um Chromium.
+        let capturas: Shot[] = [];
+        if (process.env.EIXU_REVIEW_CAPTURE === '1' && context.origin) {
+          try {
+            capturas = await capturePages(
+              context.origin,
+              tenant.slug,
+              pages
+                .filter((page) => page.type !== 'thank_you')
+                .map((page) => page.slug),
+            );
+          } catch (error) {
+            console.error('[review] captura indisponível:', error);
+          }
+        }
         return {
+          capturas: capturas.map((shot) => ({
+            pagina: shot.page,
+            viewport: shot.viewport,
+            overflow: shot.overflow,
+            imagensQuebradas: shot.brokenImages,
+            jpeg: shot.jpeg.toString('base64'),
+          })),
           rodada: reviewRounds,
           paginas: pages.map((page) => {
             const measured = metrics.pages.find((m) => m.slug === page.slug);
@@ -431,6 +460,30 @@ export function buildTools(tenant: Tenant) {
           erros: apontamentos.filter((item) => item.nivel === 'error').length,
         };
       }),
+      toModelOutput: (output: unknown) => {
+        const value = (output ?? {}) as {
+          capturas?: { pagina: string; viewport: string; jpeg: string }[];
+        };
+        const capturas = value.capturas ?? [];
+        const { capturas: _omit, ...rest } = value as Record<string, unknown>;
+        return {
+          type: 'content' as const,
+          value: [
+            { type: 'text' as const, text: JSON.stringify(rest) },
+            ...capturas.flatMap((shot) => [
+              {
+                type: 'text' as const,
+                text: `${shot.pagina} em ${shot.viewport}`,
+              },
+              {
+                type: 'file' as const,
+                mediaType: 'image/jpeg',
+                data: { type: 'data' as const, data: shot.jpeg },
+              },
+            ]),
+          ],
+        };
+      },
     }),
 
     lint_site: tool({
