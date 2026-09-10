@@ -91,6 +91,7 @@ function Action({
 
 export function NavBar({
   logoText,
+  logoHeight,
   links,
   cta,
   layout,
@@ -107,16 +108,23 @@ export function NavBar({
       >
         <a
           href="/"
-          className="flex items-center text-[1.05rem] font-semibold tracking-[-0.01em]"
+          className="flex max-w-full shrink-0 items-center text-[1.05rem] font-semibold tracking-[-0.01em]"
           aria-label={`${logoText}, início`}
         >
           {logo ? (
             <img
               src={logo}
               alt={logoText}
-              width={160}
-              height={40}
-              className="h-12 w-auto max-w-[140px] object-contain"
+              width={logoHeight === undefined ? 160 : undefined}
+              height={logoHeight ?? 40}
+              style={
+                logoHeight === undefined ? undefined : { height: logoHeight }
+              }
+              className={
+                logoHeight === undefined
+                  ? 'h-12 w-auto max-w-[140px] object-contain'
+                  : 'w-auto max-w-full object-contain object-left'
+              }
               decoding="async"
             />
           ) : (
@@ -963,6 +971,7 @@ export function PricingTable({
 
 export function FooterCompact({
   logoText,
+  logoHeight,
   tagline,
   links,
   legal,
@@ -974,14 +983,21 @@ export function FooterCompact({
     <footer className={`site-footer site-footer-${layout} py-14`}>
       <div className={`${shell} flex flex-col gap-8`}>
         <div className="flex flex-wrap items-start justify-between gap-8">
-          <div className="flex flex-col gap-2">
+          <div className="flex max-w-full flex-col gap-2">
             {logo ? (
               <img
                 src={logo}
                 alt={logoText}
-                width={140}
-                height={36}
-                className="h-8 w-auto max-w-[160px] object-contain"
+                width={logoHeight === undefined ? 140 : undefined}
+                height={logoHeight ?? 36}
+                style={
+                  logoHeight === undefined ? undefined : { height: logoHeight }
+                }
+                className={
+                  logoHeight === undefined
+                    ? 'h-8 w-auto max-w-[160px] object-contain'
+                    : 'w-auto max-w-full self-start object-contain object-left'
+                }
                 loading="lazy"
                 decoding="async"
               />

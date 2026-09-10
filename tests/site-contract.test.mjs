@@ -5,7 +5,9 @@ const j = createJiti(import.meta.url);
 const { lintSite, pageImageUrls, publicationState } = await j.import(
   '../lib/taste/site.ts',
 );
-const { blockSchemas } = await j.import('../lib/blocks/registry.ts');
+const { blockSchemas, catalogForPrompt } = await j.import(
+  '../lib/blocks/registry.ts',
+);
 
 const scene = (n) => `https://assets.test/scene-${n}.webp`;
 const images = [1, 2].map((seq) => ({
@@ -202,6 +204,34 @@ const { repairSiteDraft, repairSiteInput, buildSiteInput } = await j.import(
   '../lib/ai/site-draft.ts',
 );
 const { lintPage } = await j.import('../lib/taste/lint.ts');
+await test('altura do logo é opcional, limitada e disponível no catálogo e pre-flight', () => {
+  for (const type of ['nav.bar', 'footer.compact']) {
+    const base = { logoText: 'Estúdio', links: [] };
+    assert.deepEqual(blockSchemas[type].parse(base), base);
+    for (const height of [16, 50, 160]) {
+      const props = { ...base, logoHeight: height };
+      assert.equal(blockSchemas[type].parse(props).logoHeight, height);
+      const page = project()[0];
+      page.blocks = [{ id: 'logo', type, props }];
+      assert.equal(
+        lintPage(page).some((f) => f.rule === 'props-invalidas'),
+        false,
+      );
+    }
+    for (const height of [0, 15, 161, 50.5, '50px', null]) {
+      const props = { ...base, logoHeight: height };
+      assert.equal(blockSchemas[type].safeParse(props).success, false);
+      const page = project()[0];
+      page.blocks = [{ id: 'logo', type, props }];
+      assert.ok(lintPage(page).some((f) => f.rule === 'props-invalidas'));
+    }
+    const entry = catalogForPrompt()
+      .split('\n')
+      .find((line) => line.startsWith(`${type}:`));
+    assert.ok(entry.includes('logoHeight?:int[16..160]'));
+  }
+});
+
 function draft() {
   return {
     pages: project().map((p) => ({

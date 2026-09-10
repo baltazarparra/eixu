@@ -113,3 +113,11 @@ Uma avaliação adicional com `anthropic/claude-fable-5.1`, confirmado no catál
 O replay determinístico do lote de pedras demonstrou a correção exata com 14 reparos: 1.456 caracteres de entrada contra 14.077 no reenvio completo. O resultado reconstruído foi profundamente igual ao segundo lote do modelo. Essa redução de payload não é uma medição de tokens faturados nem comprova que o modelo sempre escolherá o reparo.
 
 Após a correção, as homes automáticas de aquecimento (offset) e pedras (atelier) foram verificadas novamente no build de produção em 1440/390 px: largura da página igual à viewport e zero erros de console. A rota temporária foi removida antes do build de release. O lint global segue com os mesmos 20 erros preexistentes; tipos, os 20 testes e lint do escopo passaram.
+
+## Altura do logo pelo chat, 10/09/2026
+
+`nav.bar` e `footer.compact` passaram a aceitar `logoHeight` opcional de 16 a 160 px. Os 21 testes passaram, incluindo compatibilidade de props legadas, limites numéricos no catálogo e aceitação/recusa no schema e no pre-flight. Tipos, build Next.js e lint do escopo passaram; o lint global manteve os 20 erros em 13 arquivos anteriores, sem diagnóstico novo.
+
+O HTML dos componentes reais, com props parseadas pelo schema e CSS emitido pelo build de produção, foi servido em fixture isolada. Foram medidas 35 combinações por viewport em 1440, 390 e 320 px: quatro variantes de navegação, três de rodapé, logos quadrados/largos, tamanho máximo e defaults legados. A altura solicitada de 50 px foi preservada, logos largos couberam no espaço disponível, o menu mobile abriu e não houve overflow nem erro de console. A fixture não foi adicionada às rotas do produto.
+
+Uma chamada real de `anthropic/claude-opus-4.5` recebeu “deixa o logo maior, 50px height”, com os schemas e o prompt do produto e executores substituídos por coletores em memória. Chamou apenas `get_page` e `update_block` com `logoHeight: 50` no cabeçalho; preservou as outras props e o rodapé. Consumiu 32.248 tokens de entrada e 186 de saída. Esse ensaio confirma a escolha da ferramenta, sem testar persistência real do chat nem publicar páginas de clientes. Artefatos locais ficam em `outputs/logo-height/`, ignorado pelo Git.

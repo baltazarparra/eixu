@@ -32,6 +32,16 @@ const link = z.object({
   href: z.string().min(1),
 });
 
+const logoHeight = z
+  .number()
+  .int()
+  .min(16)
+  .max(160)
+  .optional()
+  .describe(
+    'Altura do logo em pixels; mantém proporção e cabe na largura disponível.',
+  );
+
 /**
  * Ritmo visual por seção. São decisões de composição, não CSS livre: o agente
  * ganha variedade sem poder injetar estilos, URLs ou comportamento arbitrário.
@@ -65,6 +75,7 @@ export const blockSchemas = {
       .min(1)
       .max(24)
       .describe('Nome exibido quando o cliente não tem logo enviado.'),
+    logoHeight,
     links: z.array(link).max(5).default([]),
     cta: link.optional(),
   }),
@@ -386,6 +397,7 @@ export const blockSchemas = {
     presentation,
     layout: z.enum(['split', 'stack', 'minimal']).optional(),
     logoText: z.string().min(1).max(24),
+    logoHeight,
     tagline: z.string().max(120).optional(),
     links: z.array(link).max(6).default([]),
     legal: z.string().max(120).optional(),
@@ -552,7 +564,7 @@ const typeName = (value: unknown): string => {
   return typeof value === 'string' ? value : 'valor';
 };
 
-/** Resume o schema sem repetir limites que a ferramenta já valida. */
+/** Resume campos e limites do schema para evitar consultas e tentativas extras. */
 function summarize(schema: Record<string, unknown>, depth = 0): string {
   const props = (schema.properties ?? {}) as Record<
     string,
@@ -583,6 +595,8 @@ function summarize(schema: Record<string, unknown>, depth = 0): string {
         return `${key}${opt}{${summarize(def, depth + 1)}}`;
       if (def.type === 'string')
         return `${key}${opt}${choices}${typeof def.maxLength === 'number' ? `≤${def.maxLength}` : ''}${key === 'subtext' ? '/20palavras' : ''}`;
+      if (def.type === 'integer' || def.type === 'number')
+        return `${key}${opt}:${typeName(def.type)}[${typeof def.minimum === 'number' ? def.minimum : '-∞'}..${typeof def.maximum === 'number' ? def.maximum : '∞'}]`;
       return `${key}${opt}:${typeName(def.type)}${choices}`;
     })
     .join(depth ? ', ' : '; ');
