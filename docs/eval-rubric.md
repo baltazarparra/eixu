@@ -24,17 +24,17 @@ publica.
 Medido por `siteMetrics` e pelos gates; abaixo disso a saída nem chega à
 revisão humana.
 
-| Medida | Mínimo |
-| --- | --- |
-| Páginas orgânicas conectadas | 3 |
-| Palavras úteis por página orgânica | 100 |
-| Fotos geradas distintas na home | 2 |
-| Páginas orgânicas com pelo menos uma imagem | todas |
-| Seção protagonista na home | 1 |
-| Tons distintos na home | 3, um deles accent ou secondary |
-| Momentos de motion | 1 a 3 |
-| Erros de `lintPage` e `lintSite` | 0 |
-| Overflow horizontal em 1440 e 390 | nenhum |
+| Medida                                      | Mínimo                          |
+| ------------------------------------------- | ------------------------------- |
+| Páginas orgânicas conectadas                | 3                               |
+| Palavras úteis por página orgânica          | 100                             |
+| Fotos geradas distintas na home             | 2                               |
+| Páginas orgânicas com pelo menos uma imagem | todas                           |
+| Seção protagonista na home                  | 1                               |
+| Tons distintos na home                      | 3, um deles accent ou secondary |
+| Momentos de motion                          | 1 a 3                           |
+| Erros de `lintPage` e `lintSite`            | 0                               |
+| Overflow horizontal em 1440 e 390           | nenhum                          |
 
 ## Rubrica, 0 a 3
 

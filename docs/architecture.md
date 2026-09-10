@@ -35,13 +35,13 @@ O chat de imagens usa `lib/images/prompt.ts` e `buildImageTools`. Fotos exigem g
 
 O chat de site também pode chamar esse pipeline por `prepare_site_images`: até seis cenas por chamada e oito por turno, uma candidata GPT Image 2 por cena, geradas em lotes de três com o guia do tenant. A ferramenta exige guia existente, recusa proporção incoerente com a composição do perfil e devolve o papel de cada cena. O número da imagem é reservado dentro do próprio insert, porque a geração em paralelo colidia na unicidade de `(tenant_id, seq)`. Isso preserva crítica, biblioteca, numeração e aprovação existentes. Fotos produzidas não são aprovadas automaticamente.
 
-| Papel                     | Configuração no código                                        |
-| ------------------------- | ------------------------------------------------------------- |
-| Chats de site e imagem    | `EIXU_MODEL` → `anthropic/claude-opus-4.5`                    |
-| Revisão visual do rascunho | Chromium na função, atrás de `EIXU_REVIEW_CAPTURE=1`         |
-| Críticos de foto e logo   | `EIXU_CRITIC_MODEL` → `EIXU_MODEL` → mesmo fallback           |
-| Candidatas de foto padrão | Duas chamadas a `openai/gpt-image-2` e uma a `bfl/flux-2-pro` |
-| Logos                     | `openai/gpt-image-2`                                          |
+| Papel                      | Configuração no código                                        |
+| -------------------------- | ------------------------------------------------------------- |
+| Chats de site e imagem     | `EIXU_MODEL` → `anthropic/claude-opus-4.5`                    |
+| Revisão visual do rascunho | Chromium na função, atrás de `EIXU_REVIEW_CAPTURE=1`          |
+| Críticos de foto e logo    | `EIXU_CRITIC_MODEL` → `EIXU_MODEL` → mesmo fallback           |
+| Candidatas de foto padrão  | Duas chamadas a `openai/gpt-image-2` e uma a `bfl/flux-2-pro` |
+| Logos                      | `openai/gpt-image-2`                                          |
 
 As rotas dos chats têm duração máxima de 300 segundos e limites de 30 passos (site) e 14 (imagens). Esses limites encerram a geração; não provam conclusão.
 

@@ -134,13 +134,13 @@ direto a `/s/` sem reescrita continua 404.
 As regras novas foram aplicadas por leitura aos dois tenants reais, sem
 escrever nada. O contraste é o esperado e reproduz o diagnóstico manual:
 
-| Medida | Mecânica Sabiá | Porto Pedras |
-| --- | --- | --- |
-| Erros de composição | 3 | 0 |
-| Home: seções, fotos, tons | 5, 2, três tons | 6, 3, quatro tons |
-| Seção protagonista na home | nenhuma | `feature.explorer` |
-| Páginas orgânicas sem imagem | 2 | 0 |
-| Avisos de proporção | 2 | 6 |
+| Medida                       | Mecânica Sabiá  | Porto Pedras       |
+| ---------------------------- | --------------- | ------------------ |
+| Erros de composição          | 3               | 0                  |
+| Home: seções, fotos, tons    | 5, 2, três tons | 6, 3, quatro tons  |
+| Seção protagonista na home   | nenhuma         | `feature.explorer` |
+| Páginas orgânicas sem imagem | 2               | 0                  |
+| Avisos de proporção          | 2               | 6                  |
 
 Os dois avisos do Sabiá são exatamente os defeitos observados no site
 publicado: foto 4:3 num hero editorial que exibe 16:9 e foto 4:5 numa narrativa

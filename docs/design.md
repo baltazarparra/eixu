@@ -22,14 +22,14 @@ cinco seções, três delas só texto, duas fotos na abertura e subpáginas sem
 imagem chegava a zero apontamentos. O contrato passou a medir composição, em
 `lib/taste/metrics.ts`, e a recusar o que fica abaixo disso.
 
-| Regra | Nível | O que exige |
-| --- | --- | --- |
-| `home-protagonista` | erro | Uma seção de conteúdo da home reúne duas fotos do cliente. O hero atelier conta quando outra seção também mostra o negócio. |
-| `pagina-sem-foto` | erro | Toda página orgânica do tipo `page` tem pelo menos uma imagem. |
-| `home-paleta` | erro | A home aplica `accent` ou `secondary` em uma seção. |
-| `home-tons` | aviso | A home alterna pelo menos três tons. |
-| `imagem-proporcao` | aviso | A proporção da foto corresponde ao que o layout exibe, por `expectedRatio`. |
-| `layout-repetido` | aviso | Dois blocos iguais com o mesmo layout em sequência. |
+| Regra               | Nível | O que exige                                                                                                                 |
+| ------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------- |
+| `home-protagonista` | erro  | Uma seção de conteúdo da home reúne duas fotos do cliente. O hero atelier conta quando outra seção também mostra o negócio. |
+| `pagina-sem-foto`   | erro  | Toda página orgânica do tipo `page` tem pelo menos uma imagem.                                                              |
+| `home-paleta`       | erro  | A home aplica `accent` ou `secondary` em uma seção.                                                                         |
+| `home-tons`         | aviso | A home alterna pelo menos três tons.                                                                                        |
+| `imagem-proporcao`  | aviso | A proporção da foto corresponde ao que o layout exibe, por `expectedRatio`.                                                 |
+| `layout-repetido`   | aviso | Dois blocos iguais com o mesmo layout em sequência.                                                                         |
 
 O gate v2 de `lintPage` deixou de parar em três layouts e duas apresentações:
 agora escala com o tamanho da página, até cinco e quatro. `expectedRatio`
