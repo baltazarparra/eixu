@@ -91,7 +91,7 @@ export default function Home() {
 
           <div className="hero-bottom reveal delay-3">
             <p className="hero-copy">
-              Planejamos e desenvolvemos produtos digitais e sistemas com IA. Da ideia à produção.
+              A pronúncia correta da palavra “eixo” é “êi-xu”.
             </p>
             <a className="round-link" href="#fit" aria-label="Entender quando a EIXU entra">
               <ArrowDown strokeWidth={1.5} />
