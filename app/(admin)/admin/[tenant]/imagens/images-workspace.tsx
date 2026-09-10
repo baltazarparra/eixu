@@ -7,7 +7,7 @@ import { DefaultChatTransport } from 'ai';
 import { Message, chatErrorMessage } from '../chat-parts';
 import type { ImageGuide, TenantImage } from '@/lib/types';
 
-type LibraryState = { guide: ImageGuide; images: TenantImage[] };
+type LibraryState = { guide: ImageGuide; images: TenantImage[]; logoUrl?: string | null };
 
 type Props = {
   tenant: { slug: string; name: string };
@@ -18,9 +18,13 @@ type Props = {
 const SUGGESTIONS = [
   'Define o guia de imagem a partir do briefing.',
   'Gera uma imagem para o hero da home.',
-  'Uma foto do ambiente para a galeria.',
-  'No guia, nada de pessoas olhando para a câmera.',
+  'Cria um logo para o cliente.',
+  'Moderniza o logo anexado.',
 ];
+
+/** Xadrez atrás do logo, para a transparência ficar visível. */
+const CHECKER =
+  'bg-[conic-gradient(#d8d8d8_25%,#ffffff_0_50%,#d8d8d8_0_75%,#ffffff_0)] bg-[length:16px_16px]';
 
 const STATUS_LABEL: Record<string, string> = {
   aprovada: 'Aprovada',
@@ -40,7 +44,10 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
   const [library, setLibrary] = useState<LibraryState>(initial);
   const [input, setInput] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'todas' | 'aprovada' | 'candidata' | 'rejeitada'>('todas');
+  const [filter, setFilter] = useState<'todas' | 'aprovada' | 'candidata' | 'rejeitada' | 'logo'>('todas');
+  const [attachments, setAttachments] = useState<{ url: string; name: string; type: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const toolCountRef = useRef(0);
 
@@ -88,10 +95,55 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, status]);
 
+  /** Sobe para o Blob: o agente e o gerador só trabalham com URL pública. */
+  async function attach(files: FileList | File[] | null) {
+    if (!files?.length) return;
+    setUploading(true);
+    setNotice(null);
+    try {
+      for (const file of Array.from(files)) {
+        if (!file.type.startsWith('image/')) continue;
+        const form = new FormData();
+        form.append('file', file);
+        form.append('kind', 'referencia');
+        const response = await fetch(`/api/admin/${tenant.slug}/upload`, { method: 'POST', body: form });
+        const result = (await response.json()) as { url?: string; error?: string };
+        if (!response.ok || !result.url) throw new Error(result.error ?? 'Falha no upload.');
+        setAttachments((list) => [...list, { url: result.url as string, name: file.name, type: file.type }]);
+      }
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Falha no upload.');
+    } finally {
+      setUploading(false);
+    }
+  }
+
   function submit(text: string) {
-    if (!text.trim() || busy) return;
-    void sendMessage({ text });
+    if ((!text.trim() && attachments.length === 0) || busy || uploading) return;
+    const files = attachments.map((item) => ({
+      type: 'file' as const,
+      mediaType: item.type,
+      url: item.url,
+      filename: item.name,
+    }));
+    void sendMessage({ text: text.trim() || 'Moderniza este logo.', files });
     setInput('');
+    setAttachments([]);
+  }
+
+  async function applyAsLogo(url: string, seq: number) {
+    setNotice(null);
+    const response = await fetch(`/api/admin/${tenant.slug}/settings`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ logoUrl: url }),
+    });
+    if (!response.ok) {
+      setNotice('Não consegui aplicar o logo.');
+      return;
+    }
+    setNotice(`Logo #${seq} aplicado no site.`);
+    await refresh();
   }
 
   async function act(id: string, next: 'aprovada' | 'rejeitada' | 'candidata') {
@@ -121,7 +173,9 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
     await refresh();
   }
 
-  const visible = library.images.filter((image) => filter === 'todas' || image.status === filter);
+  const visible = library.images.filter((image) =>
+    filter === 'todas' ? true : filter === 'logo' ? image.kind === 'logo' : image.status === filter,
+  );
   const batches = useMemo(() => {
     const map = new Map<string, TenantImage[]>();
     for (const image of visible) {
@@ -210,10 +264,42 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
             }}
             className="border-t p-3"
           >
-            <div className="flex flex-col gap-2 rounded-lg border bg-[var(--color-surface)] p-2 focus-within:border-[var(--color-accent)]">
+            <div
+              className="flex flex-col gap-2 rounded-lg border bg-[var(--color-surface)] p-2 focus-within:border-[var(--color-accent)]"
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault();
+                void attach(event.dataTransfer.files);
+              }}
+            >
+              {attachments.length ? (
+                <ul className="flex flex-wrap gap-2 px-1 pt-1">
+                  {attachments.map((item) => (
+                    <li key={item.url} className="relative">
+                      {/* oxlint-disable-next-line next/no-img-element */}
+                      <img src={item.url} alt={item.name} className={`h-14 w-14 rounded-md border object-contain ${CHECKER}`} />
+                      <button
+                        type="button"
+                        aria-label={`Remover ${item.name}`}
+                        onClick={() => setAttachments((list) => list.filter((entry) => entry.url !== item.url))}
+                        className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full border bg-[var(--color-bg)] text-[0.65rem]"
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
               <textarea
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
+                onPaste={(event) => {
+                  const files = Array.from(event.clipboardData.files).filter((file) => file.type.startsWith('image/'));
+                  if (files.length) {
+                    event.preventDefault();
+                    void attach(files);
+                  }
+                }}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' && !event.shiftKey) {
                     event.preventDefault();
@@ -225,9 +311,30 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
                 className="w-full resize-none bg-transparent px-1.5 py-1 text-sm outline-none"
               />
               <div className="flex items-center justify-between">
-                <span className="px-1.5 text-[0.68rem] text-[var(--color-muted)]">
-                  {hasGuide ? 'Guia definido' : 'Sem guia: peça para definir primeiro'}
-                </span>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading || busy}
+                    className="rounded-md border px-2.5 py-1 text-[0.72rem] text-[var(--color-muted)] hover:text-[var(--color-text)] disabled:opacity-50"
+                  >
+                    {uploading ? 'Enviando' : 'Anexar logo'}
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(event) => {
+                      void attach(event.target.files);
+                      event.target.value = '';
+                    }}
+                  />
+                  <span className="text-[0.68rem] text-[var(--color-muted)]">
+                    {hasGuide ? 'Guia definido' : 'Sem guia para fotos'}
+                  </span>
+                </div>
                 {busy ? (
                   <button type="button" onClick={() => stop()} className="rounded-md border px-3 py-1.5 text-xs">
                     Parar
@@ -235,7 +342,7 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
                 ) : (
                   <button
                     type="submit"
-                    disabled={!input.trim()}
+                    disabled={(!input.trim() && attachments.length === 0) || uploading}
                     className="rounded-md bg-[var(--color-accent)] px-3.5 py-1.5 text-xs font-medium text-[var(--color-accent-ink)] disabled:opacity-40"
                   >
                     Enviar
@@ -263,7 +370,7 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
               <span className="text-[0.72rem] text-[var(--color-muted)]">Guia de imagem ainda não definido.</span>
             )}
             <div className="ml-auto flex items-center gap-1">
-              {(['todas', 'aprovada', 'candidata', 'rejeitada'] as const).map((option) => (
+              {(['todas', 'logo', 'aprovada', 'candidata', 'rejeitada'] as const).map((option) => (
                 <button
                   key={option}
                   type="button"
@@ -272,7 +379,7 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
                     filter === option ? 'bg-[var(--color-surface-2)]' : 'text-[var(--color-muted)]'
                   }`}
                 >
-                  {option === 'todas' ? 'Todas' : STATUS_LABEL[option]}
+                  {option === 'todas' ? 'Todas' : option === 'logo' ? 'Logos' : STATUS_LABEL[option]}
                 </button>
               ))}
             </div>
@@ -304,13 +411,18 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
                             image.status === 'rejeitada' ? 'opacity-50' : ''
                           }`}
                         >
-                          <a href={image.url} target="_blank" rel="noreferrer" className="block bg-black/20">
+                          <a
+                            href={image.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={`block ${image.kind === 'logo' ? CHECKER : 'bg-black/20'}`}
+                          >
                             {/* Arquivo recém-gerado no Blob; o otimizador não agrega nada aqui. */}
                             {/* oxlint-disable-next-line next/no-img-element */}
                             <img
                               src={image.url}
                               alt={image.alt ?? image.requestText}
-                              className="max-h-72 w-full object-contain"
+                              className={`w-full object-contain ${image.kind === 'logo' ? 'max-h-52 p-4' : 'max-h-72'}`}
                               loading="lazy"
                             />
                           </a>
@@ -320,7 +432,24 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
                               <span className={`font-medium ${scoreTone(image.score)}`}>
                                 {image.score === null ? 'sem nota' : image.score.toFixed(1)}
                               </span>
-                              <span className="text-[var(--color-muted)]">{image.model.split('/')[1]}</span>
+                              <span className="text-[var(--color-muted)]">
+                                {image.kind === 'logo'
+                                  ? (image.critique.variante ?? 'logo')
+                                  : image.model.split('/')[1]}
+                              </span>
+                              {image.kind === 'logo' && typeof image.critique.fidelidade_original === 'number' ? (
+                                <span
+                                  className="text-[var(--color-muted)]"
+                                  title="Quanto a variante ainda lembra o logo original, de 0 a 10"
+                                >
+                                  fid {image.critique.fidelidade_original}
+                                </span>
+                              ) : null}
+                              {image.url === library.logoUrl ? (
+                                <span className="rounded-full bg-[color-mix(in_oklab,var(--color-accent)_25%,transparent)] px-2 py-0.5 text-[0.65rem] text-[var(--color-accent)]">
+                                  Logo do site
+                                </span>
+                              ) : null}
                               <span
                                 className={`ml-auto rounded-full px-2 py-0.5 text-[0.65rem] ${
                                   image.status === 'aprovada'
@@ -369,7 +498,16 @@ export function ImagesWorkspace({ tenant, initial, history }: Props) {
                                   Rejeitar
                                 </button>
                               ) : null}
-                              {image.status === 'aprovada' ? (
+                              {image.status === 'aprovada' && image.kind === 'logo' && image.url !== library.logoUrl ? (
+                                <button
+                                  type="button"
+                                  onClick={() => void applyAsLogo(image.url, image.seq)}
+                                  className="rounded-md border px-2.5 py-1 text-[0.7rem] text-[var(--color-muted)] hover:text-[var(--color-text)]"
+                                >
+                                  Usar como logo
+                                </button>
+                              ) : null}
+                              {image.status === 'aprovada' && image.kind !== 'logo' ? (
                                 <button
                                   type="button"
                                   onClick={() => {

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { isAuthenticated } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { getTenantBySlug } from '@/lib/tenant-queries';
+import { getTenantBySlug, setBrandLogo } from '@/lib/tenant-queries';
 
 const patch = z.object({
   name: z.string().min(1).max(80).optional(),
@@ -21,20 +21,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ te
   if (!parsed.success) return Response.json({ error: parsed.error.issues[0]?.message }, { status: 400 });
   const input = parsed.data;
 
-  const brand = { ...tenant.brand };
-  if (input.logoUrl !== undefined) {
-    if (input.logoUrl) brand.logoUrl = input.logoUrl;
-    else delete brand.logoUrl;
-  }
-
   await db()`
     update tenants set
       name = ${input.name ?? tenant.name},
       whatsapp = ${input.whatsapp === undefined ? tenant.whatsapp : input.whatsapp},
       contact_email = ${input.contactEmail === undefined ? tenant.contactEmail : input.contactEmail},
-      brand = ${JSON.stringify(brand)}::jsonb,
       updated_at = now()
     where id = ${tenant.id}
   `;
+  const brand = input.logoUrl === undefined ? tenant.brand : await setBrandLogo(tenant.id, input.logoUrl);
   return Response.json({ ok: true, brand });
 }

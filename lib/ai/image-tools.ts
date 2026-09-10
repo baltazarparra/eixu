@@ -4,17 +4,21 @@ import { z } from 'zod';
 import { ToolError, safe } from '@/lib/ai/tools';
 import { critique } from '@/lib/images/critic';
 import { DEFAULT_MODELS, generateCandidates } from '@/lib/images/generate';
+import { fetchReference, generateLogoCandidates } from '@/lib/images/logo';
+import { critiqueLogo } from '@/lib/images/logo-critic';
 import {
   deleteImage,
   getGuide,
   getImage,
   guideIsEmpty,
-  isReferenced,
+  referenceMessage,
+  referenceReason,
   listImages,
   setGuide,
   setStatus,
 } from '@/lib/images/queries';
 import { RATIOS, ratioForBlock, type Ratio } from '@/lib/images/ratios';
+import { setBrandLogo } from '@/lib/tenant-queries';
 import type { ImageStatus, Tenant } from '@/lib/types';
 
 /** Só modelos verificados no gateway desta conta. Recraft recusa a chamada. */
@@ -134,6 +138,94 @@ export function buildImageTools(tenant: Tenant) {
       }),
     }),
 
+    generate_logo: tool({
+      description:
+        'Cria variantes de logotipo e avalia cada uma. Em "modernizar", precisa da URL do logo antigo que o operador anexou no chat; devolve uma variante fiel e uma ousada. Em "criar", propõe conceitos do zero. Não aprova nada e não troca o logo do site.',
+      inputSchema: z.object({
+        mode: z.enum(['modernizar', 'criar']),
+        referenceUrl: z.url().optional().describe('URL do logo anexado. Obrigatória em modernizar.'),
+        brief: z.string().max(400).optional().describe('Segmento, tom, símbolo desejado, cores.'),
+        brandName: z.string().max(60).optional().describe('Nome exato a escrever. Padrão: o nome do cliente.'),
+        wordmark: z.boolean().default(true).describe('false quando o operador pediu só o símbolo, sem texto.'),
+        variants: z.number().int().min(2).max(3).default(2),
+      }),
+      execute: safe(async (input) => {
+        if (input.mode === 'modernizar' && !input.referenceUrl) {
+          throw new ToolError('Para modernizar eu preciso do logo atual. Peça para o operador anexar a imagem no chat.');
+        }
+
+        const brandName = input.brandName?.trim() || tenant.name;
+        const reference = input.referenceUrl ? await fetchReference(input.referenceUrl) : undefined;
+        const guide = await getGuide(tenant.id);
+
+        const { batchId, images, failures } = await generateLogoCandidates({
+          tenant,
+          guide,
+          mode: input.mode,
+          brandName,
+          wordmark: input.wordmark,
+          brief: input.brief,
+          reference,
+          referenceUrl: input.referenceUrl,
+          variants: input.variants,
+        });
+
+        if (!images.length) {
+          throw new ToolError(`Nenhuma variante foi gerada. Motivos: ${failures.join(' | ') || 'desconhecido'}`);
+        }
+
+        const critiques = await Promise.all(
+          images.map((image) =>
+            critiqueLogo({
+              id: image.id,
+              bytes: image.bytes,
+              variant: image.variant,
+              mode: input.mode,
+              brandName,
+              wordmark: input.wordmark,
+              reference,
+            }),
+          ),
+        );
+
+        const ranked = images
+          .map((image, index) => ({
+            id: image.id,
+            numero: `#${image.seq}`,
+            variante: image.variant,
+            url: image.url,
+            nota: critiques[index].nota ?? null,
+            fidelidade_original: critiques[index].fidelidade_original ?? null,
+            nome_lido: critiques[index].nome_lido ?? null,
+            nome_correto: critiques[index].nome_correto ?? null,
+            fundo_transparente: critiques[index].fundo_transparente ?? null,
+            aprovado_pelo_critico: critiques[index].aprovado ?? false,
+            problemas: critiques[index].problemas ?? (critiques[index].erro ? [critiques[index].erro] : []),
+          }))
+          .sort((a, b) => (b.nota ?? -1) - (a.nota ?? -1));
+
+        return { batchId, variantes: ranked, falhas: failures };
+      }),
+    }),
+
+    set_site_logo: tool({
+      description:
+        'Define uma imagem da biblioteca como o logo do site, na navegação e no rodapé. Use só quando o operador pedir.',
+      inputSchema: z.object({ image: z.string().describe('O número ("#3") ou o id da imagem.') }),
+      execute: safe(async ({ image: ref }) => {
+        const image = await requireImage(tenant, ref);
+        if (image.kind !== 'logo') {
+          throw new ToolError(`A imagem #${image.seq} é uma foto, não um logo. Gere um logo com generate_logo.`);
+        }
+        if (image.status === 'rejeitada') {
+          throw new ToolError(`A imagem #${image.seq} está rejeitada. Escolha outra variante.`);
+        }
+        if (image.status !== 'aprovada') await setStatus(tenant.id, image.id, 'aprovada');
+        await setBrandLogo(tenant.id, image.url);
+        return { ok: true, numero: `#${image.seq}`, logoUrl: image.url };
+      }),
+    }),
+
     approve_image: tool({
       description: 'Aprova uma candidata. Só a partir daí ela fica disponível para o agente do site usar.',
       inputSchema: z.object({
@@ -184,9 +276,8 @@ export function buildImageTools(tenant: Tenant) {
       inputSchema: z.object({ image: z.string() }),
       execute: safe(async ({ image: ref }) => {
         const image = await requireImage(tenant, ref);
-        if (await isReferenced(tenant.id, image.url)) {
-          throw new ToolError(`A imagem #${image.seq} está em uso numa página. Troque a imagem do bloco antes de apagar.`);
-        }
+        const reason = await referenceReason(tenant.id, image.url);
+        if (reason) throw new ToolError(referenceMessage(image.seq, reason));
         await del(image.url).catch(() => undefined);
         await deleteImage(tenant.id, image.id);
         return { ok: true, apagada: `#${image.seq}` };

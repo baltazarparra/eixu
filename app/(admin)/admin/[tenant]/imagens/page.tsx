@@ -27,7 +27,7 @@ export default async function ImagesPage({ params }: { params: Promise<{ tenant:
   return (
     <ImagesWorkspace
       tenant={{ slug: tenant.slug, name: tenant.name }}
-      initial={{ guide, images }}
+      initial={{ guide, images, logoUrl: tenant.brand.logoUrl ?? null }}
       history={history}
     />
   );

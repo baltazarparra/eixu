@@ -78,6 +78,15 @@ export function describeTool(name: string, input: unknown, output: unknown, stat
       return pending ? 'Aprovando a imagem' : `Aprovou ${str(out.numero) || 'a imagem'}`;
     case 'reject_image':
       return pending ? 'Rejeitando a imagem' : `Rejeitou ${str(out.numero) || 'a imagem'}`;
+    case 'generate_logo': {
+      const mode = str(inp.mode) === 'modernizar' ? 'modernizando o logo' : 'criando o logo';
+      if (pending) return `Gerando variantes e ${mode}`;
+      const list = (out.variantes ?? []) as { numero: string; variante: string; nota: number | null }[];
+      if (!list.length) return 'Nenhuma variante gerada';
+      return `${list.length} variantes avaliadas, melhor ${list[0].numero} (${list[0].variante}) com nota ${list[0].nota ?? 'sem'}`;
+    }
+    case 'set_site_logo':
+      return pending ? 'Definindo o logo do site' : `Definiu ${str(out.numero) || 'a imagem'} como logo do site`;
     case 'list_images':
       return pending ? 'Lendo a biblioteca de imagens' : 'Leu a biblioteca de imagens';
     case 'delete_image':

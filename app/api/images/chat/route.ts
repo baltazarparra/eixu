@@ -6,6 +6,7 @@ import {
   toUIMessageStream,
   type UIMessage,
 } from 'ai';
+import { annotateAttachments } from '@/lib/ai/attachments';
 import { isAuthenticated } from '@/lib/auth';
 import { buildImageTools } from '@/lib/ai/image-tools';
 import { db } from '@/lib/db';
@@ -30,6 +31,9 @@ export async function POST(request: Request) {
   ]);
   const pagesSummary = pages.map((page) => `- /${page.slug} (${page.type}): ${page.title}`).join('\n');
 
+  const messages = annotateAttachments(body.messages);
+  // Persiste o texto que o operador escreveu, não a versão anotada com a URL
+  // do anexo: a anotação é detalhe de implementação e polui o histórico.
   const lastUser = [...body.messages].reverse().find((message) => message.role === 'user');
   if (lastUser) {
     const text = lastUser.parts
@@ -47,7 +51,7 @@ export async function POST(request: Request) {
   const result = streamText({
     model: process.env.EIXU_MODEL || 'anthropic/claude-opus-4.5',
     instructions: imageAgentPrompt(tenant, guide, library, pagesSummary),
-    messages: await convertToModelMessages(body.messages),
+    messages: await convertToModelMessages(messages),
     tools: buildImageTools(tenant),
     stopWhen: isStepCount(14),
     onError: ({ error }) => {

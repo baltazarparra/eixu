@@ -41,6 +41,18 @@ export type ImageStatus = 'candidata' | 'aprovada' | 'rejeitada';
 
 export type Critique = {
   fidelidade?: number;
+  /** Campos do crítico de logo. */
+  legibilidade_48px?: number;
+  vetor_flat?: number;
+  monocromia_viavel?: number;
+  fundo_transparente?: boolean;
+  sem_textura_fotografica?: number;
+  sem_texto_extra?: boolean;
+  nome_lido?: string;
+  nome_correto?: boolean;
+  fidelidade_original?: number | null;
+  variante?: string;
+  precheck?: Record<string, unknown>;
   coerencia_guia?: number;
   realismo?: number;
   sem_alucinacao?: number;
@@ -56,9 +68,13 @@ export type Critique = {
   erro?: string;
 };
 
+export type ImageKind = 'foto' | 'logo';
+
 export type TenantImage = {
   id: string;
   seq: number;
+  kind: ImageKind;
+  referenceUrls: string[];
   batchId: string;
   requestText: string;
   targetBlock: string | null;

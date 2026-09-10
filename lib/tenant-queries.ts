@@ -66,6 +66,19 @@ export async function listTenants(): Promise<(Tenant & { pageCount: number; lead
   }));
 }
 
+/** Define o logo do site. Nav e rodapé passam a usar a imagem. */
+export async function setBrandLogo(tenantId: string, url: string | null): Promise<Record<string, unknown>> {
+  const rows = (await db()`
+    update tenants set
+      brand = case when ${url}::text is null then brand - 'logoUrl'
+                   else brand || jsonb_build_object('logoUrl', ${url}::text) end,
+      updated_at = now()
+    where id = ${tenantId}
+    returning brand
+  `) as Row[];
+  return (rows[0]?.brand ?? {}) as Record<string, unknown>;
+}
+
 export async function listPages(tenantId: string): Promise<Page[]> {
   const rows = (await db()`
     select * from pages where tenant_id = ${tenantId} order by nav_order asc, created_at asc

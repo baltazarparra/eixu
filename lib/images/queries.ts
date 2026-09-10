@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import type { Critique, ImageGuide, ImageStatus, TenantImage } from '@/lib/types';
+import type { Critique, ImageGuide, ImageKind, ImageStatus, TenantImage } from '@/lib/types';
 
 type Row = Record<string, unknown>;
 
@@ -14,6 +14,8 @@ function toImage(row: Row): TenantImage {
   return {
     id: str(row.id),
     seq: Number(row.seq ?? 0),
+    kind: ((row.kind as string) ?? 'foto') as ImageKind,
+    referenceUrls: (row.reference_urls ?? []) as string[],
     batchId: str(row.batch_id),
     requestText: str(row.request_text),
     targetBlock: (row.target_block as string) ?? null,
@@ -69,11 +71,15 @@ export async function insertImage(input: {
   promptFinal: string;
   url: string;
   blobPath: string;
+  kind?: ImageKind;
+  referenceUrls?: string[];
 }): Promise<TenantImage> {
   const rows = (await db()`
-    insert into images (tenant_id, seq, batch_id, request_text, target_block, ratio, model, prompt_final, url, blob_path)
+    insert into images (tenant_id, seq, batch_id, request_text, target_block, ratio, model, prompt_final,
+                        url, blob_path, kind, reference_urls)
     values (${input.tenantId}, ${input.seq}, ${input.batchId}, ${input.requestText}, ${input.targetBlock},
-            ${input.ratio}, ${input.model}, ${input.promptFinal}, ${input.url}, ${input.blobPath})
+            ${input.ratio}, ${input.model}, ${input.promptFinal}, ${input.url}, ${input.blobPath},
+            ${input.kind ?? 'foto'}, ${JSON.stringify(input.referenceUrls ?? [])}::jsonb)
     returning *
   `) as Row[];
   return toImage(rows[0]);
@@ -112,12 +118,27 @@ export async function deleteImage(tenantId: string, id: string): Promise<void> {
   await db()`delete from images where tenant_id = ${tenantId} and id = ${id}`;
 }
 
-/** Uma imagem usada em alguma página não pode ser apagada sem quebrar o site. */
-export async function isReferenced(tenantId: string, url: string): Promise<boolean> {
-  const rows = (await db()`
+/**
+ * Imagem em uso não pode ser apagada sem quebrar o site: vale para bloco de
+ * página e também para o logo ativo, que vive em tenants.brand. Devolve o
+ * motivo, para o aviso dizer onde procurar.
+ */
+export async function referenceReason(tenantId: string, url: string): Promise<'pagina' | 'logo' | null> {
+  const inPages = (await db()`
     select 1 from pages where tenant_id = ${tenantId} and blocks::text like ${'%' + url + '%'} limit 1
   `) as Row[];
-  return rows.length > 0;
+  if (inPages.length) return 'pagina';
+  const asLogo = (await db()`
+    select 1 from tenants where id = ${tenantId} and brand->>'logoUrl' = ${url} limit 1
+  `) as Row[];
+  return asLogo.length ? 'logo' : null;
+}
+
+/** Texto pronto para o aviso de recusa. */
+export function referenceMessage(seq: number, reason: 'pagina' | 'logo'): string {
+  return reason === 'logo'
+    ? `A imagem #${seq} é o logo do site. Defina outro logo antes de apagar.`
+    : `A imagem #${seq} está em uso numa página. Troque a imagem do bloco antes de apagar.`;
 }
 
 export async function getGuide(tenantId: string): Promise<ImageGuide> {

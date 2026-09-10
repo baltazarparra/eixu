@@ -1,7 +1,7 @@
 import { del } from '@vercel/blob';
 import { z } from 'zod';
 import { isAuthenticated } from '@/lib/auth';
-import { deleteImage, getGuide, getImage, isReferenced, listImages, setStatus } from '@/lib/images/queries';
+import { deleteImage, getGuide, getImage, listImages, referenceMessage, referenceReason, setStatus } from '@/lib/images/queries';
 import { getTenantBySlug } from '@/lib/tenant-queries';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +19,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ ten
   const resolved = await resolve(params);
   if (resolved.error) return resolved.error;
   const [images, guide] = await Promise.all([listImages(resolved.tenant.id), getGuide(resolved.tenant.id)]);
-  return Response.json({ guide, images });
+  return Response.json({ guide, images, logoUrl: resolved.tenant.brand.logoUrl ?? null });
 }
 
 const patch = z.object({
@@ -47,9 +47,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ t
 
   const image = await getImage(resolved.tenant.id, id);
   if (!image) return Response.json({ error: 'Imagem não encontrada.' }, { status: 404 });
-  if (await isReferenced(resolved.tenant.id, image.url)) {
-    return Response.json({ error: `A imagem #${image.seq} está em uso numa página.` }, { status: 409 });
-  }
+  const reason = await referenceReason(resolved.tenant.id, image.url);
+  if (reason) return Response.json({ error: referenceMessage(image.seq, reason) }, { status: 409 });
 
   await del(image.url).catch(() => undefined);
   await deleteImage(resolved.tenant.id, id);

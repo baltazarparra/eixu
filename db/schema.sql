@@ -111,6 +111,8 @@ create table if not exists images (
 -- Colunas acrescentadas depois da primeira versão do schema.
 alter table tenants       add column if not exists image_guide jsonb not null default '{}'::jsonb;
 alter table chat_messages add column if not exists channel text not null default 'site';
+-- 'foto' ou 'logo'. Coluna própria porque target_block é enum de blocos do site.
+alter table images        add column if not exists kind text not null default 'foto';
 
 create index if not exists pages_tenant_idx        on pages (tenant_id);
 create index if not exists images_tenant_time_idx  on images (tenant_id, created_at desc);
