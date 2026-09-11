@@ -39,7 +39,7 @@ import type { Page, Tenant, TenantImage } from '@/lib/types';
 export const maxDuration = 300;
 
 /** Modelo do agente. Com créditos no AI Gateway, Claude é o padrão. */
-const MODEL = () => process.env.EIXU_MODEL || 'anthropic/claude-opus-4.5';
+const MODEL = () => process.env.EIXU_MODEL || 'anthropic/claude-opus-5';
 
 /**
  * A fase só abre com o estado que ela pressupõe. Sem isso o agente tentava

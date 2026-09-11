@@ -88,7 +88,7 @@ const conversation = [
 const before = await convertToModelMessages(conversation);
 const after = await convertToModelMessages(economicalMessages(conversation));
 const report = {
-  model: process.env.EIXU_MODEL || 'anthropic/claude-opus-4.5',
+  model: process.env.EIXU_MODEL || 'anthropic/claude-opus-5',
   beforeChars: JSON.stringify(before).length,
   afterChars: JSON.stringify(after).length,
   runs: [],
