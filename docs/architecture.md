@@ -46,7 +46,7 @@ Logos podem ser criados ou modernizados a partir de referência por `generate_lo
 
 | Papel                      | Configuração no código                               |
 | -------------------------- | ---------------------------------------------------- |
-| Chat do site               | `EIXU_MODEL` → `anthropic/claude-opus-4.5`           |
+| Chat do site               | `EIXU_MODEL` → `anthropic/claude-opus-5`             |
 | Revisão visual do rascunho | Chromium na função, atrás de `EIXU_REVIEW_CAPTURE=1` |
 | Críticos de foto e logo    | `EIXU_CRITIC_MODEL` → `EIXU_MODEL` → mesmo fallback  |
 | Cenas do site              | Uma chamada a `openai/gpt-image-2` por cena          |

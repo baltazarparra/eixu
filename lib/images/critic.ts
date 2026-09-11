@@ -21,7 +21,7 @@ export const critiqueSchema = z.object({
   descricao: z.string().max(200).describe('Uma frase para o operador achar esta imagem depois.'),
 });
 
-const MODEL = () => process.env.EIXU_CRITIC_MODEL || process.env.EIXU_MODEL || 'anthropic/claude-opus-4.5';
+const MODEL = () => process.env.EIXU_CRITIC_MODEL || process.env.EIXU_MODEL || 'anthropic/claude-opus-5';
 
 /**
  * Crítico de imagem. Olha a imagem de verdade, não o prompt, e devolve nota

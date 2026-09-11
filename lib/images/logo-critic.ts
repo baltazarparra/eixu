@@ -24,7 +24,7 @@ export const logoCritiqueSchema = z.object({
   descricao: z.string().max(200),
 });
 
-const MODEL = () => process.env.EIXU_CRITIC_MODEL || process.env.EIXU_MODEL || 'anthropic/claude-opus-4.5';
+const MODEL = () => process.env.EIXU_CRITIC_MODEL || process.env.EIXU_MODEL || 'anthropic/claude-opus-5';
 
 export type Precheck = {
   hasAlpha: boolean;
