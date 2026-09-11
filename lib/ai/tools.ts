@@ -23,12 +23,15 @@ import { guideTool } from '@/lib/ai/guide-tool';
 import {
   getGuide,
   getImage,
+  getImageByNumber,
   guideIsEmpty,
   listImages,
 } from '@/lib/images/queries';
 import { fetchReference, generateLogoCandidates } from '@/lib/images/logo';
 import { critiqueLogo } from '@/lib/images/logo-critic';
 import { prepareSiteImages } from '@/lib/images/site-assets';
+import { reviseImage } from '@/lib/images/revise';
+import { replaceDraftImage } from '@/lib/images/replacement';
 import { withSceneGenerationLock } from '@/lib/images/generation-lock';
 import {
   SCENE_ROLES,
@@ -150,12 +153,13 @@ async function requireImage(
   ref: string,
 ): Promise<TenantImage> {
   const clean = ref.trim().replace(/^#/, '');
-  const all = await listImages(tenantId);
-  const bySeq = /^\d+$/.test(clean)
-    ? all.find((image) => image.seq === Number(clean))
-    : undefined;
-  const image = bySeq ?? (await getImage(tenantId, clean));
+  const image = /^[1-9]\d{0,8}$/.test(clean)
+    ? await getImageByNumber(tenantId, Number(clean))
+    : z.uuid().safeParse(clean).success
+      ? await getImage(tenantId, clean)
+      : null;
   if (!image) {
+    const all = await listImages(tenantId);
     const inventory = all
       .slice(0, 12)
       .map((item) => `#${item.seq} ${item.status}`)
@@ -165,11 +169,6 @@ async function requireImage(
     );
   }
   return image;
-}
-
-/** Fotos geradas que o operador já aprovou: as únicas que entram no rascunho. */
-function approvedPhotos(images: TenantImage[]): TenantImage[] {
-  return generatedPhotos(images).filter((image) => image.status === 'aprovada');
 }
 
 export function buildTools(tenant: Tenant, context: ToolContext = {}) {
@@ -294,7 +293,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
     prepare_site_images: tool({
       description:
-        'Gera cenas do site pelo estúdio EIXU, com o guia do cliente e crítica por imagem. Na etapa de cenas é uma cena por chamada, a próxima do plano. A imagem nasce candidata e sem URL: o operador aprova ou recusa no painel, e só então ela entra na biblioteca.',
+        'Gera cenas do site com o guia do cliente e crítica por imagem. Na etapa de cenas é uma cena por chamada, a próxima do plano. Retorna número e URL disponíveis para uso imediato, sem aprovação. Para alterar uma imagem existente pelo número, use update_image.',
       inputSchema: z.object({
         scenes: z
           .array(
@@ -340,8 +339,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           throw new ToolError(
             'prepare_site_images exige a direção v2. Chame set_design antes de gerar cenas.',
           );
-        // Na etapa de cenas o operador decide imagem por imagem: gerar um lote
-        // encheria a fila de decisões antes de ele ver a primeira.
+        // Uma cena por requisição mantém a geração dentro do limite de tempo.
         const inPhase = context.phase === 'cenas';
         const budget = inPhase ? 1 : 8;
         if (inPhase && scenes.length > 1)
@@ -350,7 +348,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           );
         if (scenesPrepared + scenes.length > budget)
           throw new ToolError(
-            `Orçamento de cenas deste turno esgotado: ${scenesPrepared} de ${budget} já ${scenesPrepared === 1 ? 'foi pedida' : 'foram pedidas'}. Encerre o turno e aguarde a decisão do operador.`,
+            `Orçamento de cenas deste turno esgotado: ${scenesPrepared} de ${budget} já ${scenesPrepared === 1 ? 'foi pedida' : 'foram pedidas'}. Encerre o turno.`,
           );
 
         const prepared = scenes.map((scene) => {
@@ -388,22 +386,15 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
               'O guia de imagem ainda não existe. Chame define_image_guide antes de gerar: sem ele as cenas saem genéricas.',
             );
           const result = await withSceneGenerationLock(tenant.id, async () => {
-            // Relê dentro do lock: o snapshot da rota pode anteceder outra
-            // geração. Candidata pendente não preenche vaga nem permite avançar.
+            // Relê a cobertura dentro do lock, pois outra requisição pode ter
+            // gerado a mesma vaga depois do snapshot da rota.
             const library = await listImages(tenant.id);
-            if (
-              inPhase &&
-              library.some((image) => image.status === 'candidata')
-            )
-              throw new ToolError(
-                'Há imagem aguardando decisão. Encerre o turno e aguarde a aprovação ou recusa do operador.',
-              );
             const plan = scenePlan(design, 3);
-            const { missing } = sceneCoverage(plan, approvedPhotos(library));
+            const { missing } = sceneCoverage(plan, generatedPhotos(library));
             if (inPhase) {
               if (!missing.length)
                 throw new ToolError(
-                  'O plano já está coberto por fotos aprovadas. Siga para a composição.',
+                  'O plano já está coberto por fotos disponíveis. Siga para a composição.',
                 );
               if (
                 !missing.some(
@@ -424,13 +415,17 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
               },
               prepared,
             );
+            const coverage = sceneCoverage(
+              plan,
+              generatedPhotos(await listImages(tenant.id)),
+            );
             return {
               ...generated,
-              cobertura: missing.length
-                ? `Vagas do plano ainda sem foto aprovada: ${missing
+              cobertura: coverage.missing.length
+                ? `Vagas do plano ainda sem foto: ${coverage.missing
                     .map((slot) => `${slot.role} (${slot.targetBlock})`)
                     .join(', ')}.`
-                : 'O plano de cenas já está coberto por fotos aprovadas.',
+                : 'O plano de cenas já está coberto por fotos disponíveis.',
             };
           });
           if (result === null)
@@ -444,9 +439,96 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
       }),
     }),
 
+    update_image: tool({
+      description:
+        'Altera uma imagem existente pelo número, por exemplo "quero atualizar a imagem #5, quero outro carro". Usa a imagem original como referência, mantém a proporção e salva uma nova versão numerada na biblioteca, sem aprovação. Troca as ocorrências nos rascunhos deste cliente e preserva os snapshots publicados. Para logo, a aplicação na marca continua em set_site_logo por pedido do usuário.',
+      inputSchema: z.object({
+        image: z
+          .string()
+          .describe('Número da imagem ("#5") ou seu id, sempre deste cliente.'),
+        request: z
+          .string()
+          .trim()
+          .min(3)
+          .max(500)
+          .describe('O que o usuário quer mudar na imagem.'),
+        brandName: z
+          .string()
+          .trim()
+          .min(1)
+          .max(60)
+          .optional()
+          .describe('Só para logo: nome exato, quando solicitado.'),
+        wordmark: z
+          .boolean()
+          .optional()
+          .describe(
+            'Só para logo: false para remover texto; omita para preservar.',
+          ),
+      }),
+      execute: safe(async ({ image: ref, request, brandName, wordmark }) => {
+        if (scenesPrepared >= 8)
+          throw new ToolError(
+            'Orçamento de imagens deste turno esgotado. Encerre o turno.',
+          );
+        scenesPrepared += 1;
+        let generationStarted = false;
+        try {
+          const result = await withSceneGenerationLock(tenant.id, async () => {
+            const previous = await requireImage(tenant.id, ref);
+            generationStarted = true;
+            const image = await reviseImage(
+              {
+                ...tenant,
+                brand: activeBrand,
+                dials: activeDials,
+                brief: activeBrief,
+              },
+              previous,
+              request,
+              { brandName, wordmark },
+            );
+            const saved = {
+              anterior: `#${previous.seq}`,
+              numero: `#${image.seq}`,
+              url: image.url,
+              alt: image.alt,
+              nota: image.score,
+              problemas: image.critique.problemas ?? [],
+            };
+            try {
+              const pages = await replaceDraftImage(tenant.id, previous, image);
+              return {
+                ok: true,
+                ...saved,
+                paginasAtualizadas: pages,
+                orientacao:
+                  previous.url === activeBrand.logoUrl
+                    ? 'Nova versão salva na biblioteca. O logo da marca ainda é o anterior; use set_site_logo somente quando a aplicação foi solicitada.'
+                    : 'Nova versão salva na biblioteca. A anterior foi preservada; as páginas publicadas só mudam após nova publicação.',
+              };
+            } catch (error) {
+              return {
+                ok: false,
+                ...saved,
+                error: `A nova imagem foi salva, mas não foi aplicada aos rascunhos: ${error instanceof Error ? error.message : 'falha na gravação'}`,
+              };
+            }
+          });
+          if (result === null)
+            throw new ToolError(
+              'Já há uma geração de imagens em andamento para este cliente. Aguarde a conclusão.',
+            );
+          return result;
+        } finally {
+          if (!generationStarted) scenesPrepared -= 1;
+        }
+      }),
+    }),
+
     generate_logo: tool({
       description:
-        'Cria variantes de logotipo e avalia cada uma. Em "modernizar", precisa da URL do logo que o operador anexou no chat; devolve uma variante fiel e uma ousada. Em "criar", propõe conceitos do zero. Cada variante aguarda a decisão do operador no painel; esta ferramenta não aprova nada e não troca o logo do site.',
+        'Cria variantes de logotipo e avalia cada uma. Em "modernizar", usa a URL do logo anexado; devolve uma variante fiel e uma ousada. Em "criar", propõe conceitos do zero. As variantes ficam disponíveis na biblioteca com número e URL, sem aprovação. A aplicação como logo do site depende do pedido do usuário.',
       inputSchema: z.object({
         mode: z.enum(['modernizar', 'criar']),
         referenceUrl: z
@@ -512,11 +594,10 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         );
 
         return {
-          // Sem URL: a variante só existe para o site depois que o operador
-          // aprova no painel e pede a aplicação.
           variantes: images
             .map((image, index) => ({
               numero: `#${image.seq}`,
+              url: image.url,
               variante: image.variant,
               nota: critiques[index].nota ?? null,
               fidelidade_original: critiques[index].fidelidade_original ?? null,
@@ -528,15 +609,15 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             }))
             .sort((a, b) => (b.nota ?? -1) - (a.nota ?? -1)),
           ...(failures.length ? { falhas: failures } : {}),
-          aguardando:
-            'O operador decide cada variante no painel. Descreva as opções e espere a escolha dele.',
+          orientacao:
+            'Variantes disponíveis na biblioteca, sem aprovação. Aplique como logo somente quando solicitado pelo usuário.',
         };
       }),
     }),
 
     set_site_logo: tool({
       description:
-        'Define uma imagem já aprovada como o logo do site, na navegação e no rodapé. Use só quando o operador pedir.',
+        'Define um logo da biblioteca como o logo do site, na navegação e no rodapé. Não exige aprovação da imagem; use quando o usuário pedir a aplicação.',
       inputSchema: z.object({
         image: z.string().describe('O número ("#3") ou o id da imagem.'),
       }),
@@ -552,10 +633,9 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           throw new ToolError(
             `A imagem #${image.seq} é uma foto, não um logo. Gere um logo com generate_logo.`,
           );
-        // Aprovar e aplicar continuam sendo dois passos deliberados.
-        if (image.status !== 'aprovada')
+        if (image.status === 'rejeitada')
           throw new ToolError(
-            `A imagem #${image.seq} ainda não foi aprovada pelo operador no painel.`,
+            `A imagem #${image.seq} foi rejeitada anteriormente. Escolha outro logo ou peça uma nova versão.`,
           );
         activeBrand = { ...activeBrand, logoUrl: image.url };
         await setBrandLogo(tenant.id, image.url);
@@ -708,7 +788,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
     lint_site: tool({
       description:
-        'Valida o projeto completo: 3 páginas orgânicas, jornada de inbound, links internos e 2 fotos geradas na home. Indica aprovação de imagens pendente.',
+        'Valida o projeto completo: 3 páginas orgânicas, jornada de inbound, links internos e 2 fotos geradas na home.',
       inputSchema: z.object({}),
       execute: safe(async () => {
         const [pages, images] = await Promise.all([
@@ -720,16 +800,13 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
     }),
     list_images: tool({
       description:
-        'Lista as imagens aprovadas do cliente, com a URL exata para usar nos blocos. Candidata aguardando a decisão do operador não aparece aqui e não pode entrar no rascunho.',
+        'Lista as imagens disponíveis do cliente com número, descrição e URL exata para os blocos. Não há aprovação. Use update_image para pedidos de alteração pelo número.',
       inputSchema: z.object({}),
       execute: safe(async () => {
         const library = await listImages(tenant.id);
-        const aguardando = library.filter(
-          (image) => image.status === 'candidata',
-        ).length;
         return {
           imagens: library
-            .filter((image) => image.status === 'aprovada')
+            .filter((image) => image.status !== 'rejeitada')
             .map((image) => ({
               numero: `#${image.seq}`,
               kind: image.kind,
@@ -739,11 +816,6 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
               bloco_sugerido: image.targetBlock,
               descricao: image.description ?? image.requestText,
             })),
-          ...(aguardando
-            ? {
-                aguardandoDecisao: `${aguardando} imagem(ns) aguardam a decisão do operador no painel. Elas não têm URL para uso.`,
-              }
-            : {}),
         };
       }),
     }),

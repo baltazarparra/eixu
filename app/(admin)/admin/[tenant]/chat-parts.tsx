@@ -78,13 +78,21 @@ export function describeTool(
     }
     case 'prepare_site_images': {
       if (pending) return 'Gerando a cena';
-      const list = (out.candidatas ?? []) as { numero: string }[];
-      if (out.error || !Array.isArray(out.candidatas) || !list.length)
+      const list = (out.imagens ?? []) as { numero: string }[];
+      if (out.error || !Array.isArray(out.imagens) || !list.length)
         return 'As imagens precisam de atenção';
       return list.length === 1
-        ? `Cena ${list[0].numero} gerada, aguardando sua decisão`
-        : `${list.length} cenas geradas, aguardando sua decisão`;
+        ? `Cena ${list[0].numero} disponível na biblioteca`
+        : `${list.length} cenas disponíveis na biblioteca`;
     }
+    case 'update_image':
+      return pending
+        ? `Atualizando a imagem ${str(inp.image)}`
+        : out.ok === true
+          ? `Imagem ${str(out.anterior)} atualizada: nova versão ${str(out.numero)}`
+          : out.numero
+            ? `Nova versão ${str(out.numero)} salva; aplicação precisa de atenção`
+            : 'A imagem não pôde ser atualizada';
     case 'set_blocks':
       return pending
         ? `Refazendo ${page}`
@@ -141,7 +149,7 @@ export function describeTool(
       if (pending) return `Gerando variantes e ${mode}`;
       const list = (out.variantes ?? []) as { numero: string }[];
       if (!list.length) return 'Nenhuma variante gerada';
-      return `${list.length} variantes de logo geradas, aguardando sua decisão`;
+      return `${list.length} variantes de logo disponíveis na biblioteca`;
     }
     case 'set_site_logo':
       return pending

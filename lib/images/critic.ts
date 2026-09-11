@@ -7,26 +7,43 @@ const score = z.number().min(0).max(10);
 
 export const critiqueSchema = z.object({
   fidelidade: score.describe('A imagem entrega o que foi pedido?'),
-  coerencia_guia: score.describe('Obedece estilo, luz, paleta e proibições do guia?'),
-  realismo: score.describe('Anatomia, geometria, perspectiva e materiais sem artefato.'),
-  sem_alucinacao: score.describe('10 quando não há texto, logo ou marca inventados.'),
+  coerencia_guia: score.describe(
+    'Obedece estilo, luz, paleta e proibições do guia?',
+  ),
+  realismo: score.describe(
+    'Anatomia, geometria, perspectiva e materiais sem artefato.',
+  ),
+  sem_alucinacao: score.describe(
+    '10 quando não há texto, logo ou marca inventados.',
+  ),
   autenticidade: score.describe('0 quando parece banco de imagens genérico.'),
   adequacao_bloco: score.describe('Funciona recortada na proporção do bloco?'),
   nota: score.describe('Nota final, ponderando as anteriores.'),
   aprovado: z.boolean(),
-  tem_texto: z.boolean().describe('Existe qualquer texto legível ou ilegível na imagem?'),
+  tem_texto: z
+    .boolean()
+    .describe('Existe qualquer texto legível ou ilegível na imagem?'),
   pontos_fortes: z.array(z.string().max(120)).max(4),
   problemas: z.array(z.string().max(140)).max(6),
-  alt_sugerido: z.string().max(140).describe('Texto alternativo em português, descritivo.'),
-  descricao: z.string().max(200).describe('Uma frase para o operador achar esta imagem depois.'),
+  alt_sugerido: z
+    .string()
+    .max(140)
+    .describe('Texto alternativo em português, descritivo.'),
+  descricao: z
+    .string()
+    .max(200)
+    .describe('Uma frase para o operador achar esta imagem depois.'),
 });
 
-const MODEL = () => process.env.EIXU_CRITIC_MODEL || process.env.EIXU_MODEL || 'anthropic/claude-opus-5';
+const MODEL = () =>
+  process.env.EIXU_CRITIC_MODEL ||
+  process.env.EIXU_MODEL ||
+  'google/gemini-3.8-flash';
 
 /**
  * Crítico de imagem. Olha a imagem de verdade, não o prompt, e devolve nota
- * com justificativa. Nunca aprova nada sozinho: quem aprova é o operador. O
- * papel dele é ranquear e dizer o que está errado.
+ * com justificativa. A avaliação orienta o uso e os ajustes, sem criar uma
+ * etapa de aprovação nem impedir a disponibilidade da imagem.
  */
 export async function critique(input: {
   id: string;
@@ -40,8 +57,12 @@ export async function critique(input: {
   const guideText = [
     input.guide.estilo ? `estilo ${input.guide.estilo}` : null,
     input.guide.luz ? `luz ${input.guide.luz}` : null,
-    input.guide.paleta?.length ? `paleta ${input.guide.paleta.join(', ')}` : null,
-    input.guide.ambientes?.length ? `ambientes ${input.guide.ambientes.join(', ')}` : null,
+    input.guide.paleta?.length
+      ? `paleta ${input.guide.paleta.join(', ')}`
+      : null,
+    input.guide.ambientes?.length
+      ? `ambientes ${input.guide.ambientes.join(', ')}`
+      : null,
     input.guide.nunca?.length ? `nunca ${input.guide.nunca.join(', ')}` : null,
   ]
     .filter(Boolean)
@@ -74,7 +95,9 @@ Escreva em português do Brasil. Problemas em frases curtas e concretas.`,
                 `Pedido do operador: ${input.request}`,
                 `Guia do cliente: ${guideText || 'não definido'}`,
                 `Bloco de destino: ${input.targetBlock}, proporção ${input.ratio}`,
-                input.allowText ? 'Texto na imagem foi autorizado neste pedido.' : 'Texto na imagem não foi autorizado.',
+                input.allowText
+                  ? 'Texto na imagem foi autorizado neste pedido.'
+                  : 'Texto na imagem não foi autorizado.',
               ].join('\n'),
             },
           ],
@@ -85,9 +108,12 @@ Escreva em português do Brasil. Problemas em frases curtas e concretas.`,
     await saveCritique(input.id, output);
     return output;
   } catch (error) {
-    // Falha do crítico não invalida a imagem: ela fica sem nota e o operador decide.
+    // Falha do crítico não invalida a imagem: ela continua disponível, sem nota.
     const failed: Critique = {
-      erro: error instanceof Error ? error.message.slice(0, 160) : 'falha na crítica',
+      erro:
+        error instanceof Error
+          ? error.message.slice(0, 160)
+          : 'falha na crítica',
     };
     await saveCritique(input.id, failed);
     return failed;

@@ -4,7 +4,7 @@ export function canApplyLogo(
   url: string,
   image?: { kind: string; status: string } | null,
 ): boolean {
-  if (image) return image.kind === 'logo' && image.status === 'aprovada';
+  if (image) return image.kind === 'logo' && image.status !== 'rejeitada';
   try {
     const parsed = new URL(url);
     const prefix = `/tenants/${slug}/logo/`;

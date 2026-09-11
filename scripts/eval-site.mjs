@@ -34,7 +34,7 @@ const { sceneCoverage, scenePlanText, sceneText } = await jiti.import(
   '../lib/images/scene-plan.ts',
 );
 const { generatedPhotos } = await jiti.import('../lib/taste/metrics.ts');
-const { listImages, setStatus } = await jiti.import('../lib/images/queries.ts');
+const { listImages } = await jiti.import('../lib/images/queries.ts');
 const { getTenantBySlug, listPages } = await jiti.import(
   '../lib/tenant-queries.ts',
 );
@@ -101,7 +101,7 @@ async function prepareTenant() {
                               model, prompt_final, url, blob_path, status, alt, description, kind)
           values (${tenant.id}, ${seq}, gen_random_uuid(), ${photo.requestText},
                   ${photo.targetBlock}, ${photo.ratio}, ${photo.model}, ${photo.requestText},
-                  ${photo.url}, ${photo.blobPath}, 'aprovada', ${photo.alt}, ${photo.description}, 'foto')
+                  ${photo.url}, ${photo.blobPath}, 'disponivel', ${photo.alt}, ${photo.description}, 'foto')
         `;
       }
       console.log(
@@ -121,11 +121,11 @@ async function runPhase(tenant, phase, images) {
     )
     .join('\n');
   const imagesSummary = images
-    .filter((image) => image.kind === 'foto' && image.status === 'aprovada')
+    .filter((image) => image.kind === 'foto' && image.status !== 'rejeitada')
     .slice(0, 12)
     .map(
       (image) =>
-        `- #${image.seq} aprovada, ${image.ratio}, ${image.targetBlock ?? 'livre'}: ${image.url} | ${image.alt ?? image.description ?? 'sem descrição'}`,
+        `- #${image.seq} disponível, ${image.ratio}, ${image.targetBlock ?? 'livre'}: ${image.url} | ${image.alt ?? image.description ?? 'sem descrição'}`,
     )
     .join('\n');
   const context = { phase };
@@ -133,10 +133,10 @@ async function runPhase(tenant, phase, images) {
     const plan = plannedScenes(tenant);
     const { covered, missing } = sceneCoverage(
       plan,
-      generatedPhotos(images).filter((image) => image.status === 'aprovada'),
+      generatedPhotos(images).filter((image) => image.status !== 'rejeitada'),
     );
     context.scenePlan = scenePlanText(plan);
-    context.coverage = `${covered.length} de ${plan.length} vagas já têm foto aprovada.`;
+    context.coverage = `${covered.length} de ${plan.length} vagas já têm foto disponível.`;
     if (missing[0]) context.nextScene = sceneText(missing[0]);
   }
   const tools = buildTools(tenant, {
@@ -145,7 +145,7 @@ async function runPhase(tenant, phase, images) {
   });
   const started = Date.now();
   const result = await generateText({
-    model: process.env.EIXU_MODEL || 'anthropic/claude-opus-5',
+    model: process.env.EIXU_MODEL || 'google/gemini-3.8-flash',
     instructions: systemPrompt(tenant, summary, '/', imagesSummary, context),
     messages: [{ role: 'user', content: PHASE_MESSAGE[phase] }],
     tools,
@@ -185,7 +185,7 @@ let tenant = await prepareTenant();
 const report = {
   case: caseName,
   slug: spec.slug,
-  model: process.env.EIXU_MODEL || 'anthropic/claude-opus-5',
+  model: process.env.EIXU_MODEL || 'google/gemini-3.8-flash',
   phases: [],
 };
 report.flow = await runEvaluationPhases({
@@ -196,17 +196,6 @@ report.flow = await runEvaluationPhases({
       listImages(tenant.id),
     ]);
     return { tenant, pages, images };
-  },
-  // No produto quem aprova é o operador. O runner assume esse papel somente
-  // com --generate, sem consumir uma chamada de fase a cada aprovação.
-  approveImage: generateScenes
-    ? (snapshot, image) => setStatus(snapshot.tenant.id, image.id, 'aprovada')
-    : undefined,
-  onApproved: (count) => {
-    report.approvedByRunner = (report.approvedByRunner ?? 0) + count;
-    console.log(
-      `[eval] runner aprovou ${count} candidata(s) no lugar do operador`,
-    );
   },
   nextPhase: ({ tenant, pages, images }) => {
     const state = generationState(tenant, pages, images);

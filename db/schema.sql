@@ -83,7 +83,7 @@ create table if not exists chat_messages (
 );
 
 -- Imagens geradas pelo módulo de imagens. Ficam no Vercel Blob; aqui vive o
--- metadado, a crítica e o estado de aprovação.
+-- metadado, a crítica e a disponibilidade. Não há aprovação de imagens.
 create table if not exists images (
   id             uuid primary key default gen_random_uuid(),
   tenant_id      uuid not null references tenants(id) on delete cascade,
@@ -98,7 +98,7 @@ create table if not exists images (
   prompt_final   text not null,
   url            text not null,
   blob_path      text not null,
-  status         text not null default 'candidata',
+  status         text not null default 'disponivel',
   score          numeric(3,1),
   critique       jsonb not null default '{}'::jsonb,
   alt            text,

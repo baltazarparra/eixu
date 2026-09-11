@@ -53,7 +53,8 @@ export type ImageGuide = {
   definedAt?: string;
 };
 
-export type ImageStatus = 'candidata' | 'aprovada' | 'rejeitada';
+/** Candidata e aprovada são estados legados, ambos disponíveis para uso. */
+export type ImageStatus = 'disponivel' | 'candidata' | 'aprovada' | 'rejeitada';
 
 export type Critique = {
   fidelidade?: number;

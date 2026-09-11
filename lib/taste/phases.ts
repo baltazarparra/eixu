@@ -57,7 +57,7 @@ Pare depois de set_design aprovado. Não monte páginas nem gere imagens nesta f
   cenas: `## Fase 2 de 4: cenas
 Objetivo: produzir a próxima cena do repertório visual, uma por vez.
 Chame prepare_site_images uma única vez, com exatamente uma cena: a indicada em "Próxima cena", no targetBlock e na proporção que ela pede. Escreva o request como cena concreta do negócio, sem adjetivo publicitário.
-Encerre o turno depois da chamada. O operador aprova ou recusa a imagem no painel, e só então a próxima cena é pedida. Não monte páginas nesta fase.`,
+Encerre o turno depois da chamada. A imagem fica disponível com número e URL; o painel segue automaticamente para a próxima cena, sem aprovação. Não monte páginas nesta fase.`,
   composicao: `## Fase 3 de 4: composição
 Objetivo: montar o projeto completo em uma única chamada de build_site, cumprindo o briefing de composição.
 O catálogo abaixo já traz as props e os limites de cada bloco. Escreva o projeto inteiro de uma vez, com as fotos da biblioteca pelas URLs exatas e na proporção que o layout exibe.
@@ -67,7 +67,7 @@ Pare quando build_site voltar ok=true sem pendências. Não publique.`,
 Objetivo: olhar o resultado e corrigir o que ficou pobre.
 Chame review_pages uma vez. Trate cada ERRO e os avisos que empobrecem a página: seção sem foto, tom repetido, proporção incoerente, silhueta repetida, headline em três linhas.
 Corrija com update_block ou set_blocks na página apontada, sem refazer o que está bom. Chame review_pages de novo no máximo uma vez para conferir.
-Pare quando não restar erro. Não publique: aprovação de fotos e publicação são do operador.`,
+Pare quando não restar erro. Não publique: a publicação depende do pedido do operador.`,
 };
 
 /** Mensagem que o painel envia para abrir cada fase. */
@@ -89,7 +89,7 @@ export const PHASE_LABEL: Record<Phase, string> = {
 
 export type GenerationState = {
   hasDesign: boolean;
-  /** Vagas do plano preenchidas por foto aprovada. Candidata não conta. */
+  /** Vagas do plano preenchidas por foto disponível, inclusive candidatas legadas. */
   coveredScenes: number;
   targetScenes: number;
   organicPages: number;

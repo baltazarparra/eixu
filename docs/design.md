@@ -57,14 +57,17 @@ governa só antes da composição: depois que as páginas existem, foto faltando
 erro de pre-flight e quem resolve é a revisão, senão um cliente já publicado
 com biblioteca menor que o plano voltaria a gerar cena sem ninguém pedir.
 
-A etapa de cenas virou um ciclo com o operador. O agente gera a vaga que o
-plano pede e encerra o turno; o painel mostra a imagem, o operador aprova ou
-recusa, e só então a próxima cena é pedida. Aprovada, a imagem entra na
-biblioteca com URL; recusada, some do banco e do Blob. Um lote de seis cenas
-enchia a fila de decisões antes de o operador ver a primeira, e uma candidata
-no rascunho virava pendência de publicação que ele não pedira. `sceneCoverage`
-mede o progresso pelas aprovadas, casando bloco e proporção, para uma foto boa
-da biblioteca antiga não obrigar uma geração paga.
+A etapa de cenas gera uma imagem por requisição para respeitar o limite de
+execução. Ela fica disponível com número e URL imediatamente; o painel segue
+para a próxima cena sem pedir aprovação. `sceneCoverage` mede o progresso
+pelas fotos disponíveis, inclusive candidatas legadas, casando bloco e
+proporção. O laço distingue uma nova cena de uma etapa sem progresso e admite
+até 14 chamadas, incluindo todas as cenas do atelier e a revisão.
+
+A biblioteca mantém o acervo numerado. `update_image` usa a imagem indicada
+como referência, gera uma nova versão e troca a URL e o texto alternativo nos
+rascunhos do mesmo tenant. O original e os snapshots publicados são preservados.
+A crítica continua informativa; não é uma fila de aprovação.
 
 `review_pages` devolve o que ficou pobre com página e bloco apontados. Com
 `EIXU_REVIEW_CAPTURE=1`, ela também abre o rascunho em 1440 e 390 com Chromium e
@@ -136,7 +139,7 @@ adicional em outro ponto da página.
 | Composição global    | Seis heroes, quatro navegações, quatro ritmos, quatro tratamentos de imagem, quatro superfícies e cinco motivos formam a gramática do cliente. Dials controlam variância, densidade e motion. Atelier compõe ambiente e detalhe; não é padrão obrigatório.                                                                                                                                                                                                                                                                                                                                                 |
 | Apresentação local   | Todo bloco aceita `presentation`: tom (incluindo a cor secundária), largura, respiro, alinhamento, borda e motion (`none`, `reveal`, `stagger`, `image`). Use um a três momentos de movimento coerentes com a narrativa.                                                                                                                                                                                                                                                                                                                                                                                   |
 | Exploração e inbound | `feature.explorer` oferece seleção de aplicações com imagem, texto, fatos e CTA por aba; suporta teclado. `editorial.resources` conecta páginas com hierarquia editorial e imagem ou símbolo. Ambos oferecem layouts próprios.                                                                                                                                                                                                                                                                                                                                                                             |
-| Imagens              | Hero aceita posição, `cover`/`contain`, ponto focal e legendas; atelier aceita imagem secundária. A home exige duas fotos geradas distintas da biblioteca do tenant. Só imagem aprovada chega ao agente com URL, então o rascunho nasce com o que o operador já aceitou.                                                                                                                                                                                                                                                                                                                                   |
+| Imagens              | Hero aceita posição, `cover`/`contain`, ponto focal e legendas; atelier aceita imagem secundária. A home exige duas fotos geradas distintas da biblioteca do tenant. Imagens geradas chegam ao agente com número e URL para uso imediato, sem aprovação.                                                                                                                                                                                                                                                                                                                                                   |
 | Navegação e FAQ      | Menu mobile e perguntas usam `details`/`summary` nativos, foco visível e interação por teclado.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | Âncoras              | Todo bloco aceita `anchor` opcional, começando com letra minúscula, seguido de letras/números/hífens, até 64 caracteres. Link usa `#anchor`. Duplicação bloqueia publicação. Formulário sem âncora mantém `contato`.                                                                                                                                                                                                                                                                                                                                                                                       |
 
@@ -152,7 +155,7 @@ O pre-flight v2 exige decisões locais de layout e presentation em páginas come
 
 `lintSite` exige três páginas orgânicas com pelo menos 100 palavras de conteúdo, intenções e SEO distintos, etapas de inbound, links/âncoras válidos e alcance a partir da home. Também aplica o piso de composição descrito acima: duas fotos geradas distintas e uma seção protagonista na home, cor de marca em uma seção e imagem em toda página orgânica. A contagem de palavras impede páginas vazias, mas não prova utilidade editorial. `lib/sites/publish.ts` é compartilhado pela API, `publish_page` e `publish_site`: valida o estado que ficará ao vivo e publica o lote atomicamente. Uma publicação pontual não conta rascunhos de outras páginas como conteúdo publicado.
 
-A proteção de exclusão consulta referências em rascunhos, páginas publicadas e logo, inclusive URLs aninhadas nos itens. A crítica de imagem continua separada da aprovação do operador. Cenas geradas ilustram a proposta; não são evidência de obras, equipe ou instalações reais.
+A proteção de exclusão consulta referências em rascunhos, páginas publicadas e logo, inclusive URLs aninhadas nos itens. A crítica orienta os ajustes sem exigir aprovação. Cenas geradas ilustram a proposta; não são evidência de obras, equipe ou instalações reais.
 
 ## Alcance
 
@@ -169,10 +172,10 @@ com o campo `phase`, continua sendo a medida operacional.
 A régua de avaliação está versionada: `evals/cases/` traz os briefings,
 `docs/eval-rubric.md` a rubrica e `npm run eval:site` roda o fluxo real num
 tenant descartável, gravando o relatório em `outputs/evals/`. Com `--generate`,
-o runner aprova candidatas explicitamente entre chamadas, sem consumir o limite
-de 14 fases; isso deixa espaço para revisar inclusive as seis cenas do atelier.
+o runner gera fotos já disponíveis e segue o mesmo fluxo sem aprovação, com
+limite de 14 chamadas para incluir as seis cenas do atelier e a revisão.
 `report.flow` informa conclusão, próxima fase, motivo da parada e tentativas.
-Limite esgotado, fase com erro ou aprovação que não persistiu resultam em
+Limite esgotado ou fase com erro resultam em
 execução incompleta e código de saída 1.
 
 ## Interface de operação do admin

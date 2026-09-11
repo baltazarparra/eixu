@@ -1,5 +1,58 @@
 # Validação e publicação
 
+## Troca para Gemini 3.8 Flash, 11/09/2026
+
+O fallback do chat, dos críticos de foto/logo, da descrição de avatar social e
+dos dois runners de avaliação passou a `google/gemini-3.8-flash`. O ID foi
+confirmado no catálogo público do AI Gateway e na documentação oficial da
+Vercel e do Google. O AI SDK 7 e o lockfile foram preservados.
+
+- `test:sites`: 75 passaram. `test:admin` com Chrome: 27 passaram; a suíte
+  de concorrência em PostgreSQL ficou pulada por ausência de configuração.
+- Tipos e build Next.js 16.3.3 de produção passaram. O lint dos seis arquivos
+  de código alterados passou; o lint global mantém os 20 erros preexistentes
+  em 13 arquivos fora deste escopo.
+- `eval:admin-cost` sem `--live` passou e registrou o novo modelo em
+  `outputs/admin-review/token-eval-dry.json`, ignorado pelo Git. Essa execução
+  verifica o payload, sem chamar o modelo ou medir sua qualidade e seu custo.
+
+Este checkout não tinha arquivo de ambiente nem credencial do Gateway. Não
+houve ensaio real de streaming, ferramentas ou visão com Gemini, alteração de
+variáveis remotas ou deploy. `EIXU_MODEL` e `EIXU_CRITIC_MODEL` explícitos ainda
+prevalecem sobre o fallback e precisam apontar para o novo modelo no ambiente
+de destino. Os registros históricos abaixo preservam os modelos e as medições
+que realmente foram executados.
+
+## Imagens sem aprovação e alterações por número, 11/09/2026
+
+O fluxo disponibiliza fotos e logos assim que são gerados, preserva candidatas
+legadas na biblioteca e aceita alterações por número no chat. A nova versão
+mantém a original e troca as ocorrências apenas nos rascunhos do tenant.
+
+- `test:sites`: 75 passaram, incluindo disponibilidade sem aprovação,
+  alterações com a imagem original como referência, substituição de URL e alt,
+  isolamento por tenant, snapshot preservado e falhas sem alteração de páginas.
+- `test:admin` com Chrome: 27 passaram; a suíte de concorrência em PostgreSQL
+  local ficou pulada por ausência de configuração. Tipos e build Next.js
+  16.3.3 de produção passaram.
+- Lint dos arquivos alterados e formatação passaram. O lint global continua
+  com os 20 erros preexistentes em 13 arquivos fora deste escopo.
+- Os componentes reais do painel, com CSS emitido pelo build e dados sintéticos,
+  foram conferidos em 320, 390 e 1440 px: sem overflow ou erro de navegador,
+  com imagens legadas visíveis e sem ações de aprovação. O atalho da #5
+  preencheu o chat sem enviar. Com chat/estado simulados, o painel completou
+  briefing, seis cenas do atelier, composição e revisão em nove chamadas;
+  uma cena sem progresso interrompeu a sequência com aviso.
+- O build servido localmente passou em 11 verificações HTTP: páginas públicas,
+  redirecionamentos administrativos ao login (via streaming), APIs sem sessão
+  em 401 e bloqueio de acesso direto a site de cliente e aos artefatos da fixture.
+
+As evidências locais ficam em `outputs/images-no-approval/`, ignorado pelo Git.
+Não houve geração paga, escrita em Neon/Blob remoto ou deploy. A persistência
+da substituição foi exercitada com conexão simulada, não com PostgreSQL real;
+o resultado visual de uma alteração por GPT Image 2 ainda depende de ensaio real.
+Os registros anteriores abaixo preservam o comportamento e as medições da época.
+
 ## Comandos existentes
 
 Com dependências instaladas por `npm ci`, execute os checks separadamente para observar o resultado de cada um:
@@ -49,11 +102,12 @@ WhatsApp continuam usando somente dígitos.
 
 No artístico, o cartão do hero offset segue o tom da seção. A superfície
 suave é calculada antes das cores de texto, com fallback para o papel quando
-a mistura perde contraste. A branch também incorpora `main`, preservando o
-upgrade para Opus 5 e os registros de verificação das duas entregas.
+a mistura perde contraste. A branch também incorpora `main` em `d581366`,
+preservando as imagens sem aprovação, o Gemini 3.8 Flash e os registros de
+verificação das entregas anteriores.
 
 - Tipos (`next typegen` e `tsc --noEmit`) e build Next.js 16.3.3 passaram.
-- `test:sites`: 68 casos passaram. `test:admin` com Chrome: 38 passaram e
+- `test:sites`: 80 casos passaram. `test:admin` com Chrome: 38 passaram e
   somente a integração Postgres foi pulada, sem `EIXU_TEST_POSTGRES_URL`.
 - `test:sites:browser`: passou com componentes reais e CSS do build em
   1440 e 390 px. São 60 pares de texto/fundo por largura, com contraste mínimo
@@ -138,11 +192,11 @@ funcionando porque o próprio script já aplicou a atribuição. Fica registrado
 para uma correção própria.
 
 **Não verificado:** geração de site pelo agente em cada vibe, que depende de
-chamada paga e de aprovação de imagem pelo operador. As páginas do smoke foram
+chamada paga. As páginas do smoke foram
 compostas à mão para isolar o CSS e o render; elas não medem a qualidade da
 direção que o modelo produz dentro de cada faixa.
 
-## Upgrade para Opus 5, 10/09/2026
+## Histórico: upgrade para Opus 5, 10/09/2026
 
 O fallback do chat, dos críticos de foto/logo, da descrição de avatar social e
 dos dois runners passou a `anthropic/claude-opus-5`. O ID foi confirmado no
@@ -322,7 +376,7 @@ Na validação local dessas correções, os 46 testes de site e 30 testes de adm
 | Blocos, lint ou publicação | Caso válido e inválido; API e ferramenta preservam snapshot ao recusar; render publicado e preview conferidos.                                         |
 | Auth, tenant ou proxy      | Sessão ausente/expirada, cliente incorreto, host reservado, `/s/*`, query de preview e resposta pública. Ver limites atuais antes de afirmar proteção. |
 | Formulário/tracking        | Em tenant de teste, um envio grava contato/evento, atribuição e consentimento e chega ao destino; conferir duplicação de clique.                       |
-| Imagens ou ferramentas     | Falha parcial, candidata sem aprovação, aplicação de logo e remoção em uso; validar estado no banco/Blob de teste.                                     |
+| Imagens ou ferramentas     | Falha parcial, uso sem aprovação, alteração por número, isolamento e snapshot preservado; aplicação de logo e remoção em uso.                          |
 | Schema                     | Aplicar em banco isolado e reaplicar; conferir estruturas e consumidores, sem usar produção como teste.                                                |
 | Modelo/prompt              | Casos de [avaliação do harness](harness.md#como-avaliar-mudanças-no-harness), com chamadas reais autorizadas e resultados registrados.                 |
 

@@ -164,7 +164,7 @@ export function SettingsForm({
         <div className="min-w-0 flex-1">
           <h2 className="text-base font-semibold">Logo do site</h2>
           <p className="mt-1 text-sm text-[var(--color-muted)]">
-            Envie o arquivo final ou escolha um logo aprovado na biblioteca.
+            Envie o arquivo final ou escolha um logo na biblioteca.
           </p>
           <label className="admin-field mt-4">
             <span>Enviar e aplicar logo</span>

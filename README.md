@@ -7,7 +7,7 @@ Site institucional da EIXU e MVP de uma plataforma operada por agentes para cria
 - Institucional com home, oferta de passagem de vibe coding para produção e cases de SaldoPix e NaiaCRM.
 - Painel com login de operador, busca e filtros de clientes, cadastro com logo, paleta, vibe e contatos, chat com histórico recente, prévia em desktop/mobile, dados e briefing editáveis e publicação.
 - Páginas orgânicas, landing pages pagas, posts e páginas de agradecimento compostas por blocos com schemas Zod. O agente edita conteúdo por ferramentas; o painel também permite ajustar dados do cliente e gerenciar imagens.
-- Imagens geradas na conversa do site, com guia por cliente, crítica e aprovação do operador uma a uma. Só a aprovada entra na biblioteca; a recusada é apagada. Aprovar um logo e aplicá-lo continuam sendo ações distintas.
+- Imagens geradas na conversa do site, com guia por cliente e crítica, disponíveis sem aprovação. A biblioteca em `/admin/[tenant]/imagens` mantém números para pedir alterações, como “atualize a imagem #5 com outro carro”. A nova versão substitui a anterior nos rascunhos e ambas ficam salvas; aplicar um logo continua sendo uma ação do usuário.
 - Contatos do cadastro renderizados sozinhos no site: telefones, e-mail e redes sociais no rodapé, e uma seção de localização com mapa acima dele quando há endereço.
 - Quatro vibes de site escolhidas na criação do cliente, que delimitam a direção de arte, o CSS e a direção de imagem.
 - Formulários, WhatsApp rastreado, atribuição de campanhas, exportação de contatos em CSV e painel de tráfego com gastos informados à mão.
@@ -25,18 +25,18 @@ npm run dev:vercel
 
 O institucional e a tela de login abrem sem banco. Para usar o painel e os sites, configure `.env.local` com recursos de desenvolvimento:
 
-| Variável                | Uso                                                                                              |
-| ----------------------- | ------------------------------------------------------------------------------------------------ |
-| `DATABASE_URL`          | Conexão Postgres/Neon das rotas dinâmicas e scripts de banco.                                    |
-| `ADMIN_USER`            | Usuário do operador; fallback `admin`.                                                           |
-| `ADMIN_PASSWORD`        | Senha do operador. Produção recusa login se estiver ausente.                                     |
-| `ADMIN_SESSION_SECRET`  | Segredo de assinatura da sessão; configure um valor próprio. O código usa a senha como fallback. |
-| `AI_GATEWAY_API_KEY`    | Autenticação explícita do AI Gateway, útil localmente. O SDK também aceita OIDC da Vercel.       |
-| `EIXU_MODEL`            | Modelo do chat do site; fallback no código: `anthropic/claude-opus-5`.                           |
-| `EIXU_CRITIC_MODEL`     | Modelo da crítica visual e leitura de avatar social; fallback em `EIXU_MODEL`, depois Opus 5.    |
-| `BLOB_READ_WRITE_TOKEN` | Upload, geração e remoção de imagens no Vercel Blob.                                             |
-| `EIXU_REVIEW_CAPTURE`   | `1` liga a captura com Chromium na revisão do rascunho. Sem ela, a revisão é estrutural.         |
-| `EIXU_CHROME_PATH`      | Caminho do Chrome local para a captura em desenvolvimento.                                       |
+| Variável                | Uso                                                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`          | Conexão Postgres/Neon das rotas dinâmicas e scripts de banco.                                           |
+| `ADMIN_USER`            | Usuário do operador; fallback `admin`.                                                                  |
+| `ADMIN_PASSWORD`        | Senha do operador. Produção recusa login se estiver ausente.                                            |
+| `ADMIN_SESSION_SECRET`  | Segredo de assinatura da sessão; configure um valor próprio. O código usa a senha como fallback.        |
+| `AI_GATEWAY_API_KEY`    | Autenticação explícita do AI Gateway, útil localmente. O SDK também aceita OIDC da Vercel.              |
+| `EIXU_MODEL`            | Modelo do chat do site; fallback no código: `google/gemini-3.8-flash`.                                  |
+| `EIXU_CRITIC_MODEL`     | Modelo da crítica visual e leitura de avatar social; fallback em `EIXU_MODEL`, depois Gemini 3.8 Flash. |
+| `BLOB_READ_WRITE_TOKEN` | Upload, geração e remoção de imagens no Vercel Blob.                                                    |
+| `EIXU_REVIEW_CAPTURE`   | `1` liga a captura com Chromium na revisão do rascunho. Sem ela, a revisão é estrutural.                |
+| `EIXU_CHROME_PATH`      | Caminho do Chrome local para a captura em desenvolvimento.                                              |
 
 Crie o arquivo localmente, sem versionar credenciais. Se já tiver acesso ao projeto Vercel, `vercel link --project eixu` e `vercel env pull .env.local --environment=development` são uma alternativa; confira o destino de `DATABASE_URL` antes de qualquer escrita. O nome do ambiente Vercel não garante que o banco conectado seja de desenvolvimento.
 
@@ -75,7 +75,7 @@ Os três grupos de rotas têm layouts e CSS próprios. A publicação valida pá
 | `npx next start`                                     | Serve o build Next.js local já gerado.                                                                                                               |
 | `npx next typegen && npx tsc --noEmit`               | Gera tipos das rotas e verifica TypeScript.                                                                                                          |
 | `npm run lint`                                       | Analisa código com oxlint; não executa o pre-flight dos sites.                                                                                       |
-| `npm run test:sites`                                 | Testa o contrato de páginas, imagens, aprovação e links sem banco ou chamadas pagas.                                                                 |
+| `npm run test:sites`                                 | Testa o contrato de páginas, imagens, alterações por número e links sem banco ou chamadas pagas.                                                     |
 | `npm run test:sites:browser`                         | Depois do build Next.js, verifica contraste e destinos de contato com componentes reais em 1440 e 390 px. Requer `EIXU_CHROME_PATH`.                 |
 | `npm run test:admin`                                 | Testa contexto, estado editorial, autenticação, logos, datas, custos, CSV e tracking sem banco ou chamadas pagas. Captura requer `EIXU_CHROME_PATH`. |
 | `npm run eval:admin-cost`                            | Compara o payload de histórico em memória; `-- --live` executa três chamadas pagas controladas, sem escrever no banco/Blob.                          |
