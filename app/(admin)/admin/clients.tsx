@@ -3,6 +3,7 @@
 import { startTransition, useActionState, useState } from 'react';
 import Link from 'next/link';
 import { ArrowUpRight, Plus, Search, Globe2, X } from 'lucide-react';
+import { BrandFields } from '@/components/admin/brand-fields';
 import { TenantFields } from '@/components/admin/tenant-fields';
 import { createTenantAction } from './actions';
 
@@ -67,6 +68,7 @@ export function Clients({ tenants }: { tenants: ClientSummary[] }) {
           >
             <fieldset disabled={pending}>
               <TenantFields withSlug />
+              <BrandFields />
               {error ? (
                 <p
                   aria-live="polite"

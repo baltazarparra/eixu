@@ -38,7 +38,13 @@ function nameRule(brandName: string, wordmark: boolean): string {
 }
 
 function palette(tenant: Tenant, guide: ImageGuide): string {
-  const colors = [tenant.brand.accent, tenant.brand.ink, ...(guide.paleta ?? [])].filter(Boolean);
+  const colors = [
+    tenant.brand.accent,
+    tenant.brand.highlight,
+    tenant.brand.accentAlt,
+    tenant.brand.ink,
+    ...(guide.paleta ?? []),
+  ].filter(Boolean);
   return colors.length ? `Paleta: ${colors.slice(0, 4).join(', ')}.` : '';
 }
 

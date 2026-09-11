@@ -69,7 +69,7 @@ function Action({
     'site-action inline-flex items-center justify-center gap-2 rounded-[var(--radius)] px-6 py-3 text-[0.95rem] font-medium transition-colors';
   const styles =
     variant === 'solid'
-      ? 'bg-[var(--accent)] text-[var(--accent-ink)] hover:opacity-90'
+      ? 'bg-[var(--highlight)] text-[var(--highlight-ink)] hover:opacity-90'
       : 'border border-[var(--line)] text-[var(--ink)] hover:bg-[var(--line)]';
   const external = href.startsWith('http') || href.startsWith('/go/');
   return (
@@ -150,7 +150,7 @@ export function NavBar({
         {cta ? (
           <a
             href={cta.href}
-            className="rounded-[var(--radius)] bg-[var(--accent)] px-5 py-2.5 text-[0.9rem] font-medium text-[var(--accent-ink)]"
+            className="rounded-[var(--radius)] bg-[var(--highlight)] px-5 py-2.5 text-[0.9rem] font-medium text-[var(--highlight-ink)]"
             data-track={cta.href.startsWith('/go/wa') ? 'whatsapp' : undefined}
           >
             {cta.label}
@@ -334,7 +334,7 @@ export function ProofStats({ items, layout = 'strip' }: ProofStatsProps) {
       >
         {items.map((item) => (
           <div key={item.label} className="flex flex-col gap-2">
-            <p className="text-[clamp(2.4rem,5vw,3.6rem)] font-semibold leading-none tracking-[-0.03em] text-[var(--accent)]">
+            <p className="text-[clamp(2.4rem,5vw,3.6rem)] font-semibold leading-none tracking-[-0.03em] text-[var(--highlight)]">
               {item.value}
             </p>
             <p className="text-[0.95rem] leading-snug text-[var(--muted)]">
@@ -520,7 +520,7 @@ export function CtaBand({
         </div>
         <MotionLink
           href={previewHref(href, ctx)}
-          className="site-action inline-flex shrink-0 items-center rounded-[var(--radius)] bg-[var(--accent)] px-7 py-3.5 text-[0.98rem] font-medium text-[var(--accent-ink)]"
+          className="site-action inline-flex shrink-0 items-center rounded-[var(--radius)] bg-[var(--highlight)] px-7 py-3.5 text-[0.98rem] font-medium text-[var(--highlight-ink)]"
           data-track={whatsapp ? 'whatsapp' : undefined}
           {...(whatsapp ? { rel: 'noreferrer' } : {})}
         >
@@ -544,7 +544,7 @@ export function FormLead({
   ctx,
 }: FormLeadProps & { ctx: RenderContext }) {
   const inputClass =
-    'w-full rounded-[var(--radius)] border border-[var(--line)] bg-transparent px-4 py-3 text-[0.97rem] outline-none focus:border-[var(--accent)]';
+    'w-full rounded-[var(--radius)] border border-[var(--line)] bg-transparent px-4 py-3 text-[0.97rem] outline-none focus:border-[var(--highlight)]';
   return (
     <section
       className={`${section} site-form site-form-${layout} border-b border-[var(--line)]`}
@@ -592,7 +592,7 @@ export function FormLead({
               <span className="text-[0.88rem] font-medium">
                 {f.label}
                 {f.required ? (
-                  <span className="text-[var(--accent)]"> *</span>
+                  <span className="text-[var(--highlight)]"> *</span>
                 ) : null}
               </span>
               {f.type === 'textarea' ? (
@@ -630,7 +630,7 @@ export function FormLead({
               type="checkbox"
               name="consent"
               required
-              className="mt-1 size-4 accent-[var(--accent)]"
+              className="mt-1 size-4 accent-[var(--highlight)]"
             />
             <span>{consentText}</span>
           </label>
@@ -639,7 +639,7 @@ export function FormLead({
               <input
                 type="checkbox"
                 name="whatsapp_optin"
-                className="mt-1 size-4 accent-[var(--accent)]"
+                className="mt-1 size-4 accent-[var(--highlight)]"
               />
               <span>Quero receber contato por WhatsApp.</span>
             </label>
@@ -647,7 +647,7 @@ export function FormLead({
           <button
             type="submit"
             disabled={ctx.isPreview}
-            className="mt-1 self-start rounded-[var(--radius)] bg-[var(--accent)] px-7 py-3.5 text-[0.98rem] font-medium text-[var(--accent-ink)]"
+            className="mt-1 self-start rounded-[var(--radius)] bg-[var(--highlight)] px-7 py-3.5 text-[0.98rem] font-medium text-[var(--highlight-ink)]"
           >
             {submitLabel}
           </button>
@@ -905,7 +905,7 @@ export function MediaMap({
           <a
             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`}
             rel="noreferrer"
-            className="text-[0.95rem] font-medium text-[var(--accent)] underline underline-offset-4"
+            className="text-[0.95rem] font-medium text-[var(--highlight)] underline underline-offset-4"
           >
             Ver rota
           </a>
@@ -964,7 +964,7 @@ export function PricingTable({
                 href={plan.cta.href}
                 className={`mt-auto inline-flex items-center justify-center rounded-[var(--radius)] px-5 py-3 text-[0.95rem] font-medium ${
                   plan.highlight
-                    ? 'bg-[var(--accent)] text-[var(--accent-ink)]'
+                    ? 'bg-[var(--highlight)] text-[var(--highlight-ink)]'
                     : 'border border-[var(--line)] text-[var(--ink)]'
                 }`}
               >

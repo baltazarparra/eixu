@@ -27,7 +27,7 @@ details > summary::-webkit-details-marker {
   display: none;
 }
 details[open] > summary {
-  color: var(--accent);
+  color: var(--highlight);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -243,7 +243,7 @@ details[open] > summary .site-disclosure {
   letter-spacing: -0.055em;
 }
 .site-theme[data-design-version='2'] .site-action {
-  box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 78%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--highlight) 78%, transparent);
 }
 .site-block[data-tone='paper'] {
   --ink: var(--brand-ink);
@@ -579,7 +579,7 @@ details[open] > summary .site-disclosure {
   content: counter(service, decimal-leading-zero);
   font-family: var(--font-display);
   font-size: 2rem;
-  color: var(--accent);
+  color: var(--highlight);
 }
 .site-steps-cards ol {
   display: grid;
@@ -602,7 +602,7 @@ details[open] > summary .site-disclosure {
 .site-steps-horizontal ol li > span {
   display: block;
   margin-bottom: 2rem;
-  color: var(--accent);
+  color: var(--highlight);
 }
 .site-steps-chapters ol li h3 {
   font-family: var(--font-display);

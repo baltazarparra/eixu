@@ -769,7 +769,18 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         accent: z
           .string()
           .regex(/^#[0-9a-fA-F]{6}$/)
-          .optional(),
+          .optional()
+          .describe('Cor primária: seções e superfícies da marca.'),
+        accentAlt: z
+          .string()
+          .regex(/^#[0-9a-fA-F]{6}$/)
+          .optional()
+          .describe('Cor secundária: o tom complementar das seções.'),
+        highlight: z
+          .string()
+          .regex(/^#[0-9a-fA-F]{6}$/)
+          .optional()
+          .describe('Cor de acento: botões, links e destaques.'),
         ink: z
           .string()
           .regex(/^#[0-9a-fA-F]{6}$/)
@@ -788,6 +799,8 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         const brand = {
           ...activeBrand,
           ...(input.accent ? { accent: input.accent } : {}),
+          ...(input.accentAlt ? { accentAlt: input.accentAlt } : {}),
+          ...(input.highlight ? { highlight: input.highlight } : {}),
           ...(input.ink ? { ink: input.ink } : {}),
           ...(input.paper ? { paper: input.paper } : {}),
           ...(input.radius ? { radius: input.radius } : {}),
@@ -809,9 +822,10 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
         // O site escurece sozinho um acento que reprova no contraste. Avisar
         // aqui evita o agente insistir numa cor que nunca vai aparecer igual.
-        const contrast = accessibleAccent(brand.accent ?? '#1f6feb');
+        const acao = brand.highlight ?? brand.accent ?? '#1f6feb';
+        const contrast = accessibleAccent(acao);
         const aviso = contrast.adjusted
-          ? `O acento ${brand.accent} reprovava no contraste mínimo. O site vai usar ${contrast.accent}, a cor mais próxima que passa.`
+          ? `O acento ${acao} reprovava no contraste mínimo. O site vai usar ${contrast.accent}, a cor mais próxima que passa.`
           : null;
         return { brand, dials, ...(aviso ? { aviso } : {}) };
       },
@@ -822,7 +836,19 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         'Define briefing e direção de arte v2 em uma chamada. Obrigatória antes de build_site. A direção é recusada quando repete a arquitetura visual de outro cliente.',
       inputSchema: designProfileInputSchema,
       execute: safe(async (input) => {
-        if (input.accent.toLowerCase() === input.accentAlt.toLowerCase()) {
+        // Cor escolhida no cadastro é decisão do operador: a direção de arte
+        // define estrutura e leitura, não reescreve a marca dele.
+        const locked = activeBrand.paletteSource === 'operador';
+        const accent =
+          (locked ? activeBrand.accent : input.accent) ?? input.accent;
+        const accentAlt =
+          (locked ? activeBrand.accentAlt : input.accentAlt) ?? input.accentAlt;
+        if (!accent || !accentAlt) {
+          throw new ToolError(
+            'Este cliente não tem cores no cadastro. Informe accent e accentAlt com papéis diferentes.',
+          );
+        }
+        if (accent.toLowerCase() === accentAlt.toLowerCase()) {
           throw new ToolError(
             'accent e accentAlt precisam cumprir papéis diferentes. Escolha duas cores distintas.',
           );
@@ -883,8 +909,8 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
               : 'sans';
         const brand = {
           ...activeBrand,
-          accent: input.accent,
-          accentAlt: input.accentAlt,
+          accent,
+          accentAlt,
           ink: input.ink,
           paper: input.paper,
           surface: input.surface,

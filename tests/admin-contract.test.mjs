@@ -18,9 +18,9 @@ const { csvCell } = await j.import('../lib/admin/csv.ts');
 const { previewHref, previewProps } = await j.import('../lib/sites/preview.ts');
 const { canApplyLogo } = await j.import('../lib/images/logo-access.ts');
 const { tenantFromHost } = await j.import('../lib/tenant-host.ts');
-const { tenantSlugSchema, tenantDetailsSchema } = await j.import(
-  '../lib/admin/tenant-input.ts',
-);
+const { tenantSlugSchema, tenantDetailsSchema, brandColorsSchema } =
+  await j.import('../lib/admin/tenant-input.ts');
+const { themeVars } = await j.import('../lib/blocks/theme.ts');
 const { defaultPeriod, periodSchema, spendSchema, mergeCampaigns } =
   await j.import('../lib/admin/traffic.ts');
 const { attributionScript } = await j.import('../lib/tracking.ts');
@@ -465,4 +465,55 @@ await test('JSON-LD público não expõe SEO ou FAQ do rascunho; prévia usa o r
     draft.includes('Descrição privada') && draft.includes('Pergunta privada'),
   );
   assert.ok(!draft.includes('Pergunta pública'));
+});
+
+await test('as cores do cadastro exigem hexadecimal e papéis distintos', () => {
+  const ok = brandColorsSchema.safeParse({
+    primary: '#1F6FEB',
+    secondary: '#14532D',
+    highlight: '#EA580C',
+  });
+  assert.equal(ok.success, true);
+  // O formulário devolve o valor do seletor nativo em maiúsculas.
+  assert.equal(ok.data.primary, '#1f6feb');
+  assert.equal(
+    brandColorsSchema.safeParse({
+      primary: '#1f6feb',
+      secondary: '#1f6feb',
+      highlight: '#ea580c',
+    }).success,
+    false,
+  );
+  for (const invalid of ['azul', '#fff', '#1f6feb0', ''])
+    assert.equal(
+      brandColorsSchema.safeParse({
+        primary: invalid,
+        secondary: '#14532d',
+        highlight: '#ea580c',
+      }).success,
+      false,
+    );
+});
+
+await test('o acento tem token próprio e cai na cor primária quando falta', () => {
+  const tresCores = themeVars({
+    accent: '#14532d',
+    accentAlt: '#1f6feb',
+    highlight: '#ea580c',
+    ink: '#14161a',
+    paper: '#ffffff',
+  });
+  assert.equal(tresCores['--accent'], '#14532d');
+  assert.equal(tresCores['--accent-2'], '#1f6feb');
+  assert.equal(tresCores['--highlight'], '#ea580c');
+  assert.ok(tresCores['--highlight-ink']);
+
+  // Cliente antigo, sem acento próprio: o site continua como foi publicado.
+  const legado = themeVars({
+    accent: '#14532d',
+    ink: '#14161a',
+    paper: '#fff',
+  });
+  assert.equal(legado['--highlight'], legado['--accent']);
+  assert.equal(legado['--highlight-ink'], legado['--accent-ink']);
 });

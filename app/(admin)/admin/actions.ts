@@ -2,10 +2,13 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import { del } from '@vercel/blob';
 import { isAuthenticated, signIn, signOut } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { text } from '@/lib/form-data';
+import { UploadError, storeTenantFile } from '@/lib/admin/upload';
 import {
+  brandColorsFromForm,
   intakeFromForm,
   tenantDetailsSchema,
   tenantSlugSchema,
@@ -42,23 +45,55 @@ export async function createTenantAction(
   const details = tenantDetailsSchema.safeParse(Object.fromEntries(formData));
   const slugResult = tenantSlugSchema.safeParse(text(formData, 'slug'));
   const intake = intakeFromForm(formData);
+  const colors = brandColorsFromForm(formData);
   if (!details.success)
     return details.error.issues[0]?.message ?? 'Confira os dados do cliente.';
   if (!slugResult.success)
     return slugResult.error.issues[0]?.message ?? 'Confira o endereço.';
   if (!intake.success)
     return 'Confira o briefing: URLs válidas e até 160 caracteres por fato ou restrição.';
+  if (!colors.success)
+    return colors.error.issues[0]?.message ?? 'Confira as cores da marca.';
   const slug = slugResult.data;
   const { name, whatsapp, contactEmail } = details.data;
+
+  // O arquivo sobe antes do insert: a rota de upload exige um cliente que
+  // ainda não existe. Se o insert falhar, o Blob é removido logo abaixo.
+  const file = formData.get('logo');
+  let logoUrl: string | null = null;
+  if (file instanceof File && file.size > 0) {
+    try {
+      logoUrl = await storeTenantFile(slug, 'logo', file);
+    } catch (error) {
+      return error instanceof UploadError
+        ? error.message
+        : 'Não foi possível enviar o logo. Tente novamente ou cadastre sem ele.';
+    }
+  }
+  // paletteSource registra que a escolha é do operador: set_design respeita
+  // essas cores em vez de propor as próprias.
+  const brand = {
+    accent: colors.data.primary,
+    accentAlt: colors.data.secondary,
+    highlight: colors.data.highlight,
+    paletteSource: 'operador',
+    ...(logoUrl ? { logoUrl } : {}),
+  };
+
   try {
     const rows = (await db()`
-      insert into tenants (slug, name, whatsapp, contact_email, brief)
-      values (${slug}, ${name}, ${whatsapp}, ${contactEmail}, ${JSON.stringify({ intake: intake.data })}::jsonb)
+      insert into tenants (slug, name, whatsapp, contact_email, brief, brand)
+      values (${slug}, ${name}, ${whatsapp}, ${contactEmail},
+              ${JSON.stringify({ intake: intake.data })}::jsonb,
+              ${JSON.stringify(brand)}::jsonb)
       on conflict (slug) do nothing returning id
     `) as { id: string }[];
-    if (!rows.length)
+    if (!rows.length) {
+      if (logoUrl) await del(logoUrl).catch(() => undefined);
       return 'Esse endereço já pertence a um cliente. Escolha outro ou abra o cliente existente.';
+    }
   } catch {
+    if (logoUrl) await del(logoUrl).catch(() => undefined);
     return 'Não foi possível criar o cliente. Seus dados continuam no formulário; tente novamente.';
   }
   revalidatePath('/admin');

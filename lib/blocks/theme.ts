@@ -20,6 +20,11 @@ export function themeVars(brand: Brand): Record<string, string> {
   const { accent: accentAlt, ink: accentAltInk } = accessibleAccent(
     brand.accentAlt || brand.accent || '#1f6feb',
   );
+  // Acento é a cor da ação: botão, link e destaque. Sem ela o site continua
+  // usando a primária, que é como os clientes antigos foram publicados.
+  const { accent: highlight, ink: highlightInk } = accessibleAccent(
+    brand.highlight || brand.accent || '#1f6feb',
+  );
   // A superfície precisa ser uma cor resolvida: readableMuted mede contraste
   // e não sabe ler um color-mix.
   const surface = brand.surface || mixHex(ink, paper, 0.04);
@@ -57,6 +62,8 @@ export function themeVars(brand: Brand): Record<string, string> {
     '--accent-ink': accentInk,
     '--accent-2': accentAlt,
     '--accent-2-ink': accentAltInk,
+    '--highlight': highlight,
+    '--highlight-ink': highlightInk,
     '--surface': surface,
     '--muted': readableMuted(ink, paper),
     // Cada tom de seção troca ink e paper, então o texto de apoio precisa do
@@ -66,6 +73,7 @@ export function themeVars(brand: Brand): Record<string, string> {
     '--muted-ink': readableMuted(paper, ink, 0.68),
     '--muted-accent': readableMuted(accentInk, accent, 0.72),
     '--muted-accent-2': readableMuted(accentAltInk, accentAlt, 0.72),
+    '--muted-highlight': readableMuted(highlightInk, highlight, 0.72),
     '--line': `color-mix(in oklab, ${ink} 14%, ${paper})`,
     '--radius': RADIUS[brand.radius ?? 'md'] ?? '0.5rem',
     '--font-site': bodyFont,
