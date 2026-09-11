@@ -75,6 +75,32 @@ export function SiteMotion({
         { amount: 0.18 },
       ),
     );
+    // Entrada breve por símbolo, sem loop. Anima o invólucro; o SVG fica
+    // disponível para o gesto de foco/hover mesmo depois da entrada.
+    scope.current
+      .querySelectorAll<HTMLElement>('.site-icon-badge')
+      .forEach((icon) => {
+        const artistic = icon.dataset.iconVibe === 'artistico';
+        stops.push(
+          inView(
+            icon,
+            () => {
+              controls.push(
+                animate(
+                  icon,
+                  {
+                    opacity: [0.65, 1],
+                    y: [6, 0],
+                    rotate: [artistic ? -10 : 0, 0],
+                  },
+                  { duration: artistic ? 0.5 : 0.3, ease: [0.22, 1, 0.36, 1] },
+                ),
+              );
+            },
+            { amount: 0.5 },
+          ),
+        );
+      });
     return () => {
       stops.forEach((stop) => stop());
       controls.forEach((control) => {

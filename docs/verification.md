@@ -1,5 +1,55 @@
 # Validação e publicação
 
+## Iconografia e tipografia das quatro vibes, 11/09/2026
+
+O gerador ganhou 14 famílias tipográficas e 26 símbolos semânticos, com
+tratamento regular, leve, forte ou duotone conforme a vibe. Catálogo, schemas,
+faixas, prompts e renderer foram atualizados juntos. A descrição do sistema
+e dos pareamentos está em [Design](design.md#tipografia-e-iconografia-por-vibe).
+
+- `npm run lint` e `npx next typegen && npx tsc --noEmit`: sem erros.
+- `npm run test:sites`: 85 testes passaram, sem pulos. Os quatro casos novos
+  exercitam os 70 pares de display/corpo no schema e nos tokens, as faixas das
+  vibes, clientes legados, os 26 SVGs em quatro estilos e os ícones em todas
+  as variantes de serviços, bento, explorer e recursos. SVG arbitrário continua
+  sendo recusado pelo schema.
+- Admin: 124 testes passaram, sem pulos, com Chrome e PostgreSQL 14 descartável
+  em `127.0.0.1`. Execução serial com `node --test --test-concurrency=1
+tests/admin-*.test.mjs`, `EIXU_CHROME_PATH` e `EIXU_TEST_POSTGRES_URL`.
+- `npm run build:vercel`: Next.js de produção e os três checks dos artefatos
+  de captura serverless passaram.
+- `EIXU_CHROME_PATH=… npm run test:sites:browser`: 15 testes passaram, sem pulos.
+  A fixture usa os componentes reais, CSS e fontes do build, com dados sintéticos.
+  As quatro vibes foram medidas em 320, 390, 768, 1440 e 1920 px sem overflow
+  horizontal. Capturas de 390/1440 px foram inspecionadas.
+- Os pares de demonstração carregaram somente as duas famílias usadas em cada
+  página; as 14 famílias do catálogo foram carregadas e verificadas com texto
+  em português. Abas e FAQs funcionaram por teclado; foco/hover responderam,
+  e movimento reduzido desativou as transições. Texto, SVGs e disclosure nativo
+  continuaram disponíveis com JavaScript desligado. Sem erros de hidratação.
+- A regressão existente mediu contraste mínimo de 4,608:1 nos 60 pares de
+  texto/fundo do hero artístico e localização, em desktop e celular. Isso
+  não equivale a medir toda possível combinação de marca e conteúdo.
+- Smoke local do build: institucional e login responderam 200, `/admin` chegou
+  a `/admin/login` no navegador sem sessão e a API de estado respondeu 401.
+
+A inspeção corrigiu uma regra antiga de lead que sobrepunha escala/entrelinha,
+preservou os ícones semânticos nas abas mobile e fez o desligamento de motion
+prevalecer sobre o reset global. Capturas, medições e comparação interativa
+ficam em `outputs/visual-system/`, ignorado pelo Git. Não há rota de demonstração
+no produto.
+
+Na revisão para publicação, a inserção do ícone como terceiro filho do grid de
+depoimento `split` foi corrigida: símbolo e citação formam a primeira coluna,
+com autoria alinhada à direita no desktop e abaixo no celular. O teste de
+navegador reproduziu a falha antes da correção e verifica as quatro vibes
+em 390/1440 px.
+
+A validação local não exigiu migração, escrita remota ou geração paga. Os testes não
+avaliam uma geração completa pelo modelo nem páginas reais de clientes.
+Os snapshots persistidos permanecem intactos; a apresentação passará a usar
+o novo renderer quando esse código for implantado.
+
 ## Handoff do painel administrativo, 11/09/2026
 
 Implementação das seis telas do handoff com navegação lateral, cabeçalho por
@@ -12,7 +62,7 @@ controles. As decisões de adaptação estão em [Design](design.md#painel-admin
 - `npm run test:sites`: 81 testes passaram, sem pulos.
 - Admin: 124 testes passaram, sem pulos, com Chrome e PostgreSQL 14 local
   descartável. Execução serial com `node --test --test-concurrency=1
-  tests/admin-*.test.mjs`, `EIXU_CHROME_PATH` e `EIXU_TEST_POSTGRES_URL`.
+tests/admin-*.test.mjs`, `EIXU_CHROME_PATH` e `EIXU_TEST_POSTGRES_URL`.
   Os casos novos exercitam SQL real para isolamento por tenant, limite diário
   de Brasília, repetição de visitas/ações, dias vazios e gastos parciais.
 - Navegador: oito testes passaram, sem pulos. Cobertura de chat, geração,

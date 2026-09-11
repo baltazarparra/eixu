@@ -6,6 +6,7 @@ import {
   readableMuted,
 } from '@/lib/blocks/contrast';
 import type { Brand } from '@/lib/types';
+import { BODY_TYPE, DISPLAY_TYPE } from '@/lib/design/typography';
 
 const RADIUS: Record<string, string> = {
   none: '0px',
@@ -49,25 +50,14 @@ export function themeVars(brand: Brand): Record<string, string> {
       : brand.font === 'mono'
         ? 'var(--font-mono)'
         : 'var(--font-sans)';
-  const displayFontMap = {
-    sans: 'var(--font-sans)',
-    editorial: 'var(--font-display-editorial)',
-    geometric: 'var(--font-geometric)',
-    humanist: 'var(--font-humanist)',
-    mono: 'var(--font-mono)',
-  } as const;
-  const bodyFontMap = {
-    sans: 'var(--font-sans)',
-    editorial: 'var(--font-serif)',
-    geometric: 'var(--font-geometric)',
-    humanist: 'var(--font-humanist)',
-  } as const;
+  const displayType =
+    DISPLAY_TYPE[brand.design?.displayFont ?? 'sans'] ?? DISPLAY_TYPE.sans;
+  const bodyType =
+    BODY_TYPE[brand.design?.bodyFont ?? 'sans'] ?? BODY_TYPE.sans;
   const displayFont = brand.design
-    ? displayFontMap[brand.design.displayFont]
+    ? `var(${displayType.variable})`
     : legacyFont;
-  const bodyFont = brand.design
-    ? bodyFontMap[brand.design.bodyFont]
-    : legacyFont;
+  const bodyFont = brand.design ? `var(${bodyType.variable})` : legacyFont;
   return {
     '--brand-ink': ink,
     '--brand-paper': paper,
@@ -104,6 +94,16 @@ export function themeVars(brand: Brand): Record<string, string> {
     '--font-site': bodyFont,
     '--font-body': bodyFont,
     '--font-display': displayFont,
+    '--display-weight': String(displayType.weight),
+    '--display-leading': String(displayType.leading),
+    '--display-tracking': displayType.tracking,
+    '--body-leading': String(bodyType.leading),
+    '--body-measure': bodyType.measure,
+    '--quote-style':
+      ['editorial', 'literary'].includes(brand.design?.bodyFont ?? '') ||
+      (!brand.design && brand.font === 'serif')
+        ? 'italic'
+        : 'normal',
     '--panel-radius': `min(${RADIUS[brand.radius ?? 'md'] ?? '0.5rem'}, 1.5rem)`,
   };
 }

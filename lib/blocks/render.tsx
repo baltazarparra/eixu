@@ -65,7 +65,7 @@ export function RenderBlocks({
             data-block="site.location"
             data-tone={VIBE_LOCATION_TONE[vibeOf(ctx.tenant.brand)]}
           >
-            <SiteLocation contacts={contacts} />
+            <SiteLocation contacts={contacts} vibe={vibeOf(ctx.tenant.brand)} />
           </div>
         ) : null}
       </main>
@@ -86,7 +86,10 @@ function renderList(
         if (!isBlockType(block.type)) return null;
         const parsed = blockSchemas[block.type].safeParse(block.props);
         if (!parsed.success) return null;
-        const props = previewProps(parsed.data, ctx) as never;
+        const props = {
+          ...(previewProps(parsed.data, ctx) as Record<string, unknown>),
+          vibe: vibeOf(ctx.tenant.brand),
+        } as never;
         const key = block.id;
 
         const render = () => {

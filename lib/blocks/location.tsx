@@ -1,3 +1,5 @@
+import { SiteIcon } from './icon';
+import type { Vibe } from '@/lib/design/vibes';
 import { LocationPicker } from '@/lib/blocks/location-picker';
 import {
   mapsDirectionsUrl,
@@ -11,7 +13,13 @@ import {
  * endereço, como o botão flutuante de WhatsApp: é dado do operador, não
  * composição do agente, então não entra em `pages.blocks` nem no pre-flight.
  */
-export function SiteLocation({ contacts }: { contacts: Contacts }) {
+export function SiteLocation({
+  contacts,
+  vibe = 'comercial',
+}: {
+  contacts: Contacts;
+  vibe?: Vibe;
+}) {
   const addresses = contacts.addresses;
   if (!addresses.length) return null;
   const single = addresses[0];
@@ -20,7 +28,7 @@ export function SiteLocation({ contacts }: { contacts: Contacts }) {
       <div className="site-shell mx-auto w-full max-w-[var(--site-max,76rem)] px-6 md:px-10">
         <h2 className="site-h2 site-location-title">Onde estamos</h2>
         {addresses.length > 1 ? (
-          <LocationPicker addresses={addresses} />
+          <LocationPicker addresses={addresses} vibe={vibe} />
         ) : (
           <div className="site-location-grid">
             <div className="site-location-info">
@@ -33,7 +41,7 @@ export function SiteLocation({ contacts }: { contacts: Contacts }) {
                 href={mapsDirectionsUrl(single.text)}
                 rel="noreferrer"
               >
-                Como chegar
+                Como chegar <SiteIcon name="route" vibe={vibe} size={18} />
               </a>
             </div>
             <div className="site-location-map">

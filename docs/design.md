@@ -9,7 +9,7 @@ entrada, clientes, editor, imagens, tráfego e dados. A prancha de estados é
 referência para os componentes, sem rota de demonstração no produto.
 
 O painel usa Geist e Geist Mono locais, acompanhadas da
-[licença OFL](../app/(admin)/fonts/LICENSE.txt) do [projeto Geist](https://github.com/vercel/geist-font/blob/main/LICENSE.txt), fundo quente `#0c0b0a`, painéis
+[licença OFL](<../app/(admin)/fonts/LICENSE.txt>) do [projeto Geist](https://github.com/vercel/geist-font/blob/main/LICENSE.txt), fundo quente `#0c0b0a`, painéis
 `#100f0e`, âmbar `#f0a868`, verde `#5fc98c` e vermelho `#f0705d`. A navegação
 lateral mede 252 px no desktop; o cabeçalho contextual pertence ao layout do
 cliente. O editor reserva 42% (até 520 px) à conversa e mantém o andamento
@@ -134,9 +134,8 @@ prompt e a direção de imagem por vibe. `set_design` recusa a direção que sai
 da faixa, apontando eixo, valor recebido e valores permitidos, e a trava de
 unicidade passou a comparar só clientes da mesma vibe: as faixas se sobrepõem
 em vários eixos, e um site moderno bloqueado por um ousado com os mesmos enums
-seria uma recusa sem relação com o que se vê na tela. Dentro de cada faixa
-sobram 864 combinações estruturais no moderno, 576 no ousado e 5.184 no
-artístico, com folga para a distância mínima de três eixos.
+seria uma recusa sem relação com o que se vê na tela. O catálogo tipográfico ampliou as combinações estruturais dentro de cada faixa,
+conservando a distância mínima de três eixos entre clientes da mesma vibe.
 
 O CSS por vibe fica em `app/(sites)/vibes.css`, sempre sob
 `.site-theme[data-vibe='…']`, e realiza o que só o CSS resolve: escala e peso
@@ -165,12 +164,67 @@ o agente para não repetir esses dados nem inventar contato, e a âncora
 `onde-estamos` é reservada. `media.map` continua no catálogo para um mapa
 adicional em outro ponto da página.
 
+## Tipografia e iconografia por vibe
+
+A revisão de 11/09/2026 usa como referência o PDF **Tipografia para Web**,
+de André Rafael (2015), fornecido pelo operador: contraste de escala, entrelinha,
+medida, alinhamento e pareamento. Os exemplos históricos do livro não são
+regras atuais de CSS nem instruções de operação do agente.
+
+O catálogo de `lib/design/typography.ts` oferece **14 famílias**, com dez opções
+de display e sete de corpo (algumas famílias atendem aos dois papéis). Schema,
+prompt e `themeVars` compartilham o catálogo. IDs anteriores continuam válidos;
+a mudança não reescreve direções de clientes nem exige migração.
+
+| Vibe      | Possibilidades de pareamento                               | Iconografia e gesto                                           |
+| --------- | ---------------------------------------------------------- | ------------------------------------------------------------- |
+| Comercial | Roboto Slab + Source Sans 3; Manrope; Fraunces + Work Sans | Traço regular, suporte arredondado, elevação breve            |
+| Moderno   | Sora + Source Sans 3; Space Grotesk + Geist                | Traço leve, suporte delineado e pequeno deslocamento diagonal |
+| Ousado    | Barlow Condensed + Work Sans; Syne + Geist                 | Traço forte, suporte quadrado e impulso diagonal              |
+| Artístico | Bodoni Moda + Source Sans 3; Fraunces + Literata           | Duotone, suporte orgânico e inclinação suave                  |
+
+São opções de direção, não pares obrigatórios. O contexto do negócio orienta
+a escolha. Display inclui Geist, Fraunces, Space Grotesk, Manrope, Geist Mono,
+Sora, Barlow Condensed, Syne, Bodoni Moda e Roboto Slab. Corpo inclui Geist,
+Newsreader, Space Grotesk, Manrope, Work Sans, Literata e Source Sans 3.
+Condensadas e displays expressivas ficam fora do corpo. As faixas de cada vibe
+continuam validadas por `set_design`.
+
+`app/(sites)/typography.css` coordena títulos, subtítulos, lead, corpo, rótulos,
+legendas e números tabulares. Peso, entrelinha e tracking acompanham a família;
+os títulos preservam a escala fluida de cada composição. A medida de leitura
+fica entre 60 e 65 caracteres nos textos longos. Citações usam itálico real
+quando o corpo é Newsreader ou Literata. Fontes são auto-hospedadas por
+`next/font`, com `preload: false`: ter o catálogo no CSS não baixa as 14 famílias
+em cada página. O navegador busca apenas as famílias e estilos efetivamente usados.
+
+`lib/blocks/icon.tsx` usa [Phosphor](https://github.com/phosphor-icons/react)
+com imports individuais compatíveis com SSR e 26 símbolos semânticos. O campo
+opcional `icon` nos itens de serviços, bento, narrativa, explorer e recursos é
+validado por enum. Sem esse campo, o bloco mantém um símbolo neutro adequado
+à sua função. Ícones não substituem fotos nem sustentam alegações comerciais.
+O renderer fornece a vibe resolvida no servidor; blocos não escolhem um peso
+arbitrário nem fornecem SVG ou URLs de ícones.
+
+Ações, menus, FAQs, abas, formulários, etapas, provas, conteúdos, rotas e
+contatos compartilham o sistema. Blocos de foto sem título/legenda continuam
+priorizando a imagem. Ícones são decorativos junto do texto, saem visíveis no
+SSR e não criam focos adicionais. Hover, foco visível, toque e estado aberto
+têm respostas em `iconography.css`; badges entram uma vez pelo `SiteMotion`,
+quando o dial permite. Não há animação infinita. Movimento reduzido desativa
+as transições e as entradas e mantém o estado aberto reconhecível.
+
+O institucional e o painel administrativo conservam fontes e estilos próprios.
+O novo renderizador afeta a apresentação dos sites quando o código for
+implantado, inclusive snapshots publicados; os JSONs de páginas e marcas
+não são alterados por esta implementação.
+
 ## Contrato visual v2
 
 | Recurso              | Comportamento                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Perfil persistido    | `brand.design`, versão 2, guarda conceito, elemento-assinatura e oito eixos estruturais. `tenant.brief` guarda público, oferta, objetivo, personalidade, evidências e restrições. Não exige migração porque ambos os campos já são JSONB.                                                                                                                                                                                                                                                                                                                                                                  |
-| Tipografia           | Display: Geist, Fraunces, Space Grotesk, Manrope ou Geist Mono. Corpo: Geist, Newsreader, Space Grotesk ou Manrope. `next/font` auto-hospeda os arquivos e evita troca de fonte após o carregamento.                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Tipografia           | 14 famílias, dez opções de display e sete de corpo, descritas acima. `next/font` auto-hospeda os arquivos; o navegador carrega somente as famílias usadas. Escala, peso, entrelinha, medida, legendas e números têm papéis consistentes.                                                                                                                                                                                                                                                                                                                                                                   |
 | Vibe                 | `brand.vibe` limita os eixos, o raio, a luminância do papel e os dials que `set_design` aceita. Ausente significa `comercial`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | Paleta               | `accent`, `accentAlt` e `highlight` vêm do cadastro do cliente e a direção não as reescreve: superfície de marca, tom complementar e cor da ação. `ink`, `paper` e `surface` continuam com a direção. A ferramenta recusa texto sem contraste AA em paper/surface e cores primária/secundária iguais; o render ainda ajusta acentos que não suportam texto legível. Sem `highlight`, a ação usa a primária. Botões usam `--highlight`/`--highlight-ink`; texto de destaque usa `--highlight-text`, medido contra o tom da seção ou a superfície interna do card/formulário, com contraste mínimo de 4,5:1. |
 | Composição global    | Seis heroes, quatro navegações, quatro ritmos, quatro tratamentos de imagem, quatro superfícies e cinco motivos formam a gramática do cliente. Dials controlam variância, densidade e motion. Atelier compõe ambiente e detalhe; não é padrão obrigatório.                                                                                                                                                                                                                                                                                                                                                 |

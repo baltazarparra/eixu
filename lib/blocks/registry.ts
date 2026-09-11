@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ICON_NAMES } from '@/lib/design/iconography';
 import { expectedRatio } from '../images/ratios';
 
 /**
@@ -21,6 +22,13 @@ export const FAMILIES = [
 ] as const;
 
 export type Family = (typeof FAMILIES)[number];
+
+const icon = z
+  .enum(ICON_NAMES)
+  .optional()
+  .describe(
+    'Símbolo relacionado ao assunto; o peso e o movimento vêm da vibe. Não substitui foto nem comprova certificação.',
+  );
 
 const anchor = z
   .string()
@@ -174,6 +182,7 @@ export const blockSchemas = {
     items: z
       .array(
         z.object({
+          icon,
           title: z.string().max(60),
           body: z.string().max(160),
           href: z.string().optional(),
@@ -192,6 +201,7 @@ export const blockSchemas = {
     items: z
       .array(
         z.object({
+          icon,
           title: z.string().max(60),
           body: z.string().max(220),
           image: z.url().startsWith('http').optional(),
@@ -223,6 +233,7 @@ export const blockSchemas = {
     items: z
       .array(
         z.object({
+          icon,
           title: z.string().max(60),
           body: z.string().max(160),
           href: z.string().optional(),
@@ -247,6 +258,7 @@ export const blockSchemas = {
     items: z
       .array(
         z.object({
+          icon,
           title: z.string().min(2).max(48),
           headline: z.string().min(8).max(100),
           body: z.string().min(20).max(420),
@@ -270,6 +282,7 @@ export const blockSchemas = {
     items: z
       .array(
         z.object({
+          icon,
           title: z.string().min(4).max(90),
           body: z.string().min(20).max(220),
           category: z.string().max(40),

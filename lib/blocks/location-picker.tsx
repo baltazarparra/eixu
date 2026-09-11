@@ -1,5 +1,7 @@
 'use client';
 
+import { SiteIcon } from './icon';
+import type { Vibe } from '@/lib/design/vibes';
 import { useId, useRef, useState, type KeyboardEvent } from 'react';
 import {
   mapsDirectionsUrl,
@@ -11,7 +13,13 @@ import {
  * Troca entre endereços sem carregar um mapa por unidade. Sem JavaScript, o
  * conteúdo continua legível: os endereços e os links de rota ficam no HTML.
  */
-export function LocationPicker({ addresses }: { addresses: Address[] }) {
+export function LocationPicker({
+  addresses,
+  vibe = 'comercial',
+}: {
+  addresses: Address[];
+  vibe?: Vibe;
+}) {
   const id = useId();
   const [selected, select] = useState(0);
   const tabs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -57,6 +65,7 @@ export function LocationPicker({ addresses }: { addresses: Address[] }) {
               onKeyDown={(event) => navigate(event, index)}
               onClick={() => select(index)}
             >
+              <SiteIcon name="pin" vibe={vibe} size={18} />
               {address.label || `Endereço ${index + 1}`}
             </button>
           ))}
@@ -72,7 +81,7 @@ export function LocationPicker({ addresses }: { addresses: Address[] }) {
             href={mapsDirectionsUrl(current.text)}
             rel="noreferrer"
           >
-            Como chegar
+            Como chegar <SiteIcon name="route" vibe={vibe} size={18} />
           </a>
         </div>
         <noscript>
@@ -81,7 +90,7 @@ export function LocationPicker({ addresses }: { addresses: Address[] }) {
               <li key={address.text}>
                 <address>{address.text}</address>
                 <a href={mapsDirectionsUrl(address.text)} rel="noreferrer">
-                  Como chegar
+                  Como chegar <SiteIcon name="route" vibe={vibe} size={18} />
                 </a>
               </li>
             ))}

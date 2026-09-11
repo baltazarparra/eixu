@@ -62,8 +62,8 @@ type Lane = {
 export const VIBE_LANE: Record<Exclude<Vibe, 'comercial'>, Lane> = {
   moderno: {
     axes: {
-      displayFont: ['sans', 'geometric'],
-      bodyFont: ['sans', 'geometric', 'humanist'],
+      displayFont: ['sans', 'geometric', 'grotesk'],
+      bodyFont: ['sans', 'geometric', 'humanist', 'source', 'work'],
       heroComposition: ['editorial', 'split', 'offset'],
       navigation: ['bar', 'minimal', 'floating'],
       rhythm: ['chapters', 'continuous'],
@@ -78,8 +78,8 @@ export const VIBE_LANE: Record<Exclude<Vibe, 'comercial'>, Lane> = {
   },
   ousado: {
     axes: {
-      displayFont: ['sans', 'geometric'],
-      bodyFont: ['sans', 'geometric'],
+      displayFont: ['sans', 'geometric', 'condensed', 'expressive', 'grotesk'],
+      bodyFont: ['sans', 'geometric', 'work', 'source'],
       heroComposition: ['editorial', 'cover', 'poster'],
       navigation: ['minimal', 'bar'],
       rhythm: ['chapters', 'continuous'],
@@ -93,8 +93,8 @@ export const VIBE_LANE: Record<Exclude<Vibe, 'comercial'>, Lane> = {
   },
   artistico: {
     axes: {
-      displayFont: ['editorial', 'humanist'],
-      bodyFont: ['humanist', 'sans', 'editorial'],
+      displayFont: ['editorial', 'humanist', 'classic', 'slab'],
+      bodyFont: ['humanist', 'sans', 'editorial', 'literary', 'source', 'work'],
       heroComposition: ['offset', 'atelier', 'editorial', 'split'],
       navigation: ['floating', 'minimal', 'bar'],
       rhythm: ['alternating', 'chapters', 'continuous'],

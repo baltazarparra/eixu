@@ -21,13 +21,6 @@
 .site-action {
   gap: 0.75rem;
 }
-.site-action-arrow {
-  flex-shrink: 0;
-  transition: transform 220ms ease;
-}
-.site-action:hover .site-action-arrow {
-  transform: translate(2px, -2px);
-}
 .site-hero-caption {
   position: absolute;
   inset: auto 1.25rem 1.25rem;
@@ -424,7 +417,7 @@
     padding: 0.85rem 1rem;
     font-size: 0.83rem;
   }
-  .site-explorer-tabs button svg {
+  .site-explorer-tabs button > [data-icon='arrow-up-right'] {
     display: none;
   }
   .site-explorer-panel,
@@ -450,7 +443,6 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .site-resource-link:hover .site-resource-photo img,
-  .site-action:hover .site-action-arrow,
   .site-resource-link:hover .site-resource-read svg {
     transform: none;
   }

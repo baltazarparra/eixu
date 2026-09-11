@@ -4,15 +4,8 @@
 // oxlint-disable next/no-html-link-for-pages
 // oxlint-disable next/no-img-element
 import { z } from 'zod';
-import {
-  ArrowUpRight,
-  BookOpen,
-  Layers3,
-  Mail,
-  MapPin,
-  MessageCircle,
-  Phone,
-} from 'lucide-react';
+import { SiteIcon } from '@/lib/blocks/icon';
+import { vibeOf, type Vibe } from '@/lib/design/vibes';
 import { MotionLink } from '@/lib/blocks/motion';
 import { NavigationFrame } from '@/lib/blocks/navigation-frame';
 import { SocialIcon } from '@/lib/blocks/social-icons';
@@ -26,7 +19,9 @@ import { blockSchemas } from '@/lib/blocks/registry';
 import type { RenderContext } from '@/lib/blocks/render';
 import { previewHref } from '@/lib/sites/preview';
 
-type S<K extends keyof typeof blockSchemas> = z.infer<(typeof blockSchemas)[K]>;
+type S<K extends keyof typeof blockSchemas> = z.infer<
+  (typeof blockSchemas)[K]
+> & { vibe?: Vibe };
 
 export type NavBarProps = S<'nav.bar'>;
 export type HeroSplitProps = S<'hero.split'>;
@@ -67,9 +62,14 @@ const eyebrowClass =
 const h2Class =
   'site-h2 text-balance text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.08] tracking-[-0.02em]';
 
-function Eyebrow({ children }: { children?: string }) {
+function Eyebrow({ children, vibe }: { children?: string; vibe?: Vibe }) {
   if (!children) return null;
-  return <p className={eyebrowClass}>{children}</p>;
+  return (
+    <p className={eyebrowClass}>
+      <SiteIcon name="compass" vibe={vibe} size={16} />
+      {children}
+    </p>
+  );
 }
 
 /** Link de ação. Rota do WhatsApp passa pelo redirecionador rastreado. */
@@ -77,10 +77,12 @@ function Action({
   href,
   label,
   variant = 'solid',
+  vibe,
 }: {
   href: string;
   label: string;
   variant?: 'solid' | 'ghost';
+  vibe?: Vibe;
 }) {
   const base =
     'site-action inline-flex items-center justify-center gap-2 rounded-[var(--radius)] px-6 py-3 text-[0.95rem] font-medium transition-colors';
@@ -98,16 +100,13 @@ function Action({
       data-track={href.startsWith('/go/wa') ? 'whatsapp' : undefined}
     >
       {label}
-      <ArrowUpRight
-        className="site-action-arrow"
-        size={18}
-        aria-hidden="true"
-      />
+      <SiteIcon name="arrow-up-right" vibe={vibe} size={18} />
     </MotionLink>
   );
 }
 
 export function NavBar({
+  vibe = 'comercial',
   logoText,
   logoHeight,
   links,
@@ -184,12 +183,14 @@ export function NavBar({
               }
             >
               {cta.label}
+              <SiteIcon name="arrow-up-right" vibe={vibe} size={18} />
             </a>
           ) : null}
           {links.length ? (
             <details className="site-mobile-nav w-full lg:hidden">
               <summary className="flex min-h-11 cursor-pointer items-center justify-between text-sm font-medium">
-                Menu<span aria-hidden="true">+</span>
+                Menu
+                <SiteIcon name="plus" vibe={vibe} />
               </summary>
               <nav aria-label="Navegação mobile" className="grid gap-1 pb-2">
                 {links.map((link) => (
@@ -211,6 +212,7 @@ export function NavBar({
 }
 
 export function HeroSplit({
+  vibe = 'comercial',
   eyebrow,
   headline,
   subtext,
@@ -238,7 +240,7 @@ export function HeroSplit({
     >
       <div className={`${shell} site-hero-grid`}>
         <div className="site-hero-copy flex flex-col items-start gap-6">
-          <Eyebrow>{eyebrow}</Eyebrow>
+          <Eyebrow vibe={vibe}>{eyebrow}</Eyebrow>
           <h1 className="site-headline text-balance">{headline}</h1>
           {subtext ? (
             <p className="max-w-[44ch] text-[1.08rem] leading-relaxed text-[var(--muted)]">
@@ -246,9 +248,10 @@ export function HeroSplit({
             </p>
           ) : null}
           <div className="flex flex-wrap gap-3 pt-2">
-            <Action href={cta.href} label={cta.label} />
+            <Action vibe={vibe} href={cta.href} label={cta.label} />
             {secondary ? (
               <Action
+                vibe={vibe}
                 href={secondary.href}
                 label={secondary.label}
                 variant="ghost"
@@ -262,6 +265,7 @@ export function HeroSplit({
                   key={bullet}
                   className="border-l-2 border-[var(--line)] pl-3"
                 >
+                  <SiteIcon name="check" vibe={vibe} size={16} />
                   {bullet}
                 </li>
               ))}
@@ -309,6 +313,7 @@ export function HeroSplit({
 }
 
 export function HeroStatement({
+  vibe = 'comercial',
   eyebrow,
   headline,
   subtext,
@@ -319,27 +324,36 @@ export function HeroStatement({
     <section className={`site-hero site-hero-text site-statement-${layout}`}>
       <div className={`${shell} site-hero-grid`}>
         <div className="site-hero-copy flex flex-col items-start gap-7">
-          <Eyebrow>{eyebrow}</Eyebrow>
+          <Eyebrow vibe={vibe}>{eyebrow}</Eyebrow>
           <h1 className="site-headline text-balance">{headline}</h1>
           {subtext ? (
             <p className="max-w-[48ch] text-[1.1rem] leading-relaxed text-[var(--muted)]">
               {subtext}
             </p>
           ) : null}
-          <Action href={cta.href} label={cta.label} />
+          <Action vibe={vibe} href={cta.href} label={cta.label} />
         </div>
       </div>
     </section>
   );
 }
 
-export function ProofLogos({ title, logos, layout = 'rail' }: ProofLogosProps) {
+export function ProofLogos({
+  vibe = 'comercial',
+  title,
+  logos,
+  layout = 'rail',
+}: ProofLogosProps) {
   return (
     <section
       className={`site-proof-logos site-proof-logos-${layout} border-b border-[var(--line)] py-12`}
     >
       <div className={shell}>
-        {title ? <p className={`${eyebrowClass} mb-7`}>{title}</p> : null}
+        {title ? (
+          <p className={`${eyebrowClass} mb-7`}>
+            <SiteIcon name="handshake" vibe={vibe} size={18} /> {title}
+          </p>
+        ) : null}
         <ul className="flex flex-wrap items-center gap-x-10 gap-y-5">
           {logos.map((logo) => (
             <li
@@ -355,7 +369,11 @@ export function ProofLogos({ title, logos, layout = 'rail' }: ProofLogosProps) {
   );
 }
 
-export function ProofStats({ items, layout = 'strip' }: ProofStatsProps) {
+export function ProofStats({
+  vibe = 'comercial',
+  items,
+  layout = 'strip',
+}: ProofStatsProps) {
   return (
     <section
       className={`${section} site-stats site-stats-${layout} border-b border-[var(--line)]`}
@@ -369,7 +387,7 @@ export function ProofStats({ items, layout = 'strip' }: ProofStatsProps) {
               {item.value}
             </p>
             <p className="text-[0.95rem] leading-snug text-[var(--muted)]">
-              {item.label}
+              <SiteIcon name="chart" vibe={vibe} size={16} /> {item.label}
             </p>
           </div>
         ))}
@@ -379,6 +397,7 @@ export function ProofStats({ items, layout = 'strip' }: ProofStatsProps) {
 }
 
 export function ProofTestimonial({
+  vibe = 'comercial',
   quote,
   author,
   role,
@@ -389,9 +408,18 @@ export function ProofTestimonial({
       className={`${section} site-testimonial site-testimonial-${layout} border-b border-[var(--line)]`}
     >
       <figure className={`${shell} max-w-[54rem]`}>
-        <blockquote className="text-balance text-[clamp(1.4rem,3vw,2.1rem)] font-medium leading-[1.32] tracking-[-0.015em]">
-          {quote}
-        </blockquote>
+        <div>
+          <SiteIcon
+            name="quote"
+            vibe={vibe}
+            size={32}
+            badge
+            className="site-icon-feature"
+          />
+          <blockquote className="text-balance text-[clamp(1.4rem,3vw,2.1rem)] font-medium leading-[1.32] tracking-[-0.015em]">
+            {quote}
+          </blockquote>
+        </div>
         <figcaption className="mt-7 text-[0.95rem] text-[var(--muted)]">
           <span className="font-medium text-[var(--ink)]">{author}</span>
           {role ? `, ${role}` : ''}
@@ -402,6 +430,7 @@ export function ProofTestimonial({
 }
 
 export function FeatureBento({
+  vibe = 'comercial',
   eyebrow,
   title,
   items,
@@ -411,7 +440,7 @@ export function FeatureBento({
     <section className={section}>
       <div className={shell}>
         <div className="flex flex-col gap-4">
-          <Eyebrow>{eyebrow}</Eyebrow>
+          <Eyebrow vibe={vibe}>{eyebrow}</Eyebrow>
           <h2 className={`${h2Class} max-w-[22ch]`}>{title}</h2>
         </div>
         <div className={`site-bento site-bento-${layout} mt-12 grid gap-5`}>
@@ -432,6 +461,12 @@ export function FeatureBento({
                 />
               ) : null}
               <div className="flex flex-col gap-3 p-7 md:p-9">
+                <SiteIcon
+                  name={item.icon ?? 'layers'}
+                  vibe={vibe}
+                  size={24}
+                  badge
+                />
                 <h3 className="text-[1.3rem] font-semibold leading-tight tracking-[-0.02em]">
                   {item.title}
                 </h3>
@@ -448,6 +483,7 @@ export function FeatureBento({
 }
 
 export function NarrativeSteps({
+  vibe = 'comercial',
   eyebrow,
   title,
   steps,
@@ -459,7 +495,7 @@ export function NarrativeSteps({
     >
       <div className={`${shell} grid gap-14 md:grid-cols-12`}>
         <div className="flex flex-col gap-4 md:col-span-4">
-          <Eyebrow>{eyebrow}</Eyebrow>
+          <Eyebrow vibe={vibe}>{eyebrow}</Eyebrow>
           <h2 className={h2Class}>{title}</h2>
         </div>
         <ol className="flex flex-col md:col-span-8">
@@ -468,7 +504,8 @@ export function NarrativeSteps({
               key={step.title}
               className="flex gap-6 border-t border-[var(--line)] py-7 first:border-t-0 first:pt-0"
             >
-              <span className="shrink-0 whitespace-nowrap pt-1 font-mono text-[0.85rem] text-[var(--muted)]">
+              <span className="site-step-number shrink-0 whitespace-nowrap pt-1 text-[0.85rem] text-[var(--muted)]">
+                <SiteIcon name="route" vibe={vibe} size={18} />
                 {String(index + 1).padStart(2, '0')}
               </span>
               <div className="flex min-w-0 flex-col gap-2">
@@ -488,6 +525,7 @@ export function NarrativeSteps({
 }
 
 export function FaqAccordion({
+  vibe = 'comercial',
   title,
   items,
   layout = 'split',
@@ -506,12 +544,7 @@ export function FaqAccordion({
             >
               <summary className="site-faq-summary flex cursor-pointer list-none items-center justify-between gap-5 text-[1.05rem] font-medium marker:hidden">
                 {item.q}
-                <span
-                  aria-hidden="true"
-                  className="site-disclosure shrink-0 text-xl"
-                >
-                  +
-                </span>
+                <SiteIcon name="plus" vibe={vibe} />
               </summary>
               <p className="mt-3 max-w-[62ch] text-[0.97rem] leading-relaxed text-[var(--muted)]">
                 {item.a}
@@ -525,6 +558,7 @@ export function FaqAccordion({
 }
 
 export function CtaBand({
+  vibe = 'comercial',
   title,
   body,
   cta,
@@ -556,7 +590,7 @@ export function CtaBand({
           {...(whatsapp ? { rel: 'noreferrer' } : {})}
         >
           {cta.label}
-          <ArrowUpRight size={18} aria-hidden="true" />
+          <SiteIcon name="arrow-up-right" vibe={vibe} size={18} />
         </MotionLink>
       </div>
     </section>
@@ -564,6 +598,7 @@ export function CtaBand({
 }
 
 export function FormLead({
+  vibe = 'comercial',
   title,
   body,
   fields,
@@ -678,9 +713,10 @@ export function FormLead({
           <button
             type="submit"
             disabled={ctx.isPreview}
-            className="site-submit mt-1 self-start rounded-[var(--radius)] bg-[var(--highlight)] px-7 py-3.5 text-[0.98rem] font-medium text-[var(--highlight-ink)]"
+            className="site-submit inline-flex items-center gap-3 mt-1 self-start rounded-[var(--radius)] bg-[var(--highlight)] px-7 py-3.5 text-[0.98rem] font-medium text-[var(--highlight-ink)]"
           >
             {submitLabel}
+            <SiteIcon name="arrow-right" vibe={vibe} />
           </button>
           {ctx.isPreview ? (
             <p className="text-sm text-[var(--muted)]">
@@ -694,6 +730,7 @@ export function FormLead({
 }
 
 export function EditorialText({
+  vibe = 'comercial',
   title,
   body,
   layout = 'narrow',
@@ -703,7 +740,12 @@ export function EditorialText({
       className={`${section} site-text site-text-${layout} border-b border-[var(--line)]`}
     >
       <div className={`${shell} max-w-[48rem]`}>
-        {title ? <h2 className={`${h2Class} mb-7`}>{title}</h2> : null}
+        {title ? (
+          <h2 className={`${h2Class} mb-7 site-icon-heading`}>
+            <SiteIcon name="book" vibe={vibe} />
+            {title}
+          </h2>
+        ) : null}
         <div className="flex flex-col gap-5">
           {body.split('\n\n').map((paragraph) => (
             <p
@@ -720,6 +762,7 @@ export function EditorialText({
 }
 
 export function EditorialResources({
+  vibe = 'comercial',
   title,
   body,
   items,
@@ -733,7 +776,7 @@ export function EditorialResources({
           {body && <p>{body}</p>}
         </div>
         <div className="site-resources-grid">
-          {items.map((item, index) => (
+          {items.map((item) => (
             <article key={item.href} className="site-resource">
               <a href={item.href} className="site-resource-link">
                 {item.image ? (
@@ -749,11 +792,12 @@ export function EditorialResources({
                   </div>
                 ) : (
                   <div className="site-resource-symbol" aria-hidden="true">
-                    {index % 2 === 0 ? (
-                      <Layers3 strokeWidth={1.25} size={76} />
-                    ) : (
-                      <BookOpen strokeWidth={1.25} size={76} />
-                    )}
+                    <SiteIcon
+                      name={item.icon ?? 'book'}
+                      vibe={vibe}
+                      size={56}
+                      badge
+                    />
                   </div>
                 )}
                 <div className="site-resource-copy">
@@ -764,7 +808,7 @@ export function EditorialResources({
                   <p>{item.body}</p>
                   <span className="site-resource-read">
                     Explorar
-                    <ArrowUpRight size={20} aria-hidden="true" />
+                    <SiteIcon name="arrow-up-right" vibe={vibe} />
                   </span>
                 </div>
               </a>
@@ -777,6 +821,7 @@ export function EditorialResources({
 }
 
 export function EditorialPostList({
+  vibe = 'comercial',
   title,
   limit,
   layout = 'grid',
@@ -811,7 +856,8 @@ export function EditorialPostList({
                     </time>
                   ) : null}
                   <h2 className="text-[1.3rem] font-semibold leading-snug tracking-[-0.015em]">
-                    {post.title}
+                    {post.title}{' '}
+                    <SiteIcon name="arrow-up-right" vibe={vibe} size={18} />
                   </h2>
                   {post.excerpt ? (
                     <p className="text-[0.97rem] leading-relaxed text-[var(--muted)]">
@@ -828,14 +874,20 @@ export function EditorialPostList({
   );
 }
 
-export function EditorialPostBody({ body }: EditorialPostBodyProps) {
+export function EditorialPostBody({
+  vibe = 'comercial',
+  body,
+}: EditorialPostBodyProps) {
   const nodes = body
     .split('\n\n')
     .map((chunk) => chunk.trim())
     .filter(Boolean);
   return (
-    <article className={`${section} border-b border-[var(--line)]`}>
+    <article
+      className={`${section} site-post-body border-b border-[var(--line)]`}
+    >
       <div className={`${shell} flex max-w-[44rem] flex-col gap-6`}>
+        <SiteIcon name="book" vibe={vibe} size={24} />
         {nodes.map((node) => {
           const key = node.slice(0, 48);
           if (node.startsWith('## ')) {
@@ -887,6 +939,7 @@ export function EditorialPostBody({ body }: EditorialPostBodyProps) {
 }
 
 export function MediaGallery({
+  vibe = 'comercial',
   title,
   images,
   layout = 'grid',
@@ -896,7 +949,12 @@ export function MediaGallery({
       className={`${section} site-gallery site-gallery-${layout} border-b border-[var(--line)]`}
     >
       <div className={shell}>
-        {title ? <h2 className={`${h2Class} mb-10`}>{title}</h2> : null}
+        {title ? (
+          <h2 className={`${h2Class} mb-10 site-icon-heading`}>
+            <SiteIcon name="camera" vibe={vibe} />
+            {title}
+          </h2>
+        ) : null}
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {images.map((image) => (
             <li key={image.src}>
@@ -918,6 +976,7 @@ export function MediaGallery({
 }
 
 export function MediaMap({
+  vibe = 'comercial',
   title,
   address,
   query,
@@ -938,7 +997,7 @@ export function MediaMap({
             rel="noreferrer"
             className="text-[0.95rem] font-medium text-[var(--highlight-text)] underline underline-offset-4"
           >
-            Ver rota
+            Ver rota <SiteIcon name="route" vibe={vibe} size={18} />
           </a>
         </div>
         <div className="md:col-span-8">
@@ -956,6 +1015,7 @@ export function MediaMap({
 }
 
 export function PricingTable({
+  vibe = 'comercial',
   title,
   plans,
   layout = 'cards',
@@ -985,8 +1045,9 @@ export function PricingTable({
                 {plan.features.map((feature) => (
                   <li
                     key={feature}
-                    className="text-[0.95rem] leading-snug opacity-80"
+                    className="site-plan-feature text-[0.95rem] leading-snug opacity-80"
                   >
+                    <SiteIcon name="check" vibe={vibe} size={17} />
                     {feature}
                   </li>
                 ))}
@@ -1000,6 +1061,7 @@ export function PricingTable({
                 }`}
               >
                 {plan.cta.label}
+                <SiteIcon name="arrow-up-right" vibe={vibe} size={18} />
               </a>
             </li>
           ))}
@@ -1015,6 +1077,7 @@ export function PricingTable({
  * continua sem campo de telefone, e-mail ou rede para o modelo preencher.
  */
 function FooterContacts({ ctx }: { ctx: RenderContext }) {
+  const vibe = vibeOf(ctx.tenant.brand);
   const contacts = contactsOf(ctx.tenant.contacts, ctx.tenant.whatsapp);
   const email = ctx.tenant.contactEmail;
   const social = socialLinks(contacts);
@@ -1054,7 +1117,7 @@ function FooterContacts({ ctx }: { ctx: RenderContext }) {
               href={`tel:${phoneE164(phone.number)}`}
               className={link}
             >
-              <Phone size={15} aria-hidden="true" />
+              <SiteIcon name="phone" vibe={vibe} size={18} />
               {formatPhone(phone.number)}
             </a>
           );
@@ -1069,7 +1132,7 @@ function FooterContacts({ ctx }: { ctx: RenderContext }) {
             data-track="whatsapp"
             className={link}
           >
-            <MessageCircle size={15} aria-hidden="true" />
+            <SiteIcon name="chat" vibe={vibe} size={18} />
             {formatPhone(phone.number)}
             <span className="text-[0.78rem] opacity-70">WhatsApp</span>
           </a>
@@ -1077,13 +1140,13 @@ function FooterContacts({ ctx }: { ctx: RenderContext }) {
       })}
       {email ? (
         <a href={`mailto:${email}`} className={link}>
-          <Mail size={15} aria-hidden="true" />
+          <SiteIcon name="mail" vibe={vibe} size={18} />
           {email}
         </a>
       ) : null}
       {hasLocation ? (
         <a href="#onde-estamos" className={link}>
-          <MapPin size={15} aria-hidden="true" />
+          <SiteIcon name="pin" vibe={vibe} size={18} />
           Onde estamos
         </a>
       ) : null}
@@ -1098,7 +1161,7 @@ function FooterContacts({ ctx }: { ctx: RenderContext }) {
                 title={item.label}
                 className="flex size-9 items-center justify-center rounded-[var(--radius)] border border-[var(--line)] text-[var(--muted)] hover:text-[var(--ink)]"
               >
-                <SocialIcon network={item.key} />
+                <SocialIcon network={item.key} vibe={vibe} />
               </a>
             </li>
           ))}
@@ -1178,6 +1241,7 @@ export function FooterCompact({
 }
 
 export function FeatureNumbered({
+  vibe = 'comercial',
   eyebrow,
   title,
   lead,
@@ -1188,7 +1252,7 @@ export function FeatureNumbered({
     <section className={`${section} site-services site-services-${layout}`}>
       <div className={`${shell} site-services-grid grid gap-12`}>
         <div className="flex max-w-[40rem] flex-col items-start gap-4">
-          <Eyebrow>{eyebrow}</Eyebrow>
+          <Eyebrow vibe={vibe}>{eyebrow}</Eyebrow>
           <h2 className={h2Class}>{title}</h2>
           {lead ? (
             <p className="text-[1.02rem] leading-relaxed text-[var(--muted)]">
@@ -1200,6 +1264,12 @@ export function FeatureNumbered({
           {items.map((item) => {
             const inner = (
               <>
+                <SiteIcon
+                  name={item.icon ?? 'layers'}
+                  vibe={vibe}
+                  size={24}
+                  badge
+                />
                 <h3 className="text-[1.15rem] font-semibold tracking-[-0.01em]">
                   {item.title}
                 </h3>
@@ -1233,6 +1303,7 @@ export function FeatureNumbered({
 }
 
 export function NarrativeSplit({
+  vibe = 'comercial',
   eyebrow,
   title,
   items,
@@ -1262,7 +1333,7 @@ export function NarrativeSplit({
           </figure>
         ) : null}
         <div>
-          <Eyebrow>{eyebrow}</Eyebrow>
+          <Eyebrow vibe={vibe}>{eyebrow}</Eyebrow>
           <h2 className={`${h2Class} mt-4 mb-8 max-w-[24ch]`}>{title}</h2>
           <ul className={`grid gap-x-10 ${hasImage ? '' : 'md:grid-cols-2'}`}>
             {items.map((item) => (
@@ -1270,6 +1341,12 @@ export function NarrativeSplit({
                 key={item.title}
                 className="border-t border-[var(--line)] py-6"
               >
+                <SiteIcon
+                  name={item.icon ?? 'compass'}
+                  vibe={vibe}
+                  size={22}
+                  badge
+                />
                 <h3 className="text-lg font-semibold tracking-[-0.01em]">
                   {item.href ? (
                     <a
@@ -1295,6 +1372,7 @@ export function NarrativeSplit({
 }
 
 export function EditorialFacts({
+  vibe = 'comercial',
   eyebrow,
   title,
   body,
@@ -1333,7 +1411,7 @@ export function EditorialFacts({
               <dt
                 className={`text-[0.9rem] ${dark ? 'opacity-60' : 'text-[var(--muted)]'}`}
               >
-                {fact.label}
+                <SiteIcon name="check" vibe={vibe} size={16} /> {fact.label}
               </dt>
               <dd className="text-right text-[0.98rem] font-medium">
                 {fact.value}
@@ -1347,6 +1425,7 @@ export function EditorialFacts({
 }
 
 export function MediaImage({
+  vibe = 'comercial',
   src,
   alt,
   caption,
@@ -1368,7 +1447,7 @@ export function MediaImage({
         />
         {caption ? (
           <figcaption className="mt-3 text-[0.88rem] text-[var(--muted)]">
-            {caption}
+            <SiteIcon name="camera" vibe={vibe} size={16} /> {caption}
           </figcaption>
         ) : null}
       </figure>
@@ -1387,15 +1466,23 @@ export function FloatingWhatsapp({ ctx }: { ctx: RenderContext }) {
       data-track="whatsapp"
       className="fixed right-5 bottom-5 z-40 flex size-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-[0_10px_30px_-10px_rgba(0,0,0,0.45)]"
     >
-      <svg
-        viewBox="0 0 24 24"
-        width="28"
-        height="28"
-        fill="currentColor"
+      <span
+        className="site-icon"
+        data-icon-vibe={vibeOf(ctx.tenant.brand)}
         aria-hidden="true"
       >
-        <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 12 12 0 0 0 4.6 4c1.7.7 2.1.6 2.8.5a2.4 2.4 0 0 0 1.6-1.1 2 2 0 0 0 .1-1.1c0-.2-.2-.2-.5-.4Z" />
-      </svg>
+        <svg
+          className="site-icon-svg"
+          viewBox="0 0 24 24"
+          width="28"
+          height="28"
+          fill="currentColor"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 12 12 0 0 0 4.6 4c1.7.7 2.1.6 2.8.5a2.4 2.4 0 0 0 1.6-1.1 2 2 0 0 0 .1-1.1c0-.2-.2-.2-.5-.4Z" />
+        </svg>
+      </span>
     </a>
   );
 }
