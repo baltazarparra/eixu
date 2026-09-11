@@ -10,13 +10,19 @@ import { generationFeedFixture } from '../helpers/generation-feed-fixture.mjs';
 
 /** Estado do servidor entre recargas: é exatamente o que o painel perdia. */
 function generationServer(overrides = {}) {
+  const {
+    clockSkewMs = 0,
+    phaseStartedAt = undefined,
+    ...siteOverrides
+  } = overrides;
+  const serverTime = () => new Date(Date.now() + clockSkewMs).toISOString();
   const site = {
     previewRevision: 'v1',
     tenant: { slug: 'stream-fixture', name: 'Fixture', hasDesign: true },
     errors: [],
     warnings: [],
     pages: [],
-    ...overrides,
+    ...siteOverrides,
     generation: {
       next: 'cenas',
       photos: 2,
@@ -27,7 +33,7 @@ function generationServer(overrides = {}) {
       reviewRounds: 0,
       reviewComplete: false,
       blockingErrors: 0,
-      ...overrides.generation,
+      ...siteOverrides.generation,
     },
   };
   const firstPhase = site.generation.next;
@@ -46,7 +52,7 @@ function generationServer(overrides = {}) {
       tool: tool ?? null,
       label,
       payload: {},
-      createdAt: new Date().toISOString(),
+      createdAt: serverTime(),
     });
   const saveMessage = (role, text) =>
     messages.push({
@@ -71,9 +77,10 @@ function generationServer(overrides = {}) {
         tenantId: 'tenant',
         status: 'running',
         phase: firstPhase,
-        phaseStartedAt: new Date().toISOString(),
-        startedAt: new Date().toISOString(),
-        heartbeatAt: new Date().toISOString(),
+        phaseStartedAt:
+          phaseStartedAt === undefined ? serverTime() : phaseStartedAt,
+        startedAt: serverTime(),
+        heartbeatAt: serverTime(),
         finishedAt: null,
         error: null,
         hops: 1,
@@ -99,7 +106,7 @@ function generationServer(overrides = {}) {
         reviewComplete: true,
       };
       add('phase_end', '5 de 5 cenas disponíveis');
-      run = { ...run, status: 'done', finishedAt: new Date().toISOString() };
+      run = { ...run, status: 'done', finishedAt: serverTime() };
       saveMessage('assistant', 'Cenas concluídas.');
     },
     stop() {
@@ -117,6 +124,7 @@ function generationServer(overrides = {}) {
         lastMessageId: batch.length ? Number(batch.at(-1).id.slice(6)) : after,
         hasMoreMessages: batch.length === 60,
         everRan,
+        serverTime: serverTime(),
         state: site,
       };
     },
@@ -564,6 +572,43 @@ await test(
         assert.deepEqual(errors, []);
       },
     );
+  },
+);
+
+await test(
+  'cronômetro usa o servidor e avança mesmo com os relógios desencontrados',
+  { skip: !process.env.EIXU_CHROME_PATH },
+  async () => {
+    const backend = generationServer({
+      clockSkewMs: 10 * 60 * 1000,
+      phaseStartedAt: null,
+    });
+    const chat = await chatFixture();
+    await withWorkspace({ backend, chat }, async ({ page, click, errors }) => {
+      await click('Continuar');
+      await page.waitForFunction(
+        () => {
+          const meta = document.querySelector('.admin-run-meta')?.textContent;
+          return (
+            meta?.includes('nesta etapa') &&
+            !meta.includes('0:00 nesta etapa') &&
+            !meta.includes('0:00 no total')
+          );
+        },
+        { timeout: 5_000 },
+      );
+      const before = await page.$eval(
+        '.admin-run-meta',
+        (node) => node.textContent,
+      );
+      await page.waitForFunction(
+        (before) =>
+          document.querySelector('.admin-run-meta')?.textContent !== before,
+        { timeout: 3_000 },
+        before,
+      );
+      assert.deepEqual(errors, []);
+    });
   },
 );
 

@@ -63,6 +63,9 @@ export async function GET(
     messages,
     lastMessageId: messageCursor(messages, after),
     hasMoreMessages: messages.length === 60,
+    // O cronômetro usa a mesma referência dos timestamps do run. Comparar
+    // direto com o relógio do aparelho congela em zero quando ele está atrás.
+    serverTime: new Date().toISOString(),
     // Cliente que nunca gerou é o único que o painel inicia sozinho. Sem este
     // sinal, um rascunho antigo e abandonado voltaria a gastar geração só por
     // ser aberto, e um run recém-encerrado sairia do feed depois de 30 minutos.

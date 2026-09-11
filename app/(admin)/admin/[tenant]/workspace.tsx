@@ -372,6 +372,7 @@ export function Workspace({
             run={generation.run}
             events={generation.events}
             state={site}
+            clockOffsetMs={generation.clockOffsetMs}
             error={generation.error}
             busy={busy}
             starting={generation.starting}

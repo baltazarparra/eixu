@@ -12,7 +12,9 @@ export type GenerationFeed = {
   messages: ChatMessage[];
   lastMessageId: number;
   hasMoreMessages: boolean;
-  /** Se este cliente já teve alguma execução, concluída ou não. */
+  /** Referência do servidor para neutralizar diferença no relógio do aparelho. */
+  serverTime?: string;
+  /** Se este cliente já teve alguma tentativa ou conversa de geração. */
   everRan?: boolean;
   state: SiteState;
 };
@@ -47,6 +49,7 @@ export function useGeneration(input: {
   // execução: começar sozinho antes disso duplicaria trabalho pago.
   const [ready, setReady] = useState(false);
   const [everRan, setEverRan] = useState<boolean | null>(null);
+  const [clockOffsetMs, setClockOffsetMs] = useState(0);
   const [starting, setStarting] = useState(false);
   const cursor = useRef(input.initialMessageId);
   const readSequence = useRef(0);
@@ -77,6 +80,11 @@ export function useGeneration(input: {
       if (signal?.aborted || ticket !== readSequence.current) return feed;
       setRun(feed.run);
       setEvents(feed.events);
+      const serverTime = feed.serverTime
+        ? new Date(feed.serverTime).getTime()
+        : Number.NaN;
+      if (Number.isFinite(serverTime))
+        setClockOffsetMs(serverTime - Date.now());
       // Um feed antigo sem o campo não autoriza início automático.
       setEverRan(feed.everRan ?? true);
       setReady(true);
@@ -159,6 +167,7 @@ export function useGeneration(input: {
     error,
     ready,
     everRan,
+    clockOffsetMs,
     starting,
     refresh: read,
     start,

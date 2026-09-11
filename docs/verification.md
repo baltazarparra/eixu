@@ -1,5 +1,18 @@
 # Validação e publicação
 
+## Cronômetro da geração, 11/09/2026
+
+Os tempos da etapa e do total ficavam em `0:00` quando o relógio do navegador
+estava atrás do servidor, porque valores negativos eram truncados para zero. O
+feed agora informa a hora do servidor e o cliente usa essa referência para
+continuar a contagem local. A primeira fase usa o início do run enquanto seu
+timestamp específico ainda não foi gravado.
+
+O teste de navegador reproduziu a falha com dez minutos de diferença entre os
+relógios e exige que os dois cronômetros saiam de `0:00` e continuem avançando.
+Os seis testes de navegador, os 99 testes de admin com PostgreSQL local, os 81
+testes de sites, lint, tipos e o build Vercel passaram sem pulos ou falhas.
+
 ## Correções da revisão do PR #15, 11/09/2026
 
 O início automático agora considera tentativas anteriores à tabela de execuções:
