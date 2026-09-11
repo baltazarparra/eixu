@@ -1,5 +1,6 @@
 import { catalogForPrompt } from '../blocks/registry';
-import { intakeSummary } from '../tenant-intake';
+import { intakeSocialUrl, intakeSummary } from '../tenant-intake';
+import { socialSummary } from '../social-profile';
 import { PHASE_BRIEF, type Phase } from './phases';
 import type { Tenant } from '../types';
 
@@ -66,13 +67,19 @@ export function systemPrompt(
   context: PromptContext = {},
 ): string {
   const { phase, scenePlan, sources, review } = context;
-  const intake = intakeSummary(tenant.brief.intake);
+  const intake = [
+    intakeSummary(tenant.brief.intake),
+    socialSummary(tenant.brief.social, intakeSocialUrl(tenant.brief.intake)),
+  ]
+    .filter(Boolean)
+    .join('\n');
   // Fontes e progresso já aparecem em seções próprias; repetir o JSON inteiro
   // só gastaria contexto.
   const {
     sources: _sources,
     generation: _generation,
     intake: _intake,
+    social: _social,
     ...brief
   } = tenant.brief as Record<string, unknown>;
   // Contexto podado por fase: catálogo só onde há blocos para escrever.

@@ -1,10 +1,17 @@
 import { z } from 'zod';
+import { after } from 'next/server';
 import { isAuthenticated } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { getTenantBySlug, setBrandLogo } from '@/lib/tenant-queries';
 import { intakeSchema } from '@/lib/tenant-intake';
 import { tenantDetailsSchema } from '@/lib/admin/tenant-input';
 import { canApplyLogo } from '@/lib/images/logo-access';
+import { normalizeSocialUrl, parseSocialRecord } from '@/lib/social-profile';
+import {
+  clearSocialProfile,
+  markSocialReading,
+  syncSocialProfile,
+} from '@/lib/ai/social';
 
 const patch = z
   .object({
@@ -54,6 +61,9 @@ export async function PATCH(
       );
   }
 
+  const previousSocial = intakeSchema.safeParse(tenant.brief.intake).data
+    ?.socialUrl;
+
   await db()`
     update tenants set
       name = case when ${input.name !== undefined} then ${input.name ?? null} else name end,
@@ -67,5 +77,24 @@ export async function PATCH(
     input.logoUrl === undefined
       ? tenant.brand
       : await setBrandLogo(tenant.id, input.logoUrl);
-  return Response.json({ ok: true, brand });
+
+  // O perfil vive em brief.social, fora de brief.intake, porque o update acima
+  // substitui o intake inteiro. A leitura corre depois da resposta.
+  let social = parseSocialRecord(tenant.brief.social);
+  const nextSocial = input.intake?.socialUrl;
+  if (nextSocial !== undefined && nextSocial !== (previousSocial ?? '')) {
+    const normalized = nextSocial ? normalizeSocialUrl(nextSocial) : null;
+    if (normalized) {
+      const reading = await markSocialReading(tenant.id, normalized);
+      social = reading;
+      if (reading)
+        after(() =>
+          syncSocialProfile({ id: tenant.id, slug: tenant.slug }, reading),
+        );
+    } else {
+      social = null;
+      await clearSocialProfile(tenant.id);
+    }
+  }
+  return Response.json({ ok: true, brand, social });
 }

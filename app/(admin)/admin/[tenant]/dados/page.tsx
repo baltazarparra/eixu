@@ -1,8 +1,9 @@
 import { notFound, redirect } from 'next/navigation';
 import { AdminHeader } from '@/components/admin/navigation';
 import { isAuthenticated } from '@/lib/auth';
-import { getTenantBySlug } from '@/lib/tenant-queries';
+import { countTenantData, getTenantBySlug } from '@/lib/tenant-queries';
 import { intakeSchema } from '@/lib/tenant-intake';
+import { parseSocialRecord } from '@/lib/social-profile';
 import { SettingsForm } from './settings-form';
 
 export const dynamic = 'force-dynamic';
@@ -15,6 +16,7 @@ export default async function SettingsPage({
   const tenant = await getTenantBySlug((await params).tenant);
   if (!tenant) notFound();
   const intake = intakeSchema.safeParse(tenant.brief.intake);
+  const counts = await countTenantData(tenant.id);
   return (
     <>
       <AdminHeader tenant={tenant} active="dados" />
@@ -30,11 +32,16 @@ export default async function SettingsPage({
           tenant={{
             slug: tenant.slug,
             name: tenant.name,
+            status: tenant.status,
             whatsapp: tenant.whatsapp,
             contactEmail: tenant.contactEmail,
             logoUrl: tenant.brand.logoUrl,
+            pageCount: counts.pages,
+            leadCount: counts.leads,
+            imageCount: counts.images,
           }}
           intake={intake.success ? intake.data : {}}
+          social={parseSocialRecord(tenant.brief.social)}
         />
       </main>
     </>

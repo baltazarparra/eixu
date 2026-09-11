@@ -13,7 +13,9 @@ npm run build:vercel
 git diff --check
 ```
 
-Para incluir a prova de isolamento do cookie na captura, rode `test:admin` com `EIXU_CHROME_PATH` apontando para o executável local do Chrome. Sem ele, esse caso é pulado; os outros 17 não precisam de navegador.
+Para incluir a prova de isolamento do cookie na captura, rode `test:admin` com `EIXU_CHROME_PATH` apontando para o executável local do Chrome. Sem ele, esse caso é pulado; os demais testes não precisam de navegador.
+
+`tests/admin-concurrency.test.mjs` exige um PostgreSQL local descartável chamado `eixu_pr2_test`, indicado por `EIXU_TEST_POSTGRES_URL`. A suíte recusa hosts remotos, aplica `db/schema.sql` nesse banco e exercita o driver Neon e seus locks por um proxy WebSocket local; Blob, rede social e visão são simulados. Sem a variável, somente essa suíte de integração é pulada. Para incluí-la, execute `npm run test:admin` com a variável apontando para esse banco local.
 
 `next typegen` prepara tipos de rotas e `next-env.d.ts` em um checkout limpo. O guia da versão instalada está em `node_modules/next/dist/docs/01-app/03-api-reference/06-cli/next.md`. O build pode precisar de rede para `next/font/google`. Nenhum desses comandos executa o seed, migrações ou chamadas de geração pagas.
 
@@ -23,7 +25,7 @@ Para documentação, confira links locais, comandos e fatos contra o código e r
 npm run format -- --check README.md AGENTS.md docs
 ```
 
-O projeto possui `test:sites` e `test:admin`, com testes de contrato sem banco e sem geração paga. Não possui script genérico `test`, `verify` ou CI versionada. Não trate um comando inexistente como gate nem substitua falhas por uma declaração do modelo.
+O projeto possui `test:sites` e `test:admin`, com testes de contrato sem banco e uma suíte opcional de concorrência em PostgreSQL local. Nenhum desses testes usa geração paga. Não possui script genérico `test`, `verify` ou CI versionada. Não trate um comando inexistente como gate nem substitua falhas por uma declaração do modelo.
 
 ## Revisão do admin, 10/09/2026
 
@@ -43,7 +45,61 @@ A dívida de lint compreende 3 diagnósticos de React Compiler, 14 de acessibili
 
 Na mesma revisão, o build servido em `http://localhost:3100` passou em 22 verificações HTTP: 7 rotas públicas, 4 redirecionamentos administrativos, 10 recusas de API sem sessão e o bloqueio de acesso direto a `/s/*`. Formatação dos 5 documentos, 14 links locais, nomes dos scripts e preservação do bloco Next.js/import do Claude também foram conferidos. Isso não avalia chamadas pagas, fluxos autenticados ou qualidade comparativa dos modelos.
 
+## Exclusão de cliente, rede social no briefing e briefing explicado, 10/09/2026
+
+Tipos, `npm run test:sites` com 44 casos, `npm run test:admin` com 20 casos mais
+um pulado sem Chrome, build Next.js de produção e formatação passaram. O lint
+global manteve os mesmos 20 erros preexistentes nos 13 arquivos da referência,
+sem diagnóstico novo no escopo alterado.
+
+No painel local, com sessão de operador, dois clientes descartáveis exercitaram
+a exclusão. O rascunho confirmou em um clique; o publicado, com uma página e um
+contato, exigiu digitar o endereço, e o botão continuou travado com um endereço
+errado. Depois de excluir, a consulta de leitura mostrou zero registros, zero
+páginas e contatos órfãos e zero arquivos no prefixo do Blob; o host do cliente
+respondeu 404 e os demais clientes continuaram em 200. A rota nova de rede
+social respondeu 401 sem sessão.
+
+A leitura de perfil foi medida contra as redes reais, sem chamada de modelo:
+
+| Perfil                        | Resultado                                       |
+| ----------------------------- | ----------------------------------------------- |
+| `linkedin.com/company/vercel` | nome, seguidores, tagline e avatar              |
+| `@natgeo`                     | nome, seguidores, bio e avatar                  |
+| `@padariasantaluzia`          | bloqueado: o Instagram devolveu a tela de login |
+| `linkedin.com/in/<pessoa>`    | bloqueado: 999, perfil pessoal                  |
+
+Três defeitos apareceram nessa medição e foram corrigidos com teste. O padrão
+de meta tag passou a exigir que o conteúdo fique dentro da própria tag, porque
+a versão com backreference atravessava tags e capturava metade do documento.
+As descrições são lidas em português e inglês, e o cabeçalho de idioma saiu:
+em português o Instagram troca o texto por um resumo sem bio. O decodificador
+ganhou uma segunda passada, porque o LinkedIn entrega a bio codificada duas
+vezes e `&amp;#39;` chegava literal ao briefing.
+
+Uma execução paga autorizada leu a página da Vercel no LinkedIn em 4,1 segundos
+num tenant descartável: copiou o avatar para `tenants/<slug>/social/` no Blob e
+descreveu a imagem pelo modelo crítico ("triângulo branco centralizado sobre
+fundo preto"), gravando tudo em `brief.social`. O tenant e o arquivo foram
+apagados em seguida pelo mesmo caminho da exclusão. Uma chamada de visão por
+avatar novo não é um custo medido por cliente.
+
+O contraste do botão de exclusão foi medido, não estimado: texto claro sobre o
+vermelho de erro dá 3,02, e o tom escuro da marca dá 4,71. O botão usa o tom
+escuro. O diálogo precisou de `margin: auto` porque o reset do Tailwind zera a
+margem e tira a centralização do `dialog` modal. Cadastro e Dados foram
+conferidos em 390 px, com as legendas quebrando sem overflow.
+
+Não foram executados: leitura do Instagram a partir de um IP da Vercel, que
+tende a falhar mais que a máquina local, e geração de site com o perfil lido no
+prompt. O prompt foi conferido por leitura nas três variações (lido, bloqueado
+e pendente).
+
 ## Verificação pelo impacto
+
+As correções da revisão do PR #2 acrescentam regressões para merge por chave e preservação do briefing consolidado no prompt de imagens. Os testes de concorrência conferem troca de URL, releitura da mesma URL, remoção durante leitura, clear atrasado, reutilização do avatar sem repetir visão, descarte após upload, as duas ordens de upload/exclusão, isolamento entre tenants, falha no Blob e confirmação pelo estado atual.
+
+Na validação local dessas correções, os 46 testes de site e 30 testes de admin passaram, com um caso de captura pulado sem Chrome. A integração usou PostgreSQL 18.4 descartável e o driver Neon instalado, sem banco remoto, Blob real ou geração paga. Tipos, build Next.js de produção e oito verificações HTTP passaram: institucional, login, redirecionamento do admin, quatro recusas de API sem sessão e bloqueio de acesso direto a `/s/*`. O lint global manteve os 20 erros preexistentes em 13 arquivos, sem diagnóstico nos arquivos alterados. O schema do produto permaneceu inalterado.
 
 | Mudança                    | Evidência além do diff                                                                                                                                 |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |

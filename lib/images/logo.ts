@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { generateImage } from 'ai';
-import { put } from '@vercel/blob';
+import { putTenantBlob } from '@/lib/blob/tenant-files';
 import sharp from 'sharp';
 import { insertImage } from '@/lib/images/queries';
 import type { ImageGuide, Tenant, TenantImage } from '@/lib/types';
@@ -14,31 +14,52 @@ const LOGO_MODEL = 'openai/gpt-image-2';
 
 const MAX_REFERENCE_BYTES = 8 * 1024 * 1024;
 
-export type LogoVariant = 'fiel' | 'ousada' | 'fiel-mono' | 'conceito-1' | 'conceito-2' | 'conceito-3';
+export type LogoVariant =
+  | 'fiel'
+  | 'ousada'
+  | 'fiel-mono'
+  | 'conceito-1'
+  | 'conceito-2'
+  | 'conceito-3';
 
-export type LogoCandidate = TenantImage & { bytes: Uint8Array; variant: LogoVariant };
+export type LogoCandidate = TenantImage & {
+  bytes: Uint8Array;
+  variant: LogoVariant;
+};
 
 /** Baixa o logo antigo do Blob e normaliza para PNG quadrado. */
 export async function fetchReference(url: string): Promise<Buffer> {
   const response = await fetch(url);
-  if (!response.ok) throw new Error(`Não consegui baixar a imagem de referência (${response.status}).`);
+  if (!response.ok)
+    throw new Error(
+      `Não consegui baixar a imagem de referência (${response.status}).`,
+    );
   const raw = Buffer.from(await response.arrayBuffer());
-  if (raw.length > MAX_REFERENCE_BYTES) throw new Error('A imagem de referência passa de 8 MB.');
+  if (raw.length > MAX_REFERENCE_BYTES)
+    throw new Error('A imagem de referência passa de 8 MB.');
   // SVG e formatos exóticos viram PNG; o modelo só aceita bitmap.
-  return sharp(raw).resize(1024, 1024, { fit: 'inside', withoutEnlargement: true }).png().toBuffer();
+  return sharp(raw)
+    .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
+    .png()
+    .toBuffer();
 }
 
 const BASE =
   'Logotipo vetorial flat, formas limpas e sólidas, fundo totalmente transparente. Sem sombra, sem gradiente fotográfico, sem textura, sem mockup, sem moldura, sem cartão de visita, sem fundo colorido.';
 
 function nameRule(brandName: string, wordmark: boolean): string {
-  if (!wordmark) return 'Sem nenhum texto ou letra na imagem, apenas o símbolo.';
+  if (!wordmark)
+    return 'Sem nenhum texto ou letra na imagem, apenas o símbolo.';
   const spelled = brandName.toUpperCase().split('').join('-');
   return `Escreva exatamente o nome "${brandName}", letra por letra ${spelled}. Nenhuma outra palavra, sigla ou slogan.`;
 }
 
 function palette(tenant: Tenant, guide: ImageGuide): string {
-  const colors = [tenant.brand.accent, tenant.brand.ink, ...(guide.paleta ?? [])].filter(Boolean);
+  const colors = [
+    tenant.brand.accent,
+    tenant.brand.ink,
+    ...(guide.paleta ?? []),
+  ].filter(Boolean);
   return colors.length ? `Paleta: ${colors.slice(0, 4).join(', ')}.` : '';
 }
 
@@ -52,14 +73,14 @@ export function composeLogoPrompt(input: {
 }): string {
   const { variant, tenant, guide, brandName, wordmark, brief } = input;
   const direction: Record<LogoVariant, string> = {
-    fiel:
-      'Refaça este logotipo mantendo o mesmo símbolo, as mesmas cores e as mesmas proporções. Apenas refine: traços mais limpos, espaçamento consistente, tipografia mais legível. A marca precisa continuar reconhecível à primeira vista.',
+    fiel: 'Refaça este logotipo mantendo o mesmo símbolo, as mesmas cores e as mesmas proporções. Apenas refine: traços mais limpos, espaçamento consistente, tipografia mais legível. A marca precisa continuar reconhecível à primeira vista.',
     'fiel-mono':
       'Refaça este logotipo mantendo símbolo e proporções, em uma cor só, versão monocromática para uso em fundo claro.',
     ousada:
       'Reinterprete este logotipo. Mantenha a ideia central reconhecível, mas simplifique a forma, reduza detalhes e modernize a tipografia. Pode mudar o arranjo e ajustar as cores.',
     'conceito-1': 'Um símbolo simples e memorável acima ou ao lado do nome.',
-    'conceito-2': 'Um monograma com a inicial do nome, dentro de uma forma geométrica simples, com o nome ao lado.',
+    'conceito-2':
+      'Um monograma com a inicial do nome, dentro de uma forma geométrica simples, com o nome ao lado.',
     'conceito-3': wordmark
       ? 'Apenas tipografia trabalhada, sem símbolo, com um detalhe gráfico discreto em uma letra.'
       : 'Um símbolo abstrato e geométrico que sugira o segmento, sem nenhuma letra.',
@@ -77,7 +98,10 @@ export function composeLogoPrompt(input: {
     .join(' ');
 }
 
-export function variantsFor(mode: 'modernizar' | 'criar', count: number): LogoVariant[] {
+export function variantsFor(
+  mode: 'modernizar' | 'criar',
+  count: number,
+): LogoVariant[] {
   const modernize: LogoVariant[] = ['fiel', 'ousada', 'fiel-mono'];
   const create: LogoVariant[] = ['conceito-1', 'conceito-2', 'conceito-3'];
   return (mode === 'modernizar' ? modernize : create).slice(0, count);
@@ -97,7 +121,9 @@ export async function generateLogoCandidates(input: {
   const batchId = randomUUID();
   const variants = variantsFor(input.mode, input.variants);
   const requestText =
-    input.mode === 'modernizar' ? `Modernizar o logo de ${input.brandName}` : `Criar logo para ${input.brandName}`;
+    input.mode === 'modernizar'
+      ? `Modernizar o logo de ${input.brandName}`
+      : `Criar logo para ${input.brandName}`;
 
   const settled = await Promise.allSettled(
     variants.map(async (variant) => {
@@ -113,11 +139,16 @@ export async function generateLogoCandidates(input: {
         model: LOGO_MODEL,
         prompt: input.reference ? { text, images: [input.reference] } : text,
         size: '1024x1024',
-        providerOptions: { openai: { background: 'transparent', output_format: 'png' } },
+        providerOptions: {
+          openai: { background: 'transparent', output_format: 'png' },
+        },
         maxRetries: 1,
       });
       if (result.warnings.length) {
-        console.warn(`[logo] ${LOGO_MODEL} ignorou parâmetros:`, JSON.stringify(result.warnings));
+        console.warn(
+          `[logo] ${LOGO_MODEL} ignorou parâmetros:`,
+          JSON.stringify(result.warnings),
+        );
       }
       return { variant, text, file: result.image };
     }),
@@ -128,7 +159,10 @@ export async function generateLogoCandidates(input: {
 
   for (const [index, outcome] of settled.entries()) {
     if (outcome.status === 'rejected') {
-      const reason = outcome.reason instanceof Error ? outcome.reason.message : 'falha desconhecida';
+      const reason =
+        outcome.reason instanceof Error
+          ? outcome.reason.message
+          : 'falha desconhecida';
       failures.push(`${variants[index]}: ${reason.slice(0, 140)}`);
       continue;
     }
@@ -141,8 +175,12 @@ export async function generateLogoCandidates(input: {
       const png = await sharp(Buffer.from(file.uint8Array))
         .png({ palette: true, quality: 90, effort: 8 })
         .toBuffer();
-      const blobPath = `tenants/${input.tenant.slug}/logo/${batchId}/${variant}.png`;
-      const blob = await put(blobPath, png, { access: 'public', addRandomSuffix: false, contentType: 'image/png' });
+      const blob = await putTenantBlob(
+        input.tenant.id,
+        `logo/${batchId}/${variant}.png`,
+        png,
+        { access: 'public', addRandomSuffix: false, contentType: 'image/png' },
+      );
 
       const row = await insertImage({
         tenantId: input.tenant.id,
@@ -153,13 +191,15 @@ export async function generateLogoCandidates(input: {
         model: LOGO_MODEL,
         promptFinal: text,
         url: blob.url,
-        blobPath,
+        blobPath: blob.pathname,
         kind: 'logo',
         referenceUrls: input.referenceUrl ? [input.referenceUrl] : [],
       });
       images.push({ ...row, bytes: new Uint8Array(png), variant });
     } catch (error) {
-      failures.push(`${variant}: ${error instanceof Error ? error.message.slice(0, 140) : 'falha ao salvar'}`);
+      failures.push(
+        `${variant}: ${error instanceof Error ? error.message.slice(0, 140) : 'falha ao salvar'}`,
+      );
     }
   }
 
