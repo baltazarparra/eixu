@@ -16,7 +16,18 @@ import {
   type GenerationRun,
 } from '@/lib/generation/runs';
 import { phaseBlocker, phaseInstructions } from '@/lib/generation/context';
+import {
+  progressMarker,
+  reviewRound,
+  stalled,
+  REVIEW_ROUNDS,
+} from '@/lib/generation/marker';
 import { listImages } from '@/lib/images/queries';
+import {
+  currentReview,
+  reviewFingerprint,
+  type ReviewReceipt,
+} from '@/lib/review/state';
 import { generationState } from '@/lib/sites/generation';
 import {
   PHASE_LABEL,
@@ -27,7 +38,7 @@ import {
 import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
 import type { Tenant } from '@/lib/types';
 
-/** Teto de fases-passo encadeadas. A etapa de cenas repete a mesma fase. */
+/** Teto de fases-passo encadeadas. Cenas e revisão repetem a mesma fase. */
 export const MAX_HOPS = 14;
 
 /** Quanto o runner espera entre consultas ao pedido de pausa. */
@@ -38,6 +49,32 @@ export type StepOutcome =
   | { kind: 'done' }
   | { kind: 'paused' }
   | { kind: 'failed'; error: string };
+
+/** Uma etapa que repete a anterior sem produzir nada para de verdade. */
+function stallMessage(phase: Phase): string {
+  return phase === 'revisao'
+    ? 'A revisão terminou sem alterar o rascunho nem registrar leitura. Leia a última resposta no chat e ajuste por lá, ou use Tentar novamente.'
+    : `A etapa "${PHASE_LABEL[phase]}" não avançou. Leia a última resposta no chat e continue de lá.`;
+}
+
+/** Teto de rodadas: a revisão não fecha sozinha e o operador decide o resto. */
+function reviewCapMessage(
+  blockingErrors: number,
+  review: ReviewReceipt | null,
+): string {
+  const errors = Math.max(blockingErrors, review?.errors ?? 0);
+  const situation = !review
+    ? 'a conferência do rascunho atual não completou'
+    : !review.complete || review.visual !== 'complete'
+      ? 'a captura ou a crítica visual não completou; confira a prévia autenticada'
+      : `${errors} pendência(s) continuam`;
+  return `A revisão não fechou em ${REVIEW_ROUNDS} rodadas: ${situation}. Leia a última resposta no chat, ajuste por lá ou use Tentar novamente para abrir novas rodadas.`;
+}
+
+/** O SDK aborta o turno com este erro ao estourar o tempo total. */
+function isTimeout(error: unknown): boolean {
+  return (error as { name?: string } | null)?.name === 'TimeoutError';
+}
 
 async function persistMessage(
   tenantId: string,
@@ -107,16 +144,48 @@ function outcomeLabel(
   phase: Phase,
   tenant: Tenant,
   state: ReturnType<typeof generationState>,
+  review: ReviewReceipt | null,
 ): string {
   if (phase === 'cenas')
     return `${state.coveredScenes} de ${state.targetScenes} cenas disponíveis`;
   if (phase === 'composicao')
     return `${state.organicPages} páginas orgânicas montadas`;
-  if (phase === 'revisao')
-    return state.reviewComplete
-      ? 'Revisão concluída sem erros'
-      : `Revisão com ${state.blockingErrors} pendência(s)`;
+  if (phase === 'revisao') {
+    if (state.reviewComplete) return 'Revisão concluída sem erros';
+    if (!review) return 'Revisão do rascunho atual pendente';
+    if (!review.complete || review.visual !== 'complete')
+      return 'Captura ou crítica visual pendente';
+    return `Revisão com ${Math.max(state.blockingErrors, review.errors)} pendência(s)`;
+  }
   return tenant.brand.design ? 'Direção de arte definida' : 'Briefing revisado';
+}
+
+/**
+ * Decide o fim do turno pelo estado gravado. Uma fase que repete a si mesma só
+ * continua quando o marcador mostra trabalho novo; a revisão ainda respeita o
+ * teto de rodadas, porque o operador precisa entrar em algum momento.
+ */
+function settleOutcome(input: {
+  phase: Phase;
+  marker: string;
+  state: ReturnType<typeof generationState>;
+  fingerprint: string;
+  review: ReviewReceipt | null;
+  stopRequested: boolean;
+}): StepOutcome {
+  const { phase, marker, state, fingerprint, stopRequested } = input;
+  if (stopRequested) return { kind: 'paused' };
+  if (state.next === 'pronto') return { kind: 'done' };
+  if (state.next !== phase) return { kind: 'continue', phase: state.next };
+  const next = progressMarker(phase, state, fingerprint, marker);
+  if (stalled(marker, next))
+    return { kind: 'failed', error: stallMessage(phase) };
+  if (reviewRound(next) > REVIEW_ROUNDS)
+    return {
+      kind: 'failed',
+      error: reviewCapMessage(state.blockingErrors, input.review),
+    };
+  return { kind: 'continue', phase };
 }
 
 /**
@@ -144,15 +213,37 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
   const blocker = phaseBlocker(phase, tenant, pages);
   if (blocker) return { kind: 'failed', error: blocker };
 
-  // A etapa de cenas repete o nome da fase a cada foto: o marcador inclui a
-  // cobertura para distinguir avanço real de etapa parada.
-  const progress =
-    phase === 'cenas' ? `${phase}:${state.coveredScenes}` : phase;
-  if (run.progress === progress)
-    return {
-      kind: 'failed',
-      error: `A etapa "${PHASE_LABEL[phase]}" não avançou. Leia a última resposta no chat e continue de lá.`,
-    };
+  // Cenas e revisão repetem o nome da fase: o marcador carrega a cobertura ou
+  // a leitura e a assinatura do rascunho, para distinguir avanço real de
+  // etapa parada. A revisão observa, corrige e confere; ler o nome da fase
+  // como repetição encerrava a geração logo depois do primeiro turno dela.
+  const progress = progressMarker(
+    phase,
+    state,
+    reviewFingerprint(tenant, pages, images),
+    run.progress,
+  );
+  const round = reviewRound(progress);
+  const stop = stalled(run.progress, progress)
+    ? stallMessage(phase)
+    : round > REVIEW_ROUNDS
+      ? reviewCapMessage(
+          state.blockingErrors,
+          currentReview(tenant, pages, images),
+        )
+      : null;
+  if (stop) {
+    // Sem este registro, a parada aparecia só no cabeçalho do painel: a linha
+    // do tempo terminava numa ferramenta concluída, sem dizer o que houve.
+    await recordEvent({
+      runId: run.id,
+      tenantId: tenant.id,
+      phase,
+      kind: 'error',
+      label: stop,
+    });
+    return { kind: 'failed', error: stop };
+  }
 
   if (run.hops > MAX_HOPS)
     return {
@@ -167,7 +258,10 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
     tenantId: tenant.id,
     phase,
     kind: 'phase_start',
-    label: PHASE_LABEL[phase],
+    label: round
+      ? `${PHASE_LABEL[phase]} · rodada ${round} de ${REVIEW_ROUNDS}`
+      : PHASE_LABEL[phase],
+    ...(round ? { payload: { round } } : {}),
   });
 
   await markPhase(tenant.id, phase);
@@ -200,6 +294,9 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
   const model = productModel();
   const startedAt = Date.now();
   let steps = 0;
+  let timedOut = false;
+  let spoken = '';
+  let usage: Record<string, unknown> | undefined;
   try {
     const tools = buildTools(ready, {
       origin: run.origin,
@@ -211,7 +308,13 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
       tools,
       phase,
       shouldStop: () => stopRequested,
-      instructions: phaseInstructions({ tenant: ready, pages, images, phase }),
+      instructions: phaseInstructions({
+        tenant: ready,
+        pages,
+        images,
+        phase,
+        round,
+      }),
     });
     const result = await agent.generate({
       messages: [{ role: 'user', content: PHASE_MESSAGE[phase] }],
@@ -251,7 +354,7 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
     steps = result.steps.length;
     // O painel perdeu a contagem quando a geração saiu do navegador: o recibo
     // do stream não existe aqui. Só números e nome do modelo entram no evento.
-    const usage = {
+    usage = {
       ...usageRecord(result.usage, model, phase, steps, startedAt),
       costUsd: sumGatewayCosts(
         result.steps.map((step) => step.providerMetadata?.gateway?.cost),
@@ -262,43 +365,15 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
       runId: run.id,
       ...usage,
     });
-
-    const [freshPages, freshImages] = await Promise.all([
-      listPages(tenant.id),
-      listImages(tenant.id),
-    ]);
-    const fresh = (await getTenantBySlug(slug)) ?? tenant;
-    const after = generationState(fresh, freshPages, freshImages);
     // O texto do último passo não é o turno inteiro: uma etapa que explica e
     // depois chama ferramenta perdia a explicação no histórico.
-    const spoken = result.steps
+    spoken = result.steps
       .map((step) => step.text.trim())
       .filter(Boolean)
       .join('\n\n');
-    const receipt = savedProgressMessage(
-      workspaceState(fresh, freshPages, freshImages),
-      !stopRequested && after.next !== 'pronto',
-    );
-    const text =
-      result.text.trim() && spoken.endsWith(result.text.trim())
-        ? spoken
-        : [spoken, result.text.trim()].filter(Boolean).join('\n\n') ||
-          (steps >= PHASE_STEPS[phase]
-            ? `Este turno atingiu o limite de passos. ${receipt}`
-            : receipt);
-    await persistMessage(tenant.id, 'assistant', text);
-    await recordEvent({
-      runId: run.id,
-      tenantId: tenant.id,
-      phase,
-      kind: 'phase_end',
-      label: outcomeLabel(phase, fresh, after),
-      payload: { steps, next: after.next, usage },
-    });
-
-    if (stopRequested) return { kind: 'paused' };
-    if (after.next === 'pronto') return { kind: 'done' };
-    return { kind: 'continue', phase: after.next };
+    const last = result.text.trim();
+    if (last && !spoken.endsWith(last))
+      spoken = [spoken, last].filter(Boolean).join('\n\n');
   } catch (error) {
     if (stopRequested) {
       await recordEvent({
@@ -320,18 +395,86 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
       phase,
       error: message,
     });
+    // Tempo esgotado não apaga o que as ferramentas já salvaram: o turno
+    // termina como qualquer outro e o progresso decide a continuação.
+    if (!isTimeout(error)) {
+      await recordEvent({
+        runId: run.id,
+        tenantId: tenant.id,
+        phase,
+        kind: 'error',
+        label: `A etapa ${PHASE_LABEL[phase]} falhou`,
+        payload: { error: message },
+      });
+      return { kind: 'failed', error: message };
+    }
+    timedOut = true;
+  } finally {
+    clearInterval(watcher);
+  }
+
+  const [freshPages, freshImages] = await Promise.all([
+    listPages(tenant.id),
+    listImages(tenant.id),
+  ]);
+  const fresh = (await getTenantBySlug(slug)) ?? tenant;
+  const after = generationState(fresh, freshPages, freshImages);
+  const review = currentReview(fresh, freshPages, freshImages);
+  // A próxima fase é decidida aqui, não no salto seguinte: assim o recibo do
+  // chat e o motivo no painel contam a mesma história, e uma etapa que não
+  // produziu nada para com o motivo em vez de parecer interrompida.
+  const outcome = settleOutcome({
+    phase,
+    marker: progress,
+    state: after,
+    fingerprint: reviewFingerprint(fresh, freshPages, freshImages),
+    review,
+    stopRequested,
+  });
+  const receipt = savedProgressMessage(
+    workspaceState(fresh, freshPages, freshImages),
+    outcome.kind === 'continue',
+  );
+  const fallback = timedOut
+    ? `Este turno excedeu o tempo limite. ${receipt}`
+    : steps >= PHASE_STEPS[phase]
+      ? `Este turno atingiu o limite de passos. ${receipt}`
+      : receipt;
+  const needsReceipt =
+    timedOut ||
+    steps >= PHASE_STEPS[phase] ||
+    outcome.kind === 'failed' ||
+    outcome.kind === 'paused';
+  const text = [
+    spoken,
+    !spoken || needsReceipt ? fallback : '',
+    outcome.kind === 'failed' ? outcome.error : '',
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+  await persistMessage(tenant.id, 'assistant', text);
+  await recordEvent({
+    runId: run.id,
+    tenantId: tenant.id,
+    phase,
+    kind: 'phase_end',
+    label: outcomeLabel(phase, fresh, after, review),
+    payload: {
+      steps,
+      next: after.next,
+      ...(usage ? { usage } : {}),
+      ...(timedOut ? { timeout: true } : {}),
+    },
+  });
+  if (outcome.kind === 'failed')
     await recordEvent({
       runId: run.id,
       tenantId: tenant.id,
       phase,
       kind: 'error',
-      label: `A etapa ${PHASE_LABEL[phase]} falhou`,
-      payload: { error: message },
+      label: outcome.error,
     });
-    return { kind: 'failed', error: message };
-  } finally {
-    clearInterval(watcher);
-  }
+  return outcome;
 }
 
 /** Fecha o run conforme o resultado da fase. */

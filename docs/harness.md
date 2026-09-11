@@ -169,6 +169,28 @@ Gravações em `brief.generation` passaram a ser merge no banco; reescrever o
 objeto inteiro a partir de um snapshot apagava o recibo de revisão gravado por
 outra execução.
 
+A revisão pode ocupar até três rodadas por execução, cada uma com turno e
+limite de leituras próprios. `lib/generation/marker.ts` compara a quantidade de
+leituras registradas e a assinatura do rascunho: repetir a fase `revisao` com
+algum desses valores alterado é avanço. Cenas usam a cobertura do plano;
+briefing e composição precisam produzir a fase seguinte. O teto global segue
+em 14 saltos. Sem avanço ou ao esgotar as rodadas, o runner decide a parada no
+fim do turno e registra o motivo no chat e em um evento de erro.
+
+Quando o SDK devolve `TimeoutError` por esgotar o turno de 760 segundos, o
+runner relê o estado salvo e aplica a mesma decisão: continua se houve avanço,
+conclui se a revisão atual está completa, ou encerra com o motivo. A pausa do
+operador tem prioridade. Esse caminho grava o fim da fase sem inventar consumo
+que o SDK não devolveu. O timeout depende de a chamada em andamento respeitar
+o sinal de aborto; ele não garante que ferramentas independentes terminem
+dentro do limite da função.
+
+O painel mostra leituras dentro da rodada atual, sem usar o contador acumulado
+do cliente. O número da rodada fica no evento de início para sobreviver ao
+corte de eventos antigos no feed. O último turno recebe instrução explícita
+para relatar pendências sem prometer continuação automática. **Tentar
+novamente** abre uma execução com novas rodadas, preservando o rascunho.
+
 ## Compor, observar, corrigir, conferir
 
 O fluxo continua briefing → cenas → composição → revisão. O planejamento escolhe
@@ -229,9 +251,13 @@ invalidar a revisão inteira nem passar despercebida.
 
 A captura é ligada por padrão. `EIXU_REVIEW_CAPTURE=0` permite diagnóstico
 estrutural, mas não concede conclusão visual. Origem ausente, falha de captura,
-cobertura incompleta ou crítica inválida deixam a revisão incompleta. São permitidas três chamadas a `review_pages` por turno, para revisar,
-corrigir e conferir. A crítica é sugestão verificável, não autorização humana.
-O loop reserva o último passo à conferência. Depois do refinamento, uma nova
+cobertura incompleta ou crítica inválida deixam a revisão incompleta.
+`REVIEW_CALLS_PER_TURN` permite três chamadas a `review_pages` por turno,
+incluindo tentativas com falha de captura ou crítica, para observar, corrigir
+e conferir. A crítica é sugestão verificável, não autorização humana.
+O loop força a conferência no último passo somente se ainda houver leitura
+disponível; uma quarta chamada seria recusada pela ferramenta. As correções
+da mesma página podem ser agrupadas antes da nova leitura. Depois do refinamento, uma nova
 revisão completa e sem erros encerra a fase por condição externa, mantendo os
 avisos no relatório. Isso impede editar novamente após a conferência e consumir
 o turno sem revisar a última versão. Falha ou erro material permanece pendente.

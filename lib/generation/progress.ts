@@ -1,4 +1,4 @@
-import { PHASES, type Phase } from '@/lib/taste/phases';
+import { REVIEW_CALLS_PER_TURN, PHASES, type Phase } from '@/lib/taste/phases';
 import type { GenerationEvent } from './runs';
 
 /**
@@ -54,6 +54,36 @@ export function runUsage(events: GenerationEvent[]): PhaseUsage[] {
     .filter((usage): usage is PhaseUsage => usage !== null);
 }
 
+/**
+ * Rodada e leituras da revisão, medidas nos eventos da execução. O contador
+ * de `brief.generation.reviewRounds` é acumulado e nunca zera: em um cliente
+ * retomado, o painel anunciava "rodada 7 de 3".
+ */
+export function reviewProgress(events: GenerationEvent[]): {
+  round: number;
+  reads: number;
+  total: number;
+} {
+  let round = 0;
+  let reads = 0;
+  for (const event of events) {
+    if (event.phase !== 'revisao') continue;
+    if (event.kind === 'phase_start') {
+      // O feed guarda só os eventos mais recentes. O número persistido evita
+      // voltar à rodada 1 quando os eventos anteriores saem da janela.
+      const savedRound = finite(event.payload?.round);
+      round =
+        savedRound && Number.isSafeInteger(savedRound) && savedRound > 0
+          ? savedRound
+          : round + 1;
+      reads = 0;
+    }
+    if (round && event.kind === 'tool_end' && event.tool === 'review_pages')
+      reads = Math.min(REVIEW_CALLS_PER_TURN, reads + 1);
+  }
+  return { round, reads, total: REVIEW_CALLS_PER_TURN };
+}
+
 /** A ferramenta em execução: o último início sem um fim correspondente. */
 export function currentActivity(
   events: GenerationEvent[],
@@ -98,7 +128,8 @@ export function phaseRecords(
       const record = records[event.phase] ?? { seconds: 0, outcome: null };
       records[event.phase] = {
         seconds:
-          record.seconds + (from !== undefined ? Math.max(0, (at - from) / 1000) : 0),
+          record.seconds +
+          (from !== undefined ? Math.max(0, (at - from) / 1000) : 0),
         outcome: event.label || record.outcome,
       };
       started.delete(event.phase);

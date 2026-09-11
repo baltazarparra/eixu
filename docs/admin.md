@@ -46,7 +46,7 @@ A exclusão é definitiva e não tem lixeira. Ao concluir, o site publicado pass
 
 O andamento é atualizado automaticamente ao iniciar pelo botão ou ao digitar “continuar”, até a conclusão. A prévia acompanha as alterações salvas. Quando a geração está parada, os motivos que bloqueiam a publicação continuam visíveis, mesmo com a revisão ainda pendente.
 
-O agente interno usa Gemini 3.8 Flash e dedica mais raciocínio à composição e à revisão. Ele planeja intenções distintas por página, confere o resultado em desktop e celular e corrige problemas materiais. Uma revisão que falhou ou ficou desatualizada não marca o site como pronto. Se o limite do turno for atingido, retome a etapa: o rascunho e as pendências permanecem. A revisão não publica por conta própria.
+O agente interno usa Gemini 3.8 Flash e dedica mais raciocínio à composição e à revisão. Ele planeja intenções distintas por página, confere o resultado em desktop e celular e corrige problemas materiais. Uma revisão que falhou ou ficou desatualizada não marca o site como pronto. Durante a geração, atingir o limite do turno pode abrir outra rodada de revisão automaticamente; o rascunho e as pendências permanecem. A revisão não publica por conta própria.
 
 ## Gerar e editar o site
 
@@ -57,6 +57,14 @@ Um cliente recém-cadastrado começa a construção sozinho: ao abrir Site, a pr
 O andamento fica numa faixa fixa acima da conversa, visível também no celular: a etapa atual e sua posição na sequência, a barra das quatro etapas, o que cada uma produziu, a ferramenta em execução, o tempo desta etapa e o tempo total, e a **Linha do tempo** com tudo que foi registrado. **Pausar** encerra depois do passo atual — uma ferramenta já iniciada termina e salva; a pausa não desfaz escritas. Ao terminar, o painel mostra páginas, fotos, tempo e consumo até você fechar.
 
 Enquanto a geração roda, o chat fica em espera e diz por quê: os dois disputariam as mesmas páginas. Se uma etapa falhar ou não avançar, a execução para com o motivo no painel; leia a última resposta antes de retomar. Se aparecer que a próxima etapa não pôde ser iniciada, **Tentar novamente** retoma pelo progresso salvo. Cenas e páginas prontas continuam disponíveis; uma revisão visual pendente ainda precisa ser concluída antes de considerar a geração pronta.
+
+A revisão tem até três rodadas, com até três leituras em cada uma. O painel
+mostra, por exemplo, **rodada 2 · leitura 1 de 3** quando o agente continua
+observando e corrigindo o rascunho. A rodada seguinte só começa se houve leitura
+registrada ou alteração salva. Se a revisão não fechar até a terceira rodada,
+o chat e a linha do tempo mostram o motivo, incluindo falha de captura ou
+pendências visuais. Confira a prévia e use **Tentar novamente** para abrir novas
+rodadas, ou ajuste o que falta pelo chat.
 
 Na etapa de cenas o agente pede de uma vez todas as fotos que faltam no plano, geradas em paralelo pelo estúdio. As fotos ficam disponíveis com número e URL, sem aprovação. A crítica registra nota e problemas para orientar ajustes; nota baixa não abre uma fila de decisão.
 

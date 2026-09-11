@@ -9,8 +9,14 @@ const { contextMessages } = await j.import('../lib/ai/context.ts');
 const { reviewFingerprint, currentReview } = await j.import(
   '../lib/review/state.ts',
 );
-const { nextPhase, compositionReadyForReview, reviewReadyToFinish } =
-  await j.import('../lib/taste/phases.ts');
+const {
+  nextPhase,
+  compositionReadyForReview,
+  reviewConferenceDue,
+  reviewReadyToFinish,
+  PHASE_STEPS,
+  REVIEW_CALLS_PER_TURN,
+} = await j.import('../lib/taste/phases.ts');
 const { reviewSchemaFor, resolveReviewReferences } = await j.import(
   '../lib/review/critic.ts',
 );
@@ -49,6 +55,19 @@ const images = [
     alt: 'Inspiração',
   },
 ];
+
+await test('conferência é forçada no último passo só quando ainda há leitura', () => {
+  const read = { toolResults: [{ toolName: 'review_pages' }] };
+  const edit = { toolResults: [{ toolName: 'update_block' }] };
+  const last = PHASE_STEPS.revisao - 1;
+  assert.equal(reviewConferenceDue([read, edit], last), true);
+  assert.equal(reviewConferenceDue([read, edit], last - 1), false);
+  // Forçar a quarta leitura só produzia recusa e queimava o passo reservado.
+  assert.equal(
+    reviewConferenceDue(Array(REVIEW_CALLS_PER_TURN).fill(read), last),
+    false,
+  );
+});
 
 await test('revisão encerra na conferência atual sem erros, mantendo espaço para refinamento', () => {
   const output = {
@@ -444,7 +463,7 @@ for (const mode of [
       await tools.review_pages.execute({});
       assert.match(
         (await tools.review_pages.execute({})).error,
-        /Três revisões/,
+        /3 leituras neste turno/,
       );
       assert.equal(criticCalls, 3);
     }
