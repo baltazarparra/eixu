@@ -50,7 +50,7 @@ O agente interno usa Gemini 3.8 Flash e dedica mais raciocínio à composição 
 
 ## Gerar e editar o site
 
-Um cliente recém-cadastrado começa a construção sozinho: ao abrir Site, a primeira etapa já está rodando, sem botão para clicar. O início automático vale só para quem nunca gerou e ainda não tem página; rascunho antigo, execução pausada ou com falha espera o seu comando, para não gastar geração que ninguém pediu. Quando o cadastro informou uma rede social, o briefing aguarda até 20 segundos pela leitura do perfil antes de começar; se ela demorar mais, a etapa segue e o perfil vira lacuna declarada.
+Um cliente recém-cadastrado começa a construção sozinho: ao abrir Site, a primeira etapa já está rodando, sem botão para clicar. O início automático vale só para quem ainda não tem página, tentativa de geração nem conversa anterior no site. Rascunho antigo, execução pausada ou com falha espera o seu comando, inclusive tentativas anteriores à geração no servidor, para não gastar geração que ninguém pediu. Quando o cadastro informou uma rede social, o briefing aguarda até 20 segundos pela leitura do perfil antes de começar; se ela demorar mais, a etapa segue e o perfil vira lacuna declarada.
 
 **Continuar** roda briefing e direção, cenas, composição e revisão, uma etapa por vez. **Retomar** aparece depois de uma pausa e **Tentar novamente** depois de uma falha. A sequência roda no servidor, não na aba: recarregar a tela, trocar de aparelho ou fechar o navegador não interrompe nem duplica nada, e o painel volta mostrando a etapa e a atividade em andamento. Digitar "continuar" no chat faz a mesma coisa que o botão.
 
@@ -83,6 +83,8 @@ O snapshot inclui blocos e SEO. Marca, contatos, título, tipo e outros metadado
 ## Acompanhar consumo
 
 Abaixo da caixa de mensagem, **Consumo** mostra tokens e custo em dólar quando o Gateway informa. Aberto, traz uma linha por etapa da geração e por turno de conversa, com entrada, quanto veio do cache, saída, passos, duração e custo. As etapas da geração entram porque cada uma grava seu recibo ao terminar; antes disso, a parte cara do trabalho não aparecia em lugar nenhum do painel. Nada é convertido para reais.
+
+Ao abrir, os detalhes entram na área visível. Listas longas têm rolagem própria, inclusive por teclado; em telas baixas, a coluna da conversa também permite rolar para alcançar seus controles.
 
 Essa contagem não inclui geração de imagens, críticas internas, outras telas ou falhas sem recibo. Execução encerrada há mais de 30 minutos sai do painel e leva seu consumo junto. Custo ausente em qualquer parcela deixa o total sem valor, em vez de contá-lo como zero. Consulte o Gateway para conciliar o consumo total. Cache reduz processamento repetido quando o provedor encontra um prefixo reutilizável; não garante economia fixa. A aceitação depende do resultado e das verificações de qualidade.
 

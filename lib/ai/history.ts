@@ -1,6 +1,17 @@
 import type { ChatMessage } from '@/lib/ai/usage';
 import { db } from '@/lib/db';
 
+/** Existência no canal do site, inclusive antes do cursor já entregue à tela. */
+export async function hasChatHistory(tenantId: string): Promise<boolean> {
+  const rows = (await db()`
+    select exists (
+      select 1 from chat_messages
+      where tenant_id = ${tenantId} and channel = 'site'
+    ) as found
+  `) as { found: boolean }[];
+  return rows[0]?.found === true;
+}
+
 /** Um canal só: o estúdio de imagens virou biblioteca, sem conversa própria. */
 export async function chatHistory(
   tenantId: string,

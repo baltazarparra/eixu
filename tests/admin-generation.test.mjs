@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createJiti } from 'jiti';
 import { loadModule } from './helpers/load-module.mjs';
+import { generationFeedFixture } from './helpers/generation-feed-fixture.mjs';
 import {
   chatFixture,
   chatRequest,
@@ -18,6 +19,48 @@ const { isResumeRequest, isProgressQuestion } = await jiti.import(
 const { createStepToken, verifyStepToken } = await jiti.import(
   '../lib/generation/token.ts',
 );
+
+await test('feed distingue cliente novo de tentativa anterior às execuções no servidor', async () => {
+  const fresh = await generationFeedFixture();
+  assert.equal((await fresh.read()).everRan, false);
+
+  const legacy = await generationFeedFixture({
+    brief: {
+      generation: { phase: 'briefing', updatedAt: '2026-09-10T12:00:00Z' },
+    },
+  });
+  const feed = await legacy.read();
+  assert.equal(feed.state.generation.next, 'briefing');
+  assert.equal(feed.state.pages.length, 0);
+  assert.equal(feed.run, null);
+  assert.equal(feed.everRan, true);
+});
+
+await test('histórico já carregado também impede início automático, independentemente do cursor', async () => {
+  const fixture = await generationFeedFixture({
+    messages: [
+      {
+        id: 'saved-7',
+        role: 'user',
+        parts: [{ type: 'text', text: 'Ainda vou completar o briefing.' }],
+      },
+    ],
+  });
+  for (const cursor of [0, 7, 99]) {
+    const feed = await fixture.read(cursor);
+    assert.equal(feed.everRan, true);
+    assert.equal(feed.messages.length, cursor === 0 ? 1 : 0);
+  }
+});
+
+await test('execução antiga continua impedindo início automático depois de sair do painel', async () => {
+  const fixture = await generationFeedFixture({
+    recent: { status: 'failed', finishedAt: '2026-09-10T12:00:00Z' },
+  });
+  const feed = await fixture.read();
+  assert.equal(feed.run, null);
+  assert.equal(feed.everRan, true);
+});
 
 await test('retomar digitado é reconhecido sem capturar pedidos compostos', () => {
   for (const text of [
@@ -298,8 +341,7 @@ await test('briefing espera a leitura do perfil social antes de montar o prompt'
   assert.equal(outcome.kind, 'continue');
   assert.ok(
     f.events.some(
-      (event) =>
-        event.kind === 'note' && /leitura do perfil/.test(event.label),
+      (event) => event.kind === 'note' && /leitura do perfil/.test(event.label),
     ),
     'a espera precisa aparecer na linha do tempo',
   );

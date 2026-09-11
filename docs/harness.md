@@ -138,8 +138,11 @@ stream e preserva suas ferramentas e metadados. Enquanto um run
 está ativo, `/api/chat` responde 409: os dois disputariam as mesmas páginas.
 Sem sinal por 15 minutos, o run é dado por perdido e o operador pode retomar.
 
-A primeira etapa começa sozinha em cliente que nunca gerou, sem página e com o
-briefing pendente; o `GET` informa se já houve alguma execução, e a ausência
+A primeira etapa começa sozinha em cliente sem tentativa ou conversa anterior,
+sem página e com o briefing pendente. O `GET` informa `everRan` considerando
+execuções, o marcador legado em `brief.generation` e a existência de mensagens
+no canal `site` daquele tenant, independentemente do cursor já entregue. Assim,
+tentativas anteriores a `generation_runs` também aguardam o operador. A ausência
 desse sinal não autoriza início automático. Antes de montar o prompt do
 briefing, a etapa espera até 20 segundos pela leitura do perfil de rede social
 disparada pelo cadastro: o redirecionamento leva ao painel em menos de um

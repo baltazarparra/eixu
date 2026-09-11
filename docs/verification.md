@@ -1,5 +1,29 @@
 # Validação e publicação
 
+## Correções da revisão do PR #15, 11/09/2026
+
+O início automático agora considera tentativas anteriores à tabela de execuções:
+o marcador em `brief.generation` e mensagens do canal `site` também impedem a
+retomada sem comando. A consulta de existência usa o ID do tenant e independe
+do cursor. O detalhamento de consumo ganhou rolagem própria e entra na área
+visível ao abrir; telas baixas permitem rolar a coluna para acessar os controles.
+
+- As regressões de histórico e consumo falharam no código anterior à correção.
+- `npm run test:admin`: 99 testes passaram, sem pulos, com Chrome e PostgreSQL
+  14 local descartável. O feed real distinguiu cliente novo, marcador legado,
+  mensagens anteriores ao cursor e histórico de outro tenant/canal.
+- `npm run test:sites`: 81 testes passaram, sem pulos.
+- `npm run test:admin:browser`: cinco testes passaram. O feed real preservou
+  o comando manual ao abrir e recarregar clientes com histórico legado. A
+  tabela com 15 recibos permaneceu acessível, inclusive até a última linha
+  por teclado, em 1440×900, 390×844 e 375×667; fechar os detalhes permitiu
+  voltar ao controle de pausa. As capturas ficam em `outputs/generation/`.
+- Lint global, `npx next typegen && npx tsc --noEmit` e `npm run build:vercel`
+  passaram, incluindo os dois testes do artefato de captura serverless.
+
+Os testes usam dados sintéticos e substitutos dos serviços pagos. A entrega
+não exige migração, geração paga ou publicação de rascunhos de clientes.
+
 ## Painel de geração e início automático, 11/09/2026
 
 A tela de criação do site começava com um botão **Gerar site** e a pergunta

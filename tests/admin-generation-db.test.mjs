@@ -12,11 +12,12 @@ await test(
     const database = await localPostgres(process.env.EIXU_TEST_POSTGRES_URL);
     const other = await localPostgres(process.env.EIXU_TEST_POSTGRES_URL);
     const tenantId = randomUUID(),
-      otherId = randomUUID();
+      otherId = randomUUID(),
+      legacyId = randomUUID();
     t.after(async () => {
       try {
         await database.query('delete from tenants where id = any($1)', [
-          [tenantId, otherId],
+          [tenantId, otherId, legacyId],
         ]);
       } finally {
         await other.close();
@@ -25,13 +26,71 @@ await test(
     });
     await database.query(await readFile('db/schema.sql', 'utf8'));
     await database.query(
-      "insert into tenants (id, slug, name) values ($1::uuid, $1::text, 'Fixture geração'), ($2::uuid, $2::text, 'Outro tenant')",
-      [tenantId, otherId],
+      "insert into tenants (id, slug, name) values ($1::uuid, $1::text, 'Fixture geração'), ($2::uuid, $2::text, 'Outro tenant'), ($3::uuid, $3::text, 'Histórico legado')",
+      [tenantId, otherId, legacyId],
     );
     const a = await loadModule('lib/generation/runs.ts', {
       '@/lib/db': database,
     });
     const b = await loadModule('lib/generation/runs.ts', { '@/lib/db': other });
+
+    await t.test(
+      'feed consulta histórico legado por tenant e canal, sem depender do cursor',
+      async () => {
+        const history = await loadModule('lib/ai/history.ts', {
+          '@/lib/db': database,
+        });
+        const tenants = await loadModule('lib/tenant-queries.ts', {
+          '@/lib/db': database,
+        });
+        const { GET } = await loadModule(
+          'app/api/admin/[tenant]/generation/route.ts',
+          {
+            '@/lib/auth': { isAuthenticated: async () => true },
+            '@/lib/ai/history': history,
+            '@/lib/tenant-queries': tenants,
+            '@/lib/images/queries': { listImages: async () => [] },
+            '@/lib/generation/runs': a,
+            '@/lib/generation/start': {
+              startGeneration: async () => assert.fail('A leitura não gera'),
+            },
+          },
+        );
+        const read = async () =>
+          (
+            await GET(
+              new Request('https://fixture.test/generation?after=999999'),
+              { params: Promise.resolve({ tenant: legacyId }) },
+            )
+          ).json();
+        assert.equal((await read()).everRan, false);
+        await database.query(
+          "insert into chat_messages (tenant_id, role, content, channel) values ($1, 'user', 'Histórico do outro cliente', 'site'), ($2, 'user', 'Estúdio antigo', 'imagens')",
+          [otherId, legacyId],
+        );
+        assert.equal(await history.hasChatHistory(otherId), true);
+        assert.equal(await history.hasChatHistory(legacyId), false);
+        assert.equal((await read()).everRan, false);
+
+        await database.query(
+          'update tenants set brief = \'{"generation":{"phase":"briefing"}}\'::jsonb where id = $1',
+          [legacyId],
+        );
+        assert.equal((await read()).everRan, true);
+        await database.query(
+          "update tenants set brief = '{}'::jsonb where id = $1",
+          [legacyId],
+        );
+        await database.query(
+          "insert into chat_messages (tenant_id, role, content, channel) values ($1, 'user', 'Tentativa anterior no chat', 'site')",
+          [legacyId],
+        );
+        const feed = await read();
+        assert.deepEqual(feed.messages, []);
+        assert.equal(feed.state.generation.next, 'briefing');
+        assert.equal(feed.everRan, true);
+      },
+    );
 
     await t.test(
       'duas conexões só criam um run e reservam uma vez cada salto',
@@ -111,7 +170,7 @@ await test(
               },
             },
             '@/lib/tenant-queries': {
-              getTenantBySlug: async () => ({ id: tenantId }),
+              getTenantBySlug: async () => ({ id: tenantId, brief: {} }),
               listPages: async () => [],
             },
             '@/lib/images/queries': { listImages: async () => [] },

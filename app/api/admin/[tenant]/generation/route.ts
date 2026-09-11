@@ -1,6 +1,6 @@
 import { workspaceState } from '@/lib/admin/state';
 import { isAuthenticated } from '@/lib/auth';
-import { messageCursor, messagesAfter } from '@/lib/ai/history';
+import { hasChatHistory, messageCursor, messagesAfter } from '@/lib/ai/history';
 import {
   activeRun,
   expireStaleRun,
@@ -46,9 +46,15 @@ export async function GET(
         ? null
         : recent),
   );
-  const [events, messages] = await Promise.all([
+  const [events, messages, everRan] = await Promise.all([
     run ? listEvents(run.id) : Promise.resolve([]),
     messagesAfter(tenant.id, after),
+    // Antes de generation_runs, as tentativas ficavam no briefing e no chat.
+    // O cursor pode já ter consumido todo o histórico: a existência independe
+    // do lote devolvido nesta leitura. Durante um run, dispensa a nova consulta.
+    recent || run || tenant.brief.generation
+      ? Promise.resolve(true)
+      : hasChatHistory(tenant.id),
   ]);
 
   return Response.json({
@@ -60,7 +66,7 @@ export async function GET(
     // Cliente que nunca gerou é o único que o painel inicia sozinho. Sem este
     // sinal, um rascunho antigo e abandonado voltaria a gastar geração só por
     // ser aberto, e um run recém-encerrado sairia do feed depois de 30 minutos.
-    everRan: Boolean(recent),
+    everRan,
     state: workspaceState(tenant, pages, images),
   });
 }

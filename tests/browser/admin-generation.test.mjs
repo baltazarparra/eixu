@@ -6,6 +6,7 @@ import { createServer } from 'vite';
 import react from '@vitejs/plugin-react';
 import puppeteer from 'puppeteer-core';
 import { chatFixture } from '../helpers/chat-fixture.mjs';
+import { generationFeedFixture } from '../helpers/generation-feed-fixture.mjs';
 
 /** Estado do servidor entre recargas: é exatamente o que o painel perdia. */
 function generationServer(overrides = {}) {
@@ -80,7 +81,10 @@ function generationServer(overrides = {}) {
         origin: 'http://fixture.test',
       };
       events = [];
-      add('phase_start', firstPhase === 'cenas' ? 'Cenas' : 'Briefing e direção');
+      add(
+        'phase_start',
+        firstPhase === 'cenas' ? 'Cenas' : 'Briefing e direção',
+      );
       add(
         'tool_start',
         firstPhase === 'cenas' ? 'Gerando a cena' : 'Lendo a referência',
@@ -124,7 +128,9 @@ async function builtCss(root) {
   const cssPath = path.join(root, '.next/static/chunks');
   const css = (
     await Promise.all(
-      (await readdir(cssPath))
+      (
+        await readdir(cssPath)
+      )
         .filter((file) => file.endsWith('.css'))
         .map((file) => readFile(path.join(cssPath, file), 'utf8')),
     )
@@ -136,7 +142,7 @@ async function builtCss(root) {
 }
 
 /** Componentes reais do painel contra um servidor sintético, num Chrome real. */
-async function withWorkspace({ backend, chat }, body) {
+async function withWorkspace({ backend, chat, readFeed }, body) {
   const root = process.cwd();
   const css = await builtCss(root);
   const counters = { preview: 0, chat: 0 };
@@ -184,7 +190,8 @@ async function withWorkspace({ backend, chat }, body) {
                 return;
               }
               if (pathname.endsWith('/generation')) {
-                json(backend.feed(Number(url.searchParams.get('after') ?? 0)));
+                const after = Number(url.searchParams.get('after') ?? 0);
+                json(readFeed ? await readFeed(after) : backend.feed(after));
                 return;
               }
               if (pathname.endsWith('/state')) {
@@ -554,6 +561,169 @@ await test(
         );
         await new Promise((resolve) => setTimeout(resolve, 3400));
         assert.equal(backend.starts(), 1, 'recarregar não inicia de novo');
+        assert.deepEqual(errors, []);
+      },
+    );
+  },
+);
+
+await test(
+  'histórico legado do feed real espera Continuar ao abrir e recarregar',
+  { skip: !process.env.EIXU_CHROME_PATH },
+  async () => {
+    for (const previous of [
+      {
+        brief: {
+          generation: { phase: 'briefing', updatedAt: '2026-09-10T12:00:00Z' },
+        },
+      },
+      {
+        messages: [
+          {
+            id: 'saved-7',
+            role: 'user',
+            parts: [{ type: 'text', text: 'Ainda vou completar o briefing.' }],
+          },
+        ],
+      },
+    ]) {
+      const feed = await generationFeedFixture(previous);
+      const initial = await feed.read();
+      const backend = generationServer({ ...initial.state, everRan: false });
+      const chat = await chatFixture();
+      await withWorkspace(
+        { backend, chat, readFeed: feed.read },
+        async ({ page, visible, counters, errors }) => {
+          assert.equal(await visible('Continuar'), true);
+          assert.equal(
+            backend.starts(),
+            0,
+            'abrir não retoma tentativa antiga',
+          );
+          await page.reload({ waitUntil: 'networkidle0' });
+          assert.equal(await visible('Continuar'), true);
+          assert.equal(backend.starts(), 0, 'recarregar também não gera');
+          assert.equal(counters.chat, 0);
+          assert.deepEqual(errors, []);
+        },
+      );
+    }
+  },
+);
+
+await test(
+  'consumo inteiro é acessível durante a revisão em desktop e celular',
+  { skip: !process.env.EIXU_CHROME_PATH },
+  async () => {
+    const backend = generationServer({
+      generation: {
+        next: 'revisao',
+        photos: 5,
+        coveredScenes: 5,
+        organicPages: 3,
+        reviewRounds: 1,
+      },
+    });
+    backend.start();
+    const receipt = {
+      model: 'fixture',
+      steps: 4,
+      durationMs: 110_000,
+      inputTokens: 10_500,
+      outputTokens: 3_200,
+      totalTokens: 13_700,
+      costUsd: 0.06,
+    };
+    backend.feed(0).events.splice(
+      0,
+      Infinity,
+      ...['briefing', 'cenas', 'composicao'].map((phase, index) => ({
+        id: index + 1,
+        phase,
+        kind: 'phase_end',
+        label: 'Etapa concluída',
+        tool: null,
+        payload: { usage: { ...receipt, phase } },
+        createdAt: new Date().toISOString(),
+      })),
+    );
+    // A lista também precisa suportar uma sessão com vários turnos livres.
+    for (let i = 0; i < 12; i++) {
+      backend.saveMessage('assistant', `Resposta ${i}`);
+      backend.feed(0).messages.at(-1).metadata = {
+        usage: { ...receipt, phase: 'livre' },
+      };
+    }
+    const chat = await chatFixture();
+    await withWorkspace(
+      { backend, chat },
+      async ({ page, click, visible, errors }) => {
+        for (const [width, height] of [
+          [1440, 900],
+          [390, 844],
+          [375, 667],
+        ]) {
+          await page.setViewport({ width, height });
+          if (width < 1024) await click('Conversa');
+          await page.click('.admin-usage summary');
+          await page.waitForFunction(
+            () => {
+              const details = document.querySelector('.admin-usage');
+              const box = details.getBoundingClientRect();
+              return (
+                details.open && box.top >= 0 && box.bottom <= innerHeight + 1
+              );
+            },
+            { timeout: 2000 },
+          );
+
+          const region = await page.$('[aria-label="Detalhamento do consumo"]');
+          assert.ok(region);
+          assert.equal(
+            await region.evaluate(
+              (node) => node.scrollHeight > node.clientHeight,
+            ),
+            true,
+          );
+          await region.focus();
+          await page.keyboard.press('End');
+          await page.waitForFunction(
+            () => {
+              const area = document
+                .querySelector('[aria-label="Detalhamento do consumo"]')
+                .getBoundingClientRect();
+              const last = document
+                .querySelector('.admin-usage-note')
+                .getBoundingClientRect();
+              return (
+                last.top >= area.top - 1 &&
+                last.bottom <= Math.min(area.bottom, innerHeight) + 1
+              );
+            },
+            { timeout: 2000 },
+          );
+          assert.equal(
+            await page.$$('.admin-usage tbody tr').then((rows) => rows.length),
+            15,
+          );
+          await mkdir('outputs/generation', { recursive: true });
+          await page.screenshot({
+            path: `outputs/generation/consumo-${width}.png`,
+            fullPage: true,
+          });
+
+          await page.click('.admin-usage summary');
+          await page.$eval('.admin-conversation', (node) =>
+            node.scrollTo({ top: 0 }),
+          );
+          assert.equal(await visible('Pausar'), true);
+          assert.equal(
+            await page.evaluate(
+              () => document.documentElement.scrollWidth <= innerWidth + 1,
+            ),
+            true,
+          );
+        }
         assert.deepEqual(errors, []);
       },
     );

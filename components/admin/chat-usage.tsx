@@ -27,7 +27,13 @@ export function ChatUsageDetails({
   const { totals } = usage;
 
   return (
-    <details className="admin-usage">
+    <details
+      className="admin-usage"
+      onToggle={(event) => {
+        if (event.currentTarget.open)
+          event.currentTarget.scrollIntoView({ block: 'nearest' });
+      }}
+    >
       <summary>
         <span>Consumo</span>
         <span className="admin-usage-total">
@@ -35,43 +41,50 @@ export function ChatUsageDetails({
         </span>
       </summary>
 
-      <table className="admin-usage-table">
-        <thead>
-          <tr>
-            <th scope="col">Etapa</th>
-            <th scope="col">Entrada</th>
-            <th scope="col">Saída</th>
-            <th scope="col">Custo</th>
-          </tr>
-        </thead>
-        <tbody>
-          {usage.rows.map((row) => (
-            <tr key={row.id}>
-              <th scope="row">
-                <span>{row.label}</span>
-                <small>
-                  {row.steps} passos · {formatDuration(row.durationMs)}
-                </small>
-              </th>
-              <td>
-                {formatCount(row.inputTokens)}
-                {row.cacheReadTokens ? (
-                  <small>{formatCount(row.cacheReadTokens)} em cache</small>
-                ) : null}
-              </td>
-              <td>{formatCount(row.outputTokens)}</td>
-              <td>{row.costUsd === undefined ? '—' : formatCost(row.costUsd)}</td>
+      <section
+        className="admin-usage-body"
+        aria-label="Detalhamento do consumo"
+      >
+        <table className="admin-usage-table">
+          <thead>
+            <tr>
+              <th scope="col">Etapa</th>
+              <th scope="col">Entrada</th>
+              <th scope="col">Saída</th>
+              <th scope="col">Custo</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {usage.rows.map((row) => (
+              <tr key={row.id}>
+                <th scope="row">
+                  <span>{row.label}</span>
+                  <small>
+                    {row.steps} passos · {formatDuration(row.durationMs)}
+                  </small>
+                </th>
+                <td>
+                  {formatCount(row.inputTokens)}
+                  {row.cacheReadTokens ? (
+                    <small>{formatCount(row.cacheReadTokens)} em cache</small>
+                  ) : null}
+                </td>
+                <td>{formatCount(row.outputTokens)}</td>
+                <td>
+                  {row.costUsd === undefined ? '—' : formatCost(row.costUsd)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
 
-      <p className="admin-usage-note">
-        {usage.models.join(', ') || 'Modelo não informado'}. Somente chamadas de
-        texto desta tela: geração de imagens, críticas internas e execuções
-        antigas ficam fora. Custo ausente em qualquer parcela deixa o total sem
-        valor, em vez de contá-lo como zero.
-      </p>
+        <p className="admin-usage-note">
+          {usage.models.join(', ') || 'Modelo não informado'}. Somente chamadas
+          de texto desta tela: geração de imagens, críticas internas e execuções
+          antigas ficam fora. Custo ausente em qualquer parcela deixa o total
+          sem valor, em vez de contá-lo como zero.
+        </p>
+      </section>
     </details>
   );
 }
