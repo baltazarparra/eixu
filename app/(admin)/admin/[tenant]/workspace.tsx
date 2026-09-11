@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
-import { DefaultChatTransport } from 'ai';
-import { Message, chatErrorMessage } from './chat-parts';
+import { DefaultChatTransport, getToolName, isToolUIPart } from 'ai';
+import { ChatActivity, Message, chatErrorMessage } from './chat-parts';
 import {
   PHASES,
   PHASE_LABEL,
@@ -60,6 +60,9 @@ export function Workspace({ initial, history, imageRequest = '' }: Props) {
     onError: (failure) => {
       generationError.current = failure;
     },
+    onFinish: () => {
+      void refresh().catch((failure: Error) => setNotice(failure.message));
+    },
     transport: new DefaultChatTransport({
       api: '/api/chat',
       body: () => ({ tenant: tenantSlug, page: current }),
@@ -68,7 +71,9 @@ export function Workspace({ initial, history, imageRequest = '' }: Props) {
 
   const refresh = useCallback(async () => {
     const ticket = ++refreshSeq.current;
-    const next = await adminFetch<SiteState>(`/api/admin/${tenantSlug}/state`);
+    const next = await adminFetch<SiteState>(`/api/admin/${tenantSlug}/state`, {
+      signal: AbortSignal.timeout(20_000),
+    });
     // A ferramenta concluída e o laço da geração atualizam em paralelo: uma
     // resposta atrasada não pode sobrescrever a leitura mais nova.
     if (ticket !== refreshSeq.current) return next;
@@ -90,16 +95,16 @@ export function Workspace({ initial, history, imageRequest = '' }: Props) {
           count +
           message.parts.filter(
             (part) =>
-              part.type.startsWith('tool-') &&
+              isToolUIPart(part) &&
               ![
-                'tool-get_page',
-                'tool-list_state',
-                'tool-list_images',
-                'tool-describe_block',
-                'tool-lint_page',
-                'tool-lint_site',
-              ].includes(part.type) &&
-              (part as { state?: string }).state === 'output-available',
+                'get_page',
+                'list_state',
+                'list_images',
+                'describe_block',
+                'lint_page',
+                'lint_site',
+              ].includes(getToolName(part)) &&
+              part.state === 'output-available',
           ).length,
         0,
       ),
@@ -394,8 +399,19 @@ export function Workspace({ initial, history, imageRequest = '' }: Props) {
               {messages.map((message) => (
                 <Message key={message.id} message={message} />
               ))}
-              {status === 'submitted' ? (
-                <p className="text-xs text-[var(--color-muted)]">Pensando</p>
+              {busy ? <ChatActivity messages={messages} /> : null}
+              {busy || site.generation.next !== 'pronto' ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    void refresh().catch((failure: Error) =>
+                      setNotice(failure.message),
+                    )
+                  }
+                  className="self-start rounded-md border px-3 py-1.5 text-xs"
+                >
+                  Ver progresso
+                </button>
               ) : null}
               {error ? (
                 <p className="rounded-md border border-[var(--color-err)] px-3 py-2 text-xs text-[var(--color-err)]">

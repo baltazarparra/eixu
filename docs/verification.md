@@ -1,5 +1,35 @@
 # Validação e publicação
 
+## Andamento e recuperação do chat, 11/09/2026
+
+A investigação de uma criação real encontrou uma composição recuperada após
+entradas de ferramenta inválidas, salva em cerca de 135 segundos. Uma pergunta
+posterior de andamento abriu outro turno de edição, que consumiu 32 passos em
+cerca de 390 segundos e terminou sem texto. O painel ocultava raciocínio sem
+mostrar atividade e o histórico persistia apenas o texto final do modelo.
+Isso não comprova um travamento do servidor: os logs mostram execuções concluídas.
+
+O painel agora mostra atividade, tempo e consulta de progresso. Perguntas curtas
+de andamento consultam o estado salvo sem geração paga. Turnos encerrados em
+ferramentas recebem um recibo textual do banco; a mesma resposta é persistida.
+Erros de ferramenta recuperáveis não anunciam falha da geração inteira.
+
+- Lint, tipos e build Next.js aprovados, incluindo o teste do artefato Chromium.
+- `test:sites`: 80 aprovados. `test:admin`, com Chrome e PostgreSQL 14.24 local
+  descartável: 67 aprovados, sem testes pulados.
+- Cinco regressões novas exercitam a rota HTTP e o AI SDK reais: consulta de
+  andamento sem modelo, autenticação, schema inválido seguido de recuperação e
+  recibo, preservação de texto e término prematuro do stream.
+- `test:admin:browser` usa o Workspace, useChat e transporte SSE reais com
+  provedor e persistência sintéticos. Confere atividade durante raciocínio,
+  leitura de progresso sem nova geração, continuação composição → revisão,
+  recibos, erro recuperável, pergunta “travou?” e layout em 1440/390 px.
+
+Os ensaios novos não geram fotos nem alteram páginas de clientes. A investigação
+do cliente real usa leitura de banco e logs; as alterações feitas pela sessão
+do operador não são resultados destes testes. Evidências locais ficam em
+`outputs/chat-recovery/`, ignorado pelo Git.
+
 ## Correções dos gates e ensaio remoto, 11/09/2026
 
 Esta revisão resolve os 20 erros de lint registrados nas entregas anteriores,
@@ -172,6 +202,7 @@ Com dependências instaladas por `npm ci`, execute os checks separadamente para 
 npm run lint
 npm run test:sites
 npm run test:admin
+npm run test:admin:browser
 npx next typegen && npx tsc --noEmit
 npm run build:vercel
 npm run test:sites:browser
@@ -191,6 +222,11 @@ interceptadas; não usa banco nem geração paga. Sem Chrome, os casos são pula
 lê o manifesto real de `/api/chat` e exige `SOUL.md` e os binários do Chromium,
 incluindo fontes e bibliotecas serverless. Ter o pacote em `node_modules` não
 basta: os arquivos precisam estar listados no artefato enviado para a função.
+
+`test:admin:browser` também precisa de `EIXU_CHROME_PATH` e do build Next.js.
+Usa apenas o CSS emitido para o admin, preservando sua separação das outras
+superfícies. Modelo, banco e prévia são sintéticos; o hook de chat, o endpoint,
+o protocolo e o loop de ferramentas usam as implementações reais.
 
 `tests/admin-concurrency.test.mjs` exige um PostgreSQL local descartável chamado `eixu_pr2_test`, indicado por `EIXU_TEST_POSTGRES_URL`. A suíte recusa hosts remotos, aplica `db/schema.sql` nesse banco e exercita o driver Neon e seus locks por um proxy WebSocket local; Blob, rede social e visão são simulados. Sem a variável, somente essa suíte de integração é pulada. Para incluí-la, execute `npm run test:admin` com a variável apontando para esse banco local.
 

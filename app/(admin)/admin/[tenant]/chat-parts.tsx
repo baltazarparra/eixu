@@ -1,6 +1,7 @@
 'use client';
 
-import type { UIMessage } from 'ai';
+import { getToolName, isToolUIPart, type UIMessage } from 'ai';
+import { useEffect, useState } from 'react';
 
 const str = (value: unknown): string =>
   typeof value === 'string' ? value : '';
@@ -173,6 +174,7 @@ export function describeTool(
 
 type ToolPart = {
   type: string;
+  toolName?: string;
   state?: string;
   input?: unknown;
   output?: unknown;
@@ -195,7 +197,10 @@ function collapse(parts: ToolPart[]) {
     count: number;
   }[] = [];
   for (const raw of parts) {
-    const name = raw.type.replace('tool-', '');
+    const name =
+      raw.type === 'dynamic-tool'
+        ? (raw.toolName ?? 'ferramenta')
+        : raw.type.replace('tool-', '');
     const done = raw.state === 'output-available';
     const output = (raw.output ?? {}) as Record<string, unknown>;
     const failed =
@@ -204,7 +209,7 @@ function collapse(parts: ToolPart[]) {
       Boolean(output.error);
     const label =
       raw.state === 'output-error'
-        ? `Falhou: ${raw.errorText ?? name}`
+        ? (raw.errorText ?? `Tentativa recusada: ${name}`)
         : describeTool(name, raw.input, raw.output, raw.state ?? '');
     const last = out[out.length - 1];
     if (
@@ -264,7 +269,7 @@ export function Message({ message }: { message: UIMessage }) {
       const last = groups[groups.length - 1];
       if (last?.kind === 'text') last.text += text;
       else groups.push({ kind: 'text', text });
-    } else if (part.type.startsWith('tool-')) {
+    } else if (isToolUIPart(part)) {
       const last = groups[groups.length - 1];
       if (last?.kind === 'tools') last.parts.push(part as ToolPart);
       else groups.push({ kind: 'tools', parts: [part as ToolPart] });
@@ -310,6 +315,57 @@ export function Message({ message }: { message: UIMessage }) {
         ),
       )}
     </div>
+  );
+}
+
+/** Mantém o andamento visível também durante raciocínio e ferramentas longas. */
+export function ChatActivity({ messages }: { messages: UIMessage[] }) {
+  const [started] = useState(() => Date.now());
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(
+      () => setElapsed(Math.floor((Date.now() - started) / 1000)),
+      1000,
+    );
+    return () => clearInterval(timer);
+  }, [started]);
+  const last = messages.at(-1);
+  const pending =
+    last?.role === 'assistant'
+      ? [...last.parts]
+          .reverse()
+          .find(
+            (part) =>
+              isToolUIPart(part) &&
+              (part.state === 'input-streaming' ||
+                part.state === 'input-available'),
+          )
+      : undefined;
+  const activity =
+    pending && isToolUIPart(pending)
+      ? describeTool(
+          getToolName(pending),
+          pending.input,
+          undefined,
+          pending.state,
+        )
+      : 'O agente está trabalhando';
+  const duration = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`;
+  return (
+    <output
+      className="block rounded-md border px-3 py-2 text-xs text-[var(--color-muted)]"
+      data-chat-activity
+    >
+      <span className="block">
+        {activity} <span aria-hidden="true">· {duration}</span>
+      </span>
+      {elapsed >= 60 ? (
+        <span className="mt-1 block">
+          Esta etapa pode levar alguns minutos. Use Ver progresso para consultar
+          o que já foi salvo.
+        </span>
+      ) : null}
+    </output>
   );
 }
 

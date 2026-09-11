@@ -53,6 +53,7 @@ const DIRECTION = `## Direção de design
 - Âncoras internas apontam ao campo anchor do bloco, sem # nesse campo. Use #contato para form.lead sem anchor. Links de navegação apontam a páginas ou âncoras que existem.`;
 
 const LIMITS = `## Conteúdo e limites
+- Responda ao pedido atual. Uma pergunta de status ou andamento pede leitura do estado e uma resposta curta: não retome geração, revisão, edição ou publicação por conta dessa pergunta. Antes de uma tarefa longa, informe brevemente o que vai fazer; ao concluir, diga o que foi salvo e o que falta. Não exponha raciocínio interno.
 - Uma ideia por frase. Sem travessão, exclamação, lorem ipsum, Acme ou promessas genéricas (eleve, excelência, sinergia, disruptivo, revolucione, solução completa, soluções inovadoras).
 - Nunca invente números, nomes, depoimentos, clientes, certificações, prazos ou garantias. Sem evidência, omita a prova.
 - Todo projeto tem no mínimo 3 páginas orgânicas conectadas, com pelo menos 100 palavras úteis em cada uma, títulos e descrições SEO distintos e inbound {stage,intent} cobrindo discovery, consideration e conversion. Obrigado e paid_lp não contam.

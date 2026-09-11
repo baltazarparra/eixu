@@ -1,5 +1,6 @@
 import {
   convertToModelMessages,
+  createUIMessageStream,
   createUIMessageStreamResponse,
   toUIMessageStream,
   type UIMessage,
@@ -9,6 +10,12 @@ import { productModel } from '@/lib/ai/models';
 import { annotateAttachments } from '@/lib/ai/attachments';
 import { chatRequestSchema, contextMessages } from '@/lib/ai/context';
 import { usageRecord, usageMetadata, sumGatewayCosts } from '@/lib/ai/usage';
+import { completeChatStream, CHAT_INTERRUPTED } from '@/lib/ai/chat-stream';
+import {
+  isProgressQuestion,
+  savedProgressMessage,
+} from '@/lib/ai/chat-progress';
+import { workspaceState } from '@/lib/admin/state';
 import { isAuthenticated } from '@/lib/auth';
 import { buildTools } from '@/lib/ai/tools';
 import { db } from '@/lib/db';
@@ -21,7 +28,7 @@ import {
 } from '@/lib/images/scene-plan';
 import { plannedScenes } from '@/lib/sites/generation';
 import { generatedPhotos } from '@/lib/taste/metrics';
-import { isPhase, type Phase } from '@/lib/taste/phases';
+import { isPhase, PHASE_STEPS, type Phase } from '@/lib/taste/phases';
 import { systemPrompt, type PromptContext } from '@/lib/taste/prompt';
 import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
 import type { Page, Tenant, TenantImage } from '@/lib/types';
@@ -147,6 +154,35 @@ export async function POST(request: Request) {
     `;
   }
 
+  const persistAssistant = async (text: string) => {
+    await db()`
+      insert into chat_messages (tenant_id, role, content, channel)
+      values (${tenant.id}, 'assistant', ${text}, 'site')
+    `;
+  };
+
+  if (
+    !phase &&
+    isProgressQuestion(lastUserText) &&
+    !lastUser?.parts.some((part) => part.type === 'file')
+  ) {
+    const text = savedProgressMessage(
+      workspaceState(tenant, pages, libraryImages),
+    );
+    await persistAssistant(text);
+    return createUIMessageStreamResponse({
+      stream: createUIMessageStream({
+        execute({ writer }) {
+          writer.write({ type: 'start' });
+          writer.write({ type: 'text-start', id: 'progress' });
+          writer.write({ type: 'text-delta', id: 'progress', delta: text });
+          writer.write({ type: 'text-end', id: 'progress' });
+          writer.write({ type: 'finish', finishReason: 'stop' });
+        },
+      }),
+    });
+  }
+
   // A revisão renderiza o rascunho pela própria origem da requisição.
   const origin = new URL(request.url).origin;
   const tools = buildTools(tenant, {
@@ -171,6 +207,7 @@ export async function POST(request: Request) {
 
   const model = productModel();
   const started = Date.now();
+  let completedSteps = 0;
   const agent = siteAgent({
     tenantId: tenant.id,
     tools,
@@ -186,7 +223,7 @@ export async function POST(request: Request) {
   const result = await agent.stream({
     messages: await convertToModelMessages(messages),
     abortSignal: request.signal,
-    onEnd: async ({ text, usage, steps, finishReason }) => {
+    onEnd: async ({ usage, steps, finishReason }) => {
       // Apenas contagens: nenhum prompt, conteúdo do cliente ou credencial.
       const measured = usageRecord(
         usage,
@@ -196,32 +233,71 @@ export async function POST(request: Request) {
         started,
       );
       console.info('[chat] usage', {
+        tenantId: tenant.id,
         ...measured,
         finishReason,
         costUsd: sumGatewayCosts(
           steps.map((step) => step.providerMetadata?.gateway?.cost),
         ),
       });
-      if (text) {
-        await db()`
-          insert into chat_messages (tenant_id, role, content, channel)
-          values (${tenant.id}, 'assistant', ${text}, 'site')
-        `;
-      }
     },
   });
 
   return createUIMessageStreamResponse({
-    stream: toUIMessageStream({
-      stream: result.stream,
-      onError: (error) => {
-        console.error(
-          '[chat] falha do modelo:',
-          error instanceof Error ? error.name : 'unknown',
-        );
-        return 'A geração não concluiu. O rascunho foi preservado; retome para conferir as pendências.';
+    stream: completeChatStream(
+      toUIMessageStream({
+        tools,
+        stream: result.stream.pipeThrough(
+          new TransformStream({
+            transform(part, controller) {
+              if (part.type === 'finish-step') completedSteps += 1;
+              if (
+                part.type === 'error' ||
+                part.type === 'tool-error' ||
+                (part.type === 'tool-call' && part.invalid)
+              ) {
+                const event = {
+                  tenantId: tenant.id,
+                  phase: phase ?? 'livre',
+                  event: part.type,
+                  ...('toolName' in part ? { tool: part.toolName } : {}),
+                  error:
+                    'error' in part && part.error instanceof Error
+                      ? part.error.name
+                      : 'unknown',
+                };
+                if (part.type === 'error')
+                  console.error('[chat] falha do turno', event);
+                else
+                  console.warn(
+                    '[chat] tentativa de ferramenta recusada',
+                    event,
+                  );
+              }
+              controller.enqueue(part);
+            },
+          }),
+        ),
+        onError: () => CHAT_INTERRUPTED,
+        messageMetadata: usageMetadata(model, phase ?? 'livre', started),
+      }),
+      {
+        summary: async () => {
+          const current = await getTenantBySlug(body.tenant);
+          if (!current) return 'O cliente não está mais disponível no painel.';
+          const [currentPages, currentImages] = await Promise.all([
+            listPages(current.id),
+            listImages(current.id),
+          ]);
+          const progress = savedProgressMessage(
+            workspaceState(current, currentPages, currentImages),
+          );
+          return completedSteps >= (phase ? PHASE_STEPS[phase] : 32)
+            ? `Este turno atingiu o limite de passos. ${progress}`
+            : progress;
+        },
+        persist: persistAssistant,
       },
-      messageMetadata: usageMetadata(model, phase ?? 'livre', started),
-    }),
+    ),
   });
 }
