@@ -3,7 +3,11 @@
 import { useEffect, useState } from 'react';
 import { Check, ChevronRight } from 'lucide-react';
 import type { SiteState } from '@/lib/admin/state';
-import { formatCost, formatTokens, summarizeUsage } from '@/lib/admin/usage-summary';
+import {
+  formatCost,
+  formatTokens,
+  summarizeUsage,
+} from '@/lib/admin/usage-summary';
 import { currentActivity, phaseRecords } from '@/lib/generation/progress';
 import type { GenerationEvent, GenerationRun } from '@/lib/generation/runs';
 import { PHASE_LABEL, PHASES, type Phase } from '@/lib/taste/phases';
@@ -85,7 +89,11 @@ function Track({
   return (
     <ol className="admin-run-track" aria-hidden="true">
       {PHASES.map((item) => {
-        const state = reached(item) ? 'done' : item === active ? 'active' : 'todo';
+        const state = reached(item)
+          ? 'done'
+          : item === active
+            ? 'active'
+            : 'todo';
         return (
           <li key={item} data-state={state}>
             <span
@@ -109,6 +117,7 @@ export function GenerationPanel({
   run,
   events,
   state,
+  clockOffsetMs,
   error,
   busy,
   starting,
@@ -118,6 +127,7 @@ export function GenerationPanel({
   run: GenerationRun | null;
   events: GenerationEvent[];
   state: SiteState;
+  clockOffsetMs: number;
   error: string | null;
   busy: boolean;
   starting: boolean;
@@ -125,7 +135,7 @@ export function GenerationPanel({
   onStop: () => void;
 }) {
   const running = isRunning(run);
-  const now = useNow(running || starting);
+  const now = useNow(running || starting) + clockOffsetMs;
   const [dismissed, setDismissed] = useState(false);
   const next = state.generation.next;
   const done = next === 'pronto';
@@ -137,11 +147,14 @@ export function GenerationPanel({
   const phase = running ? (run?.phase ?? null) : null;
   const activity = running ? currentActivity(events) : null;
   const records = phaseRecords(events);
+  const runStarted = run ? new Date(run.startedAt).getTime() : null;
+  // A fase inicial fica alguns instantes na fila antes de receber
+  // phaseStartedAt; nesse intervalo ela já conta a partir do início do run.
   const phaseStarted = run?.phaseStartedAt
     ? new Date(run.phaseStartedAt).getTime()
-    : null;
-  const runStarted = run ? new Date(run.startedAt).getTime() : null;
-  const phaseSeconds = running && phaseStarted ? (now - phaseStarted) / 1000 : 0;
+    : runStarted;
+  const phaseSeconds =
+    running && phaseStarted ? (now - phaseStarted) / 1000 : 0;
   const estimate = phase ? ESTIMATE_S[phase] : 0;
   const status = statusLine(run, state);
   const reached = (item: Phase) =>

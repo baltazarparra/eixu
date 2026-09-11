@@ -22,7 +22,11 @@ const { createStepToken, verifyStepToken } = await jiti.import(
 
 await test('feed distingue cliente novo de tentativa anterior às execuções no servidor', async () => {
   const fresh = await generationFeedFixture();
-  assert.equal((await fresh.read()).everRan, false);
+  const freshFeed = await fresh.read();
+  assert.equal(freshFeed.everRan, false);
+  assert.ok(
+    Math.abs(Date.now() - new Date(freshFeed.serverTime).getTime()) < 5000,
+  );
 
   const legacy = await generationFeedFixture({
     brief: {
