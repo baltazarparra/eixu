@@ -1,5 +1,38 @@
 # Validação e publicação
 
+## Entrega das etapas sem recursão HTTP, 11/09/2026
+
+O log de produção registrou 508 no despacho que deveria iniciar a revisão,
+depois de salvar seis cenas e quatro páginas. Cada função chamava novamente
+a mesma rota HTTP, padrão sujeito à [proteção contra loops da Vercel](https://vercel.com/docs/errors/infinite_loop_detected).
+O limite de passos havia encerrado o turno de composição; ele não comprovava
+revisão concluída. O despacho passa pela Vercel Queues, com consumidor privado
+e a mesma reserva atômica no PostgreSQL. Os limites do agente e a exigência de
+revisão completa do rascunho atual permanecem vigentes.
+
+- A regressão do dispatcher falhou no transporte HTTP anterior com 508.
+- Os 110 testes de admin passaram com Chrome e PostgreSQL 14 local descartável,
+  sem pulos. A suíte foi executada com `node --test --test-concurrency=1
+tests/admin-*.test.mjs`, pois os dois arquivos de integração reaplicam o
+  schema no mesmo banco. A execução paralela travou esses preparativos.
+- O consumidor e o executor compartilhado foram exercitados em quatro fases,
+  entregas duplicadas, pausa, tenant incorreto, falha de envio e resposta
+  perdida. Duas conexões PostgreSQL confirmaram que erro de um salto antigo
+  não encerra a reserva seguinte e que a falha preserva o progresso.
+- Os 81 testes de sites e seis testes de navegador passaram, sem pulos.
+  Lint global, tipos e `npm run build:vercel` passaram; os três artefatos
+  serverless incluem identidade e binários da captura, inclusive o da fila.
+- No preview temporário `dpl_2juYnFFMpYhPLARFsELjoXCBw1oQ`, o dispatcher real
+  enviou seis mensagens sintéticas em sequência ao consumidor privado. Os logs
+  registraram os saltos 0 a 5 e a conclusão em aproximadamente 1,4 segundo,
+  sem 508. O acesso HTTP direto ao consumidor respondeu 404. A instrumentação
+  temporária tinha chave própria, prazo de expiração e limite de seis saltos;
+  foi removida do código entregue. Esse ensaio valida a fila na plataforma,
+  sem executar o runner pago nem acessar o banco de clientes.
+
+Esses testes usam dados sintéticos e substitutos dos modelos. Não houve
+geração paga, escrita em banco remoto nem publicação de páginas de clientes.
+
 ## Cronômetro da geração, 11/09/2026
 
 Os tempos da etapa e do total ficavam em `0:00` quando o relógio do navegador

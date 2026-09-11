@@ -112,15 +112,29 @@ como se nada estivesse rodando. O operador então digitou “continuar”, que o
 chat tratava como edição: 16 passos e 339 segundos no caminho errado, com dois
 turnos concorrentes no mesmo cliente.
 
-A execução agora é um registro em `generation_runs`, com um único run ativo por
-cliente garantido por índice parcial. Cada fase é uma invocação própria de
-`/api/admin/[tenant]/generation/step`, que responde 202 e executa em `after()`,
-dentro dos mesmos 800 segundos; ao terminar, ela chama a próxima pela origem
-registrada no run — os domínios de deployment ficam atrás do SSO do projeto, e
-`VERCEL_URL` morreria numa tela de login. O token do despacho assina o ID do run e o salto esperado. A rota reserva
-esse salto no banco antes de agendar `after()` ou avaliar o progresso. Uma
-repetição recebe uma resposta sem trabalho adicional, mesmo durante a fase
-ou depois de sua conclusão; ela não encerra o run do vencedor.
+A execução é um registro em `generation_runs`, com um único run ativo por
+cliente garantido por índice parcial. Na Vercel, `dispatchStep` envia cada
+salto à fila `eixu-generation-steps`. O trigger de `vercel.json` torna
+`/api/queues/generation` um consumidor privado, com invocação independente de
+até 800 segundos. Isso substitui a recursão HTTP entre etapas, que produziu
+508 ao tentar iniciar a revisão. O SDK usa OIDC da Vercel; a confirmação da
+mensagem aguarda a fase e o envio seguinte, sem `after()` no consumidor.
+
+A mensagem contém apenas slug, ID do run e salto esperado. A chave de
+idempotência combina run e salto; o consumidor reconfirma o tenant e reserva
+atomicamente o salto no banco antes de executar. Uma entrega repetida não
+executa outra chamada paga. Falha de envio só encerra o run se a reserva ainda
+pertencer à etapa que observou o erro, inclusive no primeiro envio. O painel
+oferece **Tentar novamente**, preservando páginas, cenas e revisão pendente.
+Mensagens ficam disponíveis por uma hora; falhas antes da reserva têm até
+cinco entregas, espaçadas em 30 segundos. Interrupção após a reserva não
+reexecuta automaticamente trabalho pago: vale a recuperação por inatividade
+descrita abaixo.
+
+Fora da Vercel, `/api/admin/[tenant]/generation/step` mantém o transporte HTTP
+local: token assinado com run e salto, reserva antes do 202 e execução por
+`after()`. Os dois consumidores usam `lib/generation/step.ts`; a origem do run
+continua servindo à captura autenticada da prévia.
 
 `generation_events` guarda o que o painel mostra: início e fim de fase, começo e
 fim de cada ferramenta com o mesmo rótulo em pt-BR do chat, pausas e erros. São

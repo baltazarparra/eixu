@@ -1,17 +1,16 @@
 import { after } from 'next/server';
 import { isAuthenticated } from '@/lib/auth';
-import { executeStep, settleRun } from '@/lib/generation/runner';
-import { getRun, claimStep, finishRun } from '@/lib/generation/runs';
-import { dispatchStep } from '@/lib/generation/dispatch';
+import { getRun, claimStep } from '@/lib/generation/runs';
+import { runReservedStep } from '@/lib/generation/step';
 import { verifyStepToken } from '@/lib/generation/token';
 import { getTenantBySlug } from '@/lib/tenant-queries';
 
 export const maxDuration = 800;
 
 /**
- * Uma fase por invocação, encadeada pela própria rota. O laço vivia no
- * navegador: recarregar a página matava a sequência no meio, sem aviso.
- * A resposta sai antes do trabalho; o painel acompanha pelos eventos.
+ * Entrada HTTP autenticada para desenvolvimento e chamadas já em trânsito.
+ * Em produção a fila privada recebe as novas etapas. A resposta HTTP sai
+ * antes do trabalho; ambas as entradas usam a mesma reserva e executor.
  */
 export async function POST(
   request: Request,
@@ -55,25 +54,7 @@ export async function POST(
   // quem perde a reserva não agenda callback nem encerra o run do vencedor.
   const claimed = await claimStep(run.id, hop);
   if (!claimed) return Response.json({ duplicate: true });
-  const origin = claimed.origin;
-  after(async () => {
-    try {
-      const outcome = await executeStep(claimed);
-      await settleRun(claimed, outcome);
-      if (outcome.kind !== 'continue') return;
-      await dispatchStep({ origin, slug, runId: run.id, hop: claimed.hops });
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Falha inesperada ao encadear a etapa.';
-      console.error('[generation] encadeamento interrompido', {
-        runId: run.id,
-        error: message,
-      });
-      await finishRun(run.id, 'failed', message).catch(() => undefined);
-    }
-  });
+  after(() => runReservedStep(claimed, slug));
 
   return Response.json({ run: claimed }, { status: 202 });
 }

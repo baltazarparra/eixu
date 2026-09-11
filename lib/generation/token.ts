@@ -1,7 +1,7 @@
 /**
- * Cada fase é uma invocação própria: a que termina chama a próxima pela rota
- * HTTP. Esse token autentica essa chamada interna sem carregar a sessão do
- * operador, vale poucos minutos e só serve para um salto daquele run.
+ * Fora da Vercel, cada fase chama a próxima pela rota HTTP. Esse token
+ * autentica a chamada local sem carregar a sessão do operador, vale poucos
+ * minutos e só serve para um salto daquele run. Na Vercel, a fila é privada.
  */
 const TTL_MS = 5 * 60 * 1000;
 

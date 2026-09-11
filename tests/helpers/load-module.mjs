@@ -12,7 +12,7 @@ const jiti = createJiti(path.join(root, 'package.json'), {
 });
 
 /** Executa o módulo real, substituindo somente as dependências indicadas pelo teste. */
-export async function loadModule(relative, mocks = {}) {
+export async function loadModule(relative, mocks = {}, globals = {}) {
   const filename = path.join(root, relative);
   const { outputText } = ts.transpileModule(readFileSync(filename, 'utf8'), {
     compilerOptions: {
@@ -67,6 +67,7 @@ export async function loadModule(relative, mocks = {}) {
       clearTimeout,
       setInterval,
       clearInterval,
+      ...globals,
     },
     { filename },
   );

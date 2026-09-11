@@ -220,6 +220,22 @@ export async function finishRun(
   `;
 }
 
+/** Falha de entrega só encerra a reserva que a observou. */
+export async function failReservedStep(
+  runId: string,
+  expectedHops: number,
+  error: string,
+): Promise<boolean> {
+  const rows = (await db()`
+    update generation_runs
+    set status = 'failed', error = ${error}, finished_at = now(), heartbeat_at = now()
+    where id = ${runId} and hops = ${expectedHops}
+      and status in ('queued', 'running', 'stopping')
+    returning id
+  `) as { id: string }[];
+  return rows.length > 0;
+}
+
 /**
  * Registro do que o painel mostra. Rótulo e contadores apenas: o conteúdo do
  * cliente já vive nas páginas e no histórico do chat.

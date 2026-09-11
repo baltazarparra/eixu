@@ -56,7 +56,7 @@ Um cliente recém-cadastrado começa a construção sozinho: ao abrir Site, a pr
 
 O andamento fica numa faixa fixa acima da conversa, visível também no celular: a etapa atual e sua posição na sequência, a barra das quatro etapas, o que cada uma produziu, a ferramenta em execução, o tempo desta etapa e o tempo total, e a **Linha do tempo** com tudo que foi registrado. **Pausar** encerra depois do passo atual — uma ferramenta já iniciada termina e salva; a pausa não desfaz escritas. Ao terminar, o painel mostra páginas, fotos, tempo e consumo até você fechar.
 
-Enquanto a geração roda, o chat fica em espera e diz por quê: os dois disputariam as mesmas páginas. Se uma etapa falhar ou não avançar, a execução para com o motivo no painel; leia a última resposta antes de retomar.
+Enquanto a geração roda, o chat fica em espera e diz por quê: os dois disputariam as mesmas páginas. Se uma etapa falhar ou não avançar, a execução para com o motivo no painel; leia a última resposta antes de retomar. Se aparecer que a próxima etapa não pôde ser iniciada, **Tentar novamente** retoma pelo progresso salvo. Cenas e páginas prontas continuam disponíveis; uma revisão visual pendente ainda precisa ser concluída antes de considerar a geração pronta.
 
 Na etapa de cenas o agente pede de uma vez todas as fotos que faltam no plano, geradas em paralelo pelo estúdio. As fotos ficam disponíveis com número e URL, sem aprovação. A crítica registra nota e problemas para orientar ajustes; nota baixa não abre uma fila de decisão.
 

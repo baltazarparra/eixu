@@ -395,6 +395,36 @@ async function stepRouteFixture(input = {}) {
   Object.assign(f.run, { hops: 0, status: 'queued' });
   const jobs = [],
     dispatches = [];
+  const store = {
+    getRun: async () => structuredClone(f.run),
+    claimStep: async (_id, hop) => {
+      if (
+        f.run.hops !== hop ||
+        !['queued', 'running', 'stopping'].includes(f.run.status)
+      )
+        return null;
+      f.run.hops++;
+      if (f.run.status !== 'stopping') f.run.status = 'running';
+      return structuredClone(f.run);
+    },
+    failReservedStep: async (_id, hops, error) => {
+      if (
+        f.run.hops !== hops ||
+        !['queued', 'running', 'stopping'].includes(f.run.status)
+      )
+        return false;
+      Object.assign(f.run, { status: 'failed', error });
+      return true;
+    },
+    recordEvent: async (event) => f.events.push(event),
+  };
+  const step = await loadModule('lib/generation/step.ts', {
+    '@/lib/generation/runs': store,
+    '@/lib/generation/runner': f,
+    '@/lib/generation/dispatch': {
+      dispatchStep: async (input) => dispatches.push(input),
+    },
+  });
   const { POST } = await loadModule(
     'app/api/admin/[tenant]/generation/step/route.ts',
     {
@@ -406,25 +436,8 @@ async function stepRouteFixture(input = {}) {
           id: slug === 'fixture' ? f.run.tenantId : 'other',
         }),
       },
-      '@/lib/generation/runs': {
-        getRun: async () => structuredClone(f.run),
-        claimStep: async (_id, hop) => {
-          if (
-            f.run.hops !== hop ||
-            !['queued', 'running', 'stopping'].includes(f.run.status)
-          )
-            return null;
-          f.run.hops++;
-          if (f.run.status !== 'stopping') f.run.status = 'running';
-          return structuredClone(f.run);
-        },
-        finishRun: async (_id, status, error) =>
-          Object.assign(f.run, { status, error }),
-      },
-      '@/lib/generation/runner': f,
-      '@/lib/generation/dispatch': {
-        dispatchStep: async (input) => dispatches.push(input),
-      },
+      '@/lib/generation/runs': store,
+      '@/lib/generation/step': step,
     },
   );
   const post = async (hop, slug = 'fixture') =>
