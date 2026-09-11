@@ -7,6 +7,10 @@ export type PromptContext = {
   phase?: Phase;
   /** Papéis de cena que a direção pede, montados por scenePlan. */
   scenePlan?: string;
+  /** Quantas vagas do plano já têm foto aprovada. */
+  coverage?: string;
+  /** A vaga que a próxima chamada precisa preencher. */
+  nextScene?: string;
   /** Referências já lidas, com estado de acesso. */
   sources?: string;
   /** Apontamentos da última revisão, quando houver. */
@@ -45,13 +49,14 @@ const LIMITS = `## Conteúdo e limites
 - No máximo um hero, nav e footer. 8+ seções de conteúdo exigem 4 famílias. Até 1 eyebrow por 3 seções. Hero: headline até 56 caracteres, subtext até 20 palavras. SEO: título até 60 caracteres, descrição até 160.
 - logoText é obrigatório em nav.bar e footer.compact mesmo com logo enviado. Nos itens de listas, body tem no máximo 160 caracteres; textos longos pertencem a editorial.text.
 - CTA para /go/wa?from=/ quando há WhatsApp; senão para o formulário. Toda página comum precisa de cta.band ou form.lead.
-- Imagens: use a biblioteca e as URLs fornecidas, exatas. Nunca invente URL. Imagem rejeitada não entra nem no rascunho.`;
+- Imagens: use a biblioteca e as URLs fornecidas, exatas. Nunca invente URL. Só imagem aprovada tem URL; cena recém-gerada aguarda a decisão do operador no painel e não entra no rascunho.`;
 
 const FREE = `## Execução econômica
 - O estado atual abaixo é a fonte editorial. Turnos encerrados mantêm texto e recibos compactos, não snapshots antigos de ferramentas. Releia a página quando uma alteração depender de props ou IDs que não estão neste turno.
-- Site novo ou reconstrução: set_design; se faltarem cenas, prepare_site_images; depois build_site com o projeto completo. Não use set_brand antes.
+- Site novo ou reconstrução: set_design; se faltarem cenas, prepare_site_images e encerre o turno para o operador decidir; depois build_site com o projeto completo. Não use set_brand antes.
 - Edição: get_page na página em foco, depois a menor alteração: update_block, insert_block, move_block ou remove_block. set_blocks só para recompor a página. Não releia estado já recebido neste turno nem reenvie blocos inalterados.
 - Tamanho do logo: update_block em nav.bar com logoHeight em pixels. footer.compact aceita a mesma prop. Preserve a imagem aplicada.
+- Logo por pedido: com imagem anexada, generate_logo em modo "modernizar" com a URL do anexo; sem anexo, modo "criar". "Só o símbolo" significa wordmark false. Apresente cada variante com nota, fidelidade e se o nome saiu escrito certo. Logo não depende do guia de imagem. set_site_logo só quando o operador escolher uma variante já aprovada.
 - Falha de build_site não grava nada: o lote fica em memória neste turno. Use repair_site com somente os campos que falharam, por slug e índice do bloco. Para adicionar ou remover páginas, envie novo build_site.
 - build_site já valida páginas e projeto e retorna publicationPending. Com ok=true, use esse relatório; não chame lint_site de novo sem outra edição.
 - O catálogo abaixo traz uso, proporção e limites de cada bloco. describe_block só se restar dúvida de schema. Omita opcionais sem conteúdo.
@@ -65,7 +70,7 @@ export function systemPrompt(
   imagesSummary = '',
   context: PromptContext = {},
 ): string {
-  const { phase, scenePlan, sources, review } = context;
+  const { phase, scenePlan, coverage, nextScene, sources, review } = context;
   const intake = intakeSummary(tenant.brief.intake);
   // Fontes e progresso já aparecem em seções próprias; repetir o JSON inteiro
   // só gastaria contexto.
@@ -87,9 +92,11 @@ export function systemPrompt(
     wantsComposition ? COMPOSITION : '',
     wantsDirection ? DIRECTION : '',
     wantsCatalog ? LIMITS : '',
-    `- prepare_site_images cria fotos, mas não aprova. Direcione a aprovação ao estúdio /admin/${tenant.slug}/imagens. Nunca aprove ou aplique logo por conta própria. A publicação é pedido do operador.`,
+    `- prepare_site_images e generate_logo criam candidatas sem URL. O operador aprova ou recusa cada uma no painel, uma por vez, e só então ela entra na biblioteca e pode ser usada. Nunca aprove nem aplique logo por conta própria. A publicação é pedido do operador.`,
     wantsCatalog ? `## Catálogo\n${catalogForPrompt()}` : '',
     scenePlan ? `## Plano de cenas\n${scenePlan}` : '',
+    coverage ? `## Cobertura do plano\n${coverage}` : '',
+    nextScene ? `## Próxima cena\n${nextScene}` : '',
     sources ? `## Referências lidas\n${sources}` : '',
     review ? `## Apontamentos da revisão\n${review}` : '',
     intake ? `## Intake do operador\n${intake}` : '',

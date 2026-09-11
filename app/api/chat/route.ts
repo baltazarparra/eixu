@@ -19,7 +19,13 @@ import { buildTools } from '@/lib/ai/tools';
 import { db } from '@/lib/db';
 import { isDesignProfile } from '@/lib/design/profile';
 import { listImages } from '@/lib/images/queries';
-import { scenePlan, scenePlanText } from '@/lib/images/scene-plan';
+import {
+  sceneCoverage,
+  scenePlanText,
+  sceneText,
+} from '@/lib/images/scene-plan';
+import { plannedScenes } from '@/lib/sites/generation';
+import { generatedPhotos } from '@/lib/taste/metrics';
 import {
   PHASE_STEPS,
   PHASE_TOOLS,
@@ -28,7 +34,7 @@ import {
 } from '@/lib/taste/phases';
 import { systemPrompt, type PromptContext } from '@/lib/taste/prompt';
 import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
-import type { Page, Tenant } from '@/lib/types';
+import type { Page, Tenant, TenantImage } from '@/lib/types';
 
 export const maxDuration = 300;
 
@@ -43,13 +49,32 @@ function phaseBlocker(
   phase: Phase,
   tenant: Tenant,
   pages: Page[],
+  images: TenantImage[],
 ): string | null {
   const hasDesign = isDesignProfile(tenant.brand.design);
   if (phase !== 'briefing' && !hasDesign)
     return 'A direção de arte ainda não existe. Rode a fase de briefing antes.';
   if (phase === 'revisao' && !pages.length)
     return 'Não há páginas para revisar. Rode a fase de composição antes.';
+  // Uma cena por vez. O painel já espera a decisão antes de pedir a próxima;
+  // esta recusa protege uma aba antiga de gastar geração paga em duplicata.
+  if (phase === 'cenas' && images.some((image) => image.status === 'candidata'))
+    return 'Há uma imagem aguardando sua decisão no painel. Aprove ou recuse antes de gerar a próxima cena.';
   return null;
+}
+
+/** Plano, cobertura e a próxima vaga: o que a etapa de cenas precisa saber. */
+function scenesContext(tenant: Tenant, images: TenantImage[]) {
+  const plan = plannedScenes(tenant);
+  const approved = generatedPhotos(images).filter(
+    (image) => image.status === 'aprovada',
+  );
+  const { covered, missing } = sceneCoverage(plan, approved);
+  return {
+    scenePlan: scenePlanText(plan),
+    coverage: `${covered.length} de ${plan.length} vagas já têm foto aprovada.`,
+    ...(missing[0] ? { nextScene: sceneText(missing[0]) } : {}),
+  };
 }
 
 export async function POST(request: Request) {
@@ -79,7 +104,7 @@ export async function POST(request: Request) {
   ]);
   const phase = isPhase(body.phase) ? body.phase : undefined;
   if (phase) {
-    const blocker = phaseBlocker(phase, tenant, pages);
+    const blocker = phaseBlocker(phase, tenant, pages, libraryImages);
     if (blocker) return new Response(blocker, { status: 409 });
   }
 
@@ -89,14 +114,25 @@ export async function POST(request: Request) {
         `- /${page.slug} (${page.type}, ${page.blocks.length} blocos${page.publishedBlocks ? ', publicada' : ''}): ${page.title}`,
     )
     .join('\n');
-  const imagesSummary = libraryImages
-    .filter((image) => image.kind === 'foto' && image.status !== 'rejeitada')
-    .slice(0, 12)
-    .map(
-      (image) =>
-        `- #${image.seq} ${image.status}, ${image.ratio}, ${image.targetBlock ?? 'livre'}: ${image.url} | ${image.alt ?? image.description ?? 'sem descrição'}`,
-    )
-    .join('\n');
+  // Só o que o operador aprovou chega ao modelo com URL. Candidata ainda
+  // aguarda decisão e não pode entrar no rascunho.
+  const waiting = libraryImages.filter(
+    (image) => image.status === 'candidata',
+  ).length;
+  const imagesSummary = [
+    ...libraryImages
+      .filter((image) => image.kind === 'foto' && image.status === 'aprovada')
+      .slice(0, 12)
+      .map(
+        (image) =>
+          `- #${image.seq} aprovada, ${image.ratio}, ${image.targetBlock ?? 'livre'}: ${image.url} | ${image.alt ?? image.description ?? 'sem descrição'}`,
+      ),
+    ...(waiting
+      ? [
+          `- ${waiting} imagem(ns) aguardando a decisão do operador no painel, ainda sem URL.`,
+        ]
+      : []),
+  ].join('\n');
 
   const sources = Array.isArray(tenant.brief.sources)
     ? (
@@ -117,18 +153,7 @@ export async function POST(request: Request) {
   const context: PromptContext = {
     phase,
     ...(phase === 'briefing' || !phase ? { sources } : {}),
-    ...(phase === 'cenas'
-      ? {
-          scenePlan: scenePlanText(
-            scenePlan(
-              isDesignProfile(tenant.brand.design)
-                ? tenant.brand.design
-                : undefined,
-              3,
-            ),
-          ),
-        }
-      : {}),
+    ...(phase === 'cenas' ? scenesContext(tenant, libraryImages) : {}),
   };
 
   const messages = annotateAttachments(economicalMessages(body.messages));
@@ -139,17 +164,15 @@ export async function POST(request: Request) {
   const lastUser = [...body.messages]
     .reverse()
     .find((message) => message.role === 'user');
-  if (lastUser) {
-    const text = lastUser.parts
-      .filter((part) => part.type === 'text')
-      .map((part) => (part as { text: string }).text)
-      .join(' ');
-    if (text) {
-      await db()`
-        insert into chat_messages (tenant_id, role, content, channel)
-        values (${tenant.id}, 'user', ${text}, 'site')
-      `;
-    }
+  const lastUserText = (lastUser?.parts ?? [])
+    .filter((part) => part.type === 'text')
+    .map((part) => (part as { text: string }).text)
+    .join(' ');
+  if (lastUserText) {
+    await db()`
+      insert into chat_messages (tenant_id, role, content, channel)
+      values (${tenant.id}, 'user', ${lastUserText}, 'site')
+    `;
   }
 
   // A revisão renderiza o rascunho pela própria origem da requisição.
@@ -157,6 +180,8 @@ export async function POST(request: Request) {
   const tools = buildTools(tenant, {
     origin,
     cookie: request.headers.get('cookie') ?? undefined,
+    phase,
+    lastUserText,
   });
   // Fora da geração o chat mantém todas as ferramentas; dentro dela, só as da
   // etapa, para o modelo não pular direto para a composição.

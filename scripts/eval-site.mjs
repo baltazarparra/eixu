@@ -21,20 +21,24 @@ const { buildTools } = await jiti.import('../lib/ai/tools.ts');
 const { systemPrompt } = await jiti.import('../lib/taste/prompt.ts');
 const { PHASE_MESSAGE, PHASE_STEPS, PHASE_TOOLS, nextPhase } =
   await jiti.import('../lib/taste/phases.ts');
-const { generationState } = await jiti.import('../lib/sites/generation.ts');
+const { generationState, plannedScenes } = await jiti.import(
+  '../lib/sites/generation.ts',
+);
 const { siteMetrics, structuralFindings } = await jiti.import(
   '../lib/taste/metrics.ts',
 );
 const { lintSite } = await jiti.import('../lib/taste/site.ts');
 const { lintPage } = await jiti.import('../lib/taste/lint.ts');
-const { scenePlan, scenePlanText } = await jiti.import(
+const { sceneCoverage, scenePlanText, sceneText } = await jiti.import(
   '../lib/images/scene-plan.ts',
 );
-const { listImages } = await jiti.import('../lib/images/queries.ts');
+const { generatedPhotos } = await jiti.import('../lib/taste/metrics.ts');
+const { listImages, setStatus } = await jiti.import(
+  '../lib/images/queries.ts',
+);
 const { getTenantBySlug, listPages } = await jiti.import(
   '../lib/tenant-queries.ts',
 );
-const { isDesignProfile } = await jiti.import('../lib/design/profile.ts');
 
 const [caseName, ...flags] = process.argv.slice(2);
 if (!caseName) {
@@ -106,22 +110,28 @@ async function runPhase(tenant, phase, images) {
     )
     .join('\n');
   const imagesSummary = images
-    .filter((image) => image.kind === 'foto' && image.status !== 'rejeitada')
+    .filter((image) => image.kind === 'foto' && image.status === 'aprovada')
     .slice(0, 12)
     .map(
       (image) =>
-        `- #${image.seq} ${image.status}, ${image.ratio}, ${image.targetBlock ?? 'livre'}: ${image.url} | ${image.alt ?? image.description ?? 'sem descrição'}`,
+        `- #${image.seq} aprovada, ${image.ratio}, ${image.targetBlock ?? 'livre'}: ${image.url} | ${image.alt ?? image.description ?? 'sem descrição'}`,
     )
     .join('\n');
   const context = { phase };
-  if (phase === 'cenas')
-    context.scenePlan = scenePlanText(
-      scenePlan(
-        isDesignProfile(tenant.brand.design) ? tenant.brand.design : undefined,
-        3,
-      ),
+  if (phase === 'cenas') {
+    const plan = plannedScenes(tenant);
+    const { covered, missing } = sceneCoverage(
+      plan,
+      generatedPhotos(images).filter((image) => image.status === 'aprovada'),
     );
-  const tools = buildTools(tenant, { origin: process.env.EIXU_EVAL_ORIGIN });
+    context.scenePlan = scenePlanText(plan);
+    context.coverage = `${covered.length} de ${plan.length} vagas já têm foto aprovada.`;
+    if (missing[0]) context.nextScene = sceneText(missing[0]);
+  }
+  const tools = buildTools(tenant, {
+    origin: process.env.EIXU_EVAL_ORIGIN,
+    phase,
+  });
   const started = Date.now();
   const result = await generateText({
     model: process.env.EIXU_MODEL || 'anthropic/claude-opus-4.5',
@@ -167,11 +177,25 @@ const report = {
   model: process.env.EIXU_MODEL || 'anthropic/claude-opus-4.5',
   phases: [],
 };
-for (let step = 0; step < 6; step += 1) {
+// Uma cena por turno: o laço precisa de espaço para o plano inteiro.
+for (let step = 0; step < 14; step += 1) {
   const [pages, images] = await Promise.all([
     listPages(tenant.id),
     listImages(tenant.id),
   ]);
+  // No produto quem aprova imagem é o operador. Aqui o runner assume esse
+  // papel de forma explícita, senão a etapa de cenas nunca fecha.
+  const pendentes = images.filter((image) => image.status === 'candidata');
+  if (generateScenes && pendentes.length) {
+    for (const image of pendentes)
+      await setStatus(tenant.id, image.id, 'aprovada');
+    report.approvedByRunner =
+      (report.approvedByRunner ?? 0) + pendentes.length;
+    console.log(
+      `[eval] runner aprovou ${pendentes.length} candidata(s) no lugar do operador`,
+    );
+    continue;
+  }
   const state = generationState(tenant, pages, images);
   let next = state.next;
   // Sem --generate a biblioteca já veio semeada. Pular a fase de cenas exige
@@ -179,7 +203,7 @@ for (let step = 0; step < 6; step += 1) {
   if (next === 'cenas' && !generateScenes)
     next = nextPhase({
       hasDesign: true,
-      generatedPhotos: state.targetScenes,
+      coveredScenes: state.targetScenes,
       targetScenes: state.targetScenes,
       organicPages: state.organicPages,
       blockingErrors: state.blockingErrors,
