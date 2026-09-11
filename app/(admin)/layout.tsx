@@ -1,10 +1,24 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { Geist, Geist_Mono } from 'next/font/google';
+import localFont from 'next/font/local';
+import { isAuthenticated } from '@/lib/auth';
+import { railClients } from '@/lib/admin/queries';
+import { AdminShell } from '@/components/admin/admin-shell';
+import { logoutAction } from './admin/actions';
 import './admin.css';
 
-const sans = Geist({ subsets: ['latin'], variable: '--font-admin-sans', display: 'swap' });
-const mono = Geist_Mono({ subsets: ['latin'], variable: '--font-admin-mono', display: 'swap' });
+const sans = localFont({
+  src: './fonts/geist-latin.woff2',
+  weight: '100 900',
+  variable: '--font-admin-sans',
+  display: 'swap',
+});
+const mono = localFont({
+  src: './fonts/geist-mono-latin.woff2',
+  weight: '100 900',
+  variable: '--font-admin-mono',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'EIXU Sites',
@@ -12,10 +26,38 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false, nocache: true },
 };
 
-export default function AdminRootLayout({ children }: { children: ReactNode }) {
+export default async function AdminRootLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const authenticated = await isAuthenticated();
+  const clients = authenticated ? await railClients() : [];
   return (
     <html lang="pt-BR" className={`${sans.variable} ${mono.variable}`}>
-      <body>{children}</body>
+      <body>
+        {authenticated ? (
+          <AdminShell
+            clients={clients}
+            operator={process.env.ADMIN_USER || 'admin'}
+            logout={
+              <form action={logoutAction}>
+                <button
+                  className="admin-icon-button"
+                  aria-label="Sair do painel"
+                  title="Sair"
+                >
+                  ↪
+                </button>
+              </form>
+            }
+          >
+            {children}
+          </AdminShell>
+        ) : (
+          children
+        )}
+      </body>
     </html>
   );
 }

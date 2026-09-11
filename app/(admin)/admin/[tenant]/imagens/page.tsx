@@ -1,7 +1,7 @@
+import { adminTenant } from '@/lib/admin/queries';
 import { notFound, redirect } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
 import { getGuide, listImages } from '@/lib/images/queries';
-import { getTenantBySlug } from '@/lib/tenant-queries';
 import { ImagesLibrary } from './images-library';
 
 export const dynamic = 'force-dynamic';
@@ -13,7 +13,7 @@ export default async function ImagesPage({
 }) {
   if (!(await isAuthenticated())) redirect('/admin/login');
   const { tenant: slug } = await params;
-  const tenant = await getTenantBySlug(slug);
+  const tenant = await adminTenant(slug);
   if (!tenant) notFound();
 
   const [images, guide] = await Promise.all([
@@ -23,6 +23,7 @@ export default async function ImagesPage({
 
   return (
     <ImagesLibrary
+      key={tenant.slug}
       tenant={{ slug: tenant.slug, name: tenant.name }}
       initial={{ guide, images, logoUrl: tenant.brand.logoUrl ?? null }}
     />

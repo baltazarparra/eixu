@@ -86,8 +86,12 @@ export function BrandFields() {
               <span className="flex items-center gap-3">
                 <input
                   type="color"
-                  name={name}
-                  defaultValue={initial}
+                  value={
+                    /^#[0-9a-f]{6}$/i.test(values[name])
+                      ? values[name]
+                      : initial
+                  }
+                  aria-label={label}
                   onChange={(event) =>
                     setValues((current) => ({
                       ...current,
@@ -97,9 +101,21 @@ export function BrandFields() {
                   className="admin-color"
                   aria-describedby={`${name}-hint`}
                 />
-                <code className="text-xs text-[var(--color-muted)]">
-                  {values[name]}
-                </code>
+                <input
+                  className="admin-input admin-numeric"
+                  name={name}
+                  aria-label={`${label} em hexadecimal`}
+                  value={values[name]}
+                  pattern="#[0-9A-Fa-f]{6}"
+                  maxLength={7}
+                  required
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      [name]: event.target.value,
+                    }))
+                  }
+                />
               </span>
               <small id={`${name}-hint`} className="text-[var(--color-muted)]">
                 {hint}

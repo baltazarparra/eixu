@@ -1,13 +1,16 @@
 'use client';
 
-import { startTransition, useActionState, useCallback, useState } from 'react';
+import { startTransition, useActionState, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { ArrowUpRight, Plus, Search, Globe2, Trash2, X } from 'lucide-react';
 import { BrandFields } from '@/components/admin/brand-fields';
 import { TenantFields } from '@/components/admin/tenant-fields';
-import { DeleteTenantDialog } from '@/components/admin/delete-tenant-dialog';
-import type { DeletableTenant } from '@/lib/admin/tenant-delete';
+import {
+  EmptyState,
+  MetricCard,
+  SegmentedControl,
+  StatusDot,
+  StatusPill,
+} from '@/components/admin/primitives';
 import { createTenantAction } from './actions';
 
 export type ClientSummary = {
@@ -16,20 +19,26 @@ export type ClientSummary = {
   status: string;
   pageCount: number;
   leadCount: number;
+  updatedAt: string;
 };
+const num = new Intl.NumberFormat('pt-BR');
+const date = new Intl.DateTimeFormat('pt-BR', {
+  day: '2-digit',
+  month: 'short',
+  timeZone: 'America/Sao_Paulo',
+});
 
-export function Clients({ tenants }: { tenants: ClientSummary[] }) {
-  const router = useRouter();
+export function Clients({
+  tenants,
+  summary,
+}: {
+  tenants: ClientSummary[];
+  summary: { leads30d: number; running: number };
+}) {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('todos');
   const [creating, setCreating] = useState(false);
-  const [deleting, setDeleting] = useState<DeletableTenant | null>(null);
   const [error, formAction, pending] = useActionState(createTenantAction, null);
-  const closeDialog = useCallback(() => setDeleting(null), []);
-  const afterDelete = useCallback(() => {
-    setDeleting(null);
-    router.refresh();
-  }, [router]);
   const published = tenants.filter(
     (tenant) => tenant.status === 'published',
   ).length;
@@ -40,35 +49,29 @@ export function Clients({ tenants }: { tenants: ClientSummary[] }) {
         .includes(query.toLocaleLowerCase('pt-BR')) &&
       (filter === 'todos' || tenant.status === filter),
   );
-
+  const newClient = (
+    <button
+      className="admin-primary"
+      type="button"
+      onClick={() => setCreating(!creating)}
+      aria-expanded={creating}
+      aria-controls="new-client"
+    >
+      {creating ? 'Fechar cadastro' : '+ Novo cliente'}
+    </button>
+  );
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-5">
+      <div className="admin-page-heading">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            Sites dos clientes
-          </h1>
-          <p className="mt-3 text-sm text-[var(--color-muted)]">
-            {tenants.length} clientes no painel. {published} com site publicado.
-          </p>
+          <h1>Clientes</h1>
+          <p>Seus sites, os contatos que chegaram e o trabalho em andamento.</p>
         </div>
-        <button
-          className="admin-primary"
-          type="button"
-          onClick={() => setCreating(!creating)}
-          aria-expanded={creating}
-          aria-controls="new-client"
-        >
-          {creating ? <X size={16} /> : <Plus size={16} />}
-          {creating ? 'Fechar cadastro' : 'Novo cliente'}
-        </button>
+        {newClient}
       </div>
       {creating ? (
-        <section
-          id="new-client"
-          className="mt-7 rounded-xl border bg-[var(--color-surface)] p-5 sm:p-7"
-        >
-          <h2 className="mb-5 text-lg font-semibold">Criar um cliente</h2>
+        <section id="new-client" className="admin-new-client">
+          <h2>Cadastrar cliente</h2>
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -80,14 +83,11 @@ export function Clients({ tenants }: { tenants: ClientSummary[] }) {
               <TenantFields withSlug />
               <BrandFields />
               {error ? (
-                <p
-                  aria-live="polite"
-                  className="mt-4 text-sm text-[var(--color-err)]"
-                >
+                <p role="alert" className="admin-form-error">
                   {error}
                 </p>
               ) : null}
-              <div className="mt-6 flex items-center gap-4">
+              <div className="admin-form-footer">
                 <button
                   type="submit"
                   className="admin-primary"
@@ -95,119 +95,151 @@ export function Clients({ tenants }: { tenants: ClientSummary[] }) {
                 >
                   {pending ? 'Criando…' : 'Criar cliente e abrir editor'}
                 </button>
-                <p className="text-xs text-[var(--color-muted)]">
-                  O cadastro não inicia geração nem publica o site.
+                <p>
+                  Ao abrir o editor, o agente inicia a geração. Publicar é uma
+                  ação separada.
                 </p>
               </div>
             </fieldset>
           </form>
         </section>
       ) : null}
-      <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-b pb-5">
-        <label className="flex w-full items-center gap-3 rounded-lg border bg-[var(--color-surface)] px-3 sm:max-w-sm">
-          <Search size={17} className="text-[var(--color-muted)]" />
+      <section
+        className="admin-metrics admin-client-metrics"
+        aria-label="Resumo da operação"
+      >
+        <MetricCard
+          label="Sites no ar"
+          value={String(published).padStart(2, '0')}
+          qualifier={`de ${String(tenants.length).padStart(2, '0')}`}
+        />
+        <MetricCard
+          label="Leads · 30 dias"
+          value={num.format(summary.leads30d)}
+          note="Contatos recebidos por formulário"
+        />
+        <MetricCard
+          label="Gerações em curso"
+          value={String(summary.running).padStart(2, '0')}
+          qualifier={
+            summary.running ? (
+              <>
+                <StatusDot tone="accent" pulse /> em andamento
+              </>
+            ) : (
+              'nenhuma agora'
+            )
+          }
+        />
+      </section>
+      <div className="admin-client-toolbar">
+        <label className="admin-search">
+          <span className="admin-search-glyph" aria-hidden="true" />
           <input
-            className="w-full bg-transparent py-3 text-sm outline-none"
             aria-label="Buscar clientes"
+            placeholder="Buscar por nome ou slug"
+            type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar por nome ou endereço"
-            type="search"
           />
         </label>
-        <div className="flex gap-1" aria-label="Filtrar clientes">
-          {[
+        <SegmentedControl
+          label="Filtrar clientes"
+          value={filter}
+          onChange={setFilter}
+          options={[
             ['todos', 'Todos'],
-            ['draft', 'Rascunhos'],
             ['published', 'Publicados'],
-          ].map(([value, label]) => (
-            <button
-              className={`rounded-md px-3 py-2 text-xs ${filter === value ? 'bg-[var(--color-surface-2)]' : 'text-[var(--color-muted)]'}`}
-              key={value}
-              type="button"
-              aria-pressed={filter === value}
-              onClick={() => setFilter(value)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+            ['draft', 'Rascunhos'],
+          ]}
+        />
       </div>
       {visible.length ? (
-        <ul className="divide-y">
-          {visible.map((tenant) => (
-            <li key={tenant.slug} className="flex items-center gap-3">
-              <Link
-                className="group flex min-w-0 flex-1 items-center gap-4 py-6 sm:gap-6"
-                href={`/admin/${tenant.slug}`}
-              >
-                <div className="grid size-12 shrink-0 place-items-center rounded-xl border bg-[var(--color-surface)] text-[var(--color-accent)]">
-                  <Globe2 size={21} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h2 className="truncate text-base font-medium group-hover:text-[var(--color-accent)]">
-                    {tenant.name}
-                  </h2>
-                  <p className="mt-1 truncate text-xs text-[var(--color-muted)]">
-                    {tenant.slug}.eixu.com.br
-                  </p>
-                  <p className="mt-2 text-xs text-[var(--color-muted)]">
-                    {tenant.pageCount} páginas · {tenant.leadCount} contatos por
-                    formulário
-                  </p>
-                </div>
-                <span
-                  className={`shrink-0 rounded-full px-3 py-1.5 text-xs ${tenant.status === 'published' ? 'bg-[color-mix(in_oklab,var(--color-ok)_12%,transparent)] text-[var(--color-ok)]' : 'bg-[var(--color-surface-2)] text-[var(--color-muted)]'}`}
+        <section
+          className="admin-client-table"
+          aria-label="Clientes cadastrados"
+        >
+          <div className="admin-client-columns" aria-hidden="true">
+            <span>Cliente</span>
+            <span>Status</span>
+            <span>Páginas</span>
+            <span>Leads</span>
+            <span>Atualizado</span>
+            <span />
+          </div>
+          <ul>
+            {visible.map((tenant) => (
+              <li key={tenant.slug}>
+                <Link
+                  className="admin-client-row"
+                  href={`/admin/${tenant.slug}`}
                 >
-                  {tenant.status === 'published' ? 'Publicado' : 'Rascunho'}
-                </span>
-                <ArrowUpRight
-                  size={18}
-                  className="hidden text-[var(--color-muted)] sm:block"
-                />
-              </Link>
-              <button
-                type="button"
-                className="admin-icon-button"
-                aria-label={`Excluir ${tenant.name}`}
-                onClick={() =>
-                  setDeleting({
-                    slug: tenant.slug,
-                    name: tenant.name,
-                    status: tenant.status,
-                    pageCount: tenant.pageCount,
-                    leadCount: tenant.leadCount,
-                  })
-                }
-              >
-                <Trash2 size={16} />
-              </button>
-            </li>
-          ))}
-        </ul>
+                  <span className="admin-client-name">
+                    <span className="admin-avatar">
+                      {tenant.name
+                        .split(/\s+/)
+                        .slice(0, 2)
+                        .map((word) => word[0])
+                        .join('')}
+                    </span>
+                    <span>
+                      <strong>{tenant.name}</strong>
+                      <small>{tenant.slug}.eixu.com.br</small>
+                    </span>
+                  </span>
+                  <StatusPill
+                    tone={tenant.status === 'published' ? 'ok' : 'warn'}
+                  >
+                    {tenant.status === 'published' ? 'Publicado' : 'Rascunho'}
+                  </StatusPill>
+                  <span
+                    className="admin-numeric"
+                    aria-label={`${tenant.pageCount} páginas`}
+                  >
+                    {String(tenant.pageCount).padStart(2, '0')}
+                  </span>
+                  <span
+                    className="admin-numeric"
+                    aria-label={`${tenant.leadCount} leads`}
+                  >
+                    {tenant.leadCount ? num.format(tenant.leadCount) : '—'}
+                  </span>
+                  <time dateTime={tenant.updatedAt}>
+                    {date.format(new Date(tenant.updatedAt))}
+                  </time>
+                  <span aria-hidden="true">›</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : (
-        <div className="py-20 text-center">
-          <Globe2
-            size={30}
-            className="mx-auto mb-5 text-[var(--color-muted)]"
-          />
-          <h2 className="text-lg font-medium">
-            {tenants.length
+        <EmptyState
+          title={
+            tenants.length
               ? 'Nenhum cliente encontrado'
-              : 'Seu primeiro site começa aqui'}
-          </h2>
-          <p className="mx-auto mt-2 max-w-md text-sm text-[var(--color-muted)]">
-            {tenants.length
-              ? 'Tente outro nome ou mude o filtro.'
-              : 'Cadastre o negócio, registre o briefing e acompanhe a criação até a publicação.'}
-          </p>
-        </div>
+              : 'Nenhum cliente cadastrado'
+          }
+          action={
+            <button
+              type="button"
+              className="admin-secondary"
+              onClick={() => {
+                if (tenants.length) {
+                  setQuery('');
+                  setFilter('todos');
+                } else setCreating(true);
+              }}
+            >
+              {tenants.length ? 'Limpar filtros' : 'Cadastrar cliente'}
+            </button>
+          }
+        >
+          {tenants.length
+            ? 'Tente outro nome ou limpe os filtros para ver todos os clientes.'
+            : 'Cadastre o primeiro cliente com nome, endereço e briefing. Ao abrir o editor, o agente começa a montar o site.'}
+        </EmptyState>
       )}
-      <DeleteTenantDialog
-        tenant={deleting}
-        onClose={closeDialog}
-        onDeleted={afterDelete}
-      />
     </>
   );
 }

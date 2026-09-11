@@ -97,7 +97,7 @@ export function SocialProfileCard({
   if (!hasSocialUrl && !current) return null;
 
   return (
-    <section className="mt-10 border-t pt-7">
+    <section className="admin-form-section">
       <div className="flex flex-wrap items-start gap-5">
         {current?.avatarUrl ? (
           <Image

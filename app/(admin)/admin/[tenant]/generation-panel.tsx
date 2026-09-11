@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Check, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import type { SiteState } from '@/lib/admin/state';
 import {
   formatCost,
@@ -14,12 +14,8 @@ import {
   reviewProgress,
 } from '@/lib/generation/progress';
 import type { GenerationEvent, GenerationRun } from '@/lib/generation/runs';
-import {
-  PHASE_LABEL,
-  PHASES,
-  REVIEW_CALLS_PER_TURN,
-  type Phase,
-} from '@/lib/taste/phases';
+import { PHASE_LABEL, PHASES, type Phase } from '@/lib/taste/phases';
+import { StatusPill } from '@/components/admin/primitives';
 import { isRunning } from './use-generation';
 
 /** Medido nas gerações reais. Serve para calibrar a espera, não para prometer. */
@@ -92,43 +88,6 @@ function statusLine(
   return null;
 }
 
-/** Barra de quatro segmentos: a etapa ativa enche conforme o progresso real. */
-function Track({
-  active,
-  reached,
-  fill,
-}: {
-  active: Phase | null;
-  reached: (phase: Phase) => boolean;
-  fill: number | null;
-}) {
-  return (
-    <ol className="admin-run-track" aria-hidden="true">
-      {PHASES.map((item) => {
-        const state = reached(item)
-          ? 'done'
-          : item === active
-            ? 'active'
-            : 'todo';
-        return (
-          <li key={item} data-state={state}>
-            <span
-              style={
-                state === 'active' && fill !== null
-                  ? { width: `${Math.round(fill * 100)}%` }
-                  : undefined
-              }
-              data-indeterminate={
-                state === 'active' && fill === null ? '' : undefined
-              }
-            />
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
 export function GenerationPanel({
   run,
   events,
@@ -179,30 +138,19 @@ export function GenerationPanel({
   const usage = summarizeUsage({ messages: [], events });
 
   const position = phase ? PHASES.indexOf(phase) + 1 : 0;
-  const fill =
-    phase === 'cenas' && state.generation.targetScenes > 0
-      ? Math.min(
-          1,
-          state.generation.coveredScenes / state.generation.targetScenes,
-        )
-      : phase === 'revisao'
-        ? Math.min(
-            1,
-            Math.max(1, reviewProgress(events).reads) / REVIEW_CALLS_PER_TURN,
-          )
-        : null;
-
   const title = starting
     ? 'Iniciando a geração'
-    : running
-      ? PHASE_LABEL[phase ?? (next as Phase)]
-      : finished
-        ? 'Geração concluída'
-        : run?.status === 'paused'
-          ? 'Geração pausada'
-          : run?.status === 'failed'
-            ? 'Geração interrompida'
-            : 'Geração em etapas';
+    : run?.status === 'stopping'
+      ? 'Pausando a geração'
+      : running
+        ? PHASE_LABEL[phase ?? (next as Phase)]
+        : finished
+          ? 'Geração concluída'
+          : run?.status === 'paused'
+            ? 'Geração pausada'
+            : run?.status === 'failed'
+              ? 'Geração interrompida'
+              : 'Geração em etapas';
 
   const totalSeconds = (() => {
     if (!run || !runStarted) return null;
@@ -270,7 +218,28 @@ export function GenerationPanel({
     >
       <div className="admin-run-head">
         <div className="admin-run-title">
-          <span className="admin-run-eyebrow">Geração do site</span>
+          <StatusPill
+            tone={
+              run?.status === 'failed'
+                ? 'err'
+                : finished
+                  ? 'ok'
+                  : running || starting
+                    ? 'accent'
+                    : 'neutral'
+            }
+            pulse={running && run?.status !== 'stopping'}
+          >
+            {run?.status === 'stopping'
+              ? 'Pausando'
+              : running || starting
+                ? 'Em execução'
+                : finished
+                  ? 'Concluída'
+                  : run?.status === 'failed'
+                    ? 'Interrompida'
+                    : 'Parada'}
+          </StatusPill>
           <strong className="admin-run-name">{title}</strong>
           <span className="admin-run-meta">{meta}</span>
         </div>
@@ -291,7 +260,6 @@ export function GenerationPanel({
         )
       ) : (
         <>
-          <Track active={phase} reached={reached} fill={fill} />
           <ol className="admin-run-steps">
             {PHASES.map((item) => {
               const active = phase === item;
@@ -311,30 +279,23 @@ export function GenerationPanel({
               return (
                 <li
                   key={item}
-                  data-state={active ? 'active' : complete ? 'done' : 'todo'}
+                  data-state={
+                    run?.status === 'failed' && (run.phase ?? next) === item
+                      ? 'failed'
+                      : active
+                        ? 'active'
+                        : complete
+                          ? 'done'
+                          : 'todo'
+                  }
                 >
-                  <span className="admin-run-mark" aria-hidden="true">
-                    {complete ? <Check size={11} strokeWidth={3.5} /> : null}
-                  </span>
+                  <span className="admin-step-track" aria-hidden="true" />
                   <div className="admin-run-step">
                     <span className="admin-run-step-name">
                       {PHASE_LABEL[item]}
                     </span>
                     {detail ? (
                       <span className="admin-run-sub">{detail}</span>
-                    ) : null}
-                    {active && running ? (
-                      <span className="admin-run-activity">
-                        <span className="admin-run-pulse" aria-hidden="true" />
-                        <span>{activity?.label ?? 'Preparando a etapa'}</span>
-                        {estimate ? (
-                          <span className="admin-run-sub">
-                            {phaseSeconds > estimate
-                              ? 'está levando mais que o normal, continua rodando'
-                              : `normalmente leva cerca de ${Math.round(estimate / 60)} min`}
-                          </span>
-                        ) : null}
-                      </span>
                     ) : null}
                   </div>
                   {aside ? (
@@ -347,6 +308,23 @@ export function GenerationPanel({
         </>
       )}
 
+      {running ? (
+        <p className="admin-run-activity">
+          <span className="admin-run-pulse" aria-hidden="true" />
+          <span>
+            {run?.status === 'stopping'
+              ? 'A etapa atual termina e a próxima não começa.'
+              : (activity?.label ?? 'Preparando a etapa')}
+            {estimate ? (
+              <small>
+                {phaseSeconds > estimate
+                  ? 'Está levando mais que o normal; continua rodando.'
+                  : `Normalmente leva cerca de ${Math.round(estimate / 60)} min.`}
+              </small>
+            ) : null}
+          </span>
+        </p>
+      ) : null}
       {status ? (
         <p className="admin-run-status" data-tone={status.tone}>
           {status.text}

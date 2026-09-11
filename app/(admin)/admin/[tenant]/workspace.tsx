@@ -8,7 +8,11 @@ import { GenerationBar, GenerationPanel } from './generation-panel';
 import { isRunning, useGeneration } from './use-generation';
 
 import { ImagePlus } from 'lucide-react';
-import { AdminHeader, MobileViews } from '@/components/admin/navigation';
+import {
+  WorkspaceHeader,
+  MobileViews,
+  useRefreshTenant,
+} from '@/components/admin/navigation';
 import { ChatUsageDetails } from '@/components/admin/chat-usage';
 import { adminFetch } from '@/lib/admin/http';
 import { mergeSavedMessages } from '@/lib/admin/chat-messages';
@@ -37,6 +41,7 @@ export function Workspace({
   imageRequest = '',
 }: Props) {
   const tenantSlug = initial.tenant.slug;
+  const refreshTenant = useRefreshTenant();
   const [site, setSite] = useState<SiteState>(initial);
   const [current, setCurrent] = useState(initial.pages[0]?.slug ?? '');
   const [input, setInput] = useState(imageRequest);
@@ -261,6 +266,7 @@ export function Workspace({
           : { tone: 'ok', text: `Publicado. ${result.url}` },
       );
       await refresh();
+      if (result.published.length) refreshTenant?.();
     } catch (error) {
       fail(
         error instanceof Error ? error.message : 'Não foi possível publicar.',
@@ -321,9 +327,8 @@ export function Workspace({
 
   return (
     <div className="admin-workspace" data-view={view}>
-      <AdminHeader
+      <WorkspaceHeader
         tenant={site.tenant}
-        active="site"
         actions={
           <button
             type="button"
@@ -367,18 +372,23 @@ export function Workspace({
         onOpen={() => setView('chat')}
       />
       <div className="admin-workspace-body">
+        <GenerationPanel
+          run={generation.run}
+          events={generation.events}
+          state={site}
+          clockOffsetMs={generation.clockOffsetMs}
+          error={generation.error}
+          busy={busy}
+          starting={generation.starting}
+          onStart={() => void startGeneration()}
+          onStop={() => void stopGeneration()}
+        />
+
         <section className="admin-conversation" aria-label="Conversa de edição">
-          <GenerationPanel
-            run={generation.run}
-            events={generation.events}
-            state={site}
-            clockOffsetMs={generation.clockOffsetMs}
-            error={generation.error}
-            busy={busy}
-            starting={generation.starting}
-            onStart={() => void startGeneration()}
-            onStop={() => void stopGeneration()}
-          />
+          <div className="admin-conversation-heading">
+            <span className="admin-label">Conversa com o agente</span>
+            <span>{messages.length} turnos</span>
+          </div>
           <div ref={scrollRef} className="admin-thread">
             {!messages.length && locked ? (
               <p className="admin-thread-empty">
@@ -541,7 +551,7 @@ export function Workspace({
         </section>
 
         <section className="admin-content" aria-label="Prévia e revisão">
-          <div className="flex flex-wrap items-center gap-3 border-b px-4 py-3">
+          <div className="admin-preview-controls">
             <label className="admin-page-selector">
               Página
               <select
@@ -560,7 +570,10 @@ export function Workspace({
                 ))}
               </select>
             </label>
-            <div className="flex items-center gap-1">
+            <fieldset
+              className="admin-segmented"
+              aria-label="Dispositivo da prévia"
+            >
               {(['desktop', 'mobile'] as const).map((option) => (
                 <button
                   key={option}
@@ -582,7 +595,7 @@ export function Workspace({
                   Abrir prévia
                 </a>
               ) : null}
-            </div>
+            </fieldset>
           </div>
 
           {showReview ? (
@@ -642,15 +655,14 @@ export function Workspace({
               </ul>
             </details>
           ) : null}
-          <div className="flex min-h-0 flex-1 items-start justify-center overflow-auto p-4">
+          <div className="admin-preview-canvas">
             {site.pages.length > 0 ? (
               <iframe
                 key={`${current}-${nonce}`}
                 src={previewUrl}
                 title="Preview do site"
-                className={`h-full rounded-lg border bg-white shadow-[0_20px_60px_-30px_rgba(0,0,0,0.6)] transition-[width] ${
-                  device === 'mobile' ? 'w-[390px] max-w-full' : 'w-full'
-                }`}
+                className="admin-preview-frame"
+                data-device={device}
               />
             ) : (
               <div className="admin-preview-empty">

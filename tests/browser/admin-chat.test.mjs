@@ -52,7 +52,7 @@ await test(
                   response.end(
                     await server.transformIndexHtml(
                       '/',
-                      `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="data:,"><style>${css}</style></head><body><div id="root"></div><script id="fixture-state" type="application/json">${JSON.stringify(fixture.state)}</script><script type="module" src="/tests/browser/fixtures/chat.tsx"></script></body></html>`,
+                      `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="data:,"><style>#root{height:100%}${css}</style></head><body><div id="root"></div><script id="fixture-state" type="application/json">${JSON.stringify(fixture.state)}</script><script type="module" src="/tests/browser/fixtures/chat.tsx"></script></body></html>`,
                     ),
                   );
                   return;

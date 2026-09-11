@@ -68,7 +68,7 @@ export async function getTenantBySlug(slug: string): Promise<Tenant | null> {
 }
 
 export async function listTenants(): Promise<
-  (Tenant & { pageCount: number; leadCount: number })[]
+  (Tenant & { pageCount: number; leadCount: number; updatedAt: string })[]
 > {
   const rows = (await db()`
     select t.*,
@@ -81,6 +81,7 @@ export async function listTenants(): Promise<
     ...toTenant(row),
     pageCount: Number(row.page_count ?? 0),
     leadCount: Number(row.lead_count ?? 0),
+    updatedAt: str(row.updated_at),
   }));
 }
 

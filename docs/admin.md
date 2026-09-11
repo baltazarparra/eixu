@@ -18,9 +18,20 @@ Em Marca, envie o logo, opcional, e escolha três cores: a primária pinta seç�
 
 O painel é uma operação administrativa global: quem tem a credencial pode acessar todos os clientes. Não compartilhe essa sessão com clientes finais.
 
+A navegação lateral acompanha as áreas do cliente e permite trocar de cadastro.
+Na lista, busque por nome/endereço ou filtre publicados e rascunhos. Os números
+mostram clientes, leads recebidos nos últimos 30 dias e execuções em fila,
+rodando ou encerrando uma etapa. No celular, **Clientes** abre a navegação.
+
 ## Preparar os dados
 
 Dentro do cliente, a navegação reúne **Site**, **Imagens**, **Tráfego** e **Dados**. Em Dados, atualize diretamente contatos e briefing: telefones, e-mail, endereços, redes sociais, segmento, região, público, oferta, ação esperada, fatos confirmados, restrições e até três referências. A vibe aparece como informação, sem edição. A edição dos campos não usa o chat; a descrição de um avatar social novo pode consumir uma chamada ao modelo.
+
+A barra inferior conta alterações não salvas. **Salvar dados** confirma os
+campos; **Descartar** restaura o último salvamento, incluindo listas de contatos
+e fatos. Se salvar falhar, os valores continuam no formulário. Adicione fatos
+pelo botão **+ prova** e remova um pelo seu ×. O upload do logo é imediato e
+fica fora dessa barra.
 
 Todos os campos do briefing são opcionais e cada um traz a legenda do que registrar. **Fatos confirmados** é o que a empresa faz e comprova; o site só afirma o que estiver ali ou numa referência lida, e sem isso o agente declara lacunas. **Restrições** é o que ele não pode prometer nem mostrar.
 
@@ -38,7 +49,7 @@ Envie um logo final em Dados ou escolha uma opção gerada na conversa do site. 
 
 ## Excluir um cliente
 
-A lixeira na lista e a seção **Excluir cliente** em Dados abrem a mesma confirmação, com o que será apagado: páginas, contatos recebidos, eventos, gastos, conversas, imagens e arquivos. Cliente com site publicado ou com contato recebido exige digitar o endereço para liberar o botão; o servidor confere de novo. Esc e **Cancelar** não apagam nada.
+A seção **Zona de risco** em Dados abre a confirmação com o que será apagado: páginas, contatos recebidos, eventos, gastos, conversas, imagens e arquivos. Digite o endereço do cliente para liberar o botão. O servidor mantém a conferência adicional obrigatória para site publicado ou com contato recebido. Esc e **Cancelar** não apagam nada.
 
 A exclusão é definitiva e não tem lixeira. Ao concluir, o site publicado passa a responder 404. Ela aguarda envios de arquivos já iniciados, impede novos envios e apaga os arquivos antes do cadastro: se essa etapa falhar, o cliente continua no painel e a operação pode ser repetida. Uma geração que terminar depois da exclusão não consegue enviar arquivos para esse cliente.
 
@@ -54,7 +65,7 @@ Um cliente recém-cadastrado começa a construção sozinho: ao abrir Site, a pr
 
 **Continuar** roda briefing e direção, cenas, composição e revisão, uma etapa por vez. **Retomar** aparece depois de uma pausa e **Tentar novamente** depois de uma falha. A sequência roda no servidor, não na aba: recarregar a tela, trocar de aparelho ou fechar o navegador não interrompe nem duplica nada, e o painel volta mostrando a etapa e a atividade em andamento. Digitar "continuar" no chat faz a mesma coisa que o botão.
 
-O andamento fica numa faixa fixa acima da conversa, visível também no celular: a etapa atual e sua posição na sequência, a barra das quatro etapas, o que cada uma produziu, a ferramenta em execução, o tempo desta etapa e o tempo total, e a **Linha do tempo** com tudo que foi registrado. **Pausar** encerra depois do passo atual — uma ferramenta já iniciada termina e salva; a pausa não desfaz escritas. Ao terminar, o painel mostra páginas, fotos, tempo e consumo até você fechar.
+O andamento fica acima da prévia no computador e na área de trabalho no celular: a etapa atual e sua posição na sequência, a barra das quatro etapas, o que cada uma produziu, a ferramenta em execução, o tempo desta etapa e o tempo total, e a **Linha do tempo** com tudo que foi registrado. **Pausar** encerra depois do passo atual — uma ferramenta já iniciada termina e salva; a pausa não desfaz escritas. Ao terminar, o painel mostra páginas, fotos, tempo e consumo até você fechar.
 
 Enquanto a geração roda, o chat fica em espera e diz por quê: os dois disputariam as mesmas páginas. Se uma etapa falhar ou não avançar, a execução para com o motivo no painel; leia a última resposta antes de retomar. Se aparecer que a próxima etapa não pôde ser iniciada, **Tentar novamente** retoma pelo progresso salvo. Cenas e páginas prontas continuam disponíveis; uma revisão visual pendente ainda precisa ser concluída antes de considerar a geração pronta.
 
@@ -70,13 +81,13 @@ Na etapa de cenas o agente pede de uma vez todas as fotos que faltam no plano, g
 
 O chat recebe o histórico textual recente do cliente. Escreva mudanças específicas e indique a página quando necessário. Sugestões apenas preenchem a caixa; **Enviar** executa o pedido. Enter envia, Shift+Enter quebra a linha. Imagens podem ser anexadas, coladas ou arrastadas para a conversa.
 
-No computador, conversa e prévia ficam lado a lado. No celular, alterne **Conversa** e **Prévia**. Escolha a página no seletor e confira as larguras Desktop e Celular; **Abrir prévia** abre outra aba. Os links internos mantêm o modo de rascunho. A prévia exige sessão, não envia formulários e não registra eventos de tráfego.
+No computador, conversa e prévia ficam lado a lado. No celular, alterne **Conversa** e **Prévia**. Escolha a página no seletor e confira as larguras Desktop e Celular; **Ver prévia** abre outra aba. Os links internos mantêm o modo de rascunho. A prévia exige sessão, não envia formulários e não registra eventos de tráfego.
 
 Os textos das 60 mensagens mais recentes são recuperados ao abrir a tela. Ferramentas, anexos e contagens de custo antigos não são restaurados. Registre decisões duráveis no briefing; não dependa de uma conversa extensa como única fonte do negócio.
 
 ## Biblioteca e publicação
 
-Imagens (`/admin/[tenant]/imagens`) reúne as imagens geradas, separadas em fotos e logos. Cada uma mostra um número, inclusive as candidatas antigas que agora estão disponíveis sem aprovação.
+Imagens (`/admin/[tenant]/imagens`) reúne o guia visual e o acervo numerado, com filtros Todas, Fotos, Logos e Rejeitadas. Todas inclui as rejeitadas. Os cartões mostram proporção, descrição e nota quando existe; sem nota, mostram **sem crítica**. As candidatas antigas estão disponíveis sem aprovação. **Editar guia** e **Gerar imagens** abrem um pedido na conversa; revise e envie para executar.
 
 Para alterar uma imagem, escreva no chat: **“quero atualizar a imagem #5, quero outro carro”**. Ou clique em **Solicitar alteração** no cartão: o chat abre com o número preenchido; complete o pedido e envie. A geração usa a original como referência e preserva sua proporção. A nova versão ganha outro número, substitui a anterior nas páginas em rascunho e mantém ambas na biblioteca. O chat informa o novo número. A versão publicada continua até você publicar as páginas de novo.
 
@@ -85,6 +96,8 @@ O filtro **Rejeitadas** preserva imagens recusadas no fluxo antigo, que continua
 **Apagar** pede uma segunda confirmação e recusa imagens referenciadas no rascunho, publicado ou logo. Cancelar conserva a imagem. **Usar no site**, em uma foto, copia um pedido para colar no chat do site; não altera o conteúdo sozinho. **Usar como logo**, em um logo disponível, aplica na navegação e no rodapé.
 
 As pendências para publicar aparecem no fim do fluxo, quando ainda sobra algo. Erros de página ou projeto bloqueiam a publicação; recomendações continuam disponíveis para revisão. Quando a revisão visual do rascunho atual ainda não terminou, o cabeçalho avisa **Revisão visual pendente**: publicar continua permitido, valendo o pre-flight determinístico, mas sem a conferência dos pixels. Mudanças de blocos ou SEO tornam a página pendente. **Publicar** valida o projeto no servidor e atualiza o snapshot de páginas atomicamente; um erro preserva a versão anterior.
+
+Nas outras abas, **Revisar e publicar** leva ao editor para conferir as pendências atuais.
 
 O snapshot inclui blocos e SEO. Marca, contatos, título, tipo e outros metadados têm limites de versionamento descritos na [arquitetura](architecture.md#limites-atuais). Publicar o código na Vercel não publica automaticamente os rascunhos dos clientes.
 
@@ -101,6 +114,13 @@ Para evitar desperdício, use Dados para alterações cadastrais, descreva o aju
 ## Tráfego e contatos
 
 O filtro usa datas inclusivas no horário de Brasília, inicialmente os últimos 30 dias. Visitantes identificados são IDs de navegador; formulários e cliques no WhatsApp são ações. Um clique não confirma conversa. Dados anteriores à revisão podem conter cliques duplicados.
+
+Os atalhos **7 dias**, **30 dias** e **90 dias** preenchem o período; datas
+personalizadas aceitam até 366 dias. O gráfico conta cada navegador uma vez por
+dia. O trecho âmbar é o subconjunto que visitou e fez uma ação de contato no
+mesmo dia; não é a soma de cliques. A tabela **Ver valores por dia** expõe os
+valores, incluindo dias zerados. A soma diária pode superar os visitantes
+únicos do período. Ausência de gasto aparece como **Não informado**.
 
 Gastos são inseridos manualmente por campanha, canal e período. Lance cada gasto uma vez: os valores são somados. Só entram no custo lançamentos inteiramente contidos no filtro. O painel avisa quando um lançamento cruza as datas; amplie o filtro para incluí-lo inteiro. Não há rateio automático, edição/exclusão de gasto ou integração com plataformas de anúncios nesta tela.
 

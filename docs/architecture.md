@@ -18,6 +18,29 @@ Next.js roda páginas, Server Actions e Route Handlers. `lib/db.ts` cria o clien
 
 O [contrato visual](design.md) descreve variantes, dials, âncoras e a aplicação das duas skills no gerador. Os grupos `(main)`, `(admin)` e `(sites)` têm layouts raiz e folhas de estilo próprios. O institucional usa componentes e efeitos próprios; os sites gerados combinam blocos renderizados no servidor, componentes interativos de Framer Motion, HTML nativo e um script de atribuição.
 
+## Composição administrativa
+
+O layout raiz consulta a sessão antes de carregar a navegação. `railClients`
+transmite somente nome, slug e status; `adminTenant` deduplica a resolução do
+cliente durante o render com React `cache`, sem persistir entre sessões. O
+layout de `[tenant]` repete a autenticação e fornece cabeçalho e abas. O editor
+insere suas ações no cabeçalho por um portal React, conservando a decisão de
+publicação junto ao estado vivo do workspace. Publicar atualiza também os
+layouts; a tela Dados faz o mesmo após salvar o cadastro.
+
+`operationSummary` agrega leads de 30 dias e execuções ativas para a operação
+global. A série de tráfego usa o ID do tenant, datas inclusivas de Brasília,
+dias sem evento preenchidos com zero e deduplicação por navegador/dia. Contatos
+na série exigem visita e ação no mesmo dia; cartões continuam mostrando ações
+brutas e visitantes distintos do período. O limite de 366 dias restringe a
+série. Não houve alteração de schema.
+
+O parâmetro `pedido` do editor preenche até 2.000 caracteres da conversa; não
+envia mensagem sozinho. A imagem numerada em `imagem` tem precedência. O
+formulário Dados conserva um snapshot local do último salvamento para
+contagem de alterações e descarte; nome, contatos e logo mantêm os limites de
+publicação já descritos neste documento.
+
 ## Edição e publicação
 
 A leitura em `lib/tenant-queries.ts` recupera o WhatsApp legado e a rede de
