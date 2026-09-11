@@ -1,5 +1,34 @@
 # Validação e publicação
 
+## Edições pontuais, navegação e galeria, 11/09/2026
+
+Um pedido de cabeçalho fixo, escuro e semitransparente acionou reconstrução de
+quatro páginas. A navegação ainda não tinha propriedade de posição fixa, e
+a galeria filmstrip criava oito colunas mesmo com duas fotos. Foram acrescentadas
+as propriedades de navegação, corrigidas as colunas e restringidas as ferramentas
+e os campos editáveis para esse pedido. O conteúdo da galeria é preservado.
+
+- Tipos, lint e build Next.js aprovados. `test:sites`: 80; `test:admin` com
+  PostgreSQL local e Chrome: 72 aprovados, sem skips.
+- Cinco regressões novas verificam capacidades removidas, preservação integral
+  dos campos fora do pedido, recusa de props inválidas antes da escrita e
+  separação entre edição, site novo e reconstrução explicitamente solicitada,
+  mantendo ajustes pontuais de marca disponíveis na edição geral.
+- Navegador real e CSS do build: posição após rolagem, espaço reservado ao
+  cabeçalho/menu mobile, opacidade, galerias com 2/3/8 fotos e ausência de colunas
+  vazias em 1440/390 px. Sete testes de sites no navegador aprovados.
+- O pedido original, com histórico anterior de construção, foi repetido com
+  Gemini 3.8 Flash e ferramentas reais, em memória. Oito passos, quatro cabeçalhos
+  fixos, tom escuro e opacidade de 90%; comparação integral confirmou marca,
+  dials, imagens e todos os demais campos preservados. Foram 80.672 tokens de
+  entrada e 2.800 de saída em 151 segundos. A revisão visual ficou indisponível
+  nesse ensaio e o modelo a relatou, sem editar os outros blocos. Esse ensaio
+  comprova precisão da edição, não conclusão da crítica visual.
+
+Evidências locais em `outputs/chat-recovery/`. Não houve geração de imagens
+nesses testes. Os snapshots usados no diagnóstico do cliente real permanecem
+locais e fora do Git.
+
 ## Andamento e recuperação do chat, 11/09/2026
 
 A investigação de uma criação real encontrou uma composição recuperada após
@@ -202,9 +231,9 @@ Com dependências instaladas por `npm ci`, execute os checks separadamente para 
 npm run lint
 npm run test:sites
 npm run test:admin
-npm run test:admin:browser
 npx next typegen && npx tsc --noEmit
 npm run build:vercel
+npm run test:admin:browser
 npm run test:sites:browser
 git diff --check
 ```

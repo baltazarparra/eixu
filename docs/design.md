@@ -17,6 +17,16 @@ Esconder essa informação fazia o agente ignorar `feature.explorer` e
 
 ## Piso de composição
 
+O cabeçalho `nav.bar` aceita `position: fixed` sem trocar layout ou direção da
+marca. `backgroundOpacity` controla o fundo entre 70 e 100%; o tom escuro vem de
+`presentation.tone: ink`. A ilha `NavigationFrame` mede e reserva sua altura,
+incluindo o menu mobile, e ajusta a margem de rolagem das âncoras.
+
+A variante `media.gallery/filmstrip` cria uma coluna por foto. Duas imagens
+preenchem a largura disponível em desktop; acervos maiores rolam horizontalmente.
+O CSS anterior sempre criava oito colunas e deixava seis vazias numa galeria
+de duas fotos. A correção atua no renderizador, preservando conteúdo e imagens.
+
 Passar nos validadores não era o mesmo que entregar um site rico: uma home com
 cinco seções, três delas só texto, duas fotos na abertura e subpáginas sem
 imagem chegava a zero apontamentos. O contrato passou a medir composição, em

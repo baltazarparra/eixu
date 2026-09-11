@@ -65,6 +65,11 @@ import {
   setBrandLogo,
 } from '@/lib/tenant-queries';
 import type { Phase } from '@/lib/taste/phases';
+import {
+  editTools,
+  scopedUpdateError,
+  type EditPolicy,
+} from '@/lib/ai/edit-policy';
 import type { BlockInstance, Tenant, TenantImage } from '@/lib/types';
 
 function newId(): string {
@@ -145,6 +150,7 @@ export type ToolContext = {
   phase?: Phase;
   /** Última mensagem do operador, para as decisões que exigem pedido dele. */
   lastUserText?: string;
+  editPolicy?: EditPolicy;
 };
 
 /**
@@ -299,7 +305,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
     };
   }
 
-  return {
+  const tools = {
     define_image_guide: guideTool(tenant, safe),
 
     prepare_site_images: tool({
@@ -1338,12 +1344,42 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           throw new ToolError(
             `Tipo "${type}" não existe. Tipos: ${BLOCK_TYPES.join(', ')}`,
           );
+        const nextProps = {
+          ...target.props,
+          ...props,
+          ...(props.presentation &&
+          typeof props.presentation === 'object' &&
+          !Array.isArray(props.presentation)
+            ? {
+                presentation: {
+                  ...(target.props.presentation as Record<string, unknown>),
+                  ...props.presentation,
+                },
+              }
+            : {}),
+        };
+        const scopeError = scopedUpdateError(
+          context.editPolicy,
+          page.slug,
+          target,
+          nextProps,
+          type,
+        );
+        if (scopeError) throw new ToolError(scopeError);
+        const nextType = type ?? target.type;
+        if (!isBlockType(nextType))
+          throw new ToolError('O tipo do bloco não está no catálogo.');
+        const validated = blockSchemas[nextType].strict().safeParse(nextProps);
+        if (!validated.success)
+          throw new ToolError(
+            `A alteração deixaria o bloco inválido: ${validated.error.message}`,
+          );
         const next = page.blocks.map((block) =>
           block.id === target.id
             ? {
                 ...block,
                 type: type ?? block.type,
-                props: { ...block.props, ...props },
+                props: nextProps,
               }
             : block,
         );
@@ -1448,4 +1484,5 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
       execute: safe(async () => publishSite({ ...tenant, brand: activeBrand })),
     }),
   };
+  return editTools(tools, context.editPolicy);
 }
