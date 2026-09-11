@@ -2,6 +2,30 @@
 
 Referências lidas em 10/09/2026: [Frontend Design, Anthropic](https://github.com/anthropics/claude-code/blob/main/plugins/frontend-design/skills/frontend-design/SKILL.md) e [Taste Skill v1](https://github.com/Leonxlnx/taste-skill/blob/main/skills/taste-skill-v1/SKILL.md). Para mudanças de frontend, use ambas como direção, respeitando o negócio, o contrato do repositório e o código disponível. Este documento registra a adaptação ao gerador, não substitui a leitura das referências ao mudar a direção visual.
 
+## Painel administrativo
+
+O handoff `design_handoff_painel_admin`, recebido em 11/09/2026, orienta
+entrada, clientes, editor, imagens, tráfego e dados. A prancha de estados é
+referência para os componentes, sem rota de demonstração no produto.
+
+O painel usa Geist e Geist Mono locais, fundo quente `#0c0b0a`, painéis
+`#100f0e`, âmbar `#f0a868`, verde `#5fc98c` e vermelho `#f0705d`. A navegação
+lateral mede 252 px no desktop; o cabeçalho contextual pertence ao layout do
+cliente. O editor reserva 42% (até 520 px) à conversa e mantém o andamento
+acima da prévia. No celular, navegação e vistas são alternáveis.
+
+`app/(admin)/admin.css` concentra os tokens e componentes `admin-*`; os três
+grupos de rotas mantêm CSS e fontes separados. Textos funcionais pequenos usam
+`--color-support: #938b7e`: os tons faint/dim da referência têm contraste baixo
+e ficam em elementos decorativos. Foco visível, estados além da cor, tabelas
+alternativas ao gráfico e movimento reduzido fazem parte da implementação.
+
+O produto mantém credencial administrativa compartilhada, publicação validada
+no editor, acervo sem aprovação e métricas derivadas do banco. Login Google,
+recuperação de senha, identidade nominal, deltas comerciais e navegação de demo
+do protótipo não representam recursos existentes. Os componentes foram
+adaptados às APIs reais; o handoff não autoriza esses serviços adicionais.
+
 ## Direção e qualidade
 
 A composição parte do briefing, da marca e de cenas coerentes com o cliente: uma seção protagonista, hierarquia de texto e variação de layout. Não há receita obrigatória de home. Cada projeto tem pelo menos três páginas orgânicas conectadas, com intenções de descoberta, consideração e conversão. Obrigado e landing de anúncio não completam esse mínimo. Serviços usam listas editoriais; números de ordem ficam em processos. Provas, garantias, equipamentos e capacidades operacionais dependem de evidência do briefing.

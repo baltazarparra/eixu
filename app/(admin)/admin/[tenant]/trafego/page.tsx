@@ -1,12 +1,12 @@
+import Link from 'next/link';
+import { adminTenant } from '@/lib/admin/queries';
 import { notFound, redirect } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
-import { getTenantBySlug } from '@/lib/tenant-queries';
 import {
   defaultPeriod,
   periodSchema,
   trafficReport,
 } from '@/lib/admin/traffic';
-import { AdminHeader } from '@/components/admin/navigation';
 import { TrafficReport } from '@/components/admin/traffic-report';
 import { SpendForm } from './spend-form';
 
@@ -19,7 +19,7 @@ export default async function TrafficPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   if (!(await isAuthenticated())) redirect('/admin/login');
-  const tenant = await getTenantBySlug((await params).tenant);
+  const tenant = await adminTenant((await params).tenant);
   if (!tenant) notFound();
   const query = await searchParams;
   const parsed = periodSchema.safeParse({
@@ -31,13 +31,10 @@ export default async function TrafficPage({
   const data = await trafficReport(tenant.id, period);
   return (
     <>
-      <AdminHeader tenant={tenant} active="trafego" />
-      <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      <main className="admin-page">
+        <div className="admin-page-heading">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight">
-              Tráfego e contatos
-            </h1>
+            <h1 className="text-3xl font-semibold tracking-tight">Tráfego</h1>
             <p className="mt-2 text-sm text-[var(--color-muted)]">
               Acompanhe o interesse e os pedidos que chegam pelo site.
             </p>
@@ -50,7 +47,36 @@ export default async function TrafficPage({
             Todos os contatos (CSV)
           </a>
         </div>
-        <form className="mt-7 flex flex-wrap items-end gap-3">
+        <div className="admin-traffic-toolbar">
+          <fieldset
+            className="admin-segmented"
+            aria-label="Período do relatório"
+          >
+            {[7, 30, 90].map((days) => {
+              const preset = defaultPeriod(new Date(), days);
+              return (
+                <Link
+                  key={days}
+                  href={`/admin/${tenant.slug}/trafego?start=${preset.start}&end=${preset.end}`}
+                  aria-current={
+                    period.start === preset.start && period.end === preset.end
+                      ? 'page'
+                      : undefined
+                  }
+                >
+                  {days} dias
+                </Link>
+              );
+            })}
+          </fieldset>
+          <a className="admin-secondary" href="#gastos">
+            Lançar gasto
+          </a>
+        </div>
+        <form
+          key={`${period.start}-${period.end}`}
+          className="mt-7 flex flex-wrap items-end gap-3"
+        >
           <label className="admin-field">
             <span>De</span>
             <input
@@ -83,14 +109,18 @@ export default async function TrafficPage({
             Período inválido. Exibindo os últimos 30 dias.
           </p>
         ) : null}
-        <TrafficReport data={data} />
-        <section className="mt-10 rounded-xl border p-5 sm:p-7">
+        <TrafficReport data={data} tenant={tenant.slug} />
+        <section id="gastos" className="admin-form-section mt-8">
           <h2 className="text-lg font-semibold">Gastos de campanha</h2>
           <p className="mt-2 text-sm text-[var(--color-muted)]">
             Adicione cada gasto uma vez, com seu período completo. Os valores de
             todos os canais da campanha são somados.
           </p>
-          <SpendForm tenant={tenant.slug} period={period} />
+          <SpendForm
+            key={`${period.start}-${period.end}`}
+            tenant={tenant.slug}
+            period={period}
+          />
         </section>
       </main>
     </>

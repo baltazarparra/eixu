@@ -1,13 +1,13 @@
 'use client';
 
-import { startTransition, useActionState, useEffect, useRef, useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
 import {
-  confirmationAccepted,
-  deletionImpact,
-  requiresSlugConfirmation,
-  type DeletableTenant,
-} from '@/lib/admin/tenant-delete';
+  startTransition,
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import type { DeletableTenant } from '@/lib/admin/tenant-delete';
 import { deleteTenantAction } from '@/app/(admin)/admin/actions';
 
 /**
@@ -43,11 +43,16 @@ export function DeleteTenantDialog({
   }, [state, onDeleted]);
 
   if (!tenant) return <dialog ref={ref} className="admin-dialog" />;
-  const needsSlug = requiresSlugConfirmation(tenant);
-  const ready = confirmationAccepted(tenant, typed);
+  const ready = typed.trim().toLowerCase() === tenant.slug;
 
   return (
-    <dialog ref={ref} className="admin-dialog" onClose={onClose}>
+    <dialog
+      ref={ref}
+      className="admin-dialog"
+      onClose={onClose}
+      aria-labelledby="delete-tenant-title"
+      aria-describedby="delete-tenant-description"
+    >
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -57,28 +62,47 @@ export function DeleteTenantDialog({
       >
         <fieldset disabled={pending}>
           <input type="hidden" name="slug" value={tenant.slug} />
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <AlertTriangle size={18} className="text-[var(--color-err)]" />
-            Excluir {tenant.name}?
-          </h2>
-          <ul className="mt-4 text-sm text-[var(--color-muted)]">
-            {deletionImpact(tenant).map((line) => (
-              <li key={line}>{line}</li>
+          <h2 id="delete-tenant-title">Excluir {tenant.name}?</h2>
+          <p className="admin-dialog-copy" id="delete-tenant-description">
+            {tenant.status === 'published'
+              ? 'O site sai do ar imediatamente. '
+              : ''}
+            A exclusão é definitiva. Confira o que é apagado junto:
+          </p>
+          <dl className="admin-dialog-impact">
+            {(
+              [
+                ['Páginas e rascunhos', tenant.pageCount],
+                ['Imagens no acervo', tenant.imageCount],
+                ['Leads recebidos', tenant.leadCount],
+              ] as const
+            ).map(([label, count]) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd>
+                  {count === undefined
+                    ? 'Não informado'
+                    : count === 0
+                      ? 'nenhum'
+                      : count}
+                </dd>
+              </div>
             ))}
-          </ul>
-          <p className="mt-4 text-sm">Não há como desfazer.</p>
-          {needsSlug ? (
-            <label className="admin-field mt-5">
-              <span>Digite {tenant.slug} para confirmar</span>
-              <input
-                className="admin-input"
-                name="confirm"
-                autoComplete="off"
-                value={typed}
-                onChange={(event) => setTyped(event.target.value)}
-              />
-            </label>
-          ) : null}
+          </dl>
+          <p className="admin-dialog-copy">
+            Também apaga conversas, eventos de tráfego, gastos, logo e arquivos
+            enviados. Não há como desfazer.
+          </p>
+          <label className="admin-field mt-5">
+            <span>Digite {tenant.slug} para confirmar</span>
+            <input
+              className="admin-input admin-numeric"
+              name="confirm"
+              autoComplete="off"
+              value={typed}
+              onChange={(event) => setTyped(event.target.value)}
+            />
+          </label>
           {state && !state.ok ? (
             <p
               aria-live="polite"
@@ -87,7 +111,7 @@ export function DeleteTenantDialog({
               {state.message}
             </p>
           ) : null}
-          <div className="mt-6 flex flex-wrap justify-end gap-3">
+          <div className="admin-dialog-footer">
             <button
               type="button"
               className="admin-secondary"

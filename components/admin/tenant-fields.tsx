@@ -1,3 +1,4 @@
+import { EvidenceFields } from '@/components/admin/evidence-fields';
 import { ContactFields } from '@/components/admin/contact-fields';
 import type { Intake } from '@/lib/tenant-intake';
 import type { Contacts } from '@/lib/tenant-contacts';
@@ -20,46 +21,60 @@ export function TenantFields({
 }) {
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="admin-field">
-          <span>Nome do cliente</span>
-          <input
-            className="admin-input"
-            name="name"
-            required
-            maxLength={80}
-            defaultValue={values.name}
-            autoComplete="organization"
-          />
-        </label>
-        {withSlug ? (
+      <section id="identificacao" className="admin-form-section">
+        <h2>Identificação</h2>
+        <p>Como o cliente aparece no painel e no site.</p>
+        <div className="grid gap-4 sm:grid-cols-2">
           <label className="admin-field">
-            <span>Endereço do site</span>
+            <span>Nome do cliente</span>
             <input
               className="admin-input"
-              name="slug"
+              name="name"
               required
-              minLength={2}
-              maxLength={63}
-              pattern="[a-z0-9]+(-[a-z0-9]+)*"
-              placeholder="nome-do-cliente"
+              maxLength={80}
+              defaultValue={values.name}
+              autoComplete="organization"
             />
-            <small>Seu endereço será nome-do-cliente.eixu.com.br</small>
           </label>
-        ) : null}
-        <label className="admin-field">
-          <span>E-mail de contato</span>
-          <input
-            className="admin-input"
-            name="contactEmail"
-            type="email"
-            maxLength={120}
-            defaultValue={values.contactEmail ?? ''}
-          />
-        </label>
-      </div>
+          {withSlug ? (
+            <label className="admin-field">
+              <span>Endereço do site</span>
+              <input
+                className="admin-input"
+                name="slug"
+                required
+                minLength={2}
+                maxLength={63}
+                pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                placeholder="nome-do-cliente"
+              />
+              <small>Seu endereço será nome-do-cliente.eixu.com.br</small>
+            </label>
+          ) : values.slug ? (
+            <label className="admin-field">
+              <span>Endereço do site</span>
+              <input
+                className="admin-input admin-numeric"
+                value={values.slug}
+                readOnly
+              />
+              <small>{values.slug}.eixu.com.br · definido no cadastro</small>
+            </label>
+          ) : null}
+          <label className="admin-field">
+            <span>E-mail de contato</span>
+            <input
+              className="admin-input"
+              name="contactEmail"
+              type="email"
+              maxLength={120}
+              defaultValue={values.contactEmail ?? ''}
+            />
+          </label>
+        </div>
+      </section>
       <ContactFields contacts={contacts} />
-      <div className="mt-7 border-t pt-6">
+      <section id="briefing" className="admin-form-section">
         <h2 className="text-base font-semibold">Briefing do negócio</h2>
         <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
           O que o site precisa comunicar. Todos os campos são opcionais; quanto
@@ -102,23 +117,7 @@ export function TenantFields({
               Instagram e LinkedIn vão em Contatos, no campo Redes sociais.
             </small>
           </label>
-          <label className="admin-field">
-            <span>
-              Fatos confirmados <em>opcional</em>
-            </span>
-            <textarea
-              name="evidence"
-              className="admin-input"
-              rows={4}
-              defaultValue={intake.evidence?.join('\n')}
-              placeholder="Ex.: 12 anos em Bauru; equipe de 4 técnicos"
-            />
-            <small>
-              O que a empresa faz e comprova: serviços, região, tempo de
-              mercado, equipe, certificações, prazos. O site só afirma o que
-              estiver aqui ou em uma referência lida. Um fato por linha, até 8.
-            </small>
-          </label>
+          <EvidenceFields initial={intake.evidence} />
           <label className="admin-field">
             <span>
               Restrições <em>opcional</em>
@@ -137,7 +136,7 @@ export function TenantFields({
             </small>
           </label>
         </div>
-      </div>
+      </section>
     </>
   );
 }

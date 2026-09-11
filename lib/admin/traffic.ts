@@ -16,6 +16,11 @@ export const periodSchema = z
   .refine(
     (range) => range.start <= range.end,
     'O fim precisa ser igual ou posterior ao início.',
+  )
+  .refine(
+    (range) =>
+      (Date.parse(range.end) - Date.parse(range.start)) / 86400000 < 366,
+    'Escolha um período de até 366 dias.',
   );
 export const spendSchema = z
   .object({
@@ -41,7 +46,7 @@ export const spendSchema = z
     'O fim precisa ser igual ou posterior ao início.',
   );
 
-export function defaultPeriod(now = new Date()) {
+export function defaultPeriod(now = new Date(), days = 30) {
   const end = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Sao_Paulo',
     year: 'numeric',
@@ -49,7 +54,7 @@ export function defaultPeriod(now = new Date()) {
     day: '2-digit',
   }).format(now);
   const start = new Date(`${end}T12:00:00Z`);
-  start.setUTCDate(start.getUTCDate() - 29);
+  start.setUTCDate(start.getUTCDate() - (days - 1));
   return { start: start.toISOString().slice(0, 10), end };
 }
 
@@ -93,9 +98,9 @@ export async function trafficReport(
   tenantId: string,
   period: { start: string; end: string },
 ) {
-  const { start, end } = period;
+  const { start, end } = periodSchema.parse(period);
   const sql = db();
-  const [totals, campaigns, pages, spending] = await Promise.all([
+  const [totals, campaigns, pages, spending, daily] = await Promise.all([
     sql`select count(distinct session_id) filter (where type = 'page_view') as visitors,
       count(*) filter (where type = 'form_submit') as forms,
       count(*) filter (where type = 'whatsapp_click') as whats
@@ -119,12 +124,36 @@ export async function trafficReport(
     sql`select campaign, coalesce(sum(spend_cents) filter (where period_start >= ${start}::date and period_end <= ${end}::date), 0) as cents,
       count(*) filter (where period_start < ${start}::date or period_end > ${end}::date) as partial
       from campaign_spend where tenant_id = ${tenantId} and period_end >= ${start}::date and period_start <= ${end}::date group by campaign`,
+    sql`with sessions as (
+      select (created_at at time zone 'America/Sao_Paulo')::date as day, session_id,
+        bool_or(type = 'page_view') as visited,
+        bool_or(type in ('form_submit', 'whatsapp_click')) as contacted
+      from events where tenant_id = ${tenantId} and session_id is not null
+        and created_at >= (${start}::date::timestamp at time zone 'America/Sao_Paulo')
+        and created_at < ((${end}::date + 1)::timestamp at time zone 'America/Sao_Paulo')
+      group by 1, 2
+    ), counts as (
+      select day, count(*) filter (where visited) as visitors,
+        count(*) filter (where visited and contacted) as contacts
+      from sessions group by day
+    ) select to_char(d.day, 'YYYY-MM-DD') as day,
+      coalesce(c.visitors, 0) as visitors, coalesce(c.contacts, 0) as contacts
+      from generate_series(${start}::date::timestamp, ${end}::date::timestamp, interval '1 day') d(day)
+      left join counts c on c.day = d.day::date order by d.day`,
   ]);
   const counts = (totals as Counts[])[0];
   const spends = spending as Spend[];
   const rows = mergeCampaigns(campaigns as Campaign[], spends);
   return {
     period,
+    // Contatos na série são visitantes que fizeram uma ação no mesmo dia, não soma de cliques.
+    series: (
+      daily as { day: string; visitors: number; contacts: number }[]
+    ).map((row) => ({
+      day: String(row.day),
+      visitors: Number(row.visitors),
+      contacts: Number(row.contacts),
+    })),
     visitors: Number(counts.visitors),
     forms: Number(counts.forms),
     whats: Number(counts.whats),

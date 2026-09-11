@@ -63,7 +63,7 @@ export function ContactFields({
   const social = useRows<string>(contacts.social, () => '');
 
   return (
-    <div className="mt-7 border-t pt-6">
+    <section id="contato" className="admin-form-section">
       <h2 className="text-base font-semibold">Contatos</h2>
       <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
         Tudo opcional e usado direto no site: o primeiro WhatsApp vira o botão
@@ -89,7 +89,7 @@ export function ContactFields({
                   defaultValue={value.number ? formatPhone(value.number) : ''}
                 />
                 <select
-                  className="admin-input shrink-0 grow-0 basis-32"
+                  className="admin-input admin-phone-kind shrink-0 grow-0 basis-32"
                   name="phoneKind"
                   aria-label="Tipo do número"
                   defaultValue={value.whatsapp ? 'whatsapp' : 'telefone'}
@@ -191,6 +191,6 @@ export function ContactFields({
           </small>
         </fieldset>
       </div>
-    </div>
+    </section>
   );
 }

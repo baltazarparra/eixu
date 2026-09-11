@@ -1,76 +1,140 @@
-import Link from 'next/link';
-import {
-  ArrowLeft,
-  ArrowUpRight,
-  BarChart3,
-  ImageIcon,
-  PanelsTopLeft,
-  Settings2,
-} from 'lucide-react';
-import type { ReactNode } from 'react';
+'use client';
 
-export function AdminHeader({
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { StatusPill } from './primitives';
+
+type TenantIdentity = { slug: string; name: string; status?: string };
+type Area = 'site' | 'imagens' | 'trafego' | 'dados';
+const HeaderSlot = createContext<{ node: HTMLDivElement | null } | null>(null);
+const RefreshTenant = createContext<(() => void) | undefined>(undefined);
+
+export function useRefreshTenant() {
+  return useContext(RefreshTenant);
+}
+
+function TenantHeader({
   tenant,
   active,
-  actions,
-  note,
+  children,
 }: {
-  tenant: { slug: string; name: string };
-  active: 'site' | 'imagens' | 'trafego' | 'dados';
-  actions?: ReactNode;
-  /** Ressalva curta ao lado da ação, como uma revisão ainda pendente. */
-  note?: string;
+  tenant: TenantIdentity;
+  active: Area;
+  children?: ReactNode;
 }) {
   const root = `/admin/${tenant.slug}`;
   return (
-    <header className="admin-header">
-      <div className="admin-client">
-        <Link
-          href="/admin"
-          className="admin-back"
-          aria-label="Todos os clientes"
-        >
-          <ArrowLeft size={17} />
-        </Link>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">{tenant.name}</p>
+    <header className="admin-tenant-header">
+      <div className="admin-tenant-top">
+        <div className="admin-tenant-identity">
+          <div>
+            <p>{tenant.name}</p>
+            <StatusPill tone={tenant.status === 'published' ? 'ok' : 'warn'}>
+              {tenant.status === 'published' ? 'Publicado' : 'Rascunho'}
+            </StatusPill>
+          </div>
           <a
             href={`https://${tenant.slug}.eixu.com.br`}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-1 text-xs text-[var(--color-muted)]"
           >
-            <span className="truncate">{tenant.slug}.eixu.com.br</span>
-            <ArrowUpRight size={12} className="shrink-0" />
+            {tenant.slug}.eixu.com.br <span aria-hidden="true">↗</span>
           </a>
         </div>
+        <div className="admin-tenant-actions">
+          <a
+            className="admin-secondary"
+            href={`/s/${tenant.slug}?preview=1&__tenant=${tenant.slug}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Ver prévia <span aria-hidden="true">↗</span>
+          </a>
+          {children}
+        </div>
       </div>
-      <nav aria-label="Área do cliente" className="admin-nav">
+      <nav className="admin-tenant-tabs" aria-label="Área do cliente">
         {(
           [
-            ['site', '', 'Site', PanelsTopLeft],
-            ['imagens', '/imagens', 'Imagens', ImageIcon],
-            ['trafego', '/trafego', 'Tráfego', BarChart3],
-            ['dados', '/dados', 'Dados', Settings2],
+            ['site', '', 'Site'],
+            ['imagens', '/imagens', 'Imagens'],
+            ['trafego', '/trafego', 'Tráfego'],
+            ['dados', '/dados', 'Dados'],
           ] as const
-        ).map(([key, suffix, label, Icon]) => (
+        ).map(([key, suffix, label]) => (
           <Link
             key={key}
             href={`${root}${suffix}`}
             aria-current={active === key ? 'page' : undefined}
           >
-            <Icon size={15} />
             <span>{label}</span>
           </Link>
         ))}
       </nav>
-      {actions ? (
-        <div className="admin-header-actions">
-          {note ? <span className="admin-header-note">{note}</span> : null}
-          {actions}
-        </div>
-      ) : null}
     </header>
+  );
+}
+
+/** O cabeçalho pertence ao layout; o editor mantém a decisão de publicação ao vivo. */
+export function TenantFrame({
+  tenant,
+  children,
+}: {
+  tenant: TenantIdentity;
+  children: ReactNode;
+}) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const suffix = pathname?.split('/')[3];
+  const active: Area =
+    suffix === 'imagens' || suffix === 'trafego' || suffix === 'dados'
+      ? suffix
+      : 'site';
+  const [node, setNode] = useState<HTMLDivElement | null>(null);
+  return (
+    <RefreshTenant.Provider value={() => router.refresh()}>
+      <HeaderSlot.Provider value={{ node }}>
+        <div className="admin-tenant-frame">
+          <TenantHeader tenant={tenant} active={active}>
+            {active === 'site' ? (
+              <div ref={setNode} className="admin-publish-slot" />
+            ) : (
+              <Link className="admin-primary" href={`/admin/${tenant.slug}`}>
+                Revisar e publicar
+              </Link>
+            )}
+          </TenantHeader>
+          <div className="admin-tenant-content">{children}</div>
+        </div>
+      </HeaderSlot.Provider>
+    </RefreshTenant.Provider>
+  );
+}
+
+export function WorkspaceHeader({
+  tenant,
+  actions,
+  note,
+}: {
+  tenant: TenantIdentity;
+  actions: ReactNode;
+  note?: string;
+}) {
+  const slot = useContext(HeaderSlot);
+  const content = (
+    <>
+      {note ? <span className="admin-header-note">{note}</span> : null}
+      {actions}
+    </>
+  );
+  if (slot) return slot.node ? createPortal(content, slot.node) : null;
+  // O workspace também é exercitado isoladamente pelos testes de navegador.
+  return (
+    <TenantHeader tenant={tenant} active="site">
+      {content}
+    </TenantHeader>
   );
 }
 

@@ -204,6 +204,7 @@ export function Bubble({
   const isUser = from === 'user';
   return (
     <div className="admin-bubble" data-from={isUser ? 'user' : 'assistant'}>
+      <span className="admin-bubble-author">{isUser ? 'Você' : 'Agente'}</span>
       <div className="admin-bubble-body whitespace-pre-wrap">{children}</div>
     </div>
   );
