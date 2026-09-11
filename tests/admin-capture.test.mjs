@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { createJiti } from 'jiti';
+import sharp from 'sharp';
 const j = createJiti(import.meta.url, { alias: { '@': process.cwd() } });
 const { capturePages } = await j.import('../lib/review/capture.ts');
 
@@ -55,6 +56,44 @@ await test(
         () => capturePages(origin, 'fixture', ['ausente']),
         /prévia não pôde ser aberta/,
       );
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  },
+);
+
+await test(
+  'captura de página longa com scroll suave mantém a barra fixa no topo da imagem',
+  { skip: !process.env.EIXU_CHROME_PATH },
+  async () => {
+    const server = createServer((_req, res) => {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      res.end(`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+html { scroll-behavior: smooth; } body { margin: 0; background: white; }
+header { position: fixed; inset: 0 0 auto; height: 60px; background: #f00; }
+main { height: 5000px; padding-top: 80px; }
+</style></head><body><header></header><main class="site-theme"><h1>Abertura preservada</h1></main></body></html>`);
+    });
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    try {
+      const shots = await capturePages(
+        `http://127.0.0.1:${server.address().port}`,
+        'fixture',
+        [''],
+      );
+      assert.equal(shots.length, 2);
+      for (const shot of shots) {
+        const { data, info } = await sharp(shot.jpeg)
+          .removeAlpha()
+          .raw()
+          .toBuffer({ resolveWithObject: true });
+        const pixel =
+          (Math.floor(info.width / 2) + 20 * info.width) * info.channels;
+        assert.ok(
+          data[pixel] > 200 && data[pixel + 1] < 40 && data[pixel + 2] < 40,
+          `${shot.viewport}: o cabeçalho vermelho deve aparecer no topo, sem deslocamento sobre o conteúdo.`,
+        );
+      }
     } finally {
       await new Promise((resolve) => server.close(resolve));
     }

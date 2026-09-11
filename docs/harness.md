@@ -142,6 +142,9 @@ A revisão tem três fontes de evidência:
 1. `lintPage`, `lintSite` e métricas de composição conferem o projeto inteiro.
 2. Chromium abre todas as páginas do lote, até 12, em 1440 e 390 px. Overflow e
    imagem quebrada viram erros do relatório, mesmo se o crítico não os perceber.
+   As capturas usam movimento reduzido e rolagem instantânea, conferindo o retorno
+   ao topo; capturar durante o scroll suave deslocava barras fixas na imagem e
+   induzia falsas correções de layout.
 3. `lib/review/critic.ts` envia as capturas como **imagens binárias** em uma chamada
    separada ao Gemini, junto do briefing e dos blocos. O retorno estruturado cita
    página, bloco, evidência e correção. Pixels/base64 não entram como texto no
