@@ -36,3 +36,7 @@ O Porto Pedras é uma referência de aceite, não a entrega inteira. Uma composi
 A avaliação automática entre negócios foi executada e registrou limitações concretas do modelo atual. Foram corrigidos o overflow do hero offset, a aceitação de motion como única decisão visual, o reenvio integral de lotes recusados e a mensagem do painel que anunciava sucesso em uma recusa. A comparação adicional com Fable 5.1 não alterou o modelo de produção. As evidências e o que ainda não foi comprovado estão em [Verificação](verification.md#avaliação-entre-negócios-e-reparos-10092026).
 
 A revisão posterior de operação e custo está em [Revisão do admin](admin-review.md). O diagnóstico inicial acima descreve o estado anterior às entregas desta página.
+
+## Continuidade em 11/09/2026
+
+O [harness de qualidade](harness.md) passa a usar Gemini 3.8 Flash com raciocínio alto, plano editorial, contexto recente preservado e crítica das capturas. Os resultados anteriores desta página permanecem históricos. O aceite automático agora exige uma revisão completa do estado atual, além dos contratos de composição.

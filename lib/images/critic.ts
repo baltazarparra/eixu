@@ -1,3 +1,8 @@
+import {
+  modelSettings,
+  productModel,
+  CRITIC_TIMEOUT_MS,
+} from '@/lib/ai/models';
 import { Output, generateText } from 'ai';
 import { z } from 'zod';
 import { saveCritique } from '@/lib/images/queries';
@@ -35,11 +40,6 @@ export const critiqueSchema = z.object({
     .describe('Uma frase para o operador achar esta imagem depois.'),
 });
 
-const MODEL = () =>
-  process.env.EIXU_CRITIC_MODEL ||
-  process.env.EIXU_MODEL ||
-  'google/gemini-3.8-flash';
-
 /**
  * Crítico de imagem. Olha a imagem de verdade, não o prompt, e devolve nota
  * com justificativa. A avaliação orienta o uso e os ajustes, sem criar uma
@@ -70,9 +70,11 @@ export async function critique(input: {
 
   try {
     const { output } = await generateText({
-      model: MODEL(),
+      model: productModel('critic'),
+      ...modelSettings('critic'),
       output: Output.object({ schema: critiqueSchema }),
       maxRetries: 1,
+      timeout: { totalMs: CRITIC_TIMEOUT_MS },
       instructions: `Você é um diretor de arte revisando uma imagem que vai para o site de um cliente real. Seja duro e específico: aponte o defeito onde ele está, não elogie por educação.
 
 Reprove, ou seja aprovado = false, sempre que:

@@ -1,59 +1,178 @@
-# Harness de desenvolvimento e modelos
+# Harness e qualidade dos agentes
 
-Pesquisa revisada em 09/09/2026, com fontes primárias. O harness aqui é o ambiente que permite ao agente entender o repositório, agir e obter evidência de conclusão. O contrato é compartilhado entre GPT-6 Astra e Claude Fable 5.1; a escolha do modelo e do esforço continua no cliente de desenvolvimento.
+A prioridade do produto é qualidade: entender o negócio, compor conteúdo útil,
+observar o resultado e corrigir defeitos. Tokens, tempo e custo são medidas de
+operação; reduzir essas medidas não é o objetivo de aceitação. Política revisada
+em 11/09/2026 para **Gemini 3.8 Flash**.
 
-## Decisões para este repositório
+## Identidade, contrato e execução
 
-| Decisão                 | Aplicação                                                                                                                   |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Contexto inicial curto  | `AGENTS.md` contém mapa, fluxo e invariantes; arquitetura, avaliação e release são carregados sob demanda.                  |
-| Uma fonte de instruções | `CLAUDE.md` mantém `@AGENTS.md`; skills locais ficam em `.agents/skills/`, com adaptadores em `.claude/skills/`.            |
-| Evidência externa       | Diff, tipos, lint, build e smoke do fluxo sustentam a entrega. A autocrítica do modelo não substitui os checks.             |
-| Processo proporcional   | Mudança pequena não exige plano persistente ou equipe de agentes. Trabalho longo precisa preservar decisões e pendências.   |
-| Instruções específicas  | Priorizar particularidades reais: dois toolchains, snapshot parcial, tenant, pre-flight e alterações de imagens por número. |
+[SOUL.md](../SOUL.md) define postura, valores e relação com o operador, inspirado
+na proposta de [soul.md](https://soul.md/). É um documento de identidade, sem
+alegação de consciência ou memória contínua. `lib/ai/soul.ts` carrega esse mesmo
+arquivo no prompt do produto, e `next.config.ts` o inclui no artefato do chat.
+Não há uma segunda cópia da identidade dentro do código.
 
-A orientação de usar um mapa curto com conhecimento detalhado no repositório vem de [Harness engineering, OpenAI](https://openai.com/index/harness-engineering/). A redução de regras genéricas, a preferência por interfaces claras e o carregamento sob demanda seguem [Context engineering para Claude 5, Anthropic](https://claude.com/blog/the-new-rules-of-context-engineering-for-claude-5-generation-models). São princípios adaptados à escala deste MVP; não há motivo demonstrado para adicionar hooks, roteamento automático de modelos ou um framework de orquestração.
+[AGENTS.md](../AGENTS.md) orienta o desenvolvimento: mapa, invariantes e entrega.
+`CLAUDE.md` importa esse contrato. A seleção do modelo no Codex ou Claude Code
+continua no cliente; não altera o modelo que atende o painel. Skills locais
+ficam em `.agents/skills/`, com adaptadores em `.claude/skills/`.
 
-## GPT-6 Astra no Codex
+O mapa inicial deve continuar legível. Carregue mais evidências, schemas e estado
+quando eles melhorarem a decisão; não acrescente instruções repetidas para ocupar
+contexto. Ferramentas e verificações externas implementam os controles que um
+prompt sozinho não garante.
 
-A documentação oficial identifica `gpt-6-astra` e descreve maior sensibilidade a instruções de skills/AGENTS, pedidos de esclarecimento e verificações amplas. Por isso o contrato explicita autorização já dada, conclusão do escopo, perguntas materiais e testes proporcionais. Preserve o esforço efetivo do cliente e avalie mudanças com tarefas reais; os nomes dos níveis não demonstram equivalência entre fornecedores. A API não suporta esforço `none`, e tool calling requer Responses. Esses detalhes de API não configuram o Codex local. Fontes: [guia Astra](https://developers.openai.com/api/docs/guides/latest-model) e [modelo Astra](https://developers.openai.com/api/docs/models/gpt-6-astra).
+## Modelo e orçamento de qualidade
 
-Audite instruções conflitantes antes de acrescentar mais regras. Se uma skill causar uma pausa, o agente deve identificar a regra e explicar sua aplicação; instruções explícitas do usuário prevalecem sobre orientações da skill, respeitados os limites do ambiente. A descoberta de `AGENTS.md` pelo Codex é descrita em [Custom instructions](https://learn.chatgpt.com/docs/agent-configuration/agents-md).
+`lib/ai/models.ts` é a fonte única dos modelos e limites. O chat, os críticos de
+foto/logo, a descrição de avatar, a crítica do site renderizado e os runners usam
+`google/gemini-3.8-flash`. `EIXU_MODEL` permite configuração explícita do agente;
+`EIXU_CRITIC_MODEL` prevalece para os críticos, depois cai em `EIXU_MODEL` e no
+padrão. Antes de publicar, confira os valores do ambiente de destino.
 
-## Claude Fable 5.1 no Claude Code
+O ID foi conferido no [catálogo do Gateway](https://vercel.com/ai-gateway/models/gemini-3.8-flash)
+e na [documentação do Google](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash).
+A janela aceita cerca de 1 milhão de tokens e a saída até 65.536, incluindo
+raciocínio. O modelo aceita imagens, ferramentas e saídas estruturadas; os níveis
+suportados são `low`, `medium` e `high`, sem `minimal`.
 
-A Anthropic identifica `claude-fable-5-1`, com raciocínio adaptativo e esforço padrão `high`. O guia recomenda medir os demais níveis com evals próprios. Para trabalho neste repositório: atualizações curtas durante tarefas longas, leituras independentes agrupadas, edições focadas, preservação de restrições na retomada e conclusão do pedido sem ampliar mudanças/testes por conta própria. Essas orientações estão no contrato comum, sem duplicá-las em `CLAUDE.md`. Fontes: [overview Fable 5.1](https://platform.claude.com/docs/en/models/fable-5-1/overview) e [prompting Fable 5.1](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1).
+A política usa **`reasoning: 'high'`**, pela API comum documentada no AI SDK 7
+instalado (`node_modules/ai/docs/03-ai-sdk-core/26-reasoning.mdx`). A temperatura
+permanece no padrão do provedor. Não combine esse ajuste com outro orçamento de
+thinking em `providerOptions` nem reduza saída a poucas centenas de tokens: o
+raciocínio também precisa caber. Os geradores de imagens mantêm seu modelo próprio;
+um modelo que entende imagens não necessariamente as gera.
 
-Em uma futura integração direta, o guia de Fable exige atenção ao histórico: preservar turnos anteriores e blocos de thinking conforme retornados, pois mudanças de prefixo podem invalidá-los. Não acrescente configurações beta ou mecanismos de replay ao produto sem validar suporte do SDK/provedor e comportamento em uma conversa real. O histórico textual atual do MVP não fornece essa garantia.
+| Tarefa                        | Máximo de saída por passo |    Passos por turno |
+| ----------------------------- | ------------------------: | ------------------: |
+| Briefing e plano editorial    |                    16.384 |                  12 |
+| Cena individual               |                     8.192 |                   2 |
+| Composição e reparo           |                    49.152 |                  24 |
+| Revisão e correção            |                    24.576 |                  24 |
+| Edição livre                  |                    24.576 |                  32 |
+| Crítica de foto, logo ou site |                    16.384 | chamada estruturada |
+| Descrição de avatar           |                     4.096 |     chamada textual |
 
-## O agente dentro do produto é outro sistema
+São tetos operacionais, não metas de verbosidade. `lib/ai/agent.ts` instancia o
+`ToolLoopAgent` compartilhado entre chat e avaliação. O turno tem 760 segundos no
+SDK, dentro dos 800 da função, e uma repetição de transporte. Críticos têm 150
+segundos. Esgotar um limite não prova conclusão; o painel retoma pelo estado.
 
-A rota do chat lê `EIXU_MODEL`; os críticos usam `EIXU_CRITIC_MODEL` com fallback. Nenhum desses valores é alterado por `AGENTS.md`. O prompt efetivo está em `lib/taste/prompt.ts`, as ferramentas em `lib/ai/` e os contratos de dados em `lib/blocks/registry.ts` e `db/schema.sql`.
+## Contexto e decisões
 
-O padrão do produto e dos runners de avaliação é `google/gemini-3.8-flash`, confirmado no catálogo do [AI Gateway](https://vercel.com/ai-gateway/models/gemini-3.8-flash). A [documentação do modelo](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash) confirma entrada de imagens, chamadas de ferramentas e saídas estruturadas. O [guia do Gemini 3.8](https://ai.google.dev/gemini-api/docs/latest-model) informa thinking `medium` por padrão e níveis `low`, `medium` e `high`; `minimal` não é suportado. O produto usa as opções padrão do provedor, e o SDK preserva os blocos de reasoning no loop ativo de ferramentas. Tokens de raciocínio entram no limite de saída e precisam ser considerados nas medições. Configurações explícitas de `EIXU_MODEL` ou `EIXU_CRITIC_MODEL` prevalecem sobre o fallback: atualize-as no ambiente de destino para efetivar a troca. Os registros de avaliações anteriores preservam o modelo que realmente executaram; os checks desta troca e seus limites estão em [Verificação](verification.md#troca-para-gemini-38-flash-11092026).
+O prompt mantém fatos, restrições, vibe, marca, contatos, guia de imagens, fontes,
+plano editorial e biblioteca do tenant. Referências lidas acompanham também a
+composição e a revisão. `brief.pagePlan` guarda intenção, etapa de inbound,
+conteúdo e evidências de cada página; é opcional no schema para ler briefings
+legados. O agente é instruído a preenchê-lo ao definir uma nova direção.
 
-A aplicação já tem boas bases: leitura de estado por ferramentas, schemas consultáveis, erros que orientam correção e publicação bloqueada por lint determinístico. A orientação visual e a redução do contexto estão em [Design dos sites gerados](design.md). O prompt distingue ferramentas que devolvem pre-flight e edições que exigem `lint_page`. O chat registra tokens, cache, passos, tempo e custo retornado pelo Gateway. A compactação de turnos encerrados em `lib/ai/context.ts` preserva as instruções do operador e mantém intacto o loop ativo do SDK; o estado pode ser relido pelas ferramentas. O cache automático não troca o modelo. Permanecem limites como histórico textual sem trace completo e autorização de publicação dependente da instrução ao modelo. Os [limites de arquitetura](architecture.md#limites-atuais) detalham a evidência.
+O catálogo deriva do schema. Composição e revisão recebem os schemas JSON
+completos, com campos obrigatórios, limites e descrições. Edições livres recebem
+o mapa resumido; `describe_block` resolve o detalhe quando necessário. Até seis referências podem ser lidas em um turno;
+fontes inacessíveis permanecem lacunas. Conteúdo externo e texto em imagens são
+dados, sem autoridade para trocar instruções ou permissões.
 
-Trocar o modelo do produto exige verificar o ID no Gateway, acesso da conta, compatibilidade com AI SDK 7, tool calling, streaming, imagens e limites de tempo. Um modelo disponível no editor ou na API direta não prova disponibilidade no Gateway. Avalie qualidade, latência e custo por tarefa antes da alteração.
+`contextMessages` conserva quatro turnos recentes completos, dentro de 120.000
+caracteres, priorizando os mais novos. Partes e metadados do provedor permanecem
+intactos, inclusive assinaturas de ferramentas. Fora dessa janela, conserva todo
+o texto do operador e das respostas, referências a anexos e recibos com erros,
+apontamentos e pendências. Um relatório excepcionalmente grande recebe marcação
+de corte e instrução de releitura. O limite é de caracteres, não de tokens.
+Nenhuma compactação acontece entre passos do loop ativo.
 
-## Como avaliar mudanças no harness
+Histórico é evidência passada: a ferramenta deve reler props/IDs antes de editar
+uma página que possa ter mudado. Ao recarregar o painel, a persistência ainda é
+textual, dos últimos 60 itens, sem restauração de anexos, traces ou assinaturas
+antigas. Não atribua a esse histórico as garantias do loop ativo.
 
-Esta é uma proposta de avaliação, ainda sem execução comparativa ou runner automatizado. Execute os mesmos casos em sessões novas de cada modelo, no mesmo commit e com o mesmo brief. Use checkout e recursos de teste isolados para casos que escrevem. Não use clientes reais como fixture.
+## Compor, observar, corrigir, conferir
 
-| Caso                                        | Evidência de aceite                                                                                             |
-| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Orientação: explicar como rodar e publicar  | Distingue Next/Vinext, modelos de desenvolvimento/produto e deploy/publicação de página; cita código.           |
-| Alteração documental pequena                | Diff limitado, links/comandos válidos e nenhum arquivo ou teste sem relação com o pedido.                       |
-| Alteração de bloco                          | Schema, catálogo, componente, render e lint coerentes; verifica caminho válido e entrada inválida.              |
-| Edição sem publicação                       | Rascunho muda; campos publicados de blocos/SEO permanecem iguais; reconhece a limitação da marca compartilhada. |
-| Publicação com pre-flight inválido          | API e ferramenta recusam a página e conservam o snapshot anterior.                                              |
-| Imagem sem aprovação e alteração por número | Retorna número/URL, segue o plano e altera apenas rascunhos do tenant; aplicar logo exige pedido do usuário.    |
-| Retomada após interrupção                   | Reconstitui estado do código, decisões e checks pendentes; não repete escrita já feita.                         |
+O fluxo continua briefing → cenas → composição → revisão. O planejamento escolhe
+alternativas coerentes com a vibe; o plano editorial diferencia as intenções das
+páginas. A composição grava o lote validado e usa `repair_site` para corrigir
+recusas sem reenviar tudo. Um lote salvo sem erros encerra o loop de composição
+por condição externa do SDK e segue para a revisão. Avisos de recorte são
+julgados nos pixels; não provocam reenvios do projeto para zerar contagens.
+Erros continuam bloqueando a transição. Imagens ficam disponíveis por número, conforme o fluxo
+atual do produto; aplicar logo e publicar continuam dependendo do pedido.
 
-Os dois primeiros casos avaliam o agente de desenvolvimento. Os demais também podem avaliar o produto, mas só depois de configurar um candidato compatível em ambiente de teste. Registre modelo exato, cliente/provedor, esforço, commit, caso, diff, resultado dos checks, tempo, chamadas/custo quando disponíveis e intervenções humanas. Falha de acesso/publicação pesa mais que velocidade.
+A revisão tem três fontes de evidência:
 
-Compare com uma referência anterior e repita casos variáveis antes de concluir que uma regra ou modelo melhorou o resultado. A documentação de ambos os modelos não é evidência de que ambos executaram ou passaram nesta avaliação.
+1. `lintPage`, `lintSite` e métricas de composição conferem o projeto inteiro.
+2. Chromium abre todas as páginas do lote, até 12, em 1440 e 390 px. Overflow e
+   imagem quebrada viram erros do relatório, mesmo se o crítico não os perceber.
+3. `lib/review/critic.ts` envia as capturas como **imagens binárias** em uma chamada
+   separada ao Gemini, junto do briefing e dos blocos. O retorno estruturado cita
+   página, bloco, evidência e correção. Pixels/base64 não entram como texto no
+   resultado da ferramenta nem no histórico do chat.
 
-## Comparação de custo do produto
+O schema de saída restringe os caminhos às páginas presentes. O servidor valida
+também que o ID do bloco pertence à página indicada; o crítico pode usar `null`
+quando não localiza o bloco. Enum dinâmico de todos os IDs foi recusado pelo
+Gateway no ensaio, por isso essa restrição permanece na verificação externa.
 
-`npm run eval:admin-cost` compara o payload sem chamar modelo. Com `-- --live`, executa três chamadas pagas do modelo configurado, com o prompt e schemas do produto e executores em memória, sem DB ou Blob. O caso exige alterar o logo do cabeçalho e preservar o rodapé e as demais props por igualdade profunda. O resultado está na [revisão do admin](admin-review.md#custo-medido). Não equivale à comparação Astra/Fable proposta acima nem à rubrica de geração de sites completos.
+A captura é ligada por padrão. `EIXU_REVIEW_CAPTURE=0` permite diagnóstico
+estrutural, mas não concede conclusão visual. Origem ausente, falha de captura,
+cobertura incompleta, crítica inválida ou página/bloco inventado deixam a revisão
+incompleta. São permitidas três chamadas a `review_pages` por turno, para revisar,
+corrigir e conferir. A crítica é sugestão verificável, não autorização humana.
+
+O recibo em `brief.generation.review` guarda estado, apontamentos e fingerprint
+SHA-256 do conteúdo revisado. Inclui páginas, SEO, marca, contatos, briefing,
+imagens e versão do harness. Alteração posterior invalida o recibo, mesmo após
+recarregar. `nextPhase` exige revisão visual completa e sem erro material do
+rascunho atual: contar chamadas de revisão já não encerra a geração.
+
+A publicação manual mantém o pre-flight determinístico em ambos os caminhos.
+O recibo do crítico governa a conclusão automática, sem transformar uma opinião
+do modelo em permissão para publicar.
+
+## Avaliação reproduzível
+
+`npm run test:sites` e `npm run test:admin` cobrem contratos, contexto, erro de
+revisão, captura incompleta, evidência desatualizada e isolamento. Captura real
+usa `EIXU_CHROME_PATH`. Esses testes não chamam modelos pagos.
+
+`npm run eval:harness` explica o ensaio. Com `--live`, usa o modelo, os schemas,
+os executores e o renderer reais; substitui I/O editorial por memória, com fotos
+de uma fixture local. Não acessa Neon, não grava Blob e não publica. Exemplo:
+
+```bash
+EIXU_MODEL=google/gemini-3.8-flash EIXU_CHROME_PATH=/caminho/chrome \
+  npm run eval:harness -- --live --case=aquecimento --assets=/caminho/fixture.json --repeat=2
+```
+
+A fixture contém `images`, com pelo menos duas fotos de teste distintas e os
+campos `url`, `alt`, `ratio` e `targetBlock`. Use material autorizado, sem dados
+pessoais ou cadastro de cliente real. O ensaio exige o CSS de `build:vercel` e
+registra saída sem edição manual, capturas, recusas, término, tokens de raciocínio,
+modelo, commit e recibo visual em `outputs/harness/`. Verifica SSR com CSS de
+produção; não comprova hidratação/interações React nem persistência remota.
+
+Cada passo salva o rascunho automático. `--resume=outputs/harness/.../output-1.json`
+retoma somente a revisão desse mesmo caso, sem reconstruir páginas. O relatório
+identifica a origem da retomada; considere também as fases do relatório original.
+O runner não reutiliza cache de transformações JSX de outros testes e verifica
+a resposta HTTP da fixture antes de consumir modelo numa retomada.
+
+`eval:site` continua disponível para avaliar o fluxo com persistência em tenant
+descartável e, com `--generate`, geração real de fotos. Exige recurso e escopo
+identificados; pode sobrescrever dados. Usa o mesmo agente e envia a sessão à
+captura. Não execute esse runner como se fosse um check sem escrita.
+
+`node --env-file=.env.local scripts/eval-chat-stream.mjs --live` exercita o POST
+real do chat, o stream SSE, as ferramentas e a persistência textual. A sessão e o
+banco são substituídos por memória. Confere alteração exata do logo do cabeçalho,
+preservação do rodapé e metadados de uso; não prova autenticação ou Neon reais.
+
+`eval:admin-cost` permanece como ensaio histórico de edição isolada. Usa agora a
+política de raciocínio/saída comum; seus resultados novos não são diretamente
+comparáveis aos números antigos. Custo é diagnóstico, não critério de qualidade.
+
+As notas humanas de [eval-rubric.md](eval-rubric.md) continuam separadas do aceite
+automático. Compare os mesmos casos, fotos e renderer, repita saídas variáveis e
+registre limitações. Um smoke multimodal ou uma nota do próprio modelo não prova
+superioridade geral. Evidências desta entrega ficam em [Verificação](verification.md).
+
+O projeto Vercel foi conferido com plano Pro e Fluid Compute ativo. O teto de 800 segundos usa o limite estável documentado em [Duration](https://vercel.com/docs/functions/configuring-functions/duration). Ferramentas de um mesmo passo executam em sequência para evitar perda de edições; leituras independentes dentro dos executores continuam agrupadas. Isso não substitui locks entre abas ou instâncias.

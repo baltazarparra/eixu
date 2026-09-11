@@ -67,6 +67,12 @@ export function describeTool(
       return pending ? 'Definindo o guia de imagem' : 'Guia de imagem definido';
     case 'review_pages': {
       if (pending) return 'Revisando o resultado';
+      if (
+        out.error ||
+        out.visual === 'unavailable' ||
+        out.visual === 'disabled'
+      )
+        return 'Revisão visual pendente';
       const erradas = num(out.erros);
       const apontamentos = Array.isArray(out.apontamentos)
         ? out.apontamentos.length

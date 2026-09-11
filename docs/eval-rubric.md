@@ -66,3 +66,9 @@ própria e coerente. O aceite é média 2 sem nenhum critério em 0.
 Modelo exato, commit, caso, se houve `--generate`, tokens de entrada e saída
 por fase, tempo, ferramentas recusadas, rodadas de revisão e qualquer
 intervenção manual. Saída com acabamento manual não comprova o gerador.
+
+## Harness de qualidade, 11/09/2026
+
+Use `npm run eval:harness -- --live --case=... --assets=... --repeat=2` para ensaios com modelos, executores e renderer reais, I/O em memória e fotos de fixture. Registre o nível de raciocínio, orçamento por fase, versão do harness, motivo de término e tokens de raciocínio. A saída sem edição manual, capturas e relatório ficam em `outputs/harness/`.
+
+O aceite automático exige pre-flight sem erros e recibo visual completo, sem erro material e referente ao rascunho atual. Crítica de IA e medições não preenchem automaticamente as notas humanas de 0 a 3 acima. Uma execução aprovada não demonstra superioridade universal; compare as mesmas fixtures e repita. Custo e latência são diagnósticos secundários, nunca compensam uma falha de factualidade, fluxo ou legibilidade.

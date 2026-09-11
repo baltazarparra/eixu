@@ -1,6 +1,6 @@
 /**
  * Geração em etapas. Um turno só fazia direção, imagens e quatro páginas em
- * 300 segundos, sem nunca olhar o resultado. Cada fase agora é uma requisição
+ * um turno curto, sem nunca olhar o resultado. Cada fase agora é uma requisição
  * própria, com as ferramentas e o contexto que ela precisa.
  */
 export const PHASES = ['briefing', 'cenas', 'composicao', 'revisao'] as const;
@@ -23,9 +23,16 @@ export const PHASE_TOOLS: Record<Phase, string[]> = {
   // A cobertura do plano já entra no prompt desta fase: list_images só
   // gastaria um passo para repetir o que o contexto traz.
   cenas: ['define_image_guide', 'prepare_site_images'],
-  composicao: ['list_images', 'build_site', 'repair_site', 'lint_site'],
+  composicao: [
+    'list_images',
+    'describe_block',
+    'build_site',
+    'repair_site',
+    'lint_site',
+  ],
   revisao: [
     'review_pages',
+    'describe_block',
     'get_page',
     'update_block',
     'insert_block',
@@ -39,12 +46,33 @@ export const PHASE_TOOLS: Record<Phase, string[]> = {
 };
 
 export const PHASE_STEPS: Record<Phase, number> = {
-  briefing: 6,
+  briefing: 12,
   // Uma cena por requisição: chamar a ferramenta e encerrar o turno.
   cenas: 2,
-  composicao: 12,
-  revisao: 10,
+  composicao: 24,
+  revisao: 24,
 };
+
+/** Lote salvo sem erro segue para a etapa que observa pixels e edita páginas. */
+export function compositionReadyForReview(
+  results: { toolName: string; output: unknown }[],
+): boolean {
+  const result = results.findLast((item) =>
+    ['build_site', 'repair_site'].includes(item.toolName),
+  );
+  if (!result?.output || typeof result.output !== 'object') return false;
+  const output = result.output as Record<string, unknown>;
+  if (
+    output.ok !== true ||
+    !Array.isArray(output.pages) ||
+    !output.pages.length
+  )
+    return false;
+  const findings = [output.pendencias, output.publicationPending]
+    .filter(Array.isArray)
+    .flat() as { level?: string }[];
+  return !findings.some((finding) => finding.level === 'error');
+}
 
 /** Objetivo e condição de parada. Entra no prompt no lugar do roteiro geral. */
 export const PHASE_BRIEF: Record<Phase, string> = {
@@ -52,22 +80,23 @@ export const PHASE_BRIEF: Record<Phase, string> = {
 Objetivo: transformar o intake do operador em briefing verificado e direção de arte própria.
 1. Leia cada referência informada com read_reference. O perfil de rede social do intake também é lido por ela; fonte inacessível ou perfil bloqueado vira lacuna declarada em brief.gaps, nunca conteúdo inventado.
 2. Chame define_image_guide com estilo, luz, paleta da marca, ambientes, sujeitos e o que nunca pode aparecer, tudo derivado do negócio.
-3. Chame set_design com o briefing, o conceito, o elemento-assinatura, a paleta com papéis e os oito eixos, respeitando a faixa da vibe escolhida no cadastro.
-Pare depois de set_design aprovado. Não monte páginas nem gere imagens nesta fase.`,
+3. Compare alternativas adequadas à vibe e ao negócio. Escolha pela clareza, identidade e viabilidade no catálogo. Chame set_design com o briefing, o conceito, o elemento-assinatura, a paleta com papéis e os oito eixos, respeitando a faixa da vibe. Inclua brief.pagePlan: slug, etapa de inbound, intenção, conteúdo útil e evidências de cada página. Cada página responde a uma pergunta diferente, sem inventar oferta para preencher o mínimo.
+Pare depois de set_design validado. Não monte páginas nem gere imagens nesta fase.`,
   cenas: `## Fase 2 de 4: cenas
 Objetivo: produzir a próxima cena do repertório visual, uma por vez.
 Chame prepare_site_images uma única vez, com exatamente uma cena: a indicada em "Próxima cena", no targetBlock e na proporção que ela pede. Escreva o request como cena concreta do negócio, sem adjetivo publicitário.
 Encerre o turno depois da chamada. A imagem fica disponível com número e URL; o painel segue automaticamente para a próxima cena, sem aprovação. Não monte páginas nesta fase.`,
   composicao: `## Fase 3 de 4: composição
 Objetivo: montar o projeto completo em uma única chamada de build_site, cumprindo o briefing de composição.
-O catálogo abaixo já traz as props e os limites de cada bloco. Escreva o projeto inteiro de uma vez, com as fotos da biblioteca pelas URLs exatas e na proporção que o layout exibe.
-Uma página com props inválidas recusa o lote inteiro sem gravar: corrija com repair_site apenas os campos apontados. Uma pendência de projeto não impede a gravação; ela aparece em "pendencias" e você a corrige antes de encerrar.
-Pare quando build_site voltar ok=true sem pendências. Não publique.`,
+O catálogo abaixo traz os schemas JSON completos, incluindo campos obrigatórios e limites. Use-os diretamente, sem consultar de novo o mesmo schema. Siga o pagePlan persistido e verifique factualidade, percurso, SEO distinto, ritmo e recortes antes de escrever. Escreva o projeto inteiro com URLs exatas e proporções coerentes com o layout. Use describe_block somente se ainda faltar informação para compor; não adivinhe props.
+Uma página com props inválidas recusa o lote inteiro sem gravar: corrija com repair_site apenas os campos apontados. Uma pendência de projeto não impede a gravação; erros em "pendencias" precisam ser corrigidos antes de encerrar.
+Pare quando build_site voltar ok=true sem erros. Leve os avisos para a revisão visual da próxima fase: ela tem os pixels e as ferramentas de edição para decidir e corrigir recortes. Não reenvie o projeto já gravado só para zerar avisos. Não publique.`,
   revisao: `## Fase 4 de 4: revisão
 Objetivo: olhar o resultado e corrigir o que ficou pobre.
-Chame review_pages uma vez. Trate cada ERRO e os avisos que empobrecem a página: seção sem foto, tom repetido, proporção incoerente, silhueta repetida, headline em três linhas.
-Corrija com update_block ou set_blocks na página apontada, sem refazer o que está bom. Chame review_pages de novo no máximo uma vez para conferir.
-Pare quando não restar erro. Não publique: a publicação depende do pedido do operador.`,
+Chame review_pages e trate erros estruturais, editoriais e visuais observados: oferta sem evidência, jornada repetida, seção sem foto, recorte ruim, tom repetido, headline ilegível, overflow ou imagem quebrada. A crítica lê as capturas como imagens quando a captura está habilitada.
+Corrija com as ferramentas da página apontada, preservando o que está bom. Chame review_pages novamente depois da última correção. Há até três revisões por turno para observar, corrigir e confirmar. Falha de captura/crítica ou limite esgotado é pendência explícita, nunca aceite.
+Avisos são pistas para julgamento: confira o defeito nos pixels e no briefing antes de alterar. Uma diferença nominal de proporção com o assunto íntegro não exige reconstruir a página; texto cortado, ilegível ou conteúdo sem evidência exige correção.
+Pare quando a revisão do rascunho atual estiver completa e sem erros materiais. Não publique: a publicação depende do pedido do operador.`,
 };
 
 /** Mensagem que o painel envia para abrir cada fase. */
@@ -95,6 +124,7 @@ export type GenerationState = {
   organicPages: number;
   blockingErrors: number;
   reviewRounds: number;
+  reviewComplete: boolean;
 };
 
 /**
@@ -110,6 +140,11 @@ export function nextPhase(state: GenerationState): Phase | 'pronto' {
   // para a etapa de cenas e gastaria geração que ninguém pediu.
   if (state.organicPages < 3)
     return state.coveredScenes < state.targetScenes ? 'cenas' : 'composicao';
-  if (state.blockingErrors > 0 || state.reviewRounds < 1) return 'revisao';
+  if (
+    state.blockingErrors > 0 ||
+    state.reviewRounds < 1 ||
+    !state.reviewComplete
+  )
+    return 'revisao';
   return 'pronto';
 }

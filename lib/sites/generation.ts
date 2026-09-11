@@ -1,4 +1,5 @@
 import { isDesignProfile } from '@/lib/design/profile';
+import { currentReview } from '@/lib/review/state';
 import {
   scenePlan,
   sceneCoverage,
@@ -20,6 +21,7 @@ export type GenerationState = {
   nextScene: PlannedScene | null;
   organicPages: number;
   reviewRounds: number;
+  reviewComplete: boolean;
   blockingErrors: number;
 };
 
@@ -66,6 +68,7 @@ export function generationState(
   ].length;
 
   const available = generatedPhotos(images);
+  const review = currentReview(tenant, pages, images);
   const plan = plannedScenes(tenant);
   const { covered, missing } = sceneCoverage(plan, available);
 
@@ -77,6 +80,10 @@ export function generationState(
       organicPages: organic.length,
       blockingErrors,
       reviewRounds,
+      reviewComplete:
+        review?.complete === true &&
+        review.visual === 'complete' &&
+        review.errors === 0,
     }),
     photos: available.length,
     coveredScenes: covered.length,
@@ -84,6 +91,10 @@ export function generationState(
     nextScene: missing[0] ?? null,
     organicPages: organic.length,
     reviewRounds,
+    reviewComplete:
+      review?.complete === true &&
+      review.visual === 'complete' &&
+      review.errors === 0,
     blockingErrors,
   };
 }

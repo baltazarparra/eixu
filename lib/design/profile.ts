@@ -11,6 +11,20 @@ export const creativeBriefSchema = z.object({
   constraints: z.array(z.string().min(3).max(140)).max(8).default([]),
   /** O que não foi confirmado por fonte alguma. Impede afirmação sem evidência. */
   gaps: z.array(z.string().min(3).max(140)).max(6).default([]),
+  /** Plano editorial verificável; opcional para preservar briefings legados. */
+  pagePlan: z
+    .array(
+      z.object({
+        slug: z.string().max(160),
+        stage: z.enum(['discovery', 'consideration', 'conversion']),
+        intent: z.string().min(8).max(180),
+        content: z.string().min(20).max(500),
+        evidence: z.array(z.string().min(3).max(180)).max(8),
+      }),
+    )
+    .min(3)
+    .max(12)
+    .optional(),
 });
 
 export const designProfileInputSchema = z.object({

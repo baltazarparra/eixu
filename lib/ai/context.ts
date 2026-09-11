@@ -62,14 +62,38 @@ export const chatRequestSchema = z
   );
 
 /**
- * Compacta somente turnos encerrados. As chamadas, resultados e reasoning
- * do loop atual continuam intactos no SDK. Estado editorial vem do servidor.
- * Texto do operador e respostas finais nunca são cortados por esta função.
+ * Preserva quatro turnos recentes completos, inclusive metadados e assinaturas
+ * do provedor. Histórico antigo conserva decisões e pendências. O loop ativo
+ * é do SDK: nenhuma compactação roda entre seus passos.
  */
-export function economicalMessages(messages: UIMessage[]): UIMessage[] {
-  const lastUser = messages.findLastIndex((message) => message.role === 'user');
+export function contextMessages(
+  messages: UIMessage[],
+  options: { recentTurns?: number; maxRecentChars?: number } = {},
+): UIMessage[] {
+  const users = messages.flatMap((message, index) =>
+    message.role === 'user' ? [index] : [],
+  );
+  const lastUser = users.at(-1) ?? -1;
+  const recentStart = users.at(-(options.recentTurns ?? 4)) ?? 0;
+  let remaining = options.maxRecentChars ?? 120_000;
+  const intact = new Set<number>();
+  for (let index = messages.length - 1; index >= recentStart; index -= 1) {
+    const message = messages[index];
+    const complete = message.parts.every(
+      (part) =>
+        !isToolUIPart(part) ||
+        part.state === 'output-available' ||
+        part.state === 'output-error',
+    );
+    const size = JSON.stringify(message).length;
+    if (complete && size <= remaining) {
+      intact.add(index);
+      remaining -= size;
+    }
+  }
   return messages
     .map((message, index) => {
+      if (intact.has(index)) return message;
       const parts: UIMessage['parts'] = [];
       for (const part of message.parts) {
         if (part.type === 'text' && typeof part.text === 'string') {
@@ -93,11 +117,31 @@ export function economicalMessages(messages: UIMessage[]): UIMessage[] {
             Boolean(result.error);
           const pending =
             part.state !== 'output-available' && part.state !== 'output-error';
-          // Mantém a conclusão e a falha, sem repetir páginas completas, schemas
-          // ou imagens. Não transforma uma ferramenta interrompida em sucesso.
+          const evidence = Object.fromEntries(
+            [
+              'error',
+              'findings',
+              'apontamentos',
+              'pendencias',
+              'publicationPending',
+              'medicoes',
+              'erros',
+              'visual',
+              'complete',
+              'review',
+              'paginas',
+            ]
+              .filter((key) => result[key] !== undefined)
+              .map((key) => [key, result[key]]),
+          );
+          const details = JSON.stringify(evidence);
+          const receipt =
+            details.length > 24_000
+              ? `${details.slice(0, 24_000)} [Relatório parcial; releia o estado antes de concluir.]`
+              : details;
           parts.push({
             type: 'text',
-            text: `[${name}: ${pending ? 'interrompida; confira o estado atual' : failed ? 'recusada' : 'concluída'}${typeof result.error === 'string' ? `; ${result.error}` : ''}]`,
+            text: `[${name}: ${pending ? 'interrompida; confira o estado atual' : failed ? 'recusada' : 'executada; confira as pendências'}${typeof result.error === 'string' ? `; ${result.error}` : ''}]${details === '{}' ? '' : `\n${receipt}`}`,
           });
         }
       }

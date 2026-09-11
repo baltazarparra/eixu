@@ -631,7 +631,9 @@ function ratioHint(type: BlockType): string {
 }
 
 /** Catálogo com uso e props de cada bloco, injetado no prompt do agente. */
-export function catalogForPrompt(): string {
+export function catalogForPrompt(
+  options: { fullSchema?: boolean } = {},
+): string {
   return (
     `Comum a todos: anchor?; presentation? { ${summarize(z.toJSONSchema(presentation.unwrap()) as Record<string, unknown>, 1)} }. ? = opcional; ≤ = máximo de caracteres.\n` +
     BLOCK_TYPES.map((type) => {
@@ -641,7 +643,7 @@ export function catalogForPrompt(): string {
       >;
       // O uso vem junto: sem ele o agente ignora explorer e resources, que são
       // justamente as seções que sustentam uma home com fotos.
-      return `${type} · ${blockMeta[type].use}${ratioHint(type)}\n  ${summarize(json)}`;
+      return `${type} · ${blockMeta[type].use}${ratioHint(type)}\n  ${options.fullSchema ? JSON.stringify(json) : summarize(json)}`;
     }).join('\n')
   );
 }

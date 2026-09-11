@@ -52,7 +52,18 @@ import { readReference } from '@/lib/ai/reference';
 import { referenceFromSocial, readSocialProfile } from '@/lib/ai/social';
 import { normalizeSocialUrl, parseSocialRecord } from '@/lib/social-profile';
 import { capturePages, type Shot } from '@/lib/review/capture';
-import { getPage, listPages, setBrandLogo } from '@/lib/tenant-queries';
+import { critiquePages } from '@/lib/review/critic';
+import {
+  captureEnabled,
+  reviewFingerprint,
+  type ReviewReceipt,
+} from '@/lib/review/state';
+import {
+  getPage,
+  getTenantBySlug,
+  listPages,
+  setBrandLogo,
+} from '@/lib/tenant-queries';
 import type { Phase } from '@/lib/taste/phases';
 import type { BlockInstance, Tenant, TenantImage } from '@/lib/types';
 
@@ -648,9 +659,9 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         'Lê uma página de referência informada pelo operador e devolve título, descrição e texto real. Instagram e LinkedIn devolvem nome, bio e avatar quando a rede permite; bloqueado volta inacessível, e aí a lacuna vai para brief.gaps sem deduzir a empresa.',
       inputSchema: z.object({ url: z.url() }),
       execute: safe(async ({ url }) => {
-        if (referencesRead >= 3)
+        if (referencesRead >= 6)
           throw new ToolError(
-            'Limite de três referências por turno. Use o que já foi lido.',
+            'Limite de seis referências por turno. Preserve as demais como lacunas e retome a leitura se forem necessárias.',
           );
         referencesRead += 1;
         // O perfil do briefing já foi lido no cadastro; reler a cada geração
@@ -689,26 +700,30 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         'Revisa o rascunho inteiro e devolve o que ficou pobre, com página e bloco apontados: página sem foto, home sem seção protagonista, tom repetido, proporção incoerente com o layout, silhueta repetida e erros de pre-flight. Use na fase de revisão, antes de considerar o site pronto.',
       inputSchema: z.object({}),
       execute: safe(async () => {
-        const [pages, images] = await Promise.all([
+        if (reviewRounds >= 3)
+          throw new ToolError(
+            'Três revisões neste turno. Informe as pendências e retome a revisão no próximo turno.',
+          );
+        reviewRounds += 1;
+        const [pages, images, reviewedTenant] = await Promise.all([
           listPages(tenant.id),
           listImages(tenant.id),
+          getTenantBySlug(tenant.slug),
         ]);
+        if (!reviewedTenant || reviewedTenant.id !== tenant.id)
+          throw new ToolError('Cliente indisponível para revisão.');
         if (!pages.length)
           throw new ToolError(
             'Não há páginas para revisar. Monte o projeto com build_site antes.',
           );
-        reviewRounds += 1;
-        const generation = {
-          ...(activeBrief.generation as Record<string, unknown>),
-          reviewRounds,
-          updatedAt: new Date().toISOString(),
-        };
-        activeBrief = { ...activeBrief, generation };
-        await db()`
-          update tenants set brief = brief || ${JSON.stringify({ generation })}::jsonb, updated_at = now()
-          where id = ${tenant.id}
-        `;
         const apontamentos = [
+          ...lintSite(pages, images, 'publish').map((finding) => ({
+            pagina: finding.page,
+            nivel: finding.level,
+            regra: finding.rule,
+            bloco: undefined as string | undefined,
+            correcao: finding.message,
+          })),
           ...structuralFindings(pages, images).map((finding) => ({
             pagina: finding.page,
             nivel: finding.level,
@@ -720,7 +735,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             correcao: finding.message,
           })),
           ...pages.flatMap((page) =>
-            lintPage(page, activeBrand.design)
+            lintPage(page, reviewedTenant.brand.design)
               .filter((finding) => finding.level === 'error')
               .map((finding) => ({
                 pagina: `/${page.slug}`,
@@ -732,27 +747,88 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           ),
         ];
         const metrics = siteMetrics(pages, images);
-        // A captura mostra o que os validadores não medem: recorte, equilíbrio
-        // e overflow. Fica atrás de variável porque carrega um Chromium.
         let capturas: Shot[] = [];
-        if (process.env.EIXU_REVIEW_CAPTURE === '1' && context.origin) {
+        let visual: ReviewReceipt['visual'] = captureEnabled()
+          ? 'unavailable'
+          : 'disabled';
+        let critica: Awaited<ReturnType<typeof critiquePages>> | undefined;
+        if (captureEnabled()) {
           try {
+            if (!context.origin) throw new Error('Origem da prévia ausente.');
             capturas = await capturePages(
               context.origin,
               tenant.slug,
-              pages
-                .filter((page) => page.type !== 'thank_you')
-                .map((page) => page.slug),
+              pages.map((page) => page.slug),
               { cookie: context.cookie },
             );
+            if (capturas.length !== pages.length * 2)
+              throw new Error(
+                'Cobertura visual incompleta; revise todas as páginas em desktop e mobile.',
+              );
+            for (const shot of capturas) {
+              if (shot.overflow || shot.brokenImages)
+                apontamentos.push({
+                  pagina: shot.page,
+                  nivel: 'error',
+                  regra: 'render',
+                  bloco: undefined,
+                  correcao: `${shot.viewport}: ${shot.overflow ? 'overflow horizontal; ' : ''}${shot.brokenImages} imagem(ns) quebrada(s). Corrija e capture novamente.`,
+                });
+            }
+            critica = await critiquePages(reviewedTenant, pages, capturas);
+            visual = 'complete';
+            apontamentos.push(
+              ...critica.findings.map((finding) => ({
+                pagina: finding.page,
+                nivel: finding.level,
+                regra: finding.criterion,
+                bloco: finding.blockId ?? undefined,
+                correcao: `${finding.evidence} ${finding.correction}`,
+              })),
+            );
           } catch (error) {
-            console.error('[review] captura indisponível:', error);
+            console.error(
+              '[review] indisponível:',
+              error instanceof Error ? error.name : 'unknown',
+            );
+            apontamentos.push({
+              pagina: '/',
+              nivel: 'error',
+              regra: 'revisao-indisponivel',
+              bloco: undefined,
+              correcao:
+                'A captura ou crítica visual não completou. Confira a prévia autenticada e retome; o rascunho ainda não está revisado.',
+            });
           }
         }
+        const receipt: ReviewReceipt = {
+          fingerprint: reviewFingerprint(reviewedTenant, pages, images),
+          complete: visual === 'complete',
+          visual,
+          errors: apontamentos.filter((item) => item.nivel === 'error').length,
+          reviewedAt: new Date().toISOString(),
+          findings: apontamentos,
+        };
+        const previousGeneration = reviewedTenant.brief.generation as
+          | Record<string, unknown>
+          | undefined;
+        const generation = {
+          ...previousGeneration,
+          reviewRounds: Number(previousGeneration?.reviewRounds ?? 0) + 1,
+          review: receipt,
+          updatedAt: receipt.reviewedAt,
+        };
+        activeBrief = { ...activeBrief, generation };
+        await db()`
+          update tenants set brief = brief || ${JSON.stringify({ generation })}::jsonb, updated_at = now()
+          where id = ${tenant.id}
+        `;
         return {
-          // Só a medição volta para o modelo. Enviar as capturas em base64
-          // levou o contexto a 697 mil tokens contra 200 mil de limite, e a
-          // fase inteira falhava antes do primeiro passo.
+          review: receipt,
+          complete: receipt.complete && receipt.errors === 0,
+          visual,
+          pontosFortes: critica?.strengths ?? [],
+          criticUsage: critica?.usage,
           medicoes: capturas.map((shot) => ({
             pagina: shot.page,
             viewport: shot.viewport,
@@ -866,7 +942,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
     describe_block: tool({
       description:
-        'Mostra o schema exato de props de um bloco. Use antes de preencher um bloco que você não domina.',
+        'Mostra o schema exato de props de um bloco. Consulte quando o schema não estiver no contexto; não repita uma consulta já disponível.',
       inputSchema: z.object({ type: z.string() }),
       execute: async ({ type }) => {
         if (!isBlockType(type))

@@ -2,7 +2,7 @@
 
 Referências lidas em 10/09/2026: [Frontend Design, Anthropic](https://github.com/anthropics/claude-code/blob/main/plugins/frontend-design/skills/frontend-design/SKILL.md) e [Taste Skill v1](https://github.com/Leonxlnx/taste-skill/blob/main/skills/taste-skill-v1/SKILL.md). Para mudanças de frontend, use ambas como direção, respeitando o negócio, o contrato do repositório e o código disponível. Este documento registra a adaptação ao gerador, não substitui a leitura das referências ao mudar a direção visual.
 
-## Direção e custo
+## Direção e qualidade
 
 A composição parte do briefing, da marca e de cenas coerentes com o cliente: uma seção protagonista, hierarquia de texto e variação de layout. Não há receita obrigatória de home. Cada projeto tem pelo menos três páginas orgânicas conectadas, com intenções de descoberta, consideração e conversão. Obrigado e landing de anúncio não completam esse mínimo. Serviços usam listas editoriais; números de ordem ficam em processos. Provas, garantias, equipamentos e capacidades operacionais dependem de evidência do briefing.
 
@@ -69,11 +69,9 @@ como referência, gera uma nova versão e troca a URL e o texto alternativo nos
 rascunhos do mesmo tenant. O original e os snapshots publicados são preservados.
 A crítica continua informativa; não é uma fila de aprovação.
 
-`review_pages` devolve o que ficou pobre com página e bloco apontados. Com
-`EIXU_REVIEW_CAPTURE=1`, ela também abre o rascunho em 1440 e 390 com Chromium e
-acrescenta a medição do navegador: largura da página, overflow e imagem
-quebrada. As capturas não voltam ao modelo como imagem; medido, o base64 no
-histórico da fase levou a entrada a 697 mil tokens contra 200 mil de limite.
+`review_pages` reúne pre-flight, métricas e crítica visual do rascunho. Captura todas as páginas do lote, até 12, em 1440 e 390 px. Os pixels seguem como imagens binárias a uma chamada separada do Gemini; o chat recebe somente o relatório estruturado. Overflow, imagem quebrada, falha de captura e cobertura incompleta impedem a conclusão automática. Depois de corrigir, o agente revisa de novo: o recibo precisa corresponder ao estado atual. A captura é padrão; `EIXU_REVIEW_CAPTURE=0` deixa explícita a ausência de conclusão visual. A tentativa histórica de enviar base64 como texto não é repetida.
+
+O plano editorial em `brief.pagePlan` diferencia intenção, etapa, conteúdo e evidência por página. O raciocínio `high`, os orçamentos por tarefa e a identidade em SOUL.md dão suporte à composição; não substituem o catálogo, a medição e a leitura crítica. Veja [Harness](harness.md).
 
 ## Vibes
 
@@ -163,7 +161,7 @@ A mudança atua nos componentes compartilhados de `(sites)`, nos agentes de site
 
 A prévia local de comparação usa três clientes sintéticos, sem gravar no tenant. Ela comprovou que o mesmo catálogo forma silhuetas distintas em desktop e mobile, mas não substitui uma avaliação de geração do modelo. Essa avaliação exige briefing controlado, tenant descartável e registro de qualidade, chamadas, latência e tokens.
 
-Medido em 10/09/2026 com tenant sintético, o prompt de edição livre tem 11.951
+Registro histórico, anterior ao harness de qualidade: medido em 10/09/2026 com tenant sintético, o prompt de edição livre tem 11.951
 caracteres, contra 12.536 antes da divisão por fases, mesmo com o catálogo
 maior. Por fase: briefing 3.859, cenas 2.758, composição 11.076 e revisão
 9.269. É tamanho de texto, não tokens faturados; o evento `[chat] usage`, agora

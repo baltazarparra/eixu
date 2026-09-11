@@ -2,6 +2,10 @@
 
 Site institucional da EIXU e MVP de uma plataforma operada por agentes para criar sites de clientes, captar contatos e acompanhar tráfego. O operador trabalha em `/admin`; cada cliente tem conteúdo e imagens próprios no mesmo banco e aplicação, com endereço previsto em `cliente.eixu.com.br`.
 
+## Qualidade dos agentes
+
+O modelo interno é **Gemini 3.8 Flash**, com raciocínio `high`. O harness prioriza qualidade: plano editorial por página, contexto recente preservado, composição com espaço para reparo e revisão das capturas em desktop/mobile. Uma revisão incompleta ou anterior à última alteração não encerra a geração. [SOUL.md](SOUL.md) define a identidade e entra no prompt; [harness](docs/harness.md) explica políticas, limites e avaliações.
+
 ## O que já existe
 
 - Institucional com home, oferta de passagem de vibe coding para produção e cases de SaldoPix e NaiaCRM.
@@ -25,18 +29,18 @@ npm run dev:vercel
 
 O institucional e a tela de login abrem sem banco. Para usar o painel e os sites, configure `.env.local` com recursos de desenvolvimento:
 
-| Variável                | Uso                                                                                                     |
-| ----------------------- | ------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`          | Conexão Postgres/Neon das rotas dinâmicas e scripts de banco.                                           |
-| `ADMIN_USER`            | Usuário do operador; fallback `admin`.                                                                  |
-| `ADMIN_PASSWORD`        | Senha do operador. Produção recusa login se estiver ausente.                                            |
-| `ADMIN_SESSION_SECRET`  | Segredo de assinatura da sessão; configure um valor próprio. O código usa a senha como fallback.        |
-| `AI_GATEWAY_API_KEY`    | Autenticação explícita do AI Gateway, útil localmente. O SDK também aceita OIDC da Vercel.              |
-| `EIXU_MODEL`            | Modelo do chat do site; fallback no código: `google/gemini-3.8-flash`.                                  |
-| `EIXU_CRITIC_MODEL`     | Modelo da crítica visual e leitura de avatar social; fallback em `EIXU_MODEL`, depois Gemini 3.8 Flash. |
-| `BLOB_READ_WRITE_TOKEN` | Upload, geração e remoção de imagens no Vercel Blob.                                                    |
-| `EIXU_REVIEW_CAPTURE`   | `1` liga a captura com Chromium na revisão do rascunho. Sem ela, a revisão é estrutural.                |
-| `EIXU_CHROME_PATH`      | Caminho do Chrome local para a captura em desenvolvimento.                                              |
+| Variável                | Uso                                                                                                       |
+| ----------------------- | --------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`          | Conexão Postgres/Neon das rotas dinâmicas e scripts de banco.                                             |
+| `ADMIN_USER`            | Usuário do operador; fallback `admin`.                                                                    |
+| `ADMIN_PASSWORD`        | Senha do operador. Produção recusa login se estiver ausente.                                              |
+| `ADMIN_SESSION_SECRET`  | Segredo de assinatura da sessão; configure um valor próprio. O código usa a senha como fallback.          |
+| `AI_GATEWAY_API_KEY`    | Autenticação explícita do AI Gateway, útil localmente. O SDK também aceita OIDC da Vercel.                |
+| `EIXU_MODEL`            | Modelo do chat do site; fallback no código: `google/gemini-3.8-flash`.                                    |
+| `EIXU_CRITIC_MODEL`     | Modelo da crítica visual e leitura de avatar social; fallback em `EIXU_MODEL`, depois Gemini 3.8 Flash.   |
+| `BLOB_READ_WRITE_TOKEN` | Upload, geração e remoção de imagens no Vercel Blob.                                                      |
+| `EIXU_REVIEW_CAPTURE`   | Captura e crítica visual ligadas por padrão; `0` permite só diagnóstico estrutural, sem conclusão visual. |
+| `EIXU_CHROME_PATH`      | Caminho do Chrome local para a captura em desenvolvimento.                                                |
 
 Crie o arquivo localmente, sem versionar credenciais. Se já tiver acesso ao projeto Vercel, `vercel link --project eixu` e `vercel env pull .env.local --environment=development` são uma alternativa; confira o destino de `DATABASE_URL` antes de qualquer escrita. O nome do ambiente Vercel não garante que o banco conectado seja de desenvolvimento.
 
@@ -68,23 +72,24 @@ Os três grupos de rotas têm layouts e CSS próprios. A publicação valida pá
 
 ## Comandos e validação
 
-| Comando                                              | Efeito                                                                                                                                               |
-| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run dev:vercel`                                 | Desenvolvimento em Next.js, caminho usado para este MVP.                                                                                             |
-| `npm run build:vercel`                               | Build de produção configurado em `vercel.json`.                                                                                                      |
-| `npx next start`                                     | Serve o build Next.js local já gerado.                                                                                                               |
-| `npx next typegen && npx tsc --noEmit`               | Gera tipos das rotas e verifica TypeScript.                                                                                                          |
-| `npm run lint`                                       | Analisa código com oxlint; não executa o pre-flight dos sites.                                                                                       |
-| `npm run test:sites`                                 | Testa o contrato de páginas, imagens, alterações por número e links sem banco ou chamadas pagas.                                                     |
-| `npm run test:sites:browser`                         | Depois do build Next.js, verifica contraste e destinos de contato com componentes reais em 1440 e 390 px. Requer `EIXU_CHROME_PATH`.                 |
-| `npm run test:admin`                                 | Testa contexto, estado editorial, autenticação, logos, datas, custos, CSV e tracking sem banco ou chamadas pagas. Captura requer `EIXU_CHROME_PATH`. |
-| `npm run eval:admin-cost`                            | Compara o payload de histórico em memória; `-- --live` executa três chamadas pagas controladas, sem escrever no banco/Blob.                          |
-| `npm run eval:site -- <caso>`                        | Roda a geração real num tenant descartável e mede o resultado pela rubrica.                                                                          |
-| `npm run format -- --check README.md AGENTS.md docs` | Confere a formatação da documentação sem reescrever arquivos.                                                                                        |
-| `npm run db:migrate`                                 | Aplica statements idempotentes de `db/schema.sql`; escreve no banco. Coluna nova exige rodar antes do deploy do código que a usa.                    |
-| `npm run db:seed-demo`                               | Sobrescreve e publica home/obrigado do tenant `vertice` já existente; altera marca e dials. Use só em demo descartável.                              |
-| `npm run db:requantize-logos`                        | Recomprime logos de todos os tenants do banco conectado, sobrescrevendo arquivos no Blob.                                                            |
-| `npm run dev` / `npm run build` / `npm start`        | Caminho Vinext/Cloudflare herdado; não valida o deploy Next.js da Vercel.                                                                            |
+| Comando                                                      | Efeito                                                                                                                                                                 |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev:vercel`                                         | Desenvolvimento em Next.js, caminho usado para este MVP.                                                                                                               |
+| `npm run build:vercel`                                       | Build de produção configurado em `vercel.json`.                                                                                                                        |
+| `npx next start`                                             | Serve o build Next.js local já gerado.                                                                                                                                 |
+| `npx next typegen && npx tsc --noEmit`                       | Gera tipos das rotas e verifica TypeScript.                                                                                                                            |
+| `npm run lint`                                               | Analisa código com oxlint; não executa o pre-flight dos sites.                                                                                                         |
+| `npm run test:sites`                                         | Testa o contrato de páginas, imagens, alterações por número e links sem banco ou chamadas pagas.                                                                       |
+| `npm run test:sites:browser`                                 | Depois do build Next.js, verifica contraste e destinos de contato com componentes reais em 1440 e 390 px. Requer `EIXU_CHROME_PATH`.                                   |
+| `npm run test:admin`                                         | Testa contexto, estado editorial, autenticação, logos, datas, custos, CSV e tracking sem banco ou chamadas pagas. Captura requer `EIXU_CHROME_PATH`.                   |
+| `npm run eval:harness`                                       | Orienta o ensaio de qualidade; `--live --case=... --assets=... --repeat=2` chama modelos reais com ferramentas em memória e capturas do renderer. Não grava Neon/Blob. |
+| `npm run eval:admin-cost`                                    | Compara o payload de histórico em memória; `-- --live` executa três chamadas pagas controladas, sem escrever no banco/Blob.                                            |
+| `npm run eval:site -- <caso>`                                | Roda a geração real num tenant descartável e mede o resultado pela rubrica.                                                                                            |
+| `npm run format -- --check README.md AGENTS.md SOUL.md docs` | Confere a formatação da documentação sem reescrever arquivos.                                                                                                          |
+| `npm run db:migrate`                                         | Aplica statements idempotentes de `db/schema.sql`; escreve no banco. Coluna nova exige rodar antes do deploy do código que a usa.                                      |
+| `npm run db:seed-demo`                                       | Sobrescreve e publica home/obrigado do tenant `vertice` já existente; altera marca e dials. Use só em demo descartável.                                                |
+| `npm run db:requantize-logos`                                | Recomprime logos de todos os tenants do banco conectado, sobrescrevendo arquivos no Blob.                                                                              |
+| `npm run dev` / `npm run build` / `npm start`                | Caminho Vinext/Cloudflare herdado; não valida o deploy Next.js da Vercel.                                                                                              |
 
 Há testes dos contratos de sites e admin; não há workflow de CI versionado. A revisão do admin mantém registrada a dívida de 20 erros de lint em 13 arquivos externos ao escopo. O [guia de validação](docs/verification.md) registra as referências e os checks por tipo de mudança. Build aprovado não equivale a fluxo com banco ou IA testado.
 
@@ -92,7 +97,7 @@ O [manual do operador](docs/admin.md) explica a jornada de cadastro, geração, 
 
 ## Agentes e modelos de desenvolvimento
 
-GPT-6 Astra e Claude Fable 5.1 são os modelos de trabalho considerados pelo [harness de desenvolvimento](docs/harness.md). Eles seguem o mesmo [AGENTS.md](AGENTS.md); `CLAUDE.md` importa esse arquivo, sem duplicar as regras. Selecionar um modelo no editor não altera `EIXU_MODEL` nem os geradores de imagem do produto. Os fallbacks documentados acima vêm do código, não de uma leitura das variáveis de produção.
+GPT-6 Astra e Claude Fable 5.1 são os modelos de trabalho considerados pelo [harness de desenvolvimento](docs/harness.md). Eles seguem a identidade de [SOUL.md](SOUL.md) e o mesmo [AGENTS.md](AGENTS.md); `CLAUDE.md` importa esse arquivo, sem duplicar as regras. Selecionar um modelo no editor não altera `EIXU_MODEL` nem os geradores de imagem do produto. Os fallbacks documentados acima vêm do código, não de uma leitura das variáveis de produção.
 
 ## Publicação
 

@@ -1,19 +1,14 @@
 import {
   convertToModelMessages,
   createUIMessageStreamResponse,
-  isStepCount,
-  streamText,
   toUIMessageStream,
   type UIMessage,
 } from 'ai';
+import { siteAgent } from '@/lib/ai/agent';
+import { productModel } from '@/lib/ai/models';
 import { annotateAttachments } from '@/lib/ai/attachments';
-import { chatRequestSchema, economicalMessages } from '@/lib/ai/context';
-import {
-  gatewayOptions,
-  usageRecord,
-  usageMetadata,
-  sumGatewayCosts,
-} from '@/lib/ai/usage';
+import { chatRequestSchema, contextMessages } from '@/lib/ai/context';
+import { usageRecord, usageMetadata, sumGatewayCosts } from '@/lib/ai/usage';
 import { isAuthenticated } from '@/lib/auth';
 import { buildTools } from '@/lib/ai/tools';
 import { db } from '@/lib/db';
@@ -26,20 +21,12 @@ import {
 } from '@/lib/images/scene-plan';
 import { plannedScenes } from '@/lib/sites/generation';
 import { generatedPhotos } from '@/lib/taste/metrics';
-import {
-  PHASE_STEPS,
-  PHASE_TOOLS,
-  isPhase,
-  type Phase,
-} from '@/lib/taste/phases';
+import { isPhase, type Phase } from '@/lib/taste/phases';
 import { systemPrompt, type PromptContext } from '@/lib/taste/prompt';
 import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
 import type { Page, Tenant, TenantImage } from '@/lib/types';
 
-export const maxDuration = 300;
-
-/** Modelo do agente no AI Gateway, configurável por ambiente. */
-const MODEL = () => process.env.EIXU_MODEL || 'google/gemini-3.8-flash';
+export const maxDuration = 800;
 
 /**
  * A fase só abre com o estado que ela pressupõe. Sem isso o agente tentava
@@ -133,11 +120,15 @@ export async function POST(request: Request) {
 
   const context: PromptContext = {
     phase,
-    ...(phase === 'briefing' || !phase ? { sources } : {}),
+    sources,
+    review: JSON.stringify(
+      (tenant.brief.generation as { review?: unknown } | undefined)?.review ??
+        null,
+    ),
     ...(phase === 'cenas' ? scenesContext(tenant, libraryImages) : {}),
   };
 
-  const messages = annotateAttachments(economicalMessages(body.messages));
+  const messages = annotateAttachments(contextMessages(body.messages));
 
   // Guarda a mensagem do operador para o histórico do painel.
   // Persiste o texto que o operador escreveu, não a versão anotada com a URL
@@ -164,14 +155,6 @@ export async function POST(request: Request) {
     phase,
     lastUserText,
   });
-  // Fora da geração o chat mantém todas as ferramentas; dentro dela, só as da
-  // etapa, para o modelo não pular direto para a composição.
-  const activeTools = phase
-    ? (PHASE_TOOLS[phase].filter(
-        (name) => name in tools,
-      ) as (keyof typeof tools)[])
-    : undefined;
-
   if (phase) {
     const generation = {
       ...(tenant.brief.generation as Record<string, unknown>),
@@ -186,12 +169,12 @@ export async function POST(request: Request) {
     `;
   }
 
-  const model = MODEL();
+  const model = productModel();
   const started = Date.now();
-  const result = streamText({
-    model,
-    providerOptions: gatewayOptions(tenant.id, 'site', phase),
-    abortSignal: request.signal,
+  const agent = siteAgent({
+    tenantId: tenant.id,
+    tools,
+    phase,
     instructions: systemPrompt(
       tenant,
       summary,
@@ -199,27 +182,22 @@ export async function POST(request: Request) {
       imagesText,
       context,
     ),
+  });
+  const result = await agent.stream({
     messages: await convertToModelMessages(messages),
-    tools,
-    ...(activeTools ? { activeTools } : {}),
-    stopWhen: isStepCount(phase ? PHASE_STEPS[phase] : 30),
-    onError: ({ error }) => {
-      console.error(
-        '[chat] falha do modelo:',
-        error instanceof Error ? error.name : 'unknown',
-      );
-    },
-    onEnd: async ({ text, usage, stepNumber, steps }) => {
+    abortSignal: request.signal,
+    onEnd: async ({ text, usage, steps, finishReason }) => {
       // Apenas contagens: nenhum prompt, conteúdo do cliente ou credencial.
       const measured = usageRecord(
         usage,
         model,
         phase ?? 'livre',
-        stepNumber + 1,
+        steps.length,
         started,
       );
       console.info('[chat] usage', {
         ...measured,
+        finishReason,
         costUsd: sumGatewayCosts(
           steps.map((step) => step.providerMetadata?.gateway?.cost),
         ),
@@ -236,6 +214,13 @@ export async function POST(request: Request) {
   return createUIMessageStreamResponse({
     stream: toUIMessageStream({
       stream: result.stream,
+      onError: (error) => {
+        console.error(
+          '[chat] falha do modelo:',
+          error instanceof Error ? error.name : 'unknown',
+        );
+        return 'A geração não concluiu. O rascunho foi preservado; retome para conferir as pendências.';
+      },
       messageMetadata: usageMetadata(model, phase ?? 'livre', started),
     }),
   });

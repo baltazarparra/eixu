@@ -22,6 +22,7 @@ for (const layout of [
       organicPages: 0,
       blockingErrors: 0,
       reviewRounds: 0,
+      reviewComplete: false,
     };
     const calls = [],
       images = [];
@@ -36,7 +37,10 @@ for (const layout of [
           state.coveredScenes += 1;
         }
         if (phase === 'composicao') state.organicPages = 3;
-        if (phase === 'revisao') state.reviewRounds += 1;
+        if (phase === 'revisao') {
+          state.reviewRounds += 1;
+          state.reviewComplete = true;
+        }
       },
     });
     assert.equal(result.completed, true);

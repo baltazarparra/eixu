@@ -1,7 +1,12 @@
-import type { LanguageModelUsage, UIMessage } from 'ai';
+import type { LanguageModelUsage, InferAgentUIMessage } from 'ai';
+import type { siteAgent } from './agent';
+import { HARNESS_VERSION } from './models';
 
 export type ChatUsage = {
   model: string;
+  harnessVersion?: string;
+  reasoningTokens?: number;
+  finishReason?: string;
   phase: string;
   inputTokens?: number;
   outputTokens?: number;
@@ -12,7 +17,10 @@ export type ChatUsage = {
   durationMs: number;
   costUsd?: number;
 };
-export type ChatMessage = UIMessage<{ usage?: ChatUsage }>;
+export type ChatMessage = InferAgentUIMessage<
+  ReturnType<typeof siteAgent>,
+  { usage?: ChatUsage }
+>;
 
 export function usageRecord(
   usage: LanguageModelUsage,
@@ -23,6 +31,8 @@ export function usageRecord(
 ): ChatUsage {
   return {
     model,
+    harnessVersion: HARNESS_VERSION,
+    reasoningTokens: usage.outputTokenDetails?.reasoningTokens,
     phase,
     steps,
     durationMs: Date.now() - started,
@@ -58,6 +68,7 @@ export function usageMetadata(model: string, phase: string, started: number) {
   }: {
     part: {
       type: string;
+      finishReason?: string;
       totalUsage?: LanguageModelUsage;
       providerMetadata?: { gateway?: Record<string, unknown> };
     };
@@ -70,6 +81,7 @@ export function usageMetadata(model: string, phase: string, started: number) {
       return {
         usage: {
           ...usageRecord(part.totalUsage, model, phase, steps, started),
+          finishReason: part.finishReason,
           costUsd: sumGatewayCosts(costs),
         },
       };

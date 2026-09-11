@@ -12,16 +12,21 @@
  * "eval-".
  */
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
-import { generateText, isStepCount } from 'ai';
 import { createJiti } from 'jiti';
 import { runEvaluationPhases } from './lib/eval-site-flow.mjs';
 
 const jiti = createJiti(import.meta.url, { alias: { '@': process.cwd() } });
+const { siteAgent } = await jiti.import('../lib/ai/agent.ts');
+const { productModel, TURN_TIMEOUT_MS } = await jiti.import(
+  '../lib/ai/models.ts',
+);
+const { createSessionToken } = await jiti.import('../lib/auth.ts');
 const { db } = await jiti.import('../lib/db.ts');
 const { buildTools } = await jiti.import('../lib/ai/tools.ts');
 const { systemPrompt } = await jiti.import('../lib/taste/prompt.ts');
-const { PHASE_MESSAGE, PHASE_STEPS, PHASE_TOOLS, nextPhase } =
-  await jiti.import('../lib/taste/phases.ts');
+const { PHASE_MESSAGE, nextPhase } = await jiti.import(
+  '../lib/taste/phases.ts',
+);
 const { generationState, plannedScenes } = await jiti.import(
   '../lib/sites/generation.ts',
 );
@@ -128,7 +133,13 @@ async function runPhase(tenant, phase, images) {
         `- #${image.seq} disponível, ${image.ratio}, ${image.targetBlock ?? 'livre'}: ${image.url} | ${image.alt ?? image.description ?? 'sem descrição'}`,
     )
     .join('\n');
-  const context = { phase };
+  const context = {
+    phase,
+    sources: Array.isArray(tenant.brief.sources)
+      ? JSON.stringify(tenant.brief.sources)
+      : '',
+    review: JSON.stringify(tenant.brief.generation?.review ?? null),
+  };
   if (phase === 'cenas') {
     const plan = plannedScenes(tenant);
     const { covered, missing } = sceneCoverage(
@@ -141,19 +152,20 @@ async function runPhase(tenant, phase, images) {
   }
   const tools = buildTools(tenant, {
     origin: process.env.EIXU_EVAL_ORIGIN,
+    cookie: `eixu_admin=${await createSessionToken()}`,
     phase,
   });
   const started = Date.now();
-  const result = await generateText({
-    model: process.env.EIXU_MODEL || 'google/gemini-3.8-flash',
+  const agent = siteAgent({
+    tenantId: tenant.id,
     instructions: systemPrompt(tenant, summary, '/', imagesSummary, context),
-    messages: [{ role: 'user', content: PHASE_MESSAGE[phase] }],
     tools,
-    activeTools: PHASE_TOOLS[phase].filter((name) => name in tools),
-    stopWhen: isStepCount(PHASE_STEPS[phase]),
-    maxRetries: 0,
+    phase,
+  });
+  const result = await agent.generate({
+    messages: [{ role: 'user', content: PHASE_MESSAGE[phase] }],
     abortSignal: AbortSignal.timeout(
-      Number(process.env.EIXU_EVAL_TIMEOUT ?? 280_000),
+      Number(process.env.EIXU_EVAL_TIMEOUT ?? TURN_TIMEOUT_MS),
     ),
   });
   return {
@@ -185,7 +197,7 @@ let tenant = await prepareTenant();
 const report = {
   case: caseName,
   slug: spec.slug,
-  model: process.env.EIXU_MODEL || 'google/gemini-3.8-flash',
+  model: productModel(),
   phases: [],
 };
 report.flow = await runEvaluationPhases({
@@ -209,6 +221,7 @@ report.flow = await runEvaluationPhases({
         organicPages: state.organicPages,
         blockingErrors: state.blockingErrors,
         reviewRounds: state.reviewRounds,
+        reviewComplete: state.reviewComplete,
       });
     return state.next;
   },
