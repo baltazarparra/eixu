@@ -52,7 +52,7 @@ export const PHASE_BRIEF: Record<Phase, string> = {
 Objetivo: transformar o intake do operador em briefing verificado e direção de arte própria.
 1. Leia cada referência informada com read_reference. O perfil de rede social do intake também é lido por ela; fonte inacessível ou perfil bloqueado vira lacuna declarada em brief.gaps, nunca conteúdo inventado.
 2. Chame define_image_guide com estilo, luz, paleta da marca, ambientes, sujeitos e o que nunca pode aparecer, tudo derivado do negócio.
-3. Chame set_design com o briefing, o conceito, o elemento-assinatura, a paleta com papéis e os oito eixos.
+3. Chame set_design com o briefing, o conceito, o elemento-assinatura, a paleta com papéis e os oito eixos, respeitando a faixa da vibe escolhida no cadastro.
 Pare depois de set_design aprovado. Não monte páginas nem gere imagens nesta fase.`,
   cenas: `## Fase 2 de 4: cenas
 Objetivo: produzir a próxima cena do repertório visual, uma por vez.

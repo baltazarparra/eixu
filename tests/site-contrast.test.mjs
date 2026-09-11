@@ -52,3 +52,29 @@ await test('cliente sem highlight usa a primária e também ganha texto legível
   assert.equal(vars['--highlight'], vars['--accent']);
   assert.ok(contrastRatio(vars['--highlight-text'], vars['--paper']) >= 4.5);
 });
+
+await test('lavagem artística mantém tinta, apoio e destaque legíveis na superfície final', () => {
+  for (const ink of ['#14161a', '#555555', '#757575']) {
+    for (const accentAlt of ['#000000', '#445566', '#ffffff', '#ff0000']) {
+      for (const highlight of ['#ffffff', '#777777', '#112233']) {
+        const vars = themeVars({
+          vibe: 'artistico',
+          paper: '#ffffff',
+          surface: '#fffefc',
+          ink,
+          accentAlt,
+          highlight,
+        });
+        for (const color of [
+          '--brand-ink',
+          '--muted-soft',
+          '--highlight-text-soft',
+        ])
+          assert.ok(
+            contrastRatio(vars[color], vars['--surface']) >= 4.5,
+            `${ink}/${accentAlt}/${highlight}/${color}`,
+          );
+      }
+    }
+  }
+});

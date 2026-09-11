@@ -4,6 +4,7 @@ import vm from 'node:vm';
 import { createHmac } from 'node:crypto';
 import { convertToModelMessages } from 'ai';
 import { createJiti } from 'jiti';
+import { loadModule } from './helpers/load-module.mjs';
 
 const j = createJiti(import.meta.url, { alias: { '@': process.cwd() } });
 const { hasDraftChanges, workspaceState } = await j.import(
@@ -18,8 +19,26 @@ const { csvCell } = await j.import('../lib/admin/csv.ts');
 const { previewHref, previewProps } = await j.import('../lib/sites/preview.ts');
 const { canApplyLogo } = await j.import('../lib/images/logo-access.ts');
 const { tenantFromHost } = await j.import('../lib/tenant-host.ts');
-const { tenantSlugSchema, tenantDetailsSchema, brandColorsSchema } =
-  await j.import('../lib/admin/tenant-input.ts');
+const {
+  tenantSlugSchema,
+  tenantDetailsSchema,
+  brandColorsSchema,
+  contactsFromForm,
+} = await j.import('../lib/admin/tenant-input.ts');
+const {
+  contactsSchema,
+  contactsOf,
+  primaryWhatsapp,
+  whatsappAt,
+  derivedSocialUrl,
+  formatPhone,
+  phoneE164,
+  socialNetwork,
+  contactsSummary,
+} = await j.import('../lib/tenant-contacts.ts');
+const { vibeSchema, vibeOf, laneIssues } = await j.import(
+  '../lib/design/vibes.ts',
+);
 const { themeVars } = await j.import('../lib/blocks/theme.ts');
 const { confirmationAccepted, deletionImpact, requiresSlugConfirmation } =
   await j.import('../lib/admin/tenant-delete.ts');
@@ -297,27 +316,162 @@ await test('host numérico, domínio estranho e nome reservado não viram client
   ])
     assert.equal(tenantSlugSchema.safeParse(slug).success, false);
 });
-await test('cadastro normaliza contato sem aceitar e-mail ou WhatsApp inválidos', () => {
+await test('cadastro normaliza nome e e-mail e recusa e-mail inválido', () => {
   const result = tenantDetailsSchema.parse({
     name: ' Oficina ',
-    whatsapp: '+55 (11) 99999-9999',
     contactEmail: '',
   });
   assert.equal(result.name, 'Oficina');
-  assert.equal(result.whatsapp, '5511999999999');
   assert.equal(result.contactEmail, null);
   assert.equal(
-    tenantDetailsSchema.safeParse({ name: ' ', whatsapp: '', contactEmail: '' })
-      .success,
+    tenantDetailsSchema.safeParse({ name: ' ', contactEmail: '' }).success,
     false,
   );
   assert.equal(
-    tenantDetailsSchema.safeParse({
-      name: 'Oficina',
-      whatsapp: 'ligue',
-      contactEmail: 'invalido',
-    }).success,
+    tenantDetailsSchema.safeParse({ name: 'Oficina', contactEmail: 'invalido' })
+      .success,
     false,
+  );
+});
+
+await test('contatos normalizam número, rede e endereço, e recusam lixo', () => {
+  const contacts = contactsSchema.parse({
+    phones: [
+      { number: '+55 (11) 99999-9999', whatsapp: true },
+      { number: '55 11 3333-4444', whatsapp: false },
+      { number: '+55 (11) 99999-9999', whatsapp: false },
+    ],
+    addresses: [{ label: ' Loja ', text: '  Rua das Pedras, 100, Bauru  ' }],
+    social: ['@padaria', 'facebook.com/padaria', 'https://x.com/padaria'],
+  });
+  assert.deepEqual(
+    contacts.phones.map((phone) => phone.number),
+    ['+5511999999999', '551133334444'],
+  );
+  assert.equal(contacts.phones[0].whatsapp, true);
+  assert.deepEqual(contacts.addresses[0], {
+    label: 'Loja',
+    text: 'Rua das Pedras, 100, Bauru',
+  });
+  assert.deepEqual(contacts.social, [
+    'https://www.instagram.com/padaria/',
+    'https://facebook.com/padaria',
+    'https://x.com/padaria',
+  ]);
+  assert.equal(primaryWhatsapp(contacts), '5511999999999');
+  assert.equal(whatsappAt(contacts, 1), null);
+  assert.equal(
+    derivedSocialUrl(contacts),
+    'https://www.instagram.com/padaria/',
+  );
+  assert.equal(formatPhone('551133334444'), '+55 (11) 3333-4444');
+  assert.equal(formatPhone('442071234567'), '+442071234567');
+  // Sem DDI o número não vira E.164: o "+" faria um fixo local de São Paulo
+  // ser lido como um número dos Estados Unidos.
+  assert.equal(formatPhone('1133334444'), '(11) 3333-4444');
+  assert.equal(phoneE164('1133334444'), '1133334444');
+  assert.equal(phoneE164('5511988887777'), '+5511988887777');
+  assert.equal(socialNetwork(contacts.social[1]).label, 'Facebook');
+  assert.equal(socialNetwork('https://exemplo.com.br').key, 'site');
+  assert.match(contactsSummary(contacts, 'oi@exemplo.com'), /WhatsApp/);
+
+  for (const invalid of [
+    { phones: [{ number: '1234567', whatsapp: true }] },
+    { phones: [{ number: '1'.repeat(16), whatsapp: false }] },
+    { phones: [{ number: 'ligue', whatsapp: false }] },
+    { addresses: [{ text: 'Rua' }] },
+    { social: ['ftp://exemplo.com'] },
+    { phones: Array.from({ length: 5 }, () => ({ number: '5511999999999' })) },
+  ])
+    assert.equal(
+      contactsSchema.safeParse(invalid).success,
+      false,
+      JSON.stringify(invalid),
+    );
+
+  assert.deepEqual(contactsSchema.parse({}), {
+    phones: [],
+    addresses: [],
+    social: [],
+  });
+});
+
+await test('contatos do formulário pareiam tipo por índice e ignoram linha vazia', () => {
+  const form = new FormData();
+  for (const [number, kind] of [
+    ['11 3333-4444', 'telefone'],
+    ['', 'whatsapp'],
+    ['+55 11 98888-7777', 'whatsapp'],
+  ]) {
+    form.append('phone', number);
+    form.append('phoneKind', kind);
+  }
+  form.append('addressLabel', '');
+  form.append('addressText', 'Avenida Central, 22, Recife');
+  form.append('social', '');
+  form.append('social', 'instagram.com/fixture');
+  const parsed = contactsFromForm(form);
+  assert.ok(parsed.success, JSON.stringify(parsed.error?.issues));
+  assert.deepEqual(parsed.data.phones, [
+    { number: '1133334444', whatsapp: false },
+    { number: '+5511988887777', whatsapp: true },
+  ]);
+  assert.equal(primaryWhatsapp(parsed.data), '5511988887777');
+  assert.equal(parsed.data.addresses[0].label, '');
+  assert.deepEqual(parsed.data.social, ['https://www.instagram.com/fixture/']);
+});
+
+await test('leitura de contatos tolera coluna ausente e cliente anterior à mudança', () => {
+  assert.deepEqual(contactsOf(undefined), {
+    phones: [],
+    addresses: [],
+    social: [],
+  });
+  assert.deepEqual(contactsOf({}, '5511999999999').phones, [
+    { number: '5511999999999', whatsapp: true },
+  ]);
+  assert.deepEqual(contactsOf({ phones: 'quebrado' }, null).phones, []);
+});
+
+await test('vibe ausente vira comercial e a faixa recusa direção fora dela', () => {
+  assert.equal(vibeOf(undefined), 'comercial');
+  assert.equal(vibeOf({ vibe: 'inventada' }), 'comercial');
+  assert.equal(vibeOf({ vibe: 'ousado' }), 'ousado');
+  assert.equal(vibeSchema.safeParse('inventada').success, false);
+
+  const moderno = {
+    displayFont: 'geometric',
+    bodyFont: 'sans',
+    heroComposition: 'editorial',
+    navigation: 'minimal',
+    rhythm: 'chapters',
+    imageTreatment: 'framed',
+    surfaceStyle: 'outlined',
+    motif: 'none',
+    radius: 'sm',
+    ink: '#f5f6f8',
+    paper: '#0b0c0e',
+    surface: '#131519',
+    variance: 3,
+    motion: 4,
+    density: 4,
+  };
+  assert.deepEqual(laneIssues('moderno', moderno), []);
+  assert.deepEqual(laneIssues('comercial', { ...moderno, motif: 'rings' }), []);
+  const claro = laneIssues('moderno', { ...moderno, paper: '#ffffff' });
+  assert.equal(claro.length, 1);
+  assert.match(claro[0], /paper/);
+  const fora = laneIssues('moderno', {
+    ...moderno,
+    displayFont: 'editorial',
+    radius: 'full',
+    density: 9,
+  });
+  assert.equal(fora.length, 3);
+  assert.match(fora.join(' '), /displayFont/);
+  assert.match(
+    laneIssues('ousado', { ...moderno, paper: '#0b0c0e' }).join(' '),
+    /escuro demais/,
   );
 });
 await test('sessões válidas, expiradas, malformadas e ambiente sem segredo', async () => {
@@ -622,4 +776,90 @@ await test('falha ao apagar arquivo interrompe a limpeza sem seguir para a pági
     /token inválido/,
   );
   assert.equal(listed, 1);
+});
+
+await test('o redirecionador aceita um segundo WhatsApp do cadastro', async () => {
+  const contacts = {
+    phones: [
+      { number: '5511999990000', whatsapp: true },
+      { number: '551133334444', whatsapp: false },
+      { number: '5511988887777', whatsapp: true },
+    ],
+    addresses: [],
+    social: [],
+  };
+  const events = [];
+  const { GET } = await loadModule('app/go/wa/route.ts', {
+    '@/lib/db': {
+      db:
+        () =>
+        async (_parts, ...values) => {
+          events.push(values);
+          return [];
+        },
+    },
+    '@/lib/tenant-queries': {
+      getTenantBySlug: async () => ({
+        id: 'fixture',
+        slug: 'fixture',
+        whatsapp: '5511999990000',
+        contacts,
+      }),
+    },
+    '@/lib/tenant-host': { tenantFromHost: () => 'fixture' },
+  });
+  const destination = async (query) => {
+    const response = await GET(
+      new Request(`https://fixture.eixu.com.br/go/wa${query}`),
+    );
+    return response.headers.get('location');
+  };
+  assert.match(await destination(''), /wa\.me\/5511999990000/);
+  assert.match(await destination('?n=0'), /wa\.me\/5511999990000/);
+  // O índice conta só os números marcados como WhatsApp.
+  assert.match(await destination('?n=1'), /wa\.me\/5511988887777/);
+  // Índice inexistente ou inválido cai no número principal, sem erro.
+  assert.match(await destination('?n=9'), /wa\.me\/5511999990000/);
+  assert.match(await destination('?n=abc'), /wa\.me\/5511999990000/);
+  assert.equal(events.length, 5);
+
+  // A prévia manda para o mesmo número, sem passar pelo redirecionador.
+  const ctx = {
+    isPreview: true,
+    tenant: { slug: 'fixture', whatsapp: '5511999990000', contacts },
+  };
+  assert.equal(previewHref('/go/wa?n=1', ctx), 'https://wa.me/5511988887777');
+  assert.equal(previewHref('/go/wa', ctx), 'https://wa.me/5511999990000');
+});
+
+await test('JSON-LD publica contatos do cadastro sem inventar dado ausente', () => {
+  const completo = structuredData(
+    {
+      ...tenant,
+      contactEmail: 'contato@fixture.com.br',
+      whatsapp: '5511999990000',
+      contacts: {
+        phones: [{ number: '5511999990000', whatsapp: true }],
+        addresses: [{ label: 'Loja', text: 'Rua das Pedras, 100, Bauru' }],
+        social: ['https://www.instagram.com/fixture/'],
+      },
+    },
+    page,
+  );
+  const org = completo['@graph'][0];
+  assert.equal(org.telephone, '+5511999990000');
+  assert.equal(org.email, 'contato@fixture.com.br');
+  assert.deepEqual(org.sameAs, ['https://www.instagram.com/fixture/']);
+  assert.deepEqual(org.address, [
+    {
+      '@type': 'PostalAddress',
+      name: 'Loja',
+      streetAddress: 'Rua das Pedras, 100, Bauru',
+    },
+  ]);
+  // Fixture sem contatos nem e-mail continua válida e sem chaves vazias.
+  const vazio = structuredData(tenant, page)['@graph'][0];
+  assert.equal('address' in vazio, false);
+  assert.equal('sameAs' in vazio, false);
+  assert.equal('telephone' in vazio, false);
 });

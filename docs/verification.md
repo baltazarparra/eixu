@@ -63,10 +63,17 @@ npm run test:sites
 npm run test:admin
 npx next typegen && npx tsc --noEmit
 npm run build:vercel
+npm run test:sites:browser
 git diff --check
 ```
 
 Para incluir a prova de isolamento do cookie na captura, rode `test:admin` com `EIXU_CHROME_PATH` apontando para o executável local do Chrome. Sem ele, esse caso é pulado; os demais testes não precisam de navegador.
+
+`test:sites:browser` também usa `EIXU_CHROME_PATH` e deve rodar depois de
+`build:vercel`, pois aplica o CSS emitido pelo Next.js aos componentes reais
+renderizados com dados sintéticos. Confere contraste do hero e da localização
+em desktop/mobile e os destinos dos contatos. Requisições externas são
+interceptadas; não usa banco nem geração paga. Sem Chrome, o caso é pulado.
 
 `tests/admin-concurrency.test.mjs` exige um PostgreSQL local descartável chamado `eixu_pr2_test`, indicado por `EIXU_TEST_POSTGRES_URL`. A suíte recusa hosts remotos, aplica `db/schema.sql` nesse banco e exercita o driver Neon e seus locks por um proxy WebSocket local; Blob, rede social e visão são simulados. Sem a variável, somente essa suíte de integração é pulada. Para incluí-la, execute `npm run test:admin` com a variável apontando para esse banco local.
 
@@ -79,6 +86,115 @@ npm run format -- --check README.md AGENTS.md docs
 ```
 
 O projeto possui `test:sites` e `test:admin`, com testes de contrato sem banco e uma suíte opcional de concorrência em PostgreSQL local. Nenhum desses testes usa geração paga. Não possui script genérico `test`, `verify` ou CI versionada. Não trate um comando inexistente como gate nem substitua falhas por uma declaração do modelo.
+
+## Contatos, localização e vibes, 11/09/2026
+
+A entrega acrescenta a coluna `tenants.contacts`, a seção automática de
+localização, a coluna de contato no rodapé e as quatro vibes de site.
+
+### Correções da revisão do PR #5
+
+Salvar os Dados de um cliente antigo preserva a rede social e o avatar do
+briefing; a remoção explícita continua apagando essa associação. Os telefones
+internacionais mantêm o `+` entre cadastro, armazenamento, edição e link
+`tel:`, inclusive países com números de até 11 dígitos. Os destinos de
+WhatsApp continuam usando somente dígitos.
+
+No artístico, o cartão do hero offset segue o tom da seção. A superfície
+suave é calculada antes das cores de texto, com fallback para o papel quando
+a mistura perde contraste. A branch também incorpora `main` em `d581366`,
+preservando as imagens sem aprovação, o Gemini 3.8 Flash e os registros de
+verificação das entregas anteriores.
+
+- Tipos (`next typegen` e `tsc --noEmit`) e build Next.js 16.3.3 passaram.
+- `test:sites`: 80 casos passaram. `test:admin` com Chrome: 38 passaram e
+  somente a integração Postgres foi pulada, sem `EIXU_TEST_POSTGRES_URL`.
+- `test:sites:browser`: passou com componentes reais e CSS do build em
+  1440 e 390 px. São 60 pares de texto/fundo por largura, com contraste mínimo
+  de 4,608:1, além dos destinos de telefone e WhatsApp.
+- O lint global mantém os 20 erros anteriores em 13 arquivos fora do escopo.
+  Lint dos arquivos alterados, formatação e `git diff --check` passaram.
+
+Esta revisão não executou migração, escrita em banco remoto nem geração paga.
+Os testes de dados usam dependências simuladas; os testes de navegador usam
+conteúdo sintético e interceptam a rede. A evidência anterior de migração e
+smoke abaixo foi preservada e não representa nova verificação do banco.
+
+### Evidência anterior às correções
+
+**Migração aplicada em 11/09/2026** no banco de `.env.local`, autorizada pelo
+operador: `npm run db:migrate`, 20 statements idempotentes, coluna
+`tenants.contacts jsonb not null default '{}'` criada. Os quatro clientes
+existentes seguiram com `contacts` vazio e o WhatsApp já gravado, que
+`contactsOf` reaproveita como primeiro telefone: o rodapé deles passa a exibir
+esse número assim que o código for publicado. Deploy só depois da migração;
+antes dela, criar cliente e salvar Dados falhariam com a mensagem genérica, sem
+gravar linha parcial.
+
+Checks executados em 11/09/2026, com Node.js 24.15.0:
+
+| Check                  | Resultado observado                                                                  |
+| ---------------------- | ------------------------------------------------------------------------------------ |
+| `npx tsc --noEmit`     | Passou.                                                                              |
+| `npm run test:sites`   | 67 casos, todos passaram.                                                            |
+| `npm run test:admin`   | 34 casos, 32 passaram e 2 pularam sem `EIXU_TEST_POSTGRES_URL` e `EIXU_CHROME_PATH`. |
+| `npm run build:vercel` | Passou, Next.js 16.3.3/Turbopack.                                                    |
+| `npm run lint`         | Falhou com os mesmos 20 erros preexistentes; nenhum nos arquivos tocados.            |
+
+Cobertura nova: normalização de telefone, endereço e rede social, incluindo a
+recusa de esquema que não seja `http(s)`; pareamento de telefone e tipo por
+índice no formulário, com linha vazia descartada; leitura tolerante da coluna
+ausente e do cliente anterior à mudança; faixa de cada vibe aceitando e
+recusando direções, com a mensagem apontando o eixo; recusa de `set_design`
+fora da faixa e consulta de unicidade restrita à mesma vibe; prompt declarando
+vibe e contatos; âncora `onde-estamos` reservada no pre-flight; `/go/wa?n=`
+escolhendo o segundo WhatsApp e caindo no principal com índice inválido;
+JSON-LD com telefone em E.164, e-mail, endereços e redes.
+
+### Smoke em navegador, 11/09/2026
+
+Quatro clientes sintéticos `smoke-*`, um por vibe, com o mesmo conteúdo e os
+mesmos blocos, publicados por SQL e apagados ao fim do smoke; o banco voltou
+aos quatro clientes reais, sem página órfã. Nenhuma chamada paga de geração.
+
+- As quatro páginas responderam 200 e renderizaram todos os blocos, sem bloco
+  descartado por schema. `data-vibe` correto em cada uma.
+- Sem overflow horizontal em 1440 nem em 390: `scrollWidth` igual ao
+  `clientWidth` nas duas larguras.
+- Mapa do Google carregou com o pino no endereço nas quatro vibes, com o
+  cartão do endereço resolvido. O filtro escuro do moderno produz um mapa
+  escuro legível, com o pino visível.
+- Troca de endereço: as abas alternam rótulo, texto, `src` do mapa e o link de
+  rota. Dois endereços, um iframe por vez.
+- Rodapé: WhatsApp por `/go/wa?n=0` com `data-track`, telefone comum em `tel:`,
+  e-mail em `mailto:`, atalho para `#onde-estamos` e os três ícones de rede.
+- Cadastro pelo formulário do admin, com credencial descartável passada por
+  variável de ambiente em vez da senha real: duas linhas de telefone com tipos
+  diferentes gravaram `contacts` na ordem, `whatsapp` derivado do número
+  marcado como WhatsApp, `brand.vibe`, e o `socialUrl` do briefing derivado da
+  lista de redes. Dados reabriu todos os campos preenchidos e mostrou a vibe.
+
+Dois defeitos foram encontrados **pelo** smoke e corrigidos nesta entrega:
+
+1. As linhas de telefone e endereço se esmagavam no formulário, porque
+   `.admin-input` fixa `width: 100%` e vence o utilitário de largura dentro do
+   flex. Passaram a usar `flex-basis`, que é quem controla a medida do item.
+2. Um número sem DDI era exibido como `+1133334444`, que se lê como código de
+   país 1. `formatPhone` passou a distinguir número com e sem DDI, e
+   `phoneE164` só devolve `+` quando há código de país; o campo ganhou a
+   legenda pedindo o DDI no WhatsApp.
+
+**Defeito preexistente observado, não corrigido aqui:** `lib/tracking.ts`
+reescreve os `href` de `/go/wa` antes da hidratação, e o React registra
+incompatibilidade de atributo no console. Acontece em cliente publicado sem
+nenhuma mudança desta entrega, inclusive no botão flutuante; o link continua
+funcionando porque o próprio script já aplicou a atribuição. Fica registrado
+para uma correção própria.
+
+**Não verificado:** geração de site pelo agente em cada vibe, que depende de
+chamada paga. As páginas do smoke foram
+compostas à mão para isolar o CSS e o render; elas não medem a qualidade da
+direção que o modelo produz dentro de cada faixa.
 
 ## Histórico: upgrade para Opus 5, 10/09/2026
 

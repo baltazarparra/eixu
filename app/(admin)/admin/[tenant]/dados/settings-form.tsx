@@ -8,27 +8,31 @@ import { TenantFields } from '@/components/admin/tenant-fields';
 import { DeleteTenantDialog } from '@/components/admin/delete-tenant-dialog';
 import { SocialProfileCard } from './social-card';
 import { adminFetch } from '@/lib/admin/http';
-import { intakeFromForm } from '@/lib/admin/tenant-input';
+import { contactsFromForm, intakeFromForm } from '@/lib/admin/tenant-input';
 import type { Intake } from '@/lib/tenant-intake';
+import type { Contacts } from '@/lib/tenant-contacts';
+import { VIBE_HINT, VIBE_LABEL, type Vibe } from '@/lib/design/vibes';
 import type { SocialProfile } from '@/lib/social-profile';
 
 export function SettingsForm({
   tenant,
   intake,
+  contacts,
   social,
 }: {
   tenant: {
     slug: string;
     name: string;
     status: string;
-    whatsapp: string | null;
     contactEmail: string | null;
     logoUrl?: string;
+    vibe: Vibe;
     pageCount: number;
     leadCount: number;
     imageCount: number;
   };
   intake: Partial<Intake>;
+  contacts: Contacts;
   social: SocialProfile | null;
 }) {
   const router = useRouter();
@@ -44,6 +48,13 @@ export function SettingsForm({
     router.push('/admin');
   }, [router]);
   async function save(form: FormData) {
+    const nextContacts = contactsFromForm(form);
+    if (!nextContacts.success) {
+      setNotice(
+        nextContacts.error.issues[0]?.message ?? 'Confira os contatos.',
+      );
+      return;
+    }
     const parsed = intakeFromForm(form);
     if (!parsed.success) {
       setNotice(
@@ -62,7 +73,7 @@ export function SettingsForm({
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           name: form.get('name'),
-          whatsapp: form.get('whatsapp'),
+          contacts: nextContacts.data,
           contactEmail: form.get('contactEmail'),
           intake: parsed.data,
         }),
@@ -118,11 +129,16 @@ export function SettingsForm({
         }}
       >
         <fieldset disabled={saving}>
-          <TenantFields values={tenant} intake={intake} />
+          <TenantFields values={tenant} intake={intake} contacts={contacts} />
           <p className="mt-5 text-xs leading-relaxed text-[var(--color-muted)]">
             Nome, contatos e logo são compartilhados com o site publicado.
             Alterar o briefing orienta novas edições; não reescreve páginas
             automaticamente.
+          </p>
+          <p className="mt-3 text-xs leading-relaxed text-[var(--color-muted)]">
+            Vibe do site: <strong>{VIBE_LABEL[tenant.vibe]}</strong>.{' '}
+            {VIBE_HINT[tenant.vibe]} Ela é definida no cadastro; mudar exige
+            reconstruir as páginas na conversa do site.
           </p>
           <div className="mt-6 flex gap-3">
             <button className="admin-primary" type="submit">

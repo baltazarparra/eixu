@@ -75,12 +75,66 @@ acrescenta a medição do navegador: largura da página, overflow e imagem
 quebrada. As capturas não voltam ao modelo como imagem; medido, o base64 no
 histórico da fase levou a entrada a 697 mil tokens contra 200 mil de limite.
 
+## Vibes
+
+O operador escolhe a vibe no cadastro do cliente e ela vale para o site
+inteiro. `comercial` é o contrato descrito acima e não restringe nada; as
+outras três delimitam a faixa em que a direção de arte decide. Referências
+lidas em 10/09/2026: [Linear](https://linear.app/) para `moderno`,
+[14islands](https://www.14islands.com/) para `ousado` e
+[Actionline](https://actionline.io/) para `artistico`. Elas orientam a
+linguagem visual; o conteúdo continua vindo do briefing do cliente.
+
+| Vibe        | O que a faixa exige                                                                                                                         |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `comercial` | Nada. Todos os eixos, raios, papéis e dials continuam disponíveis.                                                                          |
+| `moderno`   | Papel e superfície escuros, tinta clara, sans ou geométrica, capítulos ou ritmo contínuo, superfície delineada ou em camadas, raio pequeno. |
+| `ousado`    | Papel claro, sans ou geométrica, hero editorial/cover/poster, navegação mínima, superfície plana ou de contraste, raio zero ou pequeno.     |
+| `artistico` | Papel claro, display serifada ou humanista, hero deslocado/ateliê, superfície em camadas, motivo de anéis ou cantos, raio grande ou pílula. |
+
+`lib/design/vibes.ts` guarda essas faixas, o texto de direção que entra no
+prompt e a direção de imagem por vibe. `set_design` recusa a direção que sair
+da faixa, apontando eixo, valor recebido e valores permitidos, e a trava de
+unicidade passou a comparar só clientes da mesma vibe: as faixas se sobrepõem
+em vários eixos, e um site moderno bloqueado por um ousado com os mesmos enums
+seria uma recusa sem relação com o que se vê na tela. Dentro de cada faixa
+sobram 864 combinações estruturais no moderno, 576 no ousado e 5.184 no
+artístico, com folga para a distância mínima de três eixos.
+
+O CSS por vibe fica em `app/(sites)/vibes.css`, sempre sob
+`.site-theme[data-vibe='…']`, e realiza o que só o CSS resolve: escala e peso
+da tipografia, respiro entre seções, linha de 1px, caixa alta dos rótulos,
+lavagens de cor, cartão sobreposto no hero e filtro do mapa. O respiro da vibe
+sobrepõe o de `data-density`, porque a faixa já limita os dials. Em papel
+escuro, as faixas que pintam o fundo com a cor do texto (`cta.band`,
+`editorial.facts` escuro, plano em destaque, card do bento e seções com tom
+`ink`) viram um escuro elevado em vez de um bloco branco no meio da página.
+
+Na vibe artística, `themeVars` resolve a lavagem de cor da superfície `soft`
+antes de calcular os tokens de tinta, apoio e destaque. Se a mistura tirar o
+contraste mínimo da tinta escolhida, usa o papel da marca. O CSS não substitui
+essa superfície depois do cálculo. O cartão sobreposto do hero offset usa o
+papel do tom da própria seção, conservando o par texto/fundo também em `ink`,
+`accent` e `secondary`.
+
+## Contatos e localização automáticos
+
+Telefones, e-mail, endereços e redes sociais vêm do cadastro e são
+renderizados fora do catálogo de blocos: os contatos no rodapé e a seção "Onde
+estamos" logo acima dele, com o mapa carregado sob demanda e o link de rota.
+São dado do operador, como o botão flutuante de WhatsApp, então não entram em
+`pages.blocks`, no pre-flight nem na assinatura de composição. O prompt avisa
+o agente para não repetir esses dados nem inventar contato, e a âncora
+`onde-estamos` é reservada. `media.map` continua no catálogo para um mapa
+adicional em outro ponto da página.
+
 ## Contrato visual v2
 
 | Recurso              | Comportamento                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Perfil persistido    | `brand.design`, versão 2, guarda conceito, elemento-assinatura e oito eixos estruturais. `tenant.brief` guarda público, oferta, objetivo, personalidade, evidências e restrições. Não exige migração porque ambos os campos já são JSONB.                                                                                                                                                                                                                                                                                                                                                                  |
 | Tipografia           | Display: Geist, Fraunces, Space Grotesk, Manrope ou Geist Mono. Corpo: Geist, Newsreader, Space Grotesk ou Manrope. `next/font` auto-hospeda os arquivos e evita troca de fonte após o carregamento.                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Vibe                 | `brand.vibe` limita os eixos, o raio, a luminância do papel e os dials que `set_design` aceita. Ausente significa `comercial`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | Paleta               | `accent`, `accentAlt` e `highlight` vêm do cadastro do cliente e a direção não as reescreve: superfície de marca, tom complementar e cor da ação. `ink`, `paper` e `surface` continuam com a direção. A ferramenta recusa texto sem contraste AA em paper/surface e cores primária/secundária iguais; o render ainda ajusta acentos que não suportam texto legível. Sem `highlight`, a ação usa a primária. Botões usam `--highlight`/`--highlight-ink`; texto de destaque usa `--highlight-text`, medido contra o tom da seção ou a superfície interna do card/formulário, com contraste mínimo de 4,5:1. |
 | Composição global    | Seis heroes, quatro navegações, quatro ritmos, quatro tratamentos de imagem, quatro superfícies e cinco motivos formam a gramática do cliente. Dials controlam variância, densidade e motion. Atelier compõe ambiente e detalhe; não é padrão obrigatório.                                                                                                                                                                                                                                                                                                                                                 |
 | Apresentação local   | Todo bloco aceita `presentation`: tom (incluindo a cor secundária), largura, respiro, alinhamento, borda e motion (`none`, `reveal`, `stagger`, `image`). Use um a três momentos de movimento coerentes com a narrativa.                                                                                                                                                                                                                                                                                                                                                                                   |
@@ -91,7 +145,7 @@ histórico da fase levou a entrada a 697 mil tokens contra 200 mil de limite.
 
 ## Unicidade e coerência
 
-`set_design` compara oito decisões estruturais com os perfis dos outros tenants. A direção precisa diferir em pelo menos três eixos do perfil mais próximo. Nome, briefing, texto, imagens e identidade do outro cliente não são retornados ao agente.
+`set_design` compara oito decisões estruturais com os perfis dos outros tenants da mesma vibe. A direção precisa diferir em pelo menos três eixos do perfil mais próximo. Nome, briefing, texto, imagens e identidade do outro cliente não são retornados ao agente.
 
 A home também recebe uma assinatura de composição baseada em sequência de tipos, layout, tom e borda das seções. Texto, URL e imagem são ignorados. `build_site`, `set_blocks`, as ferramentas de publicação e a API administrativa recusam uma home com assinatura idêntica a um rascunho ou snapshot publicado de outro tenant. Páginas com menos de quatro blocos de conteúdo ficam fora dessa trava para não forçar diferenças artificiais em obrigado ou páginas curtas.
 

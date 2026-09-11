@@ -1,0 +1,190 @@
+/*
+ * Vibes do site. A vibe é escolhida no cadastro e delimita os eixos que a
+ * direção de arte pode usar (lib/design/vibes.ts); aqui ficam as decisões que
+ * só o CSS realiza: escala tipográfica, respiro, superfície e tratamento.
+ *
+ * `comercial` é o contrato anterior e não tem regra nenhuma. As três faixas
+ * abaixo sobrepõem o respiro de `data-density`, porque a vibe já coordena
+ * densidade e escala: a faixa limita os dials que a direção pode escolher.
+ *
+ * Nada aqui toca variáveis emitidas por themeVars no atributo style (--radius,
+ * fontes e cores): elas são inline e a faixa da vibe é quem as restringe.
+ */
+
+/* ---------------------------------------------------------------- moderno
+ * Superfície escura, monocromia com um acento, linha de 1px e capítulos.
+ */
+.site-theme[data-vibe='moderno'] {
+  --section-space: clamp(5rem, 10vw, 9rem);
+  --line: color-mix(in oklab, var(--ink) 11%, var(--paper));
+}
+.site-theme[data-vibe='moderno'] .site-headline {
+  font-size: clamp(2.6rem, 5vw, 4.6rem);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+}
+.site-theme[data-vibe='moderno'] .site-h2 {
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+.site-theme[data-vibe='moderno'] .site-nav {
+  position: sticky;
+  top: 0;
+  background: color-mix(in oklab, var(--paper) 80%, transparent);
+  backdrop-filter: blur(14px);
+}
+.site-theme[data-vibe='moderno'] .site-nav-cta {
+  border-radius: 999px;
+}
+.site-theme[data-vibe='moderno']
+  :is(
+    .site-bento-item,
+    .site-services-cards li,
+    .site-steps-cards li,
+    .site-faq-cards details
+  ) {
+  border: 1px solid var(--line);
+  background: color-mix(in oklab, var(--ink) 5%, var(--paper));
+}
+.site-theme[data-vibe='moderno'] main img {
+  border: 1px solid var(--line);
+}
+/*
+ * Em papel escuro, um bloco que pinta o fundo com a cor do texto vira uma
+ * faixa branca no meio da página. As duas regras abaixo trocam isso por um
+ * escuro elevado: `--paper` é sempre o fundo nas seções com tom, e `--ink` é o
+ * fundo nas faixas que usam a tinta como superfície.
+ */
+.site-theme[data-vibe='moderno'] .site-block[data-tone='ink'] {
+  --paper: color-mix(in oklab, var(--brand-paper) 88%, var(--brand-ink));
+  --ink: var(--brand-ink);
+  --muted: var(--muted-soft);
+  --line: color-mix(in oklab, var(--brand-ink) 20%, var(--brand-paper));
+  --highlight-text: var(--highlight-text-soft);
+  background: var(--paper);
+  color: var(--ink);
+}
+.site-theme[data-vibe='moderno']
+  :is(.site-cta, .site-facts-dark, .site-plan-featured, .site-bento-featured) {
+  --ink: color-mix(in oklab, var(--brand-paper) 88%, var(--brand-ink));
+  --paper: var(--brand-ink);
+  --muted: var(--muted-soft);
+  --line: color-mix(in oklab, var(--brand-ink) 20%, var(--brand-paper));
+}
+.site-theme[data-vibe='moderno'] :is(.site-location-map, .site-map) iframe {
+  filter: invert(0.92) hue-rotate(180deg) saturate(0.55);
+}
+
+/* ----------------------------------------------------------------- ousado
+ * Tipografia enorme na abertura, muito branco, imagem de borda a borda.
+ */
+.site-theme[data-vibe='ousado'] {
+  --section-space: clamp(6rem, 14vw, 14rem);
+}
+.site-theme[data-vibe='ousado'] .site-headline {
+  max-width: none;
+  font-size: clamp(3.2rem, 11vw, 11rem);
+  font-weight: 500;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+}
+.site-theme[data-vibe='ousado'] .site-statement-oversize .site-headline {
+  font-size: clamp(3.6rem, 13vw, 13rem);
+}
+.site-theme[data-vibe='ousado'] .site-h2 {
+  font-size: clamp(2.4rem, 6vw, 5rem);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+.site-theme[data-vibe='ousado'] :is(.site-eyebrow, .site-nav-link) {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.site-theme[data-vibe='ousado'] .site-action {
+  border-radius: 0;
+  font-size: 0.82rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.site-theme[data-vibe='ousado']
+  :is(main img, .site-hero-media, .site-location-map iframe, .site-map iframe) {
+  border-radius: 0;
+}
+.site-theme[data-vibe='ousado'] :is(.site-gallery ul, .site-bento) {
+  gap: 1px;
+}
+.site-theme[data-vibe='ousado'] main > .site-block > :is(section, article) {
+  border-bottom-color: transparent;
+}
+.site-theme[data-vibe='ousado'] :is(.site-location-map, .site-map) iframe {
+  filter: grayscale(1) contrast(1.05);
+}
+
+/* -------------------------------------------------------------- artistico
+ * Papel claro e quente, display serifada, lavagem de cor entre seções.
+ */
+.site-theme[data-vibe='artistico'] .site-headline {
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.site-theme[data-vibe='artistico'] .site-eyebrow {
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.site-theme[data-vibe='artistico'] .site-hero {
+  background-image:
+    radial-gradient(
+      ellipse at 12% 10%,
+      color-mix(in oklab, var(--accent-2) 22%, transparent),
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse at 88% 80%,
+      color-mix(in oklab, var(--highlight) 18%, transparent),
+      transparent 60%
+    );
+}
+.site-theme[data-vibe='artistico']
+  main
+  > .site-block:not([data-tone]):nth-child(3n + 2) {
+  background-image: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--accent-2) 13%, var(--paper)),
+    color-mix(in oklab, var(--highlight) 9%, var(--paper))
+  );
+}
+/* A lavagem soft vem de --surface em themeVars, junto dos tokens de texto
+   medidos contra ela. Não substitua só o fundo depois desse cálculo. */
+.site-theme[data-vibe='artistico'] .site-action {
+  border-radius: 999px;
+}
+.site-theme[data-vibe='artistico'] .site-action[data-variant='solid'] {
+  background: transparent;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+.site-theme[data-vibe='artistico']
+  :is(main img, .site-location-map iframe, .site-map iframe) {
+  border-radius: 1.25rem;
+}
+.site-theme[data-vibe='artistico'] .site-footer {
+  background-image: linear-gradient(
+    160deg,
+    color-mix(in oklab, var(--highlight) 12%, var(--paper)),
+    var(--paper) 65%
+  );
+}
+@media (min-width: 768px) {
+  /* O cartão de texto sobrepõe a foto, como na referência editorial. */
+  .site-theme[data-vibe='artistico'] .site-hero-offset .site-hero-copy {
+    position: relative;
+    z-index: 1;
+    margin-inline-end: -4rem;
+    padding: clamp(1.5rem, 3vw, 2.75rem);
+    background: var(--paper);
+    box-shadow: 0 30px 80px -60px var(--brand-ink);
+  }
+}

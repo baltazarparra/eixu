@@ -13,6 +13,7 @@
     "start": "wrangler dev --config dist/server/wrangler.json",
     "lint": "oxlint",
     "test:sites": "node --test tests/site-*.test.mjs",
+    "test:sites:browser": "node --test tests/browser/site-*.test.mjs",
     "test:admin": "node --test tests/admin-*.test.mjs",
     "format": "oxfmt",
     "db:migrate": "node --env-file=.env.local scripts/migrate.mjs",

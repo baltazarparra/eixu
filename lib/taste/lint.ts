@@ -117,6 +117,15 @@ export function lintPage(
       propText(block.props, 'anchor') ||
       (block.type === 'form.lead' ? 'contato' : '');
     if (!anchor) continue;
+    // A seção de localização sai do cadastro e já ocupa esta âncora.
+    if (anchor === 'onde-estamos') {
+      push(
+        'error',
+        'anchor-reservada',
+        'A âncora "onde-estamos" pertence à seção de localização montada a partir do cadastro. Escolha outro nome.',
+        block.id,
+      );
+    }
     if (anchors.has(anchor))
       push(
         'error',

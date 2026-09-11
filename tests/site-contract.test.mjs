@@ -1203,3 +1203,161 @@ await test('ferramentas preservam o perfil e o intake atualizados durante o turn
   assert.equal(brief.generation.reviewRounds, 1);
   assert.deepEqual(brief.constraints, ['Nunca mostrar pessoas']);
 });
+
+const { systemPrompt } = await j.import('../lib/taste/prompt.ts');
+const { designProfileInputSchema: designInput } = await j.import(
+  '../lib/design/profile.ts',
+);
+
+const modernDirection = {
+  brief: {
+    audience: 'Times de produto que precisam de previsibilidade',
+    offer: 'Implantação e operação de rotina de engenharia',
+    goal: 'Agendar uma conversa técnica',
+    personality: ['precisa', 'contida'],
+    evidence: ['Operação própria desde 2019'],
+    constraints: ['Não citar clientes'],
+  },
+  concept: 'Painel escuro com uma única linha de acento por capítulo',
+  signatureElement: 'Régua de 1px separando os capítulos',
+  accent: '#4b6bdd',
+  accentAlt: '#2f8f6b',
+  ink: '#f5f6f8',
+  paper: '#0b0c0e',
+  surface: '#15171b',
+  radius: 'sm',
+  displayFont: 'geometric',
+  bodyFont: 'sans',
+  heroComposition: 'editorial',
+  navigation: 'minimal',
+  rhythm: 'chapters',
+  imageTreatment: 'framed',
+  surfaceStyle: 'outlined',
+  motif: 'none',
+  variance: 3,
+  motion: 4,
+  density: 4,
+};
+
+await test('set_design respeita a faixa da vibe e compara unicidade dentro dela', async () => {
+  const queries = [];
+  const { buildTools } = await loadModule('lib/ai/tools.ts', {
+    '@/lib/db': {
+      db:
+        () =>
+        async (parts, ...values) => {
+          queries.push({ sql: parts.join('?'), values });
+          return [];
+        },
+    },
+    '@/lib/tenant-queries': { listPages: async () => [] },
+    '@/lib/images/queries': { listImages: async () => [] },
+  });
+  const tools = buildTools({
+    id: 'fixture-moderno',
+    slug: 'fixture-moderno',
+    brand: { vibe: 'moderno' },
+    dials: {},
+    brief: {},
+  });
+
+  const claro = await tools.set_design.execute(
+    designInput.parse({
+      ...modernDirection,
+      ink: '#111111',
+      paper: '#ffffff',
+      surface: '#eeeeee',
+    }),
+  );
+  assert.match(claro.error, /Moderno/);
+  assert.match(claro.error, /paper/);
+
+  const fora = await tools.set_design.execute(
+    designInput.parse({
+      ...modernDirection,
+      displayFont: 'editorial',
+      radius: 'full',
+    }),
+  );
+  assert.match(fora.error, /displayFont/);
+  assert.match(fora.error, /radius/);
+
+  const ok = await tools.set_design.execute(designInput.parse(modernDirection));
+  assert.equal(ok.error, undefined);
+  assert.equal(ok.vibe, 'moderno');
+  // A comparação de unicidade só olha clientes da mesma vibe: as faixas se
+  // sobrepõem em vários eixos e um moderno não repete um ousado.
+  const uniqueness = queries.find((query) => query.sql.includes("brand ? 'design'"));
+  assert.ok(uniqueness.sql.includes("brand->>'vibe'"));
+  assert.ok(uniqueness.values.includes('moderno'));
+});
+
+await test('o prompt declara a vibe e os contatos já renderizados', () => {
+  const tenant = {
+    name: 'Fixture',
+    slug: 'fixture',
+    brand: { vibe: 'ousado' },
+    dials: { variance: 7, motion: 5, density: 4 },
+    brief: {},
+    imageGuide: {},
+    whatsapp: '5511988887777',
+    contactEmail: 'oi@fixture.com.br',
+    contacts: {
+      phones: [{ number: '5511988887777', whatsapp: true }],
+      addresses: [{ label: 'Loja', text: 'Rua das Pedras, 100, Bauru' }],
+      social: ['https://www.instagram.com/fixture/'],
+    },
+  };
+  const prompt = systemPrompt(tenant, '', '/', '');
+  assert.match(prompt, /## Vibe do site: Ousado/);
+  assert.match(prompt, /hero\.statement/);
+  assert.match(prompt, /Rua das Pedras, 100, Bauru/);
+  assert.match(prompt, /oi@fixture\.com\.br/);
+  assert.match(prompt, /onde-estamos/);
+  assert.match(prompt, /Direção de imagem da vibe/);
+
+  const comercial = systemPrompt({ ...tenant, brand: {} }, '', '/', '');
+  assert.match(comercial, /## Vibe do site: Comercial/);
+  assert.equal(comercial.includes('11vw'), false);
+
+  // Cliente sem contatos não ganha seção vazia nem quebra o prompt.
+  const vazio = systemPrompt(
+    { ...tenant, contacts: undefined, whatsapp: null, contactEmail: null },
+    '',
+    '/',
+    '',
+  );
+  assert.match(vazio, /\(nenhum\)/);
+});
+
+await test('a âncora da seção de localização pertence ao cadastro', () => {
+  const page = project()[0];
+  page.blocks = [
+    {
+      id: 'mapa',
+      type: 'media.map',
+      props: {
+        address: 'Rua das Pedras, 100',
+        query: 'Rua das Pedras, 100',
+        anchor: 'onde-estamos',
+      },
+    },
+  ];
+  const findings = lintPage(page);
+  assert.ok(findings.some((finding) => finding.rule === 'anchor-reservada'));
+  page.blocks[0].props.anchor = 'endereco';
+  assert.equal(
+    lintPage(page).some((finding) => finding.rule === 'anchor-reservada'),
+    false,
+  );
+});
+
+await test('o plano de cenas continua guiado pelo hero do perfil', () => {
+  // A vibe ousado abre com hero.statement e reaproveita a cena do hero num
+  // media.image bleed: o plano não muda, e a proporção precisa casar.
+  assert.deepEqual(
+    scenePlan({ heroComposition: 'editorial' }, 3).map((scene) => scene.ratio),
+    ['16:9', '4:3', '4:3', '5:6', '16:9'],
+  );
+  assert.equal(scenePlan({ heroComposition: 'poster' }, 3)[0].ratio, '4:5');
+});

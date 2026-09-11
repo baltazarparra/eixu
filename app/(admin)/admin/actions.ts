@@ -9,10 +9,13 @@ import { db } from '@/lib/db';
 import { text } from '@/lib/form-data';
 import {
   brandColorsFromForm,
+  contactsFromForm,
   intakeFromForm,
   tenantDetailsSchema,
   tenantSlugSchema,
+  vibeFromForm,
 } from '@/lib/admin/tenant-input';
+import { primaryWhatsapp } from '@/lib/tenant-contacts';
 import { spendSchema } from '@/lib/admin/traffic';
 import { countTenantData, getTenantBySlug } from '@/lib/tenant-queries';
 import {
@@ -55,10 +58,14 @@ export async function createTenantAction(
   const slugResult = tenantSlugSchema.safeParse(text(formData, 'slug'));
   const intake = intakeFromForm(formData);
   const colors = brandColorsFromForm(formData);
+  const contacts = contactsFromForm(formData);
+  const vibe = vibeFromForm(formData);
   if (!details.success)
     return details.error.issues[0]?.message ?? 'Confira os dados do cliente.';
   if (!slugResult.success)
     return slugResult.error.issues[0]?.message ?? 'Confira o endereço.';
+  if (!contacts.success)
+    return contacts.error.issues[0]?.message ?? 'Confira os contatos.';
   if (!intake.success)
     return (
       intake.error.issues[0]?.message ??
@@ -66,8 +73,12 @@ export async function createTenantAction(
     );
   if (!colors.success)
     return colors.error.issues[0]?.message ?? 'Confira as cores da marca.';
+  if (!vibe.success) return 'Escolha uma vibe para o site.';
   const slug = slugResult.data;
-  const { name, whatsapp, contactEmail } = details.data;
+  const { name, contactEmail } = details.data;
+  // O site inteiro continua lendo tenants.whatsapp: aqui ele é o primeiro
+  // número marcado como WhatsApp na lista de contatos.
+  const whatsapp = primaryWhatsapp(contacts.data);
 
   // O arquivo sobe antes do insert porque a rota de upload exige um cliente
   // que ainda não existe. Um insert recusado apaga o arquivo logo abaixo.
@@ -89,16 +100,18 @@ export async function createTenantAction(
     accentAlt: colors.data.secondary,
     highlight: colors.data.highlight,
     paletteSource: 'operador',
+    vibe: vibe.data,
     ...(logoUrl ? { logoUrl } : {}),
   };
 
   let tenantId: string;
   try {
     const rows = (await db()`
-      insert into tenants (slug, name, whatsapp, contact_email, brief, brand)
+      insert into tenants (slug, name, whatsapp, contact_email, brief, brand, contacts)
       values (${slug}, ${name}, ${whatsapp}, ${contactEmail},
               ${JSON.stringify({ intake: intake.data })}::jsonb,
-              ${JSON.stringify(brand)}::jsonb)
+              ${JSON.stringify(brand)}::jsonb,
+              ${JSON.stringify(contacts.data)}::jsonb)
       on conflict (slug) do nothing returning id
     `) as { id: string }[];
     if (!rows.length) {

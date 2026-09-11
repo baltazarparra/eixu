@@ -9,6 +9,7 @@ import {
 } from 'next/font/google';
 import './site.css';
 import './creative.css';
+import './vibes.css';
 
 const sans = Geist({
   subsets: ['latin'],

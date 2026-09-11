@@ -4,8 +4,23 @@
 // oxlint-disable next/no-html-link-for-pages
 // oxlint-disable next/no-img-element
 import { z } from 'zod';
-import { ArrowUpRight, BookOpen, Layers3 } from 'lucide-react';
+import {
+  ArrowUpRight,
+  BookOpen,
+  Layers3,
+  Mail,
+  MapPin,
+  MessageCircle,
+  Phone,
+} from 'lucide-react';
 import { MotionLink } from '@/lib/blocks/motion';
+import { SocialIcon } from '@/lib/blocks/social-icons';
+import {
+  contactsOf,
+  formatPhone,
+  phoneE164,
+  socialLinks,
+} from '@/lib/tenant-contacts';
 import { blockSchemas } from '@/lib/blocks/registry';
 import type { RenderContext } from '@/lib/blocks/render';
 import { previewHref } from '@/lib/sites/preview';
@@ -46,9 +61,10 @@ const statCols: Record<number, string> = {
   4: 'lg:grid-cols-4',
 };
 const section = 'site-section';
-const eyebrowClass = 'text-[0.85rem] font-medium text-[var(--muted)]';
+const eyebrowClass =
+  'site-eyebrow text-[0.85rem] font-medium text-[var(--muted)]';
 const h2Class =
-  'text-balance text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.08] tracking-[-0.02em]';
+  'site-h2 text-balance text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.08] tracking-[-0.02em]';
 
 function Eyebrow({ children }: { children?: string }) {
   if (!children) return null;
@@ -141,7 +157,7 @@ export function NavBar({
               key={link.href + link.label}
               href={link.href}
               aria-current={link.href === ctx.pagePath ? 'page' : undefined}
-              className="text-[0.92rem] text-[var(--muted)] hover:text-[var(--ink)]"
+              className="site-nav-link text-[0.92rem] text-[var(--muted)] hover:text-[var(--ink)]"
             >
               {link.label}
             </a>
@@ -150,7 +166,7 @@ export function NavBar({
         {cta ? (
           <a
             href={cta.href}
-            className="rounded-[var(--radius)] bg-[var(--highlight)] px-5 py-2.5 text-[0.9rem] font-medium text-[var(--highlight-ink)]"
+            className="site-nav-cta rounded-[var(--radius)] bg-[var(--highlight)] px-5 py-2.5 text-[0.9rem] font-medium text-[var(--highlight-ink)]"
             data-track={cta.href.startsWith('/go/wa') ? 'whatsapp' : undefined}
           >
             {cta.label}
@@ -647,7 +663,7 @@ export function FormLead({
           <button
             type="submit"
             disabled={ctx.isPreview}
-            className="mt-1 self-start rounded-[var(--radius)] bg-[var(--highlight)] px-7 py-3.5 text-[0.98rem] font-medium text-[var(--highlight-ink)]"
+            className="site-submit mt-1 self-start rounded-[var(--radius)] bg-[var(--highlight)] px-7 py-3.5 text-[0.98rem] font-medium text-[var(--highlight-ink)]"
           >
             {submitLabel}
           </button>
@@ -939,7 +955,7 @@ export function PricingTable({
           {plans.map((plan) => (
             <li
               key={plan.name}
-              className={`flex flex-col gap-6 p-8 ${plan.highlight ? 'bg-[var(--ink)] text-[var(--paper)]' : 'bg-[var(--paper)]'}`}
+              className={`flex flex-col gap-6 p-8 ${plan.highlight ? 'site-plan-featured bg-[var(--ink)] text-[var(--paper)]' : 'bg-[var(--paper)]'}`}
             >
               <div className="flex flex-col gap-1">
                 <h3 className="text-[1.1rem] font-semibold">{plan.name}</h3>
@@ -962,7 +978,7 @@ export function PricingTable({
               </ul>
               <a
                 href={plan.cta.href}
-                className={`mt-auto inline-flex items-center justify-center rounded-[var(--radius)] px-5 py-3 text-[0.95rem] font-medium ${
+                className={`site-plan-cta mt-auto inline-flex items-center justify-center rounded-[var(--radius)] px-5 py-3 text-[0.95rem] font-medium ${
                   plan.highlight
                     ? 'bg-[var(--highlight)] text-[var(--highlight-ink)]'
                     : 'border border-[var(--line)] text-[var(--ink)]'
@@ -975,6 +991,105 @@ export function PricingTable({
         </ul>
       </div>
     </section>
+  );
+}
+
+/**
+ * Contatos do cadastro no rodapé. São dado do operador, não composição do
+ * agente: aparecem em todos os layouts, inclusive no minimal, e o bloco
+ * continua sem campo de telefone, e-mail ou rede para o modelo preencher.
+ */
+function FooterContacts({ ctx }: { ctx: RenderContext }) {
+  const contacts = contactsOf(ctx.tenant.contacts, ctx.tenant.whatsapp);
+  const email = ctx.tenant.contactEmail;
+  const social = socialLinks(contacts);
+  // Post e obrigado não recebem a seção de localização: nessas páginas o
+  // atalho apontaria para uma âncora que não existe.
+  const hasLocation =
+    contacts.addresses.length > 0 &&
+    ctx.pageType !== 'post' &&
+    ctx.pageType !== 'thank_you';
+  if (
+    !contacts.phones.length &&
+    !email &&
+    !social.length &&
+    !contacts.addresses.length
+  )
+    return null;
+  const link =
+    'flex items-center gap-2 text-[0.92rem] text-[var(--muted)] hover:text-[var(--ink)]';
+  // O índice de cada WhatsApp vira ?n= no redirecionador; contar antes evita
+  // mutar variável durante a renderização.
+  const phones = contacts.phones.map((phone, index) => ({
+    ...phone,
+    waIndex: contacts.phones
+      .slice(0, index)
+      .filter((previous) => previous.whatsapp).length,
+  }));
+  return (
+    <div className="site-footer-contacts flex flex-col gap-2.5">
+      <p className="site-eyebrow text-[0.8rem] font-medium text-[var(--ink)]">
+        Contato
+      </p>
+      {phones.map((phone) => {
+        if (!phone.whatsapp)
+          return (
+            <a
+              key={phone.number}
+              href={`tel:${phoneE164(phone.number)}`}
+              className={link}
+            >
+              <Phone size={15} aria-hidden="true" />
+              {formatPhone(phone.number)}
+            </a>
+          );
+        return (
+          <a
+            key={phone.number}
+            href={previewHref(
+              `/go/wa?n=${phone.waIndex}&from=${encodeURIComponent(ctx.pagePath)}`,
+              ctx,
+            )}
+            rel="noreferrer"
+            data-track="whatsapp"
+            className={link}
+          >
+            <MessageCircle size={15} aria-hidden="true" />
+            {formatPhone(phone.number)}
+            <span className="text-[0.78rem] opacity-70">WhatsApp</span>
+          </a>
+        );
+      })}
+      {email ? (
+        <a href={`mailto:${email}`} className={link}>
+          <Mail size={15} aria-hidden="true" />
+          {email}
+        </a>
+      ) : null}
+      {hasLocation ? (
+        <a href="#onde-estamos" className={link}>
+          <MapPin size={15} aria-hidden="true" />
+          Onde estamos
+        </a>
+      ) : null}
+      {social.length ? (
+        <ul className="site-footer-social mt-1 flex flex-wrap gap-3">
+          {social.map((item) => (
+            <li key={item.url}>
+              <a
+                href={item.url}
+                rel="noreferrer"
+                aria-label={item.label}
+                title={item.label}
+                className="flex size-9 items-center justify-center rounded-[var(--radius)] border border-[var(--line)] text-[var(--muted)] hover:text-[var(--ink)]"
+              >
+                <SocialIcon network={item.key} />
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
   );
 }
 
@@ -1022,7 +1137,10 @@ export function FooterCompact({
             ) : null}
           </div>
           {links.length ? (
-            <nav className="flex flex-wrap gap-x-7 gap-y-3" aria-label="Rodapé">
+            <nav
+              className="site-footer-nav flex flex-wrap gap-x-7 gap-y-3"
+              aria-label="Rodapé"
+            >
               {links.map((link) => (
                 <a
                   key={link.href + link.label}
@@ -1034,6 +1152,7 @@ export function FooterCompact({
               ))}
             </nav>
           ) : null}
+          <FooterContacts ctx={ctx} />
         </div>
         {legal ? (
           <p className="text-[0.82rem] text-[var(--muted)]">{legal}</p>
@@ -1170,7 +1289,7 @@ export function EditorialFacts({
 }: EditorialFactsProps) {
   return (
     <section
-      className={`${section} site-facts site-facts-${layout} border-b border-[var(--line)] ${dark ? 'bg-[var(--ink)] text-[var(--paper)]' : ''}`}
+      className={`${section} site-facts site-facts-${layout} border-b border-[var(--line)] ${dark ? 'site-facts-dark bg-[var(--ink)] text-[var(--paper)]' : ''}`}
     >
       <div className={`${shell} grid gap-12 md:grid-cols-12`}>
         <div className="flex flex-col gap-4 md:col-span-7">

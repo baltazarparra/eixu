@@ -1,14 +1,29 @@
+import { contactsOf, phoneE164, socialLinks } from '@/lib/tenant-contacts';
 import type { Page, Tenant } from '@/lib/types';
 
 /** SEO e FAQ seguem o mesmo snapshot que o visitante está vendo. */
 export function structuredData(tenant: Tenant, page: Page, preview = false) {
   const seo = preview ? page.seo : (page.publishedSeo ?? {});
+  const contacts = contactsOf(tenant.contacts, tenant.whatsapp);
+  const phone = contacts.phones[0]?.number ?? tenant.whatsapp;
+  const social = socialLinks(contacts).map((link) => link.url);
   const graph: Record<string, unknown>[] = [
     {
       '@type': 'Organization',
       '@id': `#organization`,
       name: tenant.name,
-      ...(tenant.whatsapp ? { telephone: tenant.whatsapp } : {}),
+      ...(phone ? { telephone: phoneE164(phone) } : {}),
+      ...(tenant.contactEmail ? { email: tenant.contactEmail } : {}),
+      ...(social.length ? { sameAs: social } : {}),
+      ...(contacts.addresses.length
+        ? {
+            address: contacts.addresses.map((item) => ({
+              '@type': 'PostalAddress',
+              ...(item.label ? { name: item.label } : {}),
+              streetAddress: item.text,
+            })),
+          }
+        : {}),
     },
   ];
   if (page.type === 'post') {

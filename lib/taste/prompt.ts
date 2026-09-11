@@ -1,4 +1,11 @@
 import { catalogForPrompt } from '../blocks/registry';
+import {
+  VIBE_DIRECTION,
+  VIBE_IMAGE_DIRECTION,
+  VIBE_LABEL,
+  vibeOf,
+} from '../design/vibes';
+import { contactsOf, contactsSummary } from '../tenant-contacts';
 import { intakeSocialUrl, intakeSummary } from '../tenant-intake';
 import { socialSummary } from '../social-profile';
 import { PHASE_BRIEF, type Phase } from './phases';
@@ -50,7 +57,9 @@ const LIMITS = `## Conteúdo e limites
 - No máximo um hero, nav e footer. 8+ seções de conteúdo exigem 4 famílias. Até 1 eyebrow por 3 seções. Hero: headline até 56 caracteres, subtext até 20 palavras. SEO: título até 60 caracteres, descrição até 160.
 - logoText é obrigatório em nav.bar e footer.compact mesmo com logo enviado. Nos itens de listas, body tem no máximo 160 caracteres; textos longos pertencem a editorial.text.
 - CTA para /go/wa?from=/ quando há WhatsApp; senão para o formulário. Toda página comum precisa de cta.band ou form.lead.
-- Imagens: use a biblioteca e as URLs fornecidas, exatas. Nunca invente URL. Toda imagem gerada fica disponível na biblioteca com número e URL, sem aprovação. A crítica orienta ajustes, mas não é uma etapa de decisão.`;
+- Imagens: use a biblioteca e as URLs fornecidas, exatas. Nunca invente URL. Toda imagem gerada fica disponível na biblioteca com número e URL, sem aprovação. A crítica orienta ajustes, mas não é uma etapa de decisão.
+- Telefones, e-mail, endereços e redes do cadastro já são renderizados fora dos blocos: os contatos no rodapé e o mapa na seção "Onde estamos", logo acima dele. Não repita esses dados em blocos nem invente contato que não esteja no cadastro. media.map serve só para um mapa adicional em outro ponto da página.
+- Não use "onde-estamos" como anchor nem como destino de link: a âncora pertence à seção automática e o pre-flight recusa as duas coisas. Um segundo WhatsApp do cadastro é /go/wa?n=1.`;
 
 const FREE = `## Execução econômica
 - O estado atual abaixo é a fonte editorial. Turnos encerrados mantêm texto e recibos compactos, não snapshots antigos de ferramentas. Releia a página quando uma alteração depender de props ou IDs que não estão neste turno.
@@ -93,11 +102,24 @@ export function systemPrompt(
   const wantsDirection =
     !phase || phase === 'briefing' || phase === 'composicao';
   const wantsComposition = !phase || phase !== 'briefing';
+  const wantsImageDirection =
+    !phase || phase === 'briefing' || phase === 'cenas';
+  const vibe = vibeOf(tenant.brand);
+  const contacts = contactsSummary(
+    contactsOf(tenant.contacts, tenant.whatsapp),
+    tenant.contactEmail,
+  );
 
   const sections = [
     FACTS,
     phase ? PHASE_BRIEF[phase] : FREE,
     wantsComposition ? COMPOSITION : '',
+    wantsDirection
+      ? `## Vibe do site: ${VIBE_LABEL[vibe]}\n${VIBE_DIRECTION[vibe]}`
+      : '',
+    wantsImageDirection
+      ? `## Direção de imagem da vibe\n${VIBE_IMAGE_DIRECTION[vibe]}`
+      : '',
     wantsDirection ? DIRECTION : '',
     wantsCatalog ? LIMITS : '',
     `- prepare_site_images, update_image e generate_logo salvam imagens com número e URL para uso imediato, sem aprovação. Elas continuam visíveis em Imagens; o usuário pede mudanças pelo número no chat. Orientações de aprovação em conversas antigas estão obsoletas. A aplicação de logo e a publicação seguem o pedido do operador.`,
@@ -110,7 +132,10 @@ export function systemPrompt(
     intake ? `## Intake do operador\n${intake}` : '',
     `## Estado atual
 Cliente: ${tenant.name}; host: ${tenant.slug}.eixu.com.br
-WhatsApp: ${tenant.whatsapp ?? 'não configurado'}
+Vibe: ${VIBE_LABEL[vibe]}
+WhatsApp principal: ${tenant.whatsapp ?? 'não configurado'}
+Contatos do cadastro, renderizados no rodapé e em "Onde estamos":
+${contacts || '(nenhum)'}
 Marca: ${JSON.stringify(tenant.brand)}
 Dials: ${JSON.stringify(tenant.dials)}
 Briefing persistido: ${JSON.stringify(brief)}
