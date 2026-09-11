@@ -4,13 +4,23 @@ import type { ImageGuide, Tenant, TenantImage } from '@/lib/types';
 
 /** Intake e perfil social legíveis; o JSON cru truncado escondia o essencial. */
 function briefSummary(tenant: Tenant): string {
+  const {
+    intake,
+    social,
+    sources: _sources,
+    generation: _generation,
+    ...brief
+  } = tenant.brief;
   const summary = [
-    intakeSummary(tenant.brief.intake),
-    socialSummary(tenant.brief.social, intakeSocialUrl(tenant.brief.intake)),
+    intakeSummary(intake),
+    socialSummary(social, intakeSocialUrl(intake)),
+    Object.keys(brief).length
+      ? `Briefing consolidado: ${JSON.stringify(brief)}`
+      : '',
   ]
     .filter(Boolean)
     .join('\n');
-  return summary || JSON.stringify(tenant.brief).slice(0, 600);
+  return summary || '(ainda não informado)';
 }
 
 /** Prompt do agente de imagens. Mesma voz do agente de sites. */

@@ -41,10 +41,12 @@ export function lines(value: string, limit = 8): string[] {
 export function intakeIsEmpty(intake: Intake): boolean {
   return (
     !intake.segment &&
+    !intake.region &&
     !intake.audience &&
     !intake.offer &&
     !intake.goal &&
     !intake.evidence.length &&
+    !intake.constraints.length &&
     !intake.references.length &&
     !intake.socialUrl
   );

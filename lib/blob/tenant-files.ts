@@ -1,4 +1,5 @@
-import { del, list } from '@vercel/blob';
+import { del, list, put } from '@vercel/blob';
+import { withTenantLock } from '@/lib/tenant-lock';
 
 export type BlobDeps = { list?: typeof list; del?: typeof del };
 
@@ -11,6 +12,18 @@ export function tenantBlobPrefix(slug: string): string {
 }
 
 const BATCH = 100;
+
+/** Todo upload do produto participa do mesmo lock usado pela exclusão. */
+export function putTenantBlob(
+  tenantId: string,
+  path: string,
+  body: Parameters<typeof put>[1],
+  options: Parameters<typeof put>[2],
+) {
+  return withTenantLock(tenantId, 'upload', (tenant) =>
+    put(`${tenantBlobPrefix(tenant.slug)}${path}`, body, options),
+  );
+}
 
 /**
  * Apaga tudo o que o cliente tem no Blob: fotos geradas, logos, uploads e a

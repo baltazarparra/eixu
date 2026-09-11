@@ -86,6 +86,7 @@ export const socialProfileSchema = z.object({
   url: z.url(),
   network: z.enum(['instagram', 'linkedin']),
   status: z.enum(['lendo', 'ok', 'inacessivel']),
+  readId: z.uuid().optional(),
   motivo: z.string().max(200).optional(),
   name: z.string().max(120).optional(),
   handle: z.string().max(60).optional(),

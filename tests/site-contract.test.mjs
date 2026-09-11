@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { loadModule } from './helpers/load-module.mjs';
 import { createJiti } from 'jiti';
 // O alias resolve os módulos que importam por '@', como lib/sites/.
 const j = createJiti(import.meta.url, { alias: { '@': process.cwd() } });
@@ -808,7 +809,10 @@ await test('perfil de rede social é normalizado; outros hosts continuam fora do
       .url,
     'https://www.linkedin.com/company/porto-pedras/',
   );
-  assert.equal(normalizeSocialUrl('linkedin.com/in/pessoa').network, 'linkedin');
+  assert.equal(
+    normalizeSocialUrl('linkedin.com/in/pessoa').network,
+    'linkedin',
+  );
   for (const input of [
     '',
     'facebook.com/oficina',
@@ -826,7 +830,10 @@ await test('meta lê o conteúdo da própria tag, com apóstrofo e ordem inverti
   assert.equal(metaContent(html, 'description'), 'Segunda leitura');
   // Atributos invertidos, como o Instagram escreve.
   assert.equal(
-    metaContent('<meta content="Perfil real" name="description" />', 'description'),
+    metaContent(
+      '<meta content="Perfil real" name="description" />',
+      'description',
+    ),
     'Perfil real',
   );
   // O LinkedIn entrega a bio codificada duas vezes: &amp;#39; é um apóstrofo.
@@ -839,7 +846,10 @@ await test('meta lê o conteúdo da própria tag, com apóstrofo e ordem inverti
   );
   // Uma entidade só continua com uma passada, sem estragar &amp;lt;.
   assert.equal(
-    metaContent('<meta name="description" content="a &amp;lt; b" />', 'description'),
+    metaContent(
+      '<meta name="description" content="a &amp;lt; b" />',
+      'description',
+    ),
     'a &lt; b',
   );
   // Sem a tag pedida, o padrão não pode varrer as tags anteriores.
@@ -861,7 +871,10 @@ await test('Instagram devolve nome, bio e avatar; casca de login vira bloqueio',
   assert.equal(perfil.status, 'ok');
   assert.equal(perfil.name, 'Padaria Santa Luzia');
   assert.equal(perfil.bio, "Pão d'água todo dia às 6h");
-  assert.equal(perfil.sourceImage, 'https://scontent.cdninstagram.com/v/avatar.jpg?token=1');
+  assert.equal(
+    perfil.sourceImage,
+    'https://scontent.cdninstagram.com/v/avatar.jpg?token=1',
+  );
   assert.equal(perfil.lidoEm, lidoEm);
 
   const casca = parseSocialProfile(
@@ -940,7 +953,10 @@ await test('perfil lido vira referência e resumo; bloqueado vira lacuna declara
   });
   assert.ok(bloqueado.includes('não foi possível ler'));
   assert.ok(bloqueado.includes('lacuna'));
-  assert.equal(referenceFromSocial({ ...social, status: 'inacessivel' }).status, 'inacessivel');
+  assert.equal(
+    referenceFromSocial({ ...social, status: 'inacessivel' }).status,
+    'inacessivel',
+  );
   assert.equal(socialSummary({ ...social, status: 'lendo' }), '');
   assert.equal(socialSummary({ nada: true }), '');
   // Leitura pendente ainda declara a URL, sem prometer conteúdo.
@@ -956,8 +972,139 @@ await test('intake aceita perfil social, normaliza e recusa outra rede', () => {
   // A URL fica na linha da rede social, não repetida no resumo do intake.
   assert.equal(intakeSummary(intake).includes('instagram.com/padaria'), false);
   assert.equal(intakeSocialUrl(intake), 'https://www.instagram.com/padaria/');
-  const recusado = intakeSchema.safeParse({ socialUrl: 'facebook.com/padaria' });
+  const recusado = intakeSchema.safeParse({
+    socialUrl: 'facebook.com/padaria',
+  });
   assert.equal(recusado.success, false);
   assert.ok(recusado.error.issues[0].message.includes('Instagram'));
   assert.equal(intakeSchema.parse({}).socialUrl, '');
+});
+
+await test('ferramentas preservam o perfil e o intake atualizados durante o turno', async () => {
+  const old = { intake: { segment: 'Antigo' }, social: { status: 'lendo' } };
+  let brief = {
+    intake: { segment: 'Atualizado pelo operador' },
+    social: { status: 'ok', name: 'Perfil lido' },
+  };
+  const protectedFields = structuredClone(brief);
+  const { buildTools } = await loadModule('lib/ai/tools.ts', {
+    '@/lib/db': {
+      db:
+        () =>
+        async (parts, ...values) => {
+          if (parts.join('').includes('update tenants'))
+            brief = { ...brief, ...JSON.parse(values[0]) };
+          return [];
+        },
+    },
+    '@/lib/ai/reference': {
+      readReference: async (url) => ({
+        url,
+        status: 'ok',
+        titulo: 'Fonte verificada',
+        lidoEm: new Date().toISOString(),
+      }),
+    },
+    '@/lib/tenant-queries': { listPages: async () => rich() },
+    '@/lib/images/queries': { listImages: async () => images },
+  });
+  const tools = buildTools({
+    id: 'fixture',
+    slug: 'fixture',
+    brand: {},
+    dials: {},
+    brief: old,
+  });
+  const { designProfileInputSchema } = await j.import(
+    '../lib/design/profile.ts',
+  );
+  const direction = designProfileInputSchema.parse({
+    brief: {
+      audience: 'Pessoas reformando a casa',
+      offer: 'Pedras para arquitetura',
+      goal: 'Solicitar orientação',
+      personality: ['sóbria', 'natural'],
+      evidence: ['Produção própria'],
+      constraints: ['Nunca mostrar pessoas'],
+    },
+    concept: 'Recortes da matéria em escala arquitetônica',
+    signatureElement: 'Janela vertical de matéria',
+    accent: '#87522a',
+    accentAlt: '#315b48',
+    ink: '#111111',
+    paper: '#ffffff',
+    surface: '#eeeeee',
+    radius: 'sm',
+    displayFont: 'sans',
+    bodyFont: 'sans',
+    heroComposition: 'split',
+    navigation: 'bar',
+    rhythm: 'alternating',
+    imageTreatment: 'framed',
+    surfaceStyle: 'flat',
+    motif: 'grid',
+    variance: 5,
+    motion: 3,
+    density: 5,
+  });
+  for (const [name, input] of [
+    ['read_reference', { url: 'https://example.test/' }],
+    ['review_pages', {}],
+    ['set_design', direction],
+  ]) {
+    const result = await tools[name].execute(input);
+    assert.equal(result.error, undefined, name);
+    assert.deepEqual(brief.intake, protectedFields.intake, name);
+    assert.deepEqual(brief.social, protectedFields.social, name);
+  }
+  assert.equal(brief.sources[0].titulo, 'Fonte verificada');
+  assert.equal(brief.generation.reviewRounds, 1);
+  assert.deepEqual(brief.constraints, ['Nunca mostrar pessoas']);
+});
+
+await test('prompt de imagens conserva briefing consolidado com intake ou perfil social', async () => {
+  const { imageAgentPrompt } = await j.import('../lib/images/prompt.ts');
+  for (const intake of [
+    { segment: 'Pedras naturais' },
+    { socialUrl: 'https://www.instagram.com/pedras/' },
+  ]) {
+    const prompt = imageAgentPrompt(
+      {
+        name: 'Fixture',
+        slug: 'fixture',
+        brand: {},
+        brief: {
+          intake,
+          constraints: ['Nunca mostrar pessoas'],
+          evidence: ['Produção própria'],
+          audience: 'Arquitetos',
+          gaps: ['Prazo não confirmado'],
+          sources: ['não repetir fonte crua'],
+        },
+      },
+      {},
+      [],
+      '(nenhuma)',
+    );
+    for (const value of [
+      'Nunca mostrar pessoas',
+      'Produção própria',
+      'Arquitetos',
+      'Prazo não confirmado',
+    ])
+      assert.ok(prompt.includes(value), value);
+    assert.ok(!prompt.includes('não repetir fonte crua'));
+  }
+  const onlyConstraints = imageAgentPrompt(
+    {
+      name: 'Fixture',
+      slug: 'fixture',
+      brand: {},
+      brief: { intake: { constraints: ['Não mostrar rostos'] } },
+    },
+    {},
+    [],
+    '',
+  );
+  assert.ok(onlyConstraints.includes('Não mostrar rostos'));
 });

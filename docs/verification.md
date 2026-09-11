@@ -13,7 +13,9 @@ npm run build:vercel
 git diff --check
 ```
 
-Para incluir a prova de isolamento do cookie na captura, rode `test:admin` com `EIXU_CHROME_PATH` apontando para o executável local do Chrome. Sem ele, esse caso é pulado; os outros 17 não precisam de navegador.
+Para incluir a prova de isolamento do cookie na captura, rode `test:admin` com `EIXU_CHROME_PATH` apontando para o executável local do Chrome. Sem ele, esse caso é pulado; os demais testes não precisam de navegador.
+
+`tests/admin-concurrency.test.mjs` exige um PostgreSQL local descartável chamado `eixu_pr2_test`, indicado por `EIXU_TEST_POSTGRES_URL`. A suíte recusa hosts remotos, aplica `db/schema.sql` nesse banco e exercita o driver Neon e seus locks por um proxy WebSocket local; Blob, rede social e visão são simulados. Sem a variável, somente essa suíte de integração é pulada. Para incluí-la, execute `npm run test:admin` com a variável apontando para esse banco local.
 
 `next typegen` prepara tipos de rotas e `next-env.d.ts` em um checkout limpo. O guia da versão instalada está em `node_modules/next/dist/docs/01-app/03-api-reference/06-cli/next.md`. O build pode precisar de rede para `next/font/google`. Nenhum desses comandos executa o seed, migrações ou chamadas de geração pagas.
 
@@ -23,7 +25,7 @@ Para documentação, confira links locais, comandos e fatos contra o código e r
 npm run format -- --check README.md AGENTS.md docs
 ```
 
-O projeto possui `test:sites` e `test:admin`, com testes de contrato sem banco e sem geração paga. Não possui script genérico `test`, `verify` ou CI versionada. Não trate um comando inexistente como gate nem substitua falhas por uma declaração do modelo.
+O projeto possui `test:sites` e `test:admin`, com testes de contrato sem banco e uma suíte opcional de concorrência em PostgreSQL local. Nenhum desses testes usa geração paga. Não possui script genérico `test`, `verify` ou CI versionada. Não trate um comando inexistente como gate nem substitua falhas por uma declaração do modelo.
 
 ## Revisão do admin, 10/09/2026
 
@@ -94,6 +96,10 @@ prompt. O prompt foi conferido por leitura nas três variações (lido, bloquead
 e pendente).
 
 ## Verificação pelo impacto
+
+As correções da revisão do PR #2 acrescentam regressões para merge por chave e preservação do briefing consolidado no prompt de imagens. Os testes de concorrência conferem troca de URL, releitura da mesma URL, remoção durante leitura, clear atrasado, reutilização do avatar sem repetir visão, descarte após upload, as duas ordens de upload/exclusão, isolamento entre tenants, falha no Blob e confirmação pelo estado atual.
+
+Na validação local dessas correções, os 46 testes de site e 30 testes de admin passaram, com um caso de captura pulado sem Chrome. A integração usou PostgreSQL 18.4 descartável e o driver Neon instalado, sem banco remoto, Blob real ou geração paga. Tipos, build Next.js de produção e oito verificações HTTP passaram: institucional, login, redirecionamento do admin, quatro recusas de API sem sessão e bloqueio de acesso direto a `/s/*`. O lint global manteve os 20 erros preexistentes em 13 arquivos, sem diagnóstico nos arquivos alterados. O schema do produto permaneceu inalterado.
 
 | Mudança                    | Evidência além do diff                                                                                                                                 |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |

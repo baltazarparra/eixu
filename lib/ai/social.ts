@@ -1,10 +1,16 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { lookup } from 'node:dns/promises';
-import { del, put } from '@vercel/blob';
+import { del } from '@vercel/blob';
 import { generateText } from 'ai';
 import sharp from 'sharp';
 import { db } from '@/lib/db';
-import { decode, isPrivateAddress, metaContent, stripNoise } from '@/lib/ai/reference';
+import { putTenantBlob } from '@/lib/blob/tenant-files';
+import {
+  decode,
+  isPrivateAddress,
+  metaContent,
+  stripNoise,
+} from '@/lib/ai/reference';
 import type { Reference } from '@/lib/ai/reference';
 import {
   normalizeSocialUrl,
@@ -30,6 +36,7 @@ export type SocialDeps = {
 };
 
 export type SocialRead = SocialProfile & { sourceImage?: string };
+export type SocialReading = SocialProfile & { readId: string };
 
 const BLOCKED_MARKERS =
   /(challenge|checkpoint_required|authwall|"loginForm"|accounts\/login)/i;
@@ -87,7 +94,9 @@ export function parseSocialProfile(
       40,
     );
     const bio = clamp(
-      /n[oa]?\s*Instagram:\s*[“"]([\s\S]*)[”"]\s*$/i.exec(description ?? '')?.[1],
+      /n[oa]?\s*Instagram:\s*[“"]([\s\S]*)[”"]\s*$/i.exec(
+        description ?? '',
+      )?.[1],
       300,
     );
     return {
@@ -142,7 +151,11 @@ export async function readSocialProfile(
       // resumo sem bio ("Veja as fotos e vídeos de…"). Medido nas duas.
       headers: { 'user-agent': USER_AGENT },
     });
-    if (response.status === 999 || response.status === 403 || response.status === 429)
+    if (
+      response.status === 999 ||
+      response.status === 403 ||
+      response.status === 429
+    )
       return {
         ...base,
         status: 'inacessivel',
@@ -198,7 +211,8 @@ async function downloadAvatar(
       headers: { 'user-agent': USER_AGENT },
     });
     if (!response.ok) return null;
-    if (!/^image\//i.test(response.headers.get('content-type') ?? '')) return null;
+    if (!/^image\//i.test(response.headers.get('content-type') ?? ''))
+      return null;
     const raw = new Uint8Array(await response.arrayBuffer());
     if (raw.byteLength > MAX_AVATAR_BYTES) return null;
     const png = await sharp(Buffer.from(raw))
@@ -240,30 +254,47 @@ export async function describeAvatar(
 
 async function saveSocial(
   tenantId: string,
+  reading: SocialReading,
   social: SocialProfile,
-): Promise<SocialProfile> {
-  // Merge: o brief guarda também intake, fontes e progresso, e um turno de
-  // chat pode estar escrevendo ao mesmo tempo.
-  await db()`
+): Promise<SocialProfile | null> {
+  // A URL e o ID da leitura precisam continuar vigentes. A condição é
+  // atômica com a escrita, inclusive em releituras da mesma URL (A -> B -> A).
+  const rows = (await db()`
     update tenants
-    set brief = brief || jsonb_build_object('social', ${JSON.stringify(social)}::jsonb),
+    set brief = brief || jsonb_build_object('social', ${JSON.stringify({ ...social, readId: reading.readId })}::jsonb),
         updated_at = now()
     where id = ${tenantId}
-  `;
-  return social;
+      and brief #>> '{intake,socialUrl}' = ${reading.url}
+      and brief #>> '{social,readId}' = ${reading.readId}
+    returning brief->'social' as social
+  `) as { social: unknown }[];
+  return parseSocialRecord(rows[0]?.social);
 }
 
 export async function markSocialReading(
   tenantId: string,
   normalized: NormalizedSocial,
-): Promise<SocialProfile> {
-  return saveSocial(tenantId, {
+): Promise<SocialReading | null> {
+  const reading: SocialReading = {
     url: normalized.url,
     network: normalized.network,
     handle: normalized.handle,
     status: 'lendo',
+    readId: randomUUID(),
     lidoEm: new Date().toISOString(),
-  });
+  };
+  const rows = (await db()`
+    update tenants
+    set brief = brief || jsonb_build_object('social',
+          coalesce(brief->'social', '{}'::jsonb) || ${JSON.stringify(reading)}::jsonb),
+        updated_at = now()
+    where id = ${tenantId} and brief #>> '{intake,socialUrl}' = ${normalized.url}
+    returning brief->'social' as social
+  `) as { social: unknown }[];
+  // O avatar anterior fica referenciado até a conclusão, para reutilização
+  // por hash ou remoção após a troca, sem perder a URL ao marcar "lendo".
+  const social = parseSocialRecord(rows[0]?.social);
+  return social ? { ...social, readId: reading.readId } : null;
 }
 
 async function currentSocial(tenantId: string): Promise<SocialProfile | null> {
@@ -274,12 +305,21 @@ async function currentSocial(tenantId: string): Promise<SocialProfile | null> {
 }
 
 export async function clearSocialProfile(tenantId: string): Promise<void> {
-  const previous = await currentSocial(tenantId);
-  if (previous?.avatarUrl) await del(previous.avatarUrl).catch(() => undefined);
-  await db()`
-    update tenants set brief = brief - 'social', updated_at = now()
-    where id = ${tenantId}
-  `;
+  // Captura a URL removida no mesmo comando que invalida o readId. Um clear
+  // atrasado não pode apagar um perfil que o operador acabou de informar.
+  const rows = (await db()`
+    with previous as (
+      select id, brief #>> '{social,avatarUrl}' as avatar
+      from tenants
+      where id = ${tenantId} and coalesce(brief #>> '{intake,socialUrl}', '') = ''
+      for update
+    )
+    update tenants t set brief = t.brief - 'social', updated_at = now()
+    from previous p where t.id = p.id
+    returning p.avatar
+  `) as { avatar: unknown }[];
+  const avatar = rows[0]?.avatar;
+  if (typeof avatar === 'string') await del(avatar);
 }
 
 /**
@@ -289,24 +329,28 @@ export async function clearSocialProfile(tenantId: string): Promise<void> {
  */
 export async function syncSocialProfile(
   tenant: { id: string; slug: string },
-  socialUrl: string,
+  reading: SocialReading,
   deps: SocialDeps = {},
-): Promise<SocialProfile> {
-  const normalized = normalizeSocialUrl(socialUrl);
-  if (!normalized) {
-    await clearSocialProfile(tenant.id);
-    throw new Error('Perfil de rede social inválido.');
-  }
+): Promise<SocialProfile | null> {
+  const normalized = normalizeSocialUrl(reading.url);
+  if (!normalized) throw new Error('Perfil de rede social inválido.');
+  let uploadedUrl: string | undefined;
   try {
     const previous = await currentSocial(tenant.id);
+    if (previous?.readId !== reading.readId) return null;
     const read = await readSocialProfile(normalized, deps);
+    if ((await currentSocial(tenant.id))?.readId !== reading.readId)
+      return null;
     const { sourceImage, ...profile } = read;
     let social: SocialProfile = profile;
 
     if (read.status === 'ok' && sourceImage) {
       const png = await downloadAvatar(sourceImage, deps);
       if (png) {
-        const hash = createHash('sha256').update(png).digest('hex').slice(0, 32);
+        const hash = createHash('sha256')
+          .update(png)
+          .digest('hex')
+          .slice(0, 32);
         const reusable =
           previous?.avatarHash === hash && previous.avatarUrl
             ? previous
@@ -321,11 +365,17 @@ export async function syncSocialProfile(
               : {}),
           };
         } else {
-          const blob = await put(
-            `tenants/${tenant.slug}/social/avatar-${Date.now()}.png`,
+          const blob = await putTenantBlob(
+            tenant.id,
+            `social/avatar-${reading.readId}.png`,
             Buffer.from(png),
-            { access: 'public', addRandomSuffix: false, contentType: 'image/png' },
+            {
+              access: 'public',
+              addRandomSuffix: false,
+              contentType: 'image/png',
+            },
           );
+          uploadedUrl = blob.url;
           const notes = deps.describe
             ? await deps.describe(png)
             : await describeAvatar(png);
@@ -335,14 +385,27 @@ export async function syncSocialProfile(
             avatarHash: hash,
             ...(notes ? { avatarNotes: notes } : {}),
           };
-          if (previous?.avatarUrl && previous.avatarUrl !== blob.url)
-            await del(previous.avatarUrl).catch(() => undefined);
         }
       }
     }
-    return await saveSocial(tenant.id, social);
+    const saved = await saveSocial(tenant.id, reading, social);
+    if (!saved && uploadedUrl) {
+      await del(uploadedUrl);
+      uploadedUrl = undefined;
+    }
+    if (saved) {
+      // A partir do commit este arquivo pertence ao perfil salvo. Falha na
+      // limpeza do anterior não pode apagar o avatar novo nem invalidar o perfil.
+      uploadedUrl = undefined;
+      if (previous?.avatarUrl && previous.avatarUrl !== saved.avatarUrl)
+        await del(previous.avatarUrl).catch(() =>
+          console.error('[social] falha ao remover avatar anterior'),
+        );
+    }
+    return saved;
   } catch (error) {
-    return await saveSocial(tenant.id, {
+    if (uploadedUrl) await del(uploadedUrl);
+    return await saveSocial(tenant.id, reading, {
       url: normalized.url,
       network: normalized.network,
       handle: normalized.handle,

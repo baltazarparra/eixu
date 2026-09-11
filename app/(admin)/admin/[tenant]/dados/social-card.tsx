@@ -28,7 +28,7 @@ export function SocialProfileCard({
   slug: string;
   social: SocialProfile | null;
   hasSocialUrl: boolean;
-  onChange: (social: SocialProfile) => void;
+  onChange: (social: SocialProfile | null) => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
@@ -43,6 +43,7 @@ export function SocialProfileCard({
   useEffect(() => {
     if (!pending) return;
     let attempts = 0;
+    let cancelled = false;
     const timer = setInterval(async () => {
       attempts += 1;
       if (attempts > POLL_ATTEMPTS) {
@@ -54,7 +55,10 @@ export function SocialProfileCard({
         const { social: next } = await adminFetch<{
           social: SocialProfile | null;
         }>(`/api/admin/${slug}/social`);
-        if (next && next.status !== 'lendo') {
+        if (
+          !cancelled &&
+          (!next || next.status !== 'lendo' || next.readId !== current?.readId)
+        ) {
           clearInterval(timer);
           onChange(next);
         }
@@ -63,8 +67,11 @@ export function SocialProfileCard({
         setGaveUpAt(startedAt ?? null);
       }
     }, POLL_MS);
-    return () => clearInterval(timer);
-  }, [pending, startedAt, slug, onChange]);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [pending, startedAt, current?.readId, slug, onChange]);
 
   const reload = useCallback(async () => {
     setBusy(true);
@@ -162,7 +169,10 @@ export function SocialProfileCard({
             </button>
           ) : null}
           {notice ? (
-            <p aria-live="polite" className="mt-3 text-sm text-[var(--color-err)]">
+            <p
+              aria-live="polite"
+              className="mt-3 text-sm text-[var(--color-err)]"
+            >
               {notice}
             </p>
           ) : null}

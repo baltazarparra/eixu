@@ -12,12 +12,9 @@ import {
   tenantSlugSchema,
 } from '@/lib/admin/tenant-input';
 import { spendSchema } from '@/lib/admin/traffic';
-import {
-  countTenantData,
-  deleteTenant,
-  getTenantBySlug,
-} from '@/lib/tenant-queries';
+import { countTenantData, getTenantBySlug } from '@/lib/tenant-queries';
 import { deleteTenantBlobs } from '@/lib/blob/tenant-files';
+import { TenantRemovedError, withTenantLock } from '@/lib/tenant-lock';
 import { confirmationAccepted } from '@/lib/admin/tenant-delete';
 import { normalizeSocialUrl } from '@/lib/social-profile';
 import { markSocialReading, syncSocialProfile } from '@/lib/ai/social';
@@ -75,8 +72,9 @@ export async function createTenantAction(
     const social = normalizeSocialUrl(intake.data.socialUrl);
     if (social) {
       const tenantId = rows[0].id;
-      await markSocialReading(tenantId, social);
-      after(() => syncSocialProfile({ id: tenantId, slug }, social.url));
+      const reading = await markSocialReading(tenantId, social);
+      if (reading)
+        after(() => syncSocialProfile({ id: tenantId, slug }, reading));
     }
   } catch {
     return 'Não foi possível criar o cliente. Seus dados continuam no formulário; tente novamente.';
@@ -92,8 +90,8 @@ export type DeleteTenantResult = {
 };
 
 /**
- * Exclusão do cliente. Arquivos primeiro: como no DELETE de imagem, uma falha
- * no Blob preserva o registro, e a segunda tentativa é idempotente.
+ * Exclusão do cliente. O lock aguarda uploads em curso, impede novos e só é
+ * liberado depois de limpar os arquivos e remover o cadastro na transação.
  */
 export async function deleteTenantAction(
   _prev: DeleteTenantResult | null,
@@ -105,42 +103,54 @@ export async function deleteTenantAction(
     return { ok: false, message: 'Endereço de cliente inválido.' };
   const tenant = await getTenantBySlug(slugResult.data);
   if (!tenant) return { ok: false, message: 'Cliente não encontrado.' };
-  const counts = await countTenantData(tenant.id);
-  // O botão já fica desabilitado no diálogo; o servidor não confia nisso.
-  if (
-    !confirmationAccepted(
-      { slug: tenant.slug, status: tenant.status, leadCount: counts.leads },
-      text(formData, 'confirm'),
-    )
-  )
-    return {
-      ok: false,
-      message: 'Digite o endereço do cliente para confirmar a exclusão.',
-    };
+  let stage: 'prepare' | 'files' | 'record' = 'prepare';
   try {
-    await deleteTenantBlobs(tenant.slug);
-  } catch {
-    return {
-      ok: false,
-      message:
+    const result = await withTenantLock(
+      tenant.id,
+      'delete',
+      async (locked, connection): Promise<DeleteTenantResult> => {
+        const counts = await countTenantData(locked.id);
+        // Reconfere o estado depois de adquirir o lock: publicação e contatos
+        // podem ter mudado desde a abertura do diálogo.
+        if (
+          !confirmationAccepted(
+            { ...locked, leadCount: counts.leads },
+            text(formData, 'confirm'),
+          )
+        )
+          return {
+            ok: false,
+            message: 'Digite o endereço do cliente para confirmar a exclusão.',
+          };
+        stage = 'files';
+        await deleteTenantBlobs(locked.slug);
+        stage = 'record';
+        await connection.query('DELETE FROM tenants WHERE id = $1', [
+          locked.id,
+        ]);
+        return {
+          ok: true,
+          slug: locked.slug,
+          message: `${locked.name} foi excluído.`,
+        };
+      },
+    );
+    if (result.ok) revalidatePath('/admin');
+    return result;
+  } catch (error) {
+    const messages = {
+      prepare: 'Não foi possível iniciar a exclusão. Tente novamente.',
+      files:
         'Os arquivos do cliente não puderam ser removidos. Ele continua no painel; tente novamente.',
-    };
-  }
-  try {
-    await deleteTenant(tenant.id);
-  } catch {
-    return {
-      ok: false,
-      message:
+      record:
         'Os arquivos foram removidos, mas o cadastro não. Tente excluir novamente.',
     };
+    return {
+      ok: false,
+      message:
+        error instanceof TenantRemovedError ? error.message : messages[stage],
+    };
   }
-  revalidatePath('/admin');
-  return {
-    ok: true,
-    slug: tenant.slug,
-    message: `${tenant.name} foi excluído.`,
-  };
 }
 
 export type SpendResult = { ok: boolean; message: string };

@@ -85,13 +85,15 @@ export async function PATCH(
   if (nextSocial !== undefined && nextSocial !== (previousSocial ?? '')) {
     const normalized = nextSocial ? normalizeSocialUrl(nextSocial) : null;
     if (normalized) {
-      social = await markSocialReading(tenant.id, normalized);
-      after(() =>
-        syncSocialProfile({ id: tenant.id, slug: tenant.slug }, normalized.url),
-      );
+      const reading = await markSocialReading(tenant.id, normalized);
+      social = reading;
+      if (reading)
+        after(() =>
+          syncSocialProfile({ id: tenant.id, slug: tenant.slug }, reading),
+        );
     } else {
       social = null;
-      after(() => clearSocialProfile(tenant.id));
+      await clearSocialProfile(tenant.id);
     }
   }
   return Response.json({ ok: true, brand, social });

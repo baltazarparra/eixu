@@ -371,7 +371,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         ];
         activeBrief = { ...activeBrief, sources };
         await db()`
-          update tenants set brief = brief || ${JSON.stringify(activeBrief)}::jsonb, updated_at = now()
+          update tenants set brief = brief || ${JSON.stringify({ sources })}::jsonb, updated_at = now()
           where id = ${tenant.id}
         `;
         return reference;
@@ -399,7 +399,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         };
         activeBrief = { ...activeBrief, generation };
         await db()`
-          update tenants set brief = brief || ${JSON.stringify(activeBrief)}::jsonb, updated_at = now()
+          update tenants set brief = brief || ${JSON.stringify({ generation })}::jsonb, updated_at = now()
           where id = ${tenant.id}
         `;
         const apontamentos = [
@@ -713,7 +713,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         const brief = { ...activeBrief, ...input.brief };
         await db()`
           update tenants
-          set brief = brief || ${JSON.stringify(brief)}::jsonb,
+          set brief = brief || ${JSON.stringify(input.brief)}::jsonb,
               brand = ${JSON.stringify(brand)}::jsonb,
               dials = ${JSON.stringify(dials)}::jsonb,
               updated_at = now()

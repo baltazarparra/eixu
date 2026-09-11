@@ -1,8 +1,8 @@
 import { isAuthenticated } from '@/lib/auth';
 import { getTenantBySlug } from '@/lib/tenant-queries';
 import { intakeSchema } from '@/lib/tenant-intake';
-import { parseSocialRecord } from '@/lib/social-profile';
-import { syncSocialProfile } from '@/lib/ai/social';
+import { normalizeSocialUrl, parseSocialRecord } from '@/lib/social-profile';
+import { markSocialReading, syncSocialProfile } from '@/lib/ai/social';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -44,9 +44,18 @@ export async function POST(
       { error: 'Informe um perfil de rede social no briefing.' },
       { status: 400 },
     );
-  const social = await syncSocialProfile(
-    { id: tenant.id, slug: tenant.slug },
-    socialUrl,
-  );
+  const normalized = normalizeSocialUrl(socialUrl);
+  const reading = normalized
+    ? await markSocialReading(tenant.id, normalized)
+    : null;
+  const social = reading ? await syncSocialProfile(tenant, reading) : null;
+  if (!social)
+    return Response.json(
+      {
+        error:
+          'O perfil mudou ou o cliente foi excluído durante a leitura. Atualize os dados.',
+      },
+      { status: 409 },
+    );
   return Response.json({ social });
 }

@@ -6,7 +6,8 @@ type Row = Record<string, unknown>;
 /** Converte valor vindo do banco em string sem cair no "[object Object]". */
 function str(value: unknown, fallback = ''): string {
   if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (typeof value === 'number' || typeof value === 'boolean')
+    return String(value);
   if (value instanceof Date) return value.toISOString();
   return fallback;
 }
@@ -19,7 +20,11 @@ function toTenant(row: Row): Tenant {
     status: row.status as Tenant['status'],
     brief: (row.brief ?? {}) as Record<string, unknown>,
     brand: (row.brand ?? {}) as Tenant['brand'],
-    dials: (row.dials ?? { variance: 7, motion: 5, density: 4 }) as Tenant['dials'],
+    dials: (row.dials ?? {
+      variance: 7,
+      motion: 5,
+      density: 4,
+    }) as Tenant['dials'],
     imageGuide: (row.image_guide ?? {}) as Tenant['imageGuide'],
     whatsapp: (row.whatsapp as string) ?? null,
     contactEmail: (row.contact_email as string) ?? null,
@@ -47,11 +52,14 @@ function toPage(row: Row): Page {
 }
 
 export async function getTenantBySlug(slug: string): Promise<Tenant | null> {
-  const rows = (await db()`select * from tenants where slug = ${slug} limit 1`) as Row[];
+  const rows =
+    (await db()`select * from tenants where slug = ${slug} limit 1`) as Row[];
   return rows[0] ? toTenant(rows[0]) : null;
 }
 
-export async function listTenants(): Promise<(Tenant & { pageCount: number; leadCount: number })[]> {
+export async function listTenants(): Promise<
+  (Tenant & { pageCount: number; leadCount: number })[]
+> {
   const rows = (await db()`
     select t.*,
       (select count(*) from pages p where p.tenant_id = t.id) as page_count,
@@ -83,19 +91,11 @@ export async function countTenantData(
   };
 }
 
-/**
- * Remove o cliente. Páginas, contatos, eventos, gastos, conversas e imagens
- * caem por `on delete cascade`; os arquivos no Blob não, e são apagados antes.
- */
-export async function deleteTenant(tenantId: string): Promise<boolean> {
-  const rows = (await db()`
-    delete from tenants where id = ${tenantId} returning id
-  `) as Row[];
-  return rows.length > 0;
-}
-
 /** Define o logo do site. Nav e rodapé passam a usar a imagem. */
-export async function setBrandLogo(tenantId: string, url: string | null): Promise<Record<string, unknown>> {
+export async function setBrandLogo(
+  tenantId: string,
+  url: string | null,
+): Promise<Record<string, unknown>> {
   const rows = (await db()`
     update tenants set
       brand = case when ${url}::text is null then brand - 'logoUrl'
@@ -114,7 +114,10 @@ export async function listPages(tenantId: string): Promise<Page[]> {
   return rows.map(toPage);
 }
 
-export async function getPage(tenantId: string, slug: string): Promise<Page | null> {
+export async function getPage(
+  tenantId: string,
+  slug: string,
+): Promise<Page | null> {
   const rows = (await db()`
     select * from pages where tenant_id = ${tenantId} and slug = ${slug} limit 1
   `) as Row[];
@@ -122,7 +125,8 @@ export async function getPage(tenantId: string, slug: string): Promise<Page | nu
 }
 
 export async function getPageById(id: string): Promise<Page | null> {
-  const rows = (await db()`select * from pages where id = ${id} limit 1`) as Row[];
+  const rows =
+    (await db()`select * from pages where id = ${id} limit 1`) as Row[];
   return rows[0] ? toPage(rows[0]) : null;
 }
 
@@ -138,7 +142,9 @@ export async function listPublishedPosts(tenantId: string) {
     slug: str(row.slug),
     title: str(row.title),
     excerpt: (row.meta as { excerpt?: string })?.excerpt,
-    date: (row.meta as { date?: string })?.date ?? (row.published_at ? str(row.published_at) : undefined),
+    date:
+      (row.meta as { date?: string })?.date ??
+      (row.published_at ? str(row.published_at) : undefined),
   }));
 }
 
