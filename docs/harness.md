@@ -150,15 +150,20 @@ A revisão tem três fontes de evidência:
    página, bloco, evidência e correção. Pixels/base64 não entram como texto no
    resultado da ferramenta nem no histórico do chat.
 
-O schema de saída restringe os caminhos às páginas presentes. O servidor valida
-também que o ID do bloco pertence à página indicada; o crítico pode usar `null`
-quando não localiza o bloco. Enum dinâmico de todos os IDs foi recusado pelo
-Gateway no ensaio, por isso essa restrição permanece na verificação externa.
+O schema de saída anuncia os caminhos das páginas na descrição do campo, não em
+um enum. Enum dinâmico foi recusado pelo Gateway com os IDs de bloco e volta a
+ser recusado com os caminhos assim que a soma dos valores cresce: em 2026-09-11
+um cliente de cinco páginas derrubou a chamada inteira com HTTP 400 no Vertex e
+no fallback Google, e a revisão ficou indisponível em todas as rodadas. A
+conferência do par página/bloco acontece depois da resposta, em
+`resolveReviewReferences`: caminho normalizado, achado sem página existente sai
+do relatório e ID de bloco inexistente vira `null`. As duas contagens entram no
+relatório como aviso `critica-referencia`, porque uma citação imprecisa não pode
+invalidar a revisão inteira nem passar despercebida.
 
 A captura é ligada por padrão. `EIXU_REVIEW_CAPTURE=0` permite diagnóstico
 estrutural, mas não concede conclusão visual. Origem ausente, falha de captura,
-cobertura incompleta, crítica inválida ou página/bloco inventado deixam a revisão
-incompleta. São permitidas três chamadas a `review_pages` por turno, para revisar,
+cobertura incompleta ou crítica inválida deixam a revisão incompleta. São permitidas três chamadas a `review_pages` por turno, para revisar,
 corrigir e conferir. A crítica é sugestão verificável, não autorização humana.
 O loop reserva o último passo à conferência. Depois do refinamento, uma nova
 revisão completa e sem erros encerra a fase por condição externa, mantendo os

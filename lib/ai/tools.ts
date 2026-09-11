@@ -783,6 +783,16 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             }
             critica = await critiquePages(reviewedTenant, pages, capturas);
             visual = 'complete';
+            // Referência imprecisa do crítico não invalida a revisão, mas
+            // precisa aparecer: o editor decide se vale olhar de novo.
+            if (critica.unresolved || critica.unlinked)
+              apontamentos.push({
+                pagina: '/',
+                nivel: 'warn',
+                regra: 'critica-referencia',
+                bloco: undefined,
+                correcao: `${critica.unresolved} achado(s) citaram página inexistente e saíram do relatório; ${critica.unlinked} perderam o id do bloco. Confira a página apontada antes de concluir.`,
+              });
             apontamentos.push(
               ...critica.findings.map((finding) => ({
                 pagina: finding.page,
@@ -793,9 +803,14 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
               })),
             );
           } catch (error) {
+            // Só nome e mensagem do erro: o diagnóstico da falha ficava
+            // impossível com o nome sozinho, e o corpo da resposta carrega
+            // conteúdo do cliente.
             console.error(
               '[review] indisponível:',
-              error instanceof Error ? error.name : 'unknown',
+              error instanceof Error
+                ? `${error.name}: ${error.message.slice(0, 200)}`
+                : 'unknown',
             );
             apontamentos.push({
               pagina: '/',

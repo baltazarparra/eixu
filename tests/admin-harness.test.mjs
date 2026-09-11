@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { convertToModelMessages } from 'ai';
 import { createJiti } from 'jiti';
+import { z } from 'zod';
 import { loadModule } from './helpers/load-module.mjs';
 const j = createJiti(import.meta.url, { alias: { '@': process.cwd() } });
 const { contextMessages } = await j.import('../lib/ai/context.ts');
@@ -10,7 +11,7 @@ const { reviewFingerprint, currentReview } = await j.import(
 );
 const { nextPhase, compositionReadyForReview, reviewReadyToFinish } =
   await j.import('../lib/taste/phases.ts');
-const { reviewSchemaFor, validateReviewReferences } = await j.import(
+const { reviewSchemaFor, resolveReviewReferences } = await j.import(
   '../lib/review/critic.ts',
 );
 
@@ -100,7 +101,7 @@ await test('revisão encerra na conferência atual sem erros, mantendo espaço p
   );
 });
 
-await test('crítico recebe caminhos e IDs existentes no schema de saída', () => {
+await test('crítico anuncia caminhos existentes sem enum e resolve as referências', () => {
   const schema = reviewSchemaFor(pages);
   const finding = {
     page: '/',
@@ -115,22 +116,29 @@ await test('crítico recebe caminhos e IDs existentes no schema de saída', () =
     true,
   );
   assert.equal(
-    schema.safeParse({ findings: [{ ...finding, page: '' }], strengths: [] })
-      .success,
-    false,
-  );
-  assert.throws(
-    () =>
-      validateReviewReferences(pages, [{ ...finding, blockId: 'hero.split' }]),
-    /bloco/,
-  );
-  assert.equal(
     schema.safeParse({
       findings: [{ ...finding, blockId: null }],
       strengths: [],
     }).success,
     true,
   );
+  // O enum de caminhos derrubava a requisição inteira no provedor: os caminhos
+  // vão na descrição do campo e a conferência acontece depois da resposta.
+  const json = z.toJSONSchema(schema, { io: 'output' });
+  const page = json.properties.findings.items.properties.page;
+  assert.equal(page.enum, undefined);
+  assert.match(page.description, /\//);
+
+  const resolved = resolveReviewReferences(pages, [
+    { ...finding, page: 'home' },
+    { ...finding, blockId: 'hero.split' },
+    { ...finding, page: '/inexistente' },
+  ]);
+  assert.equal(resolved.findings.length, 2);
+  assert.equal(resolved.findings[0].page, '/');
+  assert.equal(resolved.findings[1].blockId, null);
+  assert.equal(resolved.unlinked, 1);
+  assert.equal(resolved.unresolved, 1);
 });
 
 await test('composição transfere avisos para revisão e mantém erros e recusas no reparo', () => {
