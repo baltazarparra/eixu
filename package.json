@@ -9,7 +9,7 @@
     "dev": "vinext dev",
     "dev:vercel": "next dev",
     "build": "vinext build",
-    "build:vercel": "next build",
+    "build:vercel": "next build && node --test tests/build-runtime.test.mjs",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "lint": "oxlint",
     "test:sites": "node --test tests/site-*.test.mjs",

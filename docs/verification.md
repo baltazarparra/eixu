@@ -1,5 +1,42 @@
 # Validação e publicação
 
+## Correções dos gates e ensaio remoto, 11/09/2026
+
+Esta revisão resolve os 20 erros de lint registrados nas entregas anteriores,
+sem desativar regras. Estado de media queries e Embla é observado com
+`useSyncExternalStore`; os componentes básicos usam elementos e conteúdo
+acessíveis, e os gráficos tratam `dataKey` funcional sem transformá-lo em chave
+de configuração.
+
+- Lint global, tipos e build Next.js aprovados.
+- `test:sites`: 80 aprovados. `test:admin`, com Chrome e PostgreSQL 14.24 local
+  descartável: 62 aprovados, nenhum pulado. A integração usa schema real e o
+  driver Neon pelo proxy WebSocket local; dependências externas são simuladas.
+- `test:sites:browser`: seis testes aprovados, sem erro de hidratação/navegador.
+  Cobrem teclado, label, paginação, carrossel, mobile, movimento reduzido e
+  desmontagem/remontagem. O contraste mantém 60 pares por largura em 1440/390 px,
+  com mínimo de 4,608:1.
+- No deployment de produção `55ff763`, login e cadastro passaram pelo formulário.
+  O cadastro único confirmou o recurso Neon remoto, PostgreSQL 18.6. Uma edição
+  do CTA da home passou pelo chat real com Gemini 3.8 Flash, preservou exatamente
+  os demais campos e persistiu as duas mensagens no histórico.
+
+O primeiro ensaio remoto encontrou a revisão visual indisponível, com zero
+capturas. A inspeção do manifesto de tracing revelou os binários ausentes.
+Isso corrige a afirmação do registro anterior: verificar os arquivos na
+instalação local do pacote não comprovava sua inclusão na função publicada.
+`outputFileTracingIncludes` inclui agora os quatro arquivos do Chromium em
+`/api/chat`, conforme o [contrato de arquivos da Vercel](https://vercel.com/kb/guide/how-can-i-use-files-in-serverless-functions).
+O novo `tests/build-runtime.test.mjs`, executado por `build:vercel`, reproduziu
+a ausência no artefato anterior e passa a bloquear esse defeito antes do deploy.
+
+O ensaio remoto usa um cliente sintético criado para cada execução e uma fixture
+de composição com fotos já existentes. Não gera imagens nem publica páginas de
+clientes. A exclusão pelo painel e a ausência de páginas, imagens e mensagens
+órfãs são verificadas no final. Evidências locais, ignoradas pelo Git, ficam em
+`outputs/quality-gates/`. O PostgreSQL local e o remoto têm versões diferentes;
+o ensaio remoto complementa a integração local, sem alegar paridade de versão.
+
 ## Harness focado em qualidade, 11/09/2026
 
 Esta revisão sucede os registros abaixo. O chat, os críticos e a leitura de
@@ -146,8 +183,14 @@ Para incluir a prova de isolamento do cookie na captura, rode `test:admin` com `
 `test:sites:browser` também usa `EIXU_CHROME_PATH` e deve rodar depois de
 `build:vercel`, pois aplica o CSS emitido pelo Next.js aos componentes reais
 renderizados com dados sintéticos. Confere contraste do hero e da localização
-em desktop/mobile e os destinos dos contatos. Requisições externas são
-interceptadas; não usa banco nem geração paga. Sem Chrome, o caso é pulado.
+em desktop/mobile, destinos dos contatos e regressões de hidratação, teclado e
+estado dos componentes básicos. No teste de contraste, requisições externas são
+interceptadas; não usa banco nem geração paga. Sem Chrome, os casos são pulados.
+
+`build:vercel` executa `tests/build-runtime.test.mjs` depois do Next.js. O check
+lê o manifesto real de `/api/chat` e exige `SOUL.md` e os binários do Chromium,
+incluindo fontes e bibliotecas serverless. Ter o pacote em `node_modules` não
+basta: os arquivos precisam estar listados no artefato enviado para a função.
 
 `tests/admin-concurrency.test.mjs` exige um PostgreSQL local descartável chamado `eixu_pr2_test`, indicado por `EIXU_TEST_POSTGRES_URL`. A suíte recusa hosts remotos, aplica `db/schema.sql` nesse banco e exercita o driver Neon e seus locks por um proxy WebSocket local; Blob, rede social e visão são simulados. Sem a variável, somente essa suíte de integração é pulada. Para incluí-la, execute `npm run test:admin` com a variável apontando para esse banco local.
 
