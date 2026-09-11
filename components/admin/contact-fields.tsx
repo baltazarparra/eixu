@@ -78,9 +78,9 @@ export function ContactFields({
           </legend>
           <div className="flex flex-col gap-2">
             {phones.rows.map(({ key, value }) => (
-              <div key={key} className="flex items-center gap-2">
+              <div key={key} className="flex flex-wrap items-center gap-2">
                 <input
-                  className="admin-input"
+                  className="admin-input min-w-0 grow basis-48"
                   name="phone"
                   maxLength={24}
                   inputMode="tel"
@@ -89,7 +89,7 @@ export function ContactFields({
                   defaultValue={value.number ? formatPhone(value.number) : ''}
                 />
                 <select
-                  className="admin-input w-auto shrink-0"
+                  className="admin-input shrink-0 grow-0 basis-32"
                   name="phoneKind"
                   aria-label="Tipo do número"
                   defaultValue={value.whatsapp ? 'whatsapp' : 'telefone'}
@@ -111,6 +111,10 @@ export function ContactFields({
               <AddRow label="Outro telefone" onClick={phones.add} />
             ) : null}
           </div>
+          <small>
+            Inclua o DDI no WhatsApp, 55 no Brasil. Sem ele o link abre uma
+            conversa com outro país.
+          </small>
         </fieldset>
 
         <fieldset className="admin-field">
@@ -121,7 +125,7 @@ export function ContactFields({
             {social.rows.map(({ key, value }) => (
               <div key={key} className="flex items-center gap-2">
                 <input
-                  className="admin-input"
+                  className="admin-input min-w-0 grow"
                   name="social"
                   maxLength={200}
                   aria-label="Link da rede social"
@@ -150,9 +154,9 @@ export function ContactFields({
           </legend>
           <div className="flex flex-col gap-2">
             {addresses.rows.map(({ key, value }) => (
-              <div key={key} className="flex items-center gap-2">
+              <div key={key} className="flex flex-wrap items-center gap-2">
                 <input
-                  className="admin-input w-auto shrink-0 sm:w-44"
+                  className="admin-input shrink-0 grow-0 basis-40"
                   name="addressLabel"
                   maxLength={40}
                   aria-label="Nome do endereço"
@@ -160,7 +164,7 @@ export function ContactFields({
                   defaultValue={value.label}
                 />
                 <input
-                  className="admin-input"
+                  className="admin-input min-w-0 grow basis-64"
                   name="addressText"
                   maxLength={200}
                   aria-label="Endereço completo"

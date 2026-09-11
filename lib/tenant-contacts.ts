@@ -165,23 +165,37 @@ export function derivedSocialUrl(contacts: Contacts): string {
   return '';
 }
 
-/** Exibição: número brasileiro sai formatado, os demais ficam em E.164. */
-export function formatPhone(number: string): string {
-  const digits = digitsOf(number);
-  if (
-    digits.startsWith('55') &&
-    (digits.length === 12 || digits.length === 13)
-  ) {
-    const area = digits.slice(2, 4);
-    const rest = digits.slice(4);
-    const head = rest.slice(0, rest.length - 4);
-    return `+55 (${area}) ${head}-${rest.slice(-4)}`;
-  }
-  return `+${digits}`;
+/**
+ * O campo aceita de 8 a 15 dígitos, então nem todo número tem DDI: um fixo
+ * local tem 10. Marcar esse número com "+" o transformaria em outro país na
+ * leitura, e é isso que este teste evita.
+ */
+export function hasCountryCode(number: string): boolean {
+  return digitsOf(number).length >= 12;
 }
 
+function brazilian(digits: string): string {
+  const area = digits.slice(0, 2);
+  const rest = digits.slice(2);
+  return `(${area}) ${rest.slice(0, rest.length - 4)}-${rest.slice(-4)}`;
+}
+
+/** Exibição: com DDI sai em E.164 legível, sem DDI sai no formato local. */
+export function formatPhone(number: string): string {
+  const digits = digitsOf(number);
+  if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13))
+    return `+55 ${brazilian(digits.slice(2))}`;
+  if (hasCountryCode(digits)) return `+${digits}`;
+  if (digits.length === 10 || digits.length === 11) return brazilian(digits);
+  if (digits.length > 4)
+    return `${digits.slice(0, digits.length - 4)}-${digits.slice(-4)}`;
+  return digits;
+}
+
+/** Destino do link de ligação. Sem DDI o "+" seria uma afirmação falsa. */
 export function phoneE164(number: string): string {
-  return `+${digitsOf(number)}`;
+  const digits = digitsOf(number);
+  return hasCountryCode(digits) ? `+${digits}` : digits;
 }
 
 const NETWORKS: { key: string; label: string; hosts: string[] }[] = [

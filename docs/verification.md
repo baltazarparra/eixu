@@ -27,19 +27,21 @@ npm run format -- --check README.md AGENTS.md docs
 
 O projeto possui `test:sites` e `test:admin`, com testes de contrato sem banco e uma suíte opcional de concorrência em PostgreSQL local. Nenhum desses testes usa geração paga. Não possui script genérico `test`, `verify` ou CI versionada. Não trate um comando inexistente como gate nem substitua falhas por uma declaração do modelo.
 
-## Contatos, localização e vibes, 10/09/2026
+## Contatos, localização e vibes, 11/09/2026
 
 A entrega acrescenta a coluna `tenants.contacts`, a seção automática de
 localização, a coluna de contato no rodapé e as quatro vibes de site.
 
-**Ordem obrigatória:** `npm run db:migrate` no banco alvo **antes** do deploy.
-Até a coluna existir, criar cliente e salvar Dados falham com a mensagem
-genérica de erro, sem gravar linha parcial; a leitura e o site publicado
-continuam funcionando, porque `contactsOf` tolera a ausência da coluna e
-reaproveita o WhatsApp já gravado. A migração é operação do operador e não foi
-executada por este trabalho.
+**Migração aplicada em 11/09/2026** no banco de `.env.local`, autorizada pelo
+operador: `npm run db:migrate`, 20 statements idempotentes, coluna
+`tenants.contacts jsonb not null default '{}'` criada. Os quatro clientes
+existentes seguiram com `contacts` vazio e o WhatsApp já gravado, que
+`contactsOf` reaproveita como primeiro telefone: o rodapé deles passa a exibir
+esse número assim que o código for publicado. Deploy só depois da migração;
+antes dela, criar cliente e salvar Dados falhariam com a mensagem genérica, sem
+gravar linha parcial.
 
-Checks executados em 10/09/2026, com Node.js 24.15.0:
+Checks executados em 11/09/2026, com Node.js 24.15.0:
 
 | Check                  | Resultado observado                                                                  |
 | ---------------------- | ------------------------------------------------------------------------------------ |
@@ -59,12 +61,50 @@ vibe e contatos; âncora `onde-estamos` reservada no pre-flight; `/go/wa?n=`
 escolhendo o segundo WhatsApp e caindo no principal com índice inválido;
 JSON-LD com telefone em E.164, e-mail, endereços e redes.
 
-**Não verificado:** a renderização do rodapé, da seção de localização e das
-três vibes no navegador, porque depende da migração e de um cliente real. Falta
-o smoke descrito no plano: criar um cliente por vibe com dois telefones, dois
-endereços e três redes, conferir a prévia em 1440 e 390 px e comparar com as
-referências. O repositório não tem teste de renderização React, então o que
-está coberto é o contrato dos módulos, não o HTML final.
+### Smoke em navegador, 11/09/2026
+
+Quatro clientes sintéticos `smoke-*`, um por vibe, com o mesmo conteúdo e os
+mesmos blocos, publicados por SQL e apagados ao fim do smoke; o banco voltou
+aos quatro clientes reais, sem página órfã. Nenhuma chamada paga de geração.
+
+- As quatro páginas responderam 200 e renderizaram todos os blocos, sem bloco
+  descartado por schema. `data-vibe` correto em cada uma.
+- Sem overflow horizontal em 1440 nem em 390: `scrollWidth` igual ao
+  `clientWidth` nas duas larguras.
+- Mapa do Google carregou com o pino no endereço nas quatro vibes, com o
+  cartão do endereço resolvido. O filtro escuro do moderno produz um mapa
+  escuro legível, com o pino visível.
+- Troca de endereço: as abas alternam rótulo, texto, `src` do mapa e o link de
+  rota. Dois endereços, um iframe por vez.
+- Rodapé: WhatsApp por `/go/wa?n=0` com `data-track`, telefone comum em `tel:`,
+  e-mail em `mailto:`, atalho para `#onde-estamos` e os três ícones de rede.
+- Cadastro pelo formulário do admin, com credencial descartável passada por
+  variável de ambiente em vez da senha real: duas linhas de telefone com tipos
+  diferentes gravaram `contacts` na ordem, `whatsapp` derivado do número
+  marcado como WhatsApp, `brand.vibe`, e o `socialUrl` do briefing derivado da
+  lista de redes. Dados reabriu todos os campos preenchidos e mostrou a vibe.
+
+Dois defeitos foram encontrados **pelo** smoke e corrigidos nesta entrega:
+
+1. As linhas de telefone e endereço se esmagavam no formulário, porque
+   `.admin-input` fixa `width: 100%` e vence o utilitário de largura dentro do
+   flex. Passaram a usar `flex-basis`, que é quem controla a medida do item.
+2. Um número sem DDI era exibido como `+1133334444`, que se lê como código de
+   país 1. `formatPhone` passou a distinguir número com e sem DDI, e
+   `phoneE164` só devolve `+` quando há código de país; o campo ganhou a
+   legenda pedindo o DDI no WhatsApp.
+
+**Defeito preexistente observado, não corrigido aqui:** `lib/tracking.ts`
+reescreve os `href` de `/go/wa` antes da hidratação, e o React registra
+incompatibilidade de atributo no console. Acontece em cliente publicado sem
+nenhuma mudança desta entrega, inclusive no botão flutuante; o link continua
+funcionando porque o próprio script já aplicou a atribuição. Fica registrado
+para uma correção própria.
+
+**Não verificado:** geração de site pelo agente em cada vibe, que depende de
+chamada paga e de aprovação de imagem pelo operador. As páginas do smoke foram
+compostas à mão para isolar o CSS e o render; elas não medem a qualidade da
+direção que o modelo produz dentro de cada faixa.
 
 ## Revisão do admin, 10/09/2026
 

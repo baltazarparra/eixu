@@ -32,6 +32,7 @@ const {
   whatsappAt,
   derivedSocialUrl,
   formatPhone,
+  phoneE164,
   socialNetwork,
   contactsSummary,
 } = await j.import('../lib/tenant-contacts.ts');
@@ -361,7 +362,12 @@ await test('contatos normalizam número, rede e endereço, e recusam lixo', () =
   assert.equal(whatsappAt(contacts, 1), null);
   assert.equal(derivedSocialUrl(contacts), 'https://www.instagram.com/padaria/');
   assert.equal(formatPhone('551133334444'), '+55 (11) 3333-4444');
-  assert.equal(formatPhone('12025550100'), '+12025550100');
+  assert.equal(formatPhone('442071234567'), '+442071234567');
+  // Sem DDI o número não vira E.164: o "+" faria um fixo local de São Paulo
+  // ser lido como um número dos Estados Unidos.
+  assert.equal(formatPhone('1133334444'), '(11) 3333-4444');
+  assert.equal(phoneE164('1133334444'), '1133334444');
+  assert.equal(phoneE164('5511988887777'), '+5511988887777');
   assert.equal(socialNetwork(contacts.social[1]).label, 'Facebook');
   assert.equal(socialNetwork('https://exemplo.com.br').key, 'site');
   assert.match(contactsSummary(contacts, 'oi@exemplo.com'), /WhatsApp/);
