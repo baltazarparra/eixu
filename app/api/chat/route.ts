@@ -16,6 +16,7 @@ import {
   savedProgressMessage,
 } from '@/lib/ai/chat-progress';
 import { workspaceState } from '@/lib/admin/state';
+import { editPolicyFor, editScopeText } from '@/lib/ai/edit-policy';
 import { isAuthenticated } from '@/lib/auth';
 import { buildTools } from '@/lib/ai/tools';
 import { db } from '@/lib/db';
@@ -185,11 +186,15 @@ export async function POST(request: Request) {
 
   // A revisão renderiza o rascunho pela própria origem da requisição.
   const origin = new URL(request.url).origin;
+  const editPolicy = phase ? undefined : editPolicyFor(lastUserText, pages);
+  context.editing = Boolean(editPolicy);
+  context.editScope = editPolicy ? editScopeText(editPolicy) : undefined;
   const tools = buildTools(tenant, {
     origin,
     cookie: request.headers.get('cookie') ?? undefined,
     phase,
     lastUserText,
+    editPolicy,
   });
   if (phase) {
     const generation = {

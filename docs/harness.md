@@ -114,6 +114,29 @@ julgados nos pixels; não provocam reenvios do projeto para zerar contagens.
 Erros continuam bloqueando a transição. Imagens ficam disponíveis por número, conforme o fluxo
 atual do produto; aplicar logo e publicar continuam dependendo do pedido.
 
+Na edição de um site existente, a rota deriva uma política da **mensagem atual**,
+sem herdar pedidos de reconstrução do histórico. Por padrão, remove `set_design`,
+`build_site`, `repair_site` e `set_blocks` do conjunto executável. A ferramenta
+`set_brand` continua disponível para ajustes pontuais de cor, fonte ou formato
+na edição geral; a proteção adicional de cabeçalho abaixo também a remove.
+Site novo, fases explícitas e um pedido direto de reconstrução mantêm seu fluxo.
+O reconhecimento desse pedido é restrito às expressões de `lib/ai/edit-policy.ts`;
+não é uma interpretação universal de linguagem natural.
+
+Pedidos de posição/fundo do cabeçalho recebem uma proteção adicional: IDs dos
+`nav.bar` e caminhos de propriedades permitidos, verificados no executor antes
+da escrita. O pedido de fixação permite `position`; fundo e transparência
+permitem `backgroundOpacity` e `presentation.tone`. Marca, logo, textos, links,
+outros blocos e publicação ficam fora desse conjunto. Menção à home restringe
+os alvos à home; sem essa restrição, os cabeçalhos das páginas são os alvos.
+Pedidos mistos com outros blocos seguem a edição geral, sem essa garantia de
+campos. O prompt instrui a relatar achados da crítica fora do pedido atual.
+
+`update_block` combina parcialmente `presentation`, preservando seus campos
+omitidos, e valida o bloco completo com schema estrito antes de escrever.
+Propriedades desconhecidas ou inválidas são recusadas, não gravadas como se
+fossem alterações visuais aplicadas.
+
 A revisão tem três fontes de evidência:
 
 1. `lintPage`, `lintSite` e métricas de composição conferem o projeto inteiro.

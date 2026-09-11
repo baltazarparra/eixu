@@ -58,7 +58,7 @@ details[open] > summary {
   --section-space: clamp(2.5rem, 5vw, 4.5rem);
 }
 .site-theme [id] {
-  scroll-margin-top: 2rem;
+  scroll-margin-top: var(--navigation-offset, 2rem);
 }
 .site-theme :is(a, button, summary, input, select, textarea):focus-visible {
   outline: 2px solid currentColor;
@@ -335,6 +335,24 @@ details[open] > summary .site-disclosure {
 }
 
 /* Navegação */
+.site-navigation-content {
+  display: flow-root;
+}
+.site-navigation-frame[data-position='fixed'] {
+  height: var(--navigation-height, 8.5rem);
+}
+.site-navigation-frame[data-position='fixed'] > .site-navigation-content {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 50;
+  max-height: 100dvh;
+  overflow-y: auto;
+}
+@media (min-width: 1024px) {
+  .site-navigation-frame[data-position='fixed'] {
+    height: var(--navigation-height, 5.5rem);
+  }
+}
 .site-nav {
   position: relative;
   z-index: 30;
@@ -755,7 +773,9 @@ details[open] > summary .site-disclosure {
   aspect-ratio: 4 / 5;
 }
 .site-gallery-filmstrip ul {
-  grid-template-columns: repeat(8, minmax(18rem, 1fr));
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(min(100%, 18rem), 1fr);
   overflow-x: auto;
   scroll-snap-type: x mandatory;
 }

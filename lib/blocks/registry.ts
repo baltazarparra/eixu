@@ -71,6 +71,21 @@ export const blockSchemas = {
     anchor,
     presentation,
     layout: z.enum(['bar', 'floating', 'minimal', 'split']).optional(),
+    position: z
+      .enum(['static', 'fixed'])
+      .optional()
+      .describe(
+        'fixed mantém o cabeçalho no topo durante a rolagem, reservando sua altura no conteúdo.',
+      ),
+    backgroundOpacity: z
+      .number()
+      .int()
+      .min(70)
+      .max(100)
+      .optional()
+      .describe(
+        'Opacidade do fundo do cabeçalho em porcentagem. Ex.: 88 para fundo semitransparente; presentation.tone ink usa o tom escuro.',
+      ),
     logoText: z
       .string()
       .min(1)

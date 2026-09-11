@@ -14,6 +14,8 @@ import type { Tenant } from '../types';
 
 export type PromptContext = {
   phase?: Phase;
+  editing?: boolean;
+  editScope?: string;
   /** Papéis de cena que a direção pede, montados por scenePlan. */
   scenePlan?: string;
   /** Quantas vagas do plano já têm foto disponível. */
@@ -69,11 +71,12 @@ const FREE = `## Execução com critério de qualidade
 - Site novo ou reconstrução: set_design; se faltarem cenas, prepare_site_images; depois build_site com o projeto completo. Não use set_brand antes.
 - Edição: get_page na página em foco, depois a menor alteração: update_block, insert_block, move_block ou remove_block. set_blocks só para recompor a página. Não releia estado já recebido neste turno nem reenvie blocos inalterados.
 - Tamanho do logo: update_block em nav.bar com logoHeight em pixels. footer.compact aceita a mesma prop. Preserve a imagem aplicada.
+- Cabeçalho fixo: update_block em nav.bar com position "fixed". Fundo escuro semitransparente: presentation.tone "ink" e backgroundOpacity entre 70 e 100. Preserve layout, logo, links e CTA se o pedido não os menciona. Não altere a direção visual para isso.
 - Logo por pedido: com imagem anexada, generate_logo em modo "modernizar" com a URL do anexo; sem anexo, modo "criar". "Só o símbolo" significa wordmark false. Apresente cada variante com nota, fidelidade e se o nome saiu escrito certo. Logo não depende do guia de imagem. set_site_logo quando o operador pedir a aplicação de uma variante da biblioteca, sem exigir aprovação da imagem.
 - Alteração por número: para "quero atualizar a imagem #5, quero outro carro", chame update_image com image "#5" e o pedido de mudança. A ferramenta usa a original como referência e troca suas ocorrências nos rascunhos; a nova versão ganha outro número e ambas ficam na biblioteca. Informe o novo número e o resultado. Não peça aprovação, não gere uma cena avulsa nem publique por causa desse pedido.
 - Falha de build_site não grava nada: o lote fica em memória neste turno. Use repair_site com somente os campos que falharam, por slug e índice do bloco. Para adicionar ou remover páginas, envie novo build_site.
 - build_site já valida páginas e projeto e retorna publicationPending. Com ok=true, use esse relatório; não chame lint_site de novo sem outra edição.
-- Antes de encerrar uma composição ou mudança visual, use review_pages, trate os problemas materiais e confira o resultado depois da última correção. Em edição pontual de conteúdo, valide a página afetada com lint_page. Um retorno ok não garante qualidade visual. Não sacrifique verificação para reduzir tokens ou passos.
+- Antes de encerrar uma composição ou mudança visual, use review_pages e confira o resultado. Em edição, corrija somente problemas introduzidos pela alteração solicitada e dentro do mesmo escopo. Relate problemas antigos ou de outros blocos sem tentar corrigi-los. Em composição/revisão completa, trate os problemas materiais e confira depois da última correção. Em edição pontual de conteúdo, valide a página afetada com lint_page. Um retorno ok não garante qualidade visual.
 - O catálogo abaixo traz uso, proporção e limites de cada bloco. describe_block só se restar dúvida de schema. Omita opcionais sem conteúdo.
 - Execute com o contexto disponível; pergunte só se faltar informação que mude materialmente o resultado. Nunca publique ou apague página sem pedido do operador.`;
 
@@ -85,7 +88,16 @@ export function systemPrompt(
   imagesSummary = '',
   context: PromptContext = {},
 ): string {
-  const { phase, scenePlan, coverage, nextScene, sources, review } = context;
+  const {
+    phase,
+    editing,
+    editScope,
+    scenePlan,
+    coverage,
+    nextScene,
+    sources,
+    review,
+  } = context;
   const intake = [
     intakeSummary(tenant.brief.intake),
     socialSummary(tenant.brief.social, intakeSocialUrl(tenant.brief.intake)),
@@ -104,10 +116,10 @@ export function systemPrompt(
   // Contexto podado por fase: catálogo só onde há blocos para escrever.
   const wantsCatalog = !phase || phase === 'composicao' || phase === 'revisao';
   const wantsDirection =
-    !phase || phase === 'briefing' || phase === 'composicao';
-  const wantsComposition = !phase || phase !== 'briefing';
+    !editing && (!phase || phase === 'briefing' || phase === 'composicao');
+  const wantsComposition = !editing && (!phase || phase !== 'briefing');
   const wantsImageDirection =
-    !phase || phase === 'briefing' || phase === 'cenas';
+    !editing && (!phase || phase === 'briefing' || phase === 'cenas');
   const vibe = vibeOf(tenant.brand);
   const contacts = contactsSummary(
     contactsOf(tenant.contacts, tenant.whatsapp),
@@ -118,6 +130,7 @@ export function systemPrompt(
     `## Identidade EIXU\n${soul}`,
     FACTS,
     phase ? PHASE_BRIEF[phase] : FREE,
+    editScope ? `## Escopo da edição atual\n${editScope}` : '',
     wantsComposition ? COMPOSITION : '',
     wantsDirection
       ? `## Vibe do site: ${VIBE_LABEL[vibe]}\n${VIBE_DIRECTION[vibe]}`

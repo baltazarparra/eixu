@@ -14,6 +14,7 @@ import {
   Phone,
 } from 'lucide-react';
 import { MotionLink } from '@/lib/blocks/motion';
+import { NavigationFrame } from '@/lib/blocks/navigation-frame';
 import { SocialIcon } from '@/lib/blocks/social-icons';
 import {
   contactsOf,
@@ -112,86 +113,100 @@ export function NavBar({
   links,
   cta,
   layout,
+  position,
+  backgroundOpacity,
   ctx,
 }: NavBarProps & { ctx: RenderContext }) {
   const logo = ctx.tenant.brand.logoUrl;
   const resolvedLayout = layout ?? ctx.tenant.brand.design?.navigation ?? 'bar';
   return (
-    <header
-      className={`site-nav site-nav-${resolvedLayout} border-b border-[var(--line)]`}
-    >
-      <div
-        className={`${shell} flex min-h-20 flex-wrap items-center justify-between gap-4 py-4`}
+    <NavigationFrame position={position}>
+      <header
+        className={`site-nav site-nav-${resolvedLayout} border-b border-[var(--line)]`}
+        style={
+          backgroundOpacity === undefined
+            ? undefined
+            : {
+                background: `color-mix(in oklab, var(--paper) ${backgroundOpacity}%, transparent)`,
+                backdropFilter: 'blur(12px)',
+              }
+        }
       >
-        <a
-          href="/"
-          className="flex max-w-full shrink-0 items-center text-[1.05rem] font-semibold tracking-[-0.01em]"
-          aria-label={`${logoText}, início`}
+        <div
+          className={`${shell} flex min-h-20 flex-wrap items-center justify-between gap-4 py-4`}
         >
-          {logo ? (
-            <img
-              src={logo}
-              alt={logoText}
-              width={logoHeight === undefined ? 160 : undefined}
-              height={logoHeight ?? 40}
-              style={
-                logoHeight === undefined ? undefined : { height: logoHeight }
-              }
-              className={
-                logoHeight === undefined
-                  ? 'h-12 w-auto max-w-[140px] object-contain'
-                  : 'w-auto max-w-full object-contain object-left'
-              }
-              decoding="async"
-            />
-          ) : (
-            logoText
-          )}
-        </a>
-        <nav
-          className="hidden items-center gap-6 lg:flex"
-          aria-label="Navegação principal"
-        >
-          {links.map((link) => (
-            <a
-              key={link.href + link.label}
-              href={link.href}
-              aria-current={link.href === ctx.pagePath ? 'page' : undefined}
-              className="site-nav-link text-[0.92rem] text-[var(--muted)] hover:text-[var(--ink)]"
-            >
-              {link.label}
-            </a>
-          ))}
-        </nav>
-        {cta ? (
           <a
-            href={cta.href}
-            className="site-nav-cta rounded-[var(--radius)] bg-[var(--highlight)] px-5 py-2.5 text-[0.9rem] font-medium text-[var(--highlight-ink)]"
-            data-track={cta.href.startsWith('/go/wa') ? 'whatsapp' : undefined}
+            href="/"
+            className="flex max-w-full shrink-0 items-center text-[1.05rem] font-semibold tracking-[-0.01em]"
+            aria-label={`${logoText}, início`}
           >
-            {cta.label}
+            {logo ? (
+              <img
+                src={logo}
+                alt={logoText}
+                width={logoHeight === undefined ? 160 : undefined}
+                height={logoHeight ?? 40}
+                style={
+                  logoHeight === undefined ? undefined : { height: logoHeight }
+                }
+                className={
+                  logoHeight === undefined
+                    ? 'h-12 w-auto max-w-[140px] object-contain'
+                    : 'w-auto max-w-full object-contain object-left'
+                }
+                decoding="async"
+              />
+            ) : (
+              logoText
+            )}
           </a>
-        ) : null}
-        {links.length ? (
-          <details className="site-mobile-nav w-full lg:hidden">
-            <summary className="flex min-h-11 cursor-pointer items-center justify-between text-sm font-medium">
-              Menu<span aria-hidden="true">+</span>
-            </summary>
-            <nav aria-label="Navegação mobile" className="grid gap-1 pb-2">
-              {links.map((link) => (
-                <a
-                  key={link.href + link.label}
-                  href={link.href}
-                  className="py-3 text-sm"
-                >
-                  {link.label}
-                </a>
-              ))}
-            </nav>
-          </details>
-        ) : null}
-      </div>
-    </header>
+          <nav
+            className="hidden items-center gap-6 lg:flex"
+            aria-label="Navegação principal"
+          >
+            {links.map((link) => (
+              <a
+                key={link.href + link.label}
+                href={link.href}
+                aria-current={link.href === ctx.pagePath ? 'page' : undefined}
+                className="site-nav-link text-[0.92rem] text-[var(--muted)] hover:text-[var(--ink)]"
+              >
+                {link.label}
+              </a>
+            ))}
+          </nav>
+          {cta ? (
+            <a
+              href={cta.href}
+              className="site-nav-cta rounded-[var(--radius)] bg-[var(--highlight)] px-5 py-2.5 text-[0.9rem] font-medium text-[var(--highlight-ink)]"
+              data-track={
+                cta.href.startsWith('/go/wa') ? 'whatsapp' : undefined
+              }
+            >
+              {cta.label}
+            </a>
+          ) : null}
+          {links.length ? (
+            <details className="site-mobile-nav w-full lg:hidden">
+              <summary className="flex min-h-11 cursor-pointer items-center justify-between text-sm font-medium">
+                Menu<span aria-hidden="true">+</span>
+              </summary>
+              <nav aria-label="Navegação mobile" className="grid gap-1 pb-2">
+                {links.map((link) => (
+                  <a
+                    key={link.href + link.label}
+                    href={link.href}
+                    className="py-3 text-sm"
+                  >
+                    {link.label}
+                  </a>
+                ))}
+              </nav>
+            </details>
+          ) : null}
+        </div>
+      </header>
+    </NavigationFrame>
   );
 }
 
