@@ -7,6 +7,7 @@ import { ChatActivity, Message, chatErrorMessage } from './chat-parts';
 import { GenerationBar, GenerationPanel } from './generation-panel';
 import { isRunning, useGeneration } from './use-generation';
 
+import { ImagePlus } from 'lucide-react';
 import { AdminHeader, MobileViews } from '@/components/admin/navigation';
 import { ChatUsageDetails } from '@/components/admin/chat-usage';
 import { adminFetch } from '@/lib/admin/http';
@@ -117,16 +118,51 @@ export function Workspace({
       setMessages((current) => mergeSavedMessages(current, saved)),
   });
   const running = isRunning(generation.run);
+  const { start: startRun, ready, everRan } = generation;
 
-  async function startGeneration() {
-    setNotice(null);
-    setView('chat');
-    try {
-      await generation.start();
-    } catch (failure) {
-      fail(failure instanceof Error ? failure.message : 'Falha na geração.');
-    }
-  }
+  const startGeneration = useCallback(
+    async (focus = true) => {
+      setNotice(null);
+      if (focus) setView('chat');
+      try {
+        await startRun();
+      } catch (failure) {
+        fail(failure instanceof Error ? failure.message : 'Falha na geração.');
+      }
+    },
+    [startRun, fail],
+  );
+
+  /**
+   * Cliente novo não precisa pedir a geração: chegou aqui pelo cadastro, e o
+   * botão "Gerar site" era só um passo a mais entre o operador e o resultado.
+   * A condição é estreita de propósito — nenhuma execução anterior, nenhuma
+   * página e a primeira etapa pendente —, porque retomar sozinho um rascunho
+   * antigo gastaria geração paga que ninguém pediu.
+   */
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (
+      autoStarted.current ||
+      !ready ||
+      everRan !== false ||
+      running ||
+      busy ||
+      site.generation.next !== 'briefing' ||
+      site.pages.length > 0
+    )
+      return;
+    autoStarted.current = true;
+    void startGeneration(false);
+  }, [
+    ready,
+    everRan,
+    running,
+    busy,
+    site.generation.next,
+    site.pages.length,
+    startGeneration,
+  ]);
 
   async function stopGeneration() {
     try {
@@ -338,45 +374,35 @@ export function Workspace({
             state={site}
             error={generation.error}
             busy={busy}
+            starting={generation.starting}
             onStart={() => void startGeneration()}
             onStop={() => void stopGeneration()}
           />
-          <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5">
-            {messages.length === 0 ? (
-              <div className="flex flex-col gap-3 text-sm">
-                <p className="text-base font-medium">
-                  O que este cliente precisa?
-                </p>
-                <p className="text-[var(--color-muted)]">
-                  Descreva o negócio e as referências, ou continue a geração em
-                  etapas: briefing e direção, cenas, composição e revisão. As
-                  imagens ficam na biblioteca e são usadas sem aprovação. Peça
-                  alterações pelo número, como “atualize a imagem #5 com outro
-                  carro”. No fim, confira a prévia e publique.
-                </p>
-              </div>
+          <div ref={scrollRef} className="admin-thread">
+            {!messages.length && locked ? (
+              <p className="admin-thread-empty">
+                O agente responde aqui ao terminar cada etapa.
+              </p>
             ) : null}
-
-            <div className="flex flex-col gap-5">
+            <div className="admin-thread-list">
               {messages.map((message) => (
                 <Message key={message.id} message={message} />
               ))}
               {busy ? <ChatActivity messages={messages} /> : null}
               {error ? (
-                <p className="rounded-md border border-[var(--color-err)] px-3 py-2 text-xs text-[var(--color-err)]">
+                <p className="admin-thread-error">
                   {chatErrorMessage(error.message)}
                 </p>
               ) : null}
             </div>
 
             {!locked && site.pages.length > 0 ? (
-              <div className="mt-6 flex flex-wrap gap-2">
+              <div className="admin-suggestions">
                 {SUGGESTIONS.map((suggestion) => (
                   <button
                     key={suggestion}
                     type="button"
                     onClick={() => setInput(suggestion)}
-                    className="rounded-full border px-3 py-1.5 text-left text-[0.72rem] text-[var(--color-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text)]"
                   >
                     {suggestion}
                   </button>
@@ -390,10 +416,10 @@ export function Workspace({
               event.preventDefault();
               submit(input);
             }}
-            className="border-t p-3"
+            className="admin-composer"
           >
             <div
-              className="flex flex-col gap-2 rounded-lg border bg-[var(--color-surface)] p-2 focus-within:border-[var(--color-accent)]"
+              className="admin-composer-box"
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
                 event.preventDefault();
@@ -401,16 +427,12 @@ export function Workspace({
               }}
             >
               {attachments.length ? (
-                <ul className="flex flex-wrap gap-2 px-1 pt-1">
+                <ul className="admin-composer-files">
                   {attachments.map((item) => (
-                    <li key={item.url} className="relative">
+                    <li key={item.url}>
                       {/* Miniatura de arquivo recém-enviado ao Blob; o otimizador não agrega nada aqui. */}
                       {/* oxlint-disable-next-line next/no-img-element */}
-                      <img
-                        src={item.url}
-                        alt={item.name}
-                        className="h-14 w-14 rounded-md border object-cover"
-                      />
+                      <img src={item.url} alt={item.name} />
                       <button
                         type="button"
                         aria-label={`Remover ${item.name}`}
@@ -419,7 +441,6 @@ export function Workspace({
                             list.filter((entry) => entry.url !== item.url),
                           )
                         }
-                        className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full border bg-[var(--color-bg)] text-[0.65rem]"
                       >
                         ×
                       </button>
@@ -454,21 +475,22 @@ export function Workspace({
                 disabled={running}
                 placeholder={
                   running
-                    ? 'Geração em andamento. O chat volta quando ela terminar.'
+                    ? 'A conversa reabre quando a geração terminar'
                     : site.pages.length
                       ? 'Peça uma mudança'
                       : 'Descreva o site'
                 }
-                className="w-full resize-none bg-transparent px-1.5 py-1 text-sm outline-none"
+                className="admin-composer-input"
               />
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <div className="admin-composer-foot">
+                <div className="admin-composer-tools">
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploading || locked}
-                    className="rounded-md border px-2.5 py-1 text-[0.72rem] text-[var(--color-muted)] hover:text-[var(--color-text)] disabled:opacity-50"
+                    className="admin-composer-attach"
                   >
+                    <ImagePlus size={14} aria-hidden="true" />
                     {uploading ? 'Enviando' : 'Imagem'}
                   </button>
                   <input
@@ -482,9 +504,9 @@ export function Workspace({
                       event.target.value = '';
                     }}
                   />
-                  <span className="text-[0.68rem] text-[var(--color-muted)]">
+                  <span className="admin-composer-hint">
                     {running
-                      ? 'A geração está rodando; peça alterações quando ela terminar'
+                      ? 'Roda no servidor'
                       : page
                         ? `Falando sobre /${page.slug}`
                         : 'Enter envia, Shift+Enter quebra linha'}
@@ -494,7 +516,7 @@ export function Workspace({
                   <button
                     type="button"
                     onClick={() => void stop()}
-                    className="rounded-md border px-3 py-1.5 text-xs"
+                    className="admin-secondary admin-composer-stop"
                   >
                     Parar
                   </button>
@@ -506,7 +528,7 @@ export function Workspace({
                       uploading ||
                       running
                     }
-                    className="rounded-md bg-[var(--color-accent)] px-3.5 py-1.5 text-xs font-medium text-[var(--color-accent-ink)] disabled:opacity-40"
+                    className="admin-composer-send"
                   >
                     Enviar
                   </button>
@@ -514,7 +536,7 @@ export function Workspace({
               </div>
             </div>
           </form>
-          <ChatUsageDetails messages={messages} />
+          <ChatUsageDetails messages={messages} events={generation.events} />
         </section>
 
         <section className="admin-content" aria-label="Prévia e revisão">
@@ -630,10 +652,10 @@ export function Workspace({
                 }`}
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-center text-sm text-[var(--color-muted)]">
-                {busy
-                  ? 'O agente está montando o site'
-                  : 'O preview aparece assim que o agente criar a primeira página.'}
+              <div className="admin-preview-empty">
+                {locked
+                  ? 'A prévia aparece quando a composição gravar a primeira página.'
+                  : 'Nenhuma página em rascunho ainda.'}
               </div>
             )}
           </div>

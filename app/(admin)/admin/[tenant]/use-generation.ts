@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { adminFetch } from '@/lib/admin/http';
+import { adminFetch, AdminHttpError } from '@/lib/admin/http';
 import type { SiteState } from '@/lib/admin/state';
 import type { ChatMessage } from '@/lib/ai/usage';
 import type { GenerationEvent, GenerationRun } from '@/lib/generation/runs';
@@ -12,6 +12,8 @@ export type GenerationFeed = {
   messages: ChatMessage[];
   lastMessageId: number;
   hasMoreMessages: boolean;
+  /** Se este cliente já teve alguma execução, concluída ou não. */
+  everRan?: boolean;
   state: SiteState;
 };
 
@@ -41,6 +43,11 @@ export function useGeneration(input: {
   const [run, setRun] = useState<GenerationRun | null>(null);
   const [events, setEvents] = useState<GenerationEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Enquanto a primeira leitura não volta, o painel não sabe se existe uma
+  // execução: começar sozinho antes disso duplicaria trabalho pago.
+  const [ready, setReady] = useState(false);
+  const [everRan, setEverRan] = useState<boolean | null>(null);
+  const [starting, setStarting] = useState(false);
   const cursor = useRef(input.initialMessageId);
   const readSequence = useRef(0);
   const active = isRunning(run);
@@ -70,6 +77,9 @@ export function useGeneration(input: {
       if (signal?.aborted || ticket !== readSequence.current) return feed;
       setRun(feed.run);
       setEvents(feed.events);
+      // Um feed antigo sem o campo não autoriza início automático.
+      setEverRan(feed.everRan ?? true);
+      setReady(true);
       stateRef.current(feed.state);
       if (feed.messages.length) messagesRef.current(feed.messages);
       cursor.current = Math.max(cursor.current, feed.lastMessageId);
@@ -112,13 +122,27 @@ export function useGeneration(input: {
 
   const start = useCallback(async () => {
     setError(null);
-    const result = await adminFetch<{ run: GenerationRun }>(
-      `/api/admin/${tenant}/generation`,
-      { method: 'POST' },
-    );
-    setRun(result.run);
-    await read();
-    return result.run;
+    setStarting(true);
+    try {
+      const result = await adminFetch<{ run: GenerationRun }>(
+        `/api/admin/${tenant}/generation`,
+        { method: 'POST' },
+      );
+      setRun(result.run);
+      await read();
+      return result.run;
+    } catch (failure) {
+      // Outra aba, o comando digitado ou o início automático podem ter aberto
+      // a execução primeiro. O índice do banco já garantiu um run só: adotar o
+      // vencedor é o comportamento certo, não um erro para o operador.
+      if (failure instanceof AdminHttpError && failure.status === 409) {
+        const feed = await read();
+        if (isRunning(feed.run)) return feed.run;
+      }
+      throw failure;
+    } finally {
+      setStarting(false);
+    }
   }, [tenant, read]);
 
   const stop = useCallback(async () => {
@@ -129,5 +153,15 @@ export function useGeneration(input: {
     await read();
   }, [tenant, read]);
 
-  return { run, events, error, refresh: read, start, stop };
+  return {
+    run,
+    events,
+    error,
+    ready,
+    everRan,
+    starting,
+    refresh: read,
+    start,
+    stop,
+  };
 }

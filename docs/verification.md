@@ -1,5 +1,71 @@
 # Validação e publicação
 
+## Correções da revisão do PR #15, 11/09/2026
+
+O início automático agora considera tentativas anteriores à tabela de execuções:
+o marcador em `brief.generation` e mensagens do canal `site` também impedem a
+retomada sem comando. A consulta de existência usa o ID do tenant e independe
+do cursor. O detalhamento de consumo ganhou rolagem própria e entra na área
+visível ao abrir; telas baixas permitem rolar a coluna para acessar os controles.
+
+- As regressões de histórico e consumo falharam no código anterior à correção.
+- `npm run test:admin`: 99 testes passaram, sem pulos, com Chrome e PostgreSQL
+  14 local descartável. O feed real distinguiu cliente novo, marcador legado,
+  mensagens anteriores ao cursor e histórico de outro tenant/canal.
+- `npm run test:sites`: 81 testes passaram, sem pulos.
+- `npm run test:admin:browser`: cinco testes passaram. O feed real preservou
+  o comando manual ao abrir e recarregar clientes com histórico legado. A
+  tabela com 15 recibos permaneceu acessível, inclusive até a última linha
+  por teclado, em 1440×900, 390×844 e 375×667; fechar os detalhes permitiu
+  voltar ao controle de pausa. As capturas ficam em `outputs/generation/`.
+- Lint global, `npx next typegen && npx tsc --noEmit` e `npm run build:vercel`
+  passaram, incluindo os dois testes do artefato de captura serverless.
+
+Os testes usam dados sintéticos e substitutos dos serviços pagos. A entrega
+não exige migração, geração paga ou publicação de rascunhos de clientes.
+
+## Painel de geração e início automático, 11/09/2026
+
+A tela de criação do site começava com um botão **Gerar site** e a pergunta
+"O que este cliente precisa?" num cliente que tinha acabado de ser cadastrado,
+mostrava o andamento como uma lista de rótulos entre 11 e 13 px, imprimia
+"Briefing e direção: em andamentover" na faixa do celular e não exibia mais
+nenhum custo, porque a geração passou a rodar no servidor e o recibo do stream
+deixou de existir. Esta entrega troca o botão pelo início automático em cliente
+novo, reescreve o painel de andamento, refaz a escala tipográfica da conversa e
+volta a medir o consumo, agora incluindo as fases do servidor.
+
+- `npx next typegen && npx tsc --noEmit`: sem erros.
+- `npx oxlint app components lib tests scripts`: zero apontamentos. O `npm run
+lint` sem argumentos também varre `.ds-sync/`, diretório não versionado
+  presente na árvore de trabalho e alheio a esta entrega.
+- `npm run test:admin` com `EIXU_CHROME_PATH`: 83 testes, 81 passaram e 2
+  pularam por falta de PostgreSQL local. Casos novos: o recibo de consumo
+  gravado no fim da fase, a recusa de payload de consumo malformado, a soma
+  que junta fases do servidor e turnos do stream, a medição de duração por
+  fase e a espera do briefing pela leitura do perfil social.
+- `npm run test:sites`: 81 testes, sem pulos.
+- `npm run build:vercel`: aprovado, incluindo os dois testes dos arquivos de
+  captura no artefato serverless.
+- `npm run test:admin:browser` com Chrome local: três testes passaram. O caso
+  novo abre a tela de um cliente sem execução anterior, sem página e com o
+  briefing pendente: a geração começa sem clique, uma única vez, sem passar
+  pelo chat, e recarregar a página acompanha o mesmo run em vez de abrir
+  outro. O mesmo teste confere que "Gerar site" e "O que este cliente
+  precisa?" saíram da tela. Os outros dois preservam o acompanhamento após
+  recarga, a retomada pelo comando textual, a paginação de mensagens, a
+  atualização da prévia e o recibo do chat livre.
+- Capturas do painel real, com o CSS do build, em `outputs/generation/`
+  (início automático, execução, conclusão e celular) e em
+  `outputs/chat-recovery/`. Elas apontaram três defeitos corrigidos aqui: a
+  dica do compositor truncada, "1 páginas" no resumo final e o aviso de
+  revisão pendente sobrepondo o botão Publicar em 390 px.
+
+Sem migração: o recibo por fase usa a coluna `payload`, que já é JSONB. Este
+ciclo não executou geração paga, não escreveu em banco remoto e não publicou
+rascunho de cliente. O início automático foi exercitado contra o servidor
+sintético dos testes; em produção ele depende do `everRan` devolvido pelo feed.
+
 ## Correções da revisão do PR #14, 11/09/2026
 
 Cinco regressões receberam correção e cobertura: o acompanhamento parado após

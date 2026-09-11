@@ -74,6 +74,34 @@ export async function markPhase(tenantId: string, phase: Phase): Promise<void> {
   `;
 }
 
+/**
+ * O cadastro redireciona para o painel e a geração do cliente novo começa
+ * sozinha, enquanto a leitura do perfil social ainda roda em `after()`. Um
+ * perfil em leitura entra no prompt como lacuna: sem esta espera, o briefing
+ * nasceria sem o Instagram que o operador acabou de informar.
+ */
+const SOCIAL_WAIT_MS = 20_000;
+const SOCIAL_POLL_MS = 2_000;
+
+const socialPending = (tenant: Tenant): boolean =>
+  (tenant.brief.social as { status?: string } | undefined)?.status === 'lendo';
+
+async function awaitSocialReading(
+  slug: string,
+  tenant: Tenant,
+): Promise<Tenant> {
+  const deadline = Date.now() + SOCIAL_WAIT_MS;
+  let current = tenant;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, SOCIAL_POLL_MS));
+    current = (await getTenantBySlug(slug)) ?? current;
+    if (!socialPending(current)) return current;
+  }
+  // Esgotado o tempo, a fase segue: o prompt já trata perfil não lido como
+  // lacuna declarada, e prender a execução seria pior que o briefing sem ele.
+  return current;
+}
+
 /** Rótulo curto do que a fase produziu, para a linha do tempo do painel. */
 function outcomeLabel(
   phase: Phase,
@@ -145,6 +173,18 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
   await markPhase(tenant.id, phase);
   await persistMessage(tenant.id, 'user', PHASE_MESSAGE[phase]);
 
+  let ready = tenant;
+  if (phase === 'briefing' && socialPending(tenant)) {
+    await recordEvent({
+      runId: run.id,
+      tenantId: tenant.id,
+      phase,
+      kind: 'note',
+      label: 'Aguardando a leitura do perfil de rede social',
+    });
+    ready = await awaitSocialReading(slug, tenant);
+  }
+
   let stopRequested = false;
   const watcher = setInterval(() => {
     void isStopping(run.id)
@@ -161,7 +201,7 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
   const startedAt = Date.now();
   let steps = 0;
   try {
-    const tools = buildTools(tenant, {
+    const tools = buildTools(ready, {
       origin: run.origin,
       cookie: `eixu_admin=${await createSessionToken()}`,
       phase,
@@ -171,7 +211,7 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
       tools,
       phase,
       shouldStop: () => stopRequested,
-      instructions: phaseInstructions({ tenant, pages, images, phase }),
+      instructions: phaseInstructions({ tenant: ready, pages, images, phase }),
     });
     const result = await agent.generate({
       messages: [{ role: 'user', content: PHASE_MESSAGE[phase] }],
@@ -209,13 +249,18 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
       },
     });
     steps = result.steps.length;
-    console.info('[generation] usage', {
-      tenantId: tenant.id,
-      runId: run.id,
+    // O painel perdeu a contagem quando a geração saiu do navegador: o recibo
+    // do stream não existe aqui. Só números e nome do modelo entram no evento.
+    const usage = {
       ...usageRecord(result.usage, model, phase, steps, startedAt),
       costUsd: sumGatewayCosts(
         result.steps.map((step) => step.providerMetadata?.gateway?.cost),
       ),
+    };
+    console.info('[generation] usage', {
+      tenantId: tenant.id,
+      runId: run.id,
+      ...usage,
     });
 
     const [freshPages, freshImages] = await Promise.all([
@@ -248,7 +293,7 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
       phase,
       kind: 'phase_end',
       label: outcomeLabel(phase, fresh, after),
-      payload: { steps, next: after.next },
+      payload: { steps, next: after.next, usage },
     });
 
     if (stopRequested) return { kind: 'paused' };

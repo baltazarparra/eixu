@@ -2,6 +2,7 @@
 
 import { getToolName, isToolUIPart, type UIMessage } from 'ai';
 import { useEffect, useState } from 'react';
+import { Check, Loader2, X } from 'lucide-react';
 import { describeTool } from '@/lib/generation/labels';
 
 type ToolPart = {
@@ -72,14 +73,13 @@ export function Message({ message }: { message: UIMessage }) {
     return (
       <Bubble from="user">
         {images.length ? (
-          <span className="mb-2 flex flex-wrap gap-2">
+          <span className="admin-bubble-files">
             {images.map((image) => (
               // oxlint-disable-next-line next/no-img-element
               <img
                 key={image.url}
                 src={image.url}
                 alt={image.filename ?? 'imagem anexada'}
-                className="h-16 w-16 rounded-md object-cover"
               />
             ))}
           </span>
@@ -109,38 +109,31 @@ export function Message({ message }: { message: UIMessage }) {
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="admin-turn">
       {groups.map((group, index) =>
         group.kind === 'text' ? (
           <Bubble key={index} from="assistant">
             {group.text.trim()}
           </Bubble>
         ) : (
-          <ol
-            key={index}
-            className="flex flex-col gap-1 rounded-md border bg-[var(--color-surface)] px-3 py-2"
-          >
+          <ol key={index} className="admin-tools">
             {collapse(group.parts).map((item, itemIndex) => (
               <li
                 key={itemIndex}
-                className="flex items-start gap-2 text-[0.75rem]"
+                data-state={
+                  item.failed ? 'failed' : item.done ? 'done' : 'pending'
+                }
               >
-                <span
-                  className={`mt-1.5 size-1.5 shrink-0 rounded-full ${
-                    item.failed
-                      ? 'bg-[var(--color-err)]'
-                      : item.done
-                        ? 'bg-[var(--color-ok)]'
-                        : 'animate-pulse bg-[var(--color-warn)]'
-                  }`}
-                />
-                <span
-                  className={
-                    item.done || item.failed ? 'text-[var(--color-muted)]' : ''
-                  }
-                >
-                  {item.label}
+                <span className="admin-tools-mark" aria-hidden="true">
+                  {item.failed ? (
+                    <X size={12} strokeWidth={3} />
+                  ) : item.done ? (
+                    <Check size={12} strokeWidth={3} />
+                  ) : (
+                    <Loader2 size={12} strokeWidth={2.5} />
+                  )}
                 </span>
+                <span>{item.label}</span>
               </li>
             ))}
           </ol>
@@ -184,17 +177,17 @@ export function ChatActivity({ messages }: { messages: UIMessage[] }) {
       : 'O agente está trabalhando';
   const duration = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`;
   return (
-    <output
-      className="block rounded-md border px-3 py-2 text-xs text-[var(--color-muted)]"
-      data-chat-activity
-    >
-      <span className="block">
-        {activity} <span aria-hidden="true">· {duration}</span>
+    <output className="admin-activity" data-chat-activity>
+      <span className="admin-activity-line">
+        <Loader2 size={13} strokeWidth={2.5} aria-hidden="true" />
+        <span>{activity}</span>
+        <span className="admin-activity-time" aria-hidden="true">
+          {duration}
+        </span>
       </span>
       {elapsed >= 60 ? (
-        <span className="mt-1 block">
-          Esta etapa pode levar alguns minutos. Use Ver progresso para consultar
-          o que já foi salvo.
+        <span className="admin-activity-note">
+          Esta etapa pode levar alguns minutos. O trabalho continua no servidor.
         </span>
       ) : null}
     </output>
@@ -210,18 +203,8 @@ export function Bubble({
 }) {
   const isUser = from === 'user';
   return (
-    <div
-      className={`flex flex-col gap-1 ${isUser ? 'items-end' : 'items-start'}`}
-    >
-      <div
-        className={`max-w-[94%] whitespace-pre-wrap rounded-lg px-3.5 py-2.5 text-sm leading-relaxed ${
-          isUser
-            ? 'bg-[var(--color-surface-2)]'
-            : 'border bg-[var(--color-surface)]'
-        }`}
-      >
-        {children}
-      </div>
+    <div className="admin-bubble" data-from={isUser ? 'user' : 'assistant'}>
+      <div className="admin-bubble-body whitespace-pre-wrap">{children}</div>
     </div>
   );
 }
