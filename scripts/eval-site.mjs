@@ -133,7 +133,7 @@ async function runPhase(tenant, phase, images) {
   });
   const started = Date.now();
   const result = await generateText({
-    model: process.env.EIXU_MODEL || 'anthropic/claude-opus-4.5',
+    model: process.env.EIXU_MODEL || 'anthropic/claude-opus-5',
     instructions: systemPrompt(tenant, summary, '/', imagesSummary, context),
     messages: [{ role: 'user', content: PHASE_MESSAGE[phase] }],
     tools,
@@ -173,7 +173,7 @@ let tenant = await prepareTenant();
 const report = {
   case: caseName,
   slug: spec.slug,
-  model: process.env.EIXU_MODEL || 'anthropic/claude-opus-4.5',
+  model: process.env.EIXU_MODEL || 'anthropic/claude-opus-5',
   phases: [],
 };
 report.flow = await runEvaluationPhases({

@@ -27,6 +27,34 @@ npm run format -- --check README.md AGENTS.md docs
 
 O projeto possui `test:sites` e `test:admin`, com testes de contrato sem banco e uma suíte opcional de concorrência em PostgreSQL local. Nenhum desses testes usa geração paga. Não possui script genérico `test`, `verify` ou CI versionada. Não trate um comando inexistente como gate nem substitua falhas por uma declaração do modelo.
 
+## Upgrade para Opus 5, 10/09/2026
+
+O fallback do chat, dos críticos de foto/logo, da descrição de avatar social e
+dos dois runners passou a `anthropic/claude-opus-5`. O ID foi confirmado no
+catálogo público e em `gateway.getAvailableModels()` com a credencial do EIXU.
+O lockfile e o AI SDK 7 instalado foram preservados. Configurações explícitas
+de `EIXU_MODEL` e `EIXU_CRITIC_MODEL` continuam prevalecendo sobre o fallback.
+
+- `test:sites`: 63 passaram. `test:admin`: 26 passaram; captura com Chrome e
+  integração Postgres foram puladas por ausência da configuração local.
+- Tipos, build Next.js 16.3.3, lint dos seis arquivos de código alterados e
+  formatação dos documentos alterados passaram. O lint global continua com os
+  20 erros preexistentes em 13 arquivos fora do escopo.
+- `eval-admin-cost` com Opus 5 e `--live`: três execuções corretas, com prompt
+  e schemas reais, preservando toda a página exceto a altura do logo do
+  cabeçalho. Tempos de 8,4, 9,4 e 11,3 segundos. O limite de 800 tokens de
+  saída por chamada foi suficiente neste caso simples.
+- Streaming real completou dois passos com chamada de ferramenta em memória
+  e resposta textual. Outra chamada reconheceu a cor de uma imagem sintética
+  e retornou a saída estruturada validada por Zod. Os cinco ensaios custaram
+  aproximadamente US$ 0,87 no Gateway.
+
+Os artefatos locais ficam em `outputs/admin-review/` e
+`outputs/opus-5/compatibility.json`, ignorados pelo Git. Não houve escrita em
+Neon/Blob, geração de fotos, alteração de variáveis remotas ou deploy. Esses
+ensaios comprovam a integração básica; não avaliam a geração de um site
+completo nem demonstram vantagem de qualidade ou custo sobre Opus 4.5.
+
 ## Revisão do admin, 10/09/2026
 
 O escopo, comparação de custo, verificações e limitações estão em [Revisão do admin](admin-review.md). O manual de operação está em [Admin](admin.md). Os registros abaixo preservam as evidências de cada entrega anterior e não devem ser lidos como uma medição da versão atual.

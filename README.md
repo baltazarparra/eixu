@@ -30,8 +30,8 @@ O institucional e a tela de login abrem sem banco. Para usar o painel e os sites
 | `ADMIN_PASSWORD`        | Senha do operador. Produção recusa login se estiver ausente.                                     |
 | `ADMIN_SESSION_SECRET`  | Segredo de assinatura da sessão; configure um valor próprio. O código usa a senha como fallback. |
 | `AI_GATEWAY_API_KEY`    | Autenticação explícita do AI Gateway, útil localmente. O SDK também aceita OIDC da Vercel.       |
-| `EIXU_MODEL`            | Modelo dos dois chats; fallback no código: `anthropic/claude-opus-4.5`.                          |
-| `EIXU_CRITIC_MODEL`     | Modelo da crítica visual; fallback em `EIXU_MODEL`, depois Opus 4.5.                             |
+| `EIXU_MODEL`            | Modelo do chat do site; fallback no código: `anthropic/claude-opus-5`.                           |
+| `EIXU_CRITIC_MODEL`     | Modelo da crítica visual e leitura de avatar social; fallback em `EIXU_MODEL`, depois Opus 5.    |
 | `BLOB_READ_WRITE_TOKEN` | Upload, geração e remoção de imagens no Vercel Blob.                                             |
 | `EIXU_REVIEW_CAPTURE`   | `1` liga a captura com Chromium na revisão do rascunho. Sem ela, a revisão é estrutural.         |
 | `EIXU_CHROME_PATH`      | Caminho do Chrome local para a captura em desenvolvimento.                                       |
