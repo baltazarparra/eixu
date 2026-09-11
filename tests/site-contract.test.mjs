@@ -781,11 +781,19 @@ await test('a próxima etapa vem do estado persistido, não da conversa', () => 
     blockingErrors: 0,
     reviewRounds: 1,
   };
+  const novo = { ...base, organicPages: 0 };
   assert.equal(nextPhase({ ...base, hasDesign: false }), 'briefing');
-  assert.equal(nextPhase({ ...base, coveredScenes: 1 }), 'cenas');
+  assert.equal(nextPhase({ ...novo, coveredScenes: 1 }), 'cenas');
   // Sem atalho: uma vaga aberta mantém a etapa de cenas.
-  assert.equal(nextPhase({ ...base, coveredScenes: 5 }), 'cenas');
+  assert.equal(nextPhase({ ...novo, coveredScenes: 5 }), 'cenas');
   assert.equal(nextPhase({ ...base, organicPages: 1 }), 'composicao');
+  // Com as páginas montadas, biblioteca menor que o plano não reabre a etapa
+  // de cenas: foto faltando vira erro de pre-flight, tratado na revisão.
+  assert.equal(nextPhase({ ...base, coveredScenes: 1 }), 'pronto');
+  assert.equal(
+    nextPhase({ ...base, coveredScenes: 1, blockingErrors: 1 }),
+    'revisao',
+  );
   assert.equal(nextPhase({ ...base, reviewRounds: 0 }), 'revisao');
   assert.equal(nextPhase({ ...base, blockingErrors: 2 }), 'revisao');
   assert.equal(nextPhase(base), 'pronto');
@@ -855,12 +863,19 @@ await test('só imagem aprovada cobre vaga do plano e libera a composição', ()
     pages,
     biblioteca().map((image) => ({ ...image, status: 'candidata' })),
   );
-  // A candidata continua sem ser trabalho do agente, mas não cobre vaga:
-  // a etapa de cenas fica aberta até o operador decidir.
+  // A candidata continua sem ser trabalho do agente, mas não cobre vaga.
   assert.equal(candidatas.blockingErrors, aprovadas.blockingErrors);
   assert.equal(candidatas.coveredScenes, 0);
-  assert.equal(candidatas.next, 'cenas');
   assert.equal(candidatas.pendingImages.length, 5);
+  // Antes da composição é isso que mantém a etapa de cenas aberta até o
+  // operador decidir; com as páginas montadas o fluxo segue para a revisão.
+  const semPaginas = generationState(
+    tenantComDirecao,
+    [],
+    biblioteca().map((image) => ({ ...image, status: 'candidata' })),
+  );
+  assert.equal(semPaginas.next, 'cenas');
+  assert.equal(candidatas.next, 'revisao');
   // Candidata fora do rascunho também aguarda decisão, e a mais antiga vem
   // primeiro: o painel decide uma por vez.
   assert.equal(candidatas.pendingImages[0].seq, 1);

@@ -52,7 +52,10 @@ contexto que ela precisa. O catálogo só entra na composição e na revisão.
 
 A próxima etapa vem do estado persistido, não da conversa: `nextPhase` lê
 direção, cobertura do plano de cenas, páginas, erros e rodadas de revisão.
-Recarregar o painel ou interromper no meio não perde o progresso.
+Recarregar o painel ou interromper no meio não perde o progresso. A cobertura
+governa só antes da composição: depois que as páginas existem, foto faltando é
+erro de pre-flight e quem resolve é a revisão, senão um cliente já publicado
+com biblioteca menor que o plano voltaria a gerar cena sem ninguém pedir.
 
 A etapa de cenas virou um ciclo com o operador. O agente gera a vaga que o
 plano pede e encerra o turno; o painel mostra a imagem, o operador aprova ou

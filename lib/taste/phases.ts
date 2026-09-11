@@ -103,10 +103,13 @@ export type GenerationState = {
  */
 export function nextPhase(state: GenerationState): Phase | 'pronto' {
   if (!state.hasDesign) return 'briefing';
-  // Só o plano inteiro fecha a etapa: com menos cenas a composição cai em
-  // pagina-sem-foto e a revisão não tem como gerar imagem.
-  if (state.coveredScenes < state.targetScenes) return 'cenas';
-  if (state.organicPages < 3) return 'composicao';
+  // A cobertura do plano governa só antes da composição: o repertório existe
+  // para a montagem ter o que usar. Depois que as páginas existem, foto que
+  // falte vira erro de pre-flight e quem resolve é a revisão. Sem esse
+  // recorte, um cliente já publicado com biblioteca menor que o plano voltaria
+  // para a etapa de cenas e gastaria geração que ninguém pediu.
+  if (state.organicPages < 3)
+    return state.coveredScenes < state.targetScenes ? 'cenas' : 'composicao';
   if (state.blockingErrors > 0 || state.reviewRounds < 1) return 'revisao';
   return 'pronto';
 }
