@@ -8,7 +8,8 @@ O handoff `design_handoff_painel_admin`, recebido em 11/09/2026, orienta
 entrada, clientes, editor, imagens, tráfego e dados. A prancha de estados é
 referência para os componentes, sem rota de demonstração no produto.
 
-O painel usa Geist e Geist Mono locais, fundo quente `#0c0b0a`, painéis
+O painel usa Geist e Geist Mono locais, acompanhadas da
+[licença OFL](../app/(admin)/fonts/LICENSE.txt) do [projeto Geist](https://github.com/vercel/geist-font/blob/main/LICENSE.txt), fundo quente `#0c0b0a`, painéis
 `#100f0e`, âmbar `#f0a868`, verde `#5fc98c` e vermelho `#f0705d`. A navegação
 lateral mede 252 px no desktop; o cabeçalho contextual pertence ao layout do
 cliente. O editor reserva 42% (até 520 px) à conversa e mantém o andamento

@@ -1,5 +1,53 @@
 # Validação e publicação
 
+## Handoff do painel administrativo, 11/09/2026
+
+Implementação das seis telas do handoff com navegação lateral, cabeçalho por
+cliente, fontes locais, formulário com descarte, acervo numerado e série diária
+de tráfego. A referência de estados virou componentes, sem rota de demonstração.
+A branch incorpora `ee97843` da main e conserva a revisão em rodadas e seus
+controles. As decisões de adaptação estão em [Design](design.md#painel-administrativo).
+
+- Lint global e `npx next typegen && npx tsc --noEmit`: sem erros.
+- `npm run test:sites`: 81 testes passaram, sem pulos.
+- Admin: 124 testes passaram, sem pulos, com Chrome e PostgreSQL 14 local
+  descartável. Execução serial com `node --test --test-concurrency=1
+  tests/admin-*.test.mjs`, `EIXU_CHROME_PATH` e `EIXU_TEST_POSTGRES_URL`.
+  Os casos novos exercitam SQL real para isolamento por tenant, limite diário
+  de Brasília, repetição de visitas/ações, dias vazios e gastos parciais.
+- Navegador: oito testes passaram, sem pulos. Cobertura de chat, geração,
+  revisão em rodadas, pausa, recarga, relógio e consumo por teclado;
+  navegação, filtros, estados vazios, criação de fatos, validação de cores,
+  descarte de campos repetidos, falha e sucesso de salvamento, confirmação
+  de exclusão, retorno de foco e atualização dos layouts após publicar.
+- As seis telas foram medidas em 320, 390, 1280, 1440 e 1920 px, sem overflow
+  horizontal da página. Capturas em 390/1440 px foram revisadas. O teste exige
+  que seletor e botões da prévia não se sobreponham. O consumo foi conferido
+  em 1440×900, 390×844 e 375×667, inclusive a última linha por teclado.
+- `npm run build:vercel`: Next.js de produção e três verificações dos
+  artefatos serverless aprovados. O CSS desse build alimenta as fixtures de
+  navegador, que renderizam os componentes reais com serviços sintéticos.
+- Smoke do build Next.js: institucional e login disponíveis; cinco rotas
+  administrativas redirecionaram à entrada sem exibir a navegação privada;
+  credencial inválida recusada; state, images e CSV responderam 401 sem
+  sessão. Login em 390/1440 px com fontes carregadas, sem overflow nem
+  exceções no navegador. O institucional manteve seu layout próprio.
+- Contraste dos pares principais medido em sRGB: apoio/superfície 5,04:1,
+  texto/fundo 17,16:1, botão primário 8,38:1 e destrutivo 6,20:1. Movimento
+  reduzido desliga o pulso; o gráfico tem tabela diária alternativa.
+
+A revisão encontrou e corrigiu sobreposição dos controles no celular, status do
+cabeçalho desatualizado depois de publicar e altura dos detalhes de consumo.
+Capturas locais ficam em `outputs/admin-handoff/` e `outputs/generation/`,
+ignoradas pelo Git. Os fixtures isolados dos testes antigos agora dão altura ao
+root, conforme a cadeia flex do layout do produto; as asserções de consumo
+permanecem completas.
+
+Não houve migração, escrita em banco remoto, geração paga, publicação de
+páginas de clientes ou avaliação de qualidade do modelo. A sessão real foi
+verificada sem credencial válida; os fluxos internos usam dados sintéticos,
+SQL em PostgreSQL local e substitutos das APIs no navegador.
+
 ## Continuidade da revisão em rodadas, 11/09/2026
 
 O runner anterior foi exercitado com o mesmo estado sintético usado na
