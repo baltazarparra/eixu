@@ -50,7 +50,7 @@ export const PHASE_STEPS: Record<Phase, number> = {
   // Uma cena por requisição: chamar a ferramenta e encerrar o turno.
   cenas: 2,
   composicao: 24,
-  revisao: 24,
+  revisao: 32,
 };
 
 /** Lote salvo sem erro segue para a etapa que observa pixels e edita páginas. */
@@ -74,6 +74,34 @@ export function compositionReadyForReview(
   return !findings.some((finding) => finding.level === 'error');
 }
 
+/** Encerra a conferência bem-sucedida antes de outra rodada de alterações. */
+export function reviewReadyToFinish(
+  steps: { toolResults: { toolName: string; output: unknown }[] }[],
+): boolean {
+  const last = steps.at(-1)?.toolResults.at(-1);
+  if (last?.toolName !== 'review_pages') return false;
+  const output = last.output as
+    | {
+        complete?: boolean;
+        visual?: string;
+        review?: { complete?: boolean; errors?: number; findings?: unknown[] };
+      }
+    | undefined;
+  if (
+    output?.complete !== true ||
+    output.visual !== 'complete' ||
+    output.review?.complete !== true ||
+    output.review.errors !== 0 ||
+    !Array.isArray(output.review.findings)
+  )
+    return false;
+  const reviews = steps
+    .flatMap((step) => step.toolResults)
+    .filter((result) => result.toolName === 'review_pages').length;
+  // A primeira leitura com avisos ainda permite o ciclo de refinamento.
+  return reviews > 1 || output.review.findings.length === 0;
+}
+
 /** Objetivo e condição de parada. Entra no prompt no lugar do roteiro geral. */
 export const PHASE_BRIEF: Record<Phase, string> = {
   briefing: `## Fase 1 de 4: briefing e direção
@@ -95,6 +123,7 @@ Pare quando build_site voltar ok=true sem erros. Leve os avisos para a revisão 
 Objetivo: olhar o resultado e corrigir o que ficou pobre.
 Chame review_pages e trate erros estruturais, editoriais e visuais observados: oferta sem evidência, jornada repetida, seção sem foto, recorte ruim, tom repetido, headline ilegível, overflow ou imagem quebrada. A crítica lê as capturas como imagens quando a captura está habilitada.
 Corrija com as ferramentas da página apontada, preservando o que está bom. Chame review_pages novamente depois da última correção. Há até três revisões por turno para observar, corrigir e confirmar. Falha de captura/crítica ou limite esgotado é pendência explícita, nunca aceite.
+Agrupe as correções observadas antes de conferir novamente. O último dos 32 passos é reservado à conferência. Uma conferência completa e sem erros após o refinamento encerra esta fase; sugestões restantes continuam no relatório, sem iniciar outra reconstrução.
 Avisos são pistas para julgamento: confira o defeito nos pixels e no briefing antes de alterar. Uma diferença nominal de proporção com o assunto íntegro não exige reconstruir a página; texto cortado, ilegível ou conteúdo sem evidência exige correção.
 Pare quando a revisão do rascunho atual estiver completa e sem erros materiais. Não publique: a publicação depende do pedido do operador.`,
 };

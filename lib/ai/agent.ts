@@ -4,6 +4,7 @@ import {
   PHASE_STEPS,
   PHASE_TOOLS,
   compositionReadyForReview,
+  reviewReadyToFinish,
   type Phase,
 } from '../taste/phases';
 import { modelSettings, productModel, TURN_TIMEOUT_MS } from './models';
@@ -38,7 +39,15 @@ export function siteAgent(input: {
       ({ steps }) =>
         phase === 'composicao' &&
         compositionReadyForReview(steps.at(-1)?.toolResults ?? []),
+      ({ steps }) => phase === 'revisao' && reviewReadyToFinish(steps),
     ],
+    prepareStep: ({ stepNumber }) =>
+      phase === 'revisao' && stepNumber === PHASE_STEPS.revisao - 1
+        ? {
+            activeTools: ['review_pages'],
+            toolChoice: { type: 'tool', toolName: 'review_pages' },
+          }
+        : {},
     // A função Pro/Fluid tem 800 s; reserve tempo para encerrar e persistir.
     timeout: { totalMs: TURN_TIMEOUT_MS },
     maxRetries: 1,

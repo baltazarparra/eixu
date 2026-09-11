@@ -49,7 +49,7 @@ um modelo que entende imagens não necessariamente as gera.
 | Briefing e plano editorial    |                    16.384 |                  12 |
 | Cena individual               |                     8.192 |                   2 |
 | Composição e reparo           |                    49.152 |                  24 |
-| Revisão e correção            |                    24.576 |                  24 |
+| Revisão e correção            |                    24.576 |                  32 |
 | Edição livre                  |                    24.576 |                  32 |
 | Crítica de foto, logo ou site |                    16.384 | chamada estruturada |
 | Descrição de avatar           |                     4.096 |     chamada textual |
@@ -117,6 +117,10 @@ estrutural, mas não concede conclusão visual. Origem ausente, falha de captura
 cobertura incompleta, crítica inválida ou página/bloco inventado deixam a revisão
 incompleta. São permitidas três chamadas a `review_pages` por turno, para revisar,
 corrigir e conferir. A crítica é sugestão verificável, não autorização humana.
+O loop reserva o último passo à conferência. Depois do refinamento, uma nova
+revisão completa e sem erros encerra a fase por condição externa, mantendo os
+avisos no relatório. Isso impede editar novamente após a conferência e consumir
+o turno sem revisar a última versão. Falha ou erro material permanece pendente.
 
 O recibo em `brief.generation.review` guarda estado, apontamentos e fingerprint
 SHA-256 do conteúdo revisado. Inclui páginas, SEO, marca, contatos, briefing,

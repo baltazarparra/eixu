@@ -8,9 +8,8 @@ const { contextMessages } = await j.import('../lib/ai/context.ts');
 const { reviewFingerprint, currentReview } = await j.import(
   '../lib/review/state.ts',
 );
-const { nextPhase, compositionReadyForReview } = await j.import(
-  '../lib/taste/phases.ts',
-);
+const { nextPhase, compositionReadyForReview, reviewReadyToFinish } =
+  await j.import('../lib/taste/phases.ts');
 const { reviewSchemaFor, validateReviewReferences } = await j.import(
   '../lib/review/critic.ts',
 );
@@ -49,6 +48,57 @@ const images = [
     alt: 'Inspiração',
   },
 ];
+
+await test('revisão encerra na conferência atual sem erros, mantendo espaço para refinamento', () => {
+  const output = {
+    complete: true,
+    visual: 'complete',
+    review: { complete: true, errors: 0, findings: [{ nivel: 'warn' }] },
+  };
+  const result = { toolName: 'review_pages', output };
+  const first = { toolResults: [result] };
+  assert.equal(reviewReadyToFinish([first]), false);
+  assert.equal(reviewReadyToFinish([first, first]), true);
+  assert.equal(
+    reviewReadyToFinish([
+      {
+        toolResults: [
+          {
+            ...result,
+            output: { ...output, review: { ...output.review, findings: [] } },
+          },
+        ],
+      },
+    ]),
+    true,
+  );
+  for (const invalid of [
+    { error: 'indisponível' },
+    { ...output, visual: 'unavailable' },
+    { ...output, review: { ...output.review, errors: 1 } },
+    { ...output, review: { ...output.review, complete: false } },
+  ]) {
+    assert.equal(
+      reviewReadyToFinish([
+        first,
+        { toolResults: [{ ...result, output: invalid }] },
+      ]),
+      false,
+    );
+  }
+  assert.equal(
+    reviewReadyToFinish([
+      first,
+      {
+        toolResults: [
+          result,
+          { toolName: 'update_block', output: { ok: true } },
+        ],
+      },
+    ]),
+    false,
+  );
+});
 
 await test('crítico recebe caminhos e IDs existentes no schema de saída', () => {
   const schema = reviewSchemaFor(pages);

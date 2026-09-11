@@ -11,7 +11,7 @@ O recibo visual precisa corresponder ao rascunho atual; captura ausente ou falha
 do crítico não encerra a geração. `SOUL.md` é carregado no prompt e incluído no
 artefato Next.js.
 
-- `test:sites`: 80 casos aprovados. `test:admin` com Chrome: 50 aprovados e
+- `test:sites`: 80 casos aprovados. `test:admin` com Chrome: 51 aprovados e
   somente a integração opcional com PostgreSQL pulada, sem banco local configurado.
 - Tipos e build de produção Next.js 16.3.3 aprovados. O tracing inclui `SOUL.md`
   e Chromium. Lint dos arquivos alterados aprovado; lint global continua com
@@ -40,7 +40,11 @@ verifica o par página/bloco no servidor, sem descartar achados inválidos.
 
 Os ensaios preliminares identificaram reenvios do lote para eliminar avisos,
 um timeout no orçamento anterior e cache JSX incompatível no runner. O controle
-de transição, o orçamento e o isolamento do cache foram corrigidos. As fotos da
+de transição, o orçamento e o isolamento do cache foram corrigidos. Outro ensaio
+consumiu os 24 passos de revisão corrigindo achados e terminou com recibo antigo,
+corretamente bloqueado. A revisão passou a 32 passos, com o último reservado à
+conferência e parada externa após a conferência bem-sucedida do refinamento.
+As fotos da
 fixture antiga de aquecimento retornam 404: o rascunho foi gerado, mas sua revisão
 ficou bloqueada por imagens quebradas. Esse caso não comprova qualidade visual
 positiva. Os artefatos e falhas anteriores permanecem em `outputs/harness/`.

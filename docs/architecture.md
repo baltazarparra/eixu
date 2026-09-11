@@ -60,7 +60,7 @@ Logos podem ser criados ou modernizados a partir de referência por `generate_lo
 | Cenas do site              | Uma chamada a `openai/gpt-image-2` por cena         |
 | Logos                      | `openai/gpt-image-2`                                |
 
-A rota do chat tem duração máxima de 800 segundos, com 760 no SDK, e limite de 32 passos na edição livre; as fases usam 12/2/24/24 passos. Modelo, raciocínio `high` e saída por tarefa vêm de `lib/ai/models.ts`; `lib/ai/agent.ts` é compartilhado com os runners. Erro de stream ou fase que não avançou encerra a sequência automática, preservando o progresso. Esses limites não provam conclusão.
+A rota do chat tem duração máxima de 800 segundos, com 760 no SDK, e limite de 32 passos na edição livre; as fases usam 12/2/24/32 passos. O último passo da revisão é reservado à conferência, e uma conferência completa sem erros após o refinamento encerra o loop. Modelo, raciocínio `high` e saída por tarefa vêm de `lib/ai/models.ts`; `lib/ai/agent.ts` é compartilhado com os runners. Erro de stream ou fase que não avançou encerra a sequência automática, preservando o progresso. Esses limites não provam conclusão.
 
 O chat preserva quatro turnos recentes completos até 120.000 caracteres, com metadados do provedor. Material anterior vira recibo com erros e pendências, preservando instruções e respostas textuais. O loop ativo não é compactado. `lib/ai/usage.ts` registra modelo, versão do harness, tokens de raciocínio, cache, passos, tempo, motivo de término e custo retornado. A interface soma apenas respostas recebidas desde a abertura; críticos e imagens têm medições separadas. Não há faturamento consolidado por cliente.
 
