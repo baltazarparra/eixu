@@ -1,5 +1,45 @@
 # Validação e publicação
 
+## Continuidade da revisão em rodadas, 11/09/2026
+
+O runner anterior foi exercitado com o mesmo estado sintético usado na
+regressão: depois de 32 passos e uma leitura gravada, retornou `continue`;
+o segundo salto falhou com `A etapa "Revisão" não avançou`, sem uma segunda
+chamada do modelo. Repetir o nome da fase era tratado como ausência de avanço.
+O marcador agora compara leituras registradas e fingerprint do rascunho e
+permite até três rodadas, mantendo a exigência de revisão completa e atual.
+
+- Os 122 testes de admin passaram, sem pulos, com Chrome e PostgreSQL 14
+  descartável em `127.0.0.1`. A execução foi sequencial entre arquivos para
+  evitar concorrência na aplicação do schema. As regressões cobrem avanço por
+  leitura ou alteração, teto, ausência de avanço, conclusão na última rodada,
+  erros visuais no motivo da parada e recibo após texto parcial.
+- O teste de timeout usa o `ToolLoopAgent` do AI SDK instalado e um
+  `MockLanguageModelV4` que respeita o sinal de aborto. `totalMs` produz
+  `TimeoutError`; o runner continua somente com avanço persistido. A pausa do
+  operador prevalece mesmo quando o turno termina por timeout.
+- Os testes de fila usam substitutos do runner; os de PostgreSQL exercitam
+  reservas, feed e SQL com duas conexões reais. A lógica de rodadas é testada
+  no runner real com persistência e agente simulados. Esses níveis de teste
+  não equivalem a uma geração paga completa na Vercel.
+- Os 81 testes de sites e sete testes de navegador passaram, sem pulos. O
+  painel mostra a segunda rodada com a contagem de leituras reiniciada em
+  desktop e celular e preserva o número após recarga. Há cobertura do feed
+  reduzido e de chamadas recusadas sem exibir uma quarta leitura de três.
+  Captura local: `outputs/generation/revisao-rodada-2-mobile.png`.
+- Lint global, tipos, formatação documental, `git diff --check` e
+  `npm run build:vercel` passaram. Os três testes de artefatos serverless
+  confirmaram os arquivos de identidade e captura do chat, etapa HTTP e fila.
+  Os testes de navegador foram concluídos após o build; um rebuild concorrente
+  havia removido temporariamente o CSS consumido por dois casos.
+
+A produção consultada antes da entrega estava em `32a0b51`, deployment
+`dpl_8fnC6kDC6VT3xZJKKMqztpUTnUeL`, com estado `READY`. Esta validação não
+executou geração paga nem alterou banco remoto ou snapshots de clientes. Não
+há migração. O timeout do SDK não impõe cancelamento a ferramentas que ignorem
+seu sinal; a convergência do crítico real e a nova tentativa do cliente continuam
+dependendo de um ensaio pago autorizado após a publicação do código.
+
 ## Entrega das etapas sem recursão HTTP, 11/09/2026
 
 O log de produção registrou 508 no despacho que deveria iniciar a revisão,

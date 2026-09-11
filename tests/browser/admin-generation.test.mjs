@@ -40,14 +40,14 @@ function generationServer(overrides = {}) {
     starts = 0,
     everRan = overrides.everRan ?? true;
   const messages = [];
-  const add = (kind, label, tool) =>
+  const add = (kind, label, tool, payload = {}) =>
     events.push({
       id: ++eventId,
       phase: run?.phase ?? firstPhase,
       kind,
       tool: tool ?? null,
       label,
-      payload: {},
+      payload,
       createdAt: serverTime(),
     });
   const saveMessage = (role, text) =>
@@ -58,6 +58,7 @@ function generationServer(overrides = {}) {
     });
   return {
     site,
+    add,
     saveMessage,
     starts: () => starts,
     get run() {
@@ -517,6 +518,56 @@ await test(
           ),
           true,
         );
+        assert.deepEqual(errors, []);
+      },
+    );
+  },
+);
+
+await test(
+  'revisão reinicia leituras na segunda rodada e mantém o número após recarga',
+  { skip: !process.env.EIXU_CHROME_PATH },
+  async () => {
+    const backend = generationServer({
+      generation: { next: 'revisao', reviewRounds: 7 },
+    });
+    backend.start();
+    backend.add('tool_end', 'Leitura concluída', 'review_pages');
+    backend.add('tool_end', 'Leitura concluída', 'review_pages');
+    backend.add('tool_end', 'Leitura concluída', 'review_pages');
+    await withWorkspace(
+      { backend, chat: await chatFixture() },
+      async ({ page, errors }) => {
+        await page.waitForFunction(() =>
+          document.body.innerText.includes('leitura 3 de 3'),
+        );
+        assert.ok(
+          !(await page.evaluate(() => document.body.innerText)).includes(
+            'rodada 7 de 3',
+          ),
+        );
+        backend.add('phase_end', 'Revisão com pendências');
+        backend.add('phase_start', 'Revisão · rodada 2 de 3', null, {
+          round: 2,
+        });
+        backend.add('tool_end', 'Leitura concluída', 'review_pages');
+        await page.waitForFunction(() =>
+          document.body.innerText.includes('rodada 2 · leitura 1 de 3'),
+        );
+        await page.reload({ waitUntil: 'networkidle0' });
+        await page.waitForFunction(() =>
+          document.body.innerText.includes('rodada 2 · leitura 1 de 3'),
+        );
+        await page.setViewport({ width: 390, height: 844 });
+        await page.waitForFunction(() =>
+          document.body.innerText.includes('rodada 2 · leitura 1 de 3'),
+        );
+        await mkdir('outputs/generation', { recursive: true });
+        await page.screenshot({
+          path: 'outputs/generation/revisao-rodada-2-mobile.png',
+          fullPage: true,
+        });
+        assert.equal(backend.starts(), 1);
         assert.deepEqual(errors, []);
       },
     );

@@ -64,7 +64,7 @@ import {
   listPages,
   setBrandLogo,
 } from '@/lib/tenant-queries';
-import type { Phase } from '@/lib/taste/phases';
+import { REVIEW_CALLS_PER_TURN, type Phase } from '@/lib/taste/phases';
 import {
   editTools,
   scopedUpdateError,
@@ -710,9 +710,9 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         'Revisa o rascunho inteiro e devolve o que ficou pobre, com página e bloco apontados: página sem foto, home sem seção protagonista, tom repetido, proporção incoerente com o layout, silhueta repetida e erros de pre-flight. Use na fase de revisão, antes de considerar o site pronto.',
       inputSchema: z.object({}),
       execute: safe(async () => {
-        if (reviewRounds >= 3)
+        if (reviewRounds >= REVIEW_CALLS_PER_TURN)
           throw new ToolError(
-            'Três revisões neste turno. Informe as pendências e retome a revisão no próximo turno.',
+            `${REVIEW_CALLS_PER_TURN} leituras neste turno. Informe as pendências e encerre o turno; uma nova rodada precisa partir do rascunho atual.`,
           );
         reviewRounds += 1;
         const [pages, images, reviewedTenant] = await Promise.all([

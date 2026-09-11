@@ -15,9 +15,8 @@ const { contextMessages, chatRequestSchema } = await j.import(
 );
 const { usageMetadata, sumGatewayCosts } = await j.import('../lib/ai/usage.ts');
 const { summarizeUsage } = await j.import('../lib/admin/usage-summary.ts');
-const { usageFromEvent, phaseRecords, currentActivity } = await j.import(
-  '../lib/generation/progress.ts',
-);
+const { usageFromEvent, phaseRecords, currentActivity, reviewProgress } =
+  await j.import('../lib/generation/progress.ts');
 const { structuredData } = await j.import('../lib/sites/structured-data.ts');
 const { csvCell } = await j.import('../lib/admin/csv.ts');
 const { previewHref, previewProps } = await j.import('../lib/sites/preview.ts');
@@ -419,6 +418,34 @@ await test('linha do tempo mede cada fase e aponta a ferramenta em execução', 
     ]),
     null,
   );
+});
+
+await test('revisão conta leituras por rodada e preserva o número no feed reduzido', () => {
+  const read = (id) =>
+    phaseEvent(id, 'revisao', 'tool_end', { tool: 'review_pages' });
+  const events = [
+    phaseEvent(1, 'revisao', 'phase_start'),
+    read(2),
+    read(3),
+    phaseEvent(4, 'revisao', 'phase_end'),
+    phaseEvent(5, 'revisao', 'phase_start', { payload: { round: 2 } }),
+    phaseEvent(6, 'revisao', 'tool_end', { tool: 'update_block' }),
+    read(7),
+    phaseEvent(8, 'composicao', 'tool_end', { tool: 'review_pages' }),
+  ];
+  assert.deepEqual(reviewProgress(events), { round: 2, reads: 1, total: 3 });
+  assert.deepEqual(reviewProgress(events.slice(4)), {
+    round: 2,
+    reads: 1,
+    total: 3,
+  });
+  // Uma quarta chamada recusada não vira "leitura 4 de 3".
+  assert.deepEqual(reviewProgress([...events, read(9), read(10), read(11)]), {
+    round: 2,
+    reads: 3,
+    total: 3,
+  });
+  assert.deepEqual(reviewProgress([]), { round: 0, reads: 0, total: 3 });
 });
 
 await test('custo real soma todos os passos; ausência não vira custo zero', () => {

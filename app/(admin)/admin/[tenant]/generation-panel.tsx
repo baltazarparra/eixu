@@ -8,9 +8,18 @@ import {
   formatTokens,
   summarizeUsage,
 } from '@/lib/admin/usage-summary';
-import { currentActivity, phaseRecords } from '@/lib/generation/progress';
+import {
+  currentActivity,
+  phaseRecords,
+  reviewProgress,
+} from '@/lib/generation/progress';
 import type { GenerationEvent, GenerationRun } from '@/lib/generation/runs';
-import { PHASE_LABEL, PHASES, type Phase } from '@/lib/taste/phases';
+import {
+  PHASE_LABEL,
+  PHASES,
+  REVIEW_CALLS_PER_TURN,
+  type Phase,
+} from '@/lib/taste/phases';
 import { isRunning } from './use-generation';
 
 /** Medido nas gerações reais. Serve para calibrar a espera, não para prometer. */
@@ -39,8 +48,12 @@ function useNow(active: boolean): number {
   return now;
 }
 
-/** O que a etapa em execução já produziu, medido no estado persistido. */
-function phaseProgress(state: SiteState, phase: Phase | null): string | null {
+/** O que a etapa em execução já produziu, medido no estado e nos eventos. */
+function phaseProgress(
+  state: SiteState,
+  phase: Phase | null,
+  events: GenerationEvent[],
+): string | null {
   const generation = state.generation;
   if (phase === 'cenas')
     return `${generation.coveredScenes} de ${generation.targetScenes} cenas prontas`;
@@ -48,8 +61,11 @@ function phaseProgress(state: SiteState, phase: Phase | null): string | null {
     return state.pages.length
       ? `${state.pages.length} páginas gravadas`
       : 'montando as páginas';
-  if (phase === 'revisao')
-    return `rodada ${Math.max(1, generation.reviewRounds)} de 3`;
+  if (phase === 'revisao') {
+    const review = reviewProgress(events);
+    const reads = `leitura ${Math.max(1, review.reads)} de ${review.total}`;
+    return review.round > 1 ? `rodada ${review.round} · ${reads}` : reads;
+  }
   return null;
 }
 
@@ -170,7 +186,10 @@ export function GenerationPanel({
           state.generation.coveredScenes / state.generation.targetScenes,
         )
       : phase === 'revisao'
-        ? Math.min(1, Math.max(1, state.generation.reviewRounds) / 3)
+        ? Math.min(
+            1,
+            Math.max(1, reviewProgress(events).reads) / REVIEW_CALLS_PER_TURN,
+          )
         : null;
 
   const title = starting
@@ -279,7 +298,7 @@ export function GenerationPanel({
               const complete = reached(item);
               const record = records[item];
               const detail = active
-                ? phaseProgress(state, item)
+                ? phaseProgress(state, item, events)
                 : complete
                   ? record?.outcome
                   : null;
@@ -377,7 +396,7 @@ export function GenerationBar({
   if (!running) return null;
   const activity = currentActivity(events);
   const phase = run?.phase ?? (state.generation.next as Phase);
-  const progress = phaseProgress(state, phase);
+  const progress = phaseProgress(state, phase, events);
   return (
     <button type="button" onClick={onOpen} className="admin-run-bar">
       <span className="admin-run-pulse" aria-hidden="true" />

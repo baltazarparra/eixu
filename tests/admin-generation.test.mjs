@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { ToolLoopAgent } from 'ai';
+import { MockLanguageModelV4 } from 'ai/test';
 import { createJiti } from 'jiti';
 import { loadModule } from './helpers/load-module.mjs';
 import { generationFeedFixture } from './helpers/generation-feed-fixture.mjs';
@@ -19,6 +21,73 @@ const { isResumeRequest, isProgressQuestion } = await jiti.import(
 const { createStepToken, verifyStepToken } = await jiti.import(
   '../lib/generation/token.ts',
 );
+const { progressMarker, reviewRound, stalled } = await jiti.import(
+  '../lib/generation/marker.ts',
+);
+const { reviewFingerprint } = await jiti.import('../lib/review/state.ts');
+const { phaseInstructions } = await jiti.import('../lib/generation/context.ts');
+
+await test('marcador distingue leitura, alteração de rascunho e repetição sem trabalho', () => {
+  const state = { coveredScenes: 3, reviewRounds: 7 };
+  const first = progressMarker('revisao', state, 'a'.repeat(64), null);
+  assert.equal(first, 'revisao:1:7:aaaaaaaaaaaaaaaa');
+  const repeat = progressMarker('revisao', state, 'a'.repeat(64), first);
+  assert.equal(reviewRound(repeat), 2);
+  assert.equal(stalled(first, repeat), true);
+  for (const next of [
+    progressMarker(
+      'revisao',
+      { ...state, reviewRounds: 8 },
+      'a'.repeat(64),
+      first,
+    ),
+    progressMarker('revisao', state, 'b'.repeat(64), first),
+  ])
+    assert.equal(stalled(first, next), false);
+  assert.equal(progressMarker('cenas', state, '', null), 'cenas:3');
+  assert.equal(stalled('cenas:2', 'cenas:3'), false);
+  assert.equal(stalled('composicao', 'composicao'), true);
+  assert.equal(stalled(null, first), false);
+  // Execuções que estavam em revisão antes deste patch podem continuar.
+  assert.equal(stalled('revisao', first), false);
+  for (const marker of [
+    null,
+    'revisao',
+    'cenas:3',
+    'revisao:NaN',
+    'revisao:-1',
+  ])
+    assert.equal(reviewRound(marker), 0);
+});
+
+await test('prompt recebe a rodada, a última leitura e o teto sem prometer continuação', () => {
+  const input = {
+    tenant: {
+      id: 'fixture',
+      slug: 'fixture',
+      name: 'Fixture',
+      brand: {},
+      dials: {},
+      imageGuide: {},
+      brief: { generation: { review: { errors: 2 } } },
+    },
+    pages: [],
+    images: [],
+    phase: 'revisao',
+  };
+  const second = phaseInstructions({ ...input, round: 2 });
+  assert.match(second, /Rodada 2 de 3/);
+  assert.match(second, /Comece por review_pages no rascunho atual/);
+  assert.match(second, /"errors":2/);
+  assert.match(
+    phaseInstructions({ ...input, round: 3 }),
+    /última rodada desta execução/,
+  );
+  assert.doesNotMatch(
+    phaseInstructions(input),
+    /pode abrir outra rodada automaticamente/,
+  );
+});
 
 await test('feed distingue cliente novo de tentativa anterior às execuções no servidor', async () => {
   const fresh = await generationFeedFixture();
@@ -166,6 +235,9 @@ async function runnerFixture({
   states,
   onGenerate = async () => {},
   text = 'Etapa concluída.',
+  /** Passos do turno; o limite da fase muda o recibo persistido. */
+  stepCount = 1,
+  stopping = false,
   /** Perfil social ainda em leitura na primeira consulta ao cliente. */
   socialReading = false,
 } = {}) {
@@ -211,7 +283,7 @@ async function runnerFixture({
         events.push(event);
       },
       heartbeat: async () => undefined,
-      isStopping: async () => false,
+      isStopping: async () => stopping,
       finishRun: async (id, status, error) => {
         Object.assign(runs.get(id), { status, error: error ?? null });
       },
@@ -224,15 +296,24 @@ async function runnerFixture({
         const social = socialReading
           ? { social: { status: tenantReads <= 1 ? 'lendo' : 'ok' } }
           : {};
-        return {
+        const state = states[Math.min(calls, states.length - 1)];
+        const tenant = {
           id: 'tenant-1',
           slug: 'fixture',
           name: 'Fixture',
           brand: { design: { version: 2 } },
-          brief: social,
+          brief: { ...social, draft: state.draft ?? 'Rascunho inicial' },
           dials: {},
           imageGuide: {},
         };
+        if (state.review)
+          tenant.brief.generation = {
+            review: {
+              ...state.review,
+              fingerprint: reviewFingerprint(tenant, [], []),
+            },
+          };
+        return tenant;
       },
       listPages: async () => [],
     },
@@ -268,7 +349,8 @@ async function runnerFixture({
       }),
     },
     '@/lib/ai/chat-progress': {
-      savedProgressMessage: () => 'Progresso salvo: recibo sintético.',
+      savedProgressMessage: (_state, running) =>
+        `Progresso salvo: recibo sintético. ${running ? 'Continua.' : 'Parado.'}`,
     },
     '@/lib/auth': { createSessionToken: async () => 'token' },
     '@/lib/ai/tools': { buildTools: () => ({}) },
@@ -289,7 +371,10 @@ async function runnerFixture({
           });
           return {
             text,
-            steps: [{ text, providerMetadata: {} }],
+            steps: Array.from({ length: stepCount }, (_, index) => ({
+              text: index === stepCount - 1 ? text : '',
+              providerMetadata: {},
+            })),
             usage: {},
           };
         },
@@ -363,6 +448,204 @@ await test('etapa sem avanço encerra a execução em vez de repetir para sempre
   assert.equal(outcome.kind, 'failed');
   assert.match(outcome.error, /não avançou/);
   assert.equal(f.calls(), 0);
+});
+
+await test('revisão que esgota o turno abre uma rodada nova em vez de interromper', async () => {
+  const revisao = (reviewRounds) => ({ next: 'revisao', reviewRounds });
+  const f = await runnerFixture({
+    // Uma leitura registrada por turno: a fase repete o nome, o marcador não.
+    states: [revisao(0), revisao(1), revisao(2), revisao(3)],
+    text: '',
+    stepCount: 32,
+  });
+
+  const first = await f.executeStep(f.run);
+  assert.equal(first.kind, 'continue');
+  assert.equal(first.phase, 'revisao');
+  // O marcador é gravado no início do salto: rodada 1, nenhuma leitura ainda.
+  assert.match(f.run.progress, /^revisao:1:0:/);
+  assert.match(f.messages[1].text, /limite de passos/);
+  assert.match(f.messages[1].text, /Continua\./);
+  assert.equal(f.events[0].label, 'Revisão · rodada 1 de 3');
+
+  const second = await f.executeStep(f.run);
+  assert.equal(second.kind, 'continue');
+  assert.match(f.run.progress, /^revisao:2:1:/);
+  assert.ok(
+    f.events.some((event) => event.label === 'Revisão · rodada 2 de 3'),
+    'a rodada precisa aparecer na linha do tempo',
+  );
+
+  // Terceira rodada é o teto: a decisão sai no fim do turno, com o motivo no
+  // painel e no chat, em vez de um salto seguinte recusado sem explicação.
+  const third = await f.executeStep(f.run);
+  assert.equal(third.kind, 'failed');
+  assert.match(third.error, /não fechou em 3 rodadas/);
+  assert.match(f.messages.at(-1).text, /não fechou em 3 rodadas/);
+  assert.match(f.messages.at(-1).text, /Parado\./);
+  assert.equal(f.events.at(-1).kind, 'error');
+  assert.equal(f.calls(), 3);
+});
+
+await test('revisão sem leitura nem alteração encerra com o motivo registrado', async () => {
+  const f = await runnerFixture({
+    states: [{ next: 'revisao', reviewRounds: 2 }],
+    text: '',
+  });
+  const outcome = await f.executeStep(f.run);
+  assert.equal(outcome.kind, 'failed');
+  assert.match(outcome.error, /sem alterar o rascunho nem registrar leitura/);
+  assert.equal(f.events.at(-1).kind, 'error');
+  assert.match(f.events.at(-1).label, /sem alterar o rascunho/);
+  // O turno rodou: a parada é do resultado, não uma recusa antes da chamada.
+  assert.equal(f.calls(), 1);
+});
+
+await test('tempo esgotado preserva o progresso salvo e decide pela evidência', async () => {
+  // SDK instalado de verdade, sem rede: o modelo respeita o sinal que o
+  // ToolLoopAgent gera. O runner precisa reconhecer a exceção original.
+  const timeout = () =>
+    new ToolLoopAgent({
+      model: new MockLanguageModelV4({
+        doGenerate: ({ abortSignal }) =>
+          new Promise((_, reject) => {
+            const guard = setTimeout(
+              () => reject(new Error('SDK não abortou')),
+              1000,
+            );
+            const abort = () => {
+              clearTimeout(guard);
+              reject(abortSignal.reason);
+            };
+            if (abortSignal.aborted) abort();
+            else abortSignal.addEventListener('abort', abort, { once: true });
+          }),
+      }),
+      timeout: { totalMs: 25 },
+      maxRetries: 0,
+    }).generate({ prompt: 'Teste sintético sem rede.' });
+  const advanced = await runnerFixture({
+    states: [
+      { next: 'revisao', reviewRounds: 0 },
+      { next: 'revisao', reviewRounds: 1 },
+    ],
+    onGenerate: timeout,
+  });
+  const outcome = await advanced.executeStep(advanced.run);
+  assert.equal(outcome.kind, 'continue');
+  assert.match(advanced.messages[1].text, /excedeu o tempo limite/);
+  assert.equal(advanced.events.at(-1).kind, 'phase_end');
+  assert.equal(advanced.events.at(-1).payload.timeout, true);
+
+  const stuck = await runnerFixture({
+    states: [{ next: 'composicao' }],
+    onGenerate: timeout,
+  });
+  assert.equal((await stuck.executeStep(stuck.run)).kind, 'failed');
+});
+
+await test('pausa do operador tem prioridade sobre timeout com progresso salvo', async () => {
+  const f = await runnerFixture({
+    states: [{ next: 'revisao' }, { next: 'revisao', reviewRounds: 1 }],
+    stopping: true,
+    onGenerate: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5100));
+      throw new DOMException('Tempo esgotado', 'TimeoutError');
+    },
+  });
+  assert.equal((await f.executeStep(f.run)).kind, 'paused');
+  assert.equal(f.events.at(-1).kind, 'stopped');
+  assert.equal(
+    f.events.some((event) => event.kind === 'error'),
+    false,
+  );
+});
+
+await test('alteração do rascunho permite rodada seguinte mesmo sem nova leitura', async () => {
+  const f = await runnerFixture({
+    states: [
+      { next: 'revisao', draft: 'Antes' },
+      { next: 'revisao', draft: 'Depois' },
+      { next: 'pronto', reviewComplete: true },
+    ],
+  });
+  assert.equal((await f.executeStep(f.run)).kind, 'continue');
+  assert.equal((await f.executeStep(f.run)).kind, 'done');
+  assert.equal(
+    f.events.filter((event) => event.kind === 'phase_start').at(-1).payload
+      .round,
+    2,
+  );
+});
+
+await test('texto parcial no limite mantém o recibo da continuação real', async () => {
+  const f = await runnerFixture({
+    states: [{ next: 'revisao' }, { next: 'revisao', reviewRounds: 1 }],
+    text: 'Ajustei a página inicial.',
+    stepCount: 32,
+  });
+  assert.equal((await f.executeStep(f.run)).kind, 'continue');
+  assert.match(f.messages.at(-1).text, /Ajustei a página inicial/);
+  assert.match(f.messages.at(-1).text, /limite de passos/);
+  assert.match(f.messages.at(-1).text, /Continua\./);
+});
+
+await test('teto distingue erros visuais de revisão incompleta e permite concluir na última rodada', async () => {
+  for (const [review, expected] of [
+    [{ complete: true, visual: 'complete', errors: 2 }, /2 pendência/],
+    [
+      { complete: false, visual: 'unavailable', errors: 1 },
+      /captura ou a crítica visual não completou/,
+    ],
+  ]) {
+    const f = await runnerFixture({
+      states: [
+        { next: 'revisao', reviewRounds: 2 },
+        { next: 'revisao', reviewRounds: 3, review },
+      ],
+    });
+    f.run.progress = 'revisao:2:1:anterior';
+    const outcome = await f.executeStep(f.run);
+    assert.equal(outcome.kind, 'failed');
+    assert.match(outcome.error, expected);
+    assert.match(f.messages.at(-1).text, /Parado\./);
+    const label = f.events.find((event) => event.kind === 'phase_end').label;
+    assert.doesNotMatch(label, /0 pendência/);
+    assert.match(
+      label,
+      review.complete ? /2 pendência/ : /Captura ou crítica visual pendente/,
+    );
+  }
+  const complete = await runnerFixture({
+    states: [
+      { next: 'revisao', reviewRounds: 2 },
+      { next: 'pronto', reviewComplete: true },
+    ],
+  });
+  complete.run.progress = 'revisao:2:1:anterior';
+  assert.equal((await complete.executeStep(complete.run)).kind, 'done');
+  assert.equal(
+    complete.events.some((event) => event.kind === 'error'),
+    false,
+  );
+});
+
+await test('guarda recusa a quarta rodada e falha comum continua sendo erro', async () => {
+  const capped = await runnerFixture({
+    states: [{ next: 'revisao', reviewRounds: 3 }],
+  });
+  capped.run.progress = 'revisao:3:2:anterior';
+  assert.equal((await capped.executeStep(capped.run)).kind, 'failed');
+  assert.equal(capped.calls(), 0);
+  assert.equal(capped.events.at(-1).kind, 'error');
+  const failed = await runnerFixture({
+    states: [{ next: 'revisao' }, { next: 'revisao', reviewRounds: 1 }],
+    onGenerate: () => {
+      throw new Error('Falha sintética do provedor');
+    },
+  });
+  assert.equal((await failed.executeStep(failed.run)).kind, 'failed');
+  assert.equal(failed.events.at(-1).kind, 'error');
 });
 
 await test('estado concluído encerra sem gastar uma etapa', async () => {

@@ -4,6 +4,7 @@ import {
   PHASE_STEPS,
   PHASE_TOOLS,
   compositionReadyForReview,
+  reviewConferenceDue,
   reviewReadyToFinish,
   type Phase,
 } from '../taste/phases';
@@ -46,8 +47,8 @@ export function siteAgent(input: {
         compositionReadyForReview(steps.at(-1)?.toolResults ?? []),
       ({ steps }) => phase === 'revisao' && reviewReadyToFinish(steps),
     ],
-    prepareStep: ({ stepNumber }) =>
-      phase === 'revisao' && stepNumber === PHASE_STEPS.revisao - 1
+    prepareStep: ({ stepNumber, steps }) =>
+      phase === 'revisao' && reviewConferenceDue(steps, stepNumber)
         ? {
             activeTools: ['review_pages'],
             toolChoice: { type: 'tool', toolName: 'review_pages' },
