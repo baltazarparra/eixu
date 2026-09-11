@@ -38,6 +38,26 @@ com 14.504 tokens de entrada e 4.692 de saída, em 41,5 segundos. O Gateway
 recusou o schema com enum de todos os IDs; o contrato usa enum de páginas e
 verifica o par página/bloco no servidor, sem descartar achados inválidos.
 
+O caso de pedras concluiu o aceite automático na retomada final, sem edição
+manual das páginas geradas. A revisão executou 16 passos e duas leituras visuais
+em 286 segundos. Fez três edições pontuais, incluindo a correção do título que
+quebrava uma palavra no desktop, e encerrou na conferência do rascunho atual.
+As quatro páginas passaram nos oito pares página/viewport, sem overflow,
+imagens quebradas ou erros materiais. Permaneceram sugestões sobre repetição
+de foto, destaque de botão e proporção nominal, registradas sem ocultação.
+O loop principal consumiu 412.459 tokens de entrada, com 331.626 em cache,
+e 13.869 de saída; as duas críticas separadas consumiram 28.908 de entrada e
+11.060 de saída. Artefatos: `outputs/harness/1789106894362-pedras/`, incluindo
+`summary.json`, saída automática e oito capturas. A retomada verifica a revisão
+completa sobre a composição produzida nos ensaios anteriores; não equivale a
+uma execução nova de todas as fases nem a uma nota humana da rubrica.
+
+O Chromium do pacote serverless também executou uma captura local em dois
+viewports, sem depender do Chrome instalado. Seus quatro binários estão no
+diretório incluído pelo tracing, conforme `outputs/harness/serverless-capture.json`.
+O preview do código `66b92d1` ficou `READY`, com home em 200 e POST do chat sem
+sessão em 401. A execução da captura dentro da Vercel ainda não foi exercitada.
+
 Os ensaios preliminares identificaram reenvios do lote para eliminar avisos,
 um timeout no orçamento anterior e cache JSX incompatível no runner. O controle
 de transição, o orçamento e o isolamento do cache foram corrigidos. Outro ensaio
