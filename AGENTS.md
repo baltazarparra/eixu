@@ -69,10 +69,11 @@ objetivo, decisões, autorização, arquivos alterados e verificações pendente
 - Preserve a separação `blocks`/`seo` e `published_blocks`/`published_seo`, com
   pre-flight nos dois caminhos de publicação. Marca e metadados fora desse snapshot
   têm limites descritos na arquitetura. Preview por query não é controle de acesso.
-- Crítica de IA não é aprovação do operador. A decisão é do painel, uma imagem por
-  vez, e só a aprovada chega ao agente com URL. Preserve essa separação, as
-  verificações de aplicação de logo, o escopo do tenant e o bloqueio de exclusão
-  de imagens em uso.
+- Imagens ficam disponíveis com número e URL assim que são geradas, sem aprovação.
+  Mantenha o acervo em `/admin/[tenant]/imagens` e alterações pelo número no chat.
+  A crítica orienta ajustes. Preserve o escopo do tenant, o pedido para aplicar
+  logo e o bloqueio de exclusão em uso; uma nova versão troca os rascunhos sem
+  alterar snapshots publicados nem apagar a original.
 - Regras em prompts e neste arquivo orientam agentes; garantias de acesso,
   publicação e integridade precisam de código e verificação externa.
 

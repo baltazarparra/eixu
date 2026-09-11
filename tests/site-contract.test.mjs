@@ -132,14 +132,23 @@ await test('imagem de outro tenant ou upload não conta como geração própria'
     ).includes('home-imagens-geradas'),
   );
 });
-await test('candidatas podem ser compostas no rascunho e bloqueiam publicação', () => {
-  const candidates = images.map((i) => ({
-    ...i,
-    status: 'candidata',
-    critique: { aprovado: true },
-  }));
-  assert.deepEqual(rules(rich(), candidates, 'draft'), []);
-  assert.ok(rules(rich(), candidates).includes('imagens-aprovacao'));
+for (const status of ['disponivel', 'candidata', 'aprovada'])
+  await test(`imagem ${status} pode ser composta e publicada sem aprovação`, () => {
+    const library = images.map((image) => ({
+      ...image,
+      status,
+      critique: { aprovado: false },
+    }));
+    assert.deepEqual(rules(rich(), library, 'draft'), []);
+    assert.deepEqual(rules(rich(), library), []);
+  });
+await test('imagem rejeitada anteriormente continua bloqueada na publicação', () => {
+  assert.ok(
+    rules(
+      rich(),
+      images.map((image) => ({ ...image, status: 'rejeitada' })),
+    ).includes('imagens-rejeitadas'),
+  );
 });
 await test('imagem em props inválidas ou segunda imagem oculta não conta', () => {
   const pages = project();
@@ -878,51 +887,33 @@ const biblioteca = () =>
     };
   });
 
-await test('só imagem aprovada cobre vaga do plano e libera a composição', () => {
-  const pages = paginasRicas();
-  const aprovadas = generationState(tenantComDirecao, pages, biblioteca());
-  assert.equal(aprovadas.targetScenes, 5);
-  assert.equal(aprovadas.coveredScenes, 5);
-  assert.equal(aprovadas.nextScene, null);
-  // Com o plano coberto a etapa de cenas fecha; o que sobra é trabalho do
-  // agente na revisão, não decisão de imagem.
-  assert.notEqual(aprovadas.next, 'cenas');
-  assert.equal(aprovadas.pendingImages.length, 0);
-
-  const candidatas = generationState(
-    tenantComDirecao,
-    pages,
-    biblioteca().map((image) => ({ ...image, status: 'candidata' })),
-  );
-  // A candidata continua sem ser trabalho do agente, mas não cobre vaga.
-  assert.equal(candidatas.blockingErrors, aprovadas.blockingErrors);
-  assert.equal(candidatas.coveredScenes, 0);
-  assert.equal(candidatas.pendingImages.length, 5);
-  // Antes da composição é isso que mantém a etapa de cenas aberta até o
-  // operador decidir; com as páginas montadas o fluxo segue para a revisão.
-  const semPaginas = generationState(
-    tenantComDirecao,
-    [],
-    biblioteca().map((image) => ({ ...image, status: 'candidata' })),
-  );
-  assert.equal(semPaginas.next, 'cenas');
-  assert.equal(candidatas.next, 'revisao');
-  // Candidata fora do rascunho também aguarda decisão, e a mais antiga vem
-  // primeiro: o painel decide uma por vez.
-  assert.equal(candidatas.pendingImages[0].seq, 1);
-  assert.equal(candidatas.pendingImages[0].usedInDraft, true);
-  assert.equal(candidatas.pendingImages[4].usedInDraft, false);
-  assert.equal(candidatas.pendingImages[0].role, 'hero');
-  assert.deepEqual(candidatas.pendingImages[0].problemas, []);
-
-  // Um erro que o agente resolve continua levando de volta para a revisão.
-  const semFoto = structuredClone(pages);
-  semFoto[1].blocks = semFoto[1].blocks.filter((b) => b.type !== 'hero.split');
-  assert.ok(
-    generationState(tenantComDirecao, semFoto, biblioteca()).blockingErrors >
-      aprovadas.blockingErrors,
-  );
-});
+for (const status of ['disponivel', 'candidata', 'aprovada'])
+  await test(`biblioteca ${status} cobre o plano sem interromper a composição`, () => {
+    const library = biblioteca().map((image) => ({ ...image, status }));
+    const state = generationState(tenantComDirecao, [], library);
+    assert.equal(state.targetScenes, 5);
+    assert.equal(state.coveredScenes, 5);
+    assert.equal(state.nextScene, null);
+    assert.equal(state.next, 'composicao');
+    const rejected = generationState(
+      tenantComDirecao,
+      [],
+      library.map((image) => ({ ...image, status: 'rejeitada' })),
+    );
+    assert.equal(rejected.coveredScenes, 0);
+    assert.equal(rejected.next, 'cenas');
+    const pages = paginasRicas();
+    const complete = generationState(tenantComDirecao, pages, library);
+    assert.equal(complete.next, 'revisao');
+    const semFoto = structuredClone(pages);
+    semFoto[1].blocks = semFoto[1].blocks.filter(
+      (block) => block.type !== 'hero.split',
+    );
+    assert.ok(
+      generationState(tenantComDirecao, semFoto, library).blockingErrors >
+        complete.blockingErrors,
+    );
+  });
 
 await test('o plano não cresce com as páginas gravadas', () => {
   // Com quatro páginas orgânicas o plano continua medindo três: crescer aqui

@@ -38,8 +38,8 @@ import type { Page, Tenant, TenantImage } from '@/lib/types';
 
 export const maxDuration = 300;
 
-/** Modelo do agente. Com créditos no AI Gateway, Claude é o padrão. */
-const MODEL = () => process.env.EIXU_MODEL || 'anthropic/claude-opus-5';
+/** Modelo do agente no AI Gateway, configurável por ambiente. */
+const MODEL = () => process.env.EIXU_MODEL || 'google/gemini-3.8-flash';
 
 /**
  * A fase só abre com o estado que ela pressupõe. Sem isso o agente tentava
@@ -49,30 +49,22 @@ function phaseBlocker(
   phase: Phase,
   tenant: Tenant,
   pages: Page[],
-  images: TenantImage[],
 ): string | null {
   const hasDesign = isDesignProfile(tenant.brand.design);
   if (phase !== 'briefing' && !hasDesign)
     return 'A direção de arte ainda não existe. Rode a fase de briefing antes.';
   if (phase === 'revisao' && !pages.length)
     return 'Não há páginas para revisar. Rode a fase de composição antes.';
-  // Uma cena por vez. O painel já espera a decisão antes de pedir a próxima;
-  // esta recusa protege uma aba antiga de gastar geração paga em duplicata.
-  if (phase === 'cenas' && images.some((image) => image.status === 'candidata'))
-    return 'Há uma imagem aguardando sua decisão no painel. Aprove ou recuse antes de gerar a próxima cena.';
   return null;
 }
 
 /** Plano, cobertura e a próxima vaga: o que a etapa de cenas precisa saber. */
 function scenesContext(tenant: Tenant, images: TenantImage[]) {
   const plan = plannedScenes(tenant);
-  const approved = generatedPhotos(images).filter(
-    (image) => image.status === 'aprovada',
-  );
-  const { covered, missing } = sceneCoverage(plan, approved);
+  const { covered, missing } = sceneCoverage(plan, generatedPhotos(images));
   return {
     scenePlan: scenePlanText(plan),
-    coverage: `${covered.length} de ${plan.length} vagas já têm foto aprovada.`,
+    coverage: `${covered.length} de ${plan.length} vagas já têm foto disponível.`,
     ...(missing[0] ? { nextScene: sceneText(missing[0]) } : {}),
   };
 }
@@ -104,7 +96,7 @@ export async function POST(request: Request) {
   ]);
   const phase = isPhase(body.phase) ? body.phase : undefined;
   if (phase) {
-    const blocker = phaseBlocker(phase, tenant, pages, libraryImages);
+    const blocker = phaseBlocker(phase, tenant, pages);
     if (blocker) return new Response(blocker, { status: 409 });
   }
 
@@ -114,25 +106,14 @@ export async function POST(request: Request) {
         `- /${page.slug} (${page.type}, ${page.blocks.length} blocos${page.publishedBlocks ? ', publicada' : ''}): ${page.title}`,
     )
     .join('\n');
-  // Só o que o operador aprovou chega ao modelo com URL. Candidata ainda
-  // aguarda decisão e não pode entrar no rascunho.
-  const waiting = libraryImages.filter(
-    (image) => image.status === 'candidata',
-  ).length;
-  const imagesSummary = [
-    ...libraryImages
-      .filter((image) => image.kind === 'foto' && image.status === 'aprovada')
-      .slice(0, 12)
-      .map(
-        (image) =>
-          `- #${image.seq} aprovada, ${image.ratio}, ${image.targetBlock ?? 'livre'}: ${image.url} | ${image.alt ?? image.description ?? 'sem descrição'}`,
-      ),
-    ...(waiting
-      ? [
-          `- ${waiting} imagem(ns) aguardando a decisão do operador no painel, ainda sem URL.`,
-        ]
-      : []),
-  ].join('\n');
+  const imagesSummary = libraryImages
+    .filter((image) => image.status !== 'rejeitada')
+    .slice(0, 12)
+    .map(
+      (image) =>
+        `- #${image.seq} (${image.kind}), ${image.ratio}, ${image.targetBlock ?? 'livre'}: ${image.url} | ${image.alt ?? image.description ?? image.requestText}`,
+    );
+  const imagesText = imagesSummary.join('\n');
 
   const sources = Array.isArray(tenant.brief.sources)
     ? (
@@ -215,7 +196,7 @@ export async function POST(request: Request) {
       tenant,
       summary,
       body.page ? `/${body.page}` : '/',
-      imagesSummary,
+      imagesText,
       context,
     ),
     messages: await convertToModelMessages(messages),

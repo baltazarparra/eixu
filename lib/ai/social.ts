@@ -26,7 +26,7 @@ const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const MODEL = () =>
   process.env.EIXU_CRITIC_MODEL ||
   process.env.EIXU_MODEL ||
-  'anthropic/claude-opus-5';
+  'google/gemini-3.8-flash';
 
 export type SocialDeps = {
   fetch?: typeof globalThis.fetch;

@@ -52,12 +52,11 @@ export async function prepareSiteImages(tenant: Tenant, scenes: SiteScene[]) {
         });
         const nota = review.nota ?? null;
         return {
-          // Sem URL de propósito: a cena só pode entrar no rascunho depois
-          // que o operador aprovar, e aí ela aparece em list_images.
           numero: `#${image.seq}`,
+          url: image.url,
           ratio: image.ratio,
           alt: review.alt_sugerido ?? '',
-          status: 'candidata' as const,
+          status: 'disponivel' as const,
           papel: scene.role,
           targetBlock: scene.targetBlock,
           nota,
@@ -71,15 +70,15 @@ export async function prepareSiteImages(tenant: Tenant, scenes: SiteScene[]) {
         };
       }),
     );
-    return { candidatas: reviewed, falhas: result.failures };
+    return { imagens: reviewed, falhas: result.failures };
   });
 
-  const candidatas = results.flatMap((r) => r.candidatas);
+  const imagens = results.flatMap((r) => r.imagens);
   const falhas = results.flatMap((r) => r.falhas);
   return {
-    candidatas,
+    imagens,
     ...(falhas.length ? { falhas } : {}),
-    aprovacao:
-      'Cada cena aguarda a decisão do operador no painel. Encerre o turno: ele aprova ou recusa, e a próxima cena é pedida depois disso.',
+    orientacao:
+      'As imagens já estão na biblioteca e podem ser usadas pelas URLs retornadas, sem aprovação. O usuário pode pedir alterações pelo número no chat do site.',
   };
 }

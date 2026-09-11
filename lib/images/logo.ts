@@ -119,17 +119,19 @@ export async function generateLogoCandidates(input: {
   reference?: Buffer;
   referenceUrl?: string;
   variants: number;
+  revision?: string;
 }): Promise<{ batchId: string; images: LogoCandidate[]; failures: string[] }> {
   const batchId = randomUUID();
   const variants = variantsFor(input.mode, input.variants);
   const requestText =
-    input.mode === 'modernizar'
+    input.revision ??
+    (input.mode === 'modernizar'
       ? `Modernizar o logo de ${input.brandName}`
-      : `Criar logo para ${input.brandName}`;
+      : `Criar logo para ${input.brandName}`);
 
   const settled = await Promise.allSettled(
     variants.map(async (variant) => {
-      const text = composeLogoPrompt({
+      const basePrompt = composeLogoPrompt({
         variant,
         tenant: input.tenant,
         guide: input.guide,
@@ -137,6 +139,9 @@ export async function generateLogoCandidates(input: {
         wordmark: input.wordmark,
         brief: input.brief,
       });
+      const text = input.revision
+        ? `${basePrompt} Alteração solicitada: ${input.revision}. Este pedido prevalece sobre a preservação do original; mantenha apenas o que não foi solicitado mudar.`
+        : basePrompt;
       const result = await generateImage({
         model: LOGO_MODEL,
         prompt: input.reference ? { text, images: [input.reference] } : text,

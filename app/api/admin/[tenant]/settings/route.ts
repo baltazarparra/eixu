@@ -55,7 +55,7 @@ export async function PATCH(
       return Response.json(
         {
           error:
-            'Escolha um logo aprovado deste cliente ou envie o arquivo em Dados.',
+            'Escolha um logo disponível deste cliente ou envie o arquivo em Dados.',
         },
         { status: 409 },
       );
