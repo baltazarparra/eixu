@@ -1,9 +1,10 @@
 import type { ChatMessage } from '@/lib/ai/usage';
 import { db } from '@/lib/db';
 
+/** Um canal só: o estúdio de imagens virou biblioteca, sem conversa própria. */
 export async function chatHistory(
   tenantId: string,
-  channel: 'site' | 'imagens',
+  channel: 'site' = 'site',
 ): Promise<ChatMessage[]> {
   const rows = (await db()`
     select id, role, content from chat_messages

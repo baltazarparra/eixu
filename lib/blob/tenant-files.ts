@@ -13,6 +13,55 @@ export function tenantBlobPrefix(slug: string): string {
 
 const BATCH = 100;
 
+export const UPLOAD_TYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+  'image/svg+xml',
+]);
+export const UPLOAD_MAX_BYTES = 8 * 1024 * 1024;
+
+export class UploadError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
+export function checkUpload(file: File): void {
+  if (!UPLOAD_TYPES.has(file.type))
+    throw new UploadError(`Tipo não aceito: ${file.type}`, 415);
+  if (file.size > UPLOAD_MAX_BYTES)
+    throw new UploadError('Imagem acima de 8 MB.', 413);
+}
+
+/** Nome previsível: canApplyLogo confere o formato do caminho do logo. */
+export function uploadFileName(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9.]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'imagem'
+  );
+}
+
+/**
+ * Upload do cadastro, antes de o cliente existir. Não passa pelo lock porque
+ * não há tenant para travar; um insert recusado apaga o arquivo em seguida.
+ */
+export async function putNewTenantBlob(slug: string, file: File) {
+  checkUpload(file);
+  const blob = await put(
+    `${tenantBlobPrefix(slug)}logo/${Date.now()}-${uploadFileName(file.name)}`,
+    file,
+    { access: 'public', addRandomSuffix: false, contentType: file.type },
+  );
+  return blob.url;
+}
+
 /** Todo upload do produto participa do mesmo lock usado pela exclusão. */
 export function putTenantBlob(
   tenantId: string,

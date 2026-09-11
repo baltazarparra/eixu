@@ -4,6 +4,7 @@ import { startTransition, useActionState, useCallback, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowUpRight, Plus, Search, Globe2, Trash2, X } from 'lucide-react';
+import { BrandFields } from '@/components/admin/brand-fields';
 import { TenantFields } from '@/components/admin/tenant-fields';
 import { DeleteTenantDialog } from '@/components/admin/delete-tenant-dialog';
 import type { DeletableTenant } from '@/lib/admin/tenant-delete';
@@ -77,6 +78,7 @@ export function Clients({ tenants }: { tenants: ClientSummary[] }) {
           >
             <fieldset disabled={pending}>
               <TenantFields withSlug />
+              <BrandFields />
               {error ? (
                 <p
                   aria-live="polite"

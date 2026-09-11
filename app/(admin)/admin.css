@@ -56,6 +56,17 @@ textarea {
 input[type='date'] {
   color-scheme: dark;
 }
+/* O seletor nativo vem com moldura clara e altura própria do agente. */
+.admin-color {
+  width: 56px;
+  height: 38px;
+  padding: 3px;
+  border: 1px solid var(--color-line);
+  border-radius: 7px;
+  background: var(--color-surface);
+  color-scheme: dark;
+  cursor: pointer;
+}
 .admin-header {
   display: flex;
   flex-wrap: wrap;

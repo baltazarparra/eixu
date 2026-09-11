@@ -20,7 +20,9 @@ export const PHASE_TOOLS: Record<Phase, string[]> = {
     'define_image_guide',
     'set_design',
   ],
-  cenas: ['list_images', 'define_image_guide', 'prepare_site_images'],
+  // A cobertura do plano já entra no prompt desta fase: list_images só
+  // gastaria um passo para repetir o que o contexto traz.
+  cenas: ['define_image_guide', 'prepare_site_images'],
   composicao: ['list_images', 'build_site', 'repair_site', 'lint_site'],
   revisao: [
     'review_pages',
@@ -38,7 +40,8 @@ export const PHASE_TOOLS: Record<Phase, string[]> = {
 
 export const PHASE_STEPS: Record<Phase, number> = {
   briefing: 6,
-  cenas: 4,
+  // Uma cena por requisição: chamar a ferramenta e encerrar o turno.
+  cenas: 2,
   composicao: 12,
   revisao: 10,
 };
@@ -52,9 +55,9 @@ Objetivo: transformar o intake do operador em briefing verificado e direção de
 3. Chame set_design com o briefing, o conceito, o elemento-assinatura, a paleta com papéis e os oito eixos.
 Pare depois de set_design aprovado. Não monte páginas nem gere imagens nesta fase.`,
   cenas: `## Fase 2 de 4: cenas
-Objetivo: produzir o repertório visual que a composição vai usar.
-Chame prepare_site_images uma vez com o plano de cenas completo: a abertura na composição escolhida, o detalhe que dá materialidade, as aplicações da seção protagonista e uma cena para cada página orgânica.
-As candidatas entram no rascunho; a aprovação é do operador, no estúdio. Pare depois do lote.`,
+Objetivo: produzir a próxima cena do repertório visual, uma por vez.
+Chame prepare_site_images uma única vez, com exatamente uma cena: a indicada em "Próxima cena", no targetBlock e na proporção que ela pede. Escreva o request como cena concreta do negócio, sem adjetivo publicitário.
+Encerre o turno depois da chamada. O operador aprova ou recusa a imagem no painel, e só então a próxima cena é pedida. Não monte páginas nesta fase.`,
   composicao: `## Fase 3 de 4: composição
 Objetivo: montar o projeto completo em uma única chamada de build_site, cumprindo o briefing de composição.
 O catálogo abaixo já traz as props e os limites de cada bloco. Escreva o projeto inteiro de uma vez, com as fotos da biblioteca pelas URLs exatas e na proporção que o layout exibe.
@@ -71,8 +74,7 @@ Pare quando não restar erro. Não publique: aprovação de fotos e publicação
 export const PHASE_MESSAGE: Record<Phase, string> = {
   briefing:
     'Leia as referências do intake e defina o briefing, o guia de imagem e a direção de arte deste cliente.',
-  cenas:
-    'Gere as cenas que a composição vai usar, seguindo o plano de cenas da direção.',
+  cenas: 'Gere a próxima cena do plano.',
   composicao:
     'Monte o projeto completo com as páginas orgânicas, usando as fotos da biblioteca.',
   revisao: 'Revise o resultado renderizado e corrija o que ficou pobre.',
@@ -87,7 +89,8 @@ export const PHASE_LABEL: Record<Phase, string> = {
 
 export type GenerationState = {
   hasDesign: boolean;
-  generatedPhotos: number;
+  /** Vagas do plano preenchidas por foto aprovada. Candidata não conta. */
+  coveredScenes: number;
   targetScenes: number;
   organicPages: number;
   blockingErrors: number;
@@ -100,8 +103,13 @@ export type GenerationState = {
  */
 export function nextPhase(state: GenerationState): Phase | 'pronto' {
   if (!state.hasDesign) return 'briefing';
-  if (state.generatedPhotos < Math.min(3, state.targetScenes)) return 'cenas';
-  if (state.organicPages < 3) return 'composicao';
+  // A cobertura do plano governa só antes da composição: o repertório existe
+  // para a montagem ter o que usar. Depois que as páginas existem, foto que
+  // falte vira erro de pre-flight e quem resolve é a revisão. Sem esse
+  // recorte, um cliente já publicado com biblioteca menor que o plano voltaria
+  // para a etapa de cenas e gastaria geração que ninguém pediu.
+  if (state.organicPages < 3)
+    return state.coveredScenes < state.targetScenes ? 'cenas' : 'composicao';
   if (state.blockingErrors > 0 || state.reviewRounds < 1) return 'revisao';
   return 'pronto';
 }

@@ -13,12 +13,19 @@ const { blockSchemas, catalogForPrompt } = await j.import(
 
 const scene = (n) => `https://assets.test/scene-${n}.webp`;
 const images = [1, 2].map((seq) => ({
+  id: `img-${seq}`,
   seq,
   url: scene(seq),
   kind: 'foto',
   model: 'openai/gpt-image-2',
   blobPath: `tenants/sample/gerado/batch/${seq}.webp`,
   status: 'aprovada',
+  targetBlock: null,
+  requestText: `Cena ${seq}`,
+  alt: null,
+  score: null,
+  critique: {},
+  createdAt: `2026-09-0${seq}T10:00:00.000Z`,
 }));
 const body =
   'A escolha do ambiente depende da rotina e das preferências de quem usa o espaço. Compartilhe medidas, referências e o que já foi definido no projeto. A equipe pode então orientar a conversa sobre as possibilidades, os detalhes e o acabamento. Antes de confirmar uma proposta, confira a adequação do material real ao uso previsto. Fotos e amostras ajudam a visualizar o resultado, mas não substituem a avaliação das características do produto. Reúna as informações disponíveis, explique suas dúvidas e compare as alternativas. O próximo passo é uma conversa com escopo claro, incluindo as condições e as decisões que ainda precisam ser tomadas em conjunto.';
@@ -637,7 +644,9 @@ const { parseSocialProfile, readSocialProfile, referenceFromSocial } =
 const { intakeSchema, intakeSocialUrl, intakeSummary, lines } = await j.import(
   '../lib/tenant-intake.ts',
 );
-const { scenePlan } = await j.import('../lib/images/scene-plan.ts');
+const { scenePlan, sceneCoverage } = await j.import(
+  '../lib/images/scene-plan.ts',
+);
 const { nextPhase, PHASE_TOOLS } = await j.import('../lib/taste/phases.ts');
 
 await test('referência em rede social com login volta inacessível sem requisição', async () => {
@@ -739,18 +748,70 @@ await test('plano de cenas cobre abertura, protagonista e páginas internas', ()
   );
 });
 
+await test('a cobertura casa biblioteca aprovada com as vagas do plano', () => {
+  const plan = scenePlan({ heroComposition: 'split' }, 3);
+  const photo = (targetBlock, ratio) => ({ targetBlock, ratio });
+  const exatas = plan.map((slot) => photo(slot.targetBlock, slot.ratio));
+  assert.equal(sceneCoverage(plan, exatas).missing.length, 0);
+
+  // Faltando a segunda aplicação, a próxima vaga é a que o plano pede.
+  const parcial = sceneCoverage(plan, exatas.slice(0, 2));
+  assert.equal(parcial.covered.length, 2);
+  assert.equal(parcial.missing[0].role, 'protagonista');
+  assert.equal(parcial.missing[0].targetBlock, 'feature.explorer');
+
+  // Foto antiga de outro hero 4:5 cobre a vaga sem obrigar geração paga.
+  const offset = scenePlan({ heroComposition: 'offset' }, 3);
+  const herdada = sceneCoverage(offset, [photo('hero.split', '4:5')]);
+  assert.equal(herdada.covered.length, 1);
+  assert.equal(herdada.covered[0].role, 'hero');
+  // Mesmo bloco, proporção errada, não cobre a abertura: o recorte comeria a
+  // cena. Ela cai na vaga panorâmica, que é onde serve.
+  const torta = sceneCoverage(offset, [photo('hero.offset', '16:9')]);
+  assert.equal(torta.missing[0].role, 'hero');
+  assert.equal(torta.covered[0].targetBlock, 'media.image');
+  // Proporção ausente ou fora do vocabulário também não vale por cobertura.
+  for (const ratio of [undefined, '', '3:2'])
+    assert.equal(
+      sceneCoverage(offset, [photo('hero.offset', ratio)]).covered.length,
+      0,
+      String(ratio),
+    );
+  // Uma foto panorâmica ocupa a vaga panorâmica, não a abertura em retrato.
+  const panoramica = sceneCoverage(offset, [photo('media.image', '16:9')]);
+  assert.equal(panoramica.covered[0].targetBlock, 'media.image');
+  assert.equal(panoramica.missing[0].role, 'hero');
+
+  // As duas vagas do atelier precisam de duas fotos, não de uma repetida.
+  const atelier = scenePlan({ heroComposition: 'atelier' }, 3);
+  assert.equal(
+    sceneCoverage(atelier, [photo('hero.atelier', '4:5')]).missing[0].role,
+    'hero-detail',
+  );
+});
+
 await test('a próxima etapa vem do estado persistido, não da conversa', () => {
   const base = {
     hasDesign: true,
-    generatedPhotos: 6,
+    coveredScenes: 6,
     targetScenes: 6,
     organicPages: 3,
     blockingErrors: 0,
     reviewRounds: 1,
   };
+  const novo = { ...base, organicPages: 0 };
   assert.equal(nextPhase({ ...base, hasDesign: false }), 'briefing');
-  assert.equal(nextPhase({ ...base, generatedPhotos: 1 }), 'cenas');
+  assert.equal(nextPhase({ ...novo, coveredScenes: 1 }), 'cenas');
+  // Sem atalho: uma vaga aberta mantém a etapa de cenas.
+  assert.equal(nextPhase({ ...novo, coveredScenes: 5 }), 'cenas');
   assert.equal(nextPhase({ ...base, organicPages: 1 }), 'composicao');
+  // Com as páginas montadas, biblioteca menor que o plano não reabre a etapa
+  // de cenas: foto faltando vira erro de pre-flight, tratado na revisão.
+  assert.equal(nextPhase({ ...base, coveredScenes: 1 }), 'pronto');
+  assert.equal(
+    nextPhase({ ...base, coveredScenes: 1, blockingErrors: 1 }),
+    'revisao',
+  );
   assert.equal(nextPhase({ ...base, reviewRounds: 0 }), 'revisao');
   assert.equal(nextPhase({ ...base, blockingErrors: 2 }), 'revisao');
   assert.equal(nextPhase(base), 'pronto');
@@ -758,40 +819,130 @@ await test('a próxima etapa vem do estado persistido, não da conversa', () => 
   assert.equal(PHASE_TOOLS.briefing.includes('build_site'), false);
   assert.equal(PHASE_TOOLS.composicao.includes('publish_site'), false);
   assert.equal(PHASE_TOOLS.revisao.includes('review_pages'), true);
+  // A cobertura já vai no prompt da fase; e logo não é etapa da geração.
+  assert.equal(PHASE_TOOLS.cenas.includes('list_images'), false);
+  for (const tools of Object.values(PHASE_TOOLS))
+    assert.equal(tools.includes('generate_logo'), false);
 });
 
 const { generationState } = await j.import('../lib/sites/generation.ts');
 
-await test('aprovação de imagem pendente não prende a geração na revisão', () => {
-  const tenant = {
-    brand: { design: { version: 2, heroComposition: 'split' } },
-    brief: { generation: { reviewRounds: 1 } },
-  };
-  const pages = rich().map((page) => ({
+const tenantComDirecao = {
+  brand: {
+    design: {
+      version: 2,
+      concept: 'Oficina que mostra o serviço acontecendo',
+      signatureElement: 'Faixa diagonal de cor sobre a foto de abertura',
+      displayFont: 'geometric',
+      bodyFont: 'sans',
+      heroComposition: 'split',
+      navigation: 'bar',
+      rhythm: 'alternating',
+      imageTreatment: 'full-bleed',
+      surfaceStyle: 'flat',
+      motif: 'grid',
+    },
+  },
+  brief: { generation: { reviewRounds: 1 } },
+};
+const paginasRicas = () =>
+  rich().map((page) => ({
     ...page,
     id: page.slug || 'home',
     publishedBlocks: null,
     publishedSeo: null,
   }));
-  const aprovadas = generationState(tenant, pages, images);
-  const candidatas = generationState(
-    tenant,
-    pages,
-    images.map((image) => ({ ...image, status: 'candidata' })),
-  );
-  // A candidata continua bloqueando a publicação, mas não é trabalho do
-  // agente: ela não pode mudar a fase nem a contagem de erros.
-  assert.equal(candidatas.blockingErrors, aprovadas.blockingErrors);
-  assert.equal(candidatas.next, aprovadas.next);
-  assert.equal(candidatas.pendingImages.length, 2);
+/**
+ * Biblioteca que cobre o plano inteiro do hero split, vaga por vaga. As duas
+ * primeiras são as fotos que a home do fixture referencia.
+ */
+const VAGAS = [
+  ['hero.split', '4:5'],
+  ['feature.explorer', '4:3'],
+  ['feature.explorer', '4:3'],
+  ['narrative.split', '5:6'],
+  ['media.image', '16:9'],
+];
+const biblioteca = () =>
+  VAGAS.map(([targetBlock, ratio], index) => {
+    const seq = index + 1;
+    return {
+      ...images[0],
+      id: `img-${seq}`,
+      seq,
+      url: scene(seq),
+      blobPath: `tenants/sample/gerado/batch/${seq}.webp`,
+      createdAt: `2026-09-0${seq}T10:00:00.000Z`,
+      targetBlock,
+      ratio,
+    };
+  });
+
+await test('só imagem aprovada cobre vaga do plano e libera a composição', () => {
+  const pages = paginasRicas();
+  const aprovadas = generationState(tenantComDirecao, pages, biblioteca());
+  assert.equal(aprovadas.targetScenes, 5);
+  assert.equal(aprovadas.coveredScenes, 5);
+  assert.equal(aprovadas.nextScene, null);
+  // Com o plano coberto a etapa de cenas fecha; o que sobra é trabalho do
+  // agente na revisão, não decisão de imagem.
+  assert.notEqual(aprovadas.next, 'cenas');
   assert.equal(aprovadas.pendingImages.length, 0);
+
+  const candidatas = generationState(
+    tenantComDirecao,
+    pages,
+    biblioteca().map((image) => ({ ...image, status: 'candidata' })),
+  );
+  // A candidata continua sem ser trabalho do agente, mas não cobre vaga.
+  assert.equal(candidatas.blockingErrors, aprovadas.blockingErrors);
+  assert.equal(candidatas.coveredScenes, 0);
+  assert.equal(candidatas.pendingImages.length, 5);
+  // Antes da composição é isso que mantém a etapa de cenas aberta até o
+  // operador decidir; com as páginas montadas o fluxo segue para a revisão.
+  const semPaginas = generationState(
+    tenantComDirecao,
+    [],
+    biblioteca().map((image) => ({ ...image, status: 'candidata' })),
+  );
+  assert.equal(semPaginas.next, 'cenas');
+  assert.equal(candidatas.next, 'revisao');
+  // Candidata fora do rascunho também aguarda decisão, e a mais antiga vem
+  // primeiro: o painel decide uma por vez.
+  assert.equal(candidatas.pendingImages[0].seq, 1);
+  assert.equal(candidatas.pendingImages[0].usedInDraft, true);
+  assert.equal(candidatas.pendingImages[4].usedInDraft, false);
+  assert.equal(candidatas.pendingImages[0].role, 'hero');
+  assert.deepEqual(candidatas.pendingImages[0].problemas, []);
+
   // Um erro que o agente resolve continua levando de volta para a revisão.
   const semFoto = structuredClone(pages);
   semFoto[1].blocks = semFoto[1].blocks.filter((b) => b.type !== 'hero.split');
   assert.ok(
-    generationState(tenant, semFoto, images).blockingErrors >
+    generationState(tenantComDirecao, semFoto, biblioteca()).blockingErrors >
       aprovadas.blockingErrors,
   );
+});
+
+await test('o plano não cresce com as páginas gravadas', () => {
+  // Com quatro páginas orgânicas o plano continua medindo três: crescer aqui
+  // devolveria a geração para a etapa de cenas logo depois da composição.
+  const pages = paginasRicas();
+  const extra = structuredClone(pages[1]);
+  extra.slug = 'processo';
+  extra.id = 'processo';
+  extra.seo = {
+    title: 'Título específico do processo',
+    description: 'Descrição específica da página de processo.',
+  };
+  const state = generationState(
+    tenantComDirecao,
+    [...pages, extra],
+    biblioteca(),
+  );
+  assert.equal(state.targetScenes, 5);
+  assert.equal(state.coveredScenes, 5);
+  assert.notEqual(state.next, 'cenas');
 });
 
 await test('perfil de rede social é normalizado; outros hosts continuam fora do campo', () => {
@@ -1060,51 +1211,4 @@ await test('ferramentas preservam o perfil e o intake atualizados durante o turn
   assert.equal(brief.sources[0].titulo, 'Fonte verificada');
   assert.equal(brief.generation.reviewRounds, 1);
   assert.deepEqual(brief.constraints, ['Nunca mostrar pessoas']);
-});
-
-await test('prompt de imagens conserva briefing consolidado com intake ou perfil social', async () => {
-  const { imageAgentPrompt } = await j.import('../lib/images/prompt.ts');
-  for (const intake of [
-    { segment: 'Pedras naturais' },
-    { socialUrl: 'https://www.instagram.com/pedras/' },
-  ]) {
-    const prompt = imageAgentPrompt(
-      {
-        name: 'Fixture',
-        slug: 'fixture',
-        brand: {},
-        brief: {
-          intake,
-          constraints: ['Nunca mostrar pessoas'],
-          evidence: ['Produção própria'],
-          audience: 'Arquitetos',
-          gaps: ['Prazo não confirmado'],
-          sources: ['não repetir fonte crua'],
-        },
-      },
-      {},
-      [],
-      '(nenhuma)',
-    );
-    for (const value of [
-      'Nunca mostrar pessoas',
-      'Produção própria',
-      'Arquitetos',
-      'Prazo não confirmado',
-    ])
-      assert.ok(prompt.includes(value), value);
-    assert.ok(!prompt.includes('não repetir fonte crua'));
-  }
-  const onlyConstraints = imageAgentPrompt(
-    {
-      name: 'Fixture',
-      slug: 'fixture',
-      brand: {},
-      brief: { intake: { constraints: ['Não mostrar rostos'] } },
-    },
-    {},
-    [],
-    '',
-  );
-  assert.ok(onlyConstraints.includes('Não mostrar rostos'));
 });

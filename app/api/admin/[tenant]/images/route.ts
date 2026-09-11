@@ -24,15 +24,21 @@ async function resolve(params: Promise<{ tenant: string }>) {
   return { tenant };
 }
 
+const statuses = z.enum(['aprovada', 'rejeitada', 'candidata']);
+
 /** Estado da biblioteca para a grade do painel. */
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ tenant: string }> },
 ) {
   const resolved = await resolve(params);
   if (resolved.error) return resolved.error;
+  const asked = new URL(request.url).searchParams.get('status');
+  const status = statuses.safeParse(asked);
+  if (asked && !status.success)
+    return Response.json({ error: 'Estado inválido.' }, { status: 400 });
   const [images, guide] = await Promise.all([
-    listImages(resolved.tenant.id),
+    listImages(resolved.tenant.id, status.success ? status.data : undefined),
     getGuide(resolved.tenant.id),
   ]);
   return Response.json({
@@ -44,7 +50,7 @@ export async function GET(
 
 const patch = z.object({
   id: z.string(),
-  status: z.enum(['aprovada', 'rejeitada', 'candidata']),
+  status: statuses,
   alt: z.string().max(140).optional(),
 });
 

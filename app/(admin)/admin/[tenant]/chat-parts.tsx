@@ -76,15 +76,15 @@ export function describeTool(
         ? `Revisão: ${apontamentos} pontos de atenção`
         : 'Revisão sem apontamentos';
     }
-    case 'prepare_site_images':
-      return pending
-        ? 'Preparando as imagens do projeto'
-        : out.error ||
-            (Array.isArray(out.falhas) && out.falhas.length > 0) ||
-            !Array.isArray(out.candidatas) ||
-            !out.candidatas.length
-          ? 'As imagens precisam de atenção'
-          : 'Imagens preparadas para revisão';
+    case 'prepare_site_images': {
+      if (pending) return 'Gerando a cena';
+      const list = (out.candidatas ?? []) as { numero: string }[];
+      if (out.error || !Array.isArray(out.candidatas) || !list.length)
+        return 'As imagens precisam de atenção';
+      return list.length === 1
+        ? `Cena ${list[0].numero} gerada, aguardando sua decisão`
+        : `${list.length} cenas geradas, aguardando sua decisão`;
+    }
     case 'set_blocks':
       return pending
         ? `Refazendo ${page}`
@@ -133,44 +133,15 @@ export function describeTool(
     case 'describe_block':
       return pending ? 'Consultando o catálogo' : 'Consultou o catálogo';
 
-    // Agente de imagens
-    case 'define_guide':
-      return pending
-        ? 'Definindo o guia de imagem'
-        : 'Definiu o guia de imagem';
-    case 'generate_candidates': {
-      const ratio = str(inp.ratio) || str(inp.targetBlock);
-      if (pending)
-        return `Gerando candidatas${ratio ? ` para ${ratio}` : ''} e avaliando cada uma`;
-      const list = (out.candidatas ?? []) as {
-        numero: string;
-        nota: number | null;
-      }[];
-      if (!list.length) return 'Nenhuma candidata gerada';
-      const best = list[0];
-      return `${list.length} candidatas avaliadas, melhor ${best.numero} com nota ${best.nota ?? 'sem'}`;
-    }
-    case 'approve_image':
-      return pending
-        ? 'Aprovando a imagem'
-        : `Aprovou ${str(out.numero) || 'a imagem'}`;
-    case 'reject_image':
-      return pending
-        ? 'Rejeitando a imagem'
-        : `Rejeitou ${str(out.numero) || 'a imagem'}`;
     case 'generate_logo': {
       const mode =
         str(inp.mode) === 'modernizar'
           ? 'modernizando o logo'
           : 'criando o logo';
       if (pending) return `Gerando variantes e ${mode}`;
-      const list = (out.variantes ?? []) as {
-        numero: string;
-        variante: string;
-        nota: number | null;
-      }[];
+      const list = (out.variantes ?? []) as { numero: string }[];
       if (!list.length) return 'Nenhuma variante gerada';
-      return `${list.length} variantes avaliadas, melhor ${list[0].numero} (${list[0].variante}) com nota ${list[0].nota ?? 'sem'}`;
+      return `${list.length} variantes de logo geradas, aguardando sua decisão`;
     }
     case 'set_site_logo':
       return pending
@@ -180,10 +151,6 @@ export function describeTool(
       return pending
         ? 'Lendo a biblioteca de imagens'
         : 'Leu a biblioteca de imagens';
-    case 'delete_image':
-      return pending
-        ? 'Apagando a imagem'
-        : `Apagou ${str(out.apagada) || 'a imagem'}`;
 
     default:
       return name;

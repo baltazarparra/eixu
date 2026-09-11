@@ -2,7 +2,9 @@
 
 ## Encontrar ou cadastrar um cliente
 
-Entre em `/admin` com a credencial do operador. A busca procura nome ou endereço; os filtros separam rascunhos e clientes com site publicado. Abra **Novo cliente** para cadastrar nome, endereço, contatos e briefing. O endereço aceita letras minúsculas, números e hífens; nomes reservados e duplicados são recusados.
+Entre em `/admin` com a credencial do operador. A busca procura nome ou endereço; os filtros separam rascunhos e clientes com site publicado. Abra **Novo cliente** para cadastrar nome, endereço, contatos, briefing e marca. O endereço aceita letras minúsculas, números e hífens; nomes reservados e duplicados são recusados.
+
+Em Marca, envie o logo, opcional, e escolha três cores: a primária pinta seções e superfícies, a secundária alterna o ritmo e a de acento vai nos botões, links e destaques. Primária e secundária precisam ser diferentes. O agente respeita essas cores e decide só estrutura, tipografia e leitura; o site escurece sozinho uma cor que não alcança contraste mínimo.
 
 O painel é uma operação administrativa global: quem tem a credencial pode acessar todos os clientes. Não compartilhe essa sessão com clientes finais.
 
@@ -18,7 +20,7 @@ Trocar ou remover o perfil durante a leitura descarta a resposta anterior. Uma r
 
 Nome, contatos e logo são compartilhados com o site ao vivo. Alterar o briefing orienta as próximas edições; não reescreve páginas automaticamente. Para trocar o endereço de um cliente existente, é necessária uma operação técnica; o formulário não altera o slug.
 
-Envie um logo final em Dados ou aprove e aplique uma opção da biblioteca. O arquivo enviado manualmente é aplicado ao terminar o upload. Uma opção gerada precisa estar aprovada antes de **Usar como logo**.
+Envie um logo final em Dados ou aprove uma opção gerada na conversa do site. O arquivo enviado manualmente é aplicado ao terminar o upload. Uma opção gerada precisa estar aprovada antes de **Usar como logo**. Dados não altera as cores: peça a mudança na conversa do site.
 
 ## Excluir um cliente
 
@@ -28,21 +30,25 @@ A exclusão é definitiva e não tem lixeira. Ao concluir, o site publicado pass
 
 ## Gerar e editar o site
 
-Em Site, **Gerar site** inicia briefing e direção, cenas, composição e revisão. O progresso é salvo entre as etapas. **Parar** interrompe a sequência; uma ferramenta já iniciada pode terminar e salvar seu resultado. O cancelamento não desfaz escritas. **Continuar** consulta o estado e retoma a etapa necessária. Se houver erro ou a etapa não avançar, a sequência para; leia a resposta antes de tentar de novo.
+Em Site, **Continuar** roda briefing e direção, cenas, composição e revisão, uma etapa por vez. O progresso é salvo entre elas e vem do estado gravado, não da conversa: recarregar a tela não perde o lugar. **Parar** interrompe a sequência; uma ferramenta já iniciada pode terminar e salvar seu resultado. O cancelamento não desfaz escritas. Se houver erro ou a etapa não avançar, a sequência para; leia a resposta antes de tentar de novo.
+
+Na etapa de cenas o agente gera uma imagem e para. Ela aparece no fim da conversa com a nota da crítica e os problemas apontados. **Aprovar** guarda a imagem na biblioteca e a sequência segue sozinha para a próxima cena. **Recusar e gerar outra** apaga o arquivo e o registro; o que você escrever em "o que mudar" vira o pedido da próxima tentativa. A crítica da IA ajuda a decidir, não aprova nada.
 
 O chat recebe o histórico textual recente do cliente. Escreva mudanças específicas e indique a página quando necessário. Sugestões apenas preenchem a caixa; **Enviar** executa o pedido. Enter envia, Shift+Enter quebra a linha. Imagens podem ser anexadas, coladas ou arrastadas para a conversa.
 
 No computador, conversa e prévia ficam lado a lado. No celular, alterne **Conversa** e **Prévia**. Escolha a página no seletor e confira as larguras Desktop e Celular; **Abrir prévia** abre outra aba. Os links internos mantêm o modo de rascunho. A prévia exige sessão, não envia formulários e não registra eventos de tráfego.
 
-Os textos das 60 mensagens mais recentes de cada canal são recuperados ao abrir a tela. Ferramentas, anexos e contagens de custo antigos não são restaurados. Registre decisões duráveis no briefing; não dependa de uma conversa extensa como única fonte do negócio.
+Os textos das 60 mensagens mais recentes são recuperados ao abrir a tela. Ferramentas, anexos e contagens de custo antigos não são restaurados. Registre decisões duráveis no briefing; não dependa de uma conversa extensa como única fonte do negócio.
 
-## Revisar imagens e publicar
+## Biblioteca e publicação
 
-A biblioteca separa fotos/logos e seus estados: candidata, aprovada ou rejeitada. A nota da crítica de IA ajuda na escolha, mas não aprova nada. Confira conteúdo, recorte e fidelidade antes de aprovar. Fotos usadas no rascunho também aparecem como pendência na conversa do site.
+Imagens é a biblioteca do que você aprovou, separada em fotos e logos. A geração e a decisão acontecem na conversa do site; aqui ficam o acervo e as ações sobre ele.
 
-**Apagar** pede uma segunda confirmação e recusa imagens referenciadas no rascunho, publicado ou logo. Cancelar conserva a imagem. **Usar no site**, em uma foto aprovada, copia um pedido para colar no chat do site; não altera o conteúdo sozinho.
+O filtro **Rejeitadas** mostra o que foi recusado sem poder ser apagado, porque estava em uso numa página. Troque a imagem do bloco pelo chat e depois apague.
 
-Antes de publicar, abra as pendências. Erros de página ou projeto bloqueiam a publicação; recomendações continuam disponíveis para revisão. Mudanças de blocos ou SEO tornam a página pendente. **Publicar** valida o projeto no servidor e atualiza o snapshot de páginas atomicamente; um erro preserva a versão anterior.
+**Apagar** pede uma segunda confirmação e recusa imagens referenciadas no rascunho, publicado ou logo. Cancelar conserva a imagem. **Usar no site**, em uma foto, copia um pedido para colar no chat do site; não altera o conteúdo sozinho. **Usar como logo**, em um logo aprovado, aplica na navegação e no rodapé.
+
+As pendências para publicar aparecem no fim do fluxo, quando ainda sobra algo. Erros de página ou projeto bloqueiam a publicação; recomendações continuam disponíveis para revisão. Mudanças de blocos ou SEO tornam a página pendente. **Publicar** valida o projeto no servidor e atualiza o snapshot de páginas atomicamente; um erro preserva a versão anterior.
 
 O snapshot inclui blocos e SEO. Marca, contatos, título, tipo e outros metadados têm limites de versionamento descritos na [arquitetura](architecture.md#limites-atuais). Publicar o código na Vercel não publica automaticamente os rascunhos dos clientes.
 
@@ -50,7 +56,7 @@ O snapshot inclui blocos e SEO. Marca, contatos, título, tipo e outros metadado
 
 Depois de uma resposta, abra **Uso nesta sessão**: entrada, saída, entrada lida do cache, passos, duração e custo em dólar quando informado pelo Gateway. O painel soma as respostas recebidas desde a abertura daquela tela, sem converter para reais.
 
-Essa contagem não inclui geração de imagens, críticas internas, outras abas ou falhas sem recibo. Consulte o Gateway para conciliar o consumo total. Cache reduz processamento repetido quando o provedor encontra um prefixo reutilizável; não garante economia fixa. O modelo e os validadores de qualidade foram mantidos.
+Essa contagem não inclui geração de imagens, críticas internas, outras telas ou falhas sem recibo. Consulte o Gateway para conciliar o consumo total. Cache reduz processamento repetido quando o provedor encontra um prefixo reutilizável; não garante economia fixa. O modelo e os validadores de qualidade foram mantidos.
 
 Para evitar desperdício, use Dados para alterações cadastrais, descreva o ajuste desejado, confira a página em foco e trate a causa de uma falha antes de repetir geração. Não repita a geração completa para corrigir um detalhe.
 

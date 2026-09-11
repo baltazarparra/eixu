@@ -6,13 +6,6 @@ import { FRAMING, dimensionsFor, type Ratio } from '@/lib/images/ratios';
 import { insertImage } from '@/lib/images/queries';
 import type { ImageGuide, Tenant, TenantImage } from '@/lib/types';
 
-/** Modelos padrão: dois motores diferentes dão variedade real de composição. */
-export const DEFAULT_MODELS = [
-  'openai/gpt-image-2',
-  'openai/gpt-image-2',
-  'bfl/flux-2-pro',
-] as const;
-
 const ESTILO: Record<string, string> = {
   fotografia:
     'Fotografia documental, câmera com lente 35mm, profundidade de campo natural',

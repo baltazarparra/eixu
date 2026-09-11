@@ -27,7 +27,7 @@ details > summary::-webkit-details-marker {
   display: none;
 }
 details[open] > summary {
-  color: var(--accent);
+  color: var(--highlight-text);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -110,7 +110,8 @@ details[open] > summary {
   font-size: clamp(2.5rem, 5.5vw, 4.8rem);
 }
 .site-services {
-  background: color-mix(in oklab, var(--ink) 3%, var(--paper));
+  --highlight-text: var(--highlight-text-services);
+  background: var(--services-surface);
 }
 .site-bento-item {
   overflow: hidden;
@@ -153,7 +154,7 @@ details[open] > summary .site-disclosure {
   transform: rotate(45deg);
 }
 .site-theme details[open] > summary {
-  color: inherit;
+  color: var(--highlight-text);
 }
 .site-faq-summary {
   min-height: 2.75rem;
@@ -243,9 +244,10 @@ details[open] > summary .site-disclosure {
   letter-spacing: -0.055em;
 }
 .site-theme[data-design-version='2'] .site-action {
-  box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 78%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--highlight) 78%, transparent);
 }
 .site-block[data-tone='paper'] {
+  --highlight-text: var(--highlight-text-paper);
   --ink: var(--brand-ink);
   --paper: var(--brand-paper);
   /* --muted vem da raiz, já medido contra o papel da marca. */
@@ -254,6 +256,7 @@ details[open] > summary .site-disclosure {
   color: var(--ink);
 }
 .site-block[data-tone='soft'] {
+  --highlight-text: var(--highlight-text-soft);
   --ink: var(--brand-ink);
   --paper: var(--surface);
   --muted: var(--muted-soft);
@@ -262,6 +265,7 @@ details[open] > summary .site-disclosure {
   color: var(--ink);
 }
 .site-block[data-tone='ink'] {
+  --highlight-text: var(--highlight-text-ink);
   --ink: var(--brand-paper);
   --paper: var(--brand-ink);
   --muted: var(--muted-ink);
@@ -270,6 +274,7 @@ details[open] > summary .site-disclosure {
   color: var(--ink);
 }
 .site-block[data-tone='accent'] {
+  --highlight-text: var(--highlight-text-accent);
   --ink: var(--accent-ink);
   --paper: var(--accent);
   --muted: var(--muted-accent);
@@ -277,8 +282,18 @@ details[open] > summary .site-disclosure {
   background: var(--paper);
   color: var(--ink);
 }
+.site-block[data-tone='secondary'] {
+  --ink: var(--accent-2-ink);
+  --paper: var(--accent-2);
+  --muted: var(--muted-accent-2);
+  --highlight-text: var(--highlight-text-accent-2);
+  --line: color-mix(in oklab, var(--ink) 24%, var(--paper));
+  background: var(--paper);
+  color: var(--ink);
+}
 .site-block[data-tone] > .site-services,
 .site-block[data-tone] > .site-cta {
+  --highlight-text: inherit;
   background: transparent;
   color: inherit;
 }
@@ -489,6 +504,7 @@ details[open] > summary .site-disclosure {
   border-radius: 999px;
 }
 .site-stats-cards .site-shell > div {
+  --highlight-text: var(--highlight-text-soft);
   padding: clamp(1.5rem, 3vw, 2.5rem);
   border: 1px solid var(--line);
   border-radius: var(--panel-radius);
@@ -579,7 +595,7 @@ details[open] > summary .site-disclosure {
   content: counter(service, decimal-leading-zero);
   font-family: var(--font-display);
   font-size: 2rem;
-  color: var(--accent);
+  color: var(--highlight-text);
 }
 .site-steps-cards ol {
   display: grid;
@@ -602,7 +618,7 @@ details[open] > summary .site-disclosure {
 .site-steps-horizontal ol li > span {
   display: block;
   margin-bottom: 2rem;
-  color: var(--accent);
+  color: var(--highlight-text);
 }
 .site-steps-chapters ol li h3 {
   font-family: var(--font-display);
@@ -689,6 +705,7 @@ details[open] > summary .site-disclosure {
   padding-top: var(--section-space);
 }
 .site-form-panel form {
+  --highlight-text: var(--highlight-text-soft);
   padding: clamp(1.5rem, 4vw, 3rem);
   border-radius: var(--panel-radius);
   background: var(--surface);
@@ -820,6 +837,7 @@ details[open] > summary .site-disclosure {
 .site-theme[data-surface='contrast']
   main
   > .site-block:not([data-tone]):nth-child(even) {
+  --highlight-text: var(--highlight-text-soft);
   background: var(--surface);
 }
 .site-theme[data-rhythm='continuous'] .site-block > :is(section, article) {
@@ -831,6 +849,7 @@ details[open] > summary .site-disclosure {
 .site-theme[data-rhythm='alternating']
   main
   > .site-block:not([data-tone]):nth-child(odd) {
+  --highlight-text: var(--highlight-text-soft);
   background: var(--surface);
 }
 .site-theme[data-rhythm='chapters'] main > .site-block {

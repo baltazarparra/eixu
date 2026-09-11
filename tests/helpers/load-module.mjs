@@ -56,6 +56,7 @@ export async function loadModule(relative, mocks = {}) {
       Response,
       Headers,
       FormData,
+      File,
       AbortSignal,
       Date,
       process,

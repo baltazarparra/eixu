@@ -13,8 +13,14 @@ export type Dials = {
 };
 
 export type Brand = {
+  /** Cor primária: superfícies e seções com a cor da marca. */
   accent?: string;
+  /** Cor secundária: o tom complementar das seções. */
   accentAlt?: string;
+  /** Cor de acento: botões, links e destaques. Sem ela, usa a primária. */
+  highlight?: string;
+  /** 'operador' quando as cores vieram do cadastro e não são reescritas. */
+  paletteSource?: 'operador';
   ink?: string;
   paper?: string;
   surface?: string;

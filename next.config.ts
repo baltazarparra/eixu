@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
   // sem executar JavaScript. Para um produto de SEO, metadado fora do <head>
   // não é aceitável, então forçamos metadado bloqueante para todo user agent.
   htmlLimitedBots: /.*/,
+  // O cadastro envia o logo junto do formulário; o padrão de 1 MB recusaria
+  // um arquivo que a rota de upload aceita.
+  experimental: { serverActions: { bodySizeLimit: '10mb' } },
 };
 
 export default nextConfig;

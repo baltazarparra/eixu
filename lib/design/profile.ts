@@ -27,8 +27,10 @@ export const designProfileInputSchema = z.object({
     .min(8)
     .max(120)
     .describe('Um elemento visual memorável que se repete com intenção.'),
-  accent: hex,
-  accentAlt: hex,
+  // As cores da marca vêm do cadastro quando o operador as definiu; aí estes
+  // campos são ignorados e a direção decide só estrutura e leitura.
+  accent: hex.optional(),
+  accentAlt: hex.optional(),
   ink: hex,
   paper: hex,
   surface: hex,

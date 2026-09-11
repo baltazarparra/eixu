@@ -1,4 +1,9 @@
-import { expectedRatio, type Ratio } from '@/lib/images/ratios';
+import {
+  RATIOS,
+  expectedRatio,
+  ratioFits,
+  type Ratio,
+} from '@/lib/images/ratios';
 import type { DesignProfile } from '@/lib/design/profile';
 
 export const SCENE_ROLES = [
@@ -64,12 +69,83 @@ export function scenePlan(
   return scenes;
 }
 
+/** Uma cena legível para o prompt. */
+export function sceneText(scene: PlannedScene): string {
+  return `${scene.role} · targetBlock ${scene.targetBlock} · ${scene.ratio} · ${scene.hint}`;
+}
+
 /** Plano legível para o prompt da fase de cenas. */
 export function scenePlanText(scenes: PlannedScene[]): string {
   return scenes
-    .map(
-      (scene, index) =>
-        `${index + 1}. ${scene.role} · targetBlock ${scene.targetBlock} · ${scene.ratio} · ${scene.hint}`,
-    )
+    .map((scene, index) => `${index + 1}. ${sceneText(scene)}`)
     .join('\n');
+}
+
+/** O que uma imagem precisa expor para preencher uma vaga do plano. */
+export type CoverageImage = { targetBlock: string | null; ratio: string };
+
+/**
+ * `ratioFits` aceita proporção desconhecida, porque lá ela só vira aviso. Aqui
+ * ela decidiria pular uma geração inteira: foto sem proporção legível não pode
+ * dar a vaga por preenchida.
+ */
+function fits(image: CoverageImage, scene: PlannedScene): boolean {
+  return (
+    (RATIOS as readonly string[]).includes(image.ratio) &&
+    ratioFits(image.ratio, scene.ratio)
+  );
+}
+
+/**
+ * Casa a biblioteca aprovada com as vagas do plano, uma imagem por vaga. A
+ * primeira passada exige o mesmo bloco; a segunda aceita o que sobrevive ao
+ * recorte, para uma foto 4:5 antiga cobrir outra vaga 4:5 em vez de obrigar
+ * uma geração paga. O papel não precisa ser persistido: bloco e proporção
+ * identificam a vaga, inclusive as duas do atelier.
+ */
+export function sceneCoverage(
+  plan: PlannedScene[],
+  approved: CoverageImage[],
+): { covered: PlannedScene[]; missing: PlannedScene[] } {
+  const pool = [...approved];
+  const covered: PlannedScene[] = [];
+  const pending: PlannedScene[] = [];
+  const missing: PlannedScene[] = [];
+
+  for (const scene of plan) {
+    const index = pool.findIndex(
+      (image) => image.targetBlock === scene.targetBlock && fits(image, scene),
+    );
+    if (index === -1) pending.push(scene);
+    else {
+      pool.splice(index, 1);
+      covered.push(scene);
+    }
+  }
+  for (const scene of pending) {
+    const index = pool.findIndex((image) => fits(image, scene));
+    if (index === -1) missing.push(scene);
+    else {
+      pool.splice(index, 1);
+      covered.push(scene);
+    }
+  }
+  return { covered, missing };
+}
+
+/**
+ * Retira da lista de vagas pendentes a que esta imagem preencheria. Usado para
+ * dizer ao operador qual papel a candidata na tela está cumprindo.
+ */
+export function takeScene(
+  missing: PlannedScene[],
+  image: CoverageImage,
+): PlannedScene | null {
+  const exact = missing.findIndex(
+    (scene) => scene.targetBlock === image.targetBlock && fits(image, scene),
+  );
+  const index =
+    exact !== -1 ? exact : missing.findIndex((scene) => fits(image, scene));
+  if (index === -1) return null;
+  return missing.splice(index, 1)[0];
 }

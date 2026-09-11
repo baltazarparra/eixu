@@ -18,22 +18,39 @@ import {
   nearestDesign,
 } from '@/lib/design/profile';
 import { hasDuplicateComposition } from '@/lib/design/uniqueness';
-import { listImages } from '@/lib/images/queries';
 import { guideTool } from '@/lib/ai/guide-tool';
-import { getGuide, guideIsEmpty } from '@/lib/images/queries';
+import {
+  getGuide,
+  getImage,
+  guideIsEmpty,
+  listImages,
+} from '@/lib/images/queries';
+import { fetchReference, generateLogoCandidates } from '@/lib/images/logo';
+import { critiqueLogo } from '@/lib/images/logo-critic';
 import { prepareSiteImages } from '@/lib/images/site-assets';
-import { SCENE_ROLES, scenePlan } from '@/lib/images/scene-plan';
+import { withSceneGenerationLock } from '@/lib/images/generation-lock';
+import {
+  SCENE_ROLES,
+  sceneCoverage,
+  scenePlan,
+  sceneText,
+} from '@/lib/images/scene-plan';
 import { RATIOS, expectedRatio } from '@/lib/images/ratios';
 import { publishSite } from '@/lib/sites/publish';
 import { formatFindings, lintPage } from '@/lib/taste/lint';
 import { inboundSchema, lintSite, type SitePage } from '@/lib/taste/site';
-import { siteMetrics, structuralFindings } from '@/lib/taste/metrics';
+import {
+  generatedPhotos,
+  siteMetrics,
+  structuralFindings,
+} from '@/lib/taste/metrics';
 import { readReference } from '@/lib/ai/reference';
 import { referenceFromSocial, readSocialProfile } from '@/lib/ai/social';
 import { normalizeSocialUrl, parseSocialRecord } from '@/lib/social-profile';
 import { capturePages, type Shot } from '@/lib/review/capture';
-import { getPage, listPages } from '@/lib/tenant-queries';
-import type { BlockInstance, Tenant } from '@/lib/types';
+import { getPage, listPages, setBrandLogo } from '@/lib/tenant-queries';
+import type { Phase } from '@/lib/taste/phases';
+import type { BlockInstance, Tenant, TenantImage } from '@/lib/types';
 
 function newId(): string {
   return Math.random().toString(36).slice(2, 10);
@@ -109,7 +126,50 @@ export type ToolContext = {
   origin?: string;
   /** Sessão apenas para o navegador de revisão, nunca para o modelo. */
   cookie?: string;
+  /** Fase ativa da geração. Fora dela o chat trabalha sem esses limites. */
+  phase?: Phase;
+  /** Última mensagem do operador, para as decisões que exigem pedido dele. */
+  lastUserText?: string;
 };
+
+/**
+ * Trocar o logo do site é decisão do operador. O prompt já dizia isso e mesmo
+ * assim o agente aplicou sozinho uma variante reprovada pelo próprio crítico:
+ * o código exige o pedido na última mensagem dele.
+ */
+function operatorAsked(lastUserText: string): boolean {
+  return /\b(aprov\w*|usa\w*|use\w*|aplic\w*|defin\w*|coloc\w*|escolh\w*|pode\s+ser|essa\s+mesma?)\b/i.test(
+    lastUserText,
+  );
+}
+
+/** Resolve "#3", "3" ou o uuid para uma imagem do cliente. */
+async function requireImage(
+  tenantId: string,
+  ref: string,
+): Promise<TenantImage> {
+  const clean = ref.trim().replace(/^#/, '');
+  const all = await listImages(tenantId);
+  const bySeq = /^\d+$/.test(clean)
+    ? all.find((image) => image.seq === Number(clean))
+    : undefined;
+  const image = bySeq ?? (await getImage(tenantId, clean));
+  if (!image) {
+    const inventory = all
+      .slice(0, 12)
+      .map((item) => `#${item.seq} ${item.status}`)
+      .join(', ');
+    throw new ToolError(
+      `Imagem "${ref}" não existe. Biblioteca: ${inventory || 'vazia'}`,
+    );
+  }
+  return image;
+}
+
+/** Fotos geradas que o operador já aprovou: as únicas que entram no rascunho. */
+function approvedPhotos(images: TenantImage[]): TenantImage[] {
+  return generatedPhotos(images).filter((image) => image.status === 'aprovada');
+}
 
 export function buildTools(tenant: Tenant, context: ToolContext = {}) {
   let activeBrand = { ...tenant.brand };
@@ -233,7 +293,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
     prepare_site_images: tool({
       description:
-        'Gera as cenas do site pelo estúdio EIXU, com o guia do cliente e crítica por imagem. Até 6 cenas por chamada e 8 por turno. Candidatas entram no rascunho; só o operador aprova para publicação.',
+        'Gera cenas do site pelo estúdio EIXU, com o guia do cliente e crítica por imagem. Na etapa de cenas é uma cena por chamada, a próxima do plano. A imagem nasce candidata e sem URL: o operador aprova ou recusa no painel, e só então ela entra na biblioteca.',
       inputSchema: z.object({
         scenes: z
           .array(
@@ -279,15 +339,19 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           throw new ToolError(
             'prepare_site_images exige a direção v2. Chame set_design antes de gerar cenas.',
           );
-        const guide = await getGuide(tenant.id);
-        if (guideIsEmpty(guide))
+        // Na etapa de cenas o operador decide imagem por imagem: gerar um lote
+        // encheria a fila de decisões antes de ele ver a primeira.
+        const inPhase = context.phase === 'cenas';
+        const budget = inPhase ? 1 : 8;
+        if (inPhase && scenes.length > 1)
           throw new ToolError(
-            'O guia de imagem ainda não existe. Chame define_image_guide antes de gerar: sem ele as cenas saem genéricas.',
+            'Nesta etapa é uma cena por chamada. Envie só a próxima cena do plano e encerre o turno.',
           );
-        if (scenesPrepared + scenes.length > 8)
+        if (scenesPrepared + scenes.length > budget)
           throw new ToolError(
-            `Orçamento de cenas deste turno esgotado: ${scenesPrepared} de 8 já foram pedidas. Reutilize as candidatas da biblioteca.`,
+            `Orçamento de cenas deste turno esgotado: ${scenesPrepared} de ${budget} já ${scenesPrepared === 1 ? 'foi pedida' : 'foram pedidas'}. Encerre o turno e aguarde a decisão do operador.`,
           );
+
         const prepared = scenes.map((scene) => {
           // A proporção nasce da composição decidida, não de um palpite: foto
           // 4:3 num hero editorial 16:9 perde o assunto no recorte.
@@ -312,28 +376,189 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             );
           return { ...scene, ratio };
         });
+        // Reserva antes do primeiro await: ferramentas do mesmo turno podem
+        // ser executadas em paralelo. Só devolve orçamento sem tentativa paga.
         scenesPrepared += prepared.length;
-        const result = await prepareSiteImages(
-          {
-            ...tenant,
-            brand: activeBrand,
-            dials: activeDials,
-            brief: activeBrief,
-          },
-          prepared,
+        let generationStarted = false;
+        try {
+          const guide = await getGuide(tenant.id);
+          if (guideIsEmpty(guide))
+            throw new ToolError(
+              'O guia de imagem ainda não existe. Chame define_image_guide antes de gerar: sem ele as cenas saem genéricas.',
+            );
+          const result = await withSceneGenerationLock(tenant.id, async () => {
+            // Relê dentro do lock: o snapshot da rota pode anteceder outra
+            // geração. Candidata pendente não preenche vaga nem permite avançar.
+            const library = await listImages(tenant.id);
+            if (
+              inPhase &&
+              library.some((image) => image.status === 'candidata')
+            )
+              throw new ToolError(
+                'Há imagem aguardando decisão. Encerre o turno e aguarde a aprovação ou recusa do operador.',
+              );
+            const plan = scenePlan(design, 3);
+            const { missing } = sceneCoverage(plan, approvedPhotos(library));
+            if (inPhase) {
+              if (!missing.length)
+                throw new ToolError(
+                  'O plano já está coberto por fotos aprovadas. Siga para a composição.',
+                );
+              if (
+                !missing.some(
+                  (slot) => slot.targetBlock === scenes[0].targetBlock,
+                )
+              )
+                throw new ToolError(
+                  `A próxima cena do plano é ${sceneText(missing[0])}. Gere essa antes de propor outra.`,
+                );
+            }
+            generationStarted = true;
+            const generated = await prepareSiteImages(
+              {
+                ...tenant,
+                brand: activeBrand,
+                dials: activeDials,
+                brief: activeBrief,
+              },
+              prepared,
+            );
+            return {
+              ...generated,
+              cobertura: missing.length
+                ? `Vagas do plano ainda sem foto aprovada: ${missing
+                    .map((slot) => `${slot.role} (${slot.targetBlock})`)
+                    .join(', ')}.`
+                : 'O plano de cenas já está coberto por fotos aprovadas.',
+            };
+          });
+          if (result === null)
+            throw new ToolError(
+              'Já há uma geração de cenas em andamento para este cliente. Aguarde a conclusão antes de tentar novamente.',
+            );
+          return result;
+        } finally {
+          if (!generationStarted) scenesPrepared -= prepared.length;
+        }
+      }),
+    }),
+
+    generate_logo: tool({
+      description:
+        'Cria variantes de logotipo e avalia cada uma. Em "modernizar", precisa da URL do logo que o operador anexou no chat; devolve uma variante fiel e uma ousada. Em "criar", propõe conceitos do zero. Cada variante aguarda a decisão do operador no painel; esta ferramenta não aprova nada e não troca o logo do site.',
+      inputSchema: z.object({
+        mode: z.enum(['modernizar', 'criar']),
+        referenceUrl: z
+          .url()
+          .optional()
+          .describe('URL do logo anexado. Obrigatória em modernizar.'),
+        brief: z
+          .string()
+          .max(400)
+          .optional()
+          .describe('Segmento, tom, símbolo desejado, cores.'),
+        brandName: z
+          .string()
+          .max(60)
+          .optional()
+          .describe('Nome exato a escrever. Padrão: o nome do cliente.'),
+        wordmark: z
+          .boolean()
+          .default(true)
+          .describe('false quando o operador pediu só o símbolo, sem texto.'),
+        variants: z.number().int().min(2).max(3).default(2),
+      }),
+      execute: safe(async (input) => {
+        if (input.mode === 'modernizar' && !input.referenceUrl)
+          throw new ToolError(
+            'Para modernizar eu preciso do logo atual. Peça para o operador anexar a imagem no chat.',
+          );
+
+        const brandName = input.brandName?.trim() || tenant.name;
+        const reference = input.referenceUrl
+          ? await fetchReference(input.referenceUrl)
+          : undefined;
+        const guide = await getGuide(tenant.id);
+
+        const { images, failures } = await generateLogoCandidates({
+          tenant: { ...tenant, brand: activeBrand },
+          guide,
+          mode: input.mode,
+          brandName,
+          wordmark: input.wordmark,
+          brief: input.brief,
+          reference,
+          referenceUrl: input.referenceUrl,
+          variants: input.variants,
+        });
+        if (!images.length)
+          throw new ToolError(
+            `Nenhuma variante foi gerada. Motivos: ${failures.join(' | ') || 'desconhecido'}`,
+          );
+
+        const critiques = await Promise.all(
+          images.map((image) =>
+            critiqueLogo({
+              id: image.id,
+              bytes: image.bytes,
+              variant: image.variant,
+              mode: input.mode,
+              brandName,
+              wordmark: input.wordmark,
+              reference,
+            }),
+          ),
         );
-        const covered = new Set(prepared.map((scene) => scene.role));
-        const faltando = scenePlan(design)
-          .map((scene) => scene.role)
-          .filter((role) => !covered.has(role));
+
         return {
-          ...result,
-          ...(faltando.length
-            ? {
-                cobertura: `Papéis do plano ainda sem cena: ${[...new Set(faltando)].join(', ')}.`,
-              }
-            : {}),
+          // Sem URL: a variante só existe para o site depois que o operador
+          // aprova no painel e pede a aplicação.
+          variantes: images
+            .map((image, index) => ({
+              numero: `#${image.seq}`,
+              variante: image.variant,
+              nota: critiques[index].nota ?? null,
+              fidelidade_original: critiques[index].fidelidade_original ?? null,
+              nome_lido: critiques[index].nome_lido ?? null,
+              nome_correto: critiques[index].nome_correto ?? null,
+              problemas:
+                critiques[index].problemas ??
+                (critiques[index].erro ? [critiques[index].erro] : []),
+            }))
+            .sort((a, b) => (b.nota ?? -1) - (a.nota ?? -1)),
+          ...(failures.length ? { falhas: failures } : {}),
+          aguardando:
+            'O operador decide cada variante no painel. Descreva as opções e espere a escolha dele.',
         };
+      }),
+    }),
+
+    set_site_logo: tool({
+      description:
+        'Define uma imagem já aprovada como o logo do site, na navegação e no rodapé. Use só quando o operador pedir.',
+      inputSchema: z.object({
+        image: z.string().describe('O número ("#3") ou o id da imagem.'),
+      }),
+      execute: safe(async ({ image: ref }) => {
+        if (!operatorAsked(context.lastUserText ?? '')) {
+          console.warn('[chat] troca de logo bloqueada: o operador não pediu.');
+          throw new ToolError(
+            'Trocar o logo do site é decisão do operador. Apresente as opções e pergunte qual ele quer, em vez de decidir sozinho.',
+          );
+        }
+        const image = await requireImage(tenant.id, ref);
+        if (image.kind !== 'logo')
+          throw new ToolError(
+            `A imagem #${image.seq} é uma foto, não um logo. Gere um logo com generate_logo.`,
+          );
+        // Aprovar e aplicar continuam sendo dois passos deliberados.
+        if (image.status !== 'aprovada')
+          throw new ToolError(
+            `A imagem #${image.seq} ainda não foi aprovada pelo operador no painel.`,
+          );
+        activeBrand = { ...activeBrand, logoUrl: image.url };
+        await setBrandLogo(tenant.id, image.url);
+        return { ok: true, numero: `#${image.seq}` };
       }),
     }),
 
@@ -494,23 +719,30 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
     }),
     list_images: tool({
       description:
-        'Lista imagens aprovadas e candidatas do cliente, com status explícito. Candidatas só entram no rascunho. Use quando a imagem citada não está no resumo recebido.',
+        'Lista as imagens aprovadas do cliente, com a URL exata para usar nos blocos. Candidata aguardando a decisão do operador não aparece aqui e não pode entrar no rascunho.',
       inputSchema: z.object({}),
       execute: safe(async () => {
-        const images = (await listImages(tenant.id)).filter(
-          (image) => image.status !== 'rejeitada',
-        );
+        const library = await listImages(tenant.id);
+        const aguardando = library.filter(
+          (image) => image.status === 'candidata',
+        ).length;
         return {
-          imagens: images.map((image) => ({
-            numero: `#${image.seq}`,
-            status: image.status,
-            kind: image.kind,
-            url: image.url,
-            alt: image.alt,
-            ratio: image.ratio,
-            bloco_sugerido: image.targetBlock,
-            descricao: image.description ?? image.requestText,
-          })),
+          imagens: library
+            .filter((image) => image.status === 'aprovada')
+            .map((image) => ({
+              numero: `#${image.seq}`,
+              kind: image.kind,
+              url: image.url,
+              alt: image.alt,
+              ratio: image.ratio,
+              bloco_sugerido: image.targetBlock,
+              descricao: image.description ?? image.requestText,
+            })),
+          ...(aguardando
+            ? {
+                aguardandoDecisao: `${aguardando} imagem(ns) aguardam a decisão do operador no painel. Elas não têm URL para uso.`,
+              }
+            : {}),
         };
       }),
     }),
@@ -580,7 +812,18 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         accent: z
           .string()
           .regex(/^#[0-9a-fA-F]{6}$/)
-          .optional(),
+          .optional()
+          .describe('Cor primária: seções e superfícies da marca.'),
+        accentAlt: z
+          .string()
+          .regex(/^#[0-9a-fA-F]{6}$/)
+          .optional()
+          .describe('Cor secundária: o tom complementar das seções.'),
+        highlight: z
+          .string()
+          .regex(/^#[0-9a-fA-F]{6}$/)
+          .optional()
+          .describe('Cor de acento: botões, links e destaques.'),
         ink: z
           .string()
           .regex(/^#[0-9a-fA-F]{6}$/)
@@ -599,6 +842,8 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         const brand = {
           ...activeBrand,
           ...(input.accent ? { accent: input.accent } : {}),
+          ...(input.accentAlt ? { accentAlt: input.accentAlt } : {}),
+          ...(input.highlight ? { highlight: input.highlight } : {}),
           ...(input.ink ? { ink: input.ink } : {}),
           ...(input.paper ? { paper: input.paper } : {}),
           ...(input.radius ? { radius: input.radius } : {}),
@@ -620,9 +865,10 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
         // O site escurece sozinho um acento que reprova no contraste. Avisar
         // aqui evita o agente insistir numa cor que nunca vai aparecer igual.
-        const contrast = accessibleAccent(brand.accent ?? '#1f6feb');
+        const acao = brand.highlight ?? brand.accent ?? '#1f6feb';
+        const contrast = accessibleAccent(acao);
         const aviso = contrast.adjusted
-          ? `O acento ${brand.accent} reprovava no contraste mínimo. O site vai usar ${contrast.accent}, a cor mais próxima que passa.`
+          ? `O acento ${acao} reprovava no contraste mínimo. O site vai usar ${contrast.accent}, a cor mais próxima que passa.`
           : null;
         return { brand, dials, ...(aviso ? { aviso } : {}) };
       },
@@ -633,7 +879,24 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         'Define briefing e direção de arte v2 em uma chamada. Obrigatória antes de build_site. A direção é recusada quando repete a arquitetura visual de outro cliente.',
       inputSchema: designProfileInputSchema,
       execute: safe(async (input) => {
-        if (input.accent.toLowerCase() === input.accentAlt.toLowerCase()) {
+        // Cor escolhida no cadastro é decisão do operador: a direção de arte
+        // define estrutura e leitura, não reescreve a marca dele.
+        const locked = activeBrand.paletteSource === 'operador';
+        // Com a paleta do cadastro, a escolha do operador vence. Sem ela, o
+        // modelo propõe, mas a cor que o cliente já tinha continua valendo
+        // quando ele não propõe nada: cliente antigo não fica sem paleta.
+        const accent = locked
+          ? (activeBrand.accent ?? input.accent)
+          : (input.accent ?? activeBrand.accent);
+        const accentAlt = locked
+          ? (activeBrand.accentAlt ?? input.accentAlt)
+          : (input.accentAlt ?? activeBrand.accentAlt);
+        if (!accent || !accentAlt) {
+          throw new ToolError(
+            'Este cliente não tem cores no cadastro. Informe accent e accentAlt com papéis diferentes.',
+          );
+        }
+        if (accent.toLowerCase() === accentAlt.toLowerCase()) {
           throw new ToolError(
             'accent e accentAlt precisam cumprir papéis diferentes. Escolha duas cores distintas.',
           );
@@ -694,8 +957,8 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
               : 'sans';
         const brand = {
           ...activeBrand,
-          accent: input.accent,
-          accentAlt: input.accentAlt,
+          accent,
+          accentAlt,
           ink: input.ink,
           paper: input.paper,
           surface: input.surface,

@@ -3,17 +3,23 @@
 import { redirect } from 'next/navigation';
 import { after } from 'next/server';
 import { revalidatePath } from 'next/cache';
+import { del } from '@vercel/blob';
 import { isAuthenticated, signIn, signOut } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { text } from '@/lib/form-data';
 import {
+  brandColorsFromForm,
   intakeFromForm,
   tenantDetailsSchema,
   tenantSlugSchema,
 } from '@/lib/admin/tenant-input';
 import { spendSchema } from '@/lib/admin/traffic';
 import { countTenantData, getTenantBySlug } from '@/lib/tenant-queries';
-import { deleteTenantBlobs } from '@/lib/blob/tenant-files';
+import {
+  UploadError,
+  deleteTenantBlobs,
+  putNewTenantBlob,
+} from '@/lib/blob/tenant-files';
 import { TenantRemovedError, withTenantLock } from '@/lib/tenant-lock';
 import { confirmationAccepted } from '@/lib/admin/tenant-delete';
 import { normalizeSocialUrl } from '@/lib/social-profile';
@@ -48,6 +54,7 @@ export async function createTenantAction(
   const details = tenantDetailsSchema.safeParse(Object.fromEntries(formData));
   const slugResult = tenantSlugSchema.safeParse(text(formData, 'slug'));
   const intake = intakeFromForm(formData);
+  const colors = brandColorsFromForm(formData);
   if (!details.success)
     return details.error.issues[0]?.message ?? 'Confira os dados do cliente.';
   if (!slugResult.success)
@@ -57,27 +64,66 @@ export async function createTenantAction(
       intake.error.issues[0]?.message ??
       'Confira o briefing: URLs válidas e até 160 caracteres por fato ou restrição.'
     );
+  if (!colors.success)
+    return colors.error.issues[0]?.message ?? 'Confira as cores da marca.';
   const slug = slugResult.data;
   const { name, whatsapp, contactEmail } = details.data;
+
+  // O arquivo sobe antes do insert porque a rota de upload exige um cliente
+  // que ainda não existe. Um insert recusado apaga o arquivo logo abaixo.
+  const file = formData.get('logo');
+  let logoUrl: string | null = null;
+  if (file instanceof File && file.size > 0) {
+    try {
+      logoUrl = await putNewTenantBlob(slug, file);
+    } catch (error) {
+      return error instanceof UploadError
+        ? error.message
+        : 'Não foi possível enviar o logo. Tente novamente ou cadastre sem ele.';
+    }
+  }
+  // paletteSource registra que a escolha é do operador: set_design respeita
+  // essas cores em vez de propor as próprias.
+  const brand = {
+    accent: colors.data.primary,
+    accentAlt: colors.data.secondary,
+    highlight: colors.data.highlight,
+    paletteSource: 'operador',
+    ...(logoUrl ? { logoUrl } : {}),
+  };
+
+  let tenantId: string;
   try {
     const rows = (await db()`
-      insert into tenants (slug, name, whatsapp, contact_email, brief)
-      values (${slug}, ${name}, ${whatsapp}, ${contactEmail}, ${JSON.stringify({ intake: intake.data })}::jsonb)
+      insert into tenants (slug, name, whatsapp, contact_email, brief, brand)
+      values (${slug}, ${name}, ${whatsapp}, ${contactEmail},
+              ${JSON.stringify({ intake: intake.data })}::jsonb,
+              ${JSON.stringify(brand)}::jsonb)
       on conflict (slug) do nothing returning id
     `) as { id: string }[];
-    if (!rows.length)
+    if (!rows.length) {
+      if (logoUrl) await del(logoUrl).catch(() => undefined);
       return 'Esse endereço já pertence a um cliente. Escolha outro ou abra o cliente existente.';
-    // A leitura do perfil depende de rede e do modelo: ela não pode atrasar a
-    // abertura do editor, e o painel mostra o estado enquanto ela corre.
-    const social = normalizeSocialUrl(intake.data.socialUrl);
-    if (social) {
-      const tenantId = rows[0].id;
+    }
+    tenantId = rows[0].id;
+  } catch {
+    if (logoUrl) await del(logoUrl).catch(() => undefined);
+    return 'Não foi possível criar o cliente. Seus dados continuam no formulário; tente novamente.';
+  }
+
+  // O cadastro já existe: falhas da leitura social não podem apagar seu logo
+  // nem apresentar a criação como recusada. O operador pode reler no painel.
+  const social = normalizeSocialUrl(intake.data.socialUrl);
+  if (social) {
+    try {
       const reading = await markSocialReading(tenantId, social);
       if (reading)
         after(() => syncSocialProfile({ id: tenantId, slug }, reading));
+    } catch {
+      console.error(
+        '[admin] Não foi possível iniciar a leitura social após o cadastro.',
+      );
     }
-  } catch {
-    return 'Não foi possível criar o cliente. Seus dados continuam no formulário; tente novamente.';
   }
   revalidatePath('/admin');
   redirect(`/admin/${slug}`);

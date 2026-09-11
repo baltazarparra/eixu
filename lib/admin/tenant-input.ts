@@ -58,3 +58,29 @@ export function intakeFromForm(form: FormData) {
     socialUrl: field('socialUrl'),
   });
 }
+
+const hex = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^#[0-9a-f]{6}$/, 'Use cores em hexadecimal, como #1f6feb.');
+
+/**
+ * As três cores do cadastro, com papéis distintos no tema: a primária pinta
+ * superfícies e seções de marca, a secundária é o tom complementar e o acento
+ * fica em botões, links e destaques.
+ */
+export const brandColorsSchema = z
+  .object({ primary: hex, secondary: hex, highlight: hex })
+  .refine(
+    (colors) => colors.primary !== colors.secondary,
+    'A cor primária e a secundária precisam ser diferentes para criar ritmo.',
+  );
+
+export function brandColorsFromForm(form: FormData) {
+  return brandColorsSchema.safeParse({
+    primary: text(form, 'primary'),
+    secondary: text(form, 'secondary'),
+    highlight: text(form, 'highlight'),
+  });
+}
