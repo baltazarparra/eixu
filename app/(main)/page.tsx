@@ -1,5 +1,6 @@
 /* oxlint-disable next/no-html-link-for-pages -- Case links use full navigation for native cross-document transitions. */
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import { ArrowDown, ArrowRight, ArrowUpRight, Check } from 'lucide-react';
 import { Footer, Header, Mark } from '@/components/eixu';
 import { HeroWaveGrid } from '@/components/hero-wave-grid';
@@ -212,7 +213,30 @@ export default function Home() {
             </div>
             <div className="case-copy">
               <h3>Um produto financeiro criado do zero e colocado na rotina de empresas.</h3>
-              <p>Produto, engenharia e operação em uma entrega completa.</p>
+              <figure className="case-voice">
+                <blockquote>
+                  <p>
+                    “Em poucas semanas já tínhamos um MVP na rua, com cliente real rodando em
+                    produção e receita positiva. Hoje já são mais de 9 milhões movimentados em mais
+                    de 10 mil transações.”
+                  </p>
+                </blockquote>
+                <figcaption>
+                  <Image
+                    className="case-voice-photo"
+                    src="/cases/saldo-fernanda-tessetore.webp"
+                    alt=""
+                    width={112}
+                    height={112}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <span className="case-voice-id">
+                    <strong>Fernanda Tessetore</strong>
+                    <span>Founder/CEO da Saldo</span>
+                  </span>
+                </figcaption>
+              </figure>
               <span className="case-link">
                 Ver projeto <ArrowUpRight aria-hidden="true" />
               </span>
@@ -235,7 +259,30 @@ export default function Home() {
             </div>
             <div className="case-copy">
               <h3>Uma arquitetura multiagente trabalhando dentro de um produto real.</h3>
-              <p>Vários modelos, regras e ferramentas no mesmo sistema.</p>
+              <figure className="case-voice">
+                <blockquote>
+                  <p>
+                    “Criei o produto como ferramenta interna e consegui cancelar mais de 7 mil reais
+                    em outras ferramentas que não fazem mais sentido pra operação, depois que
+                    construir com IA Nativa nosso CRM.”
+                  </p>
+                </blockquote>
+                <figcaption>
+                  <Image
+                    className="case-voice-photo"
+                    src="/cases/naia-fernando-zullo.webp"
+                    alt=""
+                    width={112}
+                    height={112}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <span className="case-voice-id">
+                    <strong>Fernando Zullo</strong>
+                    <span>Diretor Executivo da Naia</span>
+                  </span>
+                </figcaption>
+              </figure>
               <span className="case-link">
                 Ver projeto <ArrowUpRight aria-hidden="true" />
               </span>
