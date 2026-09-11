@@ -1,4 +1,9 @@
-import { expectedRatio, ratioFits, type Ratio } from '@/lib/images/ratios';
+import {
+  RATIOS,
+  expectedRatio,
+  ratioFits,
+  type Ratio,
+} from '@/lib/images/ratios';
 import type { DesignProfile } from '@/lib/design/profile';
 
 export const SCENE_ROLES = [
@@ -80,6 +85,18 @@ export function scenePlanText(scenes: PlannedScene[]): string {
 export type CoverageImage = { targetBlock: string | null; ratio: string };
 
 /**
+ * `ratioFits` aceita proporção desconhecida, porque lá ela só vira aviso. Aqui
+ * ela decidiria pular uma geração inteira: foto sem proporção legível não pode
+ * dar a vaga por preenchida.
+ */
+function fits(image: CoverageImage, scene: PlannedScene): boolean {
+  return (
+    (RATIOS as readonly string[]).includes(image.ratio) &&
+    ratioFits(image.ratio, scene.ratio)
+  );
+}
+
+/**
  * Casa a biblioteca aprovada com as vagas do plano, uma imagem por vaga. A
  * primeira passada exige o mesmo bloco; a segunda aceita o que sobrevive ao
  * recorte, para uma foto 4:5 antiga cobrir outra vaga 4:5 em vez de obrigar
@@ -97,7 +114,7 @@ export function sceneCoverage(
 
   for (const scene of plan) {
     const index = pool.findIndex(
-      (image) => image.targetBlock === scene.targetBlock,
+      (image) => image.targetBlock === scene.targetBlock && fits(image, scene),
     );
     if (index === -1) pending.push(scene);
     else {
@@ -106,9 +123,7 @@ export function sceneCoverage(
     }
   }
   for (const scene of pending) {
-    const index = pool.findIndex((image) =>
-      ratioFits(image.ratio, scene.ratio),
-    );
+    const index = pool.findIndex((image) => fits(image, scene));
     if (index === -1) missing.push(scene);
     else {
       pool.splice(index, 1);
@@ -127,12 +142,10 @@ export function takeScene(
   image: CoverageImage,
 ): PlannedScene | null {
   const exact = missing.findIndex(
-    (scene) => scene.targetBlock === image.targetBlock,
+    (scene) => scene.targetBlock === image.targetBlock && fits(image, scene),
   );
   const index =
-    exact !== -1
-      ? exact
-      : missing.findIndex((scene) => ratioFits(image.ratio, scene.ratio));
+    exact !== -1 ? exact : missing.findIndex((scene) => fits(image, scene));
   if (index === -1) return null;
   return missing.splice(index, 1)[0];
 }

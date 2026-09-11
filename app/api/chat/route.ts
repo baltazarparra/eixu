@@ -199,7 +199,7 @@ export async function POST(request: Request) {
     };
     await db()`
       update tenants
-      set brief = ${JSON.stringify({ ...tenant.brief, generation })}::jsonb,
+      set brief = brief || ${JSON.stringify({ generation })}::jsonb,
           updated_at = now()
       where id = ${tenant.id}
     `;

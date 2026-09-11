@@ -14,7 +14,7 @@ import {
 
 import { AdminHeader, MobileViews } from '@/components/admin/navigation';
 import { ChatUsageDetails } from '@/components/admin/chat-usage';
-import { adminFetch } from '@/lib/admin/http';
+import { AdminHttpError, adminFetch } from '@/lib/admin/http';
 import type { SiteState } from '@/lib/admin/state';
 import type { ChatMessage } from '@/lib/ai/usage';
 
@@ -230,14 +230,15 @@ export function Workspace({ initial, history }: Props) {
       for (let step = 0; step < 8; step++) {
         if (stopGeneration.current) break;
         const state = await refresh();
-        // Uma imagem na fila é decisão do operador: o laço para e só volta
-        // depois que ele aprova ou recusa.
-        if (state.generation.pendingImages.length) {
+        const next = state?.generation?.next;
+        if (!next || next === 'pronto') break;
+        // Uma imagem na fila é decisão do operador, e só a etapa de cenas
+        // depende dela. Parar nas outras deixaria um cliente antigo, com
+        // candidatas do fluxo anterior, sem conseguir nem rodar o briefing.
+        if (next === 'cenas' && state.generation.pendingImages.length) {
           awaitingDecision.current = true;
           break;
         }
-        const next = state?.generation?.next;
-        if (!next || next === 'pronto') break;
         // A mesma fase duas vezes seguidas significa que ela não avançou:
         // parar e mostrar o motivo é melhor que repetir e gastar tokens.
         repeated = next === previous ? repeated + 1 : 0;
@@ -252,9 +253,10 @@ export function Workspace({ initial, history }: Props) {
         previous = next;
         setPhase(next);
         generationError.current = null;
-        // A recusa anterior vira o pedido desta tentativa.
+        // A recusa anterior vira o pedido desta tentativa. Fora da etapa de
+        // cenas ela fica guardada, em vez de sumir sem ser usada.
         const retry = next === 'cenas' ? feedbackRef.current : '';
-        feedbackRef.current = '';
+        if (retry) feedbackRef.current = '';
         await sendMessage(
           { text: retry || PHASE_MESSAGE[next] },
           { body: { tenant: tenantSlug, page: current, phase: next } },
@@ -303,25 +305,32 @@ export function Workspace({ initial, history }: Props) {
             body: JSON.stringify({ id: image.id }),
           });
         } catch (error) {
-          // Imagem já usada numa página não some sem quebrar o rascunho: ela
-          // fica rejeitada e o agente troca o bloco.
+          // Só a recusa por uso vira rejeição: uma falha ao apagar o arquivo
+          // precisa continuar aparecendo para o operador tentar de novo.
+          if (!(error instanceof AdminHttpError) || error.status !== 409)
+            throw error;
           await adminFetch(`/api/admin/${tenantSlug}/images`, {
             method: 'PATCH',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ id: image.id, status: 'rejeitada' }),
           });
           setNotice(
-            `${error instanceof Error ? error.message : 'A imagem está em uso.'} Ela ficou rejeitada; peça ao agente para trocar a imagem do bloco.`,
+            `${error.message} Ela ficou rejeitada; peça ao agente para trocar a imagem do bloco.`,
           );
         }
         const pedido = decision.feedback.trim();
-        if (pedido)
-          feedbackRef.current = [
-            feedbackRef.current,
-            `Recusei a cena #${image.seq}${image.role ? ` (${image.role})` : ''}: ${pedido}. Gere outra para a mesma vaga.`,
-          ]
-            .filter(Boolean)
-            .join(' ');
+        if (pedido) {
+          const texto =
+            image.kind === 'logo'
+              ? `Recusei o logo #${image.seq}: ${pedido}. Gere outra variante.`
+              : `Recusei a cena #${image.seq}${image.role ? ` (${image.role})` : ''}: ${pedido}. Gere outra para a mesma vaga.`;
+          // Logo não é etapa da geração: o pedido dele vai para o compositor.
+          if (image.kind === 'logo') setInput(texto);
+          else
+            feedbackRef.current = [feedbackRef.current, texto]
+              .filter(Boolean)
+              .join(' ');
+        }
       }
       const state = await refresh();
       if (awaitingDecision.current && !state.generation.pendingImages.length) {
@@ -497,7 +506,7 @@ export function Workspace({ initial, history }: Props) {
                 queued={pending.length}
                 covered={site.generation.coveredScenes}
                 target={site.generation.targetScenes}
-                disabled={busy || Boolean(deciding)}
+                disabled={busy || generating || Boolean(deciding)}
                 onDecide={(decision) => void decide(pending[0], decision)}
               />
             ) : null}

@@ -48,9 +48,13 @@ export function SceneReview({
   const [alt, setAlt] = useState(image.alt ?? '');
   const [applyLogo, setApplyLogo] = useState(false);
   const isLogo = image.kind === 'logo';
+  // Com fila, numerar cada imagem daria o mesmo número a todas: o contador
+  // vale só quando esta é a única decisão pendente.
   const title = isLogo
     ? `Logo${image.variant ? ` · variante ${image.variant}` : ''}`
-    : `Cena ${Math.min(covered + 1, target)} de ${target}${image.role ? ` · ${image.role}` : ''}`;
+    : queued === 1
+      ? `Cena ${Math.min(covered + 1, target)} de ${target}${image.role ? ` · ${image.role}` : ''}`
+      : `Cena${image.role ? ` · ${image.role}` : ''}`;
 
   return (
     <div className="mt-6 rounded-lg border bg-[var(--color-surface)] p-3 text-xs">
@@ -92,8 +96,8 @@ export function SceneReview({
       ) : null}
       {image.usedInDraft ? (
         <p className="mt-2 text-[var(--color-warn)]">
-          Esta imagem já está numa página do rascunho. Recusar exige trocar o
-          bloco antes.
+          Esta imagem já está numa página do rascunho. Recusar não apaga: ela
+          fica rejeitada e o bloco precisa ser trocado pelo agente.
         </p>
       ) : null}
 

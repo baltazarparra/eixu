@@ -1,5 +1,10 @@
+import {
+  UPLOAD_MAX_BYTES,
+  UPLOAD_TYPES,
+  putTenantBlob,
+  uploadFileName,
+} from '@/lib/blob/tenant-files';
 import { isAuthenticated } from '@/lib/auth';
-import { UploadError, storeTenantFile } from '@/lib/admin/upload';
 import { getTenantBySlug } from '@/lib/tenant-queries';
 
 /**
@@ -20,19 +25,30 @@ export async function POST(
   const file = form.get('file');
   if (!(file instanceof File))
     return Response.json({ error: 'Envie um arquivo.' }, { status: 400 });
+  if (!UPLOAD_TYPES.has(file.type))
+    return Response.json(
+      { error: `Tipo não aceito: ${file.type}` },
+      { status: 415 },
+    );
+  if (file.size > UPLOAD_MAX_BYTES)
+    return Response.json({ error: 'Imagem acima de 8 MB.' }, { status: 413 });
 
   const kind = form.get('kind') === 'logo' ? 'logo' : 'media';
-  try {
-    const url = await storeTenantFile(tenant.slug, kind, file);
-    return Response.json({
-      url,
-      name: file.name,
-      type: file.type,
-      size: file.size,
-    });
-  } catch (error) {
-    if (error instanceof UploadError)
-      return Response.json({ error: error.message }, { status: error.status });
-    throw error;
-  }
+  const blob = await putTenantBlob(
+    tenant.id,
+    `${kind}/${Date.now()}-${uploadFileName(file.name)}`,
+    file,
+    {
+      access: 'public',
+      addRandomSuffix: false,
+      contentType: file.type,
+    },
+  );
+
+  return Response.json({
+    url: blob.url,
+    name: file.name,
+    type: file.type,
+    size: file.size,
+  });
 }

@@ -44,6 +44,8 @@ import {
   structuralFindings,
 } from '@/lib/taste/metrics';
 import { readReference } from '@/lib/ai/reference';
+import { referenceFromSocial, readSocialProfile } from '@/lib/ai/social';
+import { normalizeSocialUrl, parseSocialRecord } from '@/lib/social-profile';
 import { capturePages, type Shot } from '@/lib/review/capture';
 import { getPage, listPages, setBrandLogo } from '@/lib/tenant-queries';
 import type { Phase } from '@/lib/taste/phases';
@@ -535,7 +537,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
     read_reference: tool({
       description:
-        'Lê uma página de referência informada pelo operador e devolve título, descrição e texto real. Rede social com login volta inacessível: nesse caso declare a lacuna em brief.gaps e trabalhe com o que foi confirmado, sem deduzir a empresa.',
+        'Lê uma página de referência informada pelo operador e devolve título, descrição e texto real. Instagram e LinkedIn devolvem nome, bio e avatar quando a rede permite; bloqueado volta inacessível, e aí a lacuna vai para brief.gaps sem deduzir a empresa.',
       inputSchema: z.object({ url: z.url() }),
       execute: safe(async ({ url }) => {
         if (referencesRead >= 3)
@@ -543,7 +545,21 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             'Limite de três referências por turno. Use o que já foi lido.',
           );
         referencesRead += 1;
-        const reference = await readReference(url);
+        // O perfil do briefing já foi lido no cadastro; reler a cada geração
+        // gastaria rede e chamaria a rede social de novo sem necessidade.
+        const social = normalizeSocialUrl(url);
+        const saved = parseSocialRecord(activeBrief.social);
+        const fresh =
+          saved &&
+          social &&
+          saved.url === social.url &&
+          saved.status === 'ok' &&
+          Date.now() - new Date(saved.lidoEm).getTime() < 24 * 60 * 60 * 1000
+            ? saved
+            : null;
+        const reference = social
+          ? referenceFromSocial(fresh ?? (await readSocialProfile(social)))
+          : await readReference(url);
         const previous = Array.isArray(activeBrief.sources)
           ? (activeBrief.sources as { url?: string }[])
           : [];
@@ -553,7 +569,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         ];
         activeBrief = { ...activeBrief, sources };
         await db()`
-          update tenants set brief = ${JSON.stringify(activeBrief)}::jsonb, updated_at = now()
+          update tenants set brief = brief || ${JSON.stringify({ sources })}::jsonb, updated_at = now()
           where id = ${tenant.id}
         `;
         return reference;
@@ -581,7 +597,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         };
         activeBrief = { ...activeBrief, generation };
         await db()`
-          update tenants set brief = ${JSON.stringify(activeBrief)}::jsonb, updated_at = now()
+          update tenants set brief = brief || ${JSON.stringify({ generation })}::jsonb, updated_at = now()
           where id = ${tenant.id}
         `;
         const apontamentos = [
@@ -839,10 +855,15 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         // Cor escolhida no cadastro é decisão do operador: a direção de arte
         // define estrutura e leitura, não reescreve a marca dele.
         const locked = activeBrand.paletteSource === 'operador';
-        const accent =
-          (locked ? activeBrand.accent : input.accent) ?? input.accent;
-        const accentAlt =
-          (locked ? activeBrand.accentAlt : input.accentAlt) ?? input.accentAlt;
+        // Com a paleta do cadastro, a escolha do operador vence. Sem ela, o
+        // modelo propõe, mas a cor que o cliente já tinha continua valendo
+        // quando ele não propõe nada: cliente antigo não fica sem paleta.
+        const accent = locked
+          ? (activeBrand.accent ?? input.accent)
+          : (input.accent ?? activeBrand.accent);
+        const accentAlt = locked
+          ? (activeBrand.accentAlt ?? input.accentAlt)
+          : (input.accentAlt ?? activeBrand.accentAlt);
         if (!accent || !accentAlt) {
           throw new ToolError(
             'Este cliente não tem cores no cadastro. Informe accent e accentAlt com papéis diferentes.',
@@ -928,7 +949,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         const brief = { ...activeBrief, ...input.brief };
         await db()`
           update tenants
-          set brief = ${JSON.stringify(brief)}::jsonb,
+          set brief = brief || ${JSON.stringify(input.brief)}::jsonb,
               brand = ${JSON.stringify(brand)}::jsonb,
               dials = ${JSON.stringify(dials)}::jsonb,
               updated_at = now()

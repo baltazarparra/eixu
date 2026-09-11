@@ -39,7 +39,9 @@ export function ImagesLibrary({
   const [actionId, setActionId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'todas' | 'foto' | 'logo'>('todas');
+  const [filter, setFilter] = useState<'todas' | 'foto' | 'logo' | 'rejeitada'>(
+    'todas',
+  );
 
   async function runAction(id: string, run: () => Promise<void>) {
     if (actionId) return;
@@ -47,11 +49,13 @@ export function ImagesLibrary({
     setNotice(null);
     try {
       await run();
-      setLibrary(
-        await adminFetch<LibraryState>(
-          `/api/admin/${tenant.slug}/images?status=aprovada`,
-        ),
+      const next = await adminFetch<LibraryState>(
+        `/api/admin/${tenant.slug}/images`,
       );
+      setLibrary({
+        ...next,
+        images: next.images.filter((image) => image.status !== 'candidata'),
+      });
     } catch (error) {
       setNotice(
         error instanceof Error
@@ -89,7 +93,10 @@ export function ImagesLibrary({
   const visible = useMemo(
     () =>
       library.images.filter((image) =>
-        filter === 'todas' ? true : image.kind === filter,
+        filter === 'rejeitada'
+          ? image.status === 'rejeitada'
+          : image.status === 'aprovada' &&
+            (filter === 'todas' || image.kind === filter),
       ),
     [library.images, filter],
   );
@@ -112,7 +119,9 @@ export function ImagesLibrary({
         </h1>
         <p className="mt-3 max-w-2xl text-sm text-[var(--color-muted)]">
           As imagens nascem na conversa do site e aparecem lá para você aprovar,
-          uma por vez. Só as aprovadas ficam aqui e podem entrar nas páginas.
+          uma por vez. Só as aprovadas entram nas páginas. Uma imagem em uso
+          recusada não é apagada: ela fica em Rejeitadas até o bloco ser
+          trocado.
         </p>
         {guideText ? (
           <p className="mt-2 max-w-2xl text-xs text-[var(--color-muted)]">
@@ -131,9 +140,10 @@ export function ImagesLibrary({
         >
           {(
             [
-              ['todas', 'Todas'],
+              ['todas', 'Aprovadas'],
               ['foto', 'Fotos'],
               ['logo', 'Logos'],
+              ['rejeitada', 'Rejeitadas'],
             ] as const
           ).map(([value, label]) => (
             <button
@@ -157,7 +167,9 @@ export function ImagesLibrary({
             {visible.map((image) => (
               <li
                 key={image.id}
-                className="flex flex-col overflow-hidden rounded-lg border bg-[var(--color-bg)]"
+                className={`flex flex-col overflow-hidden rounded-lg border bg-[var(--color-bg)] ${
+                  image.status === 'rejeitada' ? 'opacity-60' : ''
+                }`}
               >
                 <a
                   href={image.url}
@@ -198,7 +210,9 @@ export function ImagesLibrary({
                   </p>
 
                   <div className="mt-1 flex flex-wrap gap-1.5">
-                    {image.kind === 'logo' && image.url !== library.logoUrl ? (
+                    {image.status === 'aprovada' &&
+                    image.kind === 'logo' &&
+                    image.url !== library.logoUrl ? (
                       <button
                         type="button"
                         disabled={Boolean(actionId)}
@@ -208,7 +222,7 @@ export function ImagesLibrary({
                         Usar como logo
                       </button>
                     ) : null}
-                    {image.kind !== 'logo' ? (
+                    {image.status === 'aprovada' && image.kind !== 'logo' ? (
                       <button
                         type="button"
                         onClick={() => {
@@ -260,9 +274,11 @@ export function ImagesLibrary({
           </ul>
         ) : (
           <p className="py-16 text-center text-sm text-[var(--color-muted)]">
-            {library.images.length
-              ? 'Nenhuma imagem aprovada neste filtro.'
-              : 'As imagens que você aprovar na conversa do site ficam aqui.'}
+            {filter === 'rejeitada'
+              ? 'Nenhuma imagem rejeitada.'
+              : library.images.length
+                ? 'Nenhuma imagem aprovada neste filtro.'
+                : 'As imagens que você aprovar na conversa do site ficam aqui.'}
           </p>
         )}
       </main>

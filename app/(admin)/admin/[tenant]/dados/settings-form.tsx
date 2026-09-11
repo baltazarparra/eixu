@@ -1,41 +1,63 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { TenantFields } from '@/components/admin/tenant-fields';
+import { DeleteTenantDialog } from '@/components/admin/delete-tenant-dialog';
+import { SocialProfileCard } from './social-card';
 import { adminFetch } from '@/lib/admin/http';
 import { intakeFromForm } from '@/lib/admin/tenant-input';
 import type { Intake } from '@/lib/tenant-intake';
+import type { SocialProfile } from '@/lib/social-profile';
 
 export function SettingsForm({
   tenant,
   intake,
+  social,
 }: {
   tenant: {
     slug: string;
     name: string;
+    status: string;
     whatsapp: string | null;
     contactEmail: string | null;
     logoUrl?: string;
+    pageCount: number;
+    leadCount: number;
+    imageCount: number;
   };
   intake: Partial<Intake>;
+  social: SocialProfile | null;
 }) {
+  const router = useRouter();
   const [notice, setNotice] = useState('');
   const [saving, setSaving] = useState(false);
   const [logoUrl, setLogoUrl] = useState(tenant.logoUrl);
+  const [profile, setProfile] = useState(social);
+  const [socialUrl, setSocialUrl] = useState(intake.socialUrl ?? '');
+  const [deleting, setDeleting] = useState(false);
+  const closeDialog = useCallback(() => setDeleting(false), []);
+  const afterDelete = useCallback(() => {
+    setDeleting(false);
+    router.push('/admin');
+  }, [router]);
   async function save(form: FormData) {
     const parsed = intakeFromForm(form);
     if (!parsed.success) {
       setNotice(
-        'Confira as referências e o limite de 160 caracteres por fato ou restrição.',
+        parsed.error.issues[0]?.message ??
+          'Confira as referências e o limite de 160 caracteres por fato ou restrição.',
       );
       return;
     }
     setSaving(true);
     setNotice('');
     try {
-      await adminFetch(`/api/admin/${tenant.slug}/settings`, {
+      const { social: next } = await adminFetch<{
+        social: SocialProfile | null;
+      }>(`/api/admin/${tenant.slug}/settings`, {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -45,6 +67,8 @@ export function SettingsForm({
           intake: parsed.data,
         }),
       });
+      setProfile(next);
+      setSocialUrl(parsed.data.socialUrl);
       setNotice(
         'Dados salvos. O briefing será usado nas próximas edições do site.',
       );
@@ -141,6 +165,26 @@ export function SettingsForm({
           </label>
         </div>
       </section>
+      <SocialProfileCard
+        slug={tenant.slug}
+        social={profile}
+        hasSocialUrl={Boolean(socialUrl)}
+        onChange={setProfile}
+      />
+      <section className="mt-10 border-t pt-7">
+        <h2 className="text-base font-semibold">Excluir cliente</h2>
+        <p className="mt-1 max-w-2xl text-sm text-[var(--color-muted)]">
+          Apaga o cadastro, as páginas, os contatos recebidos, as conversas e
+          todos os arquivos deste cliente. Não há como desfazer.
+        </p>
+        <button
+          type="button"
+          className="admin-danger mt-4"
+          onClick={() => setDeleting(true)}
+        >
+          Excluir {tenant.name}
+        </button>
+      </section>
       {notice ? (
         <output
           aria-live="polite"
@@ -149,6 +193,22 @@ export function SettingsForm({
           {notice}
         </output>
       ) : null}
+      <DeleteTenantDialog
+        tenant={
+          deleting
+            ? {
+                slug: tenant.slug,
+                name: tenant.name,
+                status: tenant.status,
+                pageCount: tenant.pageCount,
+                leadCount: tenant.leadCount,
+                imageCount: tenant.imageCount,
+              }
+            : null
+        }
+        onClose={closeDialog}
+        onDeleted={afterDelete}
+      />
     </>
   );
 }

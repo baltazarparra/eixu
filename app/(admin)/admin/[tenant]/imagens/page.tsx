@@ -17,10 +17,13 @@ export default async function ImagesPage({
   if (!tenant) notFound();
 
   // A decisão sobre candidatas acontece na conversa do site; aqui é acervo.
-  const [images, guide] = await Promise.all([
-    listImages(tenant.id, 'aprovada'),
+  // As rejeitadas continuam listadas num filtro próprio, porque a recusa de
+  // uma imagem em uso não apaga nada e o operador precisa enxergá-la.
+  const [all, guide] = await Promise.all([
+    listImages(tenant.id),
     getGuide(tenant.id),
   ]);
+  const images = all.filter((image) => image.status !== 'candidata');
 
   return (
     <ImagesLibrary

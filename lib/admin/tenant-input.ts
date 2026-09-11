@@ -55,6 +55,7 @@ export function intakeFromForm(form: FormData) {
     evidence: lines(field('evidence')),
     constraints: lines(field('constraints')),
     references: lines(field('references'), 3),
+    socialUrl: field('socialUrl'),
   });
 }
 

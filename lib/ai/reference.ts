@@ -1,7 +1,7 @@
 import { lookup } from 'node:dns/promises';
 
 /** Redes que nunca devem ser alcançadas por uma URL vinda do chat. */
-function isPrivateAddress(address: string, family: number): boolean {
+export function isPrivateAddress(address: string, family: number): boolean {
   if (family === 6)
     return /^(::1|fe80:|fc|fd)/i.test(address) || address === '::';
   const [a, b] = address.split('.').map(Number);
@@ -74,7 +74,7 @@ const ENTITIES: Record<string, string> = {
   rdquo: '”',
 };
 
-function decode(text: string): string {
+function decodeOnce(text: string): string {
   return text
     .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) =>
       String.fromCodePoint(Number.parseInt(hex, 16)),
@@ -87,31 +87,49 @@ function decode(text: string): string {
       if (!value) return ' ';
       // Nomes em maiúscula representam a letra maiúscula: &Ccedil; é Ç.
       return /^[A-Z]/.test(name) ? value.toUpperCase() : value;
-    })
-    .replace(/\s+/g, ' ')
-    .trim();
+    });
+}
+
+export function decode(text: string): string {
+  // Segunda passada porque `&amp;#39;` só vira `&#39;` depois que `&amp;` cai:
+  // o LinkedIn entrega a bio codificada duas vezes.
+  const once = decodeOnce(text);
+  const twice = /&#x?\d/i.test(once) ? decodeOnce(once) : once;
+  return twice.replace(/\s+/g, ' ').trim();
 }
 
 function strip(html: string): string {
   return decode(html.replace(/<[^>]*>/g, ' '));
 }
 
-export function extractReference(url: string, html: string): Reference {
-  const clean = html
+/**
+ * Conteúdo de uma meta tag. A aspa de fechamento vem por backreference, senão
+ * uma bio com apóstrofo é cortada no primeiro `'`. O conteúdo não pode conter
+ * `>`: sem isso o padrão atravessa tags e captura metade do documento.
+ */
+export function metaContent(html: string, name: string): string | undefined {
+  const value = `("|')((?:(?!\\1)[^>])*)\\1`;
+  const pattern = new RegExp(
+    `<meta[^>]+(?:name|property)=["']${name}["'][^>]*content=${value}`,
+    'i',
+  );
+  const alt = new RegExp(
+    `<meta[^>]+content=${value}[^>]*(?:name|property)=["']${name}["']`,
+    'i',
+  );
+  const found = pattern.exec(html) ?? alt.exec(html);
+  return found ? decode(found[2]) : undefined;
+}
+
+export function stripNoise(html: string): string {
+  return html
     .replace(/<(script|style|noscript|svg)[\s\S]*?<\/\1>/gi, ' ')
     .replace(/<!--[\s\S]*?-->/g, ' ');
-  const meta = (name: string) => {
-    const pattern = new RegExp(
-      `<meta[^>]+(?:name|property)=["']${name}["'][^>]*content=["']([^"']+)["']`,
-      'i',
-    );
-    const alt = new RegExp(
-      `<meta[^>]+content=["']([^"']+)["'][^>]*(?:name|property)=["']${name}["']`,
-      'i',
-    );
-    const found = pattern.exec(clean) ?? alt.exec(clean);
-    return found ? decode(found[1]) : undefined;
-  };
+}
+
+export function extractReference(url: string, html: string): Reference {
+  const clean = stripNoise(html);
+  const meta = (name: string) => metaContent(clean, name);
   const titulo =
     decode(/<title[^>]*>([\s\S]*?)<\/title>/i.exec(clean)?.[1] ?? '') ||
     meta('og:title');
