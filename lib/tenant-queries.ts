@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { contactsOf } from '@/lib/tenant-contacts';
+import { intakeSocialUrl } from '@/lib/tenant-intake';
 import type { BlockInstance, Page, PageType, Seo, Tenant } from '@/lib/types';
 
 type Row = Record<string, unknown>;
@@ -14,12 +15,13 @@ function str(value: unknown, fallback = ''): string {
 }
 
 function toTenant(row: Row): Tenant {
+  const brief = (row.brief ?? {}) as Record<string, unknown>;
   return {
     id: str(row.id),
     slug: str(row.slug),
     name: str(row.name),
     status: row.status as Tenant['status'],
-    brief: (row.brief ?? {}) as Record<string, unknown>,
+    brief,
     brand: (row.brand ?? {}) as Tenant['brand'],
     dials: (row.dials ?? {
       variance: 7,
@@ -27,9 +29,13 @@ function toTenant(row: Row): Tenant {
       density: 4,
     }) as Tenant['dials'],
     imageGuide: (row.image_guide ?? {}) as Tenant['imageGuide'],
-    // Cliente anterior à coluna continua com o WhatsApp virando o primeiro
-    // telefone da lista, então rodapé e JSON-LD não ficam vazios.
-    contacts: contactsOf(row.contacts, (row.whatsapp as string) ?? null),
+    // O primeiro salvamento de Dados também precisa conservar o perfil que
+    // os clientes antigos guardavam apenas no briefing.
+    contacts: contactsOf(
+      row.contacts,
+      (row.whatsapp as string) ?? null,
+      intakeSocialUrl(brief.intake),
+    ),
     whatsapp: (row.whatsapp as string) ?? null,
     contactEmail: (row.contact_email as string) ?? null,
     ga4Id: (row.ga4_id as string) ?? null,

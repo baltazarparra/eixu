@@ -346,7 +346,7 @@ await test('contatos normalizam número, rede e endereço, e recusam lixo', () =
   });
   assert.deepEqual(
     contacts.phones.map((phone) => phone.number),
-    ['5511999999999', '551133334444'],
+    ['+5511999999999', '551133334444'],
   );
   assert.equal(contacts.phones[0].whatsapp, true);
   assert.deepEqual(contacts.addresses[0], {
@@ -360,7 +360,10 @@ await test('contatos normalizam número, rede e endereço, e recusam lixo', () =
   ]);
   assert.equal(primaryWhatsapp(contacts), '5511999999999');
   assert.equal(whatsappAt(contacts, 1), null);
-  assert.equal(derivedSocialUrl(contacts), 'https://www.instagram.com/padaria/');
+  assert.equal(
+    derivedSocialUrl(contacts),
+    'https://www.instagram.com/padaria/',
+  );
   assert.equal(formatPhone('551133334444'), '+55 (11) 3333-4444');
   assert.equal(formatPhone('442071234567'), '+442071234567');
   // Sem DDI o número não vira E.164: o "+" faria um fixo local de São Paulo
@@ -380,7 +383,11 @@ await test('contatos normalizam número, rede e endereço, e recusam lixo', () =
     { social: ['ftp://exemplo.com'] },
     { phones: Array.from({ length: 5 }, () => ({ number: '5511999999999' })) },
   ])
-    assert.equal(contactsSchema.safeParse(invalid).success, false, JSON.stringify(invalid));
+    assert.equal(
+      contactsSchema.safeParse(invalid).success,
+      false,
+      JSON.stringify(invalid),
+    );
 
   assert.deepEqual(contactsSchema.parse({}), {
     phones: [],
@@ -407,7 +414,7 @@ await test('contatos do formulário pareiam tipo por índice e ignoram linha vaz
   assert.ok(parsed.success, JSON.stringify(parsed.error?.issues));
   assert.deepEqual(parsed.data.phones, [
     { number: '1133334444', whatsapp: false },
-    { number: '5511988887777', whatsapp: true },
+    { number: '+5511988887777', whatsapp: true },
   ]);
   assert.equal(primaryWhatsapp(parsed.data), '5511988887777');
   assert.equal(parsed.data.addresses[0].label, '');
@@ -817,7 +824,10 @@ await test('o redirecionador aceita um segundo WhatsApp do cadastro', async () =
   assert.equal(events.length, 5);
 
   // A prévia manda para o mesmo número, sem passar pelo redirecionador.
-  const ctx = { isPreview: true, tenant: { slug: 'fixture', whatsapp: '5511999990000', contacts } };
+  const ctx = {
+    isPreview: true,
+    tenant: { slug: 'fixture', whatsapp: '5511999990000', contacts },
+  };
   assert.equal(previewHref('/go/wa?n=1', ctx), 'https://wa.me/5511988887777');
   assert.equal(previewHref('/go/wa', ctx), 'https://wa.me/5511999990000');
 });

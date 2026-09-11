@@ -27,7 +27,11 @@ export const phoneSchema = z.object({
       (value) => /^\d{8,15}$/.test(digitsOf(value)),
       'Informe de 8 a 15 dígitos no telefone, incluindo o DDI.',
     )
-    .transform(digitsOf),
+    // O sinal distingue, por exemplo, +1 415... de um telefone local com
+    // onze dígitos. Não é possível recuperar essa informação só pelo tamanho.
+    .transform(
+      (value) => `${value.startsWith('+') ? '+' : ''}${digitsOf(value)}`,
+    ),
   whatsapp: z.boolean().default(false),
 });
 
@@ -97,7 +101,7 @@ export const contactsSchema = z
       .default([]),
   })
   .transform((contacts) => ({
-    phones: unique(contacts.phones, (phone) => phone.number),
+    phones: unique(contacts.phones, (phone) => phoneE164(phone.number)),
     addresses: unique(contacts.addresses, (address) =>
       address.text.toLowerCase(),
     ),
@@ -117,19 +121,34 @@ export const EMPTY_CONTACTS: Contacts = {
 /**
  * Leitura tolerante: linha antiga sem a coluna, fixture de teste sem a chave e
  * cliente criado antes desta entrega continuam funcionando. Sem telefone e com
- * o WhatsApp legado preenchido, ele vira o primeiro telefone da lista.
+ * o WhatsApp legado preenchido, ele vira o primeiro telefone da lista. A rede
+ * do briefing só é recuperada enquanto a lista social ainda não foi gravada;
+ * uma lista explicitamente vazia continua significando remoção pelo operador.
  */
 export function contactsOf(
   value: unknown,
   legacyWhatsapp?: string | null,
+  legacySocialUrl?: string,
 ): Contacts {
   const parsed = contactsSchema.safeParse(value ?? {});
   const contacts = parsed.success ? parsed.data : EMPTY_CONTACTS;
+  const hasSocial =
+    value !== null &&
+    typeof value === 'object' &&
+    Object.hasOwn(value, 'social');
+  const legacySocial =
+    !hasSocial && legacySocialUrl ? normalizeSocialUrl(legacySocialUrl) : null;
+  const result = legacySocial
+    ? { ...contacts, social: [legacySocial.url] }
+    : contacts;
   if (!contacts.phones.length && legacyWhatsapp) {
-    const number = digitsOf(legacyWhatsapp);
-    if (number) return { ...contacts, phones: [{ number, whatsapp: true }] };
+    const number = phoneSchema.safeParse({
+      number: legacyWhatsapp,
+      whatsapp: true,
+    });
+    if (number.success) return { ...result, phones: [number.data] };
   }
-  return contacts;
+  return result;
 }
 
 export function contactsIsEmpty(contacts: Contacts): boolean {
@@ -142,13 +161,14 @@ export function contactsIsEmpty(contacts: Contacts): boolean {
 
 /** O número que alimenta `tenants.whatsapp`, o botão flutuante e o /go/wa. */
 export function primaryWhatsapp(contacts: Contacts): string | null {
-  return contacts.phones.find((phone) => phone.whatsapp)?.number ?? null;
+  const phone = contacts.phones.find((phone) => phone.whatsapp);
+  return phone ? digitsOf(phone.number) : null;
 }
 
 export function whatsappNumbers(contacts: Contacts): string[] {
   return contacts.phones
     .filter((phone) => phone.whatsapp)
-    .map((phone) => phone.number);
+    .map((phone) => digitsOf(phone.number));
 }
 
 /** Enésimo WhatsApp da lista, para o rodapé oferecer um número secundário. */
@@ -166,12 +186,12 @@ export function derivedSocialUrl(contacts: Contacts): string {
 }
 
 /**
- * O campo aceita de 8 a 15 dígitos, então nem todo número tem DDI: um fixo
- * local tem 10. Marcar esse número com "+" o transformaria em outro país na
- * leitura, e é isso que este teste evita.
+ * O "+" informado pelo operador identifica o DDI, inclusive em números
+ * internacionais curtos. Mantém compatibilidade com números longos já
+ * gravados sem sinal; telefones locais de 8 a 11 dígitos não ganham um país.
  */
 export function hasCountryCode(number: string): boolean {
-  return digitsOf(number).length >= 12;
+  return number.trim().startsWith('+') || digitsOf(number).length >= 12;
 }
 
 function brazilian(digits: string): string {
@@ -185,7 +205,7 @@ export function formatPhone(number: string): string {
   const digits = digitsOf(number);
   if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13))
     return `+55 ${brazilian(digits.slice(2))}`;
-  if (hasCountryCode(digits)) return `+${digits}`;
+  if (hasCountryCode(number)) return `+${digits}`;
   if (digits.length === 10 || digits.length === 11) return brazilian(digits);
   if (digits.length > 4)
     return `${digits.slice(0, digits.length - 4)}-${digits.slice(-4)}`;
@@ -195,7 +215,7 @@ export function formatPhone(number: string): string {
 /** Destino do link de ligação. Sem DDI o "+" seria uma afirmação falsa. */
 export function phoneE164(number: string): string {
   const digits = digitsOf(number);
-  return hasCountryCode(digits) ? `+${digits}` : digits;
+  return hasCountryCode(number) ? `+${digits}` : digits;
 }
 
 const NETWORKS: { key: string; label: string; hosts: string[] }[] = [

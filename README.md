@@ -76,6 +76,7 @@ Os três grupos de rotas têm layouts e CSS próprios. A publicação valida pá
 | `npx next typegen && npx tsc --noEmit`               | Gera tipos das rotas e verifica TypeScript.                                                                                                          |
 | `npm run lint`                                       | Analisa código com oxlint; não executa o pre-flight dos sites.                                                                                       |
 | `npm run test:sites`                                 | Testa o contrato de páginas, imagens, aprovação e links sem banco ou chamadas pagas.                                                                 |
+| `npm run test:sites:browser`                         | Depois do build Next.js, verifica contraste e destinos de contato com componentes reais em 1440 e 390 px. Requer `EIXU_CHROME_PATH`.                 |
 | `npm run test:admin`                                 | Testa contexto, estado editorial, autenticação, logos, datas, custos, CSV e tracking sem banco ou chamadas pagas. Captura requer `EIXU_CHROME_PATH`. |
 | `npm run eval:admin-cost`                            | Compara o payload de histórico em memória; `-- --live` executa três chamadas pagas controladas, sem escrever no banco/Blob.                          |
 | `npm run eval:site -- <caso>`                        | Roda a geração real num tenant descartável e mede o resultado pela rubrica.                                                                          |

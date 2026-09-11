@@ -1,5 +1,6 @@
 import {
   accessibleAccent,
+  contrastRatio,
   mixHex,
   readableHighlight,
   readableMuted,
@@ -32,7 +33,15 @@ export function themeVars(brand: Brand): Record<string, string> {
   );
   // A superfície precisa ser uma cor resolvida: readableMuted mede contraste
   // e não sabe ler um color-mix.
-  const surface = brand.surface || mixHex(ink, paper, 0.04);
+  // A lavagem artística precisa ser a mesma superfície usada nos cálculos
+  // de texto. Se a mistura tirar o contraste da tinta, preserve o papel.
+  const artisticSurface = mixHex(paper, accentAlt, 0.11);
+  const surface =
+    brand.vibe === 'artistico'
+      ? contrastRatio(ink, artisticSurface) >= 4.5
+        ? artisticSurface
+        : paper
+      : brand.surface || mixHex(ink, paper, 0.04);
   const servicesSurface = mixHex(paper, ink, 0.03);
   const legacyFont =
     brand.font === 'serif'

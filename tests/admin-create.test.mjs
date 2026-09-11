@@ -2,7 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadModule } from './helpers/load-module.mjs';
 
-async function fixture({ insert = 'ok', socialFails = false, vibe = 'ousado' } = {}) {
+async function fixture({
+  insert = 'ok',
+  socialFails = false,
+  vibe = 'ousado',
+} = {}) {
   const deleted = [],
     inserted = [],
     scheduled = [],
@@ -117,7 +121,7 @@ await test('cadastro grava contatos, vibe e o WhatsApp derivado da lista', async
   assert.equal(row.brand.vibe, 'ousado');
   assert.deepEqual(row.contacts.phones, [
     { number: '1133334444', whatsapp: false },
-    { number: '5511988887777', whatsapp: true },
+    { number: '+5511988887777', whatsapp: true },
   ]);
   assert.deepEqual(row.contacts.addresses, [
     { label: 'Loja', text: 'Rua das Pedras, 100, Bauru' },

@@ -156,10 +156,8 @@
     color-mix(in oklab, var(--highlight) 9%, var(--paper))
   );
 }
-.site-theme[data-vibe='artistico'] .site-block[data-tone='soft'] {
-  --paper: color-mix(in oklab, var(--accent-2) 11%, var(--brand-paper));
-  background: var(--paper);
-}
+/* A lavagem soft vem de --surface em themeVars, junto dos tokens de texto
+   medidos contra ela. Não substitua só o fundo depois desse cálculo. */
 .site-theme[data-vibe='artistico'] .site-action {
   border-radius: 999px;
 }
@@ -186,7 +184,7 @@
     z-index: 1;
     margin-inline-end: -4rem;
     padding: clamp(1.5rem, 3vw, 2.75rem);
-    background: var(--brand-paper);
+    background: var(--paper);
     box-shadow: 0 30px 80px -60px var(--brand-ink);
   }
 }

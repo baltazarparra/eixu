@@ -107,6 +107,13 @@ escuro, as faixas que pintam o fundo com a cor do texto (`cta.band`,
 `editorial.facts` escuro, plano em destaque, card do bento e seções com tom
 `ink`) viram um escuro elevado em vez de um bloco branco no meio da página.
 
+Na vibe artística, `themeVars` resolve a lavagem de cor da superfície `soft`
+antes de calcular os tokens de tinta, apoio e destaque. Se a mistura tirar o
+contraste mínimo da tinta escolhida, usa o papel da marca. O CSS não substitui
+essa superfície depois do cálculo. O cartão sobreposto do hero offset usa o
+papel do tom da própria seção, conservando o par texto/fundo também em `ink`,
+`accent` e `secondary`.
+
 ## Contatos e localização automáticos
 
 Telefones, e-mail, endereços e redes sociais vêm do cadastro e são

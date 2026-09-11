@@ -10,10 +10,17 @@ npm run test:sites
 npm run test:admin
 npx next typegen && npx tsc --noEmit
 npm run build:vercel
+npm run test:sites:browser
 git diff --check
 ```
 
 Para incluir a prova de isolamento do cookie na captura, rode `test:admin` com `EIXU_CHROME_PATH` apontando para o executável local do Chrome. Sem ele, esse caso é pulado; os demais testes não precisam de navegador.
+
+`test:sites:browser` também usa `EIXU_CHROME_PATH` e deve rodar depois de
+`build:vercel`, pois aplica o CSS emitido pelo Next.js aos componentes reais
+renderizados com dados sintéticos. Confere contraste do hero e da localização
+em desktop/mobile e os destinos dos contatos. Requisições externas são
+interceptadas; não usa banco nem geração paga. Sem Chrome, o caso é pulado.
 
 `tests/admin-concurrency.test.mjs` exige um PostgreSQL local descartável chamado `eixu_pr2_test`, indicado por `EIXU_TEST_POSTGRES_URL`. A suíte recusa hosts remotos, aplica `db/schema.sql` nesse banco e exercita o driver Neon e seus locks por um proxy WebSocket local; Blob, rede social e visão são simulados. Sem a variável, somente essa suíte de integração é pulada. Para incluí-la, execute `npm run test:admin` com a variável apontando para esse banco local.
 
@@ -31,6 +38,35 @@ O projeto possui `test:sites` e `test:admin`, com testes de contrato sem banco e
 
 A entrega acrescenta a coluna `tenants.contacts`, a seção automática de
 localização, a coluna de contato no rodapé e as quatro vibes de site.
+
+### Correções da revisão do PR #5
+
+Salvar os Dados de um cliente antigo preserva a rede social e o avatar do
+briefing; a remoção explícita continua apagando essa associação. Os telefones
+internacionais mantêm o `+` entre cadastro, armazenamento, edição e link
+`tel:`, inclusive países com números de até 11 dígitos. Os destinos de
+WhatsApp continuam usando somente dígitos.
+
+No artístico, o cartão do hero offset segue o tom da seção. A superfície
+suave é calculada antes das cores de texto, com fallback para o papel quando
+a mistura perde contraste. A branch também incorpora `main`, preservando o
+upgrade para Opus 5 e os registros de verificação das duas entregas.
+
+- Tipos (`next typegen` e `tsc --noEmit`) e build Next.js 16.3.3 passaram.
+- `test:sites`: 68 casos passaram. `test:admin` com Chrome: 38 passaram e
+  somente a integração Postgres foi pulada, sem `EIXU_TEST_POSTGRES_URL`.
+- `test:sites:browser`: passou com componentes reais e CSS do build em
+  1440 e 390 px. São 60 pares de texto/fundo por largura, com contraste mínimo
+  de 4,608:1, além dos destinos de telefone e WhatsApp.
+- O lint global mantém os 20 erros anteriores em 13 arquivos fora do escopo.
+  Lint dos arquivos alterados, formatação e `git diff --check` passaram.
+
+Esta revisão não executou migração, escrita em banco remoto nem geração paga.
+Os testes de dados usam dependências simuladas; os testes de navegador usam
+conteúdo sintético e interceptam a rede. A evidência anterior de migração e
+smoke abaixo foi preservada e não representa nova verificação do banco.
+
+### Evidência anterior às correções
 
 **Migração aplicada em 11/09/2026** no banco de `.env.local`, autorizada pelo
 operador: `npm run db:migrate`, 20 statements idempotentes, coluna

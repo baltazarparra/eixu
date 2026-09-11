@@ -85,7 +85,7 @@ export function ContactFields({
                   maxLength={24}
                   inputMode="tel"
                   aria-label="Número com DDI"
-                  placeholder="55 11 99999-9999"
+                  placeholder="+55 11 99999-9999"
                   defaultValue={value.number ? formatPhone(value.number) : ''}
                 />
                 <select
@@ -112,8 +112,8 @@ export function ContactFields({
             ) : null}
           </div>
           <small>
-            Inclua o DDI no WhatsApp, 55 no Brasil. Sem ele o link abre uma
-            conversa com outro país.
+            Use + e o DDI nos números internacionais, como +55 no Brasil.
+            WhatsApp exige DDI; telefone local pode ficar sem ele.
           </small>
         </fieldset>
 
