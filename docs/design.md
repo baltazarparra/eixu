@@ -45,14 +45,23 @@ em quatro requisições, cada uma com suas ferramentas, seu limite de passos e o
 contexto que ela precisa. O catálogo só entra na composição e na revisão.
 
 1. **Briefing e direção**: `read_reference`, `define_image_guide`, `set_design`.
-2. **Cenas**: `prepare_site_images`, com o plano de `lib/images/scene-plan.ts`.
+2. **Cenas**: `prepare_site_images`, uma cena por requisição, com o plano de
+   `lib/images/scene-plan.ts`.
 3. **Composição**: `build_site` e `repair_site`.
 4. **Revisão**: `review_pages` e as edições pontuais.
 
 A próxima etapa vem do estado persistido, não da conversa: `nextPhase` lê
-direção, fotos, páginas, erros e rodadas de revisão. Recarregar o painel ou
-interromper no meio não perde o progresso. A aprovação das fotos e a publicação
-continuam sendo do operador, depois da quarta etapa.
+direção, cobertura do plano de cenas, páginas, erros e rodadas de revisão.
+Recarregar o painel ou interromper no meio não perde o progresso.
+
+A etapa de cenas virou um ciclo com o operador. O agente gera a vaga que o
+plano pede e encerra o turno; o painel mostra a imagem, o operador aprova ou
+recusa, e só então a próxima cena é pedida. Aprovada, a imagem entra na
+biblioteca com URL; recusada, some do banco e do Blob. Um lote de seis cenas
+enchia a fila de decisões antes de o operador ver a primeira, e uma candidata
+no rascunho virava pendência de publicação que ele não pedira. `sceneCoverage`
+mede o progresso pelas aprovadas, casando bloco e proporção, para uma foto boa
+da biblioteca antiga não obrigar uma geração paga.
 
 `review_pages` devolve o que ficou pobre com página e bloco apontados. Com
 `EIXU_REVIEW_CAPTURE=1`, ela também abre o rascunho em 1440 e 390 com Chromium e
@@ -62,17 +71,17 @@ histórico da fase levou a entrada a 697 mil tokens contra 200 mil de limite.
 
 ## Contrato visual v2
 
-| Recurso              | Comportamento                                                                                                                                                                                                                                                                              |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Perfil persistido    | `brand.design`, versão 2, guarda conceito, elemento-assinatura e oito eixos estruturais. `tenant.brief` guarda público, oferta, objetivo, personalidade, evidências e restrições. Não exige migração porque ambos os campos já são JSONB.                                                  |
-| Tipografia           | Display: Geist, Fraunces, Space Grotesk, Manrope ou Geist Mono. Corpo: Geist, Newsreader, Space Grotesk ou Manrope. `next/font` auto-hospeda os arquivos e evita troca de fonte após o carregamento.                                                                                       |
-| Paleta               | `ink`, `paper`, `surface`, `accent` e `accentAlt` têm papéis diferentes. A ferramenta recusa texto sem contraste AA em paper/surface e cores primária/secundária iguais; o render ainda ajusta acentos que não suportam texto legível.                                                     |
-| Composição global    | Seis heroes, quatro navegações, quatro ritmos, quatro tratamentos de imagem, quatro superfícies e cinco motivos formam a gramática do cliente. Dials controlam variância, densidade e motion. Atelier compõe ambiente e detalhe; não é padrão obrigatório.                                 |
-| Apresentação local   | Todo bloco aceita `presentation`: tom (incluindo a cor secundária), largura, respiro, alinhamento, borda e motion (`none`, `reveal`, `stagger`, `image`). Use um a três momentos de movimento coerentes com a narrativa.                                                                   |
-| Exploração e inbound | `feature.explorer` oferece seleção de aplicações com imagem, texto, fatos e CTA por aba; suporta teclado. `editorial.resources` conecta páginas com hierarquia editorial e imagem ou símbolo. Ambos oferecem layouts próprios.                                                             |
-| Imagens              | Hero aceita posição, `cover`/`contain`, ponto focal e legendas; atelier aceita imagem secundária. A home exige duas fotos geradas distintas da biblioteca do tenant. Candidatas entram no rascunho; todas as imagens da biblioteca usadas na publicação precisam de aprovação do operador. |
-| Navegação e FAQ      | Menu mobile e perguntas usam `details`/`summary` nativos, foco visível e interação por teclado.                                                                                                                                                                                            |
-| Âncoras              | Todo bloco aceita `anchor` opcional, começando com letra minúscula, seguido de letras/números/hífens, até 64 caracteres. Link usa `#anchor`. Duplicação bloqueia publicação. Formulário sem âncora mantém `contato`.                                                                       |
+| Recurso              | Comportamento                                                                                                                                                                                                                                                                                                                                                                                               |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Perfil persistido    | `brand.design`, versão 2, guarda conceito, elemento-assinatura e oito eixos estruturais. `tenant.brief` guarda público, oferta, objetivo, personalidade, evidências e restrições. Não exige migração porque ambos os campos já são JSONB.                                                                                                                                                                   |
+| Tipografia           | Display: Geist, Fraunces, Space Grotesk, Manrope ou Geist Mono. Corpo: Geist, Newsreader, Space Grotesk ou Manrope. `next/font` auto-hospeda os arquivos e evita troca de fonte após o carregamento.                                                                                                                                                                                                        |
+| Paleta               | `accent`, `accentAlt` e `highlight` vêm do cadastro do cliente e a direção não as reescreve: superfície de marca, tom complementar e cor da ação. `ink`, `paper` e `surface` continuam com a direção. A ferramenta recusa texto sem contraste AA em paper/surface e cores primária/secundária iguais; o render ainda ajusta acentos que não suportam texto legível. Sem `highlight`, a ação usa a primária. |
+| Composição global    | Seis heroes, quatro navegações, quatro ritmos, quatro tratamentos de imagem, quatro superfícies e cinco motivos formam a gramática do cliente. Dials controlam variância, densidade e motion. Atelier compõe ambiente e detalhe; não é padrão obrigatório.                                                                                                                                                  |
+| Apresentação local   | Todo bloco aceita `presentation`: tom (incluindo a cor secundária), largura, respiro, alinhamento, borda e motion (`none`, `reveal`, `stagger`, `image`). Use um a três momentos de movimento coerentes com a narrativa.                                                                                                                                                                                    |
+| Exploração e inbound | `feature.explorer` oferece seleção de aplicações com imagem, texto, fatos e CTA por aba; suporta teclado. `editorial.resources` conecta páginas com hierarquia editorial e imagem ou símbolo. Ambos oferecem layouts próprios.                                                                                                                                                                              |
+| Imagens              | Hero aceita posição, `cover`/`contain`, ponto focal e legendas; atelier aceita imagem secundária. A home exige duas fotos geradas distintas da biblioteca do tenant. Só imagem aprovada chega ao agente com URL, então o rascunho nasce com o que o operador já aceitou.                                                                                                                                    |
+| Navegação e FAQ      | Menu mobile e perguntas usam `details`/`summary` nativos, foco visível e interação por teclado.                                                                                                                                                                                                                                                                                                             |
+| Âncoras              | Todo bloco aceita `anchor` opcional, começando com letra minúscula, seguido de letras/números/hífens, até 64 caracteres. Link usa `#anchor`. Duplicação bloqueia publicação. Formulário sem âncora mantém `contato`.                                                                                                                                                                                        |
 
 ## Unicidade e coerência
 

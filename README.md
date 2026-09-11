@@ -5,9 +5,9 @@ Site institucional da EIXU e MVP de uma plataforma operada por agentes para cria
 ## O que já existe
 
 - Institucional com home, oferta de passagem de vibe coding para produção e cases de SaldoPix e NaiaCRM.
-- Painel com login de operador, busca e filtros de clientes, chat com histórico recente, prévia em desktop/mobile, dados e briefing editáveis, upload de logo e publicação.
+- Painel com login de operador, busca e filtros de clientes, cadastro com logo e paleta, chat com histórico recente, prévia em desktop/mobile, dados e briefing editáveis e publicação.
 - Páginas orgânicas, landing pages pagas, posts e páginas de agradecimento compostas por blocos com schemas Zod. O agente edita conteúdo por ferramentas; o painel também permite ajustar dados do cliente e gerenciar imagens.
-- Estúdio de imagens com guia por cliente, geração de fotos e logos, crítica, aprovação, rejeição e remoção. Aprovar um logo e aplicá-lo são ações distintas.
+- Imagens geradas na conversa do site, com guia por cliente, crítica e aprovação do operador uma a uma. Só a aprovada entra na biblioteca; a recusada é apagada. Aprovar um logo e aplicá-lo continuam sendo ações distintas.
 - Formulários, WhatsApp rastreado, atribuição de campanhas, exportação de contatos em CSV e painel de tráfego com gastos informados à mão.
 
 É um MVP de operação centralizada: há uma credencial administrativa compartilhada, sem contas ou permissões por cliente, cobrança ou integração automática com plataformas de anúncios. Os [limites atuais](docs/architecture.md#limites-atuais) fazem parte do contrato de desenvolvimento.
@@ -59,7 +59,7 @@ Produção usa Next.js 16.3.3, React 19.2.6, TypeScript, Tailwind 4, AI SDK 7, A
 | Painel e autenticação | `app/(admin)/`, `lib/auth.ts`, `app/api/admin/`                                              |
 | Sites por tenant      | `proxy.ts`, `app/(sites)/`, `lib/tenant-queries.ts`                                          |
 | Blocos e qualidade    | `lib/blocks/`, `lib/taste/`                                                                  |
-| Agentes do produto    | `app/api/chat/`, `app/api/images/chat/`, `lib/ai/`, `lib/images/`                            |
+| Agentes do produto    | `app/api/chat/`, `lib/ai/`, `lib/images/`                                                    |
 | Dados e atribuição    | `db/schema.sql`, `lib/db.ts`, `lib/tracking.ts`, `app/api/form/`, `app/api/e/`, `app/go/wa/` |
 
 Os três grupos de rotas têm layouts e CSS próprios. A publicação valida páginas e projeto por `lintPage` e `lintSite`, incluindo três páginas de inbound e duas fotos geradas na home, e copia blocos/SEO para o snapshot em uma transação; isso não versiona a marca inteira. Veja o [mapa de arquitetura](docs/architecture.md).

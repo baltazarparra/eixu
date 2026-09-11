@@ -43,6 +43,29 @@ A dívida de lint compreende 3 diagnósticos de React Compiler, 14 de acessibili
 
 Na mesma revisão, o build servido em `http://localhost:3100` passou em 22 verificações HTTP: 7 rotas públicas, 4 redirecionamentos administrativos, 10 recusas de API sem sessão e o bloqueio de acesso direto a `/s/*`. Formatação dos 5 documentos, 14 links locais, nomes dos scripts e preservação do bloco Next.js/import do Claude também foram conferidos. Isso não avalia chamadas pagas, fluxos autenticados ou qualidade comparativa dos modelos.
 
+## Cadastro de marca e cenas aprovadas no chat, 10/09/2026
+
+Tipos (`next typegen` + `tsc --noEmit`), `npm run test:sites` com 39 casos,
+`npm run test:admin` com 19 executados e um pulado, build Next.js de produção e
+formatação do escopo passaram. O lint global manteve os 20 erros
+preexistentes nos mesmos 13 arquivos, sem diagnóstico novo no que foi alterado.
+O build confirma que `/api/images/chat` saiu da lista de rotas.
+
+Os testes novos cobrem o que a mudança decide: `sceneCoverage` casando vaga por
+bloco e depois por proporção, incluindo as duas vagas do atelier; `nextPhase`
+sem o atalho de três cenas; `generationState` com candidata que não cobre vaga,
+entra na fila de decisão na ordem certa e distingue a que já está no rascunho;
+o plano que não cresce quando a composição grava uma quarta página; as três
+cores do cadastro recusando hexadecimal inválido e cores iguais; e o token de
+acento caindo na cor primária num cliente sem `highlight`, que é o que preserva
+os sites já publicados.
+
+Não foi executada geração paga nesta entrega. O ciclo de aprovação com chamada
+real ao modelo, o `eval:site --generate` com a aprovação pelo runner e a
+conferência visual dos sites publicados com o token de acento continuam
+pendentes. Também não houve verificação em banco: os testes de contrato rodam
+sem Neon e sem Blob.
+
 ## Verificação pelo impacto
 
 | Mudança                    | Evidência além do diff                                                                                                                                 |
