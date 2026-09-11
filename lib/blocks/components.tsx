@@ -334,7 +334,7 @@ export function ProofStats({ items, layout = 'strip' }: ProofStatsProps) {
       >
         {items.map((item) => (
           <div key={item.label} className="flex flex-col gap-2">
-            <p className="text-[clamp(2.4rem,5vw,3.6rem)] font-semibold leading-none tracking-[-0.03em] text-[var(--highlight)]">
+            <p className="text-[clamp(2.4rem,5vw,3.6rem)] font-semibold leading-none tracking-[-0.03em] text-[var(--highlight-text)]">
               {item.value}
             </p>
             <p className="text-[0.95rem] leading-snug text-[var(--muted)]">
@@ -592,7 +592,7 @@ export function FormLead({
               <span className="text-[0.88rem] font-medium">
                 {f.label}
                 {f.required ? (
-                  <span className="text-[var(--highlight)]"> *</span>
+                  <span className="text-[var(--highlight-text)]"> *</span>
                 ) : null}
               </span>
               {f.type === 'textarea' ? (
@@ -905,7 +905,7 @@ export function MediaMap({
           <a
             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`}
             rel="noreferrer"
-            className="text-[0.95rem] font-medium text-[var(--highlight)] underline underline-offset-4"
+            className="text-[0.95rem] font-medium text-[var(--highlight-text)] underline underline-offset-4"
           >
             Ver rota
           </a>

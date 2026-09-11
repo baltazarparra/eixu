@@ -28,6 +28,7 @@ import {
 import { fetchReference, generateLogoCandidates } from '@/lib/images/logo';
 import { critiqueLogo } from '@/lib/images/logo-critic';
 import { prepareSiteImages } from '@/lib/images/site-assets';
+import { withSceneGenerationLock } from '@/lib/images/generation-lock';
 import {
   SCENE_ROLES,
   sceneCoverage,
@@ -338,11 +339,6 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           throw new ToolError(
             'prepare_site_images exige a direção v2. Chame set_design antes de gerar cenas.',
           );
-        const guide = await getGuide(tenant.id);
-        if (guideIsEmpty(guide))
-          throw new ToolError(
-            'O guia de imagem ainda não existe. Chame define_image_guide antes de gerar: sem ele as cenas saem genéricas.',
-          );
         // Na etapa de cenas o operador decide imagem por imagem: gerar um lote
         // encheria a fila de decisões antes de ele ver a primeira.
         const inPhase = context.phase === 'cenas';
@@ -356,21 +352,6 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             `Orçamento de cenas deste turno esgotado: ${scenesPrepared} de ${budget} já ${scenesPrepared === 1 ? 'foi pedida' : 'foram pedidas'}. Encerre o turno e aguarde a decisão do operador.`,
           );
 
-        // A cobertura vem da biblioteca aprovada, não das cenas pedidas nesta
-        // chamada: candidata pendente não preenche vaga nenhuma.
-        const library = await listImages(tenant.id);
-        const plan = scenePlan(design, 3);
-        const { missing } = sceneCoverage(plan, approvedPhotos(library));
-        if (inPhase && missing.length) {
-          const wanted = scenes[0];
-          const fits = missing.some(
-            (slot) => slot.targetBlock === wanted.targetBlock,
-          );
-          if (!fits)
-            throw new ToolError(
-              `A próxima cena do plano é ${sceneText(missing[0])}. Gere essa antes de propor outra.`,
-            );
-        }
         const prepared = scenes.map((scene) => {
           // A proporção nasce da composição decidida, não de um palpite: foto
           // 4:3 num hero editorial 16:9 perde o assunto no recorte.
@@ -395,24 +376,70 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             );
           return { ...scene, ratio };
         });
+        // Reserva antes do primeiro await: ferramentas do mesmo turno podem
+        // ser executadas em paralelo. Só devolve orçamento sem tentativa paga.
         scenesPrepared += prepared.length;
-        const result = await prepareSiteImages(
-          {
-            ...tenant,
-            brand: activeBrand,
-            dials: activeDials,
-            brief: activeBrief,
-          },
-          prepared,
-        );
-        return {
-          ...result,
-          cobertura: missing.length
-            ? `Vagas do plano ainda sem foto aprovada: ${missing
-                .map((slot) => `${slot.role} (${slot.targetBlock})`)
-                .join(', ')}.`
-            : 'O plano de cenas já está coberto por fotos aprovadas.',
-        };
+        let generationStarted = false;
+        try {
+          const guide = await getGuide(tenant.id);
+          if (guideIsEmpty(guide))
+            throw new ToolError(
+              'O guia de imagem ainda não existe. Chame define_image_guide antes de gerar: sem ele as cenas saem genéricas.',
+            );
+          const result = await withSceneGenerationLock(tenant.id, async () => {
+            // Relê dentro do lock: o snapshot da rota pode anteceder outra
+            // geração. Candidata pendente não preenche vaga nem permite avançar.
+            const library = await listImages(tenant.id);
+            if (
+              inPhase &&
+              library.some((image) => image.status === 'candidata')
+            )
+              throw new ToolError(
+                'Há imagem aguardando decisão. Encerre o turno e aguarde a aprovação ou recusa do operador.',
+              );
+            const plan = scenePlan(design, 3);
+            const { missing } = sceneCoverage(plan, approvedPhotos(library));
+            if (inPhase) {
+              if (!missing.length)
+                throw new ToolError(
+                  'O plano já está coberto por fotos aprovadas. Siga para a composição.',
+                );
+              if (
+                !missing.some(
+                  (slot) => slot.targetBlock === scenes[0].targetBlock,
+                )
+              )
+                throw new ToolError(
+                  `A próxima cena do plano é ${sceneText(missing[0])}. Gere essa antes de propor outra.`,
+                );
+            }
+            generationStarted = true;
+            const generated = await prepareSiteImages(
+              {
+                ...tenant,
+                brand: activeBrand,
+                dials: activeDials,
+                brief: activeBrief,
+              },
+              prepared,
+            );
+            return {
+              ...generated,
+              cobertura: missing.length
+                ? `Vagas do plano ainda sem foto aprovada: ${missing
+                    .map((slot) => `${slot.role} (${slot.targetBlock})`)
+                    .join(', ')}.`
+                : 'O plano de cenas já está coberto por fotos aprovadas.',
+            };
+          });
+          if (result === null)
+            throw new ToolError(
+              'Já há uma geração de cenas em andamento para este cliente. Aguarde a conclusão antes de tentar novamente.',
+            );
+          return result;
+        } finally {
+          if (!generationStarted) scenesPrepared -= prepared.length;
+        }
       }),
     }),
 

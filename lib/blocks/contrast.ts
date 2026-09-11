@@ -67,6 +67,23 @@ export function mixHex(hex: string, target: string, amount: number): string {
   return mix(hex, target, amount);
 }
 
+/** Preserva o destaque quando legível e o aproxima de preto/branco até AA. */
+export function readableHighlight(
+  highlight: string,
+  background: string,
+): string {
+  if (contrastRatio(highlight, background) >= AA_NORMAL) return highlight;
+  const target =
+    contrastRatio('#000000', background) >= contrastRatio('#ffffff', background)
+      ? '#000000'
+      : '#ffffff';
+  for (let step = 1; step <= 25; step += 1) {
+    const candidate = mix(highlight, target, step / 25);
+    if (contrastRatio(candidate, background) >= AA_NORMAL) return candidate;
+  }
+  return target;
+}
+
 function mix(hex: string, target: string, amount: number): string {
   const from = toRgb(hex);
   const to = toRgb(target);

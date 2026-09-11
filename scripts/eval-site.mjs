@@ -14,6 +14,7 @@
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { generateText, isStepCount } from 'ai';
 import { createJiti } from 'jiti';
+import { runEvaluationPhases } from './lib/eval-site-flow.mjs';
 
 const jiti = createJiti(import.meta.url, { alias: { '@': process.cwd() } });
 const { db } = await jiti.import('../lib/db.ts');
@@ -33,9 +34,7 @@ const { sceneCoverage, scenePlanText, sceneText } = await jiti.import(
   '../lib/images/scene-plan.ts',
 );
 const { generatedPhotos } = await jiti.import('../lib/taste/metrics.ts');
-const { listImages, setStatus } = await jiti.import(
-  '../lib/images/queries.ts',
-);
+const { listImages, setStatus } = await jiti.import('../lib/images/queries.ts');
 const { getTenantBySlug, listPages } = await jiti.import(
   '../lib/tenant-queries.ts',
 );
@@ -177,69 +176,77 @@ const report = {
   model: process.env.EIXU_MODEL || 'anthropic/claude-opus-4.5',
   phases: [],
 };
-// Uma cena por turno: o laço precisa de espaço para o plano inteiro.
-for (let step = 0; step < 14; step += 1) {
-  const [pages, images] = await Promise.all([
-    listPages(tenant.id),
-    listImages(tenant.id),
-  ]);
-  // No produto quem aprova imagem é o operador. Aqui o runner assume esse
-  // papel de forma explícita, senão a etapa de cenas nunca fecha.
-  const pendentes = images.filter((image) => image.status === 'candidata');
-  if (generateScenes && pendentes.length) {
-    for (const image of pendentes)
-      await setStatus(tenant.id, image.id, 'aprovada');
-    report.approvedByRunner =
-      (report.approvedByRunner ?? 0) + pendentes.length;
+report.flow = await runEvaluationPhases({
+  readSnapshot: async () => {
+    tenant = await getTenantBySlug(spec.slug);
+    const [pages, images] = await Promise.all([
+      listPages(tenant.id),
+      listImages(tenant.id),
+    ]);
+    return { tenant, pages, images };
+  },
+  // No produto quem aprova é o operador. O runner assume esse papel somente
+  // com --generate, sem consumir uma chamada de fase a cada aprovação.
+  approveImage: generateScenes
+    ? (snapshot, image) => setStatus(snapshot.tenant.id, image.id, 'aprovada')
+    : undefined,
+  onApproved: (count) => {
+    report.approvedByRunner = (report.approvedByRunner ?? 0) + count;
     console.log(
-      `[eval] runner aprovou ${pendentes.length} candidata(s) no lugar do operador`,
+      `[eval] runner aprovou ${count} candidata(s) no lugar do operador`,
     );
-    continue;
-  }
-  const state = generationState(tenant, pages, images);
-  let next = state.next;
-  // Sem --generate a biblioteca já veio semeada. Pular a fase de cenas exige
-  // recalcular a próxima, senão o runner volta para a composição toda vez.
-  if (next === 'cenas' && !generateScenes)
-    next = nextPhase({
-      hasDesign: true,
-      coveredScenes: state.targetScenes,
-      targetScenes: state.targetScenes,
-      organicPages: state.organicPages,
-      blockingErrors: state.blockingErrors,
-      reviewRounds: state.reviewRounds,
-    });
-  if (next === 'pronto') break;
-  console.log(`[eval] fase ${next}`);
-  let outcome;
-  try {
-    outcome = await runPhase(tenant, next, images);
-  } catch (error) {
-    const cause = error?.cause ?? error;
-    console.error(
-      `[eval] fase ${next} falhou:`,
-      error?.name,
-      error?.message,
-      cause?.message ?? '',
+  },
+  nextPhase: ({ tenant, pages, images }) => {
+    const state = generationState(tenant, pages, images);
+    // Sem --generate a biblioteca já veio semeada. Recalcula a próxima fase
+    // sem exigir geração, preservando a composição e a revisão do produto.
+    if (state.next === 'cenas' && !generateScenes)
+      return nextPhase({
+        hasDesign: true,
+        coveredScenes: state.targetScenes,
+        targetScenes: state.targetScenes,
+        organicPages: state.organicPages,
+        blockingErrors: state.blockingErrors,
+        reviewRounds: state.reviewRounds,
+      });
+    return state.next;
+  },
+  runPhase: async ({ tenant, images }, next) => {
+    console.log(`[eval] fase ${next}`);
+    let outcome;
+    try {
+      outcome = await runPhase(tenant, next, images);
+    } catch (error) {
+      const cause = error?.cause ?? error;
+      console.error(
+        `[eval] fase ${next} falhou:`,
+        error?.name,
+        error?.message,
+        cause?.message ?? '',
+      );
+      report.phases.push({
+        phase: next,
+        error: String(error?.message ?? error),
+        cause: String(cause?.message ?? ''),
+      });
+      throw error;
+    }
+    report.phases.push(outcome);
+    console.log(
+      `[eval] ${outcome.phase}: ${outcome.steps} passos, ${outcome.usage.inputTokens} in, ${outcome.usage.outputTokens} out, ${Math.round(outcome.elapsedMs / 1000)}s, ferramentas ${outcome.calls.join(',') || 'nenhuma'}`,
     );
-    report.phases.push({
-      phase: next,
-      error: String(error?.message ?? error),
-      cause: String(cause?.message ?? ''),
-    });
-    break;
-  }
-  report.phases.push(outcome);
-  console.log(
-    `[eval] ${outcome.phase}: ${outcome.steps} passos, ${outcome.usage.inputTokens} in, ${outcome.usage.outputTokens} out, ${Math.round(outcome.elapsedMs / 1000)}s, ferramentas ${outcome.calls.join(',') || 'nenhuma'}`,
-  );
-  if (outcome.rejected.length)
     for (const item of outcome.rejected.slice(0, 4))
       console.log(
         `[eval] recusa ${item.tool}:`,
         JSON.stringify(item.output).slice(0, 400),
       );
-  tenant = await getTenantBySlug(spec.slug);
+  },
+});
+if (!report.flow.completed) {
+  process.exitCode = 1;
+  console.error(
+    `[eval] incompleto: ${report.flow.reason}; fase pendente: ${report.flow.next}`,
+  );
 }
 
 const [pages, images] = await Promise.all([

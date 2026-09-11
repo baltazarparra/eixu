@@ -92,6 +92,7 @@ export async function createTenantAction(
     ...(logoUrl ? { logoUrl } : {}),
   };
 
+  let tenantId: string;
   try {
     const rows = (await db()`
       insert into tenants (slug, name, whatsapp, contact_email, brief, brand)
@@ -104,18 +105,25 @@ export async function createTenantAction(
       if (logoUrl) await del(logoUrl).catch(() => undefined);
       return 'Esse endereço já pertence a um cliente. Escolha outro ou abra o cliente existente.';
     }
-    // A leitura do perfil depende de rede e do modelo: ela não pode atrasar a
-    // abertura do editor, e o painel mostra o estado enquanto ela corre.
-    const social = normalizeSocialUrl(intake.data.socialUrl);
-    if (social) {
-      const tenantId = rows[0].id;
-      const reading = await markSocialReading(tenantId, social);
-      if (reading)
-        after(() => syncSocialProfile({ id: tenantId, slug }, reading));
-    }
+    tenantId = rows[0].id;
   } catch {
     if (logoUrl) await del(logoUrl).catch(() => undefined);
     return 'Não foi possível criar o cliente. Seus dados continuam no formulário; tente novamente.';
+  }
+
+  // O cadastro já existe: falhas da leitura social não podem apagar seu logo
+  // nem apresentar a criação como recusada. O operador pode reler no painel.
+  const social = normalizeSocialUrl(intake.data.socialUrl);
+  if (social) {
+    try {
+      const reading = await markSocialReading(tenantId, social);
+      if (reading)
+        after(() => syncSocialProfile({ id: tenantId, slug }, reading));
+    } catch {
+      console.error(
+        '[admin] Não foi possível iniciar a leitura social após o cadastro.',
+      );
+    }
   }
   revalidatePath('/admin');
   redirect(`/admin/${slug}`);

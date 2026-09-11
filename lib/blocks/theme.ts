@@ -1,4 +1,9 @@
-import { accessibleAccent, mixHex, readableMuted } from '@/lib/blocks/contrast';
+import {
+  accessibleAccent,
+  mixHex,
+  readableHighlight,
+  readableMuted,
+} from '@/lib/blocks/contrast';
 import type { Brand } from '@/lib/types';
 
 const RADIUS: Record<string, string> = {
@@ -28,6 +33,7 @@ export function themeVars(brand: Brand): Record<string, string> {
   // A superfície precisa ser uma cor resolvida: readableMuted mede contraste
   // e não sabe ler um color-mix.
   const surface = brand.surface || mixHex(ink, paper, 0.04);
+  const servicesSurface = mixHex(paper, ink, 0.03);
   const legacyFont =
     brand.font === 'serif'
       ? 'var(--font-serif)'
@@ -64,7 +70,17 @@ export function themeVars(brand: Brand): Record<string, string> {
     '--accent-2-ink': accentAltInk,
     '--highlight': highlight,
     '--highlight-ink': highlightInk,
+    // Botões usam o par de fundo/tinta acima; texto solto precisa contrastar
+    // com a superfície da seção, inclusive quando o destaque escolhido é branco.
+    '--highlight-text': readableHighlight(highlight, paper),
+    '--highlight-text-paper': readableHighlight(highlight, paper),
+    '--highlight-text-soft': readableHighlight(highlight, surface),
+    '--highlight-text-services': readableHighlight(highlight, servicesSurface),
+    '--highlight-text-ink': readableHighlight(highlight, ink),
+    '--highlight-text-accent': readableHighlight(highlight, accent),
+    '--highlight-text-accent-2': readableHighlight(highlight, accentAlt),
     '--surface': surface,
+    '--services-surface': servicesSurface,
     '--muted': readableMuted(ink, paper),
     // Cada tom de seção troca ink e paper, então o texto de apoio precisa do
     // seu próprio valor medido. A mistura fixa do CSS dava 3,56 contra a cor

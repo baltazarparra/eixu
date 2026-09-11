@@ -141,6 +141,57 @@ await test(
       assert.fail(`A operação não aguardou o lock ${mode}`);
     }
 
+    await t.test(
+      'geração de cenas exclui concorrente do mesmo tenant e libera o lock após falha',
+      { timeout: 10_000 },
+      async () => {
+        const { withSceneGenerationLock } = await loadModule(
+          'lib/images/generation-lock.ts',
+          {
+            '@/lib/db': database,
+          },
+        );
+        const tenant = await fixture();
+        const entered = deferred(),
+          release = deferred();
+        const first = withSceneGenerationLock(tenant.id, async () => {
+          // O upload real usa outra conexão e precisa coexistir com o advisory lock.
+          await locks.withTenantLock(tenant.id, 'upload', async () => {});
+          entered.resolve();
+          await release.promise;
+          throw new Error('Geração interrompida');
+        });
+        const failed = assert.rejects(first, /Geração interrompida/);
+        await entered.promise;
+        try {
+          assert.equal(
+            await withSceneGenerationLock(tenant.id, async () =>
+              assert.fail('Concorrente entrou'),
+            ),
+            null,
+          );
+          assert.equal(
+            await withSceneGenerationLock(
+              randomUUID(),
+              async () => 'outro tenant',
+            ),
+            'outro tenant',
+          );
+        } finally {
+          release.resolve();
+          await failed;
+        }
+        assert.equal(
+          await withSceneGenerationLock(tenant.id, async () => 'retomado'),
+          'retomado',
+        );
+        assert.equal(
+          await withSceneGenerationLock(tenant.id, async () => 'após commit'),
+          'após commit',
+        );
+      },
+    );
+
     for (const nextUrl of [urlB, urlA])
       await t.test(
         `resposta antiga não vence uma leitura nova de ${nextUrl === urlA ? 'mesma URL' : 'outra URL'}`,

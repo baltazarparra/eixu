@@ -47,6 +47,40 @@ Na mesma revisão, o build servido em `http://localhost:3100` passou em 22 verif
 
 ## Cadastro de marca e cenas aprovadas no chat, 10/09/2026
 
+### Correções da revisão do PR #3
+
+Os quatro achados restantes da revisão receberam correção e regressão:
+cadastro preservando cliente/logo diante de falha na leitura social; reserva
+de orçamento antes de qualquer espera e exclusão de geração concorrente por
+tenant; destaque com contraste medido por superfície; avaliação chegando à
+revisão depois das aprovações, inclusive no atelier, e registrando término
+incompleto quando o limite é esgotado.
+
+- `test:sites`: 63 casos passaram, incluindo chamadas simultâneas, candidata
+  posterior ao snapshot da rota, liberação de orçamento sem tentativa paga,
+  contraste por tom e o fluxo do runner nos seis layouts com modelos simulados.
+- `test:admin` com Chrome: 27 passaram; a integração Postgres foi executada
+  separadamente, com 11 casos aprovados. Ela usou PostgreSQL local descartável
+  e o driver Neon real, confirmando exclusão mútua entre conexões, independência
+  entre tenants, coexistência com o lock de upload e liberação após rollback e
+  commit. Blob e rede permaneceram simulados.
+- Tipos, build Next.js 16.3.3, formatação e lint dos arquivos alterados passaram.
+  O lint global continua com os 20 erros anteriores, nos mesmos 13 arquivos.
+- O CSS do build foi aplicado a componentes reais com dados sintéticos no
+  Chrome: 336 amostras de destaque em cada largura, 1440 e 390 px, com mínimo
+  de 4,507:1; o par texto/fundo dos botões teve mínimo de 4,634:1. Nenhum
+  overflow. A regra antiga que sobrescrevia a cor do FAQ aberto foi corrigida.
+- O smoke HTTP local passou em oito casos: institucional/login em 200, APIs
+  administrativas/chat sem sessão em 401, chat de imagens removido e acesso
+  direto a site de cliente em 404.
+
+Não houve chamada paga, escrita em Neon/Blob remoto nem publicação de páginas
+de clientes. As medições do navegador usaram fixtures, não sites publicados.
+O runner foi exercitado com fases simuladas; `eval:site --generate` com os
+provedores reais continua pendente. O schema não mudou.
+
+### Evidência anterior às correções
+
 Tipos (`next typegen` + `tsc --noEmit`), `npm run test:sites` com 47 casos,
 `npm run test:admin` com 22 executados e dois pulados (navegador e Postgres
 local), build Next.js de produção e formatação passaram. O lint global manteve
