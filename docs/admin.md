@@ -2,7 +2,11 @@
 
 ## Encontrar ou cadastrar um cliente
 
-Entre em `/admin` com a credencial do operador. A busca procura nome ou endereço; os filtros separam rascunhos e clientes com site publicado. Abra **Novo cliente** para cadastrar nome, endereço, contatos, briefing e marca. O endereço aceita letras minúsculas, números e hífens; nomes reservados e duplicados são recusados.
+Entre em `/admin` com a credencial do operador. A busca procura nome ou endereço; os filtros separam rascunhos e clientes com site publicado. Abra **Novo cliente** para cadastrar nome, endereço, contatos, briefing, vibe e marca. O endereço aceita letras minúsculas, números e hífens; nomes reservados e duplicados são recusados.
+
+Em **Contatos**, tudo é opcional e vai direto para o site. Cada telefone é WhatsApp ou telefone comum: o primeiro WhatsApp vira o botão flutuante e os CTAs rastreados, os demais aparecem no rodapé, e o telefone comum vira link de ligação. O e-mail aparece no rodapé. Cada endereço vira a seção "Onde estamos", com mapa e link de rota, logo acima do rodapé de toda página comum; com mais de um, o visitante alterna entre eles. As redes sociais aparecem no rodapé com o ícone da rede, e o primeiro Instagram ou LinkedIn da lista é o perfil lido para o briefing.
+
+Em **Vibe do site**, escolha a linguagem visual: **Comercial** é o padrão equilibrado entre prova e conversão; **Moderno** usa superfície escura, monocromia e capítulos espaçados; **Ousado** abre com tipografia enorme, muito branco e imagem de borda a borda; **Artístico** usa papel quente, display serifada e lavagens de cor. A vibe limita o que o agente pode escolher de tipografia, ritmo, superfície e tratamento de imagem. Ela é definida só no cadastro: mudar depois exige reconstruir as páginas na conversa do site.
 
 Em Marca, envie o logo, opcional, e escolha três cores: a primária pinta seções e superfícies, a secundária alterna o ritmo e a de acento vai nos botões, links e destaques. Primária e secundária precisam ser diferentes. O agente respeita essas cores e decide só estrutura, tipografia e leitura; o site escurece sozinho uma cor que não alcança contraste mínimo.
 
@@ -10,11 +14,11 @@ O painel é uma operação administrativa global: quem tem a credencial pode ace
 
 ## Preparar os dados
 
-Dentro do cliente, a navegação reúne **Site**, **Imagens**, **Tráfego** e **Dados**. Em Dados, atualize diretamente contatos e briefing: segmento, região, público, oferta, ação esperada, rede social, fatos confirmados, restrições e até três referências. A edição dos campos não usa o chat; a descrição de um avatar social novo pode consumir uma chamada ao modelo.
+Dentro do cliente, a navegação reúne **Site**, **Imagens**, **Tráfego** e **Dados**. Em Dados, atualize diretamente contatos e briefing: telefones, e-mail, endereços, redes sociais, segmento, região, público, oferta, ação esperada, fatos confirmados, restrições e até três referências. A vibe aparece como informação, sem edição. A edição dos campos não usa o chat; a descrição de um avatar social novo pode consumir uma chamada ao modelo.
 
 Todos os campos do briefing são opcionais e cada um traz a legenda do que registrar. **Fatos confirmados** é o que a empresa faz e comprova; o site só afirma o que estiver ali ou numa referência lida, e sem isso o agente declara lacunas. **Restrições** é o que ele não pode prometer nem mostrar.
 
-**Rede social** aceita `@perfil` do Instagram ou a página de empresa no LinkedIn. Ao salvar, o painel lê nome, bio e foto de perfil públicos e descreve o avatar para orientar marca e imagens. A leitura é melhor esforço: perfil pessoal do LinkedIn e boa parte das contas do Instagram respondem a tela de login, e o card mostra o motivo. Nesse caso, cole a bio em Fatos confirmados e envie a imagem em Logo do site. **Ler perfil novamente** repete a tentativa.
+**Redes sociais** aceita `@perfil`, o link da rede ou a página de empresa no LinkedIn; o primeiro Instagram ou LinkedIn da lista é o perfil lido. Ao salvar, o painel lê nome, bio e foto de perfil públicos e descreve o avatar para orientar marca e imagens. A leitura é melhor esforço: perfil pessoal do LinkedIn e boa parte das contas do Instagram respondem a tela de login, e o card mostra o motivo. Nesse caso, cole a bio em Fatos confirmados e envie a imagem em Logo do site. **Ler perfil novamente** repete a tentativa.
 
 Trocar ou remover o perfil durante a leitura descarta a resposta anterior. Uma releitura com o mesmo avatar reaproveita a imagem e a descrição existentes. O gerador de imagens também recebe as restrições e evidências consolidadas no briefing do site.
 

@@ -1,18 +1,21 @@
+import { ContactFields } from '@/components/admin/contact-fields';
 import type { Intake } from '@/lib/tenant-intake';
+import type { Contacts } from '@/lib/tenant-contacts';
 
 /** Campos diretos do operador, compartilhados entre cadastro e edição. */
 export function TenantFields({
   values = {},
   intake = {},
+  contacts,
   withSlug = false,
 }: {
   values?: {
     name?: string;
     slug?: string;
-    whatsapp?: string | null;
     contactEmail?: string | null;
   };
   intake?: Partial<Intake>;
+  contacts?: Contacts;
   withSlug?: boolean;
 }) {
   return (
@@ -45,17 +48,6 @@ export function TenantFields({
           </label>
         ) : null}
         <label className="admin-field">
-          <span>WhatsApp com DDI</span>
-          <input
-            className="admin-input"
-            name="whatsapp"
-            maxLength={20}
-            defaultValue={values.whatsapp ?? ''}
-            inputMode="tel"
-            placeholder="55 DDD número"
-          />
-        </label>
-        <label className="admin-field">
           <span>E-mail de contato</span>
           <input
             className="admin-input"
@@ -66,6 +58,7 @@ export function TenantFields({
           />
         </label>
       </div>
+      <ContactFields contacts={contacts} />
       <div className="mt-7 border-t pt-6">
         <h2 className="text-base font-semibold">Briefing do negócio</h2>
         <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
@@ -95,23 +88,6 @@ export function TenantFields({
           ))}
           <label className="admin-field">
             <span>
-              Rede social <em>opcional</em>
-            </span>
-            <input
-              className="admin-input"
-              name="socialUrl"
-              maxLength={200}
-              defaultValue={intake.socialUrl ?? ''}
-              placeholder="@perfil ou linkedin.com/company/empresa"
-            />
-            <small>
-              Instagram ou página de empresa no LinkedIn. Lemos nome, bio e foto
-              de perfil quando a rede permite; se ela bloquear, o painel avisa e
-              você cola a bio em Fatos confirmados.
-            </small>
-          </label>
-          <label className="admin-field">
-            <span>
               Referências <em>opcional</em>
             </span>
             <textarea
@@ -123,7 +99,7 @@ export function TenantFields({
             />
             <small>
               Site atual, materiais ou inspirações que o agente pode abrir.
-              Instagram e LinkedIn vão no campo Rede social.
+              Instagram e LinkedIn vão em Contatos, no campo Redes sociais.
             </small>
           </label>
           <label className="admin-field">

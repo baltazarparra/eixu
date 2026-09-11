@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { contactsOf } from '@/lib/tenant-contacts';
 import type { BlockInstance, Page, PageType, Seo, Tenant } from '@/lib/types';
 
 type Row = Record<string, unknown>;
@@ -26,6 +27,9 @@ function toTenant(row: Row): Tenant {
       density: 4,
     }) as Tenant['dials'],
     imageGuide: (row.image_guide ?? {}) as Tenant['imageGuide'],
+    // Cliente anterior à coluna continua com o WhatsApp virando o primeiro
+    // telefone da lista, então rodapé e JSON-LD não ficam vazios.
+    contacts: contactsOf(row.contacts, (row.whatsapp as string) ?? null),
     whatsapp: (row.whatsapp as string) ?? null,
     contactEmail: (row.contact_email as string) ?? null,
     ga4Id: (row.ga4_id as string) ?? null,

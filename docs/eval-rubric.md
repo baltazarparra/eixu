@@ -43,7 +43,8 @@ própria e coerente. O aceite é média 2 sem nenhum critério em 0.
 
 1. **Identidade ligada ao negócio.** Paleta, tipografia e motivo respondem ao
    que a empresa faz, não a um gosto genérico. A direção não serviria sem
-   alteração para outro cliente.
+   alteração para outro cliente e cumpre a vibe escolhida no cadastro, que o
+   relatório registra em `report.vibe`.
 2. **Decisão de abertura.** O hero carrega escala, recorte ou contraste
    próprios, além de cor e fonte.
 3. **Seção protagonista.** Existe uma seção que mostra o negócio em imagem e

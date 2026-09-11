@@ -18,6 +18,7 @@ import {
   nearestDesign,
 } from '@/lib/design/profile';
 import { hasDuplicateComposition } from '@/lib/design/uniqueness';
+import { VIBE_LABEL, laneIssues, vibeOf } from '@/lib/design/vibes';
 import { guideTool } from '@/lib/ai/guide-tool';
 import {
   getGuide,
@@ -933,11 +934,25 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           );
         }
 
+        // A vibe do cadastro delimita os eixos: ela é escolha do operador, e
+        // a direção decide dentro dela, não contra ela.
+        const vibe = vibeOf(activeBrand);
+        const outOfLane = laneIssues(vibe, input);
+        if (outOfLane.length) {
+          throw new ToolError(
+            `A direção não cabe na vibe ${VIBE_LABEL[vibe]} escolhida no cadastro. ${outOfLane.join(' ')}`,
+          );
+        }
+
         const profile = completeDesignProfile(input);
+        // A comparação é dentro da mesma vibe: faixas diferentes se sobrepõem
+        // em vários eixos e um site moderno não repete um ousado com os
+        // mesmos enums.
         const rows = (await db()`
           select brand->'design' as design
           from tenants
           where id <> ${tenant.id} and brand ? 'design'
+            and coalesce(brand->>'vibe', 'comercial') = ${vibe}
         `) as { design?: unknown }[];
         const nearest = nearestDesign(
           profile,
@@ -945,7 +960,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         );
         if (nearest && nearest.distance < 3) {
           throw new ToolError(
-            `Direção estrutural muito parecida com outro site: distância ${nearest.distance}/8. Mude pelo menos ${3 - nearest.distance} decisões entre heroComposition, navigation, rhythm, imageTreatment, surfaceStyle, motif e tipografia.`,
+            `Direção estrutural muito parecida com outro site da vibe ${VIBE_LABEL[vibe]}: distância ${nearest.distance}/8. Mude pelo menos ${3 - nearest.distance} decisões entre heroComposition, navigation, rhythm, imageTreatment, surfaceStyle, motif e tipografia, sempre dentro da vibe.`,
           );
         }
 
@@ -987,6 +1002,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         activeDials = dials;
         return {
           ok: true,
+          vibe,
           concept: profile.concept,
           signatureElement: profile.signatureElement,
           structuralDistance: nearest?.distance ?? null,

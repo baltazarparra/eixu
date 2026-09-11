@@ -4,6 +4,7 @@ import { isAuthenticated } from '@/lib/auth';
 import { countTenantData, getTenantBySlug } from '@/lib/tenant-queries';
 import { intakeSchema } from '@/lib/tenant-intake';
 import { parseSocialRecord } from '@/lib/social-profile';
+import { vibeOf } from '@/lib/design/vibes';
 import { SettingsForm } from './settings-form';
 
 export const dynamic = 'force-dynamic';
@@ -33,14 +34,15 @@ export default async function SettingsPage({
             slug: tenant.slug,
             name: tenant.name,
             status: tenant.status,
-            whatsapp: tenant.whatsapp,
             contactEmail: tenant.contactEmail,
             logoUrl: tenant.brand.logoUrl,
+            vibe: vibeOf(tenant.brand),
             pageCount: counts.pages,
             leadCount: counts.leads,
             imageCount: counts.images,
           }}
           intake={intake.success ? intake.data : {}}
+          contacts={tenant.contacts}
           social={parseSocialRecord(tenant.brief.social)}
         />
       </main>

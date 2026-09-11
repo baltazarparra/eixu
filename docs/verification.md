@@ -27,6 +27,45 @@ npm run format -- --check README.md AGENTS.md docs
 
 O projeto possui `test:sites` e `test:admin`, com testes de contrato sem banco e uma suíte opcional de concorrência em PostgreSQL local. Nenhum desses testes usa geração paga. Não possui script genérico `test`, `verify` ou CI versionada. Não trate um comando inexistente como gate nem substitua falhas por uma declaração do modelo.
 
+## Contatos, localização e vibes, 10/09/2026
+
+A entrega acrescenta a coluna `tenants.contacts`, a seção automática de
+localização, a coluna de contato no rodapé e as quatro vibes de site.
+
+**Ordem obrigatória:** `npm run db:migrate` no banco alvo **antes** do deploy.
+Até a coluna existir, criar cliente e salvar Dados falham com a mensagem
+genérica de erro, sem gravar linha parcial; a leitura e o site publicado
+continuam funcionando, porque `contactsOf` tolera a ausência da coluna e
+reaproveita o WhatsApp já gravado. A migração é operação do operador e não foi
+executada por este trabalho.
+
+Checks executados em 10/09/2026, com Node.js 24.15.0:
+
+| Check                  | Resultado observado                                                                  |
+| ---------------------- | ------------------------------------------------------------------------------------ |
+| `npx tsc --noEmit`     | Passou.                                                                              |
+| `npm run test:sites`   | 67 casos, todos passaram.                                                            |
+| `npm run test:admin`   | 34 casos, 32 passaram e 2 pularam sem `EIXU_TEST_POSTGRES_URL` e `EIXU_CHROME_PATH`. |
+| `npm run build:vercel` | Passou, Next.js 16.3.3/Turbopack.                                                    |
+| `npm run lint`         | Falhou com os mesmos 20 erros preexistentes; nenhum nos arquivos tocados.            |
+
+Cobertura nova: normalização de telefone, endereço e rede social, incluindo a
+recusa de esquema que não seja `http(s)`; pareamento de telefone e tipo por
+índice no formulário, com linha vazia descartada; leitura tolerante da coluna
+ausente e do cliente anterior à mudança; faixa de cada vibe aceitando e
+recusando direções, com a mensagem apontando o eixo; recusa de `set_design`
+fora da faixa e consulta de unicidade restrita à mesma vibe; prompt declarando
+vibe e contatos; âncora `onde-estamos` reservada no pre-flight; `/go/wa?n=`
+escolhendo o segundo WhatsApp e caindo no principal com índice inválido;
+JSON-LD com telefone em E.164, e-mail, endereços e redes.
+
+**Não verificado:** a renderização do rodapé, da seção de localização e das
+três vibes no navegador, porque depende da migração e de um cliente real. Falta
+o smoke descrito no plano: criar um cliente por vibe com dois telefones, dois
+endereços e três redes, conferir a prévia em 1440 e 390 px e comparar com as
+referências. O repositório não tem teste de renderização React, então o que
+está coberto é o contrato dos módulos, não o HTML final.
+
 ## Revisão do admin, 10/09/2026
 
 O escopo, comparação de custo, verificações e limitações estão em [Revisão do admin](admin-review.md). O manual de operação está em [Admin](admin.md). Os registros abaixo preservam as evidências de cada entrega anterior e não devem ser lidos como uma medição da versão atual.

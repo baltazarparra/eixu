@@ -4,6 +4,7 @@ import { isAuthenticated } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { getTenantBySlug, setBrandLogo } from '@/lib/tenant-queries';
 import { intakeSchema } from '@/lib/tenant-intake';
+import { contactsSchema, primaryWhatsapp } from '@/lib/tenant-contacts';
 import { tenantDetailsSchema } from '@/lib/admin/tenant-input';
 import { canApplyLogo } from '@/lib/images/logo-access';
 import { normalizeSocialUrl, parseSocialRecord } from '@/lib/social-profile';
@@ -16,7 +17,7 @@ import {
 const patch = z
   .object({
     name: tenantDetailsSchema.shape.name.optional(),
-    whatsapp: tenantDetailsSchema.shape.whatsapp.nullable().optional(),
+    contacts: contactsSchema.optional(),
     contactEmail: tenantDetailsSchema.shape.contactEmail.nullable().optional(),
     logoUrl: z.url().nullable().optional(),
     intake: intakeSchema.optional(),
@@ -64,10 +65,14 @@ export async function PATCH(
   const previousSocial = intakeSchema.safeParse(tenant.brief.intake).data
     ?.socialUrl;
 
+  // whatsapp continua sendo coluna própria, derivada da lista de contatos:
+  // /go/wa, botão flutuante e JSON-LD seguem lendo um número só.
+  const contacts = input.contacts;
   await db()`
     update tenants set
       name = case when ${input.name !== undefined} then ${input.name ?? null} else name end,
-      whatsapp = case when ${input.whatsapp !== undefined} then ${input.whatsapp ?? null} else whatsapp end,
+      contacts = case when ${contacts !== undefined} then ${JSON.stringify(contacts ?? {})}::jsonb else contacts end,
+      whatsapp = case when ${contacts !== undefined} then ${contacts ? primaryWhatsapp(contacts) : null} else whatsapp end,
       contact_email = case when ${input.contactEmail !== undefined} then ${input.contactEmail ?? null} else contact_email end,
       brief = case when ${input.intake !== undefined} then brief || jsonb_build_object('intake', ${JSON.stringify(input.intake ?? {})}::jsonb) else brief end,
       updated_at = now()

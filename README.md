@@ -5,9 +5,11 @@ Site institucional da EIXU e MVP de uma plataforma operada por agentes para cria
 ## O que já existe
 
 - Institucional com home, oferta de passagem de vibe coding para produção e cases de SaldoPix e NaiaCRM.
-- Painel com login de operador, busca e filtros de clientes, cadastro com logo e paleta, chat com histórico recente, prévia em desktop/mobile, dados e briefing editáveis e publicação.
+- Painel com login de operador, busca e filtros de clientes, cadastro com logo, paleta, vibe e contatos, chat com histórico recente, prévia em desktop/mobile, dados e briefing editáveis e publicação.
 - Páginas orgânicas, landing pages pagas, posts e páginas de agradecimento compostas por blocos com schemas Zod. O agente edita conteúdo por ferramentas; o painel também permite ajustar dados do cliente e gerenciar imagens.
 - Imagens geradas na conversa do site, com guia por cliente, crítica e aprovação do operador uma a uma. Só a aprovada entra na biblioteca; a recusada é apagada. Aprovar um logo e aplicá-lo continuam sendo ações distintas.
+- Contatos do cadastro renderizados sozinhos no site: telefones, e-mail e redes sociais no rodapé, e uma seção de localização com mapa acima dele quando há endereço.
+- Quatro vibes de site escolhidas na criação do cliente, que delimitam a direção de arte, o CSS e a direção de imagem.
 - Formulários, WhatsApp rastreado, atribuição de campanhas, exportação de contatos em CSV e painel de tráfego com gastos informados à mão.
 
 É um MVP de operação centralizada: há uma credencial administrativa compartilhada, sem contas ou permissões por cliente, cobrança ou integração automática com plataformas de anúncios. Os [limites atuais](docs/architecture.md#limites-atuais) fazem parte do contrato de desenvolvimento.
@@ -78,7 +80,7 @@ Os três grupos de rotas têm layouts e CSS próprios. A publicação valida pá
 | `npm run eval:admin-cost`                            | Compara o payload de histórico em memória; `-- --live` executa três chamadas pagas controladas, sem escrever no banco/Blob.                          |
 | `npm run eval:site -- <caso>`                        | Roda a geração real num tenant descartável e mede o resultado pela rubrica.                                                                          |
 | `npm run format -- --check README.md AGENTS.md docs` | Confere a formatação da documentação sem reescrever arquivos.                                                                                        |
-| `npm run db:migrate`                                 | Aplica statements idempotentes de `db/schema.sql`; escreve no banco.                                                                                 |
+| `npm run db:migrate`                                 | Aplica statements idempotentes de `db/schema.sql`; escreve no banco. Coluna nova exige rodar antes do deploy do código que a usa.                    |
 | `npm run db:seed-demo`                               | Sobrescreve e publica home/obrigado do tenant `vertice` já existente; altera marca e dials. Use só em demo descartável.                              |
 | `npm run db:requantize-logos`                        | Recomprime logos de todos os tenants do banco conectado, sobrescrevendo arquivos no Blob.                                                            |
 | `npm run dev` / `npm run build` / `npm start`        | Caminho Vinext/Cloudflare herdado; não valida o deploy Next.js da Vercel.                                                                            |

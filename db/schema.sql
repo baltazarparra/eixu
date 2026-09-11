@@ -113,6 +113,10 @@ alter table tenants       add column if not exists image_guide jsonb not null de
 alter table chat_messages add column if not exists channel text not null default 'site';
 -- 'foto' ou 'logo'. Coluna própria porque target_block é enum de blocos do site.
 alter table images        add column if not exists kind text not null default 'foto';
+-- Telefones, endereços e redes do cliente. Coluna própria porque brand é
+-- reescrita inteira pelas ferramentas do agente e brief é briefing; estes são
+-- dados de produto renderizados no rodapé e na seção de localização.
+alter table tenants       add column if not exists contacts jsonb not null default '{}'::jsonb;
 
 create index if not exists pages_tenant_idx        on pages (tenant_id);
 create index if not exists images_tenant_time_idx  on images (tenant_id, created_at desc);

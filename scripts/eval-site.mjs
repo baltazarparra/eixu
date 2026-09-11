@@ -38,6 +38,10 @@ const { listImages, setStatus } = await jiti.import('../lib/images/queries.ts');
 const { getTenantBySlug, listPages } = await jiti.import(
   '../lib/tenant-queries.ts',
 );
+const { contactsSchema, primaryWhatsapp } = await jiti.import(
+  '../lib/tenant-contacts.ts',
+);
+const { vibeSchema } = await jiti.import('../lib/design/vibes.ts');
 
 const [caseName, ...flags] = process.argv.slice(2);
 if (!caseName) {
@@ -61,12 +65,20 @@ const sql = db();
 
 async function prepareTenant() {
   if (fresh) await sql`delete from tenants where slug = ${spec.slug}`;
+  const contacts = contactsSchema.parse(spec.contacts ?? {});
+  const vibe = vibeSchema.parse(spec.vibe ?? 'comercial');
+  const whatsapp = primaryWhatsapp(contacts) ?? spec.whatsapp ?? null;
   await sql`
-    insert into tenants (slug, name, whatsapp, brief)
-    values (${spec.slug}, ${spec.name}, ${spec.whatsapp ?? null},
-            ${JSON.stringify({ intake: spec.intake })}::jsonb)
+    insert into tenants (slug, name, whatsapp, contact_email, brief, brand, contacts)
+    values (${spec.slug}, ${spec.name}, ${whatsapp}, ${spec.contactEmail ?? null},
+            ${JSON.stringify({ intake: spec.intake })}::jsonb,
+            ${JSON.stringify({ vibe })}::jsonb,
+            ${JSON.stringify(contacts)}::jsonb)
     on conflict (slug) do update set name = excluded.name,
-      whatsapp = excluded.whatsapp, brief = excluded.brief, updated_at = now()
+      whatsapp = excluded.whatsapp, contact_email = excluded.contact_email,
+      brief = excluded.brief, contacts = excluded.contacts,
+      -- Mescla para uma reexecução não apagar a direção já persistida.
+      brand = tenants.brand || excluded.brand, updated_at = now()
   `;
   const tenant = await getTenantBySlug(spec.slug);
   if (
@@ -263,6 +275,7 @@ report.pageFindings = pages.flatMap((page) =>
     .map((finding) => ({ page: `/${page.slug}`, ...finding })),
 );
 report.design = tenant.brand.design ?? null;
+report.vibe = tenant.brand.vibe ?? 'comercial';
 report.usage = report.phases.reduce(
   (total, phase) => ({
     inputTokens: total.inputTokens + (phase.usage?.inputTokens ?? 0),

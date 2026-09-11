@@ -2,6 +2,27 @@
   "name": "Sabiá Oficina Mecânica",
   "slug": "eval-sabia",
   "whatsapp": "5511999990000",
+  "contactEmail": "contato@sabiaoficina.com.br",
+  "vibe": "comercial",
+  "contacts": {
+    "phones": [
+      {
+        "number": "5511999990000",
+        "whatsapp": true
+      },
+      {
+        "number": "551133334444",
+        "whatsapp": false
+      }
+    ],
+    "addresses": [
+      {
+        "label": "Oficina",
+        "text": "Rua Voluntários da Pátria, 1200, Santana, São Paulo, SP"
+      }
+    ],
+    "social": ["https://www.instagram.com/sabiaoficina/"]
+  },
   "intake": {
     "segment": "oficina mecânica automotiva",
     "region": "São Paulo, zona norte",

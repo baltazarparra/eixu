@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { intakeSchema, lines } from '@/lib/tenant-intake';
+import { contactsSchema, derivedSocialUrl } from '@/lib/tenant-contacts';
+import { vibeSchema } from '@/lib/design/vibes';
 import { text } from '@/lib/form-data';
 
 export const RESERVED_TENANTS = new Set([
@@ -24,28 +26,54 @@ export const tenantSlugSchema = z
     (slug) => !RESERVED_TENANTS.has(slug),
     'Esse endereço é reservado. Escolha outro.',
   );
+// O WhatsApp saiu daqui: ele é derivado de contacts na escrita, para o site
+// continuar lendo uma coluna só e o operador cadastrar vários números.
 export const tenantDetailsSchema = z.object({
   name: z.string().trim().min(1, 'Informe o nome.').max(80),
-  whatsapp: z
-    .string()
-    .trim()
-    .max(20)
-    .refine(
-      (value) => !value || /^\+?[\d\s()-]{8,20}$/.test(value),
-      'Confira o WhatsApp, incluindo o DDI.',
-    )
-    .refine(
-      (value) => !value || /^\d{8,15}$/.test(value.replace(/\D/g, '')),
-      'Informe de 8 a 15 dígitos, incluindo o DDI.',
-    )
-    .transform((value) => value.replace(/\D/g, '') || null),
   contactEmail: z
     .union([z.literal(''), z.email('Confira o e-mail de contato.')])
     .transform((value) => value || null),
 });
 
+/** Valores repetidos de uma linha do formulário de contatos. */
+function rows(form: FormData, name: string): string[] {
+  return form
+    .getAll(name)
+    .map((value) => (typeof value === 'string' ? value.trim() : ''));
+}
+
+/**
+ * Telefones, endereços e redes chegam como campos repetidos, um por linha do
+ * formulário. O índice mantém número e tipo alinhados; linha vazia é ignorada
+ * depois do pareamento, senão remover uma linha trocaria o tipo das seguintes.
+ */
+export function contactsFromForm(form: FormData) {
+  const numbers = rows(form, 'phone');
+  const kinds = rows(form, 'phoneKind');
+  const labels = rows(form, 'addressLabel');
+  const texts = rows(form, 'addressText');
+  return contactsSchema.safeParse({
+    phones: numbers
+      .map((number, index) => ({
+        number,
+        whatsapp: kinds[index] === 'whatsapp',
+      }))
+      .filter((phone) => phone.number),
+    addresses: texts
+      .map((value, index) => ({ label: labels[index] ?? '', text: value }))
+      .filter((address) => address.text),
+    social: rows(form, 'social').filter(Boolean),
+  });
+}
+
+export function vibeFromForm(form: FormData) {
+  return vibeSchema.safeParse(text(form, 'vibe', 'comercial') || 'comercial');
+}
+
 export function intakeFromForm(form: FormData) {
   const field = (name: string) => text(form, name).trim();
+  // O perfil lido no briefing é a primeira rede que a leitura sabe abrir.
+  const contacts = contactsFromForm(form);
   return intakeSchema.safeParse({
     segment: field('segment'),
     region: field('region'),
@@ -55,7 +83,7 @@ export function intakeFromForm(form: FormData) {
     evidence: lines(field('evidence')),
     constraints: lines(field('constraints')),
     references: lines(field('references'), 3),
-    socialUrl: field('socialUrl'),
+    socialUrl: contacts.success ? derivedSocialUrl(contacts.data) : '',
   });
 }
 

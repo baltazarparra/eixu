@@ -1,8 +1,11 @@
-import type { BlockInstance, Tenant } from '@/lib/types';
+import type { BlockInstance, PageType, Tenant } from '@/lib/types';
 import { blockSchemas, isBlockType } from '@/lib/blocks/registry';
 import * as B from '@/lib/blocks/components';
 import { SiteMotion } from '@/lib/blocks/motion';
 import { VisualExplorer, type ExplorerProps } from '@/lib/blocks/explorer';
+import { SiteLocation } from '@/lib/blocks/location';
+import { contactsOf } from '@/lib/tenant-contacts';
+import { vibeOf, VIBE_LOCATION_TONE } from '@/lib/design/vibes';
 import { previewProps } from '@/lib/sites/preview';
 
 export type RenderContext = {
@@ -10,6 +13,8 @@ export type RenderContext = {
   /** Posts publicados, usados por editorial.postList. */
   posts?: { slug: string; title: string; excerpt?: string; date?: string }[];
   pagePath: string;
+  /** Tipo da página: post e obrigado não recebem a seção de localização. */
+  pageType?: PageType;
   /** Só em preview: propaga o tenant porque não há subdomínio. */
   previewTenant?: string;
   isPreview?: boolean;
@@ -40,10 +45,30 @@ export function RenderBlocks({
     else content.push(block);
   }
   const usedAnchors = new Set<string>();
+  const contacts = contactsOf(ctx.tenant.contacts, ctx.tenant.whatsapp);
+  const showLocation =
+    contacts.addresses.length > 0 &&
+    ctx.pageType !== 'post' &&
+    ctx.pageType !== 'thank_you';
+  // A âncora da seção automática é reservada antes dos blocos: um bloco com o
+  // mesmo nome perde o id em vez de duplicá-lo na página.
+  if (showLocation) usedAnchors.add('onde-estamos');
   return (
     <SiteMotion intensity={ctx.tenant.dials.motion}>
       {renderList(leading, ctx, usedAnchors)}
-      <main>{renderList(content, ctx, usedAnchors)}</main>
+      <main>
+        {renderList(content, ctx, usedAnchors)}
+        {showLocation ? (
+          <div
+            id="onde-estamos"
+            className="site-block site-location-block"
+            data-block="site.location"
+            data-tone={VIBE_LOCATION_TONE[vibeOf(ctx.tenant.brand)]}
+          >
+            <SiteLocation contacts={contacts} />
+          </div>
+        ) : null}
+      </main>
       {renderList(trailing, ctx, usedAnchors)}
       <B.FloatingWhatsapp ctx={ctx} />
     </SiteMotion>

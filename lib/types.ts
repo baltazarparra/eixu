@@ -1,6 +1,8 @@
 export type PageType = 'page' | 'paid_lp' | 'post' | 'thank_you';
 
 import type { DesignProfile } from '@/lib/design/profile';
+import type { Vibe } from '@/lib/design/vibes';
+import type { Contacts } from '@/lib/tenant-contacts';
 import type { Inbound } from '@/lib/taste/site';
 
 export type Dials = {
@@ -21,6 +23,8 @@ export type Brand = {
   highlight?: string;
   /** 'operador' quando as cores vieram do cadastro e não são reescritas. */
   paletteSource?: 'operador';
+  /** Vibe escolhida no cadastro. Ausente significa o contrato comercial. */
+  vibe?: Vibe;
   ink?: string;
   paper?: string;
   surface?: string;
@@ -111,6 +115,9 @@ export type Tenant = {
   brand: Brand;
   dials: Dials;
   imageGuide: ImageGuide;
+  /** Telefones, endereços e redes do cadastro, renderizados no site. */
+  contacts: Contacts;
+  /** WhatsApp principal, derivado de contacts na escrita. */
   whatsapp: string | null;
   contactEmail: string | null;
   ga4Id: string | null;
