@@ -86,6 +86,23 @@ uma página que possa ter mudado. Ao recarregar o painel, a persistência ainda 
 textual, dos últimos 60 itens, sem restauração de anexos, traces ou assinaturas
 antigas. Não atribua a esse histórico as garantias do loop ativo.
 
+O chat mantém um indicador de atividade e tempo durante toda a requisição,
+inclusive quando só chegam partes de raciocínio, que não são exibidas. **Ver
+progresso** relê o estado salvo. Consultas curtas como “travou?” recebem esse
+estado diretamente, sem chamar o modelo; pedidos combinados de edição seguem
+para o agente. Esse recorte é determinístico e restrito às expressões de
+`lib/ai/chat-progress.ts`, não um classificador geral de intenção.
+
+Uma parada em ferramentas pode terminar sem resposta textual. Nesse caso,
+`lib/ai/chat-stream.ts` acrescenta um recibo do estado atual ao stream e ao
+histórico, antes de encerrar. O recibo distingue etapa pendente de revisão
+concluída; atingir o limite de passos é informado. Erros recuperáveis de entrada
+ou execução de ferramenta são tentativas recusadas, não falhas do turno inteiro.
+Logs identificam fase, ferramenta e tenant por ID, sem argumentos ou credenciais.
+Fim de stream sem evento terminal vira erro explícito no cliente. O painel relê
+o estado também ao encerrar ou interromper um turno; não há job durável nem
+garantia de continuidade quando a aba fecha.
+
 ## Compor, observar, corrigir, conferir
 
 O fluxo continua briefing → cenas → composição → revisão. O planejamento escolhe
