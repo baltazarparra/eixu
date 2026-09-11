@@ -87,11 +87,12 @@ textual, dos últimos 60 itens, sem restauração de anexos, traces ou assinatur
 antigas. Não atribua a esse histórico as garantias do loop ativo.
 
 O chat mantém um indicador de atividade e tempo durante toda a requisição,
-inclusive quando só chegam partes de raciocínio, que não são exibidas. **Ver
-progresso** relê o estado salvo. Consultas curtas como “travou?” recebem esse
-estado diretamente, sem chamar o modelo; pedidos combinados de edição seguem
-para o agente. Esse recorte é determinístico e restrito às expressões de
-`lib/ai/chat-progress.ts`, não um classificador geral de intenção.
+inclusive quando só chegam partes de raciocínio, que não são exibidas.
+Consultas curtas como “travou?” recebem o estado salvo diretamente, sem chamar
+o modelo; “continuar” e equivalentes abrem a execução em etapas em vez de um
+turno de edição; pedidos combinados seguem para o agente. Esse recorte é
+determinístico e restrito às expressões de `lib/ai/chat-progress.ts`, não um
+classificador geral de intenção.
 
 Uma parada em ferramentas pode terminar sem resposta textual. Nesse caso,
 `lib/ai/chat-stream.ts` acrescenta um recibo do estado atual ao stream e ao
@@ -100,8 +101,43 @@ concluída; atingir o limite de passos é informado. Erros recuperáveis de entr
 ou execução de ferramenta são tentativas recusadas, não falhas do turno inteiro.
 Logs identificam fase, ferramenta e tenant por ID, sem argumentos ou credenciais.
 Fim de stream sem evento terminal vira erro explícito no cliente. O painel relê
-o estado também ao encerrar ou interromper um turno; não há job durável nem
-garantia de continuidade quando a aba fecha.
+o estado também ao encerrar ou interromper um turno.
+
+## Execução em etapas no servidor
+
+O laço das quatro fases vivia no navegador. Em 11/09/2026 uma recarga durante a
+etapa de cenas matou a sequência sem deixar rastro: a cena em curso terminou no
+servidor, a seguinte nunca foi pedida, e o painel voltou oferecendo “Continuar”
+como se nada estivesse rodando. O operador então digitou “continuar”, que o
+chat tratava como edição: 16 passos e 339 segundos no caminho errado, com dois
+turnos concorrentes no mesmo cliente.
+
+A execução agora é um registro em `generation_runs`, com um único run ativo por
+cliente garantido por índice parcial. Cada fase é uma invocação própria de
+`/api/admin/[tenant]/generation/step`, que responde 202 e executa em `after()`,
+dentro dos mesmos 800 segundos; ao terminar, ela chama a próxima pela origem
+registrada no run — os domínios de deployment ficam atrás do SSO do projeto, e
+`VERCEL_URL` morreria numa tela de login. O token do despacho assina o ID do run e o salto esperado. A rota reserva
+esse salto no banco antes de agendar `after()` ou avaliar o progresso. Uma
+repetição recebe uma resposta sem trabalho adicional, mesmo durante a fase
+ou depois de sua conclusão; ela não encerra o run do vencedor.
+
+`generation_events` guarda o que o painel mostra: início e fim de fase, começo e
+fim de cada ferramenta com o mesmo rótulo em pt-BR do chat, pausas e erros. São
+rótulos e contadores, sem conteúdo do cliente. O painel lê por consulta
+periódica, reativa a leitura ao iniciar pelo botão ou pelo chat e reconstrói o
+andamento depois de qualquer recarga. As mensagens são paginadas a partir de
+zero, com cursor do último registro entregue; a leitura continua até esvaziar
+o lote mesmo quando o run terminou. O recibo persistido reutiliza a bolha do
+stream e preserva suas ferramentas e metadados. Enquanto um run
+está ativo, `/api/chat` responde 409: os dois disputariam as mesmas páginas.
+Sem sinal por 15 minutos, o run é dado por perdido e o operador pode retomar.
+
+Pausar é encerramento suave: a condição de parada entra no laço do agente e o
+passo corrente termina e salva, em vez de abortar uma chamada paga no meio.
+Gravações em `brief.generation` passaram a ser merge no banco; reescrever o
+objeto inteiro a partir de um snapshot apagava o recibo de revisão gravado por
+outra execução.
 
 ## Compor, observar, corrigir, conferir
 

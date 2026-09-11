@@ -1,5 +1,86 @@
 # Validação e publicação
 
+## Correções da revisão do PR #14, 11/09/2026
+
+Cinco regressões receberam correção e cobertura: o acompanhamento parado após
+iniciar pela própria aba, o despacho repetido encerrando uma execução ativa,
+a prévia sem atualização, os bloqueios de publicação escondidos em repouso e
+o cursor pulando mensagens do chat.
+
+- `npm run test:admin`: 91 testes passaram, sem pulos, com Chrome e PostgreSQL
+  14 local descartável. Duas conexões disputaram o mesmo run e salto; apenas
+  uma reserva venceu, e a repetição preservou o run ativo. O feed entregou
+  lotes a partir de zero, incluindo uma mensagem inserida entre leituras,
+  sem misturar tenants. Recibos preservaram ferramentas e metadados do stream.
+- `npm run test:sites`: 81 testes passaram, sem pulos. Lint global,
+  `npx next typegen && npx tsc --noEmit` e `npm run build:vercel` passaram,
+  incluindo os dois testes dos arquivos de captura no artefato serverless.
+- `npm run test:admin:browser`, com Chrome local: os dois testes passaram.
+  O painel real acompanhou o início e a conclusão sem recarga, drenou mais
+  de 60 mensagens, retomou pelo comando textual e recarregou o iframe quando
+  o conteúdo mudou, preservando-o nas consultas seguintes. Desktop e celular
+  mantiveram os controles; as pendências ficaram visíveis sem run ativo.
+- O build de produção servido localmente respondeu 200 no institucional e
+  no login, e 401 sem sessão no chat e nas rotas de consulta, início, etapa
+  e pausa da geração.
+
+Os testes usaram dados sintéticos e substitutos dos serviços pagos. Este
+ciclo não repetiu uma geração com modelos reais, não alterou banco remoto
+nem publicou rascunhos de clientes.
+
+## Geração em etapas no servidor, 11/09/2026
+
+A criação do cliente `iterum` expôs o custo de orquestrar as fases no
+navegador. A reconstrução pelos logs da Vercel, pelo histórico do chat e pelo
+estado do cliente mostra que nenhum dos travamentos foi do servidor: às
+12:52:24 uma recarga durante a terceira cena matou o laço da aba; a cena em
+curso terminou no servidor às 12:52:41 e a quarta nunca foi pedida. Seguiram-se
+onze recargas em um minuto e a pergunta "travou?". A resposta mandava usar
+**Continuar**, botão que ficava no topo de uma lista que rola sozinha para o
+fim e que, no celular com páginas existentes, estava escondido por CSS. O
+operador digitou "continuar": o chat tratava a palavra como edição e abriu um
+turno livre de 339 s e 16 passos (US$ 0,22). Durante esse turno houve novas
+recargas e uma segunda mensagem, com dois `POST /api/chat` simultâneos no mesmo
+cliente e sem exclusão mútua.
+
+A execução passou a ser um registro em `generation_runs`, com um run ativo por
+cliente garantido por índice parcial, fases encadeadas por invocações próprias
+de `/api/admin/[tenant]/generation/step` e linha do tempo em
+`generation_events`. Detalhes do desenho estão em [Harness](harness.md).
+
+**Ensaio real, cliente sintético `ensaio-runner`, servidor local com Chromium
+do sistema e modelos de produção:**
+
+A execução terminou sozinha em **872 s**, com recibo de revisão completo
+(`visual: complete`, 0 erros, 2 rodadas), cinco fotos, três páginas orgânicas
+mais a de obrigado e nenhum erro de pre-flight. Nenhuma etapa dependeu de aba
+aberta: o único cliente do run foi um script lendo o mesmo `GET` que o painel
+usa.
+
+| Etapa              | Tempo | Observação                                                                                 |
+| ------------------ | ----- | ------------------------------------------------------------------------------------------ |
+| Briefing e direção | 110 s | duas recusas de `set_design` pelo catálogo antes do aceite, registradas como tentativa     |
+| Cenas              | 165 s | cinco vagas do plano em **uma** chamada, em lotes paralelos de três com crítica por imagem |
+| Composição         | 180 s | um reparo antes do lote válido                                                             |
+| Revisão            | 407 s | duas rodadas: captura, crítica, correções e conferência                                    |
+
+No `iterum` a mesma etapa de cenas custou cinco requisições sequenciais de 60 a
+77 s. O total de 872 s é o número medido, não um teto prometido: a revisão
+domina o tempo e varia com o número de correções.
+
+O ensaio também mostrou dois defeitos de texto, corrigidos: o rótulo repetia a
+barra do caminho (`Lendo //contato`) e o recibo entre etapas mandava “usar
+Continuar” enquanto a etapa seguinte já ia começar sozinha.
+
+**Gates:** `npx next typegen && npx tsc --noEmit`, `npx oxlint lib tests app
+components scripts`, `npm run test:sites` (81), `npm run test:admin` (70, 3
+pulados por falta de Postgres de teste), `npm run build:vercel` e os dois testes
+de navegador com `EIXU_CHROME_PATH`. O teste de artefato passou a cobrir também
+`/api/admin/[tenant]/generation/step` e reprovou a primeira tentativa de
+inclusão: os colchetes da rota dinâmica são classe de caracteres no glob de
+`outputFileTracingIncludes`, e o Chromium não entrava no pacote — a revisão
+visual falharia só em produção.
+
 ## Depoimentos no bloco de cases da home, 11/09/2026
 
 O bloco `05 / Cases` passou a mostrar a citação de quem contratou, no lugar do

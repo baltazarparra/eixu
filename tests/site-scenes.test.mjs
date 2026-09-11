@@ -32,6 +32,32 @@ const input = {
     },
   ],
 };
+/** As cinco vagas que o plano deste cliente pede, como a etapa agora envia. */
+const planInput = {
+  scenes: [
+    { request: 'Abertura na bancada.', role: 'hero', targetBlock: 'hero.split' },
+    {
+      request: 'Aplicação do serviço em detalhe.',
+      role: 'protagonista',
+      targetBlock: 'feature.explorer',
+    },
+    {
+      request: 'Equipe conferindo o resultado.',
+      role: 'protagonista',
+      targetBlock: 'feature.explorer',
+    },
+    {
+      request: 'Cena da página interna de serviços.',
+      role: 'subpagina',
+      targetBlock: 'narrative.split',
+    },
+    {
+      request: 'Cena da página interna de contato.',
+      role: 'subpagina',
+      targetBlock: 'media.image',
+    },
+  ],
+};
 
 async function fixture() {
   const active = new Set(),
@@ -98,16 +124,41 @@ await test('chamadas paralelas no mesmo turno reservam orçamento antes de qualq
     await release.promise;
   };
   const tool = f.tools();
-  const first = tool.execute(input);
+  const first = tool.execute(planInput);
   await entered.promise;
   try {
-    assert.match((await tool.execute(input)).error, /Orçamento/);
+    // Cinco vagas já reservadas: outro lote de cinco estoura o turno antes de
+    // qualquer await, sem chegar a gerar nada.
+    assert.match((await tool.execute(planInput)).error, /Orçamento/);
     assert.equal(f.calls.length, 0);
   } finally {
     release.resolve();
   }
   assert.equal((await first).ok, true);
   assert.equal(f.calls.length, 1);
+  assert.equal(f.calls[0].scenes.length, 5);
+});
+
+await test('a etapa gera o plano inteiro numa chamada e recusa vaga fora dele', async () => {
+  const f = await fixture();
+  const tool = f.tools();
+  assert.equal((await tool.execute(planInput)).ok, true);
+  assert.equal(f.calls.length, 1);
+  assert.equal(f.calls[0].scenes.length, 5);
+
+  // Bloco que não é vaga em aberto continua recusado dentro do lock.
+  const other = await fixture();
+  const rejected = await other.tools().execute({
+    scenes: [
+      {
+        request: 'Cena para um bloco que o plano não pede.',
+        role: 'apoio',
+        targetBlock: 'editorial.resources',
+      },
+    ],
+  });
+  assert.match(rejected.error, /não é uma vaga em aberto/);
+  assert.equal(other.calls.length, 0);
 });
 
 await test('requisições distintas do mesmo tenant não geram em paralelo; outro tenant avança', async () => {
@@ -149,7 +200,8 @@ await test('foto posterior ao snapshot preenche a vaga sem duplicar geração e 
       targetBlock: 'hero.split',
     },
   ]);
-  assert.match((await stale.execute(input)).error, /próxima cena do plano/);
+  // A vaga do hero já foi coberta por outra requisição: nada é gerado de novo.
+  assert.match((await stale.execute(input)).error, /não é uma vaga em aberto/);
   assert.equal(f.calls.length, 0);
   assert.equal(f.active.size, 0);
   f.images.set('fixture', []);
@@ -160,13 +212,15 @@ await test('validação sem geração devolve orçamento; falha após tentar ger
   const f = await fixture();
   const tool = f.tools();
   f.hooks.noGuide = true;
-  assert.match((await tool.execute(input)).error, /guia de imagem/);
+  assert.match((await tool.execute(planInput)).error, /guia de imagem/);
   f.hooks.noGuide = false;
   f.hooks.generate = () => {
     throw new Error('Falha sintética do provedor');
   };
-  assert.match((await tool.execute(input)).error, /Falha/);
-  assert.match((await tool.execute(input)).error, /Orçamento/);
+  // A tentativa paga consome as cinco vagas do turno; um lote novo de cinco
+  // já não cabe no orçamento.
+  assert.match((await tool.execute(planInput)).error, /Falha/);
+  assert.match((await tool.execute(planInput)).error, /Orçamento/);
   assert.equal(f.calls.length, 1);
   assert.equal(f.active.size, 0);
 });

@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
-import { chatHistory } from '@/lib/ai/history';
+import { chatHistory, messageCursor } from '@/lib/ai/history';
 import { workspaceState } from '@/lib/admin/state';
 import { listImages } from '@/lib/images/queries';
 import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
@@ -34,6 +34,7 @@ export default async function TenantWorkspace({
     <Workspace
       initial={workspaceState(tenant, pages, images)}
       history={history}
+      lastMessageId={messageCursor(history)}
       imageRequest={imageRequest}
     />
   );

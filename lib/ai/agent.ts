@@ -19,8 +19,10 @@ export function siteAgent(input: {
   instructions: string;
   tools: SiteTools;
   phase?: Phase;
+  /** Pausa pedida pelo operador: encerra depois do passo atual. */
+  shouldStop?: () => boolean;
 }) {
-  const { tenantId, instructions, tools, phase } = input;
+  const { tenantId, instructions, tools, phase, shouldStop } = input;
   return new ToolLoopAgent({
     model: productModel(),
     ...modelSettings(phase ?? 'livre'),
@@ -36,6 +38,9 @@ export function siteAgent(input: {
     providerOptions: gatewayOptions(tenantId, 'site', phase),
     stopWhen: [
       isStepCount(phase ? PHASE_STEPS[phase] : 32),
+      // Abortar no meio desperdiçaria a chamada paga em andamento; a pausa
+      // espera o passo corrente terminar e salvar.
+      () => shouldStop?.() === true,
       ({ steps }) =>
         phase === 'composicao' &&
         compositionReadyForReview(steps.at(-1)?.toolResults ?? []),

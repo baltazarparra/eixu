@@ -20,8 +20,8 @@ export type PromptContext = {
   scenePlan?: string;
   /** Quantas vagas do plano já têm foto disponível. */
   coverage?: string;
-  /** A vaga que a próxima chamada precisa preencher. */
-  nextScene?: string;
+  /** As vagas do plano que ainda não têm foto. */
+  missingScenes?: string;
   /** Referências já lidas, com estado de acesso. */
   sources?: string;
   /** Apontamentos da última revisão, quando houver. */
@@ -94,7 +94,7 @@ export function systemPrompt(
     editScope,
     scenePlan,
     coverage,
-    nextScene,
+    missingScenes,
     sources,
     review,
   } = context;
@@ -146,7 +146,7 @@ export function systemPrompt(
       : '',
     scenePlan ? `## Plano de cenas\n${scenePlan}` : '',
     coverage ? `## Cobertura do plano\n${coverage}` : '',
-    nextScene ? `## Próxima cena\n${nextScene}` : '',
+    missingScenes ? `## Cenas que faltam\n${missingScenes}` : '',
     sources ? `## Referências lidas\n${sources}` : '',
     review ? `## Apontamentos da revisão\n${review}` : '',
     intake ? `## Intake do operador\n${intake}` : '',

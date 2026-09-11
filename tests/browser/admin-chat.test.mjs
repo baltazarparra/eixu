@@ -8,7 +8,7 @@ import puppeteer from 'puppeteer-core';
 import { chatFixture } from '../helpers/chat-fixture.mjs';
 
 await test(
-  'painel real continua após erro recuperável e mantém atividade e recibos',
+  'chat livre mostra atividade, recibo e responde andamento sem novo turno',
   { skip: !process.env.EIXU_CHROME_PATH },
   async () => {
     const root = process.cwd();
@@ -32,6 +32,7 @@ await test(
     );
     const server = await createServer({
       configFile: false,
+      cacheDir: path.join(root, 'node_modules/.vite-admin-chat'),
       root,
       define: { 'process.env': '{}' },
       plugins: [
@@ -53,6 +54,33 @@ await test(
                       '/',
                       `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="data:,"><style>${css}</style></head><body><div id="root"></div><script id="fixture-state" type="application/json">${JSON.stringify(fixture.state)}</script><script type="module" src="/tests/browser/fixtures/chat.tsx"></script></body></html>`,
                     ),
+                  );
+                  return;
+                }
+                if (pathname.endsWith('/generation')) {
+                  const after = Number(
+                    new URL(
+                      request.url,
+                      'http://fixture.test',
+                    ).searchParams.get('after') ?? 0,
+                  );
+                  const messages = fixture.writes
+                    .slice(after, after + 60)
+                    .map((row, index) => ({
+                      id: `saved-${after + index + 1}`,
+                      role: row.role,
+                      parts: [{ type: 'text', text: row.text }],
+                    }));
+                  response.setHeader('Content-Type', 'application/json');
+                  response.end(
+                    JSON.stringify({
+                      run: null,
+                      events: [],
+                      messages,
+                      lastMessageId: after + messages.length,
+                      hasMoreMessages: messages.length === 60,
+                      state: fixture.state,
+                    }),
                   );
                   return;
                 }
@@ -140,7 +168,10 @@ await test(
         }
         assert.fail(`Botão ausente: ${text}`);
       };
-      await click('Continuar');
+      // O laço das etapas saiu do navegador: aqui o alvo é o chat livre —
+      // atividade visível, ferramenta recusada e recibo no histórico.
+      await page.type('textarea', 'Monte as páginas.');
+      await click('Enviar');
       await page.waitForSelector('[data-chat-activity]');
       assert.equal(
         await page.$eval('[data-chat-activity]', (node) =>
@@ -148,57 +179,43 @@ await test(
         ),
         true,
       );
-      const reads = stateReads;
-      await click('Ver progresso');
-      await page.waitForFunction(() =>
-        document
-          .querySelector('[data-chat-activity]')
-          ?.textContent.includes('0:01'),
+      await page.waitForFunction(
+        () =>
+          document.body.innerText.includes('Projeto salvo') ||
+          document.body.innerText.includes('Progresso salvo'),
+        { timeout: 30_000 },
       );
-      assert.ok(stateReads > reads);
-      assert.equal(fixture.turns.length, 1);
+      await page.waitForFunction(
+        () => !document.querySelector('[data-chat-activity]'),
+      );
+      assert.equal(fixture.executions(), 1);
       assert.equal(
         await page.evaluate(() =>
           document.body.innerText.includes('Raciocínio sintético'),
         ),
         false,
       );
-      await page.waitForFunction(
-        () =>
-          document.body.innerText.includes('foi concluída. Confira a prévia'),
-        { timeout: 30_000 },
-      );
-      await page.waitForFunction(
-        () => !document.querySelector('[data-chat-activity]'),
-      );
-      assert.deepEqual(fixture.turns, ['composicao', 'revisao']);
-      assert.equal(fixture.executions(), 2);
+      const reads = stateReads;
       assert.ok(
-        (await page.evaluate(() => document.body.innerText)).includes(
-          'Esta tentativa foi recusada',
-        ),
+        reads > 0,
+        'O painel relê o estado ao concluir uma ferramenta.',
       );
-      assert.ok(
-        fixture.writes
-          .filter((row) => row.role === 'assistant')
-          .every((row) => row.text.includes('Progresso salvo')),
-      );
+
       await page.type('textarea', 'travou?');
       await click('Enviar');
-      await page.waitForFunction(
-        () =>
-          [
-            ...document.querySelectorAll(
-              '.admin-conversation .whitespace-pre-wrap',
-            ),
-          ].filter((node) => node.textContent.startsWith('Progresso salvo:'))
-            .length === 3,
+      await page.waitForFunction(() =>
+        [
+          ...document.querySelectorAll(
+            '.admin-conversation .whitespace-pre-wrap',
+          ),
+        ].some((node) => node.textContent.startsWith('Progresso salvo:')),
       );
       await page.waitForFunction(
         () => !document.querySelector('[data-chat-activity]'),
       );
-      assert.deepEqual(fixture.turns, ['composicao', 'revisao']);
-      assert.equal(fixture.writes.length, 6);
+      // A consulta de andamento não abre turno do agente.
+      assert.equal(fixture.executions(), 1);
+
       await page.setViewport({ width: 390, height: 900 });
       await page.waitForFunction(
         () => document.documentElement.scrollWidth <= innerWidth + 1,

@@ -1,14 +1,18 @@
 import type { SiteState } from '@/lib/admin/state';
 
-/** Consultas curtas e inequívocas de andamento não iniciam um turno de edição. */
-export function isProgressQuestion(text: string): boolean {
-  const question = text
+function normalize(text: string): string {
+  return text
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[?!.,…]+/g, ' ')
     .trim()
     .replace(/\s+/g, ' ');
+}
+
+/** Consultas curtas e inequívocas de andamento não iniciam um turno de edição. */
+export function isProgressQuestion(text: string): boolean {
+  const question = normalize(text);
   return (
     /^(?:(?:o site|a geracao|o agente|voce) )?(?:travou|parou|terminou|acabou|ainda esta trabalhando|ainda esta gerando|esta funcionando)$/.test(
       question,
@@ -19,8 +23,26 @@ export function isProgressQuestion(text: string): boolean {
   );
 }
 
-/** Relata somente o estado persistido; não infere execução ativa nem aprovação. */
-export function savedProgressMessage(state: SiteState): string {
+/**
+ * Retomar digitado. O operador leu "use Continuar", não achou o botão e
+ * escreveu a palavra: o chat abria um turno livre de edição em vez de seguir
+ * a geração em etapas, gastando passos e minutos no caminho errado.
+ */
+export function isResumeRequest(text: string): boolean {
+  return /^(?:(?:pode|vamos|voce pode|por favor) )?(?:continuar|continua|continue|retomar|retome|retomar a geracao|prosseguir|prossiga|segue|seguir|segue o fluxo|continuar a geracao|continua a geracao|continuar geracao|terminar o site|termina o site)$/.test(
+    normalize(text),
+  );
+}
+
+/**
+ * Relata somente o estado persistido; não infere aprovação. Com a execução em
+ * andamento, não manda clicar em Continuar: a próxima etapa já vai começar, e
+ * o convite fazia o operador interromper o que estava funcionando.
+ */
+export function savedProgressMessage(
+  state: SiteState,
+  running = false,
+): string {
   const progress = state.generation;
   const saved = `Progresso salvo: ${progress.coveredScenes} de ${progress.targetScenes} cenas e ${state.pages.length} páginas.`;
   const next = {
@@ -31,5 +53,10 @@ export function savedProgressMessage(state: SiteState): string {
     pronto:
       'A revisão visual do rascunho atual foi concluída. Confira a prévia no painel.',
   }[progress.next];
-  return `${saved} ${next}${progress.next === 'pronto' ? '' : ' Use Continuar para retomar pelo progresso salvo.'}`;
+  if (progress.next === 'pronto') return `${saved} ${next}`;
+  return `${saved} ${next}${
+    running
+      ? ' A próxima etapa começa em seguida; acompanhe pelo painel.'
+      : ' Use Continuar para retomar pelo progresso salvo.'
+  }`;
 }

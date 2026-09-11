@@ -1,5 +1,6 @@
 import { isDesignProfile } from '@/lib/design/profile';
 import { generationState } from '@/lib/sites/generation';
+import { reviewFingerprint } from '@/lib/review/state';
 import { lintPage } from '@/lib/taste/lint';
 import { lintSite } from '@/lib/taste/site';
 import type { Page, Tenant, TenantImage } from '@/lib/types';
@@ -39,6 +40,7 @@ export function workspaceState(
     (finding) => !pagePaths.has(finding.page),
   );
   return {
+    previewRevision: reviewFingerprint(tenant, pages, images),
     tenant: {
       slug: tenant.slug,
       name: tenant.name,

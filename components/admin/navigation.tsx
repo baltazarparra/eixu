@@ -13,10 +13,13 @@ export function AdminHeader({
   tenant,
   active,
   actions,
+  note,
 }: {
   tenant: { slug: string; name: string };
   active: 'site' | 'imagens' | 'trafego' | 'dados';
   actions?: ReactNode;
+  /** Ressalva curta ao lado da ação, como uma revisão ainda pendente. */
+  note?: string;
 }) {
   const root = `/admin/${tenant.slug}`;
   return (
@@ -61,7 +64,12 @@ export function AdminHeader({
           </Link>
         ))}
       </nav>
-      {actions ? <div className="admin-header-actions">{actions}</div> : null}
+      {actions ? (
+        <div className="admin-header-actions">
+          {note ? <span className="admin-header-note">{note}</span> : null}
+          {actions}
+        </div>
+      ) : null}
     </header>
   );
 }

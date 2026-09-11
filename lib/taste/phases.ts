@@ -47,8 +47,8 @@ export const PHASE_TOOLS: Record<Phase, string[]> = {
 
 export const PHASE_STEPS: Record<Phase, number> = {
   briefing: 12,
-  // Uma cena por requisição: chamar a ferramenta e encerrar o turno.
-  cenas: 2,
+  // O plano inteiro em uma chamada, com espaço para corrigir uma recusa.
+  cenas: 4,
   composicao: 24,
   revisao: 32,
 };
@@ -111,9 +111,9 @@ Objetivo: transformar o intake do operador em briefing verificado e direção de
 3. Compare alternativas adequadas à vibe e ao negócio. Escolha pela clareza, identidade e viabilidade no catálogo. Chame set_design com o briefing, o conceito, o elemento-assinatura, a paleta com papéis e os oito eixos, respeitando a faixa da vibe. Inclua brief.pagePlan: slug, etapa de inbound, intenção, conteúdo útil e evidências de cada página. Cada página responde a uma pergunta diferente, sem inventar oferta para preencher o mínimo.
 Pare depois de set_design validado. Não monte páginas nem gere imagens nesta fase.`,
   cenas: `## Fase 2 de 4: cenas
-Objetivo: produzir a próxima cena do repertório visual, uma por vez.
-Chame prepare_site_images uma única vez, com exatamente uma cena: a indicada em "Próxima cena", no targetBlock e na proporção que ela pede. Escreva o request como cena concreta do negócio, sem adjetivo publicitário.
-Encerre o turno depois da chamada. A imagem fica disponível com número e URL; o painel segue automaticamente para a próxima cena, sem aprovação. Não monte páginas nesta fase.`,
+Objetivo: produzir o repertório visual que falta para o plano deste cliente.
+Chame prepare_site_images uma única vez, com todas as vagas listadas em "Cenas que faltam", cada uma no targetBlock e na proporção que ela pede. Escreva cada request como cena concreta do negócio, sem adjetivo publicitário, e diferente das outras: o lote precisa render fotos distintas, não variações do mesmo enquadramento.
+Encerre o turno depois da chamada. As imagens ficam disponíveis com número e URL, sem aprovação. Uma cena recusada pode ser corrigida em uma segunda chamada só com as vagas que faltaram. Não monte páginas nesta fase.`,
   composicao: `## Fase 3 de 4: composição
 Objetivo: montar o projeto completo em uma única chamada de build_site, cumprindo o briefing de composição.
 O catálogo abaixo traz os schemas JSON completos, incluindo campos obrigatórios e limites. Use-os diretamente, sem consultar de novo o mesmo schema. Siga o pagePlan persistido e verifique factualidade, percurso, SEO distinto, ritmo e recortes antes de escrever. Escreva o projeto inteiro com URLs exatas e proporções coerentes com o layout. Use describe_block somente se ainda faltar informação para compor; não adivinhe props.
@@ -132,7 +132,7 @@ Pare quando a revisão do rascunho atual estiver completa e sem erros materiais.
 export const PHASE_MESSAGE: Record<Phase, string> = {
   briefing:
     'Leia as referências do intake e defina o briefing, o guia de imagem e a direção de arte deste cliente.',
-  cenas: 'Gere a próxima cena do plano.',
+  cenas: 'Gere as cenas que faltam no plano.',
   composicao:
     'Monte o projeto completo com as páginas orgânicas, usando as fotos da biblioteca.',
   revisao: 'Revise o resultado renderizado e corrija o que ficou pobre.',

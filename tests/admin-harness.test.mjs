@@ -358,10 +358,18 @@ for (const mode of [
     let criticCalls = 0;
     const { buildTools } = await loadModule('lib/ai/tools.ts', {
       '@/lib/db': {
+        // Reproduz o merge do SQL: a gravação mexe só na chave generation e
+        // conta a rodada a partir do que está no banco, não de um snapshot.
         db:
           () =>
-          async (_parts, ...values) => {
-            Object.assign(fixture.brief, JSON.parse(values[0]));
+          async (parts, ...values) => {
+            if (!parts.join('').includes("'{generation}'")) return [];
+            const previous = fixture.brief.generation ?? {};
+            fixture.brief.generation = {
+              ...previous,
+              ...JSON.parse(values[0]),
+              reviewRounds: Number(previous.reviewRounds ?? 0) + 1,
+            };
             return [];
           },
       },

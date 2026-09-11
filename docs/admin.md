@@ -44,13 +44,19 @@ A exclusão é definitiva e não tem lixeira. Ao concluir, o site publicado pass
 
 ## Qualidade e retomada
 
+O andamento é atualizado automaticamente ao iniciar pelo botão ou ao digitar “continuar”, até a conclusão. A prévia acompanha as alterações salvas. Quando a geração está parada, os motivos que bloqueiam a publicação continuam visíveis, mesmo com a revisão ainda pendente.
+
 O agente interno usa Gemini 3.8 Flash e dedica mais raciocínio à composição e à revisão. Ele planeja intenções distintas por página, confere o resultado em desktop e celular e corrige problemas materiais. Uma revisão que falhou ou ficou desatualizada não marca o site como pronto. Se o limite do turno for atingido, retome a etapa: o rascunho e as pendências permanecem. A revisão não publica por conta própria.
 
 ## Gerar e editar o site
 
-Em Site, **Continuar** roda briefing e direção, cenas, composição e revisão, uma etapa por vez. O progresso é salvo entre elas e vem do estado gravado, não da conversa: recarregar a tela não perde o lugar. **Parar** interrompe a sequência; uma ferramenta já iniciada pode terminar e salvar seu resultado. O cancelamento não desfaz escritas. Se houver erro ou a etapa não avançar, a sequência para; leia a resposta antes de tentar de novo.
+Em Site, **Continuar** roda briefing e direção, cenas, composição e revisão, uma etapa por vez. A sequência roda no servidor, não na aba: recarregar a tela, trocar de aparelho ou fechar o navegador não interrompe nem duplica nada, e o painel volta mostrando a etapa e a atividade em andamento. Digitar "continuar" no chat faz a mesma coisa que o botão.
 
-Na etapa de cenas o agente gera uma imagem por requisição e a sequência segue automaticamente enquanto o plano avança. As fotos ficam disponíveis com número e URL, sem aprovação. A crítica registra nota e problemas para orientar ajustes; nota baixa não abre uma fila de decisão.
+O andamento fica numa faixa fixa acima da conversa, visível também no celular: etapa atual, o que a etapa já produziu (cenas prontas, páginas gravadas, rodada de revisão), a ferramenta em execução, o tempo desta etapa e o tempo total, e a linha do tempo das etapas registradas. **Pausar** encerra depois do passo atual — uma ferramenta já iniciada termina e salva; a pausa não desfaz escritas. Ao terminar, o painel mostra o resultado até você fechar.
+
+Enquanto a geração roda, o chat fica em espera e diz por quê: os dois disputariam as mesmas páginas. Se uma etapa falhar ou não avançar, a execução para com o motivo no painel; leia a última resposta antes de retomar.
+
+Na etapa de cenas o agente pede de uma vez todas as fotos que faltam no plano, geradas em paralelo pelo estúdio. As fotos ficam disponíveis com número e URL, sem aprovação. A crítica registra nota e problemas para orientar ajustes; nota baixa não abre uma fila de decisão.
 
 O chat recebe o histórico textual recente do cliente. Escreva mudanças específicas e indique a página quando necessário. Sugestões apenas preenchem a caixa; **Enviar** executa o pedido. Enter envia, Shift+Enter quebra a linha. Imagens podem ser anexadas, coladas ou arrastadas para a conversa.
 
@@ -68,7 +74,7 @@ O filtro **Rejeitadas** preserva imagens recusadas no fluxo antigo, que continua
 
 **Apagar** pede uma segunda confirmação e recusa imagens referenciadas no rascunho, publicado ou logo. Cancelar conserva a imagem. **Usar no site**, em uma foto, copia um pedido para colar no chat do site; não altera o conteúdo sozinho. **Usar como logo**, em um logo disponível, aplica na navegação e no rodapé.
 
-As pendências para publicar aparecem no fim do fluxo, quando ainda sobra algo. Erros de página ou projeto bloqueiam a publicação; recomendações continuam disponíveis para revisão. Mudanças de blocos ou SEO tornam a página pendente. **Publicar** valida o projeto no servidor e atualiza o snapshot de páginas atomicamente; um erro preserva a versão anterior.
+As pendências para publicar aparecem no fim do fluxo, quando ainda sobra algo. Erros de página ou projeto bloqueiam a publicação; recomendações continuam disponíveis para revisão. Quando a revisão visual do rascunho atual ainda não terminou, o cabeçalho avisa **Revisão visual pendente**: publicar continua permitido, valendo o pre-flight determinístico, mas sem a conferência dos pixels. Mudanças de blocos ou SEO tornam a página pendente. **Publicar** valida o projeto no servidor e atualiza o snapshot de páginas atomicamente; um erro preserva a versão anterior.
 
 O snapshot inclui blocos e SEO. Marca, contatos, título, tipo e outros metadados têm limites de versionamento descritos na [arquitetura](architecture.md#limites-atuais). Publicar o código na Vercel não publica automaticamente os rascunhos dos clientes.
 

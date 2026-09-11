@@ -356,13 +356,10 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           throw new ToolError(
             'prepare_site_images exige a direção v2. Chame set_design antes de gerar cenas.',
           );
-        // Uma cena por requisição mantém a geração dentro do limite de tempo.
+        // O estúdio gera em lotes paralelos. Uma cena por requisição fazia o
+        // plano inteiro custar cinco idas ao modelo e cinco minutos de espera.
         const inPhase = context.phase === 'cenas';
-        const budget = inPhase ? 1 : 8;
-        if (inPhase && scenes.length > 1)
-          throw new ToolError(
-            'Nesta etapa é uma cena por chamada. Envie só a próxima cena do plano e encerre o turno.',
-          );
+        const budget = 8;
         if (scenesPrepared + scenes.length > budget)
           throw new ToolError(
             `Orçamento de cenas deste turno esgotado: ${scenesPrepared} de ${budget} já ${scenesPrepared === 1 ? 'foi pedida' : 'foram pedidas'}. Encerre o turno.`,
@@ -413,14 +410,21 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
                 throw new ToolError(
                   'O plano já está coberto por fotos disponíveis. Siga para a composição.',
                 );
-              if (
-                !missing.some(
-                  (slot) => slot.targetBlock === scenes[0].targetBlock,
-                )
-              )
-                throw new ToolError(
-                  `A próxima cena do plano é ${sceneText(missing[0])}. Gere essa antes de propor outra.`,
+              // Cada cena pedida ocupa uma vaga que falta: o lote cobre o
+              // plano sem gerar foto repetida para o mesmo bloco.
+              const slots = [...missing];
+              for (const scene of prepared) {
+                const index = slots.findIndex(
+                  (slot) => slot.targetBlock === scene.targetBlock,
                 );
+                if (index === -1)
+                  throw new ToolError(
+                    `A cena ${scene.targetBlock} não é uma vaga em aberto. Faltam: ${missing
+                      .map((slot) => sceneText(slot))
+                      .join(' | ')}.`,
+                  );
+                slots.splice(index, 1);
+              }
             }
             generationStarted = true;
             const generated = await prepareSiteImages(
@@ -840,8 +844,24 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           updatedAt: receipt.reviewedAt,
         };
         activeBrief = { ...activeBrief, generation };
+        // Merge no banco, não por cima do snapshot da requisição: reescrever o
+        // objeto inteiro apagava a fase gravada pela execução em andamento, e
+        // a contagem de rodadas vinha de uma leitura que já podia estar velha.
         await db()`
-          update tenants set brief = brief || ${JSON.stringify({ generation })}::jsonb, updated_at = now()
+          update tenants
+          set brief = jsonb_set(
+                coalesce(brief, '{}'::jsonb),
+                '{generation}',
+                coalesce(brief -> 'generation', '{}'::jsonb) || ${JSON.stringify(
+                  { review: receipt, updatedAt: receipt.reviewedAt },
+                )}::jsonb
+                  || jsonb_build_object(
+                       'reviewRounds',
+                       coalesce((brief -> 'generation' ->> 'reviewRounds')::int, 0) + 1
+                     ),
+                true
+              ),
+              updated_at = now()
           where id = ${tenant.id}
         `;
         return {

@@ -55,21 +55,25 @@ em quatro requisições, cada uma com suas ferramentas, seu limite de passos e o
 contexto que ela precisa. O catálogo só entra na composição e na revisão.
 
 1. **Briefing e direção**: `read_reference`, `define_image_guide`, `set_design`.
-2. **Cenas**: `prepare_site_images`, uma cena por requisição, com o plano de
+2. **Cenas**: `prepare_site_images` com todas as vagas em aberto do plano de
    `lib/images/scene-plan.ts`.
 3. **Composição**: `build_site` e `repair_site`.
 4. **Revisão**: `review_pages` e as edições pontuais.
 
 A próxima etapa vem do estado persistido, não da conversa: `nextPhase` lê
-direção, cobertura do plano de cenas, páginas, erros e rodadas de revisão.
-Recarregar o painel ou interromper no meio não perde o progresso. A cobertura
+direção, cobertura do plano de cenas, páginas, erros e rodadas de revisão. A
+sequência roda no servidor, em invocações encadeadas: recarregar o painel,
+trocar de aparelho ou fechar a aba não perde o progresso nem interrompe a
+execução. A cobertura
 governa só antes da composição: depois que as páginas existem, foto faltando é
 erro de pre-flight e quem resolve é a revisão, senão um cliente já publicado
 com biblioteca menor que o plano voltaria a gerar cena sem ninguém pedir.
 
-A etapa de cenas gera uma imagem por requisição para respeitar o limite de
-execução. Ela fica disponível com número e URL imediatamente; o painel segue
-para a próxima cena sem pedir aprovação. `sceneCoverage` mede o progresso
+A etapa de cenas pede de uma vez todas as vagas que faltam; o estúdio gera em
+lotes paralelos de três, com crítica por imagem. Uma foto por requisição
+transformava cinco cenas em cinco idas ao modelo e minutos de espera com o
+painel parado. Cada imagem fica disponível com número e URL imediatamente, sem
+aprovação. `sceneCoverage` mede o progresso
 pelas fotos disponíveis, inclusive candidatas legadas, casando bloco e
 proporção. O laço distingue uma nova cena de uma etapa sem progresso e admite
 até 14 chamadas, incluindo todas as cenas do atelier e a revisão.

@@ -4,7 +4,12 @@ import { z } from 'zod';
 import { loadModule } from './load-module.mjs';
 
 /** HTTP e SDK reais, com estado isolado e provedor determinístico. Sem rede paga. */
-export async function chatFixture({ delay = 0, authenticated = true } = {}) {
+export async function chatFixture({
+  delay = 0,
+  authenticated = true,
+  running = null,
+} = {}) {
+  const starts = [];
   const state = {
     tenant: {
       slug: 'stream-fixture',
@@ -29,7 +34,23 @@ export async function chatFixture({ delay = 0, authenticated = true } = {}) {
   const tenant = {
     id: 'fixture',
     ...state.tenant,
-    brand: {},
+    // Direção válida de verdade: a fase só abre com o estado que pressupõe,
+    // e a checagem passou a viver no módulo compartilhado com o runner.
+    brand: {
+      design: {
+        version: 2,
+        concept: 'Fixture',
+        signatureElement: 'linha',
+        displayFont: 'sans',
+        bodyFont: 'sans',
+        heroComposition: 'split',
+        navigation: 'bar',
+        rhythm: 'regular',
+        imageTreatment: 'documental',
+        surfaceStyle: 'flat',
+        motif: 'grid',
+      },
+    },
     brief: {},
     dials: {},
     imageGuide: {},
@@ -100,7 +121,17 @@ export async function chatFixture({ delay = 0, authenticated = true } = {}) {
       listPages: async () => state.pages,
     },
     '@/lib/images/queries': { listImages: async () => [] },
-    '@/lib/design/profile': { isDesignProfile: () => true },
+    '@/lib/generation/runs': {
+      activeRun: async () => running,
+      expireStaleRun: async (run) => run,
+    },
+    '@/lib/generation/runner': { markPhase: async () => undefined },
+    '@/lib/generation/start': {
+      startGeneration: async (input) => {
+        starts.push(input.tenant.slug);
+        return { ok: true, run: { id: 'run-fixture' }, phase: 'Composição' };
+      },
+    },
     '@/lib/admin/state': { workspaceState: () => structuredClone(state) },
     '@/lib/taste/prompt': {
       systemPrompt: () => 'Fixture sintética de streaming.',
@@ -180,6 +211,7 @@ export async function chatFixture({ delay = 0, authenticated = true } = {}) {
     writes,
     turns,
     modelCalls,
+    starts,
     executions: () => executions,
   };
 }
