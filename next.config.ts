@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   // Chromium e o driver ficam fora do bundle: são binários carregados em
   // runtime pela revisão visual do gerador.
   serverExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
+  outputFileTracingIncludes: { '/api/chat': ['./SOUL.md'] },
   // Os sites gerados são dinâmicos por tenant. Sem isto o Next transmite os
   // metadados para o fim do documento, e uma parte dos rastreadores lê o HTML
   // sem executar JavaScript. Para um produto de SEO, metadado fora do <head>

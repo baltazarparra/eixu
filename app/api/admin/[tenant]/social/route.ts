@@ -5,7 +5,8 @@ import { normalizeSocialUrl, parseSocialRecord } from '@/lib/social-profile';
 import { markSocialReading, syncSocialProfile } from '@/lib/ai/social';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+// Leitura do perfil e descrição visual com o orçamento de raciocínio do produto.
+export const maxDuration = 180;
 
 async function resolve(params: Promise<{ tenant: string }>) {
   if (!(await isAuthenticated()))

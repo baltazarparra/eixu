@@ -42,6 +42,10 @@ A lixeira na lista e a seção **Excluir cliente** em Dados abrem a mesma confir
 
 A exclusão é definitiva e não tem lixeira. Ao concluir, o site publicado passa a responder 404. Ela aguarda envios de arquivos já iniciados, impede novos envios e apaga os arquivos antes do cadastro: se essa etapa falhar, o cliente continua no painel e a operação pode ser repetida. Uma geração que terminar depois da exclusão não consegue enviar arquivos para esse cliente.
 
+## Qualidade e retomada
+
+O agente interno usa Gemini 3.8 Flash e dedica mais raciocínio à composição e à revisão. Ele planeja intenções distintas por página, confere o resultado em desktop e celular e corrige problemas materiais. Uma revisão que falhou ou ficou desatualizada não marca o site como pronto. Se o limite do turno for atingido, retome a etapa: o rascunho e as pendências permanecem. A revisão não publica por conta própria.
+
 ## Gerar e editar o site
 
 Em Site, **Continuar** roda briefing e direção, cenas, composição e revisão, uma etapa por vez. O progresso é salvo entre elas e vem do estado gravado, não da conversa: recarregar a tela não perde o lugar. **Parar** interrompe a sequência; uma ferramenta já iniciada pode terminar e salvar seu resultado. O cancelamento não desfaz escritas. Se houver erro ou a etapa não avançar, a sequência para; leia a resposta antes de tentar de novo.
@@ -72,7 +76,7 @@ O snapshot inclui blocos e SEO. Marca, contatos, título, tipo e outros metadado
 
 Depois de uma resposta, abra **Uso nesta sessão**: entrada, saída, entrada lida do cache, passos, duração e custo em dólar quando informado pelo Gateway. O painel soma as respostas recebidas desde a abertura daquela tela, sem converter para reais.
 
-Essa contagem não inclui geração de imagens, críticas internas, outras telas ou falhas sem recibo. Consulte o Gateway para conciliar o consumo total. Cache reduz processamento repetido quando o provedor encontra um prefixo reutilizável; não garante economia fixa. O modelo e os validadores de qualidade foram mantidos.
+Essa contagem não inclui geração de imagens, críticas internas, outras telas ou falhas sem recibo. Consulte o Gateway para conciliar o consumo total. Cache reduz processamento repetido quando o provedor encontra um prefixo reutilizável; não garante economia fixa. A aceitação depende do resultado e das verificações de qualidade.
 
 Para evitar desperdício, use Dados para alterações cadastrais, descreva o ajuste desejado, confira a página em foco e trate a causa de uma falha antes de repetir geração. Não repita a geração completa para corrigir um detalhe.
 

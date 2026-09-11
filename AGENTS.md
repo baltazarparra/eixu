@@ -14,7 +14,7 @@ Não concorde com uma decisão apenas por conveniência. Verifique o código e o
 
 Comunique-se em português do Brasil, com objetividade. EIXU reúne o institucional
 e um gerador de sites multi-tenant operado em `/admin`. O [README](README.md)
-apresenta produto, setup e comandos. Este contrato é compartilhado por
+apresenta produto, setup e comandos. Leia [SOUL.md](SOUL.md) para identidade e critérios de qualidade. Este contrato é compartilhado por
 Codex/GPT-6 Astra e Claude Code/Fable 5.1; `CLAUDE.md` o importa.
 
 ## Contexto sob demanda
@@ -23,7 +23,7 @@ Codex/GPT-6 Astra e Claude Code/Fable 5.1; `CLAUDE.md` o importa.
 | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
 | Rotas, publicação, dados ou limites do MVP | [Arquitetura](docs/architecture.md) e os arquivos do fluxo afetado                                            |
 | Frontend e composição visual               | [Design e aplicação das duas skills](docs/design.md)                                                          |
-| Prompts, ferramentas, modelos ou contexto  | [Harness e modelos](docs/harness.md)                                                                          |
+| Prompts, ferramentas, modelos ou contexto  | [SOUL.md](SOUL.md), [Harness e modelos](docs/harness.md)                                                      |
 | Validação e release                        | [Verificação](docs/verification.md)                                                                           |
 | Neon ou schema                             | `db/schema.sql`, `lib/db.ts` e a skill relevante em `.agents/skills/neon/` ou `.agents/skills/neon-postgres/` |
 | APIs do Next.js                            | Guia correspondente em `node_modules/next/dist/docs/`, na versão instalada                                    |
@@ -50,6 +50,19 @@ no mesmo recurso. Use subagentes somente quando a tarefa ou o ambiente autorizar
 com uma divisão que evite edição concorrente. Não há obrigação de delegar.
 Em trabalho longo, dê atualizações breves. Ao retomar após compactação, preserve
 objetivo, decisões, autorização, arquivos alterados e verificações pendentes.
+
+## Qualidade do harness
+
+O modelo interno é Gemini 3.8 Flash; a política em `lib/ai/models.ts` usa raciocínio
+`high` e orçamento de saída por tarefa. Priorize factualidade, identidade, conteúdo
+útil e resultado verificado. Economizar tokens não justifica cortar evidência,
+reparo ou verificação. Não confunda esse modelo com o selecionado no editor.
+
+O chat e os runners compartilham `lib/ai/agent.ts`. Preserve metadados/assinaturas
+do histórico recente e o loop ativo do SDK. A revisão usa pixels como entrada
+multimodal do crítico, nunca base64 como texto de ferramenta. Só revisão completa
+do rascunho atual encerra a geração; falha de captura, limite ou recibo antigo são
+pendências. Não afrouxe esses controles para obter um resultado verde.
 
 ## Invariantes do produto
 
@@ -80,7 +93,7 @@ objetivo, decisões, autorização, arquivos alterados e verificações pendente
 ## Ambiente, validação e entrega
 
 Use npm e o lockfile existente. Tipos: `npx next typegen && npx tsc --noEmit`.
-Código: `npm run lint`. Produção: `npm run build:vercel`. Verifique o fluxo afetado
+Código: `npm run lint`. Contratos: `npm run test:sites` e `npm run test:admin`. Produção: `npm run build:vercel`. Verifique o fluxo afetado
 além da compilação; não adicione testes que só repitam uma alteração documental.
 Há dívida de lint registrada em [Verificação](docs/verification.md); não a esconda
 com regras desligadas nem apresente o check como aprovado.

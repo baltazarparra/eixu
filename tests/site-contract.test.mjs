@@ -807,6 +807,7 @@ await test('a próxima etapa vem do estado persistido, não da conversa', () => 
     organicPages: 3,
     blockingErrors: 0,
     reviewRounds: 1,
+    reviewComplete: true,
   };
   const novo = { ...base, organicPages: 0 };
   assert.equal(nextPhase({ ...base, hasDesign: false }), 'briefing');
@@ -1147,7 +1148,17 @@ await test('ferramentas preservam o perfil e o intake atualizados durante o turn
         lidoEm: new Date().toISOString(),
       }),
     },
-    '@/lib/tenant-queries': { listPages: async () => rich() },
+    '@/lib/tenant-queries': {
+      listPages: async () => rich(),
+      getTenantBySlug: async () => ({
+        id: 'fixture',
+        slug: 'fixture',
+        brand: {},
+        dials: {},
+        brief,
+        imageGuide: {},
+      }),
+    },
     '@/lib/images/queries': { listImages: async () => images },
   });
   const tools = buildTools({
@@ -1287,7 +1298,9 @@ await test('set_design respeita a faixa da vibe e compara unicidade dentro dela'
   assert.equal(ok.vibe, 'moderno');
   // A comparação de unicidade só olha clientes da mesma vibe: as faixas se
   // sobrepõem em vários eixos e um moderno não repete um ousado.
-  const uniqueness = queries.find((query) => query.sql.includes("brand ? 'design'"));
+  const uniqueness = queries.find((query) =>
+    query.sql.includes("brand ? 'design'"),
+  );
   assert.ok(uniqueness.sql.includes("brand->>'vibe'"));
   assert.ok(uniqueness.values.includes('moderno'));
 });

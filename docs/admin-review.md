@@ -1,5 +1,7 @@
 # Revisão do admin, 10/09/2026
 
+Registro histórico de 10/09/2026. As medidas de custo e a compactação descritas abaixo documentam aquela entrega. A política vigente, orientada à qualidade com Gemini 3.8 Flash, está em [Harness](harness.md); a jornada atual está no [manual](admin.md). Os números históricos não são uma avaliação do harness atual.
+
 A entrega reorganiza a operação de clientes, reduz o reenvio de contexto nos chats, mede o consumo informado pelo Gateway e corrige inconsistências de publicação, prévia, formulários administrativos e tráfego. Base revisada: `1cad6cd`, árvore inicialmente limpa. Modelo, limites de composição e pre-flight foram preservados.
 
 ## Cobertura e resultado

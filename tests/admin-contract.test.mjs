@@ -10,7 +10,7 @@ const j = createJiti(import.meta.url, { alias: { '@': process.cwd() } });
 const { hasDraftChanges, workspaceState } = await j.import(
   '../lib/admin/state.ts',
 );
-const { economicalMessages, chatRequestSchema } = await j.import(
+const { contextMessages, chatRequestSchema } = await j.import(
   '../lib/ai/context.ts',
 );
 const { usageMetadata, sumGatewayCosts } = await j.import('../lib/ai/usage.ts');
@@ -134,7 +134,7 @@ await test('compacta dados repetidos e mantém todas as instruções, respostas 
     },
   ];
   const before = structuredClone(messages);
-  const compact = economicalMessages(messages);
+  const compact = contextMessages(messages, { recentTurns: 1 });
   assert.deepEqual(messages, before);
   assert.ok(
     JSON.stringify(compact).length < JSON.stringify(messages).length / 20,
@@ -147,7 +147,11 @@ await test('compacta dados repetidos e mantém todas as instruções, respostas 
       (part) => part.text === 'Projeto salvo como rascunho.',
     ),
   );
-  assert.ok(compact[1].parts.some((part) => part.text.includes('concluída')));
+  assert.ok(
+    compact[1].parts.some((part) =>
+      part.text.includes('executada; confira as pendências'),
+    ),
+  );
   const model = await convertToModelMessages(compact);
   assert.ok(model.length >= 3);
   assert.ok(!JSON.stringify(model).includes('tool-call'));
@@ -171,7 +175,7 @@ await test('recibo de ferramenta não anuncia sucesso após falha ou interrupç�
       },
     ],
   };
-  const result = economicalMessages([message])[0];
+  const result = contextMessages([message])[0];
   assert.match(result.parts[0].text, /recusada; Página inválida/);
   assert.match(result.parts[1].text, /interrompida/);
 });

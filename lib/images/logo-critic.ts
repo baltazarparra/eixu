@@ -1,3 +1,8 @@
+import {
+  modelSettings,
+  productModel,
+  CRITIC_TIMEOUT_MS,
+} from '@/lib/ai/models';
 import { Output, generateText, type FilePart, type TextPart } from 'ai';
 import sharp from 'sharp';
 import { z } from 'zod';
@@ -7,15 +12,28 @@ import type { Critique } from '@/lib/types';
 const score = z.number().min(0).max(10);
 
 export const logoCritiqueSchema = z.object({
-  legibilidade_48px: score.describe('Continua legível na miniatura de 48 pixels?'),
+  legibilidade_48px: score.describe(
+    'Continua legível na miniatura de 48 pixels?',
+  ),
   vetor_flat: score.describe('Parece vetor chapado, e não render ou foto?'),
   monocromia_viavel: score.describe('Funcionaria em uma cor só?'),
   fundo_transparente: z.boolean(),
-  sem_textura_fotografica: score.describe('10 quando não há textura, sombra ou mockup.'),
-  sem_texto_extra: z.boolean().describe('false se aparece slogan, sigla ou palavra além do nome.'),
-  nome_lido: z.string().max(80).describe('Exatamente o texto que você lê na imagem. Vazio se não há texto.'),
+  sem_textura_fotografica: score.describe(
+    '10 quando não há textura, sombra ou mockup.',
+  ),
+  sem_texto_extra: z
+    .boolean()
+    .describe('false se aparece slogan, sigla ou palavra além do nome.'),
+  nome_lido: z
+    .string()
+    .max(80)
+    .describe(
+      'Exatamente o texto que você lê na imagem. Vazio se não há texto.',
+    ),
   nome_correto: z.boolean(),
-  fidelidade_original: score.nullable().describe('0 a 10 quando existe logo original. Nulo quando não existe.'),
+  fidelidade_original: score
+    .nullable()
+    .describe('0 a 10 quando existe logo original. Nulo quando não existe.'),
   nota: score,
   aprovado: z.boolean(),
   pontos_fortes: z.array(z.string().max(120)).max(4),
@@ -23,8 +41,6 @@ export const logoCritiqueSchema = z.object({
   alt_sugerido: z.string().max(140),
   descricao: z.string().max(200),
 });
-
-const MODEL = () => process.env.EIXU_CRITIC_MODEL || process.env.EIXU_MODEL || 'google/gemini-3.8-flash';
 
 export type Precheck = {
   hasAlpha: boolean;
@@ -42,9 +58,17 @@ export async function logoPrecheck(bytes: Uint8Array): Promise<Precheck> {
   const buffer = Buffer.from(bytes);
   const meta = await sharp(buffer).metadata();
   if (!meta.hasAlpha) {
-    return { hasAlpha: false, transparentFraction: 0, width: meta.width ?? 0, height: meta.height ?? 0 };
+    return {
+      hasAlpha: false,
+      transparentFraction: 0,
+      width: meta.width ?? 0,
+      height: meta.height ?? 0,
+    };
   }
-  const { data, info } = await sharp(buffer).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { data, info } = await sharp(buffer)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
   let transparent = 0;
   for (let i = 3; i < data.length; i += info.channels) {
     if (data[i] < 16) transparent += 1;
@@ -93,24 +117,36 @@ export async function critiqueLogo(input: {
       { type: 'file', data: input.bytes, mediaType: 'image/png' },
       { type: 'file', data: preview, mediaType: 'image/png' },
       ...(input.reference
-        ? [{ type: 'file' as const, data: new Uint8Array(input.reference), mediaType: 'image/png' }]
+        ? [
+            {
+              type: 'file' as const,
+              data: new Uint8Array(input.reference),
+              mediaType: 'image/png',
+            },
+          ]
         : []),
       {
         type: 'text',
         text: [
           `Modo: ${input.mode}. Variante: ${input.variant}.`,
-          input.wordmark ? `Nome que deve aparecer escrito, exatamente: "${input.brandName}".` : 'Este logo não deve ter texto nenhum.',
+          input.wordmark
+            ? `Nome que deve aparecer escrito, exatamente: "${input.brandName}".`
+            : 'Este logo não deve ter texto nenhum.',
           'A primeira imagem é o logo. A segunda é o mesmo logo reduzido a 48 pixels e reampliado, para você julgar a legibilidade no tamanho real de uso.',
-          input.reference ? 'A terceira imagem é o logo original, para comparar.' : 'Não existe logo original.',
+          input.reference
+            ? 'A terceira imagem é o logo original, para comparar.'
+            : 'Não existe logo original.',
           `Medição automática: ${JSON.stringify(precheck)}`,
         ].join('\n'),
       },
     ];
 
     const { output } = await generateText({
-      model: MODEL(),
+      model: productModel('critic'),
+      ...modelSettings('critic'),
       output: Output.object({ schema: logoCritiqueSchema }),
       maxRetries: 1,
+      timeout: { totalMs: CRITIC_TIMEOUT_MS },
       instructions: `Você é um diretor de identidade visual revisando um logotipo que vai virar a marca de um cliente real. Seja específico e duro.
 
 Reprove, ou seja aprovado = false, quando:
@@ -135,26 +171,41 @@ Escreva em português do Brasil. Problemas em frases curtas e concretas.`,
       approved = false;
       problems.unshift('O arquivo não tem fundo transparente de verdade.');
     }
-    if (input.wordmark && normalize(output.nome_lido) !== normalize(input.brandName)) {
+    if (
+      input.wordmark &&
+      normalize(output.nome_lido) !== normalize(input.brandName)
+    ) {
       approved = false;
-      problems.unshift(`O nome saiu como "${output.nome_lido}" em vez de "${input.brandName}".`);
+      problems.unshift(
+        `O nome saiu como "${output.nome_lido}" em vez de "${input.brandName}".`,
+      );
     }
 
     const critique: Critique = {
       ...output,
       aprovado: approved,
       problemas: problems.slice(0, 6),
-      fundo_transparente: precheck.hasAlpha && precheck.transparentFraction >= 0.05,
+      fundo_transparente:
+        precheck.hasAlpha && precheck.transparentFraction >= 0.05,
       variante: input.variant,
-      precheck: { ...precheck, transparentFraction: Number(precheck.transparentFraction.toFixed(3)) },
+      precheck: {
+        ...precheck,
+        transparentFraction: Number(precheck.transparentFraction.toFixed(3)),
+      },
     };
     await saveCritique(input.id, critique);
     return critique;
   } catch (error) {
     const failed: Critique = {
-      erro: error instanceof Error ? error.message.slice(0, 160) : 'falha na crítica do logo',
+      erro:
+        error instanceof Error
+          ? error.message.slice(0, 160)
+          : 'falha na crítica do logo',
       variante: input.variant,
-      precheck: { ...precheck, transparentFraction: Number(precheck.transparentFraction.toFixed(3)) },
+      precheck: {
+        ...precheck,
+        transparentFraction: Number(precheck.transparentFraction.toFixed(3)),
+      },
     };
     await saveCritique(input.id, failed);
     return failed;

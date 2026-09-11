@@ -1,5 +1,79 @@
 # Validação e publicação
 
+## Harness focado em qualidade, 11/09/2026
+
+Esta revisão sucede os registros abaixo. O chat, os críticos e a leitura de
+avatar usam a política comum de Gemini 3.8 Flash com raciocínio alto. O agente
+compartilhado usa schemas completos na composição/revisão, conserva contexto
+recente, executa ferramentas em sequência e transfere um lote salvo sem erros
+para a revisão visual. Avisos não provocam reconstruções para zerar contagens.
+O recibo visual precisa corresponder ao rascunho atual; captura ausente ou falha
+do crítico não encerra a geração. `SOUL.md` é carregado no prompt e incluído no
+artefato Next.js.
+
+- `test:sites`: 80 casos aprovados. `test:admin` com Chrome: 51 aprovados e
+  somente a integração opcional com PostgreSQL pulada, sem banco local configurado.
+- Tipos e build de produção Next.js 16.3.3 aprovados. O tracing inclui `SOUL.md`
+  e Chromium. Lint dos arquivos alterados aprovado; lint global continua com
+  os 20 erros anteriores em 13 arquivos, sem desligar regras.
+- `test:sites:browser`: aprovado em 1440 e 390 px, 60 pares de texto/fundo por
+  largura, contraste mínimo de 4,608:1.
+- O build servido localmente passou em 16 checks HTTP: institucional, login,
+  redirecionamento administrativo, APIs sem sessão em 401, bloqueio de caminhos
+  internos/artefatos e recusa de tenant inexistente após autenticação real, antes
+  de qualquer escrita. Registro em `outputs/harness/http-local.json`.
+- O POST real do chat, com sessão e persistência em memória, concluiu streaming
+  SSE e a edição exata do logo do cabeçalho para 52 px, preservando todos os
+  demais blocos e o rodapé. Persistiu a mensagem e a resposta, com uso e motivo
+  de término. Foram 4 passos, 33.270 tokens de entrada, 1.443 de saída, dos quais
+  1.286 de raciocínio, em 55,7 segundos. Artefato: `outputs/harness/chat-stream.json`.
+- O ensaio histórico de edição isolada também passou em 3/3 execuções reais
+  com Gemini e a nova política. Seus números não formam comparação controlada
+  com os modelos e prompts dos registros anteriores.
+
+A crítica multimodal real leu oito capturas do caso de pedras, em quatro
+páginas e dois viewports, e apontou a quebra indevida de uma palavra no CTA da
+home, também observada na inspeção das capturas. Retornou caminhos/IDs válidos,
+com 14.504 tokens de entrada e 4.692 de saída, em 41,5 segundos. O Gateway
+recusou o schema com enum de todos os IDs; o contrato usa enum de páginas e
+verifica o par página/bloco no servidor, sem descartar achados inválidos.
+
+O caso de pedras concluiu o aceite automático na retomada final, sem edição
+manual das páginas geradas. A revisão executou 16 passos e duas leituras visuais
+em 286 segundos. Fez três edições pontuais, incluindo a correção do título que
+quebrava uma palavra no desktop, e encerrou na conferência do rascunho atual.
+As quatro páginas passaram nos oito pares página/viewport, sem overflow,
+imagens quebradas ou erros materiais. Permaneceram sugestões sobre repetição
+de foto, destaque de botão e proporção nominal, registradas sem ocultação.
+O loop principal consumiu 412.459 tokens de entrada, com 331.626 em cache,
+e 13.869 de saída; as duas críticas separadas consumiram 28.908 de entrada e
+11.060 de saída. Artefatos: `outputs/harness/1789106894362-pedras/`, incluindo
+`summary.json`, saída automática e oito capturas. A retomada verifica a revisão
+completa sobre a composição produzida nos ensaios anteriores; não equivale a
+uma execução nova de todas as fases nem a uma nota humana da rubrica.
+
+O Chromium do pacote serverless também executou uma captura local em dois
+viewports, sem depender do Chrome instalado. Seus quatro binários estão no
+diretório incluído pelo tracing, conforme `outputs/harness/serverless-capture.json`.
+O preview do código `66b92d1` ficou `READY`, com home em 200 e POST do chat sem
+sessão em 401. A execução da captura dentro da Vercel ainda não foi exercitada.
+
+Os ensaios preliminares identificaram reenvios do lote para eliminar avisos,
+um timeout no orçamento anterior e cache JSX incompatível no runner. O controle
+de transição, o orçamento e o isolamento do cache foram corrigidos. Outro ensaio
+consumiu os 24 passos de revisão corrigindo achados e terminou com recibo antigo,
+corretamente bloqueado. A revisão passou a 32 passos, com o último reservado à
+conferência e parada externa após a conferência bem-sucedida do refinamento.
+As fotos da
+fixture antiga de aquecimento retornam 404: o rascunho foi gerado, mas sua revisão
+ficou bloqueada por imagens quebradas. Esse caso não comprova qualidade visual
+positiva. Os artefatos e falhas anteriores permanecem em `outputs/harness/`.
+
+Os ensaios usam dados sintéticos e fotos de fixtures. Não houve migração,
+seed, geração de fotos, escrita editorial em Neon/Blob ou publicação de páginas
+de clientes. Eles verificam o modelo e os contratos dentro do escopo de cada
+runner; não substituem teste de persistência remota ou revisão humana da rubrica.
+
 ## Troca para Gemini 3.8 Flash, 11/09/2026
 
 O fallback do chat, dos críticos de foto/logo, da descrição de avatar social e

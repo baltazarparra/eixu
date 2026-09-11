@@ -210,7 +210,7 @@ export function Workspace({ initial, history, imageRequest = '' }: Props) {
 
   /**
    * Geração em etapas. Cada fase é uma requisição própria, dentro do limite de
-   * 300 segundos, e a próxima é decidida pelo estado persistido: interromper e
+   * 800 segundos, e a próxima é decidida pelo estado persistido: interromper e
    * retomar não perde o progresso.
    */
   async function generate() {

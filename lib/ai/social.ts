@@ -1,3 +1,8 @@
+import {
+  modelSettings,
+  productModel,
+  CRITIC_TIMEOUT_MS,
+} from '@/lib/ai/models';
 import { createHash, randomUUID } from 'node:crypto';
 import { lookup } from 'node:dns/promises';
 import { del } from '@vercel/blob';
@@ -23,10 +28,6 @@ import {
 const USER_AGENT = 'EIXU-SiteAgent/1.0 (+https://eixu.com.br)';
 const MAX_BYTES = 1_500_000;
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
-const MODEL = () =>
-  process.env.EIXU_CRITIC_MODEL ||
-  process.env.EIXU_MODEL ||
-  'google/gemini-3.8-flash';
 
 export type SocialDeps = {
   fetch?: typeof globalThis.fetch;
@@ -231,9 +232,10 @@ export async function describeAvatar(
 ): Promise<string | undefined> {
   try {
     const { text } = await generateText({
-      model: MODEL(),
+      model: productModel('critic'),
+      ...modelSettings('avatar'),
       maxRetries: 1,
-      maxOutputTokens: 200,
+      timeout: { totalMs: CRITIC_TIMEOUT_MS },
       instructions:
         'Você descreve a foto de perfil de um negócio para orientar a direção visual do site dele. Responda em português do Brasil, em no máximo 300 caracteres, numa frase corrida: o que a imagem mostra (logotipo, pessoa, produto, fachada), cores dominantes e estilo. Não invente nome, slogan ou texto que não esteja legível. Sem listas e sem preâmbulo.',
       messages: [

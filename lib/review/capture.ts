@@ -47,15 +47,12 @@ export async function capturePages(
   slugs: string[],
   options: { cookie?: string; maxPages?: number } = {},
 ): Promise<Shot[]> {
-  const targets = slugs.slice(0, options.maxPages ?? 3);
+  const targets = [...new Set(slugs)].slice(0, options.maxPages ?? 12);
   const browser = await launch();
   const shots: Shot[] = [];
   try {
     for (const slug of targets) {
-      // Mobile só na home: é onde a maior variedade de layouts aparece, e cada
-      // captura extra custa tokens de imagem na revisão.
-      const viewports = slug === '' ? VIEWPORTS : VIEWPORTS.slice(0, 1);
-      for (const viewport of viewports) {
+      for (const viewport of VIEWPORTS) {
         const page = await browser.newPage();
         try {
           await page.setViewport({
@@ -116,11 +113,14 @@ export async function capturePages(
           const raw = Buffer.from(
             await page.screenshot({ fullPage: true, type: 'png' }),
           );
-          // A página inteira é alta demais para o modelo; reduzir a largura e
-          // recomprimir mantém a leitura de composição a um custo aceitável.
+          // Preserva leitura de texto e composição. Os bytes são enviados
+          // como imagem ao crítico, nunca serializados como texto no chat.
           const jpeg = await sharp(raw)
-            .resize({ width: viewport.name === 'desktop' ? 900 : 420 })
-            .jpeg({ quality: 68 })
+            .resize({
+              width: viewport.name === 'desktop' ? 1200 : 390,
+              withoutEnlargement: true,
+            })
+            .jpeg({ quality: 85 })
             .toBuffer();
           shots.push({
             page: `/${slug}`,

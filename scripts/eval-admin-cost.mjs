@@ -4,7 +4,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { convertToModelMessages, generateText, isStepCount } from 'ai';
 import { createJiti } from 'jiti';
 const j = createJiti(import.meta.url, { alias: { '@': process.cwd() } });
-const { economicalMessages } = await j.import('../lib/ai/context.ts');
+const { contextMessages } = await j.import('../lib/ai/context.ts');
+const { productModel, modelSettings } = await j.import('../lib/ai/models.ts');
 const { gatewayOptions } = await j.import('../lib/ai/usage.ts');
 const { systemPrompt } = await j.import('../lib/taste/prompt.ts');
 const { buildTools } = await j.import('../lib/ai/tools.ts');
@@ -86,9 +87,9 @@ const conversation = [
   },
 ];
 const before = await convertToModelMessages(conversation);
-const after = await convertToModelMessages(economicalMessages(conversation));
+const after = await convertToModelMessages(contextMessages(conversation));
 const report = {
-  model: process.env.EIXU_MODEL || 'google/gemini-3.8-flash',
+  model: productModel(),
   beforeChars: JSON.stringify(before).length,
   afterChars: JSON.stringify(after).length,
   runs: [],
@@ -142,7 +143,7 @@ if (process.argv.includes('--live')) {
       ...(cached
         ? { providerOptions: gatewayOptions(tenant.id, 'eval-admin') }
         : {}),
-      maxOutputTokens: 800,
+      ...modelSettings('livre'),
       maxRetries: 0,
       stopWhen: isStepCount(4),
       abortSignal: AbortSignal.timeout(90_000),
