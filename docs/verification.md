@@ -1,5 +1,22 @@
 # Validação e publicação
 
+## Estabilidade da captura visual, 11/09/2026
+
+O ensaio autenticado do pedido de cabeçalho em produção confirmou quatro edições
+restritas, com todos os demais campos preservados. A crítica recebeu oito
+capturas, mas apontou sobreposição que não existia na abertura das páginas. A
+reprodução revelou `scrollY` ainda entre 50 e 410 px ao capturar: o retorno ao topo
+usava a rolagem suave do site, e 250 ms não bastavam. Barras fixas apareciam
+deslocadas na imagem da página inteira.
+
+A captura agora usa movimento reduzido, rolagem instantânea e confere o retorno
+ao topo. Uma regressão com Chromium verifica os pixels de uma barra fixa numa
+página longa com scroll suave, em desktop e mobile. Isso estabiliza a evidência
+da crítica; interações e movimento continuam cobertos pelos testes de navegador.
+O teste reproduziu a falha com o código anterior e passou com a correção.
+Lint, tipos e build Next.js aprovados; 73 testes de admin com PostgreSQL e
+Chromium, sem skips.
+
 ## Edições pontuais, navegação e galeria, 11/09/2026
 
 Um pedido de cabeçalho fixo, escuro e semitransparente acionou reconstrução de

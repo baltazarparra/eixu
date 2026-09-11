@@ -60,6 +60,9 @@ export async function capturePages(
             height: viewport.height,
             deviceScaleFactor: 1,
           });
+          await page.emulateMediaFeatures([
+            { name: 'prefers-reduced-motion', value: 'reduce' },
+          ]);
           // O header Cookie global também iria para fotos de outros domínios.
           // O cookie jar limita a sessão ao host da prévia e ignora os demais.
           const session = options.cookie
@@ -91,12 +94,15 @@ export async function capturePages(
           await page.evaluate(async () => {
             const step = window.innerHeight;
             for (let y = 0; y < document.body.scrollHeight; y += step) {
-              window.scrollTo(0, y);
+              window.scrollTo({ top: y, behavior: 'instant' });
               await new Promise((resolve) => setTimeout(resolve, 120));
             }
-            window.scrollTo(0, 0);
+            // O CSS usa rolagem suave. Capturar durante o retorno deslocava
+            // barras fixas sobre o conteúdo e gerava defeitos visuais falsos.
+            window.scrollTo({ top: 0, behavior: 'instant' });
             await new Promise((resolve) => setTimeout(resolve, 250));
           });
+          await page.waitForFunction(() => window.scrollY === 0);
           const measured = (await page.evaluate(() => ({
             scrollWidth: document.documentElement.scrollWidth,
             innerWidth: window.innerWidth,
