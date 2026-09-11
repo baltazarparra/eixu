@@ -5,11 +5,13 @@ import path from 'node:path';
 import { createServer } from 'vite';
 import react from '@vitejs/plugin-react';
 import puppeteer from 'puppeteer-core';
+import { chatFixture } from '../helpers/chat-fixture.mjs';
 
 /** Estado do servidor entre recargas: é exatamente o que o painel perdia. */
 function generationServer() {
   const site = {
-    tenant: { slug: 'fixture', name: 'Fixture', hasDesign: true },
+    previewRevision: 'v1',
+    tenant: { slug: 'stream-fixture', name: 'Fixture', hasDesign: true },
     errors: [],
     warnings: [],
     pages: [],
@@ -25,12 +27,14 @@ function generationServer() {
       blockingErrors: 0,
     },
   };
-  let run = null;
-  let events = [];
-  let id = 0;
-  const add = (kind, label, tool) => {
+  let run = null,
+    events = [],
+    eventId = 0,
+    runId = 0;
+  const messages = [];
+  const add = (kind, label, tool) =>
     events.push({
-      id: ++id,
+      id: ++eventId,
       phase: run?.phase ?? 'cenas',
       kind,
       tool: tool ?? null,
@@ -38,15 +42,23 @@ function generationServer() {
       payload: {},
       createdAt: new Date().toISOString(),
     });
-  };
+  const saveMessage = (role, text) =>
+    messages.push({
+      id: `saved-${messages.length + 1}`,
+      role,
+      parts: [{ type: 'text', text }],
+    });
   return {
     site,
+    saveMessage,
     get run() {
       return run;
     },
     start() {
+      site.generation.next = 'cenas';
+      site.generation.reviewComplete = false;
       run = {
-        id: 'run-1',
+        id: `run-${++runId}`,
         tenantId: 'tenant',
         status: 'running',
         phase: 'cenas',
@@ -72,26 +84,22 @@ function generationServer() {
       };
       add('phase_end', '5 de 5 cenas disponíveis');
       run = { ...run, status: 'done', finishedAt: new Date().toISOString() };
+      saveMessage('assistant', 'Cenas concluídas.');
     },
     stop() {
       run = { ...run, status: 'stopping' };
       add('note', 'Pausa pedida: a etapa atual termina e a próxima não começa');
     },
     feed(after) {
+      const batch = messages
+        .filter((message) => Number(message.id.slice(6)) > after)
+        .slice(0, 60);
       return {
         run,
         events,
-        messages:
-          after < 1 && run?.status === 'done'
-            ? [
-                {
-                  id: 'saved-1',
-                  role: 'assistant',
-                  parts: [{ type: 'text', text: 'Cenas concluídas.' }],
-                },
-              ]
-            : [],
-        lastMessageId: run?.status === 'done' ? 1 : 0,
+        messages: batch,
+        lastMessageId: batch.length ? Number(batch.at(-1).id.slice(6)) : after,
+        hasMoreMessages: batch.length === 60,
         state: site,
       };
     },
@@ -104,6 +112,8 @@ await test(
   async () => {
     const root = process.cwd();
     const backend = generationServer();
+    const chat = await chatFixture();
+    let previewRequests = 0;
     let chatCalls = 0;
     const cssPath = path.join(root, '.next/static/chunks');
     const css = (
@@ -121,6 +131,7 @@ await test(
 
     const server = await createServer({
       configFile: false,
+      cacheDir: path.join(root, 'node_modules/.vite-admin-generation'),
       root,
       define: { 'process.env': '{}' },
       plugins: [
@@ -175,12 +186,33 @@ await test(
                 }
                 if (pathname === '/api/chat') {
                   chatCalls += 1;
-                  json({ error: 'não deveria ser chamado' }, 409);
+                  const chunks = [];
+                  for await (const chunk of request) chunks.push(chunk);
+                  const before = chat.writes.length;
+                  const result = await chat.POST(
+                    new Request('http://fixture.test/api/chat', {
+                      method: 'POST',
+                      headers: { 'content-type': 'application/json' },
+                      body: Buffer.concat(chunks).toString(),
+                    }),
+                  );
+                  backend.start();
+                  for (const row of chat.writes.slice(before))
+                    backend.saveMessage(row.role, row.text);
+                  response.statusCode = result.status;
+                  result.headers.forEach((value, name) =>
+                    response.setHeader(name, value),
+                  );
+                  for await (const chunk of result.body) response.write(chunk);
+                  response.end();
                   return;
                 }
                 if (pathname.startsWith('/s/')) {
                   response.setHeader('Content-Type', 'text/html');
-                  response.end('<html lang="pt-BR"><body>Prévia</body></html>');
+                  previewRequests++;
+                  response.end(
+                    `<html lang="pt-BR"><body>Prévia ${backend.site.previewRevision}</body></html>`,
+                  );
                   return;
                 }
                 if (pathname.startsWith('/_next/static/media/')) {
@@ -261,6 +293,10 @@ await test(
           );
           return true;
         } catch {
+          console.error('Controle não visível', label, {
+            errors,
+            text: await page.evaluate(() => document.body.innerText),
+          });
           return false;
         }
       };
@@ -287,7 +323,77 @@ await test(
         'O chat espera a geração terminar, e a tela diz isso.',
       );
 
-      // Recarregar era o que matava a geração sem aviso.
+      // Uma edição com a mesma quantidade de blocos precisa chegar ao iframe.
+      backend.site.pages = [
+        {
+          slug: '',
+          type: 'page',
+          title: 'Home',
+          blocks: 6,
+          published: false,
+          publishedAt: null,
+          dirty: true,
+          errors: [],
+          warnings: [],
+        },
+      ];
+      backend.site.generation.organicPages = 3;
+      await page.waitForFunction(
+        () =>
+          document
+            .querySelector('iframe')
+            ?.contentDocument?.body?.innerText.includes('Prévia v1'),
+        { timeout: 12000 },
+      );
+      const beforePreview = previewRequests;
+      backend.site.previewRevision = 'v2';
+      await page.waitForFunction(
+        () =>
+          document
+            .querySelector('iframe')
+            ?.contentDocument?.body?.innerText.includes('Prévia v2'),
+        { timeout: 12000 },
+      );
+      assert.equal(previewRequests, beforePreview + 1);
+      await new Promise((resolve) => setTimeout(resolve, 3400));
+      assert.equal(
+        previewRequests,
+        beforePreview + 1,
+        'consultas sem alteração não recarregam o iframe',
+      );
+
+      // Conclusão e paginação sem recarregar a aba que iniciou o run.
+      for (let i = 0; i < 65; i++)
+        backend.saveMessage('assistant', `Registro do servidor ${i}`);
+      backend.finish();
+      await page.waitForFunction(
+        () => document.body.innerText.includes('Geração concluída'),
+        { timeout: 12000 },
+      );
+      await page.waitForFunction(
+        () =>
+          document.body.innerText.includes('Registro do servidor 64') &&
+          document.body.innerText.includes('Cenas concluídas.'),
+        { timeout: 12000 },
+      );
+      assert.equal(
+        await page.$eval('textarea', (node) => node.disabled),
+        false,
+      );
+
+      // O comando textual usa a rota e o stream reais e reativa o acompanhamento.
+      await page.type('textarea', 'continuar');
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(
+        () =>
+          document.body.innerText.includes('Retomando a geração') &&
+          document.querySelector('textarea').disabled,
+        { timeout: 12000 },
+      );
+      assert.equal(chatCalls, 1);
+      assert.equal(chat.executions(), 0);
+
+      // Recarregar também precisa preservar o acompanhamento da nova execução.
       const started = Date.now();
       await page.reload({ waitUntil: 'networkidle0' });
       await page.waitForFunction(
@@ -303,8 +409,8 @@ await test(
       assert.equal(await visible('Pausar'), true);
       assert.equal(
         chatCalls,
-        0,
-        'Nenhum turno de chat é disparado pelo painel.',
+        1,
+        'Somente o comando textual disparou uma requisição de chat.',
       );
 
       // Celular: a conversa pode estar oculta, mas a execução continua à vista.
@@ -346,6 +452,30 @@ await test(
         path: 'outputs/generation/painel-concluido.png',
         fullPage: true,
       });
+      // Sem run ativo, um erro precisa ficar visível mesmo com revisão pendente.
+      backend.site.errors = [
+        'A home precisa de uma seção protagonista com fotos.',
+      ];
+      backend.site.generation.next = 'revisao';
+      backend.site.generation.reviewComplete = false;
+      backend.site.generation.blockingErrors = 1;
+      await page.reload({ waitUntil: 'networkidle0' });
+      await page.waitForFunction(() =>
+        document
+          .querySelector('.admin-review')
+          ?.innerText.includes(
+            'A home precisa de uma seção protagonista com fotos.',
+          ),
+      );
+      assert.equal(
+        await page.evaluate(
+          () =>
+            [...document.querySelectorAll('button')].find(
+              (node) => node.innerText === 'Publicar',
+            ).disabled,
+        ),
+        true,
+      );
       assert.deepEqual(errors, []);
     } finally {
       await browser.close();

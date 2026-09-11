@@ -10,6 +10,7 @@ import { isRunning, useGeneration } from './use-generation';
 import { AdminHeader, MobileViews } from '@/components/admin/navigation';
 import { ChatUsageDetails } from '@/components/admin/chat-usage';
 import { adminFetch } from '@/lib/admin/http';
+import { mergeSavedMessages } from '@/lib/admin/chat-messages';
 import type { SiteState } from '@/lib/admin/state';
 import type { ChatMessage } from '@/lib/ai/usage';
 
@@ -56,18 +57,35 @@ export function Workspace({
   const scrollRef = useRef<HTMLDivElement>(null);
   const toolCountRef = useRef(0);
   const refreshSeq = useRef(0);
+  const previewRevision = useRef(initial.previewRevision);
 
   const { messages, setMessages, sendMessage, status, error, stop } =
     useChat<ChatMessage>({
-    messages: history,
-    onFinish: () => {
-      void refresh().catch((failure: Error) => fail(failure.message));
-    },
-    transport: new DefaultChatTransport({
-      api: '/api/chat',
-      body: () => ({ tenant: tenantSlug, page: current }),
-    }),
-  });
+      messages: history,
+      onFinish: () => {
+        void refresh().catch((failure: Error) => fail(failure.message));
+      },
+      transport: new DefaultChatTransport({
+        api: '/api/chat',
+        body: () => ({ tenant: tenantSlug, page: current }),
+      }),
+    });
+  const busy = status === 'submitted' || status === 'streaming';
+
+  const applySite = useCallback((next: SiteState) => {
+    setSite(next);
+    setCurrent((slug) =>
+      next.pages.some((page) => page.slug === slug)
+        ? slug
+        : (next.pages[0]?.slug ?? ''),
+    );
+    // O feed resume blocos por quantidade. A revisão detecta também mudanças
+    // de texto/props com a mesma quantidade, sem recarregar a cada consulta.
+    if (previewRevision.current !== next.previewRevision) {
+      previewRevision.current = next.previewRevision;
+      setNonce((value) => value + 1);
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
     const ticket = ++refreshSeq.current;
@@ -77,15 +95,9 @@ export function Workspace({
     // A ferramenta concluída e o laço da geração atualizam em paralelo: uma
     // resposta atrasada não pode sobrescrever a leitura mais nova.
     if (ticket !== refreshSeq.current) return next;
-    setSite(next);
-    setCurrent((slug) =>
-      next.pages.some((page) => page.slug === slug)
-        ? slug
-        : (next.pages[0]?.slug ?? ''),
-    );
-    setNonce((value) => value + 1);
+    applySite(next);
     return next;
-  }, [tenantSlug]);
+  }, [tenantSlug, applySite]);
 
   const fail = useCallback(
     (text: string) => setNotice({ tone: 'err', text: chatErrorMessage(text) }),
@@ -97,13 +109,12 @@ export function Workspace({
   const generation = useGeneration({
     tenant: tenantSlug,
     initialMessageId: lastMessageId,
-    onState: setSite,
+    onState: applySite,
+    // Ao terminar o stream, consulta novamente e descobre inclusive um run
+    // iniciado pela palavra "continuar". Recibos não disputam a bolha ativa.
+    paused: busy,
     onMessages: (saved) =>
-      setMessages((current) => {
-        const known = new Set(current.map((message) => message.id));
-        const added = saved.filter((message) => !known.has(message.id));
-        return added.length ? [...current, ...added] : current;
-      }),
+      setMessages((current) => mergeSavedMessages(current, saved)),
   });
   const running = isRunning(generation.run);
 
@@ -166,7 +177,6 @@ export function Workspace({
     });
   }, [messages, status]);
 
-  const busy = status === 'submitted' || status === 'streaming';
   // Conversa livre e geração disputariam as mesmas páginas: enquanto uma roda,
   // a outra espera, e a tela diz por quê.
   const locked = busy || running;
@@ -176,12 +186,11 @@ export function Workspace({
     (sum, item) => sum + item.errors.length,
     site.errors.length,
   );
-  // As pendências só interessam no fim: num cliente novo elas são a lista do
-  // que a geração ainda vai fazer, e o painel virava alarme falso.
-  const flowRunning = running || site.generation.next !== 'pronto';
+  // Pendência não significa execução ativa: pausas, falhas e edições manuais
+  // precisam mostrar os motivos que ainda bloqueiam a publicação.
   const showReview =
     site.pages.length > 0 &&
-    !flowRunning &&
+    !running &&
     (totalErrors > 0 ||
       site.warnings.length > 0 ||
       (page?.warnings.length ?? 0) > 0);
@@ -191,7 +200,8 @@ export function Workspace({
     !locked &&
     site.pages.some((item) => item.dirty);
   // Publicação manual vale pelo pre-flight; a revisão visual é outra garantia.
-  const reviewPending = site.pages.length > 0 && !site.generation.reviewComplete;
+  const reviewPending =
+    site.pages.length > 0 && !site.generation.reviewComplete;
 
   async function publishAll() {
     setPublishing(true);
@@ -295,13 +305,15 @@ export function Workspace({
             {publishing ? 'Publicando…' : 'Publicar'}
           </button>
         }
-        note={
-          reviewPending && !running ? 'Revisão visual pendente' : undefined
-        }
+        note={reviewPending && !running ? 'Revisão visual pendente' : undefined}
       />
       <MobileViews value={view} onChange={setView} />
       {notice ? (
-        <output className="admin-notice" data-tone={notice.tone} aria-live="polite">
+        <output
+          className="admin-notice"
+          data-tone={notice.tone}
+          aria-live="polite"
+        >
           <span>{notice.text}</span>
           <button
             type="button"

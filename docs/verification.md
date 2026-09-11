@@ -1,5 +1,33 @@
 # Validação e publicação
 
+## Correções da revisão do PR #14, 11/09/2026
+
+Cinco regressões receberam correção e cobertura: o acompanhamento parado após
+iniciar pela própria aba, o despacho repetido encerrando uma execução ativa,
+a prévia sem atualização, os bloqueios de publicação escondidos em repouso e
+o cursor pulando mensagens do chat.
+
+- `npm run test:admin`: 91 testes passaram, sem pulos, com Chrome e PostgreSQL
+  14 local descartável. Duas conexões disputaram o mesmo run e salto; apenas
+  uma reserva venceu, e a repetição preservou o run ativo. O feed entregou
+  lotes a partir de zero, incluindo uma mensagem inserida entre leituras,
+  sem misturar tenants. Recibos preservaram ferramentas e metadados do stream.
+- `npm run test:sites`: 81 testes passaram, sem pulos. Lint global,
+  `npx next typegen && npx tsc --noEmit` e `npm run build:vercel` passaram,
+  incluindo os dois testes dos arquivos de captura no artefato serverless.
+- `npm run test:admin:browser`, com Chrome local: os dois testes passaram.
+  O painel real acompanhou o início e a conclusão sem recarga, drenou mais
+  de 60 mensagens, retomou pelo comando textual e recarregou o iframe quando
+  o conteúdo mudou, preservando-o nas consultas seguintes. Desktop e celular
+  mantiveram os controles; as pendências ficaram visíveis sem run ativo.
+- O build de produção servido localmente respondeu 200 no institucional e
+  no login, e 401 sem sessão no chat e nas rotas de consulta, início, etapa
+  e pausa da geração.
+
+Os testes usaram dados sintéticos e substitutos dos serviços pagos. Este
+ciclo não repetiu uma geração com modelos reais, não alterou banco remoto
+nem publicou rascunhos de clientes.
+
 ## Geração em etapas no servidor, 11/09/2026
 
 A criação do cliente `iterum` expôs o custo de orquestrar as fases no

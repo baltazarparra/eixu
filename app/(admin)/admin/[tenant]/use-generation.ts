@@ -11,6 +11,7 @@ export type GenerationFeed = {
   events: GenerationEvent[];
   messages: ChatMessage[];
   lastMessageId: number;
+  hasMoreMessages: boolean;
   state: SiteState;
 };
 
@@ -41,6 +42,8 @@ export function useGeneration(input: {
   const [events, setEvents] = useState<GenerationEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const cursor = useRef(input.initialMessageId);
+  const readSequence = useRef(0);
+  const active = isRunning(run);
   const stateRef = useRef(onState);
   const messagesRef = useRef(onMessages);
   // O painel recebe callbacks novos a cada render; guardá-los fora do render
@@ -50,31 +53,45 @@ export function useGeneration(input: {
     messagesRef.current = onMessages;
   }, [onState, onMessages]);
 
-  const read = useCallback(async () => {
-    const feed = await adminFetch<GenerationFeed>(
-      `/api/admin/${tenant}/generation?after=${cursor.current}`,
-      { signal: AbortSignal.timeout(20_000) },
-    );
-    setRun(feed.run);
-    setEvents(feed.events);
-    stateRef.current(feed.state);
-    if (feed.messages.length) messagesRef.current(feed.messages);
-    cursor.current = Math.max(cursor.current, feed.lastMessageId);
-    return feed;
-  }, [tenant]);
+  const read = useCallback(
+    async (signal?: AbortSignal) => {
+      const ticket = ++readSequence.current;
+      const feed = await adminFetch<GenerationFeed>(
+        `/api/admin/${tenant}/generation?after=${cursor.current}`,
+        {
+          signal: AbortSignal.any([
+            AbortSignal.timeout(20_000),
+            ...(signal ? [signal] : []),
+          ]),
+        },
+      );
+      // A leitura inicial, os controles e o polling podem se cruzar. Uma
+      // resposta cancelada ou antiga não reverte o painel nem consome o cursor.
+      if (signal?.aborted || ticket !== readSequence.current) return feed;
+      setRun(feed.run);
+      setEvents(feed.events);
+      stateRef.current(feed.state);
+      if (feed.messages.length) messagesRef.current(feed.messages);
+      cursor.current = Math.max(cursor.current, feed.lastMessageId);
+      return feed;
+    },
+    [tenant],
+  );
 
   // Enquanto a execução está viva o painel acompanha sozinho; parada, uma
   // leitura no retorno basta e a aba para de conversar com o servidor.
   useEffect(() => {
     if (paused) return;
     let alive = true;
+    const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const tick = async () => {
       try {
-        const feed = await read();
-        setError(null);
+        const feed = await read(controller.signal);
         if (!alive) return;
-        if (isRunning(feed.run)) timer = setTimeout(tick, POLL_MS);
+        setError(null);
+        if (feed.hasMoreMessages || isRunning(feed.run))
+          timer = setTimeout(tick, feed.hasMoreMessages ? 0 : POLL_MS);
       } catch (failure) {
         if (!alive) return;
         setError(
@@ -88,9 +105,10 @@ export function useGeneration(input: {
     void tick();
     return () => {
       alive = false;
+      controller.abort();
       if (timer) clearTimeout(timer);
     };
-  }, [read, paused]);
+  }, [read, paused, active]);
 
   const start = useCallback(async () => {
     setError(null);

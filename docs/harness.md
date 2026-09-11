@@ -117,14 +117,19 @@ cliente garantido por índice parcial. Cada fase é uma invocação própria de
 `/api/admin/[tenant]/generation/step`, que responde 202 e executa em `after()`,
 dentro dos mesmos 800 segundos; ao terminar, ela chama a próxima pela origem
 registrada no run — os domínios de deployment ficam atrás do SSO do projeto, e
-`VERCEL_URL` morreria numa tela de login. A reivindicação de cada etapa é
-atômica pelo contador de saltos, então um encadeamento repetido não abre duas
-execuções pagas da mesma fase.
+`VERCEL_URL` morreria numa tela de login. O token do despacho assina o ID do run e o salto esperado. A rota reserva
+esse salto no banco antes de agendar `after()` ou avaliar o progresso. Uma
+repetição recebe uma resposta sem trabalho adicional, mesmo durante a fase
+ou depois de sua conclusão; ela não encerra o run do vencedor.
 
 `generation_events` guarda o que o painel mostra: início e fim de fase, começo e
 fim de cada ferramenta com o mesmo rótulo em pt-BR do chat, pausas e erros. São
 rótulos e contadores, sem conteúdo do cliente. O painel lê por consulta
-periódica e reconstrói o andamento depois de qualquer recarga. Enquanto um run
+periódica, reativa a leitura ao iniciar pelo botão ou pelo chat e reconstrói o
+andamento depois de qualquer recarga. As mensagens são paginadas a partir de
+zero, com cursor do último registro entregue; a leitura continua até esvaziar
+o lote mesmo quando o run terminou. O recibo persistido reutiliza a bolha do
+stream e preserva suas ferramentas e metadados. Enquanto um run
 está ativo, `/api/chat` responde 409: os dois disputariam as mesmas páginas.
 Sem sinal por 15 minutos, o run é dado por perdido e o operador pode retomar.
 

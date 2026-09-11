@@ -13,7 +13,6 @@ import {
   heartbeat,
   recordEvent,
   saveProgress,
-  startPhase,
   type GenerationRun,
 } from '@/lib/generation/runs';
 import { phaseBlocker, phaseInstructions } from '@/lib/generation/context';
@@ -38,7 +37,6 @@ export type StepOutcome =
   | { kind: 'continue'; phase: Phase }
   | { kind: 'done' }
   | { kind: 'paused' }
-  | { kind: 'claimed' }
   | { kind: 'failed'; error: string };
 
 async function persistMessage(
@@ -56,10 +54,7 @@ async function persistMessage(
  * Só a chave da fase. O merge `brief || {generation}` sobrescrevia o objeto
  * inteiro e apagava o recibo de revisão gravado por outra execução.
  */
-export async function markPhase(
-  tenantId: string,
-  phase: Phase,
-): Promise<void> {
+export async function markPhase(tenantId: string, phase: Phase): Promise<void> {
   await db()`
     update tenants
     set brief = jsonb_set(
@@ -80,7 +75,11 @@ export async function markPhase(
 }
 
 /** Rótulo curto do que a fase produziu, para a linha do tempo do painel. */
-function outcomeLabel(phase: Phase, tenant: Tenant, state: ReturnType<typeof generationState>): string {
+function outcomeLabel(
+  phase: Phase,
+  tenant: Tenant,
+  state: ReturnType<typeof generationState>,
+): string {
   if (phase === 'cenas')
     return `${state.coveredScenes} de ${state.targetScenes} cenas disponíveis`;
   if (phase === 'composicao')
@@ -93,11 +92,13 @@ function outcomeLabel(phase: Phase, tenant: Tenant, state: ReturnType<typeof gen
 }
 
 /**
- * Executa uma fase inteira no servidor e devolve o que fazer em seguida. Não
+ * Executa o salto já reservado pela rota e devolve o que fazer em seguida. Não
  * depende de conexão do navegador: o painel lê o andamento pelos eventos.
  */
 export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
-  const tenantRow = await db()`select slug from tenants where id = ${run.tenantId}`;
+  if (run.status === 'stopping') return { kind: 'paused' };
+  const tenantRow =
+    await db()`select slug from tenants where id = ${run.tenantId}`;
   const slug = (tenantRow as { slug: string }[])[0]?.slug;
   if (!slug) return { kind: 'failed', error: 'Cliente não encontrado.' };
 
@@ -125,24 +126,14 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
       error: `A etapa "${PHASE_LABEL[phase]}" não avançou. Leia a última resposta no chat e continue de lá.`,
     };
 
-  if (run.hops >= MAX_HOPS)
+  if (run.hops > MAX_HOPS)
     return {
       kind: 'failed',
       error:
         'A geração passou do limite de etapas sem concluir. Confira o chat e retome pelo ponto salvo.',
     };
 
-  const started = await startPhase(run.id, phase, run.hops);
-  if (!started) {
-    // Outra invocação já assumiu esta etapa: encadeamento repetido não abre
-    // uma segunda execução paga da mesma fase.
-    console.warn('[generation] etapa já reivindicada', {
-      runId: run.id,
-      hops: run.hops,
-    });
-    return { kind: 'claimed' };
-  }
-  await saveProgress(run.id, progress);
+  await saveProgress(run.id, phase, progress);
   await recordEvent({
     runId: run.id,
     tenantId: tenant.id,
@@ -207,7 +198,12 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
           tool: name,
           label: failed
             ? 'Esta tentativa foi recusada. O agente pode corrigir e tentar novamente.'
-            : describeTool(name, event.toolCall.input, output, 'output-available'),
+            : describeTool(
+                name,
+                event.toolCall.input,
+                output,
+                'output-available',
+              ),
           payload: { ok: !failed },
         }).catch(() => undefined);
       },

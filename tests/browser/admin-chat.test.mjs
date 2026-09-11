@@ -32,6 +32,7 @@ await test(
     );
     const server = await createServer({
       configFile: false,
+      cacheDir: path.join(root, 'node_modules/.vite-admin-chat'),
       root,
       define: { 'process.env': '{}' },
       plugins: [
@@ -53,6 +54,33 @@ await test(
                       '/',
                       `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="data:,"><style>${css}</style></head><body><div id="root"></div><script id="fixture-state" type="application/json">${JSON.stringify(fixture.state)}</script><script type="module" src="/tests/browser/fixtures/chat.tsx"></script></body></html>`,
                     ),
+                  );
+                  return;
+                }
+                if (pathname.endsWith('/generation')) {
+                  const after = Number(
+                    new URL(
+                      request.url,
+                      'http://fixture.test',
+                    ).searchParams.get('after') ?? 0,
+                  );
+                  const messages = fixture.writes
+                    .slice(after, after + 60)
+                    .map((row, index) => ({
+                      id: `saved-${after + index + 1}`,
+                      role: row.role,
+                      parts: [{ type: 'text', text: row.text }],
+                    }));
+                  response.setHeader('Content-Type', 'application/json');
+                  response.end(
+                    JSON.stringify({
+                      run: null,
+                      events: [],
+                      messages,
+                      lastMessageId: after + messages.length,
+                      hasMoreMessages: messages.length === 60,
+                      state: fixture.state,
+                    }),
                   );
                   return;
                 }
@@ -168,7 +196,10 @@ await test(
         false,
       );
       const reads = stateReads;
-      assert.ok(reads > 0, 'O painel relê o estado ao concluir uma ferramenta.');
+      assert.ok(
+        reads > 0,
+        'O painel relê o estado ao concluir uma ferramenta.',
+      );
 
       await page.type('textarea', 'travou?');
       await click('Enviar');

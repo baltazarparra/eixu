@@ -13,6 +13,7 @@ export async function dispatchStep(input: {
   origin: string;
   slug: string;
   runId: string;
+  hop: number;
 }): Promise<void> {
   const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
   const response = await fetch(
@@ -20,7 +21,7 @@ export async function dispatchStep(input: {
     {
       method: 'POST',
       headers: {
-        'x-eixu-run': await createStepToken(input.runId),
+        'x-eixu-run': await createStepToken(input.runId, input.hop),
         ...(bypass ? { 'x-vercel-protection-bypass': bypass } : {}),
       },
       signal: AbortSignal.timeout(15_000),

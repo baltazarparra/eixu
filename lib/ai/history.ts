@@ -39,13 +39,8 @@ export async function messagesAfter(
   }));
 }
 
-export async function lastMessageId(
-  tenantId: string,
-  channel: 'site' = 'site',
-): Promise<number> {
-  const rows = (await db()`
-    select coalesce(max(id), 0) as id from chat_messages
-    where tenant_id = ${tenantId} and channel = ${channel}
-  `) as { id: number | string }[];
-  return Number(rows[0]?.id ?? 0);
+/** Cursor do mesmo lote entregue: uma inserção posterior fica para a próxima leitura. */
+export function messageCursor(messages: ChatMessage[], fallback = 0): number {
+  const last = messages.at(-1);
+  return last ? Number(last.id.replace(/^saved-/, '')) : fallback;
 }

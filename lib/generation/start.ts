@@ -69,7 +69,12 @@ export async function startGeneration(input: {
   });
 
   try {
-    await dispatchStep({ origin, slug: tenant.slug, runId: run.id });
+    await dispatchStep({
+      origin,
+      slug: tenant.slug,
+      runId: run.id,
+      hop: run.hops,
+    });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'A etapa não pôde ser iniciada.';

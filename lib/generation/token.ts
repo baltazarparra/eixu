@@ -1,7 +1,7 @@
 /**
  * Cada fase é uma invocação própria: a que termina chama a próxima pela rota
  * HTTP. Esse token autentica essa chamada interna sem carregar a sessão do
- * operador, vale poucos minutos e só serve para um run.
+ * operador, vale poucos minutos e só serve para um salto daquele run.
  */
 const TTL_MS = 5 * 60 * 1000;
 
@@ -38,22 +38,26 @@ function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-export async function createStepToken(runId: string): Promise<string> {
-  const payload = `${runId}.${Date.now() + TTL_MS}`;
+export async function createStepToken(
+  runId: string,
+  hop: number,
+): Promise<string> {
+  const payload = `${runId}.${hop}.${Date.now() + TTL_MS}`;
   return `${payload}.${await sign(payload)}`;
 }
 
-/** Devolve o run autorizado pelo token, ou null. */
+/** A assinatura vincula também o salto: uma repetição não assume a etapa seguinte. */
 export async function verifyStepToken(
   token: string | null | undefined,
-): Promise<string | null> {
+): Promise<{ runId: string; hop: number } | null> {
   if (!token) return null;
   const parts = token.split('.');
-  if (parts.length !== 3) return null;
-  const [runId, expires, signature] = parts;
+  if (parts.length !== 4) return null;
+  const [runId, hop, expires, signature] = parts;
   if (!/^[0-9a-f-]{36}$/i.test(runId)) return null;
+  if (!/^\d+$/.test(hop) || !Number.isSafeInteger(Number(hop))) return null;
   if (!/^\d+$/.test(expires) || Number(expires) <= Date.now()) return null;
-  return safeEqual(signature, await sign(`${runId}.${expires}`))
-    ? runId
+  return safeEqual(signature, await sign(`${runId}.${hop}.${expires}`))
+    ? { runId, hop: Number(hop) }
     : null;
 }

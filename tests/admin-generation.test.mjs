@@ -2,7 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createJiti } from 'jiti';
 import { loadModule } from './helpers/load-module.mjs';
-import { chatFixture, chatRequest, readChunks } from './helpers/chat-fixture.mjs';
+import {
+  chatFixture,
+  chatRequest,
+  readChunks,
+} from './helpers/chat-fixture.mjs';
 
 const jiti = createJiti(import.meta.url, {
   alias: { '@': process.cwd() },
@@ -50,27 +54,38 @@ await test('retomar digitado é reconhecido sem capturar pedidos compostos', () 
 
 await test('token da etapa autoriza um run e recusa adulteração ou validade vencida', async () => {
   const run = '0eb4847d-0f93-48be-ac16-2e76bb0a645e';
-  const token = await createStepToken(run);
-  assert.equal(await verifyStepToken(token), run);
+  const token = await createStepToken(run, 0);
+  assert.deepEqual(await verifyStepToken(token), { runId: run, hop: 0 });
   assert.equal(await verifyStepToken(null), null);
   assert.equal(await verifyStepToken('lixo'), null);
-  const [id, expires, signature] = token.split('.');
-  assert.equal(await verifyStepToken(`${id}.${expires}.${signature}x`), null);
+  const [id, hop, expires, signature] = token.split('.');
   assert.equal(
-    await verifyStepToken(`${id}.${Date.now() - 1000}.${signature}`),
+    await verifyStepToken(`${id}.${hop}.${expires}.${signature}x`),
     null,
   );
-  // Assinatura de outro run não serve para este.
-  const other = await createStepToken('11111111-1111-4111-8111-111111111111');
   assert.equal(
-    await verifyStepToken(`${id}.${expires}.${other.split('.')[2]}`),
+    await verifyStepToken(`${id}.${hop}.${Date.now() - 1000}.${signature}`),
+    null,
+  );
+  assert.equal(await verifyStepToken(`${id}.1.${expires}.${signature}`), null);
+  // Assinatura de outro run não serve para este.
+  const other = await createStepToken(
+    '11111111-1111-4111-8111-111111111111',
+    0,
+  );
+  assert.equal(
+    await verifyStepToken(`${id}.${hop}.${expires}.${other.split('.')[3]}`),
     null,
   );
 });
 
 await test('chat recusa turno novo enquanto a geração roda, sem gravar mensagem', async () => {
   const f = await chatFixture({
-    running: { id: 'run-1', status: 'running', phase: 'composicao' },
+    running: {
+      id: '0eb4847d-0f93-48be-ac16-2e76bb0a645e',
+      status: 'running',
+      phase: 'composicao',
+    },
   });
   const response = await f.POST(chatRequest('muda a cor do hero'));
   assert.equal(response.status, 409);
@@ -102,7 +117,7 @@ await test('"continuar" digitado abre a execução em etapas, não um turno de e
 /** Runner com banco, agente e estado em memória: só a orquestração é real. */
 async function runnerFixture({
   states,
-  stopAfter = null,
+  onGenerate = async () => {},
   text = 'Etapa concluída.',
 } = {}) {
   const events = [];
@@ -110,16 +125,16 @@ async function runnerFixture({
   const runs = new Map();
   let calls = 0;
   const run = {
-    id: 'run-1',
+    id: '0eb4847d-0f93-48be-ac16-2e76bb0a645e',
     tenantId: 'tenant-1',
-    status: 'queued',
+    status: 'running',
     phase: null,
     phaseStartedAt: null,
     startedAt: new Date().toISOString(),
     heartbeatAt: new Date().toISOString(),
     finishedAt: null,
     error: null,
-    hops: 0,
+    hops: 1,
     progress: null,
     origin: 'https://eixu.test',
   };
@@ -138,17 +153,8 @@ async function runnerFixture({
         },
     },
     '@/lib/generation/runs': {
-      startPhase: async (id, phase, expectedHops) => {
-        const current = runs.get(id);
-        if (current.hops !== expectedHops) return null;
-        current.hops += 1;
-        current.phase = phase;
-        current.status = 'running';
-        current.phaseStartedAt = new Date().toISOString();
-        return { ...current };
-      },
-      saveProgress: async (id, progress) => {
-        runs.get(id).progress = progress;
+      saveProgress: async (id, phase, progress) => {
+        Object.assign(runs.get(id), { phase, progress });
       },
       recordEvent: async (event) => {
         events.push(event);
@@ -205,17 +211,20 @@ async function runnerFixture({
     '@/lib/auth': { createSessionToken: async () => 'token' },
     '@/lib/ai/tools': { buildTools: () => ({}) },
     '@/lib/ai/agent': {
-      siteAgent: ({ shouldStop }) => ({
+      siteAgent: () => ({
         generate: async ({ onToolExecutionStart, onToolExecutionEnd }) => {
           calls += 1;
+          await onGenerate();
           onToolExecutionStart({
             toolCall: { toolName: 'build_site', input: {} },
           });
           onToolExecutionEnd({
             toolCall: { toolName: 'build_site', input: {} },
-            toolOutput: { type: 'tool-result', output: { ok: true, pages: [1, 2, 3] } },
+            toolOutput: {
+              type: 'tool-result',
+              output: { ok: true, pages: [1, 2, 3] },
+            },
           });
-          if (stopAfter && calls >= stopAfter) shouldStop?.();
           return {
             text,
             steps: [{ text, providerMetadata: {} }],
@@ -249,17 +258,10 @@ await test('a etapa grava linha do tempo, mensagens e aponta a próxima fase', a
   assert.equal(f.run.progress, 'composicao');
 });
 
-await test('etapa já reivindicada por outra invocação não roda de novo', async () => {
-  const f = await runnerFixture({ states: [{ next: 'composicao' }] });
-  f.run.hops = 3; // o banco já avançou; este despacho é repetido
-  const outcome = await f.executeStep({ ...f.run, hops: 0 });
-  assert.equal(outcome.kind, 'claimed');
-  assert.equal(f.calls(), 0);
-  assert.equal(f.events.length, 0);
-});
-
 await test('etapa sem avanço encerra a execução em vez de repetir para sempre', async () => {
-  const f = await runnerFixture({ states: [{ next: 'cenas', coveredScenes: 3 }] });
+  const f = await runnerFixture({
+    states: [{ next: 'cenas', coveredScenes: 3 }],
+  });
   f.run.progress = 'cenas:3';
   const outcome = await f.executeStep(f.run);
   assert.equal(outcome.kind, 'failed');
@@ -275,7 +277,7 @@ await test('estado concluído encerra sem gastar uma etapa', async () => {
 
 await test('teto de etapas protege contra execução infinita', async () => {
   const f = await runnerFixture({ states: [{ next: 'composicao' }] });
-  const outcome = await f.executeStep({ ...f.run, hops: 14 });
+  const outcome = await f.executeStep({ ...f.run, hops: 15 });
   assert.equal(outcome.kind, 'failed');
   assert.match(outcome.error, /limite de etapas/);
   assert.equal(f.calls(), 0);
@@ -284,14 +286,130 @@ await test('teto de etapas protege contra execução infinita', async () => {
 await test('resultado da etapa fecha o run com o estado correspondente', async () => {
   const f = await runnerFixture({ states: [{ next: 'composicao' }] });
   await f.settleRun(f.run, { kind: 'done' });
-  assert.equal(f.runs.get('run-1').status, 'done');
+  assert.equal(f.runs.get(f.run.id).status, 'done');
   await f.settleRun(f.run, { kind: 'paused' });
-  assert.equal(f.runs.get('run-1').status, 'paused');
+  assert.equal(f.runs.get(f.run.id).status, 'paused');
   await f.settleRun(f.run, { kind: 'failed', error: 'motivo' });
-  assert.equal(f.runs.get('run-1').status, 'failed');
-  assert.equal(f.runs.get('run-1').error, 'motivo');
-  // Reivindicação perdida não mexe no run: quem assumiu a etapa decide.
-  f.runs.get('run-1').status = 'running';
-  await f.settleRun(f.run, { kind: 'claimed' });
-  assert.equal(f.runs.get('run-1').status, 'running');
+  assert.equal(f.runs.get(f.run.id).status, 'failed');
+  assert.equal(f.runs.get(f.run.id).error, 'motivo');
+});
+
+async function stepRouteFixture(input = {}) {
+  const f = await runnerFixture(input);
+  Object.assign(f.run, { hops: 0, status: 'queued' });
+  const jobs = [],
+    dispatches = [];
+  const { POST } = await loadModule(
+    'app/api/admin/[tenant]/generation/step/route.ts',
+    {
+      'next/server': { after: (callback) => jobs.push(callback) },
+      '@/lib/auth': { isAuthenticated: async () => false },
+      '@/lib/generation/token': { verifyStepToken },
+      '@/lib/tenant-queries': {
+        getTenantBySlug: async (slug) => ({
+          id: slug === 'fixture' ? f.run.tenantId : 'other',
+        }),
+      },
+      '@/lib/generation/runs': {
+        getRun: async () => structuredClone(f.run),
+        claimStep: async (_id, hop) => {
+          if (
+            f.run.hops !== hop ||
+            !['queued', 'running', 'stopping'].includes(f.run.status)
+          )
+            return null;
+          f.run.hops++;
+          if (f.run.status !== 'stopping') f.run.status = 'running';
+          return structuredClone(f.run);
+        },
+        finishRun: async (_id, status, error) =>
+          Object.assign(f.run, { status, error }),
+      },
+      '@/lib/generation/runner': f,
+      '@/lib/generation/dispatch': {
+        dispatchStep: async (input) => dispatches.push(input),
+      },
+    },
+  );
+  const post = async (hop, slug = 'fixture') =>
+    POST(
+      new Request('https://eixu.test/api/admin/fixture/generation/step', {
+        method: 'POST',
+        headers: { 'x-eixu-run': await createStepToken(f.run.id, hop) },
+      }),
+      { params: Promise.resolve({ tenant: slug }) },
+    );
+  return { ...f, jobs, dispatches, post, POST };
+}
+
+await test('repetir o despacho durante uma chamada ativa não encerra nem assume outro salto', async () => {
+  const entered = Promise.withResolvers(),
+    release = Promise.withResolvers();
+  const f = await stepRouteFixture({
+    states: [{ next: 'composicao' }, { next: 'revisao' }, { next: 'pronto' }],
+    onGenerate: async () => {
+      entered.resolve();
+      await release.promise;
+    },
+  });
+  assert.equal((await f.post(0)).status, 202);
+  const firstJob = f.jobs.shift()();
+  await entered.promise;
+  try {
+    assert.equal((await f.post(0)).status, 200);
+    assert.equal(f.run.status, 'running');
+    assert.equal(f.calls(), 1);
+    assert.equal(f.jobs.length, 0);
+  } finally {
+    release.resolve();
+    await firstJob;
+  }
+  assert.equal(f.dispatches[0].hop, 1);
+  assert.equal((await f.post(1)).status, 202);
+  assert.equal(
+    (await f.post(0)).status,
+    200,
+    'o token anterior não assume a revisão',
+  );
+  await f.jobs.shift()();
+  assert.equal(f.run.status, 'done');
+  assert.equal(f.calls(), 2);
+  assert.equal(
+    (await f.post(1)).status,
+    200,
+    'repetição após conclusão também é inofensiva',
+  );
+  assert.equal(f.run.status, 'done');
+});
+
+await test('dois despachos simultâneos agendam só um callback e preservam autenticação/tenant', async () => {
+  const f = await stepRouteFixture({
+    states: [{ next: 'composicao' }, { next: 'pronto' }],
+  });
+  assert.equal((await f.post(0, 'other')).status, 404);
+  assert.equal((await f.post(1)).status, 409);
+  const denied = await f.POST(
+    new Request('https://eixu.test/step', { method: 'POST' }),
+    { params: Promise.resolve({ tenant: 'fixture' }) },
+  );
+  assert.equal(denied.status, 401);
+  const responses = await Promise.all([f.post(0), f.post(0)]);
+  assert.deepEqual(
+    responses.map((response) => response.status).sort(),
+    [200, 202],
+  );
+  assert.equal(f.jobs.length, 1);
+  assert.equal(f.run.hops, 1);
+  await f.jobs[0]();
+  assert.equal(f.calls(), 1);
+  assert.equal(f.run.status, 'done');
+});
+
+await test('pausa recebida antes do próximo salto não abre chamada paga', async () => {
+  const f = await stepRouteFixture({ states: [{ next: 'composicao' }] });
+  f.run.status = 'stopping';
+  assert.equal((await f.post(0)).status, 202);
+  await f.jobs[0]();
+  assert.equal(f.calls(), 0);
+  assert.equal(f.run.status, 'paused');
 });

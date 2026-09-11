@@ -93,6 +93,32 @@ await test('estado inicial e refresh incluem pendências do projeto mesmo sem p�
   assert.deepEqual(state.pages, []);
 });
 
+await test('versão da prévia detecta conteúdo sem mudança de contagem e ignora recibos de execução', () => {
+  const draft = {
+    ...page,
+    blocks: [{ id: 'title', type: 'text', props: { title: 'Antes' } }],
+  };
+  const before = workspaceState(tenant, [draft], []).previewRevision;
+  const edited = {
+    ...draft,
+    blocks: [{ ...draft.blocks[0], props: { title: 'Depois' } }],
+  };
+  assert.notEqual(workspaceState(tenant, [edited], []).previewRevision, before);
+  assert.equal(
+    workspaceState(
+      { ...tenant, brief: { generation: { reviewRounds: 2 } } },
+      [draft],
+      [],
+    ).previewRevision,
+    before,
+  );
+  assert.notEqual(
+    workspaceState({ ...tenant, brand: { accent: '#ff0000' } }, [draft], [])
+      .previewRevision,
+    before,
+  );
+});
+
 await test('compacta dados repetidos e mantém todas as instruções, respostas finais e anexo atual', async () => {
   const oldFile = {
     type: 'file',

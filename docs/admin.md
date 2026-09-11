@@ -44,6 +44,8 @@ A exclusão é definitiva e não tem lixeira. Ao concluir, o site publicado pass
 
 ## Qualidade e retomada
 
+O andamento é atualizado automaticamente ao iniciar pelo botão ou ao digitar “continuar”, até a conclusão. A prévia acompanha as alterações salvas. Quando a geração está parada, os motivos que bloqueiam a publicação continuam visíveis, mesmo com a revisão ainda pendente.
+
 O agente interno usa Gemini 3.8 Flash e dedica mais raciocínio à composição e à revisão. Ele planeja intenções distintas por página, confere o resultado em desktop e celular e corrige problemas materiais. Uma revisão que falhou ou ficou desatualizada não marca o site como pronto. Se o limite do turno for atingido, retome a etapa: o rascunho e as pendências permanecem. A revisão não publica por conta própria.
 
 ## Gerar e editar o site

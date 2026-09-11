@@ -156,20 +156,17 @@ export async function createRun(input: {
 }
 
 /**
- * Começa uma fase: marca execução, zera o relógio da fase e conta o passo.
+ * Reserva o salto antes de agendar trabalho ou avaliar o progresso.
  * O `hops` esperado torna a reivindicação atômica — um encadeamento repetido
  * (retentativa de rede, entrega dupla) não abre a mesma etapa duas vezes.
  */
-export async function startPhase(
+export async function claimStep(
   runId: string,
-  phase: Phase,
   expectedHops: number,
 ): Promise<GenerationRun | null> {
   const rows = (await db()`
     update generation_runs
     set status = case when status = 'stopping' then 'stopping' else 'running' end,
-        phase = ${phase},
-        phase_started_at = now(),
         heartbeat_at = now(),
         hops = hops + 1
     where id = ${runId}
@@ -186,10 +183,13 @@ export async function heartbeat(runId: string): Promise<void> {
 
 export async function saveProgress(
   runId: string,
+  phase: Phase,
   progress: string,
 ): Promise<void> {
   await db()`
-    update generation_runs set progress = ${progress}, heartbeat_at = now()
+    update generation_runs
+    set phase = ${phase}, phase_started_at = now(),
+        progress = ${progress}, heartbeat_at = now()
     where id = ${runId}
   `;
 }

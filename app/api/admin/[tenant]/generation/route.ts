@@ -1,6 +1,6 @@
 import { workspaceState } from '@/lib/admin/state';
 import { isAuthenticated } from '@/lib/auth';
-import { lastMessageId, messagesAfter } from '@/lib/ai/history';
+import { messageCursor, messagesAfter } from '@/lib/ai/history';
 import {
   activeRun,
   expireStaleRun,
@@ -30,6 +30,8 @@ export async function GET(
   if (!tenant) return new Response('Cliente não encontrado', { status: 404 });
 
   const after = Number(new URL(request.url).searchParams.get('after') ?? 0);
+  if (!Number.isSafeInteger(after) || after < 0)
+    return new Response('Cursor inválido', { status: 400 });
   const [pages, images] = await Promise.all([
     listPages(tenant.id),
     listImages(tenant.id),
@@ -44,19 +46,17 @@ export async function GET(
         ? null
         : recent),
   );
-  const [events, messages, lastId] = await Promise.all([
+  const [events, messages] = await Promise.all([
     run ? listEvents(run.id) : Promise.resolve([]),
-    Number.isFinite(after) && after > 0
-      ? messagesAfter(tenant.id, after)
-      : Promise.resolve([]),
-    lastMessageId(tenant.id),
+    messagesAfter(tenant.id, after),
   ]);
 
   return Response.json({
     run,
     events,
     messages,
-    lastMessageId: lastId,
+    lastMessageId: messageCursor(messages, after),
+    hasMoreMessages: messages.length === 60,
     state: workspaceState(tenant, pages, images),
   });
 }
