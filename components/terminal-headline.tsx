@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useMediaQuery } from '@/hooks/use-media-query';
 
 const HEADLINE = 'A/gente tira do papel.';
 
@@ -11,17 +12,14 @@ function typingDelay(character: string, index: number) {
 }
 
 export function TerminalHeadline() {
+  const prefersReducedMotion = useMediaQuery(
+    '(prefers-reduced-motion: reduce)',
+  );
   const [typedHeadline, setTypedHeadline] = useState('');
   const [isTyping, setIsTyping] = useState(true);
 
   useEffect(() => {
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    if (prefersReducedMotion) {
-      setTypedHeadline(HEADLINE);
-      setIsTyping(false);
-      return;
-    }
+    if (prefersReducedMotion) return;
 
     const timers = new Set<ReturnType<typeof setTimeout>>();
     let cancelled = false;
@@ -38,7 +36,11 @@ export function TerminalHeadline() {
     const typeHeadline = async () => {
       await wait(560);
 
-      for (let characterIndex = 0; characterIndex < HEADLINE.length; characterIndex += 1) {
+      for (
+        let characterIndex = 0;
+        characterIndex < HEADLINE.length;
+        characterIndex += 1
+      ) {
         if (cancelled) return;
 
         const nextCharacter = HEADLINE[characterIndex];
@@ -57,15 +59,20 @@ export function TerminalHeadline() {
       timers.forEach(clearTimeout);
       timers.clear();
     };
-  }, []);
+  }, [prefersReducedMotion]);
 
   return (
-    <h1 className="hero-title hero-title--terminal reveal delay-2" aria-label={HEADLINE}>
+    <h1
+      className="hero-title hero-title--terminal reveal delay-2"
+      aria-label={HEADLINE}
+    >
       <span className="terminal-line" aria-hidden="true">
         <span className="terminal-ghost">{HEADLINE}</span>
         <span className="terminal-typed">
-          {typedHeadline}
-          {isTyping ? <span className="terminal-cursor" /> : null}
+          {prefersReducedMotion ? HEADLINE : typedHeadline}
+          {!prefersReducedMotion && isTyping ? (
+            <span className="terminal-cursor" />
+          ) : null}
         </span>
       </span>
     </h1>

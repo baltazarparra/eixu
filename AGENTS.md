@@ -95,8 +95,8 @@ pendências. Não afrouxe esses controles para obter um resultado verde.
 Use npm e o lockfile existente. Tipos: `npx next typegen && npx tsc --noEmit`.
 Código: `npm run lint`. Contratos: `npm run test:sites` e `npm run test:admin`. Produção: `npm run build:vercel`. Verifique o fluxo afetado
 além da compilação; não adicione testes que só repitam uma alteração documental.
-Há dívida de lint registrada em [Verificação](docs/verification.md); não a esconda
-com regras desligadas nem apresente o check como aprovado.
+O lint global deve passar sem desligar regras. O build também verifica os arquivos
+necessários à captura serverless; os registros estão em [Verificação](docs/verification.md).
 
 Não imprima nem versione `.env*`, tokens, cookies ou dados pessoais. Antes de
 migração, seed, geração paga ou escrita remota, confirme o recurso e o escopo já
