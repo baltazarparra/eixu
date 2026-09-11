@@ -43,8 +43,16 @@ export function reviewSchemaFor(pages: Page[]) {
     findings: z
       .array(
         reviewSchema.shape.findings.element.extend({
-          page: z.enum(paths),
-          // O Gateway recusou enum dinâmico de todos os IDs. Confira o par abaixo.
+          // Enum dinâmico de caminhos derruba a requisição inteira assim que a
+          // soma dos valores cresce: o provedor recusa com 400 e a revisão fica
+          // indisponível. Os caminhos vão na descrição, como já acontece com o
+          // id do bloco, e a verificação abaixo confere o par.
+          page: z
+            .string()
+            .max(200)
+            .describe(
+              `Copie exatamente um destes caminhos: ${paths.join(', ')}.`,
+            ),
           blockId: z
             .string()
             .max(120)
@@ -58,27 +66,51 @@ export function reviewSchemaFor(pages: Page[]) {
   });
 }
 
-export function validateReviewReferences(
+/** Diferença de formatação no caminho não é achado de outra página. */
+function normalizePath(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === 'home' || trimmed === 'index') return '/';
+  const withSlash = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return withSlash.length > 1 && withSlash.endsWith('/')
+    ? withSlash.slice(0, -1)
+    : withSlash;
+}
+
+export type ReviewFinding = z.infer<typeof reviewSchema>['findings'][number];
+
+/**
+ * Confere o par página/bloco de cada achado. Uma referência errada não pode
+ * derrubar a revisão inteira: com o schema sem enum de caminhos, isso deixava
+ * o cliente preso na fase de revisão por uma citação imprecisa. Achado sem
+ * página existente não é acionável e sai; id de bloco inexistente perde só a
+ * âncora. As duas contagens voltam para o recibo e para o log.
+ */
+export function resolveReviewReferences(
   pages: Page[],
-  findings: z.infer<typeof reviewSchema>['findings'],
-) {
+  findings: ReviewFinding[],
+): { findings: ReviewFinding[]; unresolved: number; unlinked: number } {
   const paths = new Map(
     pages.map((page) => [
       `/${page.slug}`,
       new Set(page.blocks.map((block) => block.id)),
     ]),
   );
+  const resolved: ReviewFinding[] = [];
+  let unresolved = 0;
+  let unlinked = 0;
   for (const finding of findings) {
-    const blocks = paths.get(finding.page);
-    if (!blocks)
-      throw new Error(
-        'A crítica apontou uma página que não existe. Revise novamente.',
-      );
-    if (finding.blockId && !blocks.has(finding.blockId))
-      throw new Error(
-        'A crítica apontou um bloco que não existe nessa página. Revise novamente.',
-      );
+    const page = normalizePath(finding.page);
+    const blocks = paths.get(page);
+    if (!blocks) {
+      unresolved += 1;
+      continue;
+    }
+    const blockId =
+      finding.blockId && blocks.has(finding.blockId) ? finding.blockId : null;
+    if (finding.blockId && !blockId) unlinked += 1;
+    resolved.push({ ...finding, page, blockId });
   }
+  return { findings: resolved, unresolved, unlinked };
 }
 
 /** Pixels vão como FilePart; o loop principal recebe só o relatório validado. */
@@ -131,7 +163,12 @@ Verifique factualidade da oferta, identidade ligada ao negócio e à vibe, decis
 Cada achado precisa citar evidência observável, página e bloco existente quando identificável; use blockId null quando não conseguir localizá-lo. Error é defeito material: afirmação contradita/sem evidência, texto ilegível, conteúdo cortado, ação inacessível, imagem quebrada. Preferência estética é warn. Não invente defeitos para parecer rigoroso. Registre o que funciona para o editor preservar. Não autorize publicação e não afirme ter visto páginas ou viewports ausentes.`,
     messages: [{ role: 'user', content }],
   });
-  validateReviewReferences(pages, result.output.findings);
+  const { findings, unresolved, unlinked } = resolveReviewReferences(
+    pages,
+    result.output.findings,
+  );
+  if (unresolved || unlinked)
+    console.warn('[review] referências da crítica', { unresolved, unlinked });
   const usage = {
     ...usageRecord(
       result.usage,
@@ -145,5 +182,5 @@ Cada achado precisa citar evidência observável, página e bloco existente quan
     ),
   };
   console.info('[review] usage', usage);
-  return { ...result.output, usage };
+  return { ...result.output, findings, unresolved, unlinked, usage };
 }
