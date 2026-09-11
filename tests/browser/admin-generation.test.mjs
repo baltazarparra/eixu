@@ -108,7 +108,9 @@ await test(
     const cssPath = path.join(root, '.next/static/chunks');
     const css = (
       await Promise.all(
-        (await readdir(cssPath))
+        (
+          await readdir(cssPath)
+        )
           .filter((file) => file.endsWith('.css'))
           .map((file) => readFile(path.join(cssPath, file), 'utf8')),
       )
@@ -136,7 +138,10 @@ await test(
               };
               try {
                 if (pathname === '/') {
-                  response.setHeader('Content-Type', 'text/html; charset=utf-8');
+                  response.setHeader(
+                    'Content-Type',
+                    'text/html; charset=utf-8',
+                  );
                   response.end(
                     await server.transformIndexHtml(
                       '/',
@@ -145,7 +150,10 @@ await test(
                   );
                   return;
                 }
-                if (pathname.endsWith('/generation') && request.method === 'POST') {
+                if (
+                  pathname.endsWith('/generation') &&
+                  request.method === 'POST'
+                ) {
                   backend.start();
                   json({ run: backend.run }, 202);
                   return;
@@ -156,7 +164,9 @@ await test(
                   return;
                 }
                 if (pathname.endsWith('/generation')) {
-                  json(backend.feed(Number(url.searchParams.get('after') ?? 0)));
+                  json(
+                    backend.feed(Number(url.searchParams.get('after') ?? 0)),
+                  );
                   return;
                 }
                 if (pathname.endsWith('/state')) {
@@ -176,7 +186,11 @@ await test(
                 if (pathname.startsWith('/_next/static/media/')) {
                   response.end(
                     await readFile(
-                      path.join(root, '.next/static/media', path.basename(pathname)),
+                      path.join(
+                        root,
+                        '.next/static/media',
+                        path.basename(pathname),
+                      ),
                     ),
                   );
                   return;
@@ -222,21 +236,34 @@ await test(
         }
         assert.fail(`Botão ausente: ${text}`);
       };
-      /** O botão precisa estar à vista sem rolar: era esse o problema. */
-      const visible = (label) =>
-        page.evaluate((label) => {
-          const node = [...document.querySelectorAll('button')].find(
-            (item) => item.textContent.trim() === label,
+      /**
+       * O botão precisa estar à vista sem rolar: era esse o problema. A espera
+       * evita falso negativo quando a máquina está carregada.
+       */
+      const visible = async (label) => {
+        try {
+          await page.waitForFunction(
+            (label) => {
+              const node = [...document.querySelectorAll('button')].find(
+                (item) => item.textContent.trim() === label,
+              );
+              if (!node) return false;
+              const box = node.getBoundingClientRect();
+              return (
+                box.top >= 0 &&
+                box.bottom <= innerHeight &&
+                box.width > 0 &&
+                box.height > 0
+              );
+            },
+            { timeout: 10_000 },
+            label,
           );
-          if (!node) return false;
-          const box = node.getBoundingClientRect();
-          return (
-            box.top >= 0 &&
-            box.bottom <= innerHeight &&
-            box.width > 0 &&
-            box.height > 0
-          );
-        }, label);
+          return true;
+        } catch {
+          return false;
+        }
+      };
 
       assert.equal(await visible('Continuar'), true);
       await click('Continuar');
@@ -274,7 +301,11 @@ await test(
         'O andamento reaparece sem clique.',
       );
       assert.equal(await visible('Pausar'), true);
-      assert.equal(chatCalls, 0, 'Nenhum turno de chat é disparado pelo painel.');
+      assert.equal(
+        chatCalls,
+        0,
+        'Nenhum turno de chat é disparado pelo painel.',
+      );
 
       // Celular: a conversa pode estar oculta, mas a execução continua à vista.
       await page.setViewport({ width: 390, height: 844 });

@@ -236,6 +236,7 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
       .join('\n\n');
     const receipt = savedProgressMessage(
       workspaceState(fresh, freshPages, freshImages),
+      !stopRequested && after.next !== 'pronto',
     );
     const text =
       result.text.trim() && spoken.endsWith(result.text.trim())

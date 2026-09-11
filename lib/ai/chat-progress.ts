@@ -34,8 +34,15 @@ export function isResumeRequest(text: string): boolean {
   );
 }
 
-/** Relata somente o estado persistido; não infere execução ativa nem aprovação. */
-export function savedProgressMessage(state: SiteState): string {
+/**
+ * Relata somente o estado persistido; não infere aprovação. Com a execução em
+ * andamento, não manda clicar em Continuar: a próxima etapa já vai começar, e
+ * o convite fazia o operador interromper o que estava funcionando.
+ */
+export function savedProgressMessage(
+  state: SiteState,
+  running = false,
+): string {
   const progress = state.generation;
   const saved = `Progresso salvo: ${progress.coveredScenes} de ${progress.targetScenes} cenas e ${state.pages.length} páginas.`;
   const next = {
@@ -46,5 +53,10 @@ export function savedProgressMessage(state: SiteState): string {
     pronto:
       'A revisão visual do rascunho atual foi concluída. Confira a prévia no painel.',
   }[progress.next];
-  return `${saved} ${next}${progress.next === 'pronto' ? '' : ' Use Continuar para retomar pelo progresso salvo.'}`;
+  if (progress.next === 'pronto') return `${saved} ${next}`;
+  return `${saved} ${next}${
+    running
+      ? ' A próxima etapa começa em seguida; acompanhe pelo painel.'
+      : ' Use Continuar para retomar pelo progresso salvo.'
+  }`;
 }

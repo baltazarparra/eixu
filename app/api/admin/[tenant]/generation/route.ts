@@ -11,6 +11,9 @@ import { startGeneration } from '@/lib/generation/start';
 import { listImages } from '@/lib/images/queries';
 import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
 
+/** Por quanto tempo o resultado de uma execução encerrada continua à vista. */
+const RECENT_MS = 30 * 60 * 1000;
+
 /**
  * Andamento da geração pelo estado gravado. O painel lê daqui em vez de
  * depender do stream: recarregar, trocar de aba ou abrir em outro aparelho
@@ -31,8 +34,15 @@ export async function GET(
     listPages(tenant.id),
     listImages(tenant.id),
   ]);
+  // O resultado da última execução interessa por um tempo; depois disso,
+  // reabrir o painel não precisa anunciar de novo uma geração de ontem.
+  const recent = await latestRun(tenant.id);
   const run = await expireStaleRun(
-    (await activeRun(tenant.id)) ?? (await latestRun(tenant.id)),
+    (await activeRun(tenant.id)) ??
+      (recent?.finishedAt &&
+      Date.now() - new Date(recent.finishedAt).getTime() > RECENT_MS
+        ? null
+        : recent),
   );
   const [events, messages, lastId] = await Promise.all([
     run ? listEvents(run.id) : Promise.resolve([]),

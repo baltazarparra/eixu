@@ -23,15 +23,26 @@ de `/api/admin/[tenant]/generation/step` e linha do tempo em
 **Ensaio real, cliente sintético `ensaio-runner`, servidor local com Chromium
 do sistema e modelos de produção:**
 
-- Briefing e direção: 114 s. Duas tentativas de `set_design` foram recusadas
-  pelo catálogo antes da terceira ser aceita — recusa recuperável, registrada
-  na linha do tempo como tentativa.
-- Cenas: 162 s para as cinco vagas do plano em **uma** chamada, geradas em
-  lotes paralelos de três com crítica por imagem. No fluxo anterior eram cinco
-  requisições sequenciais de 60 a 77 s cada, medidas no `iterum`.
-- Composição: 179 s, com um reparo antes do lote válido.
-- O painel acompanhou tudo por leitura periódica do estado gravado; nenhuma
-  etapa dependeu de aba aberta.
+A execução terminou sozinha em **872 s**, com recibo de revisão completo
+(`visual: complete`, 0 erros, 2 rodadas), cinco fotos, três páginas orgânicas
+mais a de obrigado e nenhum erro de pre-flight. Nenhuma etapa dependeu de aba
+aberta: o único cliente do run foi um script lendo o mesmo `GET` que o painel
+usa.
+
+| Etapa              | Tempo | Observação                                                                                 |
+| ------------------ | ----- | ------------------------------------------------------------------------------------------ |
+| Briefing e direção | 110 s | duas recusas de `set_design` pelo catálogo antes do aceite, registradas como tentativa     |
+| Cenas              | 165 s | cinco vagas do plano em **uma** chamada, em lotes paralelos de três com crítica por imagem |
+| Composição         | 180 s | um reparo antes do lote válido                                                             |
+| Revisão            | 407 s | duas rodadas: captura, crítica, correções e conferência                                    |
+
+No `iterum` a mesma etapa de cenas custou cinco requisições sequenciais de 60 a
+77 s. O total de 872 s é o número medido, não um teto prometido: a revisão
+domina o tempo e varia com o número de correções.
+
+O ensaio também mostrou dois defeitos de texto, corrigidos: o rótulo repetia a
+barra do caminho (`Lendo //contato`) e o recibo entre etapas mandava “usar
+Continuar” enquanto a etapa seguinte já ia começar sozinha.
 
 **Gates:** `npx next typegen && npx tsc --noEmit`, `npx oxlint lib tests app
 components scripts`, `npm run test:sites` (81), `npm run test:admin` (70, 3
