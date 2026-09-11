@@ -739,8 +739,8 @@ details[open] > summary .site-disclosure {
   max-width: 64rem;
 }
 .site-text-lead .site-shell > div > p:first-child {
-  font-size: clamp(1.35rem, 3vw, 2rem);
-  line-height: 1.45;
+  font-size: var(--type-lead, clamp(1.35rem, 3vw, 2rem));
+  line-height: 1.5;
   color: var(--ink);
 }
 .site-text-columns .site-shell > div {

@@ -28,6 +28,7 @@
     "@ai-sdk/react": "^4.0.100",
     "@base-ui/react": "1.7.0",
     "@neondatabase/serverless": "^1.1.0",
+    "@phosphor-icons/react": "^2.1.10",
     "@shadcn/react": "0.3.0",
     "@sparticuz/chromium": "^141.0.0",
     "@vercel/blob": "^2.8.0",

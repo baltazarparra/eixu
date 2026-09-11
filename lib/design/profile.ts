@@ -1,4 +1,10 @@
 import { z } from 'zod';
+import {
+  BODY_FONTS,
+  BODY_TYPE,
+  DISPLAY_FONTS,
+  DISPLAY_TYPE,
+} from './typography';
 
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
@@ -49,8 +55,16 @@ export const designProfileInputSchema = z.object({
   paper: hex,
   surface: hex,
   radius: z.enum(['none', 'sm', 'md', 'lg', 'full']),
-  displayFont: z.enum(['sans', 'editorial', 'geometric', 'humanist', 'mono']),
-  bodyFont: z.enum(['sans', 'editorial', 'geometric', 'humanist']),
+  displayFont: z
+    .enum(DISPLAY_FONTS)
+    .describe(
+      DISPLAY_FONTS.map((id) => `${id}: ${DISPLAY_TYPE[id].name}`).join('; '),
+    ),
+  bodyFont: z
+    .enum(BODY_FONTS)
+    .describe(
+      BODY_FONTS.map((id) => `${id}: ${BODY_TYPE[id].name}`).join('; '),
+    ),
   heroComposition: z.enum([
     'split',
     'cover',

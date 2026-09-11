@@ -1,8 +1,9 @@
-import { Globe } from 'lucide-react';
+import { SiteIcon } from './icon';
+import type { Vibe } from '@/lib/design/vibes';
 
 /**
- * Marcas de rede social. Vivem aqui porque o pacote de ícones do projeto não
- * traz logotipos; o que não é reconhecido cai num globo, sem inventar símbolo.
+ * Marcas preservam seus desenhos reconhecíveis; o gesto acompanha a vibe.
+ * O que não é reconhecido cai num globo, sem inventar símbolo.
  */
 const PATHS: Record<string, string> = {
   instagram:
@@ -23,21 +24,27 @@ const PATHS: Record<string, string> = {
 export function SocialIcon({
   network,
   size = 18,
+  vibe = 'comercial',
 }: {
   network: string;
   size?: number;
+  vibe?: Vibe;
 }) {
   const path = PATHS[network];
-  if (!path) return <Globe size={size} aria-hidden="true" />;
+  if (!path) return <SiteIcon name="globe" vibe={vibe} size={size} />;
   return (
-    <svg
-      viewBox="0 0 24 24"
-      width={size}
-      height={size}
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <path d={path} />
-    </svg>
+    <span className="site-icon" data-icon-vibe={vibe} aria-hidden="true">
+      <svg
+        className="site-icon-svg"
+        viewBox="0 0 24 24"
+        width={size}
+        height={size}
+        fill="currentColor"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <path d={path} />
+      </svg>
+    </span>
   );
 }

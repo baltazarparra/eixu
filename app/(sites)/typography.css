@@ -1,0 +1,116 @@
+/* Papéis repetidos entre páginas; composição e tamanho do hero seguem o layout. */
+.site-theme {
+  --type-caption: 0.8125rem;
+  --type-label: 0.8125rem;
+  --type-body: clamp(1rem, 0.96rem + 0.18vw, 1.125rem);
+  --type-lead: clamp(1.125rem, 1rem + 0.6vw, 1.5rem);
+  --type-title: clamp(1.9rem, 1.2rem + 2.6vw, 3.5rem);
+  --type-subtitle: clamp(1.25rem, 1rem + 0.7vw, 1.65rem);
+  font-size: var(--type-body);
+  line-height: var(--body-leading, 1.65);
+  font-kerning: normal;
+  font-optical-sizing: auto;
+}
+.site-theme[data-vibe='moderno'] {
+  --type-title: clamp(2rem, 1.3rem + 2.2vw, 3.25rem);
+}
+.site-theme[data-vibe='ousado'] {
+  --type-title: clamp(2.4rem, 1.4rem + 4.5vw, 5.5rem);
+  --type-subtitle: clamp(1.5rem, 1.1rem + 1.1vw, 2.25rem);
+}
+.site-theme[data-vibe='artistico'] {
+  --type-title: clamp(2.2rem, 1.2rem + 3vw, 4rem);
+  --type-lead: clamp(1.2rem, 1rem + 0.8vw, 1.65rem);
+}
+.site-theme :is(h1, h2, h3, blockquote) {
+  text-wrap: balance;
+}
+.site-theme[data-vibe]
+  :is(
+    .site-headline,
+    .site-h2,
+    .site-explorer-heading h2,
+    .site-location-title
+  ) {
+  font-weight: var(--display-weight);
+  line-height: var(--display-leading);
+  letter-spacing: var(--display-tracking);
+}
+.site-theme[data-vibe]
+  :is(.site-h2, .site-explorer-heading h2, .site-location-title) {
+  font-size: var(--type-title);
+}
+.site-theme
+  :is(.site-bento-item, .site-services, .site-resource, .site-explorer-copy)
+  h3 {
+  font-size: var(--type-subtitle);
+  font-weight: var(--display-weight);
+  line-height: 1.2;
+  letter-spacing: var(--display-tracking);
+}
+.site-theme :is(.site-text, .site-post-body) p {
+  max-width: var(--body-measure);
+  font-size: var(--type-body);
+  line-height: var(--body-leading);
+  text-wrap: pretty;
+}
+.site-theme
+  :is(
+    .site-bento-item,
+    .site-services,
+    .site-explorer-copy,
+    .site-resource-copy
+  )
+  p {
+  font-size: var(--type-body);
+  line-height: var(--body-leading);
+  text-wrap: pretty;
+}
+.site-theme .site-hero-copy > p:not(.site-eyebrow) {
+  font-size: var(--type-lead);
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+.site-theme .site-text-lead p:first-of-type {
+  font-size: var(--type-lead);
+  line-height: 1.5;
+}
+.site-theme .site-testimonial blockquote {
+  font-family: var(--font-body);
+  font-style: var(--quote-style);
+  font-weight: 400;
+  line-height: 1.4;
+}
+.site-theme[data-vibe]
+  :is(.site-eyebrow, .site-resource-category, .site-explorer-kicker) {
+  font-family: var(--font-body);
+  font-size: var(--type-label);
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.1em;
+}
+.site-theme :is(figcaption, .site-hero-caption) {
+  font-size: var(--type-caption);
+  line-height: 1.5;
+}
+.site-theme :is(.site-stats, .site-pricing, .site-step-number) {
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.site-theme
+  :is(
+    .site-action,
+    .site-nav-link,
+    .site-nav-cta,
+    button,
+    input,
+    textarea,
+    select
+  ) {
+  font-family: var(--font-body);
+}
+/* Espessura expressiva nos títulos não comprime parágrafos ou formulários. */
+@media (max-width: 640px) {
+  .site-theme .site-post-body {
+    font-size: 1rem;
+  }
+}

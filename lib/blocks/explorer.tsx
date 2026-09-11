@@ -4,14 +4,23 @@
 // oxlint-disable next/no-html-link-for-pages
 import { useId, useRef, useState, type KeyboardEvent } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowUpRight, Check } from 'lucide-react';
+import { SiteIcon } from './icon';
+import type { Vibe } from '@/lib/design/vibes';
 import type { z } from 'zod';
 import type { blockSchemas } from './registry';
 import { MotionLink } from './motion';
 
-export type ExplorerProps = z.infer<(typeof blockSchemas)['feature.explorer']>;
+export type ExplorerProps = z.infer<
+  (typeof blockSchemas)['feature.explorer']
+> & { vibe?: Vibe };
 
-export function VisualExplorer({ title, body, items, layout }: ExplorerProps) {
+export function VisualExplorer({
+  title,
+  body,
+  items,
+  layout,
+  vibe = 'comercial',
+}: ExplorerProps) {
   const id = useId();
   const [selected, select] = useState(0);
   const tabs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -71,8 +80,9 @@ export function VisualExplorer({ title, body, items, layout }: ExplorerProps) {
                   }
                 />
               )}
+              <SiteIcon name={entry.icon ?? 'layers'} vibe={vibe} size={20} />
               <span>{entry.title}</span>
-              <ArrowUpRight size={18} aria-hidden="true" />
+              <SiteIcon name="arrow-up-right" vibe={vibe} size={18} />
             </button>
           ))}
         </div>
@@ -113,7 +123,7 @@ export function VisualExplorer({ title, body, items, layout }: ExplorerProps) {
             <ul>
               {item.facts.map((fact) => (
                 <li key={fact}>
-                  <Check size={17} aria-hidden="true" />
+                  <SiteIcon name="check" vibe={vibe} size={17} />
                   {fact}
                 </li>
               ))}
@@ -123,7 +133,7 @@ export function VisualExplorer({ title, body, items, layout }: ExplorerProps) {
               href={item.cta.href}
             >
               {item.cta.label}
-              <ArrowUpRight size={18} aria-hidden="true" />
+              <SiteIcon name="arrow-up-right" vibe={vibe} size={18} />
             </MotionLink>
           </motion.div>
         </div>
