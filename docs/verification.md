@@ -1,5 +1,23 @@
 # Validação e publicação
 
+## Depoimentos no bloco de cases da home, 11/09/2026
+
+O bloco `05 / Cases` passou a mostrar a citação de quem contratou, no lugar do
+subtítulo genérico de cada card. Fernanda Tessetore (Saldo) e Fernando Zullo
+(Naia) autorizaram nome, cargo, foto e as frases; o operador transmitiu os textos
+e as imagens. A edição foi limitada a acentuação e pontuação. As fotos entraram
+como `public/cases/saldo-fernanda-tessetore.webp` e `naia-fernando-zullo.webp`,
+recortadas em 224 px e servidas a 52 px. São pessoas reais com autorização, não
+cenas geradas; o número da Saldo é acumulado e convive com o valor mensal já
+publicado em `/cases/saldopix`.
+
+- Tipos, lint e `build:vercel` aprovados. `test:sites`: 80, sem falhas.
+- Navegador real em 1440 e 390 px: os dois cards mantêm altura igual (1031 px e
+  812 px), sem rolagem horizontal, com as fotos em 200 e o link "Ver projeto"
+  preservado. Contraste medido sobre o papel do card: citação 15,0, nome 16,5 e
+  cargo 5,6, todos acima do piso AA.
+- As páginas `/cases/saldopix` e `/cases/naiacrm` não foram alteradas.
+
 ## Estabilidade da captura visual, 11/09/2026
 
 O ensaio autenticado do pedido de cabeçalho em produção confirmou quatro edições
