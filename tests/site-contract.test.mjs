@@ -625,10 +625,15 @@ await test('gate de composição v2 acompanha o tamanho da página', () => {
   assert.ok(required(3, 'composicao-generica').includes('pelo menos 2'));
 });
 
-const { extractReference, readReference } = await j.import(
+const { extractReference, metaContent, readReference } = await j.import(
   '../lib/ai/reference.ts',
 );
-const { intakeSchema, intakeSummary, lines } = await j.import(
+const { normalizeSocialUrl, socialSummary } = await j.import(
+  '../lib/social-profile.ts',
+);
+const { parseSocialProfile, readSocialProfile, referenceFromSocial } =
+  await j.import('../lib/ai/social.ts');
+const { intakeSchema, intakeSocialUrl, intakeSummary, lines } = await j.import(
   '../lib/tenant-intake.ts',
 );
 const { scenePlan } = await j.import('../lib/images/scene-plan.ts');
@@ -786,4 +791,173 @@ await test('aprovação de imagem pendente não prende a geração na revisão',
     generationState(tenant, semFoto, images).blockingErrors >
       aprovadas.blockingErrors,
   );
+});
+
+await test('perfil de rede social é normalizado; outros hosts continuam fora do campo', () => {
+  assert.deepEqual(normalizeSocialUrl('@Oficina.Sabia'), {
+    url: 'https://www.instagram.com/oficina.sabia/',
+    network: 'instagram',
+    handle: 'oficina.sabia',
+  });
+  assert.equal(
+    normalizeSocialUrl('instagram.com/oficina/?hl=pt').url,
+    'https://www.instagram.com/oficina/',
+  );
+  assert.equal(
+    normalizeSocialUrl('https://www.linkedin.com/company/Porto-Pedras/about/')
+      .url,
+    'https://www.linkedin.com/company/porto-pedras/',
+  );
+  assert.equal(normalizeSocialUrl('linkedin.com/in/pessoa').network, 'linkedin');
+  for (const input of [
+    '',
+    'facebook.com/oficina',
+    'https://oficina.test/',
+    'instagram.com/p/Cabc123/',
+    'linkedin.com/feed/',
+  ])
+    assert.equal(normalizeSocialUrl(input), null, input);
+});
+
+await test('meta lê o conteúdo da própria tag, com apóstrofo e ordem invertida', () => {
+  const html = `<meta property="og:description" content="Bio d'água e sol">
+    <meta name='description' content='Segunda leitura'>`;
+  assert.equal(metaContent(html, 'og:description'), "Bio d'água e sol");
+  assert.equal(metaContent(html, 'description'), 'Segunda leitura');
+  // Atributos invertidos, como o Instagram escreve.
+  assert.equal(
+    metaContent('<meta content="Perfil real" name="description" />', 'description'),
+    'Perfil real',
+  );
+  // O LinkedIn entrega a bio codificada duas vezes: &amp;#39; é um apóstrofo.
+  assert.equal(
+    metaContent(
+      '<meta name="description" content="ship what&amp;#39;s next" />',
+      'description',
+    ),
+    "ship what's next",
+  );
+  // Uma entidade só continua com uma passada, sem estragar &amp;lt;.
+  assert.equal(
+    metaContent('<meta name="description" content="a &amp;lt; b" />', 'description'),
+    'a &lt; b',
+  );
+  // Sem a tag pedida, o padrão não pode varrer as tags anteriores.
+  const semAlvo = `<meta name="robots" content="noarchive" /><meta charset="utf-8" />
+    <meta property="og:title" content="Só título" />`;
+  assert.equal(metaContent(semAlvo, 'description'), undefined);
+  assert.equal(metaContent(semAlvo, 'og:title'), 'Só título');
+});
+
+await test('Instagram devolve nome, bio e avatar; casca de login vira bloqueio', () => {
+  const lidoEm = '2026-09-10T12:00:00.000Z';
+  const perfil = parseSocialProfile(
+    normalizeSocialUrl('@padaria'),
+    `<meta property="og:title" content="Padaria Santa Luzia (&#064;padaria) &#x2022; Instagram photos and videos" />
+     <meta name="description" content="3,２01 Followers, 180 Following, 96 Posts - Padaria Santa Luzia on Instagram: &quot;P&atilde;o d'água todo dia &#xe0;s 6h&quot;" />
+     <meta property="og:image" content="https://scontent.cdninstagram.com/v/avatar.jpg?token=1" />`,
+    lidoEm,
+  );
+  assert.equal(perfil.status, 'ok');
+  assert.equal(perfil.name, 'Padaria Santa Luzia');
+  assert.equal(perfil.bio, "Pão d'água todo dia às 6h");
+  assert.equal(perfil.sourceImage, 'https://scontent.cdninstagram.com/v/avatar.jpg?token=1');
+  assert.equal(perfil.lidoEm, lidoEm);
+
+  const casca = parseSocialProfile(
+    normalizeSocialUrl('@padaria'),
+    '<html><head><title>Instagram</title></head><body>challenge checkpoint</body></html>',
+    lidoEm,
+  );
+  assert.equal(casca.status, 'inacessivel');
+  assert.ok(casca.motivo.includes('login'));
+  assert.equal(casca.sourceImage, undefined);
+});
+
+await test('LinkedIn de empresa devolve nome e tagline sem o prefixo de seguidores', () => {
+  const perfil = parseSocialProfile(
+    normalizeSocialUrl('linkedin.com/company/porto-pedras'),
+    `<meta property="og:title" content="Porto Pedras | LinkedIn">
+     <meta name="description" content="Porto Pedras | 1,240 followers on LinkedIn. Pedras naturais para arquitetura">
+     <meta property="og:image" content="https://media.licdn.com/logo.png">`,
+    '2026-09-10T12:00:00.000Z',
+  );
+  assert.equal(perfil.status, 'ok');
+  assert.equal(perfil.name, 'Porto Pedras');
+  assert.equal(perfil.bio, 'Pedras naturais para arquitetura');
+  assert.equal(perfil.followers, '1,240 seguidores');
+});
+
+await test('resposta 999 do LinkedIn vira bloqueio explícito, sem segunda requisição', async () => {
+  let called = 0;
+  const reference = await readSocialProfile(
+    normalizeSocialUrl('linkedin.com/in/pessoa'),
+    {
+      // O construtor Response recusa 999; o LinkedIn responde exatamente isso.
+      fetch: async () => {
+        called += 1;
+        return {
+          status: 999,
+          ok: false,
+          headers: new Headers(),
+          text: async () => '',
+        };
+      },
+    },
+  );
+  assert.equal(called, 1);
+  assert.equal(reference.status, 'inacessivel');
+  assert.ok(reference.motivo.includes('perfis pessoais'));
+});
+
+await test('perfil lido vira referência e resumo; bloqueado vira lacuna declarada', () => {
+  const social = {
+    url: 'https://www.instagram.com/padaria/',
+    network: 'instagram',
+    handle: 'padaria',
+    status: 'ok',
+    name: 'Padaria Santa Luzia',
+    bio: 'Pão de fermentação natural',
+    followers: '3,201 seguidores',
+    avatarNotes: 'Logotipo bege sobre marrom',
+    lidoEm: '2026-09-10T12:00:00.000Z',
+  };
+  const summary = socialSummary(social);
+  assert.ok(summary.includes('Padaria Santa Luzia'));
+  assert.ok(summary.includes('Pão de fermentação natural'));
+  assert.ok(summary.includes('Logotipo bege'));
+
+  const reference = referenceFromSocial(social);
+  assert.equal(reference.status, 'ok');
+  assert.equal(reference.titulo, 'Padaria Santa Luzia');
+  assert.equal(reference.descricao, 'Pão de fermentação natural');
+
+  const bloqueado = socialSummary({
+    ...social,
+    status: 'inacessivel',
+    motivo: 'O Instagram devolveu a tela de login em vez do perfil.',
+    bio: undefined,
+  });
+  assert.ok(bloqueado.includes('não foi possível ler'));
+  assert.ok(bloqueado.includes('lacuna'));
+  assert.equal(referenceFromSocial({ ...social, status: 'inacessivel' }).status, 'inacessivel');
+  assert.equal(socialSummary({ ...social, status: 'lendo' }), '');
+  assert.equal(socialSummary({ nada: true }), '');
+  // Leitura pendente ainda declara a URL, sem prometer conteúdo.
+  const pendente = socialSummary(null, 'https://www.instagram.com/padaria/');
+  assert.ok(pendente.includes('instagram.com/padaria'));
+  assert.ok(pendente.includes('não terminou'));
+  assert.equal(bloqueado.includes('perfil..'), false);
+});
+
+await test('intake aceita perfil social, normaliza e recusa outra rede', () => {
+  const intake = intakeSchema.parse({ socialUrl: ' @Padaria ' });
+  assert.equal(intake.socialUrl, 'https://www.instagram.com/padaria/');
+  // A URL fica na linha da rede social, não repetida no resumo do intake.
+  assert.equal(intakeSummary(intake).includes('instagram.com/padaria'), false);
+  assert.equal(intakeSocialUrl(intake), 'https://www.instagram.com/padaria/');
+  const recusado = intakeSchema.safeParse({ socialUrl: 'facebook.com/padaria' });
+  assert.equal(recusado.success, false);
+  assert.ok(recusado.error.issues[0].message.includes('Instagram'));
+  assert.equal(intakeSchema.parse({}).socialUrl, '');
 });

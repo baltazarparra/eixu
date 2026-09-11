@@ -1,4 +1,17 @@
+import { intakeSocialUrl, intakeSummary } from '@/lib/tenant-intake';
+import { socialSummary } from '@/lib/social-profile';
 import type { ImageGuide, Tenant, TenantImage } from '@/lib/types';
+
+/** Intake e perfil social legíveis; o JSON cru truncado escondia o essencial. */
+function briefSummary(tenant: Tenant): string {
+  const summary = [
+    intakeSummary(tenant.brief.intake),
+    socialSummary(tenant.brief.social, intakeSocialUrl(tenant.brief.intake)),
+  ]
+    .filter(Boolean)
+    .join('\n');
+  return summary || JSON.stringify(tenant.brief).slice(0, 600);
+}
 
 /** Prompt do agente de imagens. Mesma voz do agente de sites. */
 export function imageAgentPrompt(
@@ -36,7 +49,7 @@ export function imageAgentPrompt(
 Nome: ${tenant.name}
 Subdomínio: ${tenant.slug}.eixu.com.br
 Marca: ${JSON.stringify(tenant.brand)}
-Briefing: ${JSON.stringify(tenant.brief).slice(0, 600)}
+Briefing: ${briefSummary(tenant)}
 Páginas do site:
 ${pagesSummary || '(nenhuma)'}
 

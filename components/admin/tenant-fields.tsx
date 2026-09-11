@@ -41,9 +41,7 @@ export function TenantFields({
               pattern="[a-z0-9]+(-[a-z0-9]+)*"
               placeholder="nome-do-cliente"
             />
-            <small className="text-[var(--color-muted)]">
-              Seu endereço será nome-do-cliente.eixu.com.br
-            </small>
+            <small>Seu endereço será nome-do-cliente.eixu.com.br</small>
           </label>
         ) : null}
         <label className="admin-field">
@@ -71,8 +69,9 @@ export function TenantFields({
       <div className="mt-7 border-t pt-6">
         <h2 className="text-base font-semibold">Briefing do negócio</h2>
         <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
-          O que o site precisa comunicar. Registre fatos e restrições para
-          orientar o texto e as imagens.
+          O que o site precisa comunicar. Todos os campos são opcionais; quanto
+          mais fatos confirmados, menos o agente precisa supor. Ele só afirma o
+          que estiver aqui ou nas referências lidas; o resto vira lacuna.
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
           {(
@@ -95,34 +94,71 @@ export function TenantFields({
             </label>
           ))}
           <label className="admin-field">
-            <span>Referências</span>
+            <span>
+              Rede social <em>opcional</em>
+            </span>
+            <input
+              className="admin-input"
+              name="socialUrl"
+              maxLength={200}
+              defaultValue={intake.socialUrl ?? ''}
+              placeholder="@perfil ou linkedin.com/company/empresa"
+            />
+            <small>
+              Instagram ou página de empresa no LinkedIn. Lemos nome, bio e foto
+              de perfil quando a rede permite; se ela bloquear, o painel avisa e
+              você cola a bio em Fatos confirmados.
+            </small>
+          </label>
+          <label className="admin-field">
+            <span>
+              Referências <em>opcional</em>
+            </span>
             <textarea
               name="references"
               className="admin-input"
               rows={3}
               defaultValue={intake.references?.join('\n')}
-              placeholder="Até 3 URLs, uma por linha"
+              placeholder="Uma URL por linha, até 3"
             />
+            <small>
+              Site atual, materiais ou inspirações que o agente pode abrir.
+              Instagram e LinkedIn vão no campo Rede social.
+            </small>
           </label>
           <label className="admin-field">
-            <span>Fatos confirmados</span>
+            <span>
+              Fatos confirmados <em>opcional</em>
+            </span>
             <textarea
               name="evidence"
               className="admin-input"
               rows={4}
               defaultValue={intake.evidence?.join('\n')}
-              placeholder="Serviços, diferenciais e provas. Até 8 fatos, um por linha."
+              placeholder="Ex.: 12 anos em Bauru; equipe de 4 técnicos"
             />
+            <small>
+              O que a empresa faz e comprova: serviços, região, tempo de
+              mercado, equipe, certificações, prazos. O site só afirma o que
+              estiver aqui ou em uma referência lida. Um fato por linha, até 8.
+            </small>
           </label>
           <label className="admin-field">
-            <span>Restrições</span>
+            <span>
+              Restrições <em>opcional</em>
+            </span>
             <textarea
               name="constraints"
               className="admin-input"
               rows={4}
               defaultValue={intake.constraints?.join('\n')}
-              placeholder="O que não pode ser prometido ou mostrado. Até 8 itens, um por linha."
+              placeholder="Ex.: não prometer prazo; não citar preço"
             />
+            <small>
+              O que o site não pode prometer nem mostrar: serviços que a empresa
+              não atende, garantias, preços, fotos de pessoas, termos proibidos.
+              Um item por linha, até 8.
+            </small>
           </label>
         </div>
       </div>

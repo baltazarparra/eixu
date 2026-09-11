@@ -66,6 +66,34 @@ export async function listTenants(): Promise<(Tenant & { pageCount: number; lead
   }));
 }
 
+/** Contagens do que a exclusão leva junto, para o diálogo de confirmação. */
+export async function countTenantData(
+  tenantId: string,
+): Promise<{ pages: number; leads: number; images: number }> {
+  const rows = (await db()`
+    select
+      (select count(*) from pages where tenant_id = ${tenantId}) as pages,
+      (select count(*) from leads where tenant_id = ${tenantId}) as leads,
+      (select count(*) from images where tenant_id = ${tenantId}) as images
+  `) as Row[];
+  return {
+    pages: Number(rows[0]?.pages ?? 0),
+    leads: Number(rows[0]?.leads ?? 0),
+    images: Number(rows[0]?.images ?? 0),
+  };
+}
+
+/**
+ * Remove o cliente. Páginas, contatos, eventos, gastos, conversas e imagens
+ * caem por `on delete cascade`; os arquivos no Blob não, e são apagados antes.
+ */
+export async function deleteTenant(tenantId: string): Promise<boolean> {
+  const rows = (await db()`
+    delete from tenants where id = ${tenantId} returning id
+  `) as Row[];
+  return rows.length > 0;
+}
+
 /** Define o logo do site. Nav e rodapé passam a usar a imagem. */
 export async function setBrandLogo(tenantId: string, url: string | null): Promise<Record<string, unknown>> {
   const rows = (await db()`

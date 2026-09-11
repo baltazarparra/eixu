@@ -1,9 +1,12 @@
 'use client';
 
-import { startTransition, useActionState, useState } from 'react';
+import { startTransition, useActionState, useCallback, useState } from 'react';
 import Link from 'next/link';
-import { ArrowUpRight, Plus, Search, Globe2, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowUpRight, Plus, Search, Globe2, Trash2, X } from 'lucide-react';
 import { TenantFields } from '@/components/admin/tenant-fields';
+import { DeleteTenantDialog } from '@/components/admin/delete-tenant-dialog';
+import type { DeletableTenant } from '@/lib/admin/tenant-delete';
 import { createTenantAction } from './actions';
 
 export type ClientSummary = {
@@ -15,10 +18,17 @@ export type ClientSummary = {
 };
 
 export function Clients({ tenants }: { tenants: ClientSummary[] }) {
+  const router = useRouter();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('todos');
   const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState<DeletableTenant | null>(null);
   const [error, formAction, pending] = useActionState(createTenantAction, null);
+  const closeDialog = useCallback(() => setDeleting(null), []);
+  const afterDelete = useCallback(() => {
+    setDeleting(null);
+    router.refresh();
+  }, [router]);
   const published = tenants.filter(
     (tenant) => tenant.status === 'published',
   ).length;
@@ -124,9 +134,9 @@ export function Clients({ tenants }: { tenants: ClientSummary[] }) {
       {visible.length ? (
         <ul className="divide-y">
           {visible.map((tenant) => (
-            <li key={tenant.slug}>
+            <li key={tenant.slug} className="flex items-center gap-3">
               <Link
-                className="group flex items-center gap-4 py-6 sm:gap-6"
+                className="group flex min-w-0 flex-1 items-center gap-4 py-6 sm:gap-6"
                 href={`/admin/${tenant.slug}`}
               >
                 <div className="grid size-12 shrink-0 place-items-center rounded-xl border bg-[var(--color-surface)] text-[var(--color-accent)]">
@@ -154,6 +164,22 @@ export function Clients({ tenants }: { tenants: ClientSummary[] }) {
                   className="hidden text-[var(--color-muted)] sm:block"
                 />
               </Link>
+              <button
+                type="button"
+                className="admin-icon-button"
+                aria-label={`Excluir ${tenant.name}`}
+                onClick={() =>
+                  setDeleting({
+                    slug: tenant.slug,
+                    name: tenant.name,
+                    status: tenant.status,
+                    pageCount: tenant.pageCount,
+                    leadCount: tenant.leadCount,
+                  })
+                }
+              >
+                <Trash2 size={16} />
+              </button>
             </li>
           ))}
         </ul>
@@ -175,6 +201,11 @@ export function Clients({ tenants }: { tenants: ClientSummary[] }) {
           </p>
         </div>
       )}
+      <DeleteTenantDialog
+        tenant={deleting}
+        onClose={closeDialog}
+        onDeleted={afterDelete}
+      />
     </>
   );
 }

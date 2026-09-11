@@ -21,6 +21,11 @@ const { tenantFromHost } = await j.import('../lib/tenant-host.ts');
 const { tenantSlugSchema, tenantDetailsSchema } = await j.import(
   '../lib/admin/tenant-input.ts',
 );
+const { confirmationAccepted, deletionImpact, requiresSlugConfirmation } =
+  await j.import('../lib/admin/tenant-delete.ts');
+const { deleteTenantBlobs, tenantBlobPrefix } = await j.import(
+  '../lib/blob/tenant-files.ts',
+);
 const { defaultPeriod, periodSchema, spendSchema, mergeCampaigns } =
   await j.import('../lib/admin/traffic.ts');
 const { attributionScript } = await j.import('../lib/tracking.ts');
@@ -465,4 +470,105 @@ await test('JSON-LD público não expõe SEO ou FAQ do rascunho; prévia usa o r
     draft.includes('Descrição privada') && draft.includes('Pergunta privada'),
   );
   assert.ok(!draft.includes('Pergunta pública'));
+});
+
+await test('exclusão pede o endereço quando há site publicado ou contato recebido', () => {
+  const rascunho = {
+    slug: 'atelier-teste',
+    name: 'Atelier',
+    status: 'draft',
+    pageCount: 2,
+    leadCount: 0,
+  };
+  const publicado = { ...rascunho, status: 'published' };
+  const comContato = { ...rascunho, leadCount: 3 };
+  assert.equal(requiresSlugConfirmation(rascunho), false);
+  assert.equal(requiresSlugConfirmation(publicado), true);
+  assert.equal(requiresSlugConfirmation(comContato), true);
+  assert.equal(confirmationAccepted(rascunho, ''), true);
+  assert.equal(confirmationAccepted(publicado, ''), false);
+  assert.equal(confirmationAccepted(publicado, 'outro-cliente'), false);
+  assert.equal(confirmationAccepted(publicado, ' Atelier-Teste '), true);
+  assert.ok(
+    deletionImpact(publicado).some((line) =>
+      line.includes('atelier-teste.eixu.com.br'),
+    ),
+  );
+  assert.equal(
+    deletionImpact(rascunho).some((line) => line.includes('sai do ar')),
+    false,
+  );
+  assert.ok(deletionImpact(rascunho)[0].includes('2 páginas'));
+  assert.ok(
+    deletionImpact({ ...rascunho, pageCount: 1, leadCount: 1 })[0].includes(
+      '1 página',
+    ),
+  );
+});
+
+await test('limpeza do Blob pagina por cursor, respeita o prefixo e é idempotente', async () => {
+  assert.equal(tenantBlobPrefix('atelier-teste'), 'tenants/atelier-teste/');
+  const seen = [];
+  const removed = [];
+  const pages = [
+    {
+      blobs: Array.from({ length: 120 }, (_, i) => ({
+        url: `https://blob.test/a${i}`,
+      })),
+      cursor: 'c1',
+      hasMore: true,
+    },
+    { blobs: [{ url: 'https://blob.test/b0' }], hasMore: false },
+  ];
+  const result = await deleteTenantBlobs('atelier-teste', {
+    list: async (options) => {
+      seen.push(options);
+      return pages[seen.length - 1];
+    },
+    del: async (urls) => {
+      removed.push(urls);
+    },
+  });
+  assert.equal(result.deleted, 121);
+  assert.deepEqual(
+    seen.map((options) => options.prefix),
+    ['tenants/atelier-teste/', 'tenants/atelier-teste/'],
+  );
+  assert.equal(seen[0].cursor, undefined);
+  assert.equal(seen[1].cursor, 'c1');
+  assert.deepEqual(
+    removed.map((batch) => batch.length),
+    [100, 20, 1],
+  );
+
+  let calls = 0;
+  const vazio = await deleteTenantBlobs('atelier-teste', {
+    list: async () => ({ blobs: [], hasMore: false }),
+    del: async () => {
+      calls += 1;
+    },
+  });
+  assert.equal(vazio.deleted, 0);
+  assert.equal(calls, 0);
+});
+
+await test('falha ao apagar arquivo interrompe a limpeza sem seguir para a página seguinte', async () => {
+  let listed = 0;
+  await assert.rejects(
+    deleteTenantBlobs('atelier-teste', {
+      list: async () => {
+        listed += 1;
+        return {
+          blobs: [{ url: 'https://blob.test/a' }],
+          cursor: 'c1',
+          hasMore: true,
+        };
+      },
+      del: async () => {
+        throw new Error('token inválido');
+      },
+    }),
+    /token inválido/,
+  );
+  assert.equal(listed, 1);
 });

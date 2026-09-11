@@ -8,11 +8,21 @@ O painel é uma operação administrativa global: quem tem a credencial pode ace
 
 ## Preparar os dados
 
-Dentro do cliente, a navegação reúne **Site**, **Imagens**, **Tráfego** e **Dados**. Em Dados, atualize os contatos e o briefing sem gastar tokens: segmento, região, público, oferta, ação esperada, fatos confirmados, restrições e até três referências.
+Dentro do cliente, a navegação reúne **Site**, **Imagens**, **Tráfego** e **Dados**. Em Dados, atualize os contatos e o briefing sem gastar tokens: segmento, região, público, oferta, ação esperada, rede social, fatos confirmados, restrições e até três referências.
+
+Todos os campos do briefing são opcionais e cada um traz a legenda do que registrar. **Fatos confirmados** é o que a empresa faz e comprova; o site só afirma o que estiver ali ou numa referência lida, e sem isso o agente declara lacunas. **Restrições** é o que ele não pode prometer nem mostrar.
+
+**Rede social** aceita `@perfil` do Instagram ou a página de empresa no LinkedIn. Ao salvar, o painel lê nome, bio e foto de perfil públicos e descreve o avatar para orientar marca e imagens. A leitura é melhor esforço: perfil pessoal do LinkedIn e boa parte das contas do Instagram respondem a tela de login, e o card mostra o motivo. Nesse caso, cole a bio em Fatos confirmados e envie a imagem em Logo do site. **Ler perfil novamente** repete a tentativa.
 
 Nome, contatos e logo são compartilhados com o site ao vivo. Alterar o briefing orienta as próximas edições; não reescreve páginas automaticamente. Para trocar o endereço de um cliente existente, é necessária uma operação técnica; o formulário não altera o slug.
 
 Envie um logo final em Dados ou aprove e aplique uma opção da biblioteca. O arquivo enviado manualmente é aplicado ao terminar o upload. Uma opção gerada precisa estar aprovada antes de **Usar como logo**.
+
+## Excluir um cliente
+
+A lixeira na lista e a seção **Excluir cliente** em Dados abrem a mesma confirmação, com o que será apagado: páginas, contatos recebidos, eventos, gastos, conversas, imagens e arquivos. Cliente com site publicado ou com contato recebido exige digitar o endereço para liberar o botão; o servidor confere de novo. Esc e **Cancelar** não apagam nada.
+
+A exclusão é definitiva e não tem lixeira. O site publicado sai do ar na hora e passa a responder 404. Os arquivos são apagados antes do cadastro: se essa etapa falhar, o cliente continua no painel e a operação pode ser repetida. Uma exclusão durante uma geração em andamento faz as ferramentas daquele turno falharem.
 
 ## Gerar e editar o site
 

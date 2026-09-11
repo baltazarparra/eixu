@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { normalizeSocialUrl } from '@/lib/social-profile';
 
 /**
  * Briefing que o operador informa ao criar o cliente. Antes o tenant nascia só
@@ -14,6 +15,16 @@ export const intakeSchema = z.object({
   evidence: z.array(z.string().min(3).max(160)).max(8).default([]),
   constraints: z.array(z.string().min(3).max(160)).max(8).default([]),
   references: z.array(z.url()).max(3).default([]),
+  socialUrl: z
+    .string()
+    .trim()
+    .max(200)
+    .default('')
+    .refine(
+      (value) => !value || normalizeSocialUrl(value) !== null,
+      'Informe um perfil do Instagram ou uma página de empresa no LinkedIn.',
+    )
+    .transform((value) => (value ? normalizeSocialUrl(value)!.url : '')),
 });
 
 export type Intake = z.infer<typeof intakeSchema>;
@@ -34,8 +45,15 @@ export function intakeIsEmpty(intake: Intake): boolean {
     !intake.offer &&
     !intake.goal &&
     !intake.evidence.length &&
-    !intake.references.length
+    !intake.references.length &&
+    !intake.socialUrl
   );
+}
+
+/** URL da rede social já normalizada, quando o operador informou uma. */
+export function intakeSocialUrl(value: unknown): string {
+  const parsed = intakeSchema.safeParse(value);
+  return parsed.success ? parsed.data.socialUrl : '';
 }
 
 /** Resumo legível do intake para o prompt. */
