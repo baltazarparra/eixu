@@ -126,3 +126,48 @@ create index if not exists events_tenant_time_idx  on events (tenant_id, created
 create index if not exists events_tenant_type_idx  on events (tenant_id, type);
 create index if not exists chat_tenant_time_idx    on chat_messages (tenant_id, created_at);
 create index if not exists spend_tenant_idx        on campaign_spend (tenant_id);
+
+-- Execução da geração em etapas. O laço vivia no navegador: fechar a aba ou
+-- recarregar matava a sequência sem deixar rastro, e o painel voltava
+-- oferecendo "Continuar" enquanto um turno ainda rodava no servidor.
+create table if not exists generation_runs (
+  id               uuid primary key default gen_random_uuid(),
+  tenant_id        uuid not null references tenants(id) on delete cascade,
+  -- queued | running | stopping | paused | done | failed
+  status           text not null default 'queued',
+  phase            text,
+  phase_started_at timestamptz,
+  started_at       timestamptz not null default now(),
+  heartbeat_at     timestamptz not null default now(),
+  finished_at      timestamptz,
+  error            text,
+  -- Fases-passo já encadeadas. A etapa de cenas repete a mesma fase.
+  hops             int not null default 0,
+  -- Marcador de avanço ('cenas:3'): igual ao anterior significa etapa parada.
+  progress         text,
+  -- Origem que iniciou o run: a revisão renderiza a prévia por ela.
+  origin           text not null,
+  created_at       timestamptz not null default now()
+);
+
+-- O que o painel mostra como andamento. Sem conteúdo do cliente: rótulo curto
+-- e contadores. Sobrevive a recarga, troca de aba e fim da sessão.
+create table if not exists generation_events (
+  id         bigserial primary key,
+  run_id     uuid not null references generation_runs(id) on delete cascade,
+  tenant_id  uuid not null references tenants(id) on delete cascade,
+  phase      text not null,
+  -- phase_start | tool_start | tool_end | note | phase_end | stopped | error
+  kind       text not null,
+  tool       text,
+  label      text not null,
+  payload    jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+-- Um run ativo por cliente. O índice parcial é a garantia real contra duas
+-- gerações simultâneas; a checagem na rota é só a mensagem amigável.
+create unique index if not exists generation_runs_active_idx
+  on generation_runs (tenant_id) where status in ('queued', 'running', 'stopping');
+create index if not exists generation_runs_tenant_time_idx on generation_runs (tenant_id, created_at desc);
+create index if not exists generation_events_run_idx on generation_events (run_id, id);

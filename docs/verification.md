@@ -1,5 +1,47 @@
 # Validação e publicação
 
+## Geração em etapas no servidor, 11/09/2026
+
+A criação do cliente `iterum` expôs o custo de orquestrar as fases no
+navegador. A reconstrução pelos logs da Vercel, pelo histórico do chat e pelo
+estado do cliente mostra que nenhum dos travamentos foi do servidor: às
+12:52:24 uma recarga durante a terceira cena matou o laço da aba; a cena em
+curso terminou no servidor às 12:52:41 e a quarta nunca foi pedida. Seguiram-se
+onze recargas em um minuto e a pergunta "travou?". A resposta mandava usar
+**Continuar**, botão que ficava no topo de uma lista que rola sozinha para o
+fim e que, no celular com páginas existentes, estava escondido por CSS. O
+operador digitou "continuar": o chat tratava a palavra como edição e abriu um
+turno livre de 339 s e 16 passos (US$ 0,22). Durante esse turno houve novas
+recargas e uma segunda mensagem, com dois `POST /api/chat` simultâneos no mesmo
+cliente e sem exclusão mútua.
+
+A execução passou a ser um registro em `generation_runs`, com um run ativo por
+cliente garantido por índice parcial, fases encadeadas por invocações próprias
+de `/api/admin/[tenant]/generation/step` e linha do tempo em
+`generation_events`. Detalhes do desenho estão em [Harness](harness.md).
+
+**Ensaio real, cliente sintético `ensaio-runner`, servidor local com Chromium
+do sistema e modelos de produção:**
+
+- Briefing e direção: 114 s. Duas tentativas de `set_design` foram recusadas
+  pelo catálogo antes da terceira ser aceita — recusa recuperável, registrada
+  na linha do tempo como tentativa.
+- Cenas: 162 s para as cinco vagas do plano em **uma** chamada, geradas em
+  lotes paralelos de três com crítica por imagem. No fluxo anterior eram cinco
+  requisições sequenciais de 60 a 77 s cada, medidas no `iterum`.
+- Composição: 179 s, com um reparo antes do lote válido.
+- O painel acompanhou tudo por leitura periódica do estado gravado; nenhuma
+  etapa dependeu de aba aberta.
+
+**Gates:** `npx next typegen && npx tsc --noEmit`, `npx oxlint lib tests app
+components scripts`, `npm run test:sites` (81), `npm run test:admin` (70, 3
+pulados por falta de Postgres de teste), `npm run build:vercel` e os dois testes
+de navegador com `EIXU_CHROME_PATH`. O teste de artefato passou a cobrir também
+`/api/admin/[tenant]/generation/step` e reprovou a primeira tentativa de
+inclusão: os colchetes da rota dinâmica são classe de caracteres no glob de
+`outputFileTracingIncludes`, e o Chromium não entrava no pacote — a revisão
+visual falharia só em produção.
+
 ## Depoimentos no bloco de cases da home, 11/09/2026
 
 O bloco `05 / Cases` passou a mostrar a citação de quem contratou, no lugar do

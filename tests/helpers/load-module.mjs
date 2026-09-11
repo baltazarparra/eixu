@@ -65,6 +65,8 @@ export async function loadModule(relative, mocks = {}) {
       console,
       setTimeout,
       clearTimeout,
+      setInterval,
+      clearInterval,
     },
     { filename },
   );

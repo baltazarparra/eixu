@@ -4,12 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, getToolName, isToolUIPart } from 'ai';
 import { ChatActivity, Message, chatErrorMessage } from './chat-parts';
-import {
-  PHASES,
-  PHASE_LABEL,
-  PHASE_MESSAGE,
-  type Phase,
-} from '@/lib/taste/phases';
+import { GenerationBar, GenerationPanel } from './generation-panel';
+import { isRunning, useGeneration } from './use-generation';
 
 import { AdminHeader, MobileViews } from '@/components/admin/navigation';
 import { ChatUsageDetails } from '@/components/admin/chat-usage';
@@ -20,6 +16,8 @@ import type { ChatMessage } from '@/lib/ai/usage';
 type Props = {
   initial: SiteState;
   history: ChatMessage[];
+  /** Último id gravado: o painel busca daí em diante o que a geração escrever. */
+  lastMessageId: number;
   imageRequest?: string;
 };
 
@@ -30,7 +28,12 @@ const SUGGESTIONS = [
   'Troca a cor de acento para algo mais sóbrio.',
 ];
 
-export function Workspace({ initial, history, imageRequest = '' }: Props) {
+export function Workspace({
+  initial,
+  history,
+  lastMessageId,
+  imageRequest = '',
+}: Props) {
   const tenantSlug = initial.tenant.slug;
   const [site, setSite] = useState<SiteState>(initial);
   const [current, setCurrent] = useState(initial.pages[0]?.slug ?? '');
@@ -38,11 +41,13 @@ export function Workspace({ initial, history, imageRequest = '' }: Props) {
   const [view, setView] = useState<'chat' | 'content'>(
     initial.pages.length && !imageRequest ? 'content' : 'chat',
   );
-  const generationError = useRef<Error | null>(null);
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [nonce, setNonce] = useState(0);
   const [publishing, setPublishing] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{
+    tone: 'info' | 'ok' | 'warn' | 'err';
+    text: string;
+  } | null>(null);
   const [attachments, setAttachments] = useState<
     { url: string; name: string; type: string }[]
   >([]);
@@ -50,18 +55,13 @@ export function Workspace({ initial, history, imageRequest = '' }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const toolCountRef = useRef(0);
-  const [generating, setGenerating] = useState(false);
-  const [phase, setPhase] = useState<Phase | null>(null);
-  const stopGeneration = useRef(false);
   const refreshSeq = useRef(0);
 
-  const { messages, sendMessage, status, error, stop } = useChat<ChatMessage>({
+  const { messages, setMessages, sendMessage, status, error, stop } =
+    useChat<ChatMessage>({
     messages: history,
-    onError: (failure) => {
-      generationError.current = failure;
-    },
     onFinish: () => {
-      void refresh().catch((failure: Error) => setNotice(failure.message));
+      void refresh().catch((failure: Error) => fail(failure.message));
     },
     transport: new DefaultChatTransport({
       api: '/api/chat',
@@ -86,6 +86,48 @@ export function Workspace({ initial, history, imageRequest = '' }: Props) {
     setNonce((value) => value + 1);
     return next;
   }, [tenantSlug]);
+
+  const fail = useCallback(
+    (text: string) => setNotice({ tone: 'err', text: chatErrorMessage(text) }),
+    [],
+  );
+
+  // O painel acompanha a execução pelo servidor: recarregar, trocar de aba ou
+  // fechar o navegador não interrompe nem esconde o que está acontecendo.
+  const generation = useGeneration({
+    tenant: tenantSlug,
+    initialMessageId: lastMessageId,
+    onState: setSite,
+    onMessages: (saved) =>
+      setMessages((current) => {
+        const known = new Set(current.map((message) => message.id));
+        const added = saved.filter((message) => !known.has(message.id));
+        return added.length ? [...current, ...added] : current;
+      }),
+  });
+  const running = isRunning(generation.run);
+
+  async function startGeneration() {
+    setNotice(null);
+    setView('chat');
+    try {
+      await generation.start();
+    } catch (failure) {
+      fail(failure instanceof Error ? failure.message : 'Falha na geração.');
+    }
+  }
+
+  async function stopGeneration() {
+    try {
+      await generation.stop();
+      setNotice({
+        tone: 'info',
+        text: 'Pausa pedida. A etapa atual termina e a próxima não começa.',
+      });
+    } catch (failure) {
+      fail(failure instanceof Error ? failure.message : 'Falha ao pausar.');
+    }
+  }
 
   // Cada ferramenta concluída pelo agente muda o site no banco: atualiza o preview na hora.
   const completedTools = useMemo(
@@ -113,9 +155,9 @@ export function Workspace({ initial, history, imageRequest = '' }: Props) {
   useEffect(() => {
     if (completedTools !== toolCountRef.current) {
       toolCountRef.current = completedTools;
-      void refresh().catch((error: Error) => setNotice(error.message));
+      void refresh().catch((error: Error) => fail(error.message));
     }
-  }, [completedTools, refresh]);
+  }, [completedTools, refresh, fail]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -125,6 +167,9 @@ export function Workspace({ initial, history, imageRequest = '' }: Props) {
   }, [messages, status]);
 
   const busy = status === 'submitted' || status === 'streaming';
+  // Conversa livre e geração disputariam as mesmas páginas: enquanto uma roda,
+  // a outra espera, e a tela diz por quê.
+  const locked = busy || running;
   const page = site.pages.find((item) => item.slug === current);
   const previewUrl = `/s/${tenantSlug}/${current}?preview=1&__tenant=${tenantSlug}&v=${nonce}`;
   const totalErrors = site.pages.reduce(
@@ -133,10 +178,7 @@ export function Workspace({ initial, history, imageRequest = '' }: Props) {
   );
   // As pendências só interessam no fim: num cliente novo elas são a lista do
   // que a geração ainda vai fazer, e o painel virava alarme falso.
-  const flowRunning =
-    generating ||
-    (site.tenant.hasDesign &&
-      ['briefing', 'cenas', 'composicao'].includes(site.generation.next));
+  const flowRunning = running || site.generation.next !== 'pronto';
   const showReview =
     site.pages.length > 0 &&
     !flowRunning &&
@@ -146,9 +188,10 @@ export function Workspace({ initial, history, imageRequest = '' }: Props) {
   const publishable =
     site.pages.length > 0 &&
     totalErrors === 0 &&
-    !busy &&
-    !generating &&
+    !locked &&
     site.pages.some((item) => item.dirty);
+  // Publicação manual vale pelo pre-flight; a revisão visual é outra garantia.
+  const reviewPending = site.pages.length > 0 && !site.generation.reviewComplete;
 
   async function publishAll() {
     setPublishing(true);
@@ -165,12 +208,15 @@ export function Workspace({ initial, history, imageRequest = '' }: Props) {
       });
       setNotice(
         result.blocked.length
-          ? `Bloqueado em ${result.blocked.map((item) => item.page).join(', ')}. Peça ao agente para corrigir.`
-          : `Publicado. ${result.url}`,
+          ? {
+              tone: 'warn',
+              text: `Bloqueado em ${result.blocked.map((item) => item.page).join(', ')}. Peça ao agente para corrigir.`,
+            }
+          : { tone: 'ok', text: `Publicado. ${result.url}` },
       );
       await refresh();
     } catch (error) {
-      setNotice(
+      fail(
         error instanceof Error ? error.message : 'Não foi possível publicar.',
       );
     } finally {
@@ -207,73 +253,14 @@ export function Workspace({ initial, history, imageRequest = '' }: Props) {
         ]);
       }
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Falha no upload.');
+      fail(error instanceof Error ? error.message : 'Falha no upload.');
     } finally {
       setUploading(false);
     }
   }
 
-  /**
-   * Geração em etapas. Cada fase é uma requisição própria, dentro do limite de
-   * 800 segundos, e a próxima é decidida pelo estado persistido: interromper e
-   * retomar não perde o progresso.
-   */
-  async function generate() {
-    if (busy || generating) return;
-    stopGeneration.current = false;
-    setGenerating(true);
-    setView('chat');
-    setNotice(null);
-    try {
-      let previous: string | null = null;
-      for (let step = 0; step < 14; step++) {
-        if (stopGeneration.current) break;
-        const state = await refresh();
-        const next = state?.generation?.next;
-        if (!next || next === 'pronto') break;
-        // A etapa de cenas avança a cada vaga preenchida, mesmo sem mudar
-        // de nome. Uma falha sem progresso interrompe novas chamadas pagas.
-        const progress =
-          next === 'cenas' ? `${next}:${state.generation.coveredScenes}` : next;
-        if (previous === progress) {
-          setNotice(
-            next === 'cenas'
-              ? 'A etapa "Cenas" não produziu uma nova cena. Leia a resposta do agente e continue pelo chat.'
-              : `A etapa "${PHASE_LABEL[next]}" não avançou. Leia a resposta do agente e continue pelo chat.`,
-          );
-          break;
-        }
-        previous = progress;
-        setPhase(next);
-        generationError.current = null;
-        await sendMessage(
-          { text: PHASE_MESSAGE[next] },
-          { body: { tenant: tenantSlug, page: current, phase: next } },
-        );
-        if (generationError.current) throw generationError.current;
-      }
-      const finalState = await refresh();
-      if (!stopGeneration.current && finalState.generation.next !== 'pronto')
-        setNotice(
-          (message) =>
-            message ??
-            'A geração ainda não terminou. Confira a última resposta e continue de onde parou.',
-        );
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Falha na geração.');
-    } finally {
-      setPhase(null);
-      setGenerating(false);
-    }
-  }
-
   function submit(text: string) {
-    if (
-      (!text.trim() && attachments.length === 0) ||
-      busy ||
-      generating ||
-      uploading
-    )
+    if ((!text.trim() && attachments.length === 0) || locked || uploading)
       return;
     const files = attachments.map((item) => ({
       type: 'file' as const,
@@ -299,22 +286,49 @@ export function Workspace({ initial, history, imageRequest = '' }: Props) {
             title={
               totalErrors
                 ? `${totalErrors} pendências bloqueiam a publicação`
-                : 'Publicar as alterações revisadas'
+                : reviewPending
+                  ? 'Revisão visual pendente: a publicação vale pelo pre-flight'
+                  : 'Publicar as alterações revisadas'
             }
             className="admin-primary"
           >
             {publishing ? 'Publicando…' : 'Publicar'}
           </button>
         }
+        note={
+          reviewPending && !running ? 'Revisão visual pendente' : undefined
+        }
       />
       <MobileViews value={view} onChange={setView} />
       {notice ? (
-        <output className="admin-notice" aria-live="polite">
-          {notice}
+        <output className="admin-notice" data-tone={notice.tone} aria-live="polite">
+          <span>{notice.text}</span>
+          <button
+            type="button"
+            onClick={() => setNotice(null)}
+            aria-label="Fechar aviso"
+          >
+            ×
+          </button>
         </output>
       ) : null}
+      <GenerationBar
+        run={generation.run}
+        events={generation.events}
+        state={site}
+        onOpen={() => setView('chat')}
+      />
       <div className="admin-workspace-body">
         <section className="admin-conversation" aria-label="Conversa de edição">
+          <GenerationPanel
+            run={generation.run}
+            events={generation.events}
+            state={site}
+            error={generation.error}
+            busy={busy}
+            onStart={() => void startGeneration()}
+            onStop={() => void stopGeneration()}
+          />
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5">
             {messages.length === 0 ? (
               <div className="flex flex-col gap-3 text-sm">
@@ -331,88 +345,11 @@ export function Workspace({ initial, history, imageRequest = '' }: Props) {
               </div>
             ) : null}
 
-            {generating ||
-            (site.generation && site.generation.next !== 'pronto') ? (
-              <div className="mb-4 rounded-lg border p-3 text-xs">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium">Geração em etapas</span>
-                  {generating ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        stopGeneration.current = true;
-                        void stop();
-                      }}
-                      className="text-[var(--color-muted)] hover:text-[var(--color-text)]"
-                    >
-                      Parar
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => void generate()}
-                      disabled={busy}
-                      className="admin-primary"
-                    >
-                      Continuar
-                    </button>
-                  )}
-                </div>
-                <ol className="mt-2 flex flex-col gap-1">
-                  {PHASES.map((item) => {
-                    const done =
-                      site.generation &&
-                      PHASES.indexOf(item) <
-                        PHASES.indexOf(site.generation.next as Phase)
-                        ? true
-                        : site.generation?.next === 'pronto';
-                    const active = phase === item;
-                    return (
-                      <li
-                        key={item}
-                        className={
-                          active
-                            ? 'text-[var(--color-text)]'
-                            : done
-                              ? 'text-[var(--color-muted)] line-through'
-                              : 'text-[var(--color-muted)]'
-                        }
-                      >
-                        {active ? '• ' : done ? '✓ ' : '· '}
-                        {PHASE_LABEL[item]}
-                      </li>
-                    );
-                  })}
-                </ol>
-                {site.generation ? (
-                  <p className="mt-2 text-[var(--color-muted)]">
-                    {site.generation.coveredScenes} de{' '}
-                    {site.generation.targetScenes} cenas disponíveis ·{' '}
-                    {site.generation.organicPages} páginas orgânicas ·{' '}
-                    {site.generation.blockingErrors} erros de pre-flight
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-
             <div className="flex flex-col gap-5">
               {messages.map((message) => (
                 <Message key={message.id} message={message} />
               ))}
               {busy ? <ChatActivity messages={messages} /> : null}
-              {busy || site.generation.next !== 'pronto' ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    void refresh().catch((failure: Error) =>
-                      setNotice(failure.message),
-                    )
-                  }
-                  className="self-start rounded-md border px-3 py-1.5 text-xs"
-                >
-                  Ver progresso
-                </button>
-              ) : null}
               {error ? (
                 <p className="rounded-md border border-[var(--color-err)] px-3 py-2 text-xs text-[var(--color-err)]">
                   {chatErrorMessage(error.message)}
@@ -420,7 +357,7 @@ export function Workspace({ initial, history, imageRequest = '' }: Props) {
               ) : null}
             </div>
 
-            {!busy && site.pages.length > 0 ? (
+            {!locked && site.pages.length > 0 ? (
               <div className="mt-6 flex flex-wrap gap-2">
                 {SUGGESTIONS.map((suggestion) => (
                   <button
@@ -502,8 +439,13 @@ export function Workspace({ initial, history, imageRequest = '' }: Props) {
                   }
                 }}
                 rows={3}
+                disabled={running}
                 placeholder={
-                  site.pages.length ? 'Peça uma mudança' : 'Descreva o site'
+                  running
+                    ? 'Geração em andamento. O chat volta quando ela terminar.'
+                    : site.pages.length
+                      ? 'Peça uma mudança'
+                      : 'Descreva o site'
                 }
                 className="w-full resize-none bg-transparent px-1.5 py-1 text-sm outline-none"
               />
@@ -512,7 +454,7 @@ export function Workspace({ initial, history, imageRequest = '' }: Props) {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading || busy}
+                    disabled={uploading || locked}
                     className="rounded-md border px-2.5 py-1 text-[0.72rem] text-[var(--color-muted)] hover:text-[var(--color-text)] disabled:opacity-50"
                   >
                     {uploading ? 'Enviando' : 'Imagem'}
@@ -529,18 +471,17 @@ export function Workspace({ initial, history, imageRequest = '' }: Props) {
                     }}
                   />
                   <span className="text-[0.68rem] text-[var(--color-muted)]">
-                    {page
-                      ? `Falando sobre /${page.slug}`
-                      : 'Enter envia, Shift+Enter quebra linha'}
+                    {running
+                      ? 'A geração está rodando; peça alterações quando ela terminar'
+                      : page
+                        ? `Falando sobre /${page.slug}`
+                        : 'Enter envia, Shift+Enter quebra linha'}
                   </span>
                 </div>
                 {busy ? (
                   <button
                     type="button"
-                    onClick={() => {
-                      stopGeneration.current = true;
-                      void stop();
-                    }}
+                    onClick={() => void stop()}
                     className="rounded-md border px-3 py-1.5 text-xs"
                   >
                     Parar
@@ -551,7 +492,7 @@ export function Workspace({ initial, history, imageRequest = '' }: Props) {
                     disabled={
                       (!input.trim() && attachments.length === 0) ||
                       uploading ||
-                      generating
+                      running
                     }
                     className="rounded-md bg-[var(--color-accent)] px-3.5 py-1.5 text-xs font-medium text-[var(--color-accent-ink)] disabled:opacity-40"
                   >

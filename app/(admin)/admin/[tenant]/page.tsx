@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
-import { chatHistory } from '@/lib/ai/history';
+import { chatHistory, lastMessageId } from '@/lib/ai/history';
 import { workspaceState } from '@/lib/admin/state';
 import { listImages } from '@/lib/images/queries';
 import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
@@ -24,7 +24,10 @@ export default async function TenantWorkspace({
     listPages(tenant.id),
     listImages(tenant.id),
   ]);
-  const history = await chatHistory(tenant.id, 'site');
+  const [history, lastId] = await Promise.all([
+    chatHistory(tenant.id, 'site'),
+    lastMessageId(tenant.id),
+  ]);
   const { imagem } = await searchParams;
   const imageRequest =
     typeof imagem === 'string' && /^[1-9]\d{0,8}$/.test(imagem)
@@ -34,6 +37,7 @@ export default async function TenantWorkspace({
     <Workspace
       initial={workspaceState(tenant, pages, images)}
       history={history}
+      lastMessageId={lastId}
       imageRequest={imageRequest}
     />
   );

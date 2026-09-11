@@ -288,12 +288,191 @@ input[type='date'] {
 .admin-secondary:hover {
   background: var(--color-surface-2);
 }
+/* Um aviso sem cor nem severidade: erro de rede e publicação concluída
+   tinham exatamente a mesma aparência. */
 .admin-notice {
-  display: block;
-  padding: 12px 16px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 16px;
   border-bottom: 1px solid var(--color-line);
+  border-left: 3px solid var(--color-line);
   font-size: 13px;
   overflow-wrap: anywhere;
+}
+.admin-notice[data-tone='ok'] {
+  border-left-color: var(--color-ok);
+}
+.admin-notice[data-tone='warn'] {
+  border-left-color: var(--color-warn);
+}
+.admin-notice[data-tone='err'] {
+  border-left-color: var(--color-err);
+}
+.admin-notice[data-tone='info'] {
+  border-left-color: var(--color-accent);
+}
+.admin-notice button {
+  flex: none;
+  padding: 0 4px;
+  color: var(--color-muted);
+  font-size: 15px;
+  line-height: 1.2;
+}
+.admin-notice button:hover {
+  color: var(--color-text);
+}
+.admin-header-note {
+  align-self: center;
+  font-size: 12px;
+  color: var(--color-warn);
+  white-space: nowrap;
+}
+
+/* Andamento da geração. Fica fora da área rolável: o botão de continuar
+   estava no topo de uma lista que rolava sozinha para o fim, e no celular
+   sumia junto com a conversa. */
+.admin-run {
+  flex: none;
+  border-bottom: 1px solid var(--color-line);
+  background: var(--color-surface);
+  padding: 12px 16px 10px;
+  font-size: 12px;
+}
+.admin-run-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.admin-run-title {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+.admin-run-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+.admin-run-time,
+.admin-run-sub {
+  color: var(--color-muted);
+  font-size: 11.5px;
+}
+.admin-run-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 10px;
+}
+.admin-run-steps li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-muted);
+}
+.admin-run-steps li[data-state='active'] {
+  color: var(--color-text);
+  font-weight: 500;
+}
+.admin-run-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid var(--color-line);
+}
+.admin-run-steps li[data-state='done'] .admin-run-dot {
+  background: var(--color-ok);
+  border-color: var(--color-ok);
+}
+.admin-run-steps li[data-state='active'] .admin-run-dot {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  animation: admin-pulse 1.6s ease-in-out infinite;
+}
+.admin-run-activity {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--color-line);
+}
+.admin-run-pulse {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--color-accent);
+  animation: admin-pulse 1.6s ease-in-out infinite;
+}
+.admin-run-status {
+  margin-top: 9px;
+  color: var(--color-muted);
+}
+.admin-run-status[data-tone='ok'] {
+  color: var(--color-ok);
+}
+.admin-run-status[data-tone='warn'] {
+  color: var(--color-warn);
+}
+.admin-run-status[data-tone='err'] {
+  color: var(--color-err);
+}
+.admin-run-log {
+  margin-top: 9px;
+}
+.admin-run-log summary {
+  color: var(--color-muted);
+}
+.admin-run-log ol {
+  max-height: 22dvh;
+  overflow-y: auto;
+  margin-top: 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.admin-run-log li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--color-muted);
+}
+.admin-run-log li[data-kind='phase_start'],
+.admin-run-log li[data-kind='phase_end'] {
+  color: var(--color-text);
+}
+.admin-run-log li[data-kind='error'] {
+  color: var(--color-err);
+}
+.admin-run-log time {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+/* No celular a conversa pode estar oculta atrás da prévia: a barra mantém a
+   geração visível e leva de volta para o painel. */
+.admin-run-bar {
+  display: none;
+}
+@keyframes admin-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-run-dot,
+  .admin-run-pulse {
+    animation: none;
+  }
 }
 .admin-review {
   max-height: 32dvh;
@@ -325,6 +504,24 @@ input[type='date'] {
   flex: 1;
 }
 @media (max-width: 1023px) {
+  .admin-run-bar {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--color-line);
+    background: var(--color-surface);
+    font-size: 12px;
+    text-align: left;
+  }
+  .admin-run-bar-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .admin-header {
     gap: 10px;
     padding: 10px 14px;

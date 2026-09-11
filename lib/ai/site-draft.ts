@@ -26,44 +26,62 @@ export const buildSiteInput = z.object({
   pages: z.array(sitePageInput).min(1).max(12),
 });
 export type SiteDraft = z.infer<typeof buildSiteInput>;
+/**
+ * O discriminante faltando invalidava a correção inteira, e o lote recusado
+ * ficava sem saída na fase de composição: o que a correção toca já diz o que
+ * ela é. Nada mais é afrouxado — as props seguem validadas pelo catálogo.
+ */
+const withKind = z.preprocess(
+  (value) => {
+    if (!value || typeof value !== 'object') return value;
+    const change = value as Record<string, unknown>;
+    if (typeof change.kind === 'string') return change;
+    const isBlock =
+      typeof change.block === 'number' ||
+      'props' in change ||
+      'unset' in change;
+    return {
+      ...change,
+      kind: isBlock ? 'block' : 'page',
+      ...(isBlock && !('props' in change) ? { props: {} } : {}),
+    };
+  },
+  z.discriminatedUnion('kind', [
+    z.object({
+      kind: z.literal('block'),
+      page: z.string().describe('Slug. Vazio para home.'),
+      block: z
+        .number()
+        .int()
+        .min(0)
+        .describe(
+          'Índice do bloco, começando em zero; retornado no erro do lote.',
+        ),
+      type: z.string().optional(),
+      props: z
+        .record(z.string(), z.unknown())
+        .describe(
+          'Somente props alteradas. presentation é mesclada; arrays são substituídos.',
+        ),
+      unset: z
+        .array(z.string())
+        .max(20)
+        .optional()
+        .describe('Props que devem ser removidas, como um campo inválido.'),
+    }),
+    z.object({
+      kind: z.literal('page'),
+      page: z.string(),
+      title: sitePageInput.shape.title.optional(),
+      seoTitle: sitePageInput.shape.seoTitle,
+      seoDescription: sitePageInput.shape.seoDescription,
+      inbound: inboundSchema.optional(),
+    }),
+  ]),
+);
+
 export const repairSiteInput = z.object({
-  changes: z
-    .array(
-      z.discriminatedUnion('kind', [
-        z.object({
-          kind: z.literal('block'),
-          page: z.string().describe('Slug. Vazio para home.'),
-          block: z
-            .number()
-            .int()
-            .min(0)
-            .describe(
-              'Índice do bloco, começando em zero; retornado no erro do lote.',
-            ),
-          type: z.string().optional(),
-          props: z
-            .record(z.string(), z.unknown())
-            .describe(
-              'Somente props alteradas. presentation é mesclada; arrays são substituídos.',
-            ),
-          unset: z
-            .array(z.string())
-            .max(20)
-            .optional()
-            .describe('Props que devem ser removidas, como um campo inválido.'),
-        }),
-        z.object({
-          kind: z.literal('page'),
-          page: z.string(),
-          title: sitePageInput.shape.title.optional(),
-          seoTitle: sitePageInput.shape.seoTitle,
-          seoDescription: sitePageInput.shape.seoDescription,
-          inbound: inboundSchema.optional(),
-        }),
-      ]),
-    )
-    .min(1)
-    .max(40),
+  changes: z.array(withKind).min(1).max(40),
 });
 
 /** Reparo isolado em memória: nunca edita o lote original nem páginas persistidas. */

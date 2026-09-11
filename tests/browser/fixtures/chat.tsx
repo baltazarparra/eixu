@@ -6,5 +6,5 @@ const initial = JSON.parse(
   document.getElementById('fixture-state')!.textContent!,
 ) as SiteState;
 createRoot(document.getElementById('root')!).render(
-  <Workspace initial={initial} history={[]} />,
+  <Workspace initial={initial} history={[]} lastMessageId={0} />,
 );

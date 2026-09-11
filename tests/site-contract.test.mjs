@@ -454,10 +454,7 @@ await test('ferramenta de reparo isola o lote por instância e preserva a recusa
 });
 
 await test('painel distingue lote recusado de projeto salvo', async () => {
-  const jui = createJiti(import.meta.url, { jsx: true });
-  const { describeTool } = await jui.import(
-    '../app/(admin)/admin/[tenant]/chat-parts.tsx',
-  );
+  const { describeTool } = await j.import('../lib/generation/labels.ts');
   for (const name of ['build_site', 'repair_site']) {
     assert.equal(
       describeTool(
@@ -1135,8 +1132,23 @@ await test('ferramentas preservam o perfil e o intake atualizados durante o turn
       db:
         () =>
         async (parts, ...values) => {
-          if (parts.join('').includes('update tenants'))
-            brief = { ...brief, ...JSON.parse(values[0]) };
+          const sql = parts.join('');
+          if (!sql.includes('update tenants')) return [];
+          // A gravação do recibo mexe só na chave generation, com merge no
+          // banco: reescrever o brief inteiro apagava campos alheios.
+          if (sql.includes("'{generation}'")) {
+            const previous = brief.generation ?? {};
+            brief = {
+              ...brief,
+              generation: {
+                ...previous,
+                ...JSON.parse(values[0]),
+                reviewRounds: Number(previous.reviewRounds ?? 0) + 1,
+              },
+            };
+            return [];
+          }
+          brief = { ...brief, ...JSON.parse(values[0]) };
           return [];
         },
     },

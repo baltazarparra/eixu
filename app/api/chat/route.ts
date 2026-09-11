@@ -13,6 +13,7 @@ import { usageRecord, usageMetadata, sumGatewayCosts } from '@/lib/ai/usage';
 import { completeChatStream, CHAT_INTERRUPTED } from '@/lib/ai/chat-stream';
 import {
   isProgressQuestion,
+  isResumeRequest,
   savedProgressMessage,
 } from '@/lib/ai/chat-progress';
 import { workspaceState } from '@/lib/admin/state';
@@ -20,48 +21,37 @@ import { editPolicyFor, editScopeText } from '@/lib/ai/edit-policy';
 import { isAuthenticated } from '@/lib/auth';
 import { buildTools } from '@/lib/ai/tools';
 import { db } from '@/lib/db';
-import { isDesignProfile } from '@/lib/design/profile';
-import { listImages } from '@/lib/images/queries';
 import {
-  sceneCoverage,
-  scenePlanText,
-  sceneText,
-} from '@/lib/images/scene-plan';
-import { plannedScenes } from '@/lib/sites/generation';
-import { generatedPhotos } from '@/lib/taste/metrics';
-import { isPhase, PHASE_STEPS, type Phase } from '@/lib/taste/phases';
+  imagesSummary,
+  pagesSummary,
+  phaseBlocker,
+  reviewContext,
+  scenesContext,
+  sourcesText,
+} from '@/lib/generation/context';
+import { markPhase } from '@/lib/generation/runner';
+import { activeRun, expireStaleRun } from '@/lib/generation/runs';
+import { startGeneration } from '@/lib/generation/start';
+import { listImages } from '@/lib/images/queries';
+import { isPhase, PHASE_STEPS } from '@/lib/taste/phases';
 import { systemPrompt, type PromptContext } from '@/lib/taste/prompt';
 import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
-import type { Page, Tenant, TenantImage } from '@/lib/types';
 
 export const maxDuration = 800;
 
-/**
- * A fase só abre com o estado que ela pressupõe. Sem isso o agente tentava
- * compor páginas antes de existir direção, e revisar antes de existir página.
- */
-function phaseBlocker(
-  phase: Phase,
-  tenant: Tenant,
-  pages: Page[],
-): string | null {
-  const hasDesign = isDesignProfile(tenant.brand.design);
-  if (phase !== 'briefing' && !hasDesign)
-    return 'A direção de arte ainda não existe. Rode a fase de briefing antes.';
-  if (phase === 'revisao' && !pages.length)
-    return 'Não há páginas para revisar. Rode a fase de composição antes.';
-  return null;
-}
-
-/** Plano, cobertura e a próxima vaga: o que a etapa de cenas precisa saber. */
-function scenesContext(tenant: Tenant, images: TenantImage[]) {
-  const plan = plannedScenes(tenant);
-  const { covered, missing } = sceneCoverage(plan, generatedPhotos(images));
-  return {
-    scenePlan: scenePlanText(plan),
-    coverage: `${covered.length} de ${plan.length} vagas já têm foto disponível.`,
-    ...(missing[0] ? { nextScene: sceneText(missing[0]) } : {}),
-  };
+/** Stream de uma resposta pronta: mesma bolha do chat, sem chamar o modelo. */
+function textResponse(text: string) {
+  return createUIMessageStreamResponse({
+    stream: createUIMessageStream({
+      execute({ writer }) {
+        writer.write({ type: 'start' });
+        writer.write({ type: 'text-start', id: 'aviso' });
+        writer.write({ type: 'text-delta', id: 'aviso', delta: text });
+        writer.write({ type: 'text-end', id: 'aviso' });
+        writer.write({ type: 'finish', finishReason: 'stop' });
+      },
+    }),
+  });
 }
 
 export async function POST(request: Request) {
@@ -95,44 +85,26 @@ export async function POST(request: Request) {
     if (blocker) return new Response(blocker, { status: 409 });
   }
 
-  const summary = pages
-    .map(
-      (page) =>
-        `- /${page.slug} (${page.type}, ${page.blocks.length} blocos${page.publishedBlocks ? ', publicada' : ''}): ${page.title}`,
-    )
-    .join('\n');
-  const imagesSummary = libraryImages
-    .filter((image) => image.status !== 'rejeitada')
-    .slice(0, 12)
-    .map(
-      (image) =>
-        `- #${image.seq} (${image.kind}), ${image.ratio}, ${image.targetBlock ?? 'livre'}: ${image.url} | ${image.alt ?? image.description ?? image.requestText}`,
+  // Dois turnos no mesmo cliente disputavam as mesmas páginas e sobrescreviam
+  // o recibo de revisão um do outro. Enquanto a geração roda, o chat espera.
+  const running = await expireStaleRun(await activeRun(tenant.id));
+  if (running && !phase)
+    return Response.json(
+      {
+        error:
+          'A geração deste cliente está em andamento. Acompanhe o andamento no painel e peça alterações quando ela terminar.',
+      },
+      { status: 409 },
     );
-  const imagesText = imagesSummary.join('\n');
 
-  const sources = Array.isArray(tenant.brief.sources)
-    ? (
-        tenant.brief.sources as {
-          url?: string;
-          status?: string;
-          motivo?: string;
-          titulo?: string;
-          texto?: string;
-        }[]
-      )
-        .map((source) =>
-          `- ${source.url} [${source.status}${source.motivo ? `: ${source.motivo}` : ''}] ${source.titulo ?? ''} ${source.texto ?? ''}`.trim(),
-        )
-        .join('\n')
-    : '';
+  const summary = pagesSummary(pages);
+  const imagesText = imagesSummary(libraryImages);
+  const sources = sourcesText(tenant);
 
   const context: PromptContext = {
     phase,
     sources,
-    review: JSON.stringify(
-      (tenant.brief.generation as { review?: unknown } | undefined)?.review ??
-        null,
-    ),
+    review: reviewContext(tenant),
     ...(phase === 'cenas' ? scenesContext(tenant, libraryImages) : {}),
   };
 
@@ -162,26 +134,32 @@ export async function POST(request: Request) {
     `;
   };
 
-  if (
-    !phase &&
-    isProgressQuestion(lastUserText) &&
-    !lastUser?.parts.some((part) => part.type === 'file')
-  ) {
-    const text = savedProgressMessage(
-      workspaceState(tenant, pages, libraryImages),
-    );
+  const hasFile = Boolean(lastUser?.parts.some((part) => part.type === 'file'));
+  const state = workspaceState(tenant, pages, libraryImages);
+
+  if (!phase && isProgressQuestion(lastUserText) && !hasFile) {
+    const text = savedProgressMessage(state);
     await persistAssistant(text);
-    return createUIMessageStreamResponse({
-      stream: createUIMessageStream({
-        execute({ writer }) {
-          writer.write({ type: 'start' });
-          writer.write({ type: 'text-start', id: 'progress' });
-          writer.write({ type: 'text-delta', id: 'progress', delta: text });
-          writer.write({ type: 'text-end', id: 'progress' });
-          writer.write({ type: 'finish', finishReason: 'stop' });
-        },
-      }),
+    return textResponse(text);
+  }
+
+  // "Continuar" digitado retomava a geração como edição livre: 16 passos e
+  // seis minutos no caminho errado. Agora abre a mesma execução do botão.
+  if (!phase && isResumeRequest(lastUserText) && !hasFile) {
+    if (state.generation.next === 'pronto') {
+      const text = savedProgressMessage(state);
+      await persistAssistant(text);
+      return textResponse(text);
+    }
+    const started = await startGeneration({
+      tenant,
+      origin: new URL(request.url).origin,
     });
+    const text = started.ok
+      ? `Retomando a geração pela etapa "${started.phase}". Acompanhe o andamento no painel; pode fechar esta aba sem perder nada.`
+      : started.error;
+    await persistAssistant(text);
+    return textResponse(text);
   }
 
   // A revisão renderiza o rascunho pela própria origem da requisição.
@@ -196,19 +174,7 @@ export async function POST(request: Request) {
     lastUserText,
     editPolicy,
   });
-  if (phase) {
-    const generation = {
-      ...(tenant.brief.generation as Record<string, unknown>),
-      phase,
-      updatedAt: new Date().toISOString(),
-    };
-    await db()`
-      update tenants
-      set brief = brief || ${JSON.stringify({ generation })}::jsonb,
-          updated_at = now()
-      where id = ${tenant.id}
-    `;
-  }
+  if (phase) await markPhase(tenant.id, phase);
 
   const model = productModel();
   const started = Date.now();
