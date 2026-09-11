@@ -10,8 +10,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function TenantWorkspace({
   params,
+  searchParams,
 }: {
   params: Promise<{ tenant: string }>;
+  searchParams: Promise<{ imagem?: string | string[] }>;
 }) {
   if (!(await isAuthenticated())) redirect('/admin/login');
   const { tenant: slug } = await params;
@@ -23,10 +25,16 @@ export default async function TenantWorkspace({
     listImages(tenant.id),
   ]);
   const history = await chatHistory(tenant.id, 'site');
+  const { imagem } = await searchParams;
+  const imageRequest =
+    typeof imagem === 'string' && /^[1-9]\d{0,8}$/.test(imagem)
+      ? `Quero atualizar a imagem #${imagem}: `
+      : '';
   return (
     <Workspace
       initial={workspaceState(tenant, pages, images)}
       history={history}
+      imageRequest={imageRequest}
     />
   );
 }

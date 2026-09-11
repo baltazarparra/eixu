@@ -24,9 +24,8 @@ function scoreTone(score: number | null): string {
 }
 
 /**
- * Biblioteca do cliente: só o que o operador aprovou na conversa do site. A
- * geração e a decisão acontecem lá, uma imagem por vez; aqui ficam o acervo,
- * a aplicação do logo e a remoção protegida por uso.
+ * Acervo numerado do cliente, disponível assim que a imagem é gerada.
+ * Alterações são pedidas no chat; a remoção continua protegida por uso.
  */
 export function ImagesLibrary({
   tenant,
@@ -52,10 +51,7 @@ export function ImagesLibrary({
       const next = await adminFetch<LibraryState>(
         `/api/admin/${tenant.slug}/images`,
       );
-      setLibrary({
-        ...next,
-        images: next.images.filter((image) => image.status !== 'candidata'),
-      });
+      setLibrary(next);
     } catch (error) {
       setNotice(
         error instanceof Error
@@ -95,7 +91,7 @@ export function ImagesLibrary({
       library.images.filter((image) =>
         filter === 'rejeitada'
           ? image.status === 'rejeitada'
-          : image.status === 'aprovada' &&
+          : image.status !== 'rejeitada' &&
             (filter === 'todas' || image.kind === filter),
       ),
     [library.images, filter],
@@ -114,14 +110,13 @@ export function ImagesLibrary({
     <>
       <AdminHeader tenant={tenant} active="imagens" />
       <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          Imagens aprovadas
-        </h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Imagens</h1>
         <p className="mt-3 max-w-2xl text-sm text-[var(--color-muted)]">
-          As imagens nascem na conversa do site e aparecem lá para você aprovar,
-          uma por vez. Só as aprovadas entram nas páginas. Uma imagem em uso
-          recusada não é apagada: ela fica em Rejeitadas até o bloco ser
-          trocado.
+          As imagens ficam salvas aqui e podem ser usadas no site sem aprovação.
+          Para mudar uma delas, informe o número na conversa do site: “quero
+          atualizar a imagem #5, quero outro carro”. A nova versão ganha outro
+          número e substitui a anterior nos rascunhos; ambas ficam na
+          biblioteca.
         </p>
         {guideText ? (
           <p className="mt-2 max-w-2xl text-xs text-[var(--color-muted)]">
@@ -140,7 +135,7 @@ export function ImagesLibrary({
         >
           {(
             [
-              ['todas', 'Aprovadas'],
+              ['todas', 'Todas'],
               ['foto', 'Fotos'],
               ['logo', 'Logos'],
               ['rejeitada', 'Rejeitadas'],
@@ -210,7 +205,7 @@ export function ImagesLibrary({
                   </p>
 
                   <div className="mt-1 flex flex-wrap gap-1.5">
-                    {image.status === 'aprovada' &&
+                    {image.status !== 'rejeitada' &&
                     image.kind === 'logo' &&
                     image.url !== library.logoUrl ? (
                       <button
@@ -222,7 +217,7 @@ export function ImagesLibrary({
                         Usar como logo
                       </button>
                     ) : null}
-                    {image.status === 'aprovada' && image.kind !== 'logo' ? (
+                    {image.status !== 'rejeitada' && image.kind !== 'logo' ? (
                       <button
                         type="button"
                         onClick={() => {
@@ -244,6 +239,13 @@ export function ImagesLibrary({
                         Usar no site
                       </button>
                     ) : null}
+                    <a
+                      href={`/admin/${tenant.slug}?imagem=${image.seq}`}
+                      aria-label={`Solicitar alteração da imagem #${image.seq}`}
+                      className="rounded-md border px-2.5 py-1 text-[0.7rem] text-[var(--color-muted)] hover:text-[var(--color-text)]"
+                    >
+                      Solicitar alteração
+                    </a>
                     <button
                       type="button"
                       disabled={Boolean(actionId)}
@@ -277,8 +279,8 @@ export function ImagesLibrary({
             {filter === 'rejeitada'
               ? 'Nenhuma imagem rejeitada.'
               : library.images.length
-                ? 'Nenhuma imagem aprovada neste filtro.'
-                : 'As imagens que você aprovar na conversa do site ficam aqui.'}
+                ? 'Nenhuma imagem neste filtro.'
+                : 'As imagens geradas na conversa do site ficam aqui.'}
           </p>
         )}
       </main>

@@ -1,5 +1,9 @@
 # Gerador: riqueza visual, movimento e inbound
 
+Registro histórico da entrega de 10/09/2026. A aprovação de imagens descrita
+neste plano foi removida em 11/09/2026; o fluxo vigente está no
+[manual do operador](admin.md#biblioteca-e-publicação).
+
 Pedido de 10/09/2026. Entrega autorizada: analisar, implementar, validar e publicar.
 
 ## Diagnóstico inicial (histórico)

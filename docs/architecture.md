@@ -1,6 +1,6 @@
 # Arquitetura e limites do MVP
 
-Mapa conferido no código em 10/09/2026. Descreve o comportamento implementado; os limites no fim deste arquivo não são funcionalidades entregues.
+Mapa do fluxo de imagens atualizado em 11/09/2026. Descreve o comportamento implementado; os limites no fim deste arquivo não são funcionalidades entregues.
 
 ## Superfícies e dependências
 
@@ -36,15 +36,15 @@ A exclusão de cliente em `/admin` e em Dados usa `deleteTenantAction`: adquire 
 
 ## Imagens e logos
 
-A geração acontece no chat do site. `prepare_site_images` chama o estúdio (`lib/images/site-assets.ts`) com o guia do tenant: uma candidata GPT Image 2 por cena, crítica estruturada por imagem e falhas parciais reportadas. Na etapa de cenas a ferramenta aceita uma cena por chamada e exige a vaga que o plano pede; fora da geração aceita até seis por chamada e oito por turno. Ela recusa proporção incoerente com a composição do perfil e devolve o papel de cada cena. O orçamento é reservado antes do primeiro `await` e só é devolvido quando não houve tentativa de geração. `lib/images/generation-lock.ts` usa um advisory lock transacional no Postgres por tenant para recusar chamadas concorrentes, inclusive entre instâncias. Dentro dele a ferramenta relê candidatas e cobertura antes de gerar; esse lock não conflita com os locks de linha dos uploads e dispensa migração. O número da imagem é reservado dentro do próprio insert, porque a geração em paralelo colidia na unicidade de `(tenant_id, seq)`.
+A geração acontece no chat do site. `prepare_site_images` chama o estúdio (`lib/images/site-assets.ts`) com o guia do tenant: uma imagem GPT Image 2 por cena, crítica estruturada por imagem e falhas parciais reportadas. Na etapa de cenas a ferramenta aceita uma cena por chamada e exige a vaga que o plano pede; fora da geração aceita até seis por chamada e oito por turno. Ela recusa proporção incoerente com a composição do perfil e devolve o papel de cada cena. O orçamento é reservado antes do primeiro `await` e só é devolvido quando não houve tentativa de geração. `lib/images/generation-lock.ts` usa um advisory lock transacional no Postgres por tenant para recusar chamadas concorrentes, inclusive entre instâncias. Dentro dele a ferramenta relê a cobertura antes de gerar; esse lock não conflita com os locks de linha dos uploads e dispensa migração. O número da imagem é reservado dentro do próprio insert, porque a geração em paralelo colidia na unicidade de `(tenant_id, seq)`.
 
-`lib/images/scene-plan.ts` traduz a direção num plano de vagas, sempre medido em três páginas orgânicas, e `sceneCoverage` casa a biblioteca aprovada com essas vagas: primeiro pelo bloco, depois pelo que sobrevive ao recorte. `nextPhase` só fecha a etapa de cenas quando o plano inteiro tem foto aprovada.
+`lib/images/scene-plan.ts` traduz a direção num plano de vagas, sempre medido em três páginas orgânicas, e `sceneCoverage` casa a biblioteca disponível com essas vagas: primeiro pelo bloco, depois pelo que sobrevive ao recorte. `nextPhase` só fecha a etapa de cenas quando o plano inteiro tem foto disponível.
 
-Logos podem ser criados ou modernizados a partir de referência por `generate_logo`, passam por Sharp e por um crítico específico de legibilidade/fidelidade. Nenhuma dessas ferramentas devolve a URL da imagem: a candidata não pode entrar no rascunho antes da decisão do operador.
+Logos podem ser criados ou modernizados a partir de referência por `generate_logo`, passam por Sharp e por um crítico específico de legibilidade/fidelidade. Fotos e logos retornam número e URL para uso imediato, sem aprovação. A crítica registra qualidade e problemas, mas não bloqueia a disponibilidade. A aplicação de um logo na marca continua exigindo pedido do usuário.
 
 | Papel                      | Configuração no código                               |
 | -------------------------- | ---------------------------------------------------- |
-| Chat do site               | `EIXU_MODEL` → `anthropic/claude-opus-5`             |
+| Chat do site               | `EIXU_MODEL` → `google/gemini-3.8-flash`             |
 | Revisão visual do rascunho | Chromium na função, atrás de `EIXU_REVIEW_CAPTURE=1` |
 | Críticos de foto e logo    | `EIXU_CRITIC_MODEL` → `EIXU_MODEL` → mesmo fallback  |
 | Cenas do site              | Uma chamada a `openai/gpt-image-2` por cena          |
@@ -54,9 +54,32 @@ A rota do chat tem duração máxima de 300 segundos e limite de 30 passos na ed
 
 O chat compacta resultados de ferramentas e anexos de **turnos anteriores**, preservando todas as instruções e respostas textuais; o loop ativo permanece intacto. Estado atual pode ser relido pelas ferramentas. `lib/ai/usage.ts` habilita cache automático do Gateway e registra modelo, fase, tokens, cache, passos, tempo e custo retornado. A interface soma somente as respostas recebidas desde a abertura; histórico textual não restaura esses recibos. Chamadas internas de imagens/críticos têm custo separado. Não existe faturamento consolidado por cliente.
 
-O estado da biblioteca é `candidata`, `aprovada` ou `rejeitada`. A candidata aparece no painel para a decisão do operador, uma por vez: aprovar muda o estado pela API da biblioteca, recusar apaga Blob e registro. Uma candidata já referenciada em página não pode ser apagada; ela fica rejeitada, continua listada no filtro próprio da biblioteca e o bloco precisa ser trocado. A geração em etapas só espera decisão na etapa de cenas, para candidata antiga não travar briefing, composição ou revisão. Falha ao apagar o Blob mantém o registro da imagem e retorna erro. Remoção verifica uso nos blocos de rascunho, publicados e na marca.
+Imagens novas são inseridas explicitamente com estado `disponivel`, inclusive
+em bancos cujo default antigo continua sendo `candidata`; não é necessária
+migração para ativar o fluxo. `candidata` e `aprovada` são estados legados
+tratados como disponíveis. `rejeitada` continua no filtro próprio da galeria
+e bloqueia publicação se usada. A API da biblioteca edita somente o texto
+alternativo por PATCH; não existe ação de aprovar/recusar.
 
-O agente recebe apenas fotos aprovadas, com URL, mais a contagem do que aguarda decisão; `prepare_site_images`, `generate_logo` e `list_images` não devolvem URL de candidata. A rota recusa a fase de cenas enquanto houver imagem pendente. Aplicar logo exige um pedido detectado na última mensagem do operador e imagem de tipo logo já aprovada; por `/settings`, exige logo aprovado da biblioteca do tenant ou arquivo enviado manualmente ao caminho de logo daquele cliente. A home exige duas fotos geradas distintas da biblioteca do tenant; uploads não completam esse mínimo. Fontes: `lib/ai/tools.ts`, `lib/images/queries.ts`, `lib/sites/generation.ts`, `lib/taste/site.ts` e `app/api/admin/[tenant]/images/route.ts`.
+`update_image` resolve o número diretamente por `(tenant_id, seq)`, inclusive
+fora das 200 imagens mais recentes da listagem. Usa os pixels originais como
+referência, conserva a proporção, gera uma nova imagem numerada e mantém a
+original no acervo. A geração compartilha o orçamento de oito imagens do turno
+e o lock de cenas. `replaceDraftImage` reconfirma ambas as imagens dentro do
+tenant e relê as páginas sob `FOR UPDATE` antes de trocar campos de imagem e
+alt por URL exata, em uma transação. Links, textos, SEO, marca e snapshots
+publicados não são alterados. A imagem nova continua na biblioteca se a
+aplicação falhar, e a ferramenta informa a falha com o novo número.
+
+A galeria mostra as imagens disponíveis e o atalho **Solicitar alteração**:
+abre o chat com o número preenchido, sem enviar nem gerar automaticamente.
+Remoção verifica uso em rascunhos, publicados e marca; falha no Blob conserva
+o registro. Aplicar logo exige um pedido detectado na última mensagem e uma
+imagem de tipo logo disponível; por `/settings`, exige logo da biblioteca do
+tenant ou upload manual no caminho de logo daquele cliente. A home continua
+exigindo duas fotos geradas distintas da biblioteca do tenant. Fontes:
+`lib/ai/tools.ts`, `lib/images/queries.ts`, `lib/images/revise.ts`,
+`lib/images/replacement.ts`, `lib/sites/generation.ts` e `lib/taste/site.ts`.
 
 ## Dados, conversão e tráfego
 
@@ -64,7 +87,7 @@ O agente recebe apenas fotos aprovadas, com URL, mais a contagem do que aguarda 
 | ---------------- | ----------------------------------------------------------------------- |
 | `tenants`        | Identidade, marca, dials, contatos e guia de imagem                     |
 | `pages`          | Rascunho, snapshot de blocos/SEO publicado e dados editoriais           |
-| `images`         | Biblioteca, sequência por tenant, geração, crítica e aprovação          |
+| `images`         | Biblioteca, sequência por tenant, geração, crítica e disponibilidade    |
 | `chat_messages`  | Texto da conversa do site; o canal `imagens` só guarda histórico antigo |
 | `leads`          | Campos recebidos, origem e consentimento informado                      |
 | `events`         | Eventos de primeira parte por tenant/página/campanha                    |
@@ -83,10 +106,10 @@ Gastos de todos os canais da mesma campanha são somados, incluindo campanhas se
 - **Acesso:** admin global, sem vínculo usuário–tenant ou RLS no schema versionado. Rotas administrativas, chats e rascunhos exigem sessão. Em produção, ausência de segredo e senha impede emissão/validação de sessão. `__tenant` continua disponível para resolver o conteúdo publicado; não autentica. Arquivos no Blob continuam públicos.
 - **Domínios e SEO:** o host só resolve tenant em um subdomínio de `eixu.com.br` ou `.localhost`; nomes reservados e hosts numéricos não viram clientes. `lib/site.ts` ainda aponta para o endereço legado `chatgpt.site`, usado no sitemap/robots institucional. Esse endereço institucional não foi alterado pela revisão do admin.
 - **Snapshot parcial:** mudar nome, contatos, marca, direção visual ou logo pode afetar o site ao vivo sem publicar páginas. As três cores do cadastro entram nessa categoria: alterá-las repinta o site publicado sem passar por pre-flight. Título, tipo, metadados de post/inbound e parte do JSON-LD também usam dados compartilhados. As transações de `build_site` e publicação tornam seus lotes atômicos, mas não versionam esses campos.
-- **Autorização do agente:** pedido para publicar é uma regra de prompt/tool description; o executor de `publish_page` não valida confirmação estruturada. A aprovação de imagem saiu do agente e virou ação de painel, mas a troca de logo por `set_site_logo` ainda usa regex sobre a última mensagem, sem garantia de interpretação de negação. As fases de geração não expõem ferramentas de publicação. Não confundir esses mecanismos com autorização formal.
+- **Autorização do agente:** pedido para publicar é uma regra de prompt/tool description; o executor de `publish_page` não valida confirmação estruturada. Não há aprovação de imagens; a troca de logo por `set_site_logo` ainda usa regex sobre a última mensagem, sem garantia de interpretação de negação. As fases de geração não expõem ferramentas de publicação. Não confundir esses mecanismos com autorização formal.
 - **Revisão visual:** `review_pages` sempre devolve apontamentos estruturais. Com `EIXU_REVIEW_CAPTURE=1`, abre o rascunho em Chromium com o cookie da requisição e acrescenta medidas do navegador. As capturas não voltam ao modelo como imagem. O ambiente precisa permitir Chromium e acesso ao próprio preview.
 - **Histórico e custos:** persistência textual dos últimos 60 itens por canal, sem trace completo, anexos ou recibos antigos. A compactação não resume decisões do operador. Conversas muito extensas são recusadas; recarregar retoma o histórico recente. Cache depende de provedor, prefixo e janela. O custo mostrado exclui imagens e críticas internas, falhas sem recibo e outras abas; não é uma conta consolidada.
-- **Imagens antigas:** candidatas anteriores a esta entrega voltam na fila de decisão do painel, inclusive as já usadas em página. Imagens rejeitadas de antes continuam no banco e no Blob, fora da biblioteca e dos prompts; não há rotina de limpeza.
+- **Imagens antigas:** candidatas e aprovadas anteriores a esta entrega ficam disponíveis, inclusive as já usadas em página. Rejeitadas antigas permanecem no banco/Blob e no filtro Rejeitadas, fora dos prompts; não há limpeza automática. A listagem mostra as 200 imagens mais recentes; consulta por número não tem esse limite.
 - **Medição:** eventos são atribuição de navegador e ações, não pessoas únicas, conversas confirmadas ou receita. Dados anteriores ao release podem conter cliques duplicados; não foram apagados. Gasto é lançamento manual sem conciliação ou integração com anúncios.
 
 A [revisão do admin](admin-review.md) registra a validação desta entrega. Testes de contrato e ensaio controlado não constituem pentest, benchmark universal de qualidade ou geração completa em todos os modelos.

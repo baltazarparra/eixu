@@ -20,7 +20,7 @@ Trocar ou remover o perfil durante a leitura descarta a resposta anterior. Uma r
 
 Nome, contatos e logo são compartilhados com o site ao vivo. Alterar o briefing orienta as próximas edições; não reescreve páginas automaticamente. Para trocar o endereço de um cliente existente, é necessária uma operação técnica; o formulário não altera o slug.
 
-Envie um logo final em Dados ou aprove uma opção gerada na conversa do site. O arquivo enviado manualmente é aplicado ao terminar o upload. Uma opção gerada precisa estar aprovada antes de **Usar como logo**. Dados não altera as cores: peça a mudança na conversa do site.
+Envie um logo final em Dados ou escolha uma opção gerada na conversa do site. O arquivo enviado manualmente é aplicado ao terminar o upload. Uma opção gerada fica disponível em Imagens para **Usar como logo**, sem aprovação. Dados não altera as cores: peça a mudança na conversa do site.
 
 ## Excluir um cliente
 
@@ -32,7 +32,7 @@ A exclusão é definitiva e não tem lixeira. Ao concluir, o site publicado pass
 
 Em Site, **Continuar** roda briefing e direção, cenas, composição e revisão, uma etapa por vez. O progresso é salvo entre elas e vem do estado gravado, não da conversa: recarregar a tela não perde o lugar. **Parar** interrompe a sequência; uma ferramenta já iniciada pode terminar e salvar seu resultado. O cancelamento não desfaz escritas. Se houver erro ou a etapa não avançar, a sequência para; leia a resposta antes de tentar de novo.
 
-Na etapa de cenas o agente gera uma imagem e para. Ela aparece no fim da conversa com a nota da crítica e os problemas apontados. **Aprovar** guarda a imagem na biblioteca e a sequência segue sozinha para a próxima cena. **Recusar e gerar outra** apaga o arquivo e o registro; o que você escrever em "o que mudar" vira o pedido da próxima tentativa. A crítica da IA ajuda a decidir, não aprova nada.
+Na etapa de cenas o agente gera uma imagem por requisição e a sequência segue automaticamente enquanto o plano avança. As fotos ficam disponíveis com número e URL, sem aprovação. A crítica registra nota e problemas para orientar ajustes; nota baixa não abre uma fila de decisão.
 
 O chat recebe o histórico textual recente do cliente. Escreva mudanças específicas e indique a página quando necessário. Sugestões apenas preenchem a caixa; **Enviar** executa o pedido. Enter envia, Shift+Enter quebra a linha. Imagens podem ser anexadas, coladas ou arrastadas para a conversa.
 
@@ -42,11 +42,13 @@ Os textos das 60 mensagens mais recentes são recuperados ao abrir a tela. Ferra
 
 ## Biblioteca e publicação
 
-Imagens é a biblioteca do que você aprovou, separada em fotos e logos. A geração e a decisão acontecem na conversa do site; aqui ficam o acervo e as ações sobre ele.
+Imagens (`/admin/[tenant]/imagens`) reúne as imagens geradas, separadas em fotos e logos. Cada uma mostra um número, inclusive as candidatas antigas que agora estão disponíveis sem aprovação.
 
-O filtro **Rejeitadas** mostra o que foi recusado sem poder ser apagado, porque estava em uso numa página. Troque a imagem do bloco pelo chat e depois apague.
+Para alterar uma imagem, escreva no chat: **“quero atualizar a imagem #5, quero outro carro”**. Ou clique em **Solicitar alteração** no cartão: o chat abre com o número preenchido; complete o pedido e envie. A geração usa a original como referência e preserva sua proporção. A nova versão ganha outro número, substitui a anterior nas páginas em rascunho e mantém ambas na biblioteca. O chat informa o novo número. A versão publicada continua até você publicar as páginas de novo.
 
-**Apagar** pede uma segunda confirmação e recusa imagens referenciadas no rascunho, publicado ou logo. Cancelar conserva a imagem. **Usar no site**, em uma foto, copia um pedido para colar no chat do site; não altera o conteúdo sozinho. **Usar como logo**, em um logo aprovado, aplica na navegação e no rodapé.
+O filtro **Rejeitadas** preserva imagens recusadas no fluxo antigo, que continuam indisponíveis para publicação. Troque a imagem do bloco pelo chat e depois apague.
+
+**Apagar** pede uma segunda confirmação e recusa imagens referenciadas no rascunho, publicado ou logo. Cancelar conserva a imagem. **Usar no site**, em uma foto, copia um pedido para colar no chat do site; não altera o conteúdo sozinho. **Usar como logo**, em um logo disponível, aplica na navegação e no rodapé.
 
 As pendências para publicar aparecem no fim do fluxo, quando ainda sobra algo. Erros de página ou projeto bloqueiam a publicação; recomendações continuam disponíveis para revisão. Mudanças de blocos ou SEO tornam a página pendente. **Publicar** valida o projeto no servidor e atualiza o snapshot de páginas atomicamente; um erro preserva a versão anterior.
 

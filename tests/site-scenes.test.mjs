@@ -135,11 +135,21 @@ await test('requisições distintas do mesmo tenant não geram em paralelo; outr
   assert.equal(f.active.size, 0);
 });
 
-await test('candidata posterior ao snapshot da rota impede nova geração e libera o lock', async () => {
+await test('foto posterior ao snapshot preenche a vaga sem duplicar geração e libera o lock', async () => {
   const f = await fixture();
   const stale = f.tools();
-  f.images.set('fixture', [{ status: 'candidata' }]);
-  assert.match((await stale.execute(input)).error, /aguardando decisão/);
+  f.images.set('fixture', [
+    {
+      status: 'candidata',
+      kind: 'foto',
+      model: 'openai/gpt-image-2',
+      blobPath: 'tenants/fixture/gerado/1.webp',
+      url: 'https://assets.test/1.webp',
+      ratio: '4:5',
+      targetBlock: 'hero.split',
+    },
+  ]);
+  assert.match((await stale.execute(input)).error, /próxima cena do plano/);
   assert.equal(f.calls.length, 0);
   assert.equal(f.active.size, 0);
   f.images.set('fixture', []);

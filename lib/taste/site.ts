@@ -51,7 +51,7 @@ function destinations(blocks: BlockInstance[]): string[] {
   return links;
 }
 
-/** Contrato de projeto. A fase de rascunho permite candidatas; publicação não. */
+/** Contrato de projeto. Imagens disponíveis não exigem aprovação. */
 export function lintSite(
   pages: SitePage[],
   images: TenantImage[],
@@ -186,14 +186,14 @@ export function lintSite(
     findings.push(finding);
   if (mode === 'publish') {
     const used = new Set(pages.flatMap((p) => pageImageUrls(p.blocks)));
-    const unapproved = images.filter(
-      (i) => used.has(i.url) && i.status !== 'aprovada',
+    const rejected = images.filter(
+      (i) => used.has(i.url) && i.status === 'rejeitada',
     );
-    if (unapproved.length)
+    if (rejected.length)
       fail(
         '',
-        'imagens-aprovacao',
-        `Aprovação do operador pendente: ${unapproved.map((i) => `#${i.seq}`).join(', ')}. A crítica de IA não aprova imagens.`,
+        'imagens-rejeitadas',
+        `Troque as imagens rejeitadas antes de publicar: ${rejected.map((i) => `#${i.seq}`).join(', ')}.`,
       );
   }
   return findings;

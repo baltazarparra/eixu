@@ -8,7 +8,7 @@ import {
   listImages,
   referenceMessage,
   referenceReason,
-  setStatus,
+  updateImageMetadata,
 } from '@/lib/images/queries';
 import { getTenantBySlug } from '@/lib/tenant-queries';
 
@@ -24,7 +24,7 @@ async function resolve(params: Promise<{ tenant: string }>) {
   return { tenant };
 }
 
-const statuses = z.enum(['aprovada', 'rejeitada', 'candidata']);
+const statuses = z.enum(['disponivel', 'aprovada', 'rejeitada', 'candidata']);
 
 /** Estado da biblioteca para a grade do painel. */
 export async function GET(
@@ -48,10 +48,9 @@ export async function GET(
   });
 }
 
-const patch = z.object({
+const patch = z.strictObject({
   id: z.string(),
-  status: statuses,
-  alt: z.string().max(140).optional(),
+  alt: z.string().max(140),
 });
 
 export async function PATCH(
@@ -67,11 +66,10 @@ export async function PATCH(
       { status: 400 },
     );
 
-  const image = await setStatus(
+  const image = await updateImageMetadata(
     resolved.tenant.id,
     parsed.data.id,
-    parsed.data.status,
-    { alt: parsed.data.alt },
+    parsed.data.alt,
   );
   if (!image)
     return Response.json({ error: 'Imagem não encontrada.' }, { status: 404 });

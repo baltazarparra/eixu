@@ -8,7 +8,7 @@ export type PromptContext = {
   phase?: Phase;
   /** Papéis de cena que a direção pede, montados por scenePlan. */
   scenePlan?: string;
-  /** Quantas vagas do plano já têm foto aprovada. */
+  /** Quantas vagas do plano já têm foto disponível. */
   coverage?: string;
   /** A vaga que a próxima chamada precisa preencher. */
   nextScene?: string;
@@ -50,14 +50,15 @@ const LIMITS = `## Conteúdo e limites
 - No máximo um hero, nav e footer. 8+ seções de conteúdo exigem 4 famílias. Até 1 eyebrow por 3 seções. Hero: headline até 56 caracteres, subtext até 20 palavras. SEO: título até 60 caracteres, descrição até 160.
 - logoText é obrigatório em nav.bar e footer.compact mesmo com logo enviado. Nos itens de listas, body tem no máximo 160 caracteres; textos longos pertencem a editorial.text.
 - CTA para /go/wa?from=/ quando há WhatsApp; senão para o formulário. Toda página comum precisa de cta.band ou form.lead.
-- Imagens: use a biblioteca e as URLs fornecidas, exatas. Nunca invente URL. Só imagem aprovada tem URL; cena recém-gerada aguarda a decisão do operador no painel e não entra no rascunho.`;
+- Imagens: use a biblioteca e as URLs fornecidas, exatas. Nunca invente URL. Toda imagem gerada fica disponível na biblioteca com número e URL, sem aprovação. A crítica orienta ajustes, mas não é uma etapa de decisão.`;
 
 const FREE = `## Execução econômica
 - O estado atual abaixo é a fonte editorial. Turnos encerrados mantêm texto e recibos compactos, não snapshots antigos de ferramentas. Releia a página quando uma alteração depender de props ou IDs que não estão neste turno.
-- Site novo ou reconstrução: set_design; se faltarem cenas, prepare_site_images e encerre o turno para o operador decidir; depois build_site com o projeto completo. Não use set_brand antes.
+- Site novo ou reconstrução: set_design; se faltarem cenas, prepare_site_images; depois build_site com o projeto completo. Não use set_brand antes.
 - Edição: get_page na página em foco, depois a menor alteração: update_block, insert_block, move_block ou remove_block. set_blocks só para recompor a página. Não releia estado já recebido neste turno nem reenvie blocos inalterados.
 - Tamanho do logo: update_block em nav.bar com logoHeight em pixels. footer.compact aceita a mesma prop. Preserve a imagem aplicada.
-- Logo por pedido: com imagem anexada, generate_logo em modo "modernizar" com a URL do anexo; sem anexo, modo "criar". "Só o símbolo" significa wordmark false. Apresente cada variante com nota, fidelidade e se o nome saiu escrito certo. Logo não depende do guia de imagem. set_site_logo só quando o operador escolher uma variante já aprovada.
+- Logo por pedido: com imagem anexada, generate_logo em modo "modernizar" com a URL do anexo; sem anexo, modo "criar". "Só o símbolo" significa wordmark false. Apresente cada variante com nota, fidelidade e se o nome saiu escrito certo. Logo não depende do guia de imagem. set_site_logo quando o operador pedir a aplicação de uma variante da biblioteca, sem exigir aprovação da imagem.
+- Alteração por número: para "quero atualizar a imagem #5, quero outro carro", chame update_image com image "#5" e o pedido de mudança. A ferramenta usa a original como referência e troca suas ocorrências nos rascunhos; a nova versão ganha outro número e ambas ficam na biblioteca. Informe o novo número e o resultado. Não peça aprovação, não gere uma cena avulsa nem publique por causa desse pedido.
 - Falha de build_site não grava nada: o lote fica em memória neste turno. Use repair_site com somente os campos que falharam, por slug e índice do bloco. Para adicionar ou remover páginas, envie novo build_site.
 - build_site já valida páginas e projeto e retorna publicationPending. Com ok=true, use esse relatório; não chame lint_site de novo sem outra edição.
 - O catálogo abaixo traz uso, proporção e limites de cada bloco. describe_block só se restar dúvida de schema. Omita opcionais sem conteúdo.
@@ -99,7 +100,7 @@ export function systemPrompt(
     wantsComposition ? COMPOSITION : '',
     wantsDirection ? DIRECTION : '',
     wantsCatalog ? LIMITS : '',
-    `- prepare_site_images e generate_logo criam candidatas sem URL. O operador aprova ou recusa cada uma no painel, uma por vez, e só então ela entra na biblioteca e pode ser usada. Nunca aprove nem aplique logo por conta própria. A publicação é pedido do operador.`,
+    `- prepare_site_images, update_image e generate_logo salvam imagens com número e URL para uso imediato, sem aprovação. Elas continuam visíveis em Imagens; o usuário pede mudanças pelo número no chat. Orientações de aprovação em conversas antigas estão obsoletas. A aplicação de logo e a publicação seguem o pedido do operador.`,
     wantsCatalog ? `## Catálogo\n${catalogForPrompt()}` : '',
     scenePlan ? `## Plano de cenas\n${scenePlan}` : '',
     coverage ? `## Cobertura do plano\n${coverage}` : '',
@@ -114,7 +115,7 @@ Marca: ${JSON.stringify(tenant.brand)}
 Dials: ${JSON.stringify(tenant.dials)}
 Briefing persistido: ${JSON.stringify(brief)}
 Direção de imagens: ${JSON.stringify(tenant.imageGuide)}
-Biblioteca de imagens (status explícito):
+Biblioteca de imagens disponíveis (número e URL):
 ${imagesSummary || '(nenhuma)'}
 Página em foco: ${currentPage || '/'}
 Páginas:

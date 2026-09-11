@@ -97,7 +97,7 @@ function fits(image: CoverageImage, scene: PlannedScene): boolean {
 }
 
 /**
- * Casa a biblioteca aprovada com as vagas do plano, uma imagem por vaga. A
+ * Casa a biblioteca disponível com as vagas do plano, uma imagem por vaga. A
  * primeira passada exige o mesmo bloco; a segunda aceita o que sobrevive ao
  * recorte, para uma foto 4:5 antiga cobrir outra vaga 4:5 em vez de obrigar
  * uma geração paga. O papel não precisa ser persistido: bloco e proporção
@@ -105,9 +105,9 @@ function fits(image: CoverageImage, scene: PlannedScene): boolean {
  */
 export function sceneCoverage(
   plan: PlannedScene[],
-  approved: CoverageImage[],
+  available: CoverageImage[],
 ): { covered: PlannedScene[]; missing: PlannedScene[] } {
-  const pool = [...approved];
+  const pool = [...available];
   const covered: PlannedScene[] = [];
   const pending: PlannedScene[] = [];
   const missing: PlannedScene[] = [];
@@ -131,21 +131,4 @@ export function sceneCoverage(
     }
   }
   return { covered, missing };
-}
-
-/**
- * Retira da lista de vagas pendentes a que esta imagem preencheria. Usado para
- * dizer ao operador qual papel a candidata na tela está cumprindo.
- */
-export function takeScene(
-  missing: PlannedScene[],
-  image: CoverageImage,
-): PlannedScene | null {
-  const exact = missing.findIndex(
-    (scene) => scene.targetBlock === image.targetBlock && fits(image, scene),
-  );
-  const index =
-    exact !== -1 ? exact : missing.findIndex((scene) => fits(image, scene));
-  if (index === -1) return null;
-  return missing.splice(index, 1)[0];
 }

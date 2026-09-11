@@ -67,6 +67,17 @@ export async function getImage(
   return rows[0] ? toImage(rows[0]) : null;
 }
 
+/** Consulta direta: o número continua acessível fora das 200 imagens recentes. */
+export async function getImageByNumber(
+  tenantId: string,
+  seq: number,
+): Promise<TenantImage | null> {
+  const rows = (await db()`
+    select * from images where tenant_id = ${tenantId} and seq = ${seq} limit 1
+  `) as Row[];
+  return rows[0] ? toImage(rows[0]) : null;
+}
+
 /** Violação de unicidade do Postgres. Duas cenas simultâneas podem colidir. */
 function isUniqueViolation(error: unknown): boolean {
   const code = (error as { code?: unknown })?.code;
@@ -96,11 +107,11 @@ export async function insertImage(input: {
     try {
       const rows = (await db()`
         insert into images (tenant_id, seq, batch_id, request_text, target_block, ratio, model, prompt_final,
-                            url, blob_path, kind, reference_urls)
+                            url, blob_path, kind, reference_urls, status)
         select ${input.tenantId}, coalesce(max(seq), 0) + 1, ${input.batchId}, ${input.requestText},
                ${input.targetBlock}, ${input.ratio}, ${input.model}, ${input.promptFinal},
                ${input.url}, ${input.blobPath}, ${input.kind ?? 'foto'},
-               ${JSON.stringify(input.referenceUrls ?? [])}::jsonb
+               ${JSON.stringify(input.referenceUrls ?? [])}::jsonb, 'disponivel'
         from images where tenant_id = ${input.tenantId}
         returning *
       `) as Row[];
@@ -124,19 +135,13 @@ export async function saveCritique(
   `;
 }
 
-export async function setStatus(
+export async function updateImageMetadata(
   tenantId: string,
   id: string,
-  status: ImageStatus,
-  extra?: { alt?: string; description?: string; reason?: string },
+  alt: string,
 ): Promise<TenantImage | null> {
   const rows = (await db()`
-    update images set
-      status = ${status},
-      alt = coalesce(${extra?.alt ?? null}, alt),
-      description = coalesce(${extra?.description ?? null}, description),
-      critique = case when ${extra?.reason ?? null}::text is null then critique
-                      else critique || jsonb_build_object('motivo_recusa', ${extra?.reason ?? null}::text) end
+    update images set alt = ${alt}
     where tenant_id = ${tenantId} and id = ${id}
     returning *
   `) as Row[];
@@ -167,7 +172,7 @@ export async function referenceReason(
   return asLogo.length ? 'logo' : null;
 }
 
-/** Texto pronto para o aviso de recusa. */
+/** Texto pronto para o bloqueio de exclusão. */
 export function referenceMessage(
   seq: number,
   reason: 'pagina' | 'logo',

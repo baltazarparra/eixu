@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { Message, chatErrorMessage } from './chat-parts';
-import { SceneReview, type Decision, type PendingImage } from './scene-review';
 import {
   PHASES,
   PHASE_LABEL,
@@ -14,11 +13,15 @@ import {
 
 import { AdminHeader, MobileViews } from '@/components/admin/navigation';
 import { ChatUsageDetails } from '@/components/admin/chat-usage';
-import { AdminHttpError, adminFetch } from '@/lib/admin/http';
+import { adminFetch } from '@/lib/admin/http';
 import type { SiteState } from '@/lib/admin/state';
 import type { ChatMessage } from '@/lib/ai/usage';
 
-type Props = { initial: SiteState; history: ChatMessage[] };
+type Props = {
+  initial: SiteState;
+  history: ChatMessage[];
+  imageRequest?: string;
+};
 
 const SUGGESTIONS = [
   'Deixa o hero mais direto, com o benefício na primeira linha.',
@@ -27,19 +30,18 @@ const SUGGESTIONS = [
   'Troca a cor de acento para algo mais sóbrio.',
 ];
 
-export function Workspace({ initial, history }: Props) {
+export function Workspace({ initial, history, imageRequest = '' }: Props) {
   const tenantSlug = initial.tenant.slug;
   const [site, setSite] = useState<SiteState>(initial);
   const [current, setCurrent] = useState(initial.pages[0]?.slug ?? '');
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(imageRequest);
   const [view, setView] = useState<'chat' | 'content'>(
-    initial.pages.length ? 'content' : 'chat',
+    initial.pages.length && !imageRequest ? 'content' : 'chat',
   );
   const generationError = useRef<Error | null>(null);
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [nonce, setNonce] = useState(0);
   const [publishing, setPublishing] = useState(false);
-  const [deciding, setDeciding] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<
     { url: string; name: string; type: string }[]
@@ -51,11 +53,6 @@ export function Workspace({ initial, history }: Props) {
   const [generating, setGenerating] = useState(false);
   const [phase, setPhase] = useState<Phase | null>(null);
   const stopGeneration = useRef(false);
-  // O laço parou por causa de uma imagem na fila: a decisão do operador é que
-  // retoma a sequência.
-  const awaitingDecision = useRef(false);
-  /** Pedido da próxima tentativa, escrito ao recusar uma cena. */
-  const feedbackRef = useRef('');
   const refreshSeq = useRef(0);
 
   const { messages, sendMessage, status, error, stop } = useChat<ChatMessage>({
@@ -129,8 +126,6 @@ export function Workspace({ initial, history }: Props) {
     (sum, item) => sum + item.errors.length,
     site.errors.length,
   );
-  const pending = site.generation?.pendingImages ?? [];
-  const awaiting = pending.length > 0;
   // As pendências só interessam no fim: num cliente novo elas são a lista do
   // que a geração ainda vai fazer, e o painel virava alarme falso.
   const flowRunning =
@@ -225,131 +220,45 @@ export function Workspace({ initial, history }: Props) {
     setView('chat');
     setNotice(null);
     try {
-      let previous: Phase | null = null;
-      let repeated = 0;
-      for (let step = 0; step < 8; step++) {
+      let previous: string | null = null;
+      for (let step = 0; step < 14; step++) {
         if (stopGeneration.current) break;
         const state = await refresh();
         const next = state?.generation?.next;
         if (!next || next === 'pronto') break;
-        // Uma imagem na fila é decisão do operador, e só a etapa de cenas
-        // depende dela. Parar nas outras deixaria um cliente antigo, com
-        // candidatas do fluxo anterior, sem conseguir nem rodar o briefing.
-        if (next === 'cenas' && state.generation.pendingImages.length) {
-          awaitingDecision.current = true;
-          break;
-        }
-        // A mesma fase duas vezes seguidas significa que ela não avançou:
-        // parar e mostrar o motivo é melhor que repetir e gastar tokens.
-        repeated = next === previous ? repeated + 1 : 0;
-        if (repeated >= 1) {
+        // A etapa de cenas avança a cada vaga preenchida, mesmo sem mudar
+        // de nome. Uma falha sem progresso interrompe novas chamadas pagas.
+        const progress =
+          next === 'cenas' ? `${next}:${state.generation.coveredScenes}` : next;
+        if (previous === progress) {
           setNotice(
             next === 'cenas'
-              ? 'A etapa "Cenas" não produziu imagem para você decidir. Leia a resposta do agente e continue pelo chat.'
+              ? 'A etapa "Cenas" não produziu uma nova cena. Leia a resposta do agente e continue pelo chat.'
               : `A etapa "${PHASE_LABEL[next]}" não avançou. Leia a resposta do agente e continue pelo chat.`,
           );
           break;
         }
-        previous = next;
+        previous = progress;
         setPhase(next);
         generationError.current = null;
-        // A recusa anterior vira o pedido desta tentativa. Fora da etapa de
-        // cenas ela fica guardada, em vez de sumir sem ser usada.
-        const retry = next === 'cenas' ? feedbackRef.current : '';
-        if (retry) feedbackRef.current = '';
         await sendMessage(
-          { text: retry || PHASE_MESSAGE[next] },
+          { text: PHASE_MESSAGE[next] },
           { body: { tenant: tenantSlug, page: current, phase: next } },
         );
         if (generationError.current) throw generationError.current;
       }
-      await refresh();
+      const finalState = await refresh();
+      if (!stopGeneration.current && finalState.generation.next !== 'pronto')
+        setNotice(
+          (message) =>
+            message ??
+            'A geração ainda não terminou. Confira a última resposta e continue de onde parou.',
+        );
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Falha na geração.');
     } finally {
       setPhase(null);
       setGenerating(false);
-    }
-  }
-
-  /**
-   * Aprovar guarda a imagem; recusar apaga arquivo e registro. Só o que passa
-   * por aqui entra na biblioteca, e é o operador quem decide, não a crítica.
-   */
-  async function decide(image: PendingImage, decision: Decision) {
-    setDeciding(image.id);
-    setNotice(null);
-    const alt = decision.alt.trim();
-    try {
-      if (decision.action === 'aprovar') {
-        await adminFetch(`/api/admin/${tenantSlug}/images`, {
-          method: 'PATCH',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            id: image.id,
-            status: 'aprovada',
-            ...(alt ? { alt } : {}),
-          }),
-        });
-        if (decision.applyLogo)
-          await adminFetch(`/api/admin/${tenantSlug}/settings`, {
-            method: 'PATCH',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ logoUrl: image.url }),
-          });
-      } else {
-        try {
-          await adminFetch(`/api/admin/${tenantSlug}/images`, {
-            method: 'DELETE',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ id: image.id }),
-          });
-        } catch (error) {
-          // Só a recusa por uso vira rejeição: uma falha ao apagar o arquivo
-          // precisa continuar aparecendo para o operador tentar de novo.
-          if (!(error instanceof AdminHttpError) || error.status !== 409)
-            throw error;
-          await adminFetch(`/api/admin/${tenantSlug}/images`, {
-            method: 'PATCH',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ id: image.id, status: 'rejeitada' }),
-          });
-          setNotice(
-            `${error.message} Ela ficou rejeitada; peça ao agente para trocar a imagem do bloco.`,
-          );
-        }
-        const pedido = decision.feedback.trim();
-        if (pedido) {
-          const texto =
-            image.kind === 'logo'
-              ? `Recusei o logo #${image.seq}: ${pedido}. Gere outra variante.`
-              : `Recusei a cena #${image.seq}${image.role ? ` (${image.role})` : ''}: ${pedido}. Gere outra para a mesma vaga.`;
-          // Logo não é etapa da geração: o pedido dele vai para o compositor.
-          if (image.kind === 'logo') setInput(texto);
-          else
-            feedbackRef.current = [feedbackRef.current, texto]
-              .filter(Boolean)
-              .join(' ');
-        }
-      }
-      const state = await refresh();
-      if (awaitingDecision.current && !state.generation.pendingImages.length) {
-        awaitingDecision.current = false;
-        void generate();
-      } else if (!awaitingDecision.current && feedbackRef.current) {
-        // Fora da geração em etapas nada é enviado sozinho: o pedido fica no
-        // compositor e o operador decide quando gastar uma nova imagem.
-        setInput(feedbackRef.current);
-        feedbackRef.current = '';
-      }
-    } catch (error) {
-      setNotice(
-        error instanceof Error
-          ? error.message
-          : 'Não foi possível atualizar a imagem.',
-      );
-    } finally {
-      setDeciding(null);
     }
   }
 
@@ -409,9 +318,10 @@ export function Workspace({ initial, history }: Props) {
                 </p>
                 <p className="text-[var(--color-muted)]">
                   Descreva o negócio e as referências, ou continue a geração em
-                  etapas: briefing e direção, cenas, composição e revisão. Cada
-                  imagem aparece aqui para você aprovar, uma por vez, e no fim
-                  você publica.
+                  etapas: briefing e direção, cenas, composição e revisão. As
+                  imagens ficam na biblioteca e são usadas sem aprovação. Peça
+                  alterações pelo número, como “atualize a imagem #5 com outro
+                  carro”. No fim, confira a prévia e publique.
                 </p>
               </div>
             ) : null}
@@ -432,10 +342,6 @@ export function Workspace({ initial, history }: Props) {
                     >
                       Parar
                     </button>
-                  ) : awaiting ? (
-                    <span className="text-[var(--color-muted)]">
-                      Aguardando sua decisão
-                    </span>
                   ) : (
                     <button
                       type="button"
@@ -476,10 +382,9 @@ export function Workspace({ initial, history }: Props) {
                 {site.generation ? (
                   <p className="mt-2 text-[var(--color-muted)]">
                     {site.generation.coveredScenes} de{' '}
-                    {site.generation.targetScenes} cenas aprovadas ·{' '}
+                    {site.generation.targetScenes} cenas disponíveis ·{' '}
                     {site.generation.organicPages} páginas orgânicas ·{' '}
                     {site.generation.blockingErrors} erros de pre-flight
-                    {awaiting ? ` · ${pending.length} aguardando decisão` : ''}
                   </p>
                 ) : null}
               </div>
@@ -498,18 +403,6 @@ export function Workspace({ initial, history }: Props) {
                 </p>
               ) : null}
             </div>
-
-            {awaiting ? (
-              <SceneReview
-                key={pending[0].id}
-                image={pending[0]}
-                queued={pending.length}
-                covered={site.generation.coveredScenes}
-                target={site.generation.targetScenes}
-                disabled={busy || generating || Boolean(deciding)}
-                onDecide={(decision) => void decide(pending[0], decision)}
-              />
-            ) : null}
 
             {!busy && site.pages.length > 0 ? (
               <div className="mt-6 flex flex-wrap gap-2">

@@ -242,7 +242,7 @@ await test('exportação CSV neutraliza fórmulas e preserva aspas e texto comum
     assert.ok(csvCell(value).startsWith('"\''));
   assert.equal(csvCell('Atelier "Teste"'), '"Atelier ""Teste"""');
 });
-await test('logo gerado exige aprovação; upload manual precisa pertencer ao cliente', () => {
+await test('logo gerado dispensa aprovação; upload manual precisa pertencer ao cliente', () => {
   const prefix =
     'https://store.public.blob.vercel-storage.com/tenants/atelier-teste/logo/';
   assert.equal(canApplyLogo('atelier-teste', `${prefix}123-logo.png`), true);
@@ -253,7 +253,7 @@ await test('logo gerado exige aprovação; upload manual precisa pertencer ao cl
       kind: 'logo',
       status: 'candidata',
     }),
-    false,
+    true,
   );
   assert.equal(
     canApplyLogo('atelier-teste', `${prefix}batch/logo.png`, {

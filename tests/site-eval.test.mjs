@@ -14,7 +14,7 @@ for (const layout of [
   'offset',
   'atelier',
 ])
-  await test(`avaliação ${layout} chega à revisão após aprovar cada cena`, async () => {
+  await test(`avaliação ${layout} chega à revisão gerando as cenas sem aprovação`, async () => {
     const state = {
       hasDesign: false,
       coveredScenes: 0,
@@ -25,19 +25,16 @@ for (const layout of [
     };
     const calls = [],
       images = [];
-    let approvals = 0;
     const result = await runEvaluationPhases({
       readSnapshot: async () => ({ images }),
       nextPhase: () => nextPhase(state),
-      approveImage: async (_snapshot, image) => {
-        image.status = 'aprovada';
-        state.coveredScenes += 1;
-      },
-      onApproved: (count) => (approvals += count),
       runPhase: async (_snapshot, phase) => {
         calls.push(phase);
         if (phase === 'briefing') state.hasDesign = true;
-        if (phase === 'cenas') images.push({ status: 'candidata' });
+        if (phase === 'cenas') {
+          images.push({ status: 'disponivel' });
+          state.coveredScenes += 1;
+        }
         if (phase === 'composicao') state.organicPages = 3;
         if (phase === 'revisao') state.reviewRounds += 1;
       },
@@ -46,17 +43,16 @@ for (const layout of [
     assert.equal(result.next, 'pronto');
     assert.equal(calls.at(-1), 'revisao');
     assert.equal(result.attempts, state.targetScenes + 3);
-    assert.equal(approvals, state.targetScenes);
+    assert.equal(images.length, state.targetScenes);
   });
 
-for (const reason of ['phase-budget', 'phase-error', 'approval-pending'])
+for (const reason of ['phase-budget', 'phase-error'])
   await test(`avaliação informa execução incompleta por ${reason}`, async () => {
     let calls = 0;
     const result = await runEvaluationPhases({
       readSnapshot: async () => ({
-        images: reason === 'approval-pending' ? [{ status: 'candidata' }] : [],
+        images: [],
       }),
-      approveImage: async () => {},
       nextPhase: () => 'revisao',
       runPhase: async () => {
         calls += 1;

@@ -69,6 +69,9 @@ export async function generateCandidates(input: {
   models: readonly string[];
   allowText?: boolean;
   extraNegatives?: string[];
+  /** Imagem existente do tenant, usada para uma alteração por número. */
+  reference?: Buffer;
+  referenceUrl?: string;
 }): Promise<{ batchId: string; images: Candidate[]; failures: string[] }> {
   const batchId = randomUUID();
   const prompt = composePrompt(
@@ -86,7 +89,9 @@ export async function generateCandidates(input: {
     input.models.map(async (model) => {
       const result = await generateImage({
         model,
-        prompt,
+        prompt: input.reference
+          ? { text: prompt, images: [input.reference] }
+          : prompt,
         ...dimensionsFor(model, input.ratio),
         maxRetries: 1,
       });
@@ -147,6 +152,7 @@ export async function generateCandidates(input: {
         promptFinal: prompt,
         url: blob.url,
         blobPath: blob.pathname,
+        referenceUrls: input.referenceUrl ? [input.referenceUrl] : [],
       });
       images.push({ ...row, bytes: new Uint8Array(webp) });
     } catch (error) {
