@@ -124,7 +124,12 @@ ou depois de sua conclusão; ela não encerra o run do vencedor.
 
 `generation_events` guarda o que o painel mostra: início e fim de fase, começo e
 fim de cada ferramenta com o mesmo rótulo em pt-BR do chat, pausas e erros. São
-rótulos e contadores, sem conteúdo do cliente. O painel lê por consulta
+rótulos e contadores, sem conteúdo do cliente. O evento de fim de fase carrega
+também o recibo daquela fase — modelo, passos, duração, tokens e custo do
+Gateway —, porque a contagem do stream não existe fora do navegador e a parte
+cara do trabalho tinha deixado de aparecer no consumo do painel.
+`lib/admin/usage-summary.ts` soma esses recibos com os dos turnos livres;
+parcela sem custo deixa o total sem valor, em vez de contá-lo como zero. O painel lê por consulta
 periódica, reativa a leitura ao iniciar pelo botão ou pelo chat e reconstrói o
 andamento depois de qualquer recarga. As mensagens são paginadas a partir de
 zero, com cursor do último registro entregue; a leitura continua até esvaziar
@@ -132,6 +137,14 @@ o lote mesmo quando o run terminou. O recibo persistido reutiliza a bolha do
 stream e preserva suas ferramentas e metadados. Enquanto um run
 está ativo, `/api/chat` responde 409: os dois disputariam as mesmas páginas.
 Sem sinal por 15 minutos, o run é dado por perdido e o operador pode retomar.
+
+A primeira etapa começa sozinha em cliente que nunca gerou, sem página e com o
+briefing pendente; o `GET` informa se já houve alguma execução, e a ausência
+desse sinal não autoriza início automático. Antes de montar o prompt do
+briefing, a etapa espera até 20 segundos pela leitura do perfil de rede social
+disparada pelo cadastro: o redirecionamento leva ao painel em menos de um
+segundo, e um perfil ainda em leitura entra no prompt como lacuna. Esgotado o
+tempo, a fase segue com a lacuna declarada em vez de prender a execução.
 
 Pausar é encerramento suave: a condição de parada entra no laço do agente e o
 passo corrente termina e salva, em vez de abortar uma chamada paga no meio.

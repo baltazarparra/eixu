@@ -57,6 +57,10 @@ export async function GET(
     messages,
     lastMessageId: messageCursor(messages, after),
     hasMoreMessages: messages.length === 60,
+    // Cliente que nunca gerou é o único que o painel inicia sozinho. Sem este
+    // sinal, um rascunho antigo e abandonado voltaria a gastar geração só por
+    // ser aberto, e um run recém-encerrado sairia do feed depois de 30 minutos.
+    everRan: Boolean(recent),
     state: workspaceState(tenant, pages, images),
   });
 }

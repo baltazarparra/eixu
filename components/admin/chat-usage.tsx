@@ -1,71 +1,76 @@
+'use client';
+
+import {
+  formatCost,
+  formatCount,
+  formatDuration,
+  formatTokens,
+  summarizeUsage,
+} from '@/lib/admin/usage-summary';
+import type { GenerationEvent } from '@/lib/generation/runs';
 import type { ChatMessage } from '@/lib/ai/usage';
 
-const number = new Intl.NumberFormat('pt-BR');
-export function ChatUsageDetails({ messages }: { messages: ChatMessage[] }) {
-  const usage = messages.flatMap((message) =>
-    message.metadata?.usage ? [message.metadata.usage] : [],
-  );
-  if (!usage.length) return null;
-  const latest = usage.at(-1)!;
-  const input = usage.reduce((sum, item) => sum + (item.inputTokens ?? 0), 0);
-  const output = usage.reduce((sum, item) => sum + (item.outputTokens ?? 0), 0);
-  const cached = usage.reduce(
-    (sum, item) => sum + (item.cacheReadTokens ?? 0),
-    0,
-  );
-  const cost = usage.every((item) => item.costUsd !== undefined)
-    ? usage.reduce((sum, item) => sum + item.costUsd!, 0)
-    : undefined;
-  const hasTokens = usage.every((item) => item.totalTokens !== undefined);
-  const total = usage.reduce((sum, item) => sum + (item.totalTokens ?? 0), 0);
+/**
+ * Consumo desta tela. A geração saiu do navegador e passou a gravar o recibo
+ * de cada fase no evento de encerramento: somar só as mensagens do stream
+ * deixava de fora justamente a parte cara do trabalho.
+ */
+export function ChatUsageDetails({
+  messages,
+  events = [],
+}: {
+  messages: ChatMessage[];
+  events?: GenerationEvent[];
+}) {
+  const usage = summarizeUsage({ messages, events });
+  if (!usage.rows.length) return null;
+  const { totals } = usage;
+
   return (
     <details className="admin-usage">
       <summary>
-        Uso nesta sessão{' '}
-        <span>
-          {hasTokens ? `${number.format(total)} tokens` : 'Não informado'}
+        <span>Consumo</span>
+        <span className="admin-usage-total">
+          {formatTokens(totals.totalTokens)} · {formatCost(totals.costUsd)}
         </span>
       </summary>
-      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
-        <dt>Entrada</dt>
-        <dd>
-          {usage.every((u) => u.inputTokens !== undefined)
-            ? number.format(input)
-            : 'Não informado'}
-        </dd>
-        <dt>Saída</dt>
-        <dd>
-          {usage.every((u) => u.outputTokens !== undefined)
-            ? number.format(output)
-            : 'Não informado'}
-        </dd>
-        <dt>Entrada em cache</dt>
-        <dd>
-          {usage.every((u) => u.cacheReadTokens !== undefined)
-            ? number.format(cached)
-            : 'Não informado'}
-        </dd>
-        <dt>Última resposta</dt>
-        <dd>
-          {Math.round(latest.durationMs / 1000)} s · {latest.steps} passos
-        </dd>
-        <dt>Custo dos chats</dt>
-        <dd>
-          {cost === undefined
-            ? 'Não informado'
-            : new Intl.NumberFormat('pt-BR', {
-                style: 'currency',
-                currency: 'USD',
-                minimumFractionDigits: 4,
-              }).format(cost)}
-        </dd>
-      </dl>
-      <p className="mt-3 break-words text-[var(--color-muted)]">
-        {latest.model}
-      </p>
-      <p className="mt-2 text-[var(--color-muted)]">
-        Contagens dos chats após abrir esta tela. Geração de imagens e críticas
-        têm consumo adicional. Tokens não equivalem a um valor em reais.
+
+      <table className="admin-usage-table">
+        <thead>
+          <tr>
+            <th scope="col">Etapa</th>
+            <th scope="col">Entrada</th>
+            <th scope="col">Saída</th>
+            <th scope="col">Custo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {usage.rows.map((row) => (
+            <tr key={row.id}>
+              <th scope="row">
+                <span>{row.label}</span>
+                <small>
+                  {row.steps} passos · {formatDuration(row.durationMs)}
+                </small>
+              </th>
+              <td>
+                {formatCount(row.inputTokens)}
+                {row.cacheReadTokens ? (
+                  <small>{formatCount(row.cacheReadTokens)} em cache</small>
+                ) : null}
+              </td>
+              <td>{formatCount(row.outputTokens)}</td>
+              <td>{row.costUsd === undefined ? '—' : formatCost(row.costUsd)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <p className="admin-usage-note">
+        {usage.models.join(', ') || 'Modelo não informado'}. Somente chamadas de
+        texto desta tela: geração de imagens, críticas internas e execuções
+        antigas ficam fora. Custo ausente em qualquer parcela deixa o total sem
+        valor, em vez de contá-lo como zero.
       </p>
     </details>
   );

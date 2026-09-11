@@ -119,11 +119,15 @@ async function runnerFixture({
   states,
   onGenerate = async () => {},
   text = 'Etapa concluída.',
+  /** Perfil social ainda em leitura na primeira consulta ao cliente. */
+  socialReading = false,
 } = {}) {
   const events = [];
   const messages = [];
   const runs = new Map();
+  const prompts = [];
   let calls = 0;
+  let tenantReads = 0;
   const run = {
     id: '0eb4847d-0f93-48be-ac16-2e76bb0a645e',
     tenantId: 'tenant-1',
@@ -166,15 +170,23 @@ async function runnerFixture({
       },
     },
     '@/lib/tenant-queries': {
-      getTenantBySlug: async () => ({
-        id: 'tenant-1',
-        slug: 'fixture',
-        name: 'Fixture',
-        brand: { design: { version: 2 } },
-        brief: {},
-        dials: {},
-        imageGuide: {},
-      }),
+      getTenantBySlug: async () => {
+        tenantReads += 1;
+        // A leitura do perfil, disparada pelo cadastro, termina entre a
+        // primeira consulta e a releitura feita pela espera.
+        const social = socialReading
+          ? { social: { status: tenantReads <= 1 ? 'lendo' : 'ok' } }
+          : {};
+        return {
+          id: 'tenant-1',
+          slug: 'fixture',
+          name: 'Fixture',
+          brand: { design: { version: 2 } },
+          brief: social,
+          dials: {},
+          imageGuide: {},
+        };
+      },
       listPages: async () => [],
     },
     '@/lib/images/queries': { listImages: async () => [] },
@@ -197,7 +209,10 @@ async function runnerFixture({
     },
     '@/lib/generation/context': {
       phaseBlocker: () => null,
-      phaseInstructions: () => 'Instruções sintéticas.',
+      phaseInstructions: (input) => {
+        prompts.push(input.tenant);
+        return 'Instruções sintéticas.';
+      },
     },
     '@/lib/admin/state': {
       workspaceState: () => ({
@@ -234,7 +249,15 @@ async function runnerFixture({
       }),
     },
   });
-  return { ...runner, run, runs, events, messages, calls: () => calls };
+  return {
+    ...runner,
+    run,
+    runs,
+    events,
+    messages,
+    prompts,
+    calls: () => calls,
+  };
 }
 
 await test('a etapa grava linha do tempo, mensagens e aponta a próxima fase', async () => {
@@ -256,6 +279,33 @@ await test('a etapa grava linha do tempo, mensagens e aponta a próxima fase', a
   assert.equal(f.messages[1].text, 'Etapa concluída.');
   assert.equal(f.run.hops, 1);
   assert.equal(f.run.progress, 'composicao');
+  // O painel perdeu a contagem quando a geração saiu do navegador: sem o
+  // recibo no evento, a parte cara do trabalho ficava fora do consumo.
+  const usage = f.events.at(-1).payload.usage;
+  assert.equal(usage.steps, 1);
+  assert.equal(usage.phase, 'composicao');
+  assert.equal(typeof usage.durationMs, 'number');
+  assert.equal(usage.costUsd, undefined);
+});
+
+await test('briefing espera a leitura do perfil social antes de montar o prompt', async () => {
+  const f = await runnerFixture({
+    states: [{ next: 'briefing' }, { next: 'cenas' }],
+    socialReading: true,
+  });
+  const outcome = await f.executeStep(f.run);
+
+  assert.equal(outcome.kind, 'continue');
+  assert.ok(
+    f.events.some(
+      (event) =>
+        event.kind === 'note' && /leitura do perfil/.test(event.label),
+    ),
+    'a espera precisa aparecer na linha do tempo',
+  );
+  // O prompt recebe o cliente relido: perfil em leitura entra como lacuna, e
+  // o cadastro redireciona para o painel antes de a leitura terminar.
+  assert.equal(f.prompts.at(-1).brief.social.status, 'ok');
 });
 
 await test('etapa sem avanço encerra a execução em vez de repetir para sempre', async () => {

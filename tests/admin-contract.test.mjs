@@ -14,6 +14,10 @@ const { contextMessages, chatRequestSchema } = await j.import(
   '../lib/ai/context.ts',
 );
 const { usageMetadata, sumGatewayCosts } = await j.import('../lib/ai/usage.ts');
+const { summarizeUsage } = await j.import('../lib/admin/usage-summary.ts');
+const { usageFromEvent, phaseRecords, currentActivity } = await j.import(
+  '../lib/generation/progress.ts',
+);
 const { structuredData } = await j.import('../lib/sites/structured-data.ts');
 const { csvCell } = await j.import('../lib/admin/csv.ts');
 const { previewHref, previewProps } = await j.import('../lib/sites/preview.ts');
@@ -264,6 +268,159 @@ await test('uso do stream soma passos e mantém cache desconhecido como ausente'
   assert.equal(result.usage.cacheReadTokens, 60);
   assert.equal(result.usage.cacheWriteTokens, undefined);
 });
+const phaseEvent = (id, phase, kind, extra = {}) => ({
+  id,
+  phase,
+  kind,
+  tool: extra.tool ?? null,
+  label: extra.label ?? '',
+  payload: extra.payload ?? {},
+  createdAt: extra.createdAt ?? '2026-09-11T13:00:00.000Z',
+});
+
+await test('recibo da fase só é aceito com contagem própria e bem formada', () => {
+  const good = phaseEvent(1, 'cenas', 'phase_end', {
+    payload: {
+      usage: {
+        model: 'fixture',
+        phase: 'cenas',
+        steps: 2,
+        durationMs: 1000,
+        inputTokens: 10,
+        costUsd: 0.5,
+      },
+    },
+  });
+  assert.deepEqual(usageFromEvent(good), {
+    model: 'fixture',
+    phase: 'cenas',
+    steps: 2,
+    durationMs: 1000,
+    inputTokens: 10,
+    outputTokens: undefined,
+    totalTokens: undefined,
+    cacheReadTokens: undefined,
+    costUsd: 0.5,
+  });
+  // Payload alheio, incompleto ou com contagem inválida não vira zero.
+  for (const payload of [
+    {},
+    { usage: null },
+    { usage: [] },
+    { usage: { steps: 2 } },
+    { usage: { steps: 'dois', durationMs: 1 } },
+    { usage: { steps: 2, durationMs: Number.NaN } },
+  ])
+    assert.equal(
+      usageFromEvent(phaseEvent(2, 'cenas', 'phase_end', { payload })),
+      null,
+      JSON.stringify(payload),
+    );
+});
+
+await test('consumo junta as fases do servidor e os turnos do stream', () => {
+  const events = [
+    phaseEvent(1, 'briefing', 'phase_start', { label: 'Briefing e direção' }),
+    phaseEvent(2, 'briefing', 'phase_end', {
+      label: 'Direção de arte definida',
+      createdAt: '2026-09-11T13:01:50.000Z',
+      payload: {
+        usage: {
+          model: 'gemini',
+          phase: 'briefing',
+          steps: 3,
+          durationMs: 110_000,
+          inputTokens: 100,
+          outputTokens: 20,
+          totalTokens: 120,
+          costUsd: 0.1,
+        },
+      },
+    }),
+  ];
+  const messages = [
+    { id: 'm1', role: 'assistant', parts: [] },
+    {
+      id: 'm2',
+      role: 'assistant',
+      parts: [],
+      metadata: {
+        usage: {
+          model: 'gemini',
+          phase: 'livre',
+          steps: 1,
+          durationMs: 4_000,
+          inputTokens: 50,
+          outputTokens: 10,
+          totalTokens: 60,
+          costUsd: 0.02,
+        },
+      },
+    },
+  ];
+  const summary = summarizeUsage({ messages, events });
+  assert.deepEqual(
+    summary.rows.map((row) => [row.label, row.origin]),
+    [
+      ['Briefing e direção', 'geracao'],
+      ['Conversa', 'conversa'],
+    ],
+  );
+  assert.equal(summary.totals.totalTokens, 180);
+  assert.equal(summary.totals.steps, 4);
+  assert.equal(summary.totals.costUsd, 0.1 + 0.02);
+  assert.deepEqual(summary.models, ['gemini']);
+
+  // Uma parcela sem custo deixa o total sem valor, como no recibo do stream.
+  const partial = summarizeUsage({
+    messages: [
+      {
+        id: 'm3',
+        role: 'assistant',
+        parts: [],
+        metadata: {
+          usage: { model: 'gemini', phase: 'livre', steps: 1, durationMs: 10 },
+        },
+      },
+    ],
+    events,
+  });
+  assert.equal(partial.totals.costUsd, undefined);
+  assert.equal(partial.totals.totalTokens, undefined);
+  assert.equal(summarizeUsage({ messages: [], events: [] }).rows.length, 0);
+});
+
+await test('linha do tempo mede cada fase e aponta a ferramenta em execução', () => {
+  const events = [
+    phaseEvent(1, 'briefing', 'phase_start'),
+    phaseEvent(2, 'briefing', 'phase_end', {
+      label: 'Direção de arte definida',
+      createdAt: '2026-09-11T13:01:50.000Z',
+    }),
+    phaseEvent(3, 'cenas', 'phase_start', {
+      createdAt: '2026-09-11T13:02:00.000Z',
+    }),
+    phaseEvent(4, 'cenas', 'tool_start', {
+      tool: 'prepare_site_images',
+      label: 'Gerando a cena',
+      createdAt: '2026-09-11T13:02:05.000Z',
+    }),
+  ];
+  const records = phaseRecords(events);
+  assert.equal(records.briefing.seconds, 110);
+  assert.equal(records.briefing.outcome, 'Direção de arte definida');
+  assert.equal(records.cenas, undefined);
+  assert.equal(currentActivity(events).label, 'Gerando a cena');
+  // Ferramenta encerrada deixa de ser a atividade atual.
+  assert.equal(
+    currentActivity([
+      ...events,
+      phaseEvent(5, 'cenas', 'tool_end', { tool: 'prepare_site_images' }),
+    ]),
+    null,
+  );
+});
+
 await test('custo real soma todos os passos; ausência não vira custo zero', () => {
   assert.equal(sumGatewayCosts(['0.1', 0.2]), 0.1 + 0.2);
   assert.equal(sumGatewayCosts(['0.1', undefined]), undefined);

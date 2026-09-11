@@ -50,9 +50,11 @@ O agente interno usa Gemini 3.8 Flash e dedica mais raciocínio à composição 
 
 ## Gerar e editar o site
 
-Em Site, **Continuar** roda briefing e direção, cenas, composição e revisão, uma etapa por vez. A sequência roda no servidor, não na aba: recarregar a tela, trocar de aparelho ou fechar o navegador não interrompe nem duplica nada, e o painel volta mostrando a etapa e a atividade em andamento. Digitar "continuar" no chat faz a mesma coisa que o botão.
+Um cliente recém-cadastrado começa a construção sozinho: ao abrir Site, a primeira etapa já está rodando, sem botão para clicar. O início automático vale só para quem nunca gerou e ainda não tem página; rascunho antigo, execução pausada ou com falha espera o seu comando, para não gastar geração que ninguém pediu. Quando o cadastro informou uma rede social, o briefing aguarda até 20 segundos pela leitura do perfil antes de começar; se ela demorar mais, a etapa segue e o perfil vira lacuna declarada.
 
-O andamento fica numa faixa fixa acima da conversa, visível também no celular: etapa atual, o que a etapa já produziu (cenas prontas, páginas gravadas, rodada de revisão), a ferramenta em execução, o tempo desta etapa e o tempo total, e a linha do tempo das etapas registradas. **Pausar** encerra depois do passo atual — uma ferramenta já iniciada termina e salva; a pausa não desfaz escritas. Ao terminar, o painel mostra o resultado até você fechar.
+**Continuar** roda briefing e direção, cenas, composição e revisão, uma etapa por vez. **Retomar** aparece depois de uma pausa e **Tentar novamente** depois de uma falha. A sequência roda no servidor, não na aba: recarregar a tela, trocar de aparelho ou fechar o navegador não interrompe nem duplica nada, e o painel volta mostrando a etapa e a atividade em andamento. Digitar "continuar" no chat faz a mesma coisa que o botão.
+
+O andamento fica numa faixa fixa acima da conversa, visível também no celular: a etapa atual e sua posição na sequência, a barra das quatro etapas, o que cada uma produziu, a ferramenta em execução, o tempo desta etapa e o tempo total, e a **Linha do tempo** com tudo que foi registrado. **Pausar** encerra depois do passo atual — uma ferramenta já iniciada termina e salva; a pausa não desfaz escritas. Ao terminar, o painel mostra páginas, fotos, tempo e consumo até você fechar.
 
 Enquanto a geração roda, o chat fica em espera e diz por quê: os dois disputariam as mesmas páginas. Se uma etapa falhar ou não avançar, a execução para com o motivo no painel; leia a última resposta antes de retomar.
 
@@ -80,9 +82,9 @@ O snapshot inclui blocos e SEO. Marca, contatos, título, tipo e outros metadado
 
 ## Acompanhar consumo
 
-Depois de uma resposta, abra **Uso nesta sessão**: entrada, saída, entrada lida do cache, passos, duração e custo em dólar quando informado pelo Gateway. O painel soma as respostas recebidas desde a abertura daquela tela, sem converter para reais.
+Abaixo da caixa de mensagem, **Consumo** mostra tokens e custo em dólar quando o Gateway informa. Aberto, traz uma linha por etapa da geração e por turno de conversa, com entrada, quanto veio do cache, saída, passos, duração e custo. As etapas da geração entram porque cada uma grava seu recibo ao terminar; antes disso, a parte cara do trabalho não aparecia em lugar nenhum do painel. Nada é convertido para reais.
 
-Essa contagem não inclui geração de imagens, críticas internas, outras telas ou falhas sem recibo. Consulte o Gateway para conciliar o consumo total. Cache reduz processamento repetido quando o provedor encontra um prefixo reutilizável; não garante economia fixa. A aceitação depende do resultado e das verificações de qualidade.
+Essa contagem não inclui geração de imagens, críticas internas, outras telas ou falhas sem recibo. Execução encerrada há mais de 30 minutos sai do painel e leva seu consumo junto. Custo ausente em qualquer parcela deixa o total sem valor, em vez de contá-lo como zero. Consulte o Gateway para conciliar o consumo total. Cache reduz processamento repetido quando o provedor encontra um prefixo reutilizável; não garante economia fixa. A aceitação depende do resultado e das verificações de qualidade.
 
 Para evitar desperdício, use Dados para alterações cadastrais, descreva o ajuste desejado, confira a página em foco e trate a causa de uma falha antes de repetir geração. Não repita a geração completa para corrigir um detalhe.
 
