@@ -10,11 +10,7 @@ import { generationFeedFixture } from '../helpers/generation-feed-fixture.mjs';
 
 /** Estado do servidor entre recargas: é exatamente o que o painel perdia. */
 function generationServer(overrides = {}) {
-  const {
-    clockSkewMs = 0,
-    phaseStartedAt = undefined,
-    ...siteOverrides
-  } = overrides;
+  const { clockSkewMs = 0, phaseStartedAt, ...siteOverrides } = overrides;
   const serverTime = () => new Date(Date.now() + clockSkewMs).toISOString();
   const site = {
     previewRevision: 'v1',

@@ -57,7 +57,9 @@ Após criar o tenant, veja seu rascunho em `http://localhost:3000/s/cliente?prev
 
 ## Stack e mapa do projeto
 
-Produção usa Next.js 16.3.3, React 19.2.6, TypeScript, Tailwind 4, AI SDK 7, AI Gateway, Neon e Vercel Blob. A origem do projeto em Sites/Vinext continua na configuração Vite/Cloudflare e nos scripts sem sufixo `:vercel`.
+Produção usa Next.js 16.3.3, React 19.2.6, TypeScript, Tailwind 4, AI SDK 7, AI Gateway, Neon, Vercel Blob e Vercel Queues. A origem do projeto em Sites/Vinext continua na configuração Vite/Cloudflare e nos scripts sem sufixo `:vercel`.
+
+Na Vercel, as etapas da geração são entregues pela fila `eixu-generation-steps`, com autenticação OIDC automática. O trigger de `vercel.json` registra o consumidor privado em `/api/queues/generation`. No servidor local, o despacho continua por HTTP assinado, sem acessar a fila remota. O banco mantém o estado e a reserva de cada etapa; a fila cuida da entrega.
 
 | Área                  | Entrada                                                                                      |
 | --------------------- | -------------------------------------------------------------------------------------------- |

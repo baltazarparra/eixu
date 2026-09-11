@@ -36,8 +36,8 @@ export function isResumeRequest(text: string): boolean {
 
 /**
  * Relata somente o estado persistido; não infere aprovação. Com a execução em
- * andamento, não manda clicar em Continuar: a próxima etapa já vai começar, e
- * o convite fazia o operador interromper o que estava funcionando.
+ * andamento, orienta a acompanhar o painel sem prometer um despacho que
+ * ainda pode falhar nem pedir que o operador interrompa a execução.
  */
 export function savedProgressMessage(
   state: SiteState,
@@ -56,7 +56,7 @@ export function savedProgressMessage(
   if (progress.next === 'pronto') return `${saved} ${next}`;
   return `${saved} ${next}${
     running
-      ? ' A próxima etapa começa em seguida; acompanhe pelo painel.'
+      ? ' Acompanhe pelo painel a continuação da geração.'
       : ' Use Continuar para retomar pelo progresso salvo.'
   }`;
 }

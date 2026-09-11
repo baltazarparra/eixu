@@ -6,6 +6,7 @@ import path from 'node:path';
 const ROUTES = [
   '.next/server/app/api/chat/route.js.nft.json',
   '.next/server/app/api/admin/[tenant]/generation/step/route.js.nft.json',
+  '.next/server/app/api/queues/generation/route.js.nft.json',
 ];
 
 for (const route of ROUTES)

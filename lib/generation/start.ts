@@ -2,7 +2,8 @@ import {
   activeRun,
   createRun,
   expireStaleRun,
-  finishRun,
+  failReservedStep,
+  getRun,
   recordEvent,
   type GenerationRun,
 } from '@/lib/generation/runs';
@@ -76,9 +77,19 @@ export async function startGeneration(input: {
       hop: run.hops,
     });
   } catch (error) {
+    console.error('[generation] início interrompido', {
+      runId: run.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
     const message =
-      error instanceof Error ? error.message : 'A etapa não pôde ser iniciada.';
-    await finishRun(run.id, 'failed', message);
+      'Não foi possível iniciar a etapa. O progresso está salvo; use Tentar novamente para retomar.';
+    const failed = await failReservedStep(run.id, run.hops, message);
+    if (!failed) {
+      // A entrega pode ter ocorrido mesmo com perda da resposta do envio.
+      const current = await getRun(run.id);
+      if (current)
+        return { ok: true, run: current, phase: PHASE_LABEL[state.next] };
+    }
     return { ok: false, status: 502, error: message };
   }
 

@@ -93,6 +93,43 @@ await test(
     );
 
     await t.test(
+      'falha de entrega só encerra o salto que ainda é dono da execução',
+      async () => {
+        const run = await a.createRun({
+          tenantId: legacyId,
+          origin: 'https://fixture.test',
+          phase: 'revisao',
+        });
+        const first = await a.claimStep(run.id, 0);
+        await a.saveProgress(run.id, 'revisao', 'revisao:pendente');
+        const next = await b.claimStep(run.id, first.hops);
+        const before = await b.getRun(run.id);
+        assert.equal(
+          await a.failReservedStep(run.id, first.hops, 'Resposta perdida'),
+          false,
+        );
+        assert.deepEqual(await b.getRun(run.id), before);
+        assert.equal(
+          await b.failReservedStep(run.id, next.hops, 'Entrega indisponível'),
+          true,
+        );
+        const failed = await a.getRun(run.id);
+        assert.equal(failed.status, 'failed');
+        assert.equal(failed.progress, 'revisao:pendente');
+        assert.equal(failed.error, 'Entrega indisponível');
+        assert.ok(failed.finishedAt);
+        assert.equal(
+          await a.failReservedStep(run.id, next.hops, 'Erro repetido'),
+          false,
+        );
+        assert.deepEqual(
+          JSON.parse(JSON.stringify(await b.getRun(run.id))),
+          JSON.parse(JSON.stringify(failed)),
+        );
+      },
+    );
+
+    await t.test(
       'duas conexões só criam um run e reservam uma vez cada salto',
       async () => {
         const input = {

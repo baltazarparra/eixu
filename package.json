@@ -31,6 +31,7 @@
     "@shadcn/react": "0.3.0",
     "@sparticuz/chromium": "^141.0.0",
     "@vercel/blob": "^2.8.0",
+    "@vercel/queue": "^0.5.1",
     "ai": "^7.0.97",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
