@@ -60,7 +60,7 @@ async function fixture(text = request) {
     dials: {},
     imageGuide: {},
   };
-  const { buildTools } = await loadModule('lib/ai/tools.ts', {
+  const mocks = {
     '@/lib/db': {
       db:
         () =>
@@ -75,7 +75,9 @@ async function fixture(text = request) {
       lintPage: () => [],
       formatFindings: () => 'Aprovado',
     },
-  });
+  };
+  mocks['@/lib/sites/edits'] = await loadModule('lib/sites/edits.ts', mocks);
+  const { buildTools } = await loadModule('lib/ai/tools.ts', mocks);
   const policy = editPolicyFor(text, pages);
   return {
     pages,

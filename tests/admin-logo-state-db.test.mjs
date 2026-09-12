@@ -220,6 +220,7 @@ await test(
         );
         const designInput = designProfileInputSchema.parse({
           ...direction,
+          structure: 'comercial-atendimento',
           displayFont: 'humanist',
           bodyFont: 'humanist',
           heroComposition: 'split',

@@ -5,6 +5,19 @@ import {
   readableMuted,
 } from '@/lib/blocks/contrast';
 import type { Brand } from '@/lib/types';
+import { surfaceOf, themeVars } from './theme';
+
+/** Mesmos tokens do CSS, inclusive o papel elevado da vibe moderna. */
+export function sectionBackgrounds(
+  presentation: { background?: string; tone?: string } | undefined,
+  brand: Brand,
+): string[] {
+  if (presentation?.background || presentation?.tone)
+    return [surfaceOf(brand, presentation.tone, presentation.background)];
+  return [
+    ...new Set([themeVars(brand)['--paper'], themeVars(brand)['--surface']]),
+  ];
+}
 
 /** Cores locais: hex validado no catálogo; nunca CSS livre nem alteração da marca. */
 export function sectionColorVars(

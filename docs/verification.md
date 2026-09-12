@@ -1,5 +1,56 @@
 # Validação e publicação
 
+## Edição de texto na prévia, 12/09/2026
+
+As fases 1 e 2 do [plano](plano-edicao-na-previa.md) foram implementadas no
+checkout isolado `codex/edicao-na-previa`, a partir de `eeff730`. Clientes
+publicados podem editar texto, tamanho e cor diretamente na prévia; Salvar
+atualiza o rascunho e Publicar continua passando pelo gate existente.
+
+Validação executada:
+
+- Lint global, tipos (`next typegen` e `tsc --noEmit`), formatação dos arquivos
+  alterados e de README/AGENTS/docs, `git diff --check` e `build:vercel`
+  passaram. O build incluiu os três checks de artefatos serverless.
+- `test:sites`: 177 casos passaram, sem skips. O inventário cobre os 25 tipos
+  do catálogo. A comparação do HTML público sem estilos com os componentes
+  do HEAD original foi idêntica nos 25 tipos.
+- `test:admin`: 171 casos passaram, sem skips, com PostgreSQL local real.
+  A extração do executor exigiu injetá-lo também nos testes com I/O simulado.
+  A fixture antiga de concorrência de logo passou a usar uma estrutura
+  comercial, coerente com sua própria marca; o gate não foi relaxado.
+- Os 58 casos de navegador de sites foram verificados com CSS de produção.
+  Os casos de fontes foram reexecutados com sucesso depois de estabilizar o
+  build: uma reconstrução simultânea havia removido os arquivos servidos
+  pela fixture. Os casos novos cobrem texto puro, colagem, parágrafos,
+  remontagem de nós, cópias, teclado, mensagens de origem/janela incorretas e
+  os cinco passos nas quatro vibes, em 1440 e 390 px.
+- O contraste foi comparado com fundos calculados pelo Chromium em 56
+  combinações de vibe, versão visual 2/4 e superfície (sem tom, cinco tons e
+  fundo local). Foram medidos mais de 3.000 campos; o teste varre 256 tons de
+  cinza por campo e confere que cores aceitas pelo servidor permanecem
+  legíveis no CSS, com tolerância de 0,03 para arredondamento sRGB. A ilha
+  aplica o mínimo de 4,5:1 à medição atual, sem essa tolerância.
+- Os 11 casos de navegador do admin passaram. O caso focal foi reexecutado
+  depois de acrescentar a resposta externa tardia: a prévia mantém URL e
+  texto digitado, com aviso de alteração. Também cobre Salvar/Cancelar,
+  bloqueio de chat e seletor, cliente em rascunho e respostas 200/409/422.
+- No Next.js de desenvolvimento com PostgreSQL descartável e o cliente
+  sintético `inline-local`, o fluxo completo foi executado: editar texto e
+  estilo, salvar, consultar o JSONB, confirmar `published_blocks` intacto,
+  publicar pela API real e abrir a versão pública atualizada. A página
+  pública não recebeu campos editáveis, implementação nem CSS da ilha;
+  no desenvolvimento, apenas o pequeno carregador assíncrono de 746 bytes
+  entrou entre os módulos da rota.
+
+As capturas inspecionadas ficam em
+`outputs/inline-edit/real-edit-{1440,390}.png` e
+`outputs/inline-edit/real-public-1440.png`; logs de contratos, build, navegador
+e comparação de HTML ficam no mesmo diretório ignorado pelo Git. As imagens
+são fixtures ilustrativas. Não houve geração paga, conexão com banco remoto,
+alteração de clientes reais, deploy ou publicação de código. O ambiente local
+foi encerrado após os testes.
+
 ## Correções da revisão do PR #39, 12/09/2026
 
 A comparação entre tenants e o renderer compartilham a ordem dos itens dos

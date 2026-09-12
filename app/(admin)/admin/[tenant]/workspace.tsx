@@ -29,6 +29,12 @@ import { mergeSavedMessages } from '@/lib/admin/chat-messages';
 import type { SiteState } from '@/lib/admin/state';
 import type { ChatMessage } from '@/lib/ai/usage';
 import { creationProgress } from '@/lib/generation/progress';
+import {
+  EDIT_PROTOCOL,
+  type EditChanges,
+  type EditorMessage,
+} from '@/lib/blocks/edit-protocol';
+import type { FieldError } from '@/lib/blocks/fields';
 import type { PublishResult } from '@/lib/sites/publish';
 
 type Props = {
@@ -79,6 +85,23 @@ export function Workspace({
   const [collapsed, setCollapsed] = useState(false);
   const [nonce, setNonce] = useState(0);
   const [publishing, setPublishing] = useState(false);
+  const [editing, setEditing] = useState<'off' | 'on' | 'saving'>('off');
+  const [editingReady, setEditingReady] = useState(false);
+  const [editChanged, setEditChanged] = useState(false);
+  const [editInvalid, setEditInvalid] = useState<FieldError[]>([]);
+  const [editConflict, setEditConflict] = useState(false);
+  const [previewChanged, setPreviewChanged] = useState(false);
+  const frameRef = useRef<HTMLIFrameElement>(null);
+  const editSession = useRef({
+    active: false,
+    page: '',
+    revision: '',
+    changed: false,
+    invalid: false,
+    conflict: false,
+    requested: false,
+  });
+  const collectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [notice, setNotice] = useState<{
     tone: 'info' | 'ok' | 'warn' | 'err';
     text: string;
@@ -108,16 +131,18 @@ export function Workspace({
 
   const applySite = useCallback((next: SiteState) => {
     setSite(next);
-    setCurrent((slug) =>
-      next.pages.some((page) => page.slug === slug)
-        ? slug
-        : (next.pages[0]?.slug ?? ''),
-    );
+    if (!editSession.current.active)
+      setCurrent((slug) =>
+        next.pages.some((page) => page.slug === slug)
+          ? slug
+          : (next.pages[0]?.slug ?? ''),
+      );
     // O feed resume blocos por quantidade. A revisão detecta também mudanças
     // de texto/props com a mesma quantidade, sem recarregar a cada consulta.
     if (previewRevision.current !== next.previewRevision) {
       previewRevision.current = next.previewRevision;
-      setNonce((value) => value + 1);
+      if (editSession.current.active) setPreviewChanged(true);
+      else setNonce((value) => value + 1);
     }
   }, []);
 
@@ -166,6 +191,7 @@ export function Workspace({
 
   const startGeneration = useCallback(
     async (focus = true) => {
+      if (editSession.current.active) return;
       setNotice(null);
       if (focus) setView('chat');
       try {
@@ -260,7 +286,7 @@ export function Workspace({
 
   // Conversa livre e geração disputariam as mesmas páginas: enquanto uma roda,
   // a outra espera, e a tela diz por quê.
-  const locked = busy || running;
+  const locked = busy || running || editing !== 'off';
   const page = site.pages.find((item) => item.slug === current);
   const previewUrl = `/s/${tenantSlug}/${current}?preview=1&__tenant=${tenantSlug}&v=${nonce}`;
   const totalErrors = site.pages.reduce(
@@ -339,7 +365,7 @@ export function Workspace({
   }
 
   async function attach(files: FileList | File[] | null) {
-    if (!files?.length) return;
+    if (locked || !files?.length) return;
     setUploading(true);
     setNotice(null);
     try {
@@ -372,12 +398,271 @@ export function Workspace({
     setAttachments([]);
   }
 
+  function postEditor(message: object) {
+    frameRef.current?.contentWindow?.postMessage(
+      { type: EDIT_PROTOCOL, ...message },
+      location.origin,
+    );
+  }
+  function beginEditing() {
+    if (
+      locked ||
+      generating ||
+      publishing ||
+      uploading ||
+      !page ||
+      site.tenant.status !== 'published'
+    )
+      return;
+    editSession.current = {
+      active: true,
+      page: current,
+      revision: '',
+      changed: false,
+      invalid: false,
+      conflict: false,
+      requested: false,
+    };
+    setEditing('on');
+    setEditingReady(false);
+    setEditChanged(false);
+    setEditInvalid([]);
+    setEditConflict(false);
+    setPreviewChanged(false);
+    setNotice(null);
+    setView('content');
+  }
+  function endEditing() {
+    editSession.current.active = false;
+    editSession.current.requested = false;
+    setEditing('off');
+    setEditingReady(false);
+    setEditChanged(false);
+    setEditInvalid([]);
+    setEditConflict(false);
+    setPreviewChanged(false);
+    setNonce((value) => value + 1);
+  }
+  function cancelEditing() {
+    if (editSession.current.requested) return;
+    if (
+      editSession.current.changed &&
+      !window.confirm('Descartar as alterações não salvas na prévia?')
+    )
+      return;
+    postEditor({ action: 'discard' });
+    endEditing();
+  }
+  const saveEditing = useCallback(() => {
+    const session = editSession.current;
+    if (
+      !session.active ||
+      !session.revision ||
+      !session.changed ||
+      session.invalid ||
+      session.conflict ||
+      session.requested
+    )
+      return;
+    session.requested = true;
+    setEditing('saving');
+    frameRef.current?.contentWindow?.postMessage(
+      { type: EDIT_PROTOCOL, action: 'collect' },
+      location.origin,
+    );
+    collectTimer.current = setTimeout(() => {
+      session.requested = false;
+      setEditing('on');
+      frameRef.current?.contentWindow?.postMessage(
+        { type: EDIT_PROTOCOL, action: 'resume' },
+        location.origin,
+      );
+      setNotice({
+        tone: 'err',
+        text: 'A prévia não respondeu. Tente salvar novamente.',
+      });
+    }, 10_000);
+  }, []);
+  useEffect(() => {
+    const receive = async (event: MessageEvent<EditorMessage>) => {
+      const session = editSession.current;
+      if (
+        !session.active ||
+        event.origin !== location.origin ||
+        event.source !== frameRef.current?.contentWindow ||
+        event.data?.type !== EDIT_PROTOCOL
+      )
+        return;
+      const data = event.data;
+      if (
+        data.action === 'ready' &&
+        data.page === session.page &&
+        typeof data.revision === 'string'
+      ) {
+        session.revision = data.revision;
+        setEditingReady(true);
+      } else if (data.action === 'state' && Array.isArray(data.invalid)) {
+        session.changed = data.changed === true;
+        session.invalid = data.invalid.length > 0;
+        setEditChanged(session.changed);
+        setEditInvalid(data.invalid);
+      } else if (data.action === 'save') saveEditing();
+      else if (
+        data.action === 'changes' &&
+        session.requested &&
+        data.page === session.page &&
+        data.revision === session.revision &&
+        Array.isArray(data.blocks)
+      ) {
+        if (collectTimer.current) clearTimeout(collectTimer.current);
+        try {
+          const payload: EditChanges = {
+            page: data.page,
+            revision: data.revision,
+            blocks: data.blocks,
+          };
+          const response = await fetch(`/api/admin/${tenantSlug}/edit`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(25_000),
+          });
+          const result = (await response.json().catch(() => null)) as {
+            error?: string;
+            fields?: FieldError[];
+            ok?: boolean;
+          } | null;
+          if (!response.ok || !result?.ok) {
+            setEditing('on');
+            session.requested = false;
+            if (response.status === 409) {
+              session.conflict = true;
+              setEditConflict(true);
+            }
+            frameRef.current?.contentWindow?.postMessage(
+              {
+                type: EDIT_PROTOCOL,
+                action: response.status === 422 ? 'errors' : 'resume',
+                fields: result?.fields ?? [],
+              },
+              location.origin,
+            );
+            setNotice({
+              tone: 'err',
+              text:
+                response.status === 401
+                  ? 'Sua sessão expirou. Entre novamente no painel.'
+                  : (result?.error ??
+                    'Não foi possível salvar. Suas alterações continuam na prévia.'),
+            });
+            return;
+          }
+          session.active = false;
+          session.requested = false;
+          setEditing('off');
+          setEditingReady(false);
+          setEditChanged(false);
+          setEditInvalid([]);
+          setEditConflict(false);
+          setPreviewChanged(false);
+          setNonce((value) => value + 1);
+          setNotice({
+            tone: 'ok',
+            text: 'Alterações salvas no rascunho. Publique para levar ao site no ar.',
+          });
+          await refresh().catch(() =>
+            setNotice({
+              tone: 'warn',
+              text: 'Alterações salvas no rascunho. Não foi possível atualizar o painel; recarregue antes de publicar.',
+            }),
+          );
+        } catch {
+          session.requested = false;
+          setEditing('on');
+          frameRef.current?.contentWindow?.postMessage(
+            { type: EDIT_PROTOCOL, action: 'resume' },
+            location.origin,
+          );
+          setNotice({
+            tone: 'err',
+            text: 'Não foi possível confirmar o salvamento. Suas alterações continuam na prévia. Tente novamente.',
+          });
+        }
+      }
+    };
+    const unload = (event: BeforeUnloadEvent) => {
+      if (editSession.current.active && editSession.current.changed)
+        event.preventDefault();
+    };
+    const key = (event: KeyboardEvent) => {
+      if (
+        editSession.current.active &&
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === 's'
+      ) {
+        event.preventDefault();
+        saveEditing();
+      }
+    };
+    const leave = (event: MouseEvent) => {
+      if (
+        !editSession.current.active ||
+        !editSession.current.changed ||
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey ||
+        event.altKey
+      )
+        return;
+      const link = (event.target as Element).closest<HTMLAnchorElement>(
+        'a[href]',
+      );
+      if (
+        !link ||
+        link.target === '_blank' ||
+        link.hasAttribute('download') ||
+        link.href === location.href ||
+        (link.hash && link.pathname === location.pathname)
+      )
+        return;
+      if (
+        !window.confirm('Sair e descartar as alterações não salvas na prévia?')
+      ) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    };
+    document.addEventListener('click', leave, true);
+    window.addEventListener('message', receive);
+    window.addEventListener('beforeunload', unload);
+    window.addEventListener('keydown', key);
+    return () => {
+      document.removeEventListener('click', leave, true);
+      window.removeEventListener('message', receive);
+      window.removeEventListener('beforeunload', unload);
+      window.removeEventListener('keydown', key);
+      if (collectTimer.current) clearTimeout(collectTimer.current);
+    };
+  }, [tenantSlug, refresh, saveEditing]);
+
   // O mesmo grupo vive na barra em telas largas e no topo da coluna da prévia
   // abaixo de 1280 px; o CSS mostra uma cópia por largura.
   const previewControls = (
     <div className="admin-bar-group">
       <span className="admin-label">Prévia</span>
-      <PagePicker pages={site.pages} value={current} onChange={setCurrent} />
+      <PagePicker
+        pages={site.pages}
+        value={current}
+        onChange={setCurrent}
+        disabled={editing !== 'off'}
+      />
+      {editing !== 'off' && (
+        <span className="admin-edit-status">
+          {editingReady ? `editando /${current}` : 'Abrindo edição…'}
+        </span>
+      )}
       <SegmentedControl
         label="Largura da prévia"
         value={device}
@@ -442,19 +727,61 @@ export function Workspace({
                 active={generating}
               />
             ) : null}
-            <button
-              type="button"
-              onClick={publishAll}
-              disabled={!publishable || publishing}
-              title={
-                totalErrors
-                  ? `${totalErrors} pendências bloqueiam a publicação`
-                  : 'Publicar as alterações revisadas'
-              }
-              className="admin-primary"
-            >
-              {publishing ? 'Publicando…' : 'Publicar'}
-            </button>
+            {editing !== 'off' ? (
+              <>
+                <button
+                  type="button"
+                  className="admin-primary"
+                  onClick={saveEditing}
+                  disabled={
+                    !editingReady ||
+                    !editChanged ||
+                    editInvalid.length > 0 ||
+                    editConflict ||
+                    editing === 'saving'
+                  }
+                >
+                  {editing === 'saving' ? 'Salvando…' : 'Salvar'}
+                </button>
+                <button
+                  type="button"
+                  className="admin-secondary"
+                  onClick={cancelEditing}
+                  disabled={editing === 'saving'}
+                >
+                  Cancelar
+                </button>
+              </>
+            ) : (
+              <>
+                {site.tenant.status === 'published' &&
+                  page &&
+                  !locked &&
+                  !generating && (
+                    <button
+                      type="button"
+                      className="admin-secondary"
+                      disabled={publishing || uploading}
+                      onClick={beginEditing}
+                    >
+                      Editar
+                    </button>
+                  )}
+                <button
+                  type="button"
+                  onClick={publishAll}
+                  disabled={!publishable || publishing}
+                  title={
+                    totalErrors
+                      ? `${totalErrors} pendências bloqueiam a publicação`
+                      : 'Publicar as alterações revisadas'
+                  }
+                  className="admin-primary"
+                >
+                  {publishing ? 'Publicando…' : 'Publicar'}
+                </button>
+              </>
+            )}
           </>
         }
       />
@@ -475,6 +802,36 @@ export function Workspace({
           </button>
         </output>
       ) : null}
+      {editing !== 'off' &&
+        (previewChanged || editConflict || editInvalid.length > 0) && (
+          <output className="admin-notice" data-tone="warn">
+            <span>
+              {editConflict
+                ? 'A página mudou. Recarregar descarta as alterações não salvas.'
+                : previewChanged
+                  ? 'O site mudou em outra operação. Sua edição foi preservada; o servidor verificará a versão ao salvar.'
+                  : `Confira ${editInvalid.length} campo(s) destacado(s) na prévia.`}
+            </span>
+            {editConflict && (
+              <button
+                type="button"
+                className="admin-secondary"
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      'Recarregar a prévia e descartar suas alterações não salvas?',
+                    )
+                  ) {
+                    endEditing();
+                    void refresh();
+                  }
+                }}
+              >
+                Recarregar a prévia
+              </button>
+            )}
+          </output>
+        )}
       <div className="admin-workspace-body">
         <section
           id="admin-conversation"
@@ -487,7 +844,7 @@ export function Workspace({
             state={site}
             clockOffsetMs={generation.clockOffsetMs}
             error={generation.error}
-            busy={busy}
+            busy={busy || editing !== 'off'}
             starting={generation.starting}
             onStart={() => void startGeneration()}
             onStop={() => void stopGeneration()}
@@ -586,13 +943,15 @@ export function Workspace({
                   }
                 }}
                 rows={3}
-                disabled={running}
+                disabled={running || editing !== 'off'}
                 placeholder={
-                  running
-                    ? 'A conversa reabre quando a geração terminar'
-                    : site.pages.length
-                      ? 'Peça uma mudança'
-                      : 'Descreva o site'
+                  editing !== 'off'
+                    ? 'Salve ou cancele a edição na prévia para usar a conversa'
+                    : running
+                      ? 'A conversa reabre quando a geração terminar'
+                      : site.pages.length
+                        ? 'Peça uma mudança'
+                        : 'Descreva o site'
                 }
                 className="admin-composer-input"
               />
@@ -641,7 +1000,7 @@ export function Workspace({
                     disabled={
                       (!input.trim() && attachments.length === 0) ||
                       uploading ||
-                      running
+                      locked
                     }
                     className="admin-composer-send"
                   >
@@ -709,6 +1068,7 @@ export function Workspace({
                       {canOpen ? (
                         <button
                           type="button"
+                          disabled={editing !== 'off'}
                           onClick={() => setCurrent(slug)}
                           className="mr-2 underline"
                         >
@@ -741,6 +1101,7 @@ export function Workspace({
                     <li key={`${item.slug}-${message}`}>
                       <button
                         type="button"
+                        disabled={editing !== 'off'}
                         onClick={() => setCurrent(item.slug)}
                         className="mr-2 underline"
                       >
@@ -761,8 +1122,9 @@ export function Workspace({
           <div className="admin-preview-canvas">
             {site.pages.length > 0 ? (
               <iframe
-                key={`${current}-${nonce}`}
-                src={previewUrl}
+                ref={frameRef}
+                key={`${current}-${nonce}-${editing === 'off' ? 'preview' : 'edit'}`}
+                src={`${previewUrl}${editing !== 'off' ? '&edit=1' : ''}`}
                 title="Preview do site"
                 className="admin-preview-frame"
                 data-device={device}

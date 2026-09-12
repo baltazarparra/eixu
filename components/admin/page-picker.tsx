@@ -17,10 +17,12 @@ export function PagePicker({
   pages,
   value,
   onChange,
+  disabled = false,
 }: {
   pages: readonly PageOption[];
   value: string;
   onChange: (slug: string) => void;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -47,7 +49,13 @@ export function PagePicker({
   }, [open]);
 
   function show() {
-    setActive(Math.max(0, pages.findIndex((page) => page.slug === value)));
+    if (disabled) return;
+    setActive(
+      Math.max(
+        0,
+        pages.findIndex((page) => page.slug === value),
+      ),
+    );
     setOpen(true);
   }
   function close() {
@@ -90,7 +98,7 @@ export function PagePicker({
         ref={buttonRef}
         type="button"
         className="admin-bar-page"
-        disabled={!pages.length}
+        disabled={disabled || !pages.length}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
@@ -113,7 +121,7 @@ export function PagePicker({
         {current?.dirty ? <StatusPill tone="warn">rascunho</StatusPill> : null}
         <ChevronDown size={13} aria-hidden="true" />
       </button>
-      {open ? (
+      {open && !disabled ? (
         <div
           ref={menuRef}
           id={menuId}
@@ -136,7 +144,9 @@ export function PagePicker({
             >
               <span className="admin-bar-menu-path">
                 /{page.slug}
-                {page.dirty ? <StatusPill tone="warn">rascunho</StatusPill> : null}
+                {page.dirty ? (
+                  <StatusPill tone="warn">rascunho</StatusPill>
+                ) : null}
               </span>
               <span className="admin-bar-menu-title">{page.title}</span>
             </button>

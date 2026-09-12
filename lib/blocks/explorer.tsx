@@ -9,10 +9,11 @@ import type { Vibe } from '@/lib/design/vibes';
 import type { z } from 'zod';
 import type { blockSchemas } from './registry';
 import { MotionLink } from './motion';
+import { textAttrs } from './text';
 
 export type ExplorerProps = z.infer<
   (typeof blockSchemas)['feature.explorer']
-> & { vibe?: Vibe };
+> & { vibe?: Vibe; editing?: boolean };
 
 export function VisualExplorer({
   title,
@@ -20,13 +21,17 @@ export function VisualExplorer({
   items,
   layout,
   vibe = 'comercial',
+  textStyles,
+  editing,
 }: ExplorerProps) {
+  const text = textAttrs(textStyles, editing);
   const id = useId();
   const [selected, select] = useState(0);
   const tabs = useRef<(HTMLButtonElement | null)[]>([]);
-  const reduced = useReducedMotion();
-  const item = items[selected];
+  const reducedMotion = useReducedMotion();
+  const reduced = editing || reducedMotion;
   function navigate(event: KeyboardEvent, index: number) {
+    if (editing) return;
     const next =
       event.key === 'ArrowRight'
         ? (index + 1) % items.length
@@ -46,8 +51,8 @@ export function VisualExplorer({
     <section className={`site-section site-explorer site-explorer-${layout}`}>
       <div className="site-shell mx-auto w-full max-w-[var(--site-max,76rem)] px-6 md:px-10">
         <div className="site-explorer-heading">
-          <h2>{title}</h2>
-          {body && <p>{body}</p>}
+          <h2 {...text.mark('title')}>{text.content('title', title)}</h2>
+          {body && <p {...text.mark('body')}>{text.content('body', body)}</p>}
         </div>
         <div className="site-explorer-tabs" role="tablist" aria-label={title}>
           {items.map((entry, index) => (
@@ -59,11 +64,13 @@ export function VisualExplorer({
                 tabs.current[index] = element;
               }}
               id={`${id}-tab-${index}`}
-              aria-controls={`${id}-panel`}
+              aria-controls={editing ? `${id}-panel-${index}` : `${id}-panel`}
               aria-selected={selected === index}
               tabIndex={selected === index ? 0 : -1}
               onKeyDown={(event) => navigate(event, index)}
-              onClick={() => select(index)}
+              onClick={() => {
+                if (!editing) select(index);
+              }}
             >
               {selected === index && (
                 <motion.span
@@ -81,58 +88,84 @@ export function VisualExplorer({
                 />
               )}
               {entry.icon ? <SiteIcon name={entry.icon} vibe={vibe} /> : null}
-              <span>{entry.title}</span>
+              <span {...text.mark(`items.${index}.title`)}>
+                {text.content(`items.${index}.title`, entry.title)}
+              </span>
             </button>
           ))}
         </div>
-        <div
-          id={`${id}-panel`}
-          role="tabpanel"
-          aria-labelledby={`${id}-tab-${selected}`}
-          tabIndex={0}
-          className="site-explorer-panel"
-        >
-          <figure className="site-explorer-photo">
-            <AnimatePresence initial={false}>
-              <motion.img
-                key={item.image}
-                src={item.image}
-                alt={item.imageAlt}
-                width={960}
-                height={720}
-                loading="lazy"
-                decoding="async"
-                initial={{ opacity: reduced ? 1 : 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: reduced ? 0 : 0.38 }}
-              />
-            </AnimatePresence>
-            {item.caption && <figcaption>{item.caption}</figcaption>}
-          </figure>
-          <motion.div
-            className="site-explorer-copy"
-            key={item.title}
-            initial={false}
-            animate={{ opacity: 1 }}
+        {(editing
+          ? items.map((item, index) => ({ item, index }))
+          : [{ item: items[selected], index: selected }]
+        ).map(({ item, index }) => (
+          <div
+            key={index}
+            id={editing ? `${id}-panel-${index}` : `${id}-panel`}
+            role="tabpanel"
+            aria-labelledby={`${id}-tab-${editing ? index : selected}`}
+            tabIndex={0}
+            className="site-explorer-panel"
           >
-            <span className="site-explorer-kicker">{item.title}</span>
-            <h3>{item.headline}</h3>
-            <p>{item.body}</p>
-            <ul>
-              {item.facts.map((fact) => (
-                <li key={fact}>{fact}</li>
-              ))}
-            </ul>
-            <MotionLink
-              className="site-action site-explorer-cta"
-              href={item.cta.href}
+            <figure className="site-explorer-photo">
+              <AnimatePresence initial={false}>
+                <motion.img
+                  key={item.image}
+                  src={item.image}
+                  alt={item.imageAlt}
+                  width={960}
+                  height={720}
+                  loading="lazy"
+                  decoding="async"
+                  initial={{ opacity: reduced ? 1 : 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: reduced ? 0 : 0.38 }}
+                />
+              </AnimatePresence>
+              {item.caption && (
+                <figcaption {...text.mark(`items.${index}.caption`)}>
+                  {text.content(`items.${index}.caption`, item.caption)}
+                </figcaption>
+              )}
+            </figure>
+            <motion.div
+              className="site-explorer-copy"
+              key={item.title}
+              initial={false}
+              animate={{ opacity: 1 }}
             >
-              {item.cta.label}
-              <SiteIcon name="arrow-up-right" vibe={vibe} size={18} />
-            </MotionLink>
-          </motion.div>
-        </div>
+              <span
+                className="site-explorer-kicker"
+                {...text.mark(`items.${index}.title`)}
+              >
+                {text.content(`items.${index}.title`, item.title)}
+              </span>
+              <h3 {...text.mark(`items.${index}.headline`)}>
+                {text.content(`items.${index}.headline`, item.headline)}
+              </h3>
+              <p {...text.mark(`items.${index}.body`)}>
+                {text.content(`items.${index}.body`, item.body)}
+              </p>
+              <ul>
+                {item.facts.map((fact, factIndex) => (
+                  <li
+                    key={factIndex}
+                    {...text.mark(`items.${index}.facts.${factIndex}`)}
+                  >
+                    {text.content(`items.${index}.facts.${factIndex}`, fact)}
+                  </li>
+                ))}
+              </ul>
+              <MotionLink
+                className="site-action site-explorer-cta"
+                href={item.cta.href}
+              >
+                {text.node(`items.${index}.cta.label`, item.cta.label)}
+                <SiteIcon name="arrow-up-right" vibe={vibe} size={18} />
+              </MotionLink>
+            </motion.div>
+          </div>
+        ))}
         <noscript>
           <ul>
             {items.slice(1).map((entry) => (

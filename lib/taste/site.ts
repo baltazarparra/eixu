@@ -1,3 +1,4 @@
+import { lintTextStyles } from '@/lib/blocks/text-style-lint';
 import { z } from 'zod';
 import { logoFindings } from '@/lib/images/logo-fit';
 import type { BlockInstance, Brand, Page, TenantImage } from '../types';
@@ -78,7 +79,12 @@ export function lintSite(
   mode: 'draft' | 'publish',
   brand?: LintBrand,
 ): SiteFinding[] {
-  const findings: SiteFinding[] = [];
+  const findings: SiteFinding[] = pages.flatMap((page) =>
+    lintTextStyles(page, (brand ?? {}) as Brand).map((finding) => ({
+      ...finding,
+      page: `/${page.slug}`,
+    })),
+  );
   const fail = (page: string, rule: string, message: string) =>
     findings.push({ page: `/${page}`, level: 'error', rule, message });
   const bySlug = new Map(pages.map((p) => [p.slug, p]));

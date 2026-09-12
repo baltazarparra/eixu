@@ -5,7 +5,15 @@ import { scopedUpdateError, type EditPolicy } from '@/lib/ai/edit-policy';
 import { blockSchemas, isBlockType } from '@/lib/blocks/registry';
 import type { BlockInstance, Page } from '@/lib/types';
 
-export class PageEditError extends Error {}
+export class PageEditError extends Error {
+  constructor(
+    message: string,
+    readonly status = 422,
+    readonly fields: { block: string; path: string; message: string }[] = [],
+  ) {
+    super(message);
+  }
+}
 
 const selector = z
   .string()
@@ -352,6 +360,7 @@ export function applyPageEdit(
   if (input.revision !== pageRevision(page))
     throw new PageEditError(
       'A página mudou desde a leitura. Nenhuma alteração salva. Chame get_page e reaplique apenas o pedido atual.',
+      409,
     );
   const blocks: BlockInstance[] = JSON.parse(JSON.stringify(page.blocks));
   const touched = new Set<string>();
