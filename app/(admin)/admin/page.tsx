@@ -7,7 +7,7 @@ import { Clients } from './clients';
 export const dynamic = 'force-dynamic';
 
 export default async function AdminHome() {
-  if (!(await isAuthenticated())) redirect('/admin/login');
+  if (!(await isAuthenticated())) redirect('/admin/login?returnTo=/admin');
   const [tenants, summary] = await Promise.all([
     listTenants(),
     operationSummary(),

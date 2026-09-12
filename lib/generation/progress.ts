@@ -92,11 +92,28 @@ export function currentActivity(
   for (const event of events) {
     if (event.kind === 'tool_start') pending.push(event);
     if (event.kind === 'tool_end') {
-      const index = pending.findIndex((item) => item.tool === event.tool);
+      const callId =
+        typeof event.payload.callId === 'string'
+          ? event.payload.callId
+          : undefined;
+      const index = pending.findIndex((item) =>
+        callId ? item.payload.callId === callId : item.tool === event.tool,
+      );
       if (index !== -1) pending.splice(index, 1);
     }
   }
-  return pending.at(-1) ?? null;
+  const active = pending.at(-1) ?? null;
+  if (!active) return null;
+  // Captura e crítico publicam unidades concluídas durante a mesma ferramenta.
+  // O último detalhe posterior ao início é mais útil que "Revisando" parado.
+  return (
+    events.findLast(
+      (event) =>
+        event.id > active.id &&
+        event.kind === 'note' &&
+        typeof event.payload.stage === 'string',
+    ) ?? active
+  );
 }
 
 export type PhaseRecord = {

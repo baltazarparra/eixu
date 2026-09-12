@@ -341,10 +341,10 @@ await test(
         assert.equal(await visible('Continuar'), true);
         await click('Continuar');
         await page.waitForFunction(
-          () => document.body.innerText.includes('Etapa 2 de 4'),
+          () => document.body.innerText.includes('Etapa 2 de 3'),
           { timeout: 10_000 },
         );
-        assert.equal(await headline(), 'Cenas');
+        assert.equal(await headline(), 'Criar');
         await page.waitForFunction(() =>
           document.body.innerText.includes('Gerando a cena'),
         );
@@ -436,7 +436,7 @@ await test(
         await page.reload({ waitUntil: 'networkidle0' });
         await page.waitForFunction(
           () =>
-            document.body.innerText.includes('Etapa 2 de 4') &&
+            document.body.innerText.includes('Etapa 2 de 3') &&
             document.body.innerText.includes('Gerando a cena'),
           { timeout: 10_000 },
         );
@@ -536,12 +536,11 @@ await test(
     backend.start();
     backend.add('tool_end', 'Leitura concluída', 'review_pages');
     backend.add('tool_end', 'Leitura concluída', 'review_pages');
-    backend.add('tool_end', 'Leitura concluída', 'review_pages');
     await withWorkspace(
       { backend, chat: await chatFixture() },
       async ({ page, errors }) => {
         await page.waitForFunction(() =>
-          document.body.innerText.includes('leitura 3 de 3'),
+          document.body.innerText.includes('2 de 2 leituras concluídas'),
         );
         assert.ok(
           !(await page.evaluate(() => document.body.innerText)).includes(
@@ -554,15 +553,21 @@ await test(
         });
         backend.add('tool_end', 'Leitura concluída', 'review_pages');
         await page.waitForFunction(() =>
-          document.body.innerText.includes('rodada 2 · leitura 1 de 3'),
+          document.body.innerText.includes(
+            'rodada 2 · 1 de 2 leituras concluídas',
+          ),
         );
         await page.reload({ waitUntil: 'networkidle0' });
         await page.waitForFunction(() =>
-          document.body.innerText.includes('rodada 2 · leitura 1 de 3'),
+          document.body.innerText.includes(
+            'rodada 2 · 1 de 2 leituras concluídas',
+          ),
         );
         await page.setViewport({ width: 390, height: 844 });
         await page.waitForFunction(() =>
-          document.body.innerText.includes('rodada 2 · leitura 1 de 3'),
+          document.body.innerText.includes(
+            'rodada 2 · 1 de 2 leituras concluídas',
+          ),
         );
         await mkdir('outputs/generation', { recursive: true });
         await page.screenshot({
@@ -591,10 +596,10 @@ await test(
       async ({ page, errors, counters, visible, headline }) => {
         // Sem clique: chegar na tela do cliente recém-cadastrado já constrói.
         await page.waitForFunction(
-          () => document.body.innerText.includes('Etapa 1 de 4'),
+          () => document.body.innerText.includes('Etapa 1 de 3'),
           { timeout: 10_000 },
         );
-        assert.equal(await headline(), 'Briefing e direção');
+        assert.equal(await headline(), 'Preparar');
         assert.equal(backend.starts(), 1);
         assert.equal(counters.chat, 0, 'o início não passa pelo chat');
         assert.equal(await visible('Pausar'), true);
@@ -613,7 +618,7 @@ await test(
         // Recarregar acompanha o run existente em vez de abrir outro pago.
         await page.reload({ waitUntil: 'networkidle0' });
         await page.waitForFunction(
-          () => document.body.innerText.includes('Etapa 1 de 4'),
+          () => document.body.innerText.includes('Etapa 1 de 3'),
           { timeout: 10_000 },
         );
         await new Promise((resolve) => setTimeout(resolve, 3400));

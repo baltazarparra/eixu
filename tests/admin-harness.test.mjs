@@ -77,7 +77,7 @@ await test('revisão encerra na conferência atual sem erros, mantendo espaço p
   };
   const result = { toolName: 'review_pages', output };
   const first = { toolResults: [result] };
-  assert.equal(reviewReadyToFinish([first]), false);
+  assert.equal(reviewReadyToFinish([first]), true);
   assert.equal(reviewReadyToFinish([first, first]), true);
   assert.equal(
     reviewReadyToFinish([
@@ -158,6 +158,8 @@ await test('crítico anuncia caminhos existentes sem enum e resolve as referênc
   assert.equal(resolved.findings[1].blockId, null);
   assert.equal(resolved.unlinked, 1);
   assert.equal(resolved.unresolved, 1);
+  assert.equal(resolved.unresolvedFindings.length, 1);
+  assert.equal(resolved.unresolvedFindings[0].page, '/inexistente');
 });
 
 await test('composição transfere avisos para revisão e mantém erros e recusas no reparo', () => {
@@ -298,7 +300,7 @@ await test('recibos antigos preservam pendências sem transformar ok em qualidad
   assert.doesNotMatch(JSON.stringify(result), /concluída/);
 });
 
-await test('recibo é invalidado por conteúdo, SEO, marca, contato e imagem, mas não pela ordem das chaves', () => {
+await test('recibo é invalidado por conteúdo, SEO, marca, contato e imagem usada, mas ignora acervo alheio', () => {
   const fixture = structuredClone(tenant);
   fixture.brief.generation = {
     review: {
@@ -341,8 +343,34 @@ await test('recibo é invalidado por conteúdo, SEO, marca, contato e imagem, ma
     currentReview(fixture, [{ ...pages[0], blocks: [] }], images),
     null,
   );
-  assert.equal(
+  // Uma imagem no acervo que não aparece nesta página não muda seus pixels.
+  assert.ok(
     currentReview(fixture, pages, [{ ...images[0], status: 'rejeitada' }]),
+  );
+  const pageWithImage = [
+    {
+      ...pages[0],
+      blocks: [
+        ...pages[0].blocks,
+        {
+          id: 'foto',
+          type: 'media.image',
+          props: { src: images[0].url, alt: 'Inspiração' },
+        },
+      ],
+    },
+  ];
+  const imageFixture = structuredClone(fixture);
+  imageFixture.brief.generation.review = {
+    fingerprint: reviewFingerprint(imageFixture, pageWithImage, images),
+    complete: true,
+    errors: 0,
+    visual: 'complete',
+  };
+  assert.equal(
+    currentReview(imageFixture, pageWithImage, [
+      { ...images[0], status: 'rejeitada' },
+    ]),
     null,
   );
   assert.equal(
@@ -375,6 +403,38 @@ for (const mode of [
 ])
   await test(`revisão real orquestra capturas e crítico: ${mode}`, async () => {
     const fixture = structuredClone(tenant);
+    if (mode === 'critic-error')
+      fixture.brief.generation = {
+        review: {
+          version: 2,
+          fingerprint: 'recibo-anterior',
+          complete: true,
+          errors: 1,
+          visual: 'complete',
+          reviewedAt: '2026-09-11T12:00:00.000Z',
+          findings: [
+            {
+              id: 'visual-anterior',
+              pagina: '/',
+              nivel: 'error',
+              regra: 'hierarquia',
+              evidencia: 'Título ilegível no celular',
+              correcao: 'Recompor o título',
+              status: 'open',
+            },
+          ],
+          pages: {
+            '/': {
+              fingerprint: 'pagina-anterior',
+              visual: 'complete',
+              viewports: { desktop: true, mobile: true },
+              errors: 1,
+              reviewedAt: '2026-09-11T12:00:00.000Z',
+              findings: [],
+            },
+          },
+        },
+      };
     let criticCalls = 0;
     const { buildTools } = await loadModule('lib/ai/tools.ts', {
       '@/lib/db': {
@@ -463,17 +523,27 @@ for (const mode of [
     );
     assert.equal(result.review.errors > 0, mode !== 'complete');
     assert.equal(criticCalls, mode === 'missing-view' ? 0 : 1);
+    if (mode === 'critic-error') {
+      assert.equal(result.reviewedPages.length, 0);
+      assert.ok(
+        result.review.findings.some(
+          (finding) => finding.id === 'visual-anterior',
+        ),
+        'falha técnica não resolve um achado visual anterior',
+      );
+    }
     assert.doesNotMatch(
       JSON.stringify(result),
       /synthetic pixels|base64|"jpeg"/,
     );
     if (mode === 'complete') {
-      await tools.review_pages.execute({});
-      await tools.review_pages.execute({});
+      const reused = await tools.review_pages.execute({});
+      assert.equal(reused.reviewedPages.length, 0);
+      assert.equal(reused.reusedPages.join(','), '/');
       assert.match(
         (await tools.review_pages.execute({})).error,
-        /3 leituras neste turno/,
+        /2 leituras neste turno/,
       );
-      assert.equal(criticCalls, 3);
+      assert.equal(criticCalls, 1);
     }
   });

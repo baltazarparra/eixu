@@ -361,7 +361,7 @@ await test('consumo junta as fases do servidor e os turnos do stream', () => {
   assert.deepEqual(
     summary.rows.map((row) => [row.label, row.origin]),
     [
-      ['Briefing e direção', 'geracao'],
+      ['Preparar · plano e direção', 'geracao'],
       ['Conversa', 'conversa'],
     ],
   );
@@ -433,19 +433,19 @@ await test('revisão conta leituras por rodada e preserva o número no feed redu
     read(7),
     phaseEvent(8, 'composicao', 'tool_end', { tool: 'review_pages' }),
   ];
-  assert.deepEqual(reviewProgress(events), { round: 2, reads: 1, total: 3 });
+  assert.deepEqual(reviewProgress(events), { round: 2, reads: 1, total: 2 });
   assert.deepEqual(reviewProgress(events.slice(4)), {
     round: 2,
     reads: 1,
-    total: 3,
+    total: 2,
   });
-  // Uma quarta chamada recusada não vira "leitura 4 de 3".
+  // Chamadas excedentes recusadas não ultrapassam o teto do turno.
   assert.deepEqual(reviewProgress([...events, read(9), read(10), read(11)]), {
     round: 2,
-    reads: 3,
-    total: 3,
+    reads: 2,
+    total: 2,
   });
-  assert.deepEqual(reviewProgress([]), { round: 0, reads: 0, total: 3 });
+  assert.deepEqual(reviewProgress([]), { round: 0, reads: 0, total: 2 });
 });
 
 await test('custo real soma todos os passos; ausência não vira custo zero', () => {
@@ -671,7 +671,13 @@ await test('vibe ausente vira comercial e a faixa recusa direção fora dela', (
     density: 4,
   };
   assert.deepEqual(laneIssues('moderno', moderno), []);
-  assert.deepEqual(laneIssues('comercial', { ...moderno, motif: 'rings' }), []);
+  assert.deepEqual(
+    laneIssues('moderno', { ...moderno, heroComposition: 'offset' }),
+    [],
+  );
+  const comercial = laneIssues('comercial', { ...moderno, motif: 'rings' });
+  assert.ok(comercial.length >= 8);
+  assert.match(comercial.join(' '), /displayFont.*heroComposition.*paper/);
   const claro = laneIssues('moderno', { ...moderno, paper: '#ffffff' });
   assert.equal(claro.length, 1);
   assert.match(claro[0], /paper/);

@@ -41,7 +41,14 @@ export async function loginAction(
   // Atraso fixo para desencorajar tentativa em massa contra uma senha curta.
   await new Promise((resolve) => setTimeout(resolve, 400));
   if (!(await signIn(user, password))) return 'Usuário ou senha incorretos.';
-  redirect('/admin');
+  const returnTo = text(formData, 'returnTo');
+  redirect(
+    returnTo.startsWith('/admin') &&
+      !returnTo.startsWith('//') &&
+      !returnTo.startsWith('/admin/login')
+      ? returnTo
+      : '/admin',
+  );
 }
 
 export async function logoutAction() {
@@ -58,6 +65,8 @@ export async function createTenantAction(
   const slugResult = tenantSlugSchema.safeParse(text(formData, 'slug'));
   const intake = intakeFromForm(formData);
   const colors = brandColorsFromForm(formData);
+  const paletteSource =
+    text(formData, 'paletteSource') === 'operador' ? 'operador' : 'sugerida';
   const contacts = contactsFromForm(formData);
   const vibe = vibeFromForm(formData);
   if (!details.success)
@@ -71,6 +80,8 @@ export async function createTenantAction(
       intake.error.issues[0]?.message ??
       'Confira o briefing: URLs válidas e até 160 caracteres por fato ou restrição.'
     );
+  if (!intake.data.offer || !intake.data.goal)
+    return 'Informe o que a empresa oferece e a ação esperada do visitante.';
   if (!colors.success)
     return colors.error.issues[0]?.message ?? 'Confira as cores da marca.';
   if (!vibe.success) return 'Escolha uma vibe para o site.';
@@ -93,13 +104,13 @@ export async function createTenantAction(
         : 'Não foi possível enviar o logo. Tente novamente ou cadastre sem ele.';
     }
   }
-  // paletteSource registra que a escolha é do operador: set_design respeita
-  // essas cores em vez de propor as próprias.
+  // A sugestão visual pode ser adaptada pelo agente. Uma edição explícita do
+  // operador trava as cores para que set_design nunca as reescreva.
   const brand = {
     accent: colors.data.primary,
     accentAlt: colors.data.secondary,
     highlight: colors.data.highlight,
-    paletteSource: 'operador',
+    paletteSource,
     vibe: vibe.data,
     ...(logoUrl ? { logoUrl } : {}),
   };

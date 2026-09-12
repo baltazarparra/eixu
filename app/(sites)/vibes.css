@@ -3,9 +3,9 @@
  * direção de arte pode usar (lib/design/vibes.ts); aqui ficam as decisões que
  * só o CSS realiza: escala tipográfica, respiro, superfície e tratamento.
  *
- * `comercial` é o contrato anterior e não tem regra nenhuma. As três faixas
- * abaixo sobrepõem o respiro de `data-density`, porque a vibe já coordena
- * densidade e escala: a faixa limita os dials que a direção pode escolher.
+ * As regras anteriores das três vibes não comerciais continuam compatíveis
+ * com perfis v2. A seção de contratos v3, mais abaixo, separa as quatro faixas
+ * sem redesenhar automaticamente os sites já publicados.
  *
  * Nada aqui toca variáveis emitidas por themeVars no atributo style (--radius,
  * fontes e cores): elas são inline e a faixa da vibe é quem as restringe.
@@ -186,5 +186,110 @@
     padding: clamp(1.5rem, 3vw, 2.75rem);
     background: var(--paper);
     box-shadow: 0 30px 80px -60px var(--brand-ink);
+  }
+}
+
+/* ------------------------------------------------------- contratos v3
+ * Perfis novos recebem combinações exclusivas no gate de set_design. Estes
+ * ajustes ficam sob a versão para não redesenhar perfis publicados antigos.
+ */
+.site-theme[data-design-version='3'][data-vibe='comercial'] {
+  --section-space: clamp(4.5rem, 8vw, 7.5rem);
+}
+.site-theme[data-design-version='3'][data-vibe='comercial'] .site-headline {
+  max-width: 13ch;
+  font-size: clamp(2.8rem, 6.2vw, 6rem);
+  line-height: 0.98;
+}
+.site-theme[data-design-version='3'][data-vibe='comercial']
+  :is(.site-services-cards li, .site-steps-cards li, .site-faq-cards details) {
+  border-top: 2px solid var(--accent);
+  background: var(--paper);
+  box-shadow: none;
+}
+.site-theme[data-design-version='3'][data-vibe='comercial'] .site-icon-badge {
+  width: 2.35rem;
+  height: 2.35rem;
+}
+
+.site-theme[data-design-version='3'][data-vibe='moderno'] {
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: min(8vw, 7rem) min(8vw, 7rem);
+}
+.site-theme[data-design-version='3'][data-vibe='moderno'] main > .site-block {
+  background-color: color-mix(in oklab, var(--paper) 94%, transparent);
+}
+.site-theme[data-design-version='3'][data-vibe='moderno'] .site-headline {
+  max-width: 16ch;
+  font-size: clamp(2.5rem, 4.6vw, 4.8rem);
+}
+.site-theme[data-design-version='3'][data-vibe='moderno']
+  :is(.site-eyebrow, .site-nav-link) {
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.site-theme[data-design-version='3'][data-vibe='ousado'] .site-nav {
+  mix-blend-mode: difference;
+  color: white;
+}
+.site-theme[data-design-version='3'][data-vibe='ousado']
+  :is(.site-services-cards, .site-steps-cards) {
+  gap: 0;
+}
+.site-theme[data-design-version='3'][data-vibe='ousado']
+  :is(.site-services-cards li, .site-steps-cards li) {
+  border: 0;
+  border-top: 3px solid currentColor;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.site-theme[data-design-version='3'][data-vibe='ousado'] .site-icon-badge {
+  width: 3.25rem;
+  height: 3.25rem;
+  border: 2px solid currentColor;
+  border-radius: 0;
+}
+.site-theme[data-design-version='3'][data-vibe='ousado']
+  main
+  > .site-block[data-tone='ink'] {
+  border-block: clamp(0.65rem, 1.3vw, 1.2rem) solid var(--highlight);
+}
+
+.site-theme[data-design-version='3'][data-vibe='artistico'] {
+  --section-space: clamp(5rem, 11vw, 11rem);
+}
+.site-theme[data-design-version='3'][data-vibe='artistico'] .site-headline {
+  max-width: 11ch;
+  font-size: clamp(3.2rem, 8vw, 8.4rem);
+  font-style: italic;
+}
+.site-theme[data-design-version='3'][data-vibe='artistico']
+  main
+  > .site-block:nth-child(even)
+  > :is(section, article) {
+  transform: translateX(clamp(-1.5rem, -2vw, -0.5rem));
+}
+.site-theme[data-design-version='3'][data-vibe='artistico'] .site-icon-badge {
+  width: 2.8rem;
+  height: 2.8rem;
+  transform: rotate(-8deg);
+}
+
+@media (max-width: 767px) {
+  .site-theme[data-design-version='3'][data-vibe='artistico']
+    main
+    > .site-block:nth-child(even)
+    > :is(section, article) {
+    transform: none;
+  }
+  .site-theme[data-design-version='3'][data-vibe='ousado'] .site-nav {
+    mix-blend-mode: normal;
+    color: var(--ink);
   }
 }

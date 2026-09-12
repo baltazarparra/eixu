@@ -76,13 +76,15 @@ foi o defeito observado em produção.
 ## Geração em etapas
 
 Um único turno fazia briefing, direção, imagens e quatro páginas em 300
-segundos, sem nunca olhar o resultado. `lib/taste/phases.ts` divide o trabalho
-em quatro requisições, cada uma com suas ferramentas, seu limite de passos e o
-contexto que ela precisa. O catálogo só entra na composição e na revisão.
+segundos, sem nunca olhar o resultado. O painel agora apresenta três etapas de
+produto — **Preparar**, **Criar** e **Conferir** — enquanto
+`lib/taste/phases.ts` preserva quatro checkpoints internos para retomar sem
+refazer trabalho. Cada checkpoint recebe somente as ferramentas e o contexto
+de que precisa; o catálogo completo entra na composição e na revisão.
 
 1. **Briefing e direção**: `read_reference`, `define_image_guide`, `set_design`.
-2. **Cenas**: `prepare_site_images` com todas as vagas em aberto do plano de
-   `lib/images/scene-plan.ts`.
+2. **Cenas**: o runner executa `prepare_site_images` diretamente com as vagas
+   semânticas persistidas em `brief.imageScenes`.
 3. **Composição**: `build_site` e `repair_site`.
 4. **Revisão**: `review_pages` e as edições pontuais.
 
@@ -95,7 +97,7 @@ governa só antes da composição: depois que as páginas existem, foto faltando
 erro de pre-flight e quem resolve é a revisão, senão um cliente já publicado
 com biblioteca menor que o plano voltaria a gerar cena sem ninguém pedir.
 
-A etapa de cenas pede de uma vez todas as vagas que faltam; o estúdio gera em
+A etapa de cenas recebe de uma vez todas as vagas que faltam; o estúdio gera em
 lotes paralelos de três, com crítica por imagem. Uma foto por requisição
 transformava cinco cenas em cinco idas ao modelo e minutos de espera com o
 painel parado. Cada imagem fica disponível com número e URL imediatamente, sem
@@ -109,7 +111,18 @@ como referência, gera uma nova versão e troca a URL e o texto alternativo nos
 rascunhos do mesmo tenant. O original e os snapshots publicados são preservados.
 A crítica continua informativa; não é uma fila de aprovação.
 
-`review_pages` reúne pre-flight, métricas e crítica visual do rascunho. Captura todas as páginas do lote, até 12, em 1440 e 390 px. Os pixels seguem como imagens binárias a uma chamada separada do Gemini; o chat recebe somente o relatório estruturado. Overflow, imagem quebrada, falha de captura e cobertura incompleta impedem a conclusão automática. Depois de corrigir, o agente revisa de novo: o recibo precisa corresponder ao estado atual. A captura é padrão; `EIXU_REVIEW_CAPTURE=0` deixa explícita a ausência de conclusão visual. A tentativa histórica de enviar base64 como texto não é repetida.
+`review_pages` reúne pre-flight, métricas e crítica visual do rascunho. O
+pre-flight roda primeiro; erros conhecidos não consomem captura nem crítico. Um
+Chromium atende o lote, com duas páginas em paralelo, repetição por viewport e
+preservação das capturas boas quando um alvo falha. Cada página mantém seu
+próprio recibo e só volta à fila quando seus pixels ou uma dependência global
+mudam; imagem fora das páginas não invalida a revisão. Os pixels seguem como
+imagens binárias a uma chamada separada do Gemini, e o chat recebe somente o
+relatório estruturado. Overflow, imagem quebrada, falha de captura e cobertura
+incompleta impedem a conclusão automática. Uma avaliação completa sem erro
+material encerra; quando houve reparo, a segunda leitura confere apenas as
+páginas afetadas. A captura é padrão; `EIXU_REVIEW_CAPTURE=0` deixa explícita a
+ausência de conclusão visual.
 
 O plano editorial em `brief.pagePlan` diferencia intenção, etapa, conteúdo e evidência por página. O raciocínio `high`, os orçamentos por tarefa e a identidade em SOUL.md dão suporte à composição; não substituem o catálogo, a medição e a leitura crítica. Veja [Harness](harness.md).
 
@@ -121,30 +134,31 @@ e sensível. Todas usam palavras do dia a dia. `lib/copy/policy.ts` é a fonte
 compartilhada pela geração, edição e crítica; o estilo visual não autoriza
 inglês, jargão ou texto difícil.
 
-O operador escolhe a vibe no cadastro como direção inicial para o site
-inteiro. Referências visuais informadas nesse cadastro têm prioridade sobre
-a vibe. Sem referência visual verificada, `comercial` não restringe e as
-outras três delimitam a faixa em que a direção de arte decide. Referências
+O operador escolhe a vibe no cadastro como direção inicial para o site inteiro.
+Referências visuais verificadas nesse cadastro têm prioridade sobre a vibe. Sem
+essa direção, as quatro vibes têm contratos próprios e delimitam a faixa em que
+a direção de arte decide; `comercial` deixou de poder reproduzir qualquer uma
+das outras. Referências
 lidas em 10/09/2026: [Linear](https://linear.app/) para `moderno`,
 [14islands](https://www.14islands.com/) para `ousado` e
 [Actionline](https://actionline.io/) para `artistico`. Elas orientam a
 linguagem visual; o conteúdo continua vindo do briefing do cliente.
 
-| Vibe        | O que a faixa exige                                                                                                                         |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `comercial` | Nada. Todos os eixos, raios, papéis e dials continuam disponíveis.                                                                          |
-| `moderno`   | Papel e superfície escuros, tinta clara, sans ou geométrica, capítulos ou ritmo contínuo, superfície delineada ou em camadas, raio pequeno. |
-| `ousado`    | Papel claro, sans ou geométrica, hero editorial/cover/poster, navegação mínima, superfície plana ou de contraste, raio zero ou pequeno.     |
-| `artistico` | Papel claro, display serifada ou humanista, hero deslocado/ateliê, superfície em camadas, motivo de anéis ou cantos, raio grande ou pílula. |
+| Vibe        | O que a faixa exige                                                                                                                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `comercial` | Display humanista/slab, hero split/cover, navegação em barra, ritmo direto, fotos emolduradas, superfície plana e cantos discretos.      |
+| `moderno`   | Papel escuro, display geométrica/grotesca, hero editorial/offset, navegação mínima, capítulos, molduras e superfícies delineadas.        |
+| `ousado`    | Display condensada/expressiva, hero cover/poster, navegação de contraste, fluxo contínuo, fotografia full-bleed, faixas e cantos retos.  |
+| `artistico` | Display editorial/clássica, hero offset/atelier, navegação flutuante, alternância, colagem/cutout, camadas e motivos de anéis ou cantos. |
 
 `lib/design/vibes.ts` guarda essas faixas, o texto de direção que entra no
 prompt e a direção de imagem por vibe. Sem referência visual verificada,
 `set_design` recusa a direção que sair da faixa, apontando eixo, valor recebido
-e valores permitidos, e a trava de
-unicidade passou a comparar só clientes da mesma vibe: as faixas se sobrepõem
-em vários eixos, e um site moderno bloqueado por um ousado com os mesmos enums
-seria uma recusa sem relação com o que se vê na tela. O catálogo tipográfico ampliou as combinações estruturais dentro de cada faixa,
-conservando a distância mínima de três eixos entre clientes da mesma vibe.
+e valores permitidos. A trava de unicidade compara apenas clientes da mesma
+vibe e conserva a distância mínima de três eixos. Com referência verificada,
+as aplicações persistidas prevalecem e essa distância vira informação: não se
+trocam traços da fonte apenas para satisfazer enums. O catálogo tipográfico
+amplia as combinações estruturais dentro de cada faixa.
 
 O CSS por vibe fica em `app/(sites)/vibes.css`, sempre sob
 `.site-theme[data-vibe='…']`, e realiza o que só o CSS resolve: escala e peso
@@ -267,24 +281,24 @@ quando o dial permite. Não há animação infinita. Movimento reduzido desativa
 as transições e as entradas e mantém o estado aberto reconhecível.
 
 O institucional e o painel administrativo conservam fontes e estilos próprios.
-O novo renderizador afeta a apresentação dos sites quando o código for
-implantado, inclusive snapshots publicados; os JSONs de páginas e marcas
-não são alterados por esta implementação.
+As regras radicais de composição em `vibes.css` ficam limitadas a perfis de
+design v3. Perfis v2 e sites legados preservam a apresentação atual até uma
+recomposição explícita e nova publicação.
 
-## Contrato visual v2
+## Contrato visual v3
 
-| Recurso              | Comportamento                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Perfil persistido    | `brand.design`, versão 2, guarda conceito, elemento-assinatura e oito eixos estruturais. `tenant.brief` guarda público, oferta, objetivo, personalidade, evidências e restrições. Não exige migração porque ambos os campos já são JSONB.                                                                                                                                                                                                                                                                                                                                                                  |
-| Tipografia           | 14 famílias, dez opções de display e sete de corpo, descritas acima. `next/font` auto-hospeda os arquivos; o navegador carrega somente as famílias usadas. Escala, peso, entrelinha, medida, legendas e números têm papéis consistentes.                                                                                                                                                                                                                                                                                                                                                                   |
-| Vibe                 | `brand.vibe` orienta o fallback. Referências visuais verificadas, com aplicações em `design.referenceDirection`, prevalecem sobre seus eixos, raio, luminância e dials. Sem referências, a faixa continua obrigatória; ausente significa `comercial`.                                                                                                                                                                                                                                                                                                                                                      |
-| Paleta               | `accent`, `accentAlt` e `highlight` vêm do cadastro do cliente e a direção não as reescreve: superfície de marca, tom complementar e cor da ação. `ink`, `paper` e `surface` continuam com a direção. A ferramenta recusa texto sem contraste AA em paper/surface e cores primária/secundária iguais; o render ainda ajusta acentos que não suportam texto legível. Sem `highlight`, a ação usa a primária. Botões usam `--highlight`/`--highlight-ink`; texto de destaque usa `--highlight-text`, medido contra o tom da seção ou a superfície interna do card/formulário, com contraste mínimo de 4,5:1. |
-| Composição global    | Seis heroes, quatro navegações, quatro ritmos, quatro tratamentos de imagem, quatro superfícies e cinco motivos formam a gramática do cliente. Dials controlam variância, densidade e motion. Atelier compõe ambiente e detalhe; não é padrão obrigatório.                                                                                                                                                                                                                                                                                                                                                 |
-| Apresentação local   | Todo bloco aceita `presentation`: tom (incluindo a cor secundária), largura, respiro, alinhamento, borda e motion (`none`, `reveal`, `stagger`, `image`). Use um a três momentos de movimento coerentes com a narrativa.                                                                                                                                                                                                                                                                                                                                                                                   |
-| Exploração e inbound | `feature.explorer` oferece seleção de aplicações com imagem, texto, fatos e CTA por aba; suporta teclado. `editorial.resources` conecta páginas com hierarquia editorial e imagem ou símbolo. Ambos oferecem layouts próprios.                                                                                                                                                                                                                                                                                                                                                                             |
-| Imagens              | Hero aceita posição, `cover`/`contain`, ponto focal e legendas; atelier aceita imagem secundária. A home exige duas fotos geradas distintas da biblioteca do tenant. Imagens geradas chegam ao agente com número e URL para uso imediato, sem aprovação.                                                                                                                                                                                                                                                                                                                                                   |
-| Navegação e FAQ      | Menu mobile e perguntas usam `details`/`summary` nativos, foco visível e interação por teclado.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| Âncoras              | Todo bloco aceita `anchor` opcional, começando com letra minúscula, seguido de letras/números/hífens, até 64 caracteres. Link usa `#anchor`. Duplicação bloqueia publicação. Formulário sem âncora mantém `contato`.                                                                                                                                                                                                                                                                                                                                                                                       |
+| Recurso              | Comportamento                                                                                                                                                                                                                                                                                                                                   |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Perfil persistido    | `brand.design`, versão 3, guarda conceito, elemento-assinatura, oito eixos estruturais e, quando verificada, `referenceDirection`. A leitura aceita v2 para preservar sites existentes. `tenant.brief` guarda também plano editorial e cenas semânticas.                                                                                        |
+| Tipografia           | 14 famílias, dez opções de display e sete de corpo, descritas acima. `next/font` auto-hospeda os arquivos; o navegador carrega somente as famílias usadas. Escala, peso, entrelinha, medida, legendas e números têm papéis consistentes.                                                                                                        |
+| Vibe                 | `brand.vibe` limita eixos, raio, luminância do papel e dials quando não há referência verificada. `referenceDirection` prevalece sobre esses limites e desliga os overrides radicais de CSS da vibe; a voz escrita continua. Ausente significa `comercial`.                                                                                     |
+| Paleta               | O cadastro oferece uma sugestão por vibe. Enquanto `paletteSource` for `sugerida`, a direção pode adaptá-la ao negócio; editar qualquer cor muda a origem para `operador` e trava `accent`, `accentAlt` e `highlight`. `ink`, `paper` e `surface` continuam com a direção. Contraste AA e diferença entre primária/secundária permanecem gates. |
+| Composição global    | Seis heroes, quatro navegações, quatro ritmos, quatro tratamentos de imagem, quatro superfícies e cinco motivos formam a gramática do cliente. Dials controlam variância, densidade e motion. Atelier compõe ambiente e detalhe; não é padrão obrigatório.                                                                                      |
+| Apresentação local   | Todo bloco aceita `presentation`: tom (incluindo a cor secundária), largura, respiro, alinhamento, borda e motion (`none`, `reveal`, `stagger`, `image`). Use um a três momentos de movimento coerentes com a narrativa.                                                                                                                        |
+| Exploração e inbound | `feature.explorer` oferece seleção de aplicações com imagem, texto, fatos e CTA por aba; suporta teclado. `editorial.resources` conecta páginas com hierarquia editorial e imagem ou símbolo. Ambos oferecem layouts próprios.                                                                                                                  |
+| Imagens              | Hero aceita posição, `cover`/`contain`, ponto focal e legendas; atelier aceita imagem secundária. A home exige duas fotos geradas distintas da biblioteca do tenant. Imagens geradas chegam ao agente com número e URL para uso imediato, sem aprovação.                                                                                        |
+| Navegação e FAQ      | Menu mobile e perguntas usam `details`/`summary` nativos, foco visível e interação por teclado.                                                                                                                                                                                                                                                 |
+| Âncoras              | Todo bloco aceita `anchor` opcional, começando com letra minúscula, seguido de letras/números/hífens, até 64 caracteres. Link usa `#anchor`. Duplicação bloqueia publicação. Formulário sem âncora mantém `contato`.                                                                                                                            |
 
 ## Unicidade e coerência
 
@@ -302,7 +316,12 @@ A proteção de exclusão consulta referências em rascunhos, páginas publicada
 
 ## Alcance
 
-A mudança atua nos componentes compartilhados de `(sites)`, nos agentes de site/imagem e no pre-flight. Institucional e painel mantêm seus próprios layouts/CSS. Sites já publicados sem `brand.design` continuam no contrato legado; o deploy não inventa uma direção nem reescreve seus blocos. Ao reconstruir um cliente antigo, o agente cria o perfil v2 e recompõe as páginas antes da nova publicação.
+A mudança atua nos componentes compartilhados de `(sites)`, nos agentes de
+site/imagem e no pre-flight. Institucional e painel mantêm seus próprios
+layouts/CSS. Sites já publicados sem `brand.design` continuam no contrato
+legado; o deploy não inventa uma direção nem reescreve seus blocos. Ao
+reconstruir um cliente antigo, o agente cria o perfil v3 e recompõe as páginas
+antes da nova publicação.
 
 A prévia local de comparação usa três clientes sintéticos, sem gravar no tenant. Ela comprovou que o mesmo catálogo forma silhuetas distintas em desktop e mobile, mas não substitui uma avaliação de geração do modelo. Essa avaliação exige briefing controlado, tenant descartável e registro de qualidade, chamadas, latência e tokens.
 
@@ -327,7 +346,15 @@ O painel usa Geist, superfícies escuras, texto claro e acento areia, com CSS is
 
 Sugestões preenchem o compositor e aguardam envio. A prévia oferece seletor de página, largura desktop/celular e pendências de projeto e página. Erros HTTP aparecem como avisos, exclusão de imagem pede confirmação local e ações em andamento ficam desabilitadas. Dados simples e briefing têm formulário direto, sem chamada ao modelo. Tokens e custo ficam em detalhes recolhidos, com seu escopo declarado.
 
-A coluna da conversa é o lugar do andamento, não só do texto: logo abaixo do cabeçalho dela, um bloco compacto traz estado, etapa atual e ação numa linha, quatro trilhas sem rótulo, a posição na sequência com o subprogresso à esquerda e os tempos à direita, a ferramenta em execução e a linha do tempo recolhida. O nome e o resultado de cada etapa passam para o `title` da trilha; a linha do tempo continua sendo a via acessível para o mesmo conteúdo. A escala tipográfica tem piso de 12 px — o painel chegou a usar quatro tamanhos entre 0,65 e 0,75 rem sem nenhum token governando —, com 14 px no corpo das mensagens e a família monoespaçada nos tempos, contagens e custos, em `tabular-nums`. Movimento é pontual: pulso na etapa ativa, varredura no topo enquanto a execução está viva e giro no ícone da ferramenta, todos desligados em `prefers-reduced-motion`. A coluna passou de 330–380 px para 380–440 px porque etapa, atividade e tempos disputavam a mesma linha.
+A coluna da conversa é o lugar do andamento, não só do texto: logo abaixo do
+cabeçalho dela, um bloco compacto traz estado, etapa atual e ação numa linha,
+três trilhas de produto, unidades realmente concluídas, tempo decorrido,
+ferramenta em execução e linha do tempo recolhida. Captura e crítico atualizam
+página, viewport e contagem durante a mesma ferramenta. A linha do tempo
+continua sendo a via acessível para o mesmo conteúdo. A escala tipográfica tem
+piso de 12 px, com 14 px no corpo das mensagens e a família monoespaçada nos
+tempos, contagens e custos, em `tabular-nums`. Movimento é pontual e respeita
+`prefers-reduced-motion`.
 
 Cliente sem tentativa ou conversa anterior começa sozinho ao abrir a tela, sem botão e sem pergunta de abertura: ele chegou ali pelo cadastro. A condição inclui o histórico anterior à geração no servidor, nenhuma página e a primeira etapa pendente, porque retomar sozinho um rascunho antigo gastaria geração paga sem pedido. O consumo soma as fases gravadas no servidor e os turnos livres do stream.
 

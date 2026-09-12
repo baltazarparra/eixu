@@ -67,7 +67,9 @@ export function describeTool(
     case 'define_image_guide':
       return pending ? 'Definindo o guia de imagem' : 'Guia de imagem definido';
     case 'review_pages': {
-      if (pending) return 'Revisando o resultado';
+      if (pending) return 'Conferindo estrutura e pixels';
+      if (out.preflightOnly === true)
+        return `${num(out.erros)} erro(s) estrutural(is) para corrigir antes dos pixels`;
       if (
         out.error ||
         out.visual === 'unavailable' ||
@@ -79,12 +81,24 @@ export function describeTool(
         ? out.apontamentos.length
         : 0;
       if (erradas) return `Revisão: ${erradas} erros para corrigir`;
+      const reviewed = Array.isArray(out.reviewedPages)
+        ? out.reviewedPages.length
+        : 0;
+      const reused = Array.isArray(out.reusedPages)
+        ? out.reusedPages.length
+        : 0;
+      if (!reviewed && reused)
+        return `Revisão atual reutilizada em ${reused} página(s)`;
       return apontamentos
-        ? `Revisão: ${apontamentos} pontos de atenção`
-        : 'Revisão sem apontamentos';
+        ? `Revisão: ${apontamentos} pontos de atenção · ${reviewed} página(s) conferida(s)`
+        : `Revisão sem apontamentos · ${reviewed} página(s) conferida(s)`;
     }
     case 'prepare_site_images': {
-      if (pending) return 'Gerando a cena';
+      const requested = Array.isArray(inp.scenes) ? inp.scenes.length : 1;
+      if (pending)
+        return requested === 1
+          ? 'Gerando uma cena'
+          : `Gerando ${requested} cenas em lotes`;
       const list = (out.imagens ?? []) as { numero: string }[];
       if (out.error || !Array.isArray(out.imagens) || !list.length)
         return 'As imagens precisam de atenção';

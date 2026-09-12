@@ -11,8 +11,10 @@ export default async function TenantLayout({
   params: Promise<{ tenant: string }>;
   children: ReactNode;
 }) {
-  if (!(await isAuthenticated())) redirect('/admin/login');
-  const tenant = await adminTenant((await params).tenant);
+  const { tenant: slug } = await params;
+  if (!(await isAuthenticated()))
+    redirect(`/admin/login?returnTo=${encodeURIComponent(`/admin/${slug}`)}`);
+  const tenant = await adminTenant(slug);
   if (!tenant) notFound();
   return (
     <TenantFrame

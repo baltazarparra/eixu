@@ -1,10 +1,12 @@
 'use client';
 
-import { useActionState } from 'react';
+import { Suspense, useActionState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { loginAction } from '../actions';
 
-export default function LoginPage() {
+function LoginContent() {
   const [error, formAction, pending] = useActionState(loginAction, null);
+  const returnTo = useSearchParams().get('returnTo') ?? '/admin';
   return (
     <main className="admin-login">
       <section className="admin-login-brand">
@@ -25,6 +27,7 @@ export default function LoginPage() {
       </section>
       <section className="admin-login-entry">
         <form action={formAction}>
+          <input type="hidden" name="returnTo" value={returnTo} />
           <div className="admin-brand">
             <span className="admin-brand-mark">E</span>
             <span>
@@ -68,5 +71,13 @@ export default function LoginPage() {
         </form>
       </section>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<main className="admin-login" aria-busy="true" />}>
+      <LoginContent />
+    </Suspense>
   );
 }

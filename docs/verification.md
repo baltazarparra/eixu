@@ -1,5 +1,57 @@
 # Validação e publicação
 
+## Admin, criação e revisão incremental, 12/09/2026
+
+O fluxo administrativo foi revisto da entrada a Tráfego. A criação apresenta
+três etapas de produto, cadastro compacto e quatro direções visuais comparáveis;
+o servidor mantém checkpoints próprios para retomada. A revisão executa
+pre-flight antes dos pixels, reutiliza recibos atuais por página, captura duas
+páginas por vez com repetição local e preserva capturas válidas e achados
+anteriores diante de falha técnica. Referências verificadas continuam com
+prioridade visual; na ausência delas, os perfis v3 aplicam contratos radicais
+das quatro vibes. A publicação promove apresentação global e dados editoriais
+junto de blocos e SEO. O schema inicializa o snapshot de páginas e clientes que
+já estavam publicados.
+
+Verificação final na base `main` integrada:
+
+- `npx next typegen && npx tsc --noEmit`, `npm run lint`, formatação dos
+  arquivos alterados e `git diff --check`: sem erros.
+- `EIXU_CHROME_PATH=/usr/bin/google-chrome npm run test:admin`: 119 testes;
+  116 passaram e 3 integrações com PostgreSQL foram puladas porque
+  `EIXU_TEST_POSTGRES_URL` não está disponível nesta máquina. Os dois testes de
+  captura real com Chrome passaram.
+- `EIXU_CHROME_PATH=/usr/bin/google-chrome npm run test:sites`: 104 testes
+  passaram, sem pulos, incluindo captura externa em navegador real, voz por
+  vibe, prioridade das referências, uso exato de imagens, contratos v3 e
+  preservação do snapshot público.
+- `npm run build:vercel`: Next.js 16.3.3 compilou e os três checks dos artefatos
+  serverless de captura passaram.
+- Navegador: os 8 testes de `test:admin:browser` e os 16 de
+  `test:sites:browser` passaram, incluindo as quatro vibes, fontes reais,
+  teclado, movimento reduzido, JavaScript desligado, contraste mínimo medido de
+  4,608:1 e referência visual contra vibes conflitantes. O caso de referência
+  foi repetido após explicitar o contrato de renderização v3.
+- O cadastro foi inspecionado em 390 e 1440 px: quatro informações de negócio
+  ficam visíveis, contexto/marca permanecem recolhidos, as quatro miniaturas
+  têm silhuetas diferentes e não houve overflow. O painel mobile separa etapa,
+  unidades e relógio, inclusive na segunda rodada da revisão. Capturas locais
+  ficam em `outputs/admin-handoff/` e `outputs/generation/`, ignoradas pelo Git.
+
+A integração revelou e corrigiu uma incompatibilidade: perfis v3 com referência
+não eram reconhecidos pelo helper legado, e a mudança de `referenceDirection`
+não alterava o fingerprint quando ainda não havia páginas. O renderer agora
+aceita v2/v3, identifica a autoridade visual no DOM e impede que o CSS radical
+da vibe sobreponha a referência; qualquer mudança dessa direção invalida o
+recibo de revisão.
+
+Não houve migração ou escrita em banco remoto, geração paga, publicação de
+página de cliente nem deploy. A sintaxe nova do schema não foi exercitada em um
+PostgreSQL local porque esse serviço não está disponível. A implantação deve
+aplicar o schema antes do código. As fixtures comprovam contratos e
+comportamento responsivo, mas não substituem a matriz paga de três briefings por
+quatro vibes nem uma avaliação humana sem rótulos.
+
 ## Escrita simples e voz por vibe, 11/09/2026
 
 O [contrato de escrita](copy.md) passou a orientar geração, edição e crítica.

@@ -39,7 +39,11 @@ const content = isClients ? (
 ) : area === 'imagens' ? (
   <ImagesLibrary
     tenant={tenant}
-    initial={{ guide: data.guide, images: data.empty ? [] : data.images }}
+    initial={{
+      guide: data.guide,
+      images: data.empty ? [] : data.images,
+      usage: {},
+    }}
   />
 ) : area === 'trafego' ? (
   <main className="admin-page">

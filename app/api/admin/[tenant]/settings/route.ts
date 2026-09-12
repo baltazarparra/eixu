@@ -6,6 +6,7 @@ import { getTenantBySlug, setBrandLogo } from '@/lib/tenant-queries';
 import { intakeSchema } from '@/lib/tenant-intake';
 import { contactsSchema, primaryWhatsapp } from '@/lib/tenant-contacts';
 import { tenantDetailsSchema } from '@/lib/admin/tenant-input';
+import { vibeOf, vibeSchema } from '@/lib/design/vibes';
 import { canApplyLogo } from '@/lib/images/logo-access';
 import { normalizeSocialUrl, parseSocialRecord } from '@/lib/social-profile';
 import {
@@ -13,6 +14,7 @@ import {
   markSocialReading,
   syncSocialProfile,
 } from '@/lib/ai/social';
+import { activeRun } from '@/lib/generation/runs';
 
 const patch = z
   .object({
@@ -21,6 +23,7 @@ const patch = z
     contactEmail: tenantDetailsSchema.shape.contactEmail.nullable().optional(),
     logoUrl: z.url().nullable().optional(),
     intake: intakeSchema.optional(),
+    vibe: vibeSchema.optional(),
   })
   .refine(
     (value) => Object.keys(value).length > 0,
@@ -64,6 +67,15 @@ export async function PATCH(
 
   const previousSocial = intakeSchema.safeParse(tenant.brief.intake).data
     ?.socialUrl;
+  const vibeChanged =
+    input.vibe !== undefined && input.vibe !== vibeOf(tenant.brand);
+  if (vibeChanged && (await activeRun(tenant.id)))
+    return Response.json(
+      {
+        error: 'Pause a geração em andamento antes de trocar a direção visual.',
+      },
+      { status: 409 },
+    );
 
   // whatsapp continua sendo coluna própria, derivada da lista de contatos:
   // /go/wa, botão flutuante e JSON-LD seguem lendo um número só.
@@ -75,6 +87,9 @@ export async function PATCH(
       whatsapp = case when ${contacts !== undefined} then ${contacts ? primaryWhatsapp(contacts) : null} else whatsapp end,
       contact_email = case when ${input.contactEmail !== undefined} then ${input.contactEmail ?? null} else contact_email end,
       brief = case when ${input.intake !== undefined} then brief || jsonb_build_object('intake', ${JSON.stringify(input.intake ?? {})}::jsonb) else brief end,
+      brand = case when ${vibeChanged}
+                   then (brand - 'design') || jsonb_build_object('vibe', ${input.vibe ?? null}::text)
+                   else brand end,
       updated_at = now()
     where id = ${tenant.id}
   `;
@@ -101,5 +116,10 @@ export async function PATCH(
       await clearSocialProfile(tenant.id);
     }
   }
-  return Response.json({ ok: true, brand, social });
+  return Response.json({
+    ok: true,
+    brand,
+    social,
+    regenerationRequired: vibeChanged,
+  });
 }

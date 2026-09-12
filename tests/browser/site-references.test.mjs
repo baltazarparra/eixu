@@ -25,6 +25,9 @@ await test(
       '../../lib/design/profile.ts',
     );
     const { renderingVibeOf } = await j.import('../../lib/design/vibes.ts');
+    const { hasReferenceDirection } = await j.import(
+      '../../lib/design/references.ts',
+    );
     const { blockSchemas } = await j.import('../../lib/blocks/registry.ts');
     const css = (
       await Promise.all(
@@ -88,12 +91,17 @@ await test(
           vibe,
           design: completeDesignProfile({ ...direction, referenceDirection }),
         };
+        const referenceDirected = hasReferenceDirection(tenant.brand);
         tenant.dials = { variance: 7, motion: 2, density: 3 };
         const tree = createElement(
           'div',
           {
             className: 'site-theme',
             'data-vibe': renderingVibeOf(tenant.brand),
+            'data-reference-direction': referenceDirected ? 'true' : undefined,
+            'data-design-version': referenceDirected
+              ? 'reference'
+              : tenant.brand.design?.version,
             'data-density': 'airy',
             'data-motion': 'still',
             style: {
@@ -118,6 +126,7 @@ await test(
             const soft = document.querySelector('[data-tone="soft"]');
             return {
               vibe: theme.dataset.vibe,
+              designVersion: theme.dataset.designVersion,
               width: innerWidth,
               scrollWidth: document.documentElement.scrollWidth,
               surface: getComputedStyle(soft)
@@ -131,6 +140,7 @@ await test(
             };
           });
           assert.equal(measured.vibe, 'comercial');
+          assert.equal(measured.designVersion, 'reference');
           assert.equal(measured.surface, '#eeeeee');
           assert.match(measured.font, /Georgia/);
           assert.ok(

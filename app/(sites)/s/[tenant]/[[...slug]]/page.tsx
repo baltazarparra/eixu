@@ -13,6 +13,8 @@ import { attributionScript } from '@/lib/tracking';
 import { isAuthenticated } from '@/lib/auth';
 import { structuredData } from '@/lib/sites/structured-data';
 import { renderingVibeOf } from '@/lib/design/vibes';
+import { hasReferenceDirection } from '@/lib/design/references';
+import { publicPage, publicTenant } from '@/lib/sites/snapshot';
 
 type Params = { tenant: string; slug?: string[] };
 type Props = {
@@ -41,13 +43,15 @@ export async function generateMetadata({
   if (!resolved) return { title: 'Página não encontrada' };
   const { tenant, page } = resolved;
   if (!preview && !page.publishedBlocks) notFound();
+  const renderedTenant = preview ? tenant : publicTenant(tenant);
+  const renderedPage = preview ? page : publicPage(page);
   const seo = preview ? page.seo : (page.publishedSeo ?? {});
-  const title = seo.title || page.title;
+  const title = seo.title || renderedPage.title;
   const noindex =
     preview ||
     seo.noindex ||
-    page.type === 'thank_you' ||
-    page.type === 'paid_lp';
+    renderedPage.type === 'thank_you' ||
+    renderedPage.type === 'paid_lp';
 
   // Canônica absoluta: relativa é ignorada pelos buscadores.
   const host = (await headers()).get('host') ?? `${tenant.slug}.eixu.com.br`;
@@ -67,9 +71,9 @@ export async function generateMetadata({
     openGraph: {
       title,
       description: seo.description,
-      type: page.type === 'post' ? 'article' : 'website',
-      locale: tenant.locale.replace('-', '_'),
-      siteName: tenant.name,
+      type: renderedPage.type === 'post' ? 'article' : 'website',
+      locale: renderedTenant.locale.replace('-', '_'),
+      siteName: renderedTenant.name,
     },
   };
 }
@@ -85,6 +89,9 @@ export default async function TenantPage({ params, searchParams }: Props) {
   );
   if (!resolved) notFound();
   const { tenant, page } = resolved;
+  const renderedTenant = isPreview ? tenant : publicTenant(tenant);
+  const renderedPage = isPreview ? page : publicPage(page);
+  const referenceDirected = hasReferenceDirection(renderedTenant.brand);
 
   // O painel pede `?preview=1` para ver o rascunho; o público vê o publicado.
   const blocks = isPreview ? page.blocks : (page.publishedBlocks ?? []);
@@ -98,40 +105,45 @@ export default async function TenantPage({ params, searchParams }: Props) {
   return (
     <div
       className="site-theme"
-      style={themeVars(tenant.brand) as React.CSSProperties}
-      data-variance={tenant.dials.variance <= 3 ? 'quiet' : 'expressive'}
+      style={themeVars(renderedTenant.brand) as React.CSSProperties}
+      data-variance={
+        renderedTenant.dials.variance <= 3 ? 'quiet' : 'expressive'
+      }
       data-density={
-        tenant.dials.density <= 3
+        renderedTenant.dials.density <= 3
           ? 'airy'
-          : tenant.dials.density >= 8
+          : renderedTenant.dials.density >= 8
             ? 'compact'
             : 'normal'
       }
-      data-motion={tenant.dials.motion <= 3 ? 'still' : 'gentle'}
-      data-vibe={renderingVibeOf(tenant.brand)}
-      data-design-version={tenant.brand.design?.version}
-      data-hero={tenant.brand.design?.heroComposition}
-      data-navigation={tenant.brand.design?.navigation}
-      data-rhythm={tenant.brand.design?.rhythm}
-      data-imagery={tenant.brand.design?.imageTreatment}
-      data-surface={tenant.brand.design?.surfaceStyle}
-      data-motif={tenant.brand.design?.motif}
+      data-motion={renderedTenant.dials.motion <= 3 ? 'still' : 'gentle'}
+      data-vibe={renderingVibeOf(renderedTenant.brand)}
+      data-reference-direction={referenceDirected ? 'true' : undefined}
+      data-design-version={
+        referenceDirected ? 'reference' : renderedTenant.brand.design?.version
+      }
+      data-hero={renderedTenant.brand.design?.heroComposition}
+      data-navigation={renderedTenant.brand.design?.navigation}
+      data-rhythm={renderedTenant.brand.design?.rhythm}
+      data-imagery={renderedTenant.brand.design?.imageTreatment}
+      data-surface={renderedTenant.brand.design?.surfaceStyle}
+      data-motif={renderedTenant.brand.design?.motif}
     >
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify(
-            structuredData(tenant, page, isPreview),
+            structuredData(renderedTenant, renderedPage, isPreview),
           ).replace(/</g, '\\u003c'),
         }}
       />
       <RenderBlocks
         blocks={blocks}
         ctx={{
-          tenant,
+          tenant: renderedTenant,
           posts,
           pagePath,
-          pageType: page.type,
+          pageType: renderedPage.type,
           previewTenant: query.__tenant ? tenant.slug : undefined,
           isPreview,
         }}

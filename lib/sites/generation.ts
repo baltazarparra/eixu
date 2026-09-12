@@ -1,8 +1,10 @@
 import { isDesignProfile } from '@/lib/design/profile';
 import { currentReview } from '@/lib/review/state';
 import {
+  plannedSceneInputSchema,
   scenePlan,
   sceneCoverage,
+  sceneRequestsMatchPlan,
   type PlannedScene,
 } from '@/lib/images/scene-plan';
 import { lintPage } from '@/lib/taste/lint';
@@ -34,7 +36,27 @@ export function plannedScenes(tenant: Tenant): PlannedScene[] {
   const design = isDesignProfile(tenant.brand.design)
     ? tenant.brand.design
     : undefined;
-  return scenePlan(design, 3);
+  const structural = scenePlan(design, 3);
+  const parsed = plannedSceneInputSchema
+    .array()
+    .safeParse(tenant.brief.imageScenes);
+  if (!parsed.success || !sceneRequestsMatchPlan(structural, parsed.data))
+    return structural;
+  const remaining = [...structural];
+  return parsed.data.map((request) => {
+    const index = remaining.findIndex(
+      (scene) =>
+        scene.role === request.role &&
+        scene.targetBlock === request.targetBlock,
+    );
+    const [slot] = remaining.splice(index, 1);
+    return {
+      ...slot,
+      request: request.request,
+      page: request.page,
+      hint: request.page ? `${slot.hint} Página ${request.page}.` : slot.hint,
+    };
+  });
 }
 
 /**

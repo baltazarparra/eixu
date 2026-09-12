@@ -21,8 +21,8 @@ export type Brand = {
   accentAlt?: string;
   /** Cor de acento: botões, links e destaques. Sem ela, usa a primária. */
   highlight?: string;
-  /** 'operador' quando as cores vieram do cadastro e não são reescritas. */
-  paletteSource?: 'operador';
+  /** Sugestão pode ser adaptada; escolha do operador nunca é reescrita. */
+  paletteSource?: 'operador' | 'sugerida';
   /** Vibe escolhida no cadastro. Ausente significa o contrato comercial. */
   vibe?: Vibe;
   ink?: string;
@@ -34,6 +34,16 @@ export type Brand = {
   logoText?: string;
   /** URL pública do logo enviado pelo painel. Nav e rodapé usam quando existe. */
   logoUrl?: string;
+};
+
+export type PublishedTenantSnapshot = {
+  name: string;
+  brand: Brand;
+  dials: Dials;
+  contacts: Contacts;
+  whatsapp: string | null;
+  contactEmail: string | null;
+  locale: string;
 };
 
 /**
@@ -124,6 +134,8 @@ export type Tenant = {
   ga4Id: string | null;
   metaPixelId: string | null;
   locale: string;
+  /** Apresentação pública; ausente em clientes publicados antes do snapshot. */
+  publishedSnapshot?: PublishedTenantSnapshot | null;
 };
 
 export type Seo = {
@@ -158,6 +170,10 @@ export type Page = {
   blocks: BlockInstance[];
   publishedBlocks: BlockInstance[] | null;
   publishedSeo: Seo | null;
+  publishedTitle?: string | null;
+  publishedType?: PageType | null;
+  publishedMeta?: PostMeta | null;
+  publishedNavOrder?: number | null;
   publishedAt: string | null;
   navOrder: number;
 };

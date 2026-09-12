@@ -19,8 +19,9 @@ export default async function TenantWorkspace({
     pedido?: string | string[];
   }>;
 }) {
-  if (!(await isAuthenticated())) redirect('/admin/login');
   const { tenant: slug } = await params;
+  if (!(await isAuthenticated()))
+    redirect(`/admin/login?returnTo=${encodeURIComponent(`/admin/${slug}`)}`);
   const tenant = await adminTenant(slug);
   if (!tenant) notFound();
 

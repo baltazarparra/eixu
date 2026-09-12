@@ -61,6 +61,8 @@ async function fixture({
     name: 'Fixture',
     slug: 'fixture',
     contactEmail: 'contato@fixture.com.br',
+    offer: 'Pedras naturais para projetos de arquitetura',
+    goal: 'Pedir uma orientação comercial',
     primary: '#112233',
     secondary: '#445566',
     highlight: '#ffffff',

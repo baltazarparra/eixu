@@ -7,9 +7,9 @@ import { hasReferenceDirection } from './references';
  * Vibe do site, escolhida pelo operador no cadastro. Ela não substitui a
  * direção de arte: continua sendo o agente que decide conceito, estrutura e
  * tipografia. Referências visuais verificadas prevalecem sobre essa faixa;
- * sem elas, a direção permanece dentro da vibe. `comercial` não restringe os
- * eixos visuais. A voz de cada vibe está em lib/copy/policy.ts e continua
- * valendo mesmo quando uma referência dirige o visual.
+ * sem elas, a direção permanece dentro da vibe. Todos os quatro contratos são
+ * delimitados. A voz em lib/copy/policy.ts continua valendo quando uma
+ * referência dirige o visual.
  *
  * Referências lidas em 10/09/2026: linear.app (moderno), 14islands.com
  * (ousado) e actionline.io (artistico). Elas orientam a linguagem visual; o
@@ -47,13 +47,40 @@ export const VIBE_LABEL: Record<Vibe, string> = {
 
 export const VIBE_HINT: Record<Vibe, string> = {
   comercial:
-    'Fotos do negócio e seções claras. Texto direto, que explica a oferta e ajuda a escolher.',
+    'Clareza acolhedora: benefício, prova e contato em um percurso direto e simples.',
   moderno:
-    'Fundo escuro, linhas finas e espaço entre seções. Texto claro, preciso e tranquilo.',
+    'Sistema preciso: fundo escuro, grade e capítulos espaçados, com voz clara e tranquila.',
   ousado:
-    'Letras grandes, contraste e fotos que ocupam a tela. Texto curto, firme e cheio de energia.',
+    'Impacto gráfico: título como imagem, escala extrema e texto curto e firme.',
   artistico:
-    'Fundo claro, cores suaves e fotos em destaque. Texto próximo, com atenção aos detalhes.',
+    'Narrativa editorial: papel quente, serifas, colagem e texto próximo e cuidadoso.',
+};
+
+/** Paletas de demonstração e ponto de partida; só viram marca quando editadas. */
+export const VIBE_PALETTE: Record<
+  Vibe,
+  { primary: string; secondary: string; highlight: string }
+> = {
+  comercial: {
+    primary: '#1f6feb',
+    secondary: '#dbeafe',
+    highlight: '#b45309',
+  },
+  moderno: {
+    primary: '#111827',
+    secondary: '#1f2937',
+    highlight: '#22d3ee',
+  },
+  ousado: {
+    primary: '#ff3d00',
+    secondary: '#111111',
+    highlight: '#ff3d00',
+  },
+  artistico: {
+    primary: '#8b5e3c',
+    secondary: '#eadbc8',
+    highlight: '#9d174d',
+  },
 };
 
 type Axis = (typeof DESIGN_AXES)[number];
@@ -69,52 +96,67 @@ type Lane = {
   dials: { variance: Range; motion: Range; density: Range };
 };
 
-export const VIBE_LANE: Record<Exclude<Vibe, 'comercial'>, Lane> = {
-  moderno: {
+export const VIBE_LANE: Record<Vibe, Lane> = {
+  comercial: {
     axes: {
-      displayFont: ['sans', 'geometric', 'grotesk'],
-      bodyFont: ['sans', 'geometric', 'humanist', 'source', 'work'],
-      heroComposition: ['editorial', 'split', 'offset'],
-      navigation: ['bar', 'minimal', 'floating'],
-      rhythm: ['chapters', 'continuous'],
-      imageTreatment: ['framed', 'full-bleed'],
-      surfaceStyle: ['outlined', 'layered'],
-      motif: ['none', 'grid'],
+      displayFont: ['humanist', 'slab'],
+      bodyFont: ['humanist', 'source'],
+      heroComposition: ['split', 'cover'],
+      navigation: ['bar'],
+      rhythm: ['alternating', 'compact'],
+      imageTreatment: ['framed'],
+      surfaceStyle: ['flat'],
+      motif: ['none', 'corners'],
     },
     radius: ['sm', 'md'],
+    paper: [0.82, 1],
+    dials: { variance: [2, 5], motion: [2, 4], density: [4, 7] },
+  },
+  moderno: {
+    axes: {
+      displayFont: ['geometric', 'grotesk'],
+      bodyFont: ['sans', 'source'],
+      heroComposition: ['editorial', 'offset'],
+      navigation: ['minimal'],
+      rhythm: ['chapters'],
+      imageTreatment: ['framed'],
+      surfaceStyle: ['outlined'],
+      motif: ['none', 'grid'],
+    },
+    radius: ['sm'],
     paper: [0, 0.12],
     ink: [0.75, 1],
-    dials: { variance: [2, 5], motion: [3, 6], density: [3, 6] },
+    dials: { variance: [3, 5], motion: [3, 5], density: [3, 5] },
   },
   ousado: {
     axes: {
-      displayFont: ['sans', 'geometric', 'condensed', 'expressive', 'grotesk'],
-      bodyFont: ['sans', 'geometric', 'work', 'source'],
-      heroComposition: ['editorial', 'cover', 'poster'],
-      navigation: ['minimal', 'bar'],
-      rhythm: ['chapters', 'continuous'],
-      imageTreatment: ['full-bleed', 'framed'],
-      surfaceStyle: ['flat', 'contrast'],
-      motif: ['none', 'grid', 'stripes'],
+      displayFont: ['condensed', 'expressive'],
+      bodyFont: ['sans', 'work'],
+      heroComposition: ['cover', 'poster'],
+      navigation: ['contrast'],
+      rhythm: ['continuous'],
+      imageTreatment: ['full-bleed'],
+      surfaceStyle: ['contrast'],
+      motif: ['stripes'],
     },
-    radius: ['none', 'sm'],
-    paper: [0.8, 1],
-    dials: { variance: [7, 10], motion: [5, 8], density: [2, 5] },
+    radius: ['none'],
+    paper: [0.86, 1],
+    dials: { variance: [8, 10], motion: [4, 7], density: [2, 4] },
   },
   artistico: {
     axes: {
-      displayFont: ['editorial', 'humanist', 'classic', 'slab'],
-      bodyFont: ['humanist', 'sans', 'editorial', 'literary', 'source', 'work'],
-      heroComposition: ['offset', 'atelier', 'editorial', 'split'],
-      navigation: ['floating', 'minimal', 'bar'],
-      rhythm: ['alternating', 'chapters', 'continuous'],
-      imageTreatment: ['collage', 'framed', 'cutout', 'full-bleed'],
-      surfaceStyle: ['layered', 'flat'],
-      motif: ['rings', 'corners', 'none'],
+      displayFont: ['editorial', 'classic'],
+      bodyFont: ['editorial', 'literary', 'source'],
+      heroComposition: ['offset', 'atelier'],
+      navigation: ['floating'],
+      rhythm: ['alternating'],
+      imageTreatment: ['collage', 'cutout'],
+      surfaceStyle: ['layered'],
+      motif: ['rings', 'corners'],
     },
     radius: ['lg', 'full'],
-    paper: [0.8, 1],
-    dials: { variance: [6, 9], motion: [5, 8], density: [3, 6] },
+    paper: [0.72, 1],
+    dials: { variance: [6, 8], motion: [5, 8], density: [3, 5] },
   },
 };
 
@@ -134,7 +176,6 @@ const AXIS_LABEL: Record<Axis, string> = {
  * aprovada. Serve tanto para o gate de set_design quanto para teste.
  */
 export function laneIssues(vibe: Vibe, input: DesignProfileInput): string[] {
-  if (vibe === 'comercial') return [];
   const lane = VIBE_LANE[vibe];
   const issues: string[] = [];
   for (const axis of DESIGN_AXES) {
@@ -183,19 +224,22 @@ export function laneIssues(vibe: Vibe, input: DesignProfileInput): string[] {
 
 /** Direção que entra no prompt junto com a seção de design. */
 export const VIBE_DIRECTION: Record<Vibe, string> = {
-  comercial: `Vibe comercial: equilíbrio entre prova, explicação e conversão. Alterne seções de texto e foto, mantenha uma seção protagonista com aplicações do negócio e feche com cta.band ou form.lead. Sem excesso de efeito: a hierarquia resolve.`,
+  comercial: `Vibe comercial: percurso direto, acolhedor e orientado à decisão.
+- Use display humanist ou slab com corpo humanist/source; hero split ou cover com benefício, foto documental e CTA visível.
+- Navegação bar, imagem framed e superfície flat. Alterne oferta, aplicações/provas reais, dúvidas e contato; não transforme tudo em cartões.
+- Ícones regulares e semânticos só onde aceleram leitura. Cantos discretos, movimento funcional e hierarquia de conversão clara.`,
   moderno: `Vibe moderno: superfície escura e monocromática, uma cor de acento só, linhas de 1px e muito respiro.
-- paper e surface quase pretos, ink quase branco, radius sm ou md. As cores do cadastro pintam acento, botões e uma única seção colorida.
-- Componha em capítulos: narrative.split layout editorial e feature.numbered layout rail, com intro de título à esquerda e descrição à direita por editorial.text layout columns.
+- paper e surface quase pretos, ink quase branco, radius sm. As cores do cadastro pintam acento, botões e uma única seção colorida.
+- Componha em capítulos com hero editorial ou offset, navegação minimal, narrative.split layout editorial e feature.numbered layout rail. A grade e a linha fina precisam organizar a página inteira.
 - proof.stats layout strip para números; nada de card decorado. Use presentation.edge "line" nas transições e no máximo duas seções com motion "reveal".
 - Fotos de detalhe, produto ou processo, emolduradas. Evite pessoa posando para a câmera.`,
   ousado: `Vibe ousado: tipografia enorme na abertura, muito branco e imagem de borda a borda.
 - Abra com hero.statement layout oversize e headline de até 36 caracteres: a fonte cresce até 11vw e uma frase longa vira quatro linhas.
-- Logo abaixo do statement, use a cena de abertura do plano em media.image layout bleed. O plano gera 16:9 quando o hero do perfil é editorial ou cover, e 4:5 quando é poster: nesse caso use media.image layout portrait ou o próprio hero.split.
+- Use navegação contrast, hero cover ou poster e imagem full-bleed. Logo abaixo do statement, use a cena de abertura do plano em media.image layout bleed. O plano gera 16:9 em cover e 4:5 em poster.
 - media.gallery layout grid ou collage com presentation.width "full"; blocos inteiros em presentation.tone "ink"; cta.band layout poster.
 - Rótulos curtos em caixa alta, cantos retos, nenhuma sombra. Contraste alto e uma cor de acento só.`,
   artistico: `Vibe artístico: papel claro e quente, display serifada e composição editorial com sobreposição.
-- Abra com hero.split layout offset ou atelier, deixando o texto sobrepor a foto. Use legenda nas imagens.
+- Abra com hero.split layout offset ou atelier, navegação floating e tratamento collage/cutout. Deixe o texto sobrepor a foto e use legenda nas imagens.
 - narrative.split layout overlap, editorial.text layout lead com presentation.align "center" nas declarações, faq.accordion layout cards em tom "soft", cta.band layout poster.
 - Escolha motif rings ou corners como elemento-assinatura e realize-o nas props, não só no conceito.
 - As cores do cadastro aparecem como lavagem suave entre seções; mantenha o texto sempre sobre superfície legível.`,

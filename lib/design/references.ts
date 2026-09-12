@@ -149,7 +149,7 @@ export function hasReferenceDirection(
     | { version?: number; referenceDirection?: unknown }
     | undefined;
   return (
-    design?.version === 2 &&
+    (design?.version === 2 || design?.version === 3) &&
     referenceDirectionSchema.safeParse(design.referenceDirection).success
   );
 }
