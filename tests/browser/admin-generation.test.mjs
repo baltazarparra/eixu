@@ -954,7 +954,7 @@ await test(
     await withWorkspace(
       { backend, chat: await chatFixture() },
       async ({ page, errors, click }) => {
-        // O grupo PRÉVIA tem duas cópias no DOM; só uma tem caixa por largura.
+        // A ação principal permanece no cabeçalho em todas as larguras desktop.
         const toggle = async () => {
           for (const handle of await page.$$('.admin-conversation-toggle')) {
             if (await handle.boundingBox()) {
@@ -974,12 +974,28 @@ await test(
             const toggles = [
               ...document.querySelectorAll('.admin-conversation-toggle'),
             ].filter((node) => node.getClientRects().length > 0);
+            const edgeToggle = document.querySelector(
+              '.admin-conversation-edge-toggle',
+            );
+            const headerIdentity = document.querySelector(
+              '.admin-bar-identity',
+            );
             return {
               conversation: width('.admin-conversation'),
               content: width('.admin-content'),
               frame: width('.admin-preview-frame'),
               toggles: toggles.length,
               expanded: toggles[0]?.getAttribute('aria-expanded') ?? null,
+              togglePrimary: toggles[0]?.classList.contains('admin-primary'),
+              toggleBesideBack:
+                toggles[0]?.previousElementSibling?.classList.contains(
+                  'admin-back',
+                ) ?? false,
+              backSecondary:
+                headerIdentity
+                  ?.querySelector('.admin-back')
+                  ?.classList.contains('admin-secondary') ?? false,
+              edgeToggle: Boolean(edgeToggle?.getClientRects().length),
               overflow: document.documentElement.scrollWidth > innerWidth + 1,
             };
           });
@@ -989,8 +1005,18 @@ await test(
           const before = await layout();
           assert.equal(before.toggles, 1, `${width}: um botão visível`);
           assert.equal(before.expanded, 'true');
+          assert.equal(before.togglePrimary, true);
+          assert.equal(before.toggleBesideBack, true);
+          assert.equal(before.backSecondary, true);
+          assert.equal(before.edgeToggle, true);
           assert.ok(before.conversation >= 300, `${width}: conversa aberta`);
           assert.ok(before.content < width);
+          if (width === 1440) {
+            await mkdir('outputs/generation', { recursive: true });
+            await page.screenshot({
+              path: 'outputs/generation/conversa-aberta-1440.png',
+            });
+          }
 
           await toggle();
           await page.waitForFunction(
@@ -1007,6 +1033,7 @@ await test(
           );
           assert.ok(after.frame > before.frame, `${width}: iframe cresceu`);
           assert.equal(after.expanded, 'false');
+          assert.equal(after.edgeToggle, false);
           assert.equal(after.overflow, false);
           assert.equal(
             await page.$eval(
@@ -1028,11 +1055,22 @@ await test(
             { timeout: 2000 },
           );
           assert.equal((await layout()).expanded, 'true');
+          assert.equal((await layout()).edgeToggle, true);
         }
+
+        await page.$eval('.admin-conversation-edge-toggle', (node) =>
+          node.click(),
+        );
+        await page.waitForFunction(
+          () =>
+            document.querySelector('.admin-conversation').getClientRects()
+              .length === 0,
+          { timeout: 2000 },
+        );
+        assert.equal((await layout()).expanded, 'false');
 
         // Recolhida no desktop, a conversa continua alcançável no celular,
         // onde as vistas alternam e o botão não existe.
-        await toggle();
         await page.setViewport({ width: 390, height: 844 });
         assert.equal((await layout()).toggles, 0);
         await click('Conversa');

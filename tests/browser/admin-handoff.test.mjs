@@ -308,7 +308,7 @@ await test(
             // slots e o botão de sair; o grupo de decisão entra pelos filhos.
             const items = [
               ...bar.querySelectorAll(
-                ':scope > *:not(.admin-bar-slot):not(.admin-bar-decide), .admin-bar-decide > *:not(.admin-bar-slot), .admin-bar-slot > *',
+                ':scope > *:not(.admin-bar-slot):not(.admin-bar-decide), .admin-bar-decide > *:not(.admin-bar-slot), :scope > .admin-bar-slot > *',
               ),
             ]
               .filter((node) => node.getClientRects().length > 0)
@@ -330,11 +330,44 @@ await test(
             const pickers = [
               ...document.querySelectorAll('.admin-bar-page'),
             ].filter((node) => node.getClientRects().length > 0).length;
-            return { height: Math.round(box.height), inside, overlap, pickers };
+            const back = bar
+              .querySelector('.admin-back')
+              ?.getBoundingClientRect();
+            const conversationNode = bar.querySelector(
+              '.admin-conversation-toggle',
+            );
+            const conversation = conversationNode?.getClientRects().length
+              ? conversationNode.getBoundingClientRect()
+              : null;
+            const conversationBesideBack =
+              !conversation ||
+              (!!back &&
+                conversation.left >= back.right &&
+                conversation.left - back.right <= 13);
+            return {
+              height: Math.round(box.height),
+              inside,
+              overlap,
+              pickers,
+              conversationBesideBack,
+            };
           });
           assert.equal(bar.inside, true, `Barra sem estouro em ${width}`);
-          assert.equal(bar.overlap, false, `Barra sem sobreposição em ${width}`);
-          assert.equal(bar.pickers, 1, `Um seletor de página visível em ${width}`);
+          assert.equal(
+            bar.overlap,
+            false,
+            `Barra sem sobreposição em ${width}`,
+          );
+          assert.equal(
+            bar.pickers,
+            1,
+            `Um seletor de página visível em ${width}`,
+          );
+          assert.equal(
+            bar.conversationBesideBack,
+            true,
+            `Conversa ao lado de Voltar em ${width}`,
+          );
           // 64 px com o grupo da prévia; 52 px sem a linha do domínio.
           if (width >= 1520) assert.equal(bar.height, 64);
           else if (width >= 1280) assert.equal(bar.height, 64);
