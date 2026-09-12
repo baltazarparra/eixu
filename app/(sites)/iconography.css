@@ -4,6 +4,7 @@
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
+  line-height: 1;
   vertical-align: -0.16em;
   color: inherit;
   --icon-duration: 260ms;
@@ -59,22 +60,25 @@
   justify-content: center;
   gap: 0.65rem;
 }
-.site-theme
-  :is(.site-hero-bullets li, .site-plan-feature, .site-location-tabs button) {
+.site-theme :is(.site-hero-bullets li, .site-plan-feature) {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 0.6rem;
 }
-.site-theme .site-eyebrow > .site-icon {
-  margin-inline-end: 0.5rem;
+.site-theme :is(.site-hero-bullets li, .site-plan-feature) > .site-icon {
+  margin-block-start: 0.25em;
 }
-.site-theme .site-icon-heading {
+.site-theme .site-item-heading {
   display: flex;
-  align-items: baseline;
-  gap: 0.6em;
+  align-items: flex-start;
+  gap: 0.5em;
 }
-.site-theme .site-icon-heading > .site-icon {
-  font-size: 0.65em;
+.site-theme .site-item-heading > .site-icon {
+  font-size: 0.95em;
+  margin-block-start: 0.12em;
+}
+.site-theme .site-item-heading > :is(span:not(.site-icon), a) {
+  min-width: 0;
 }
 .site-theme .site-faq-summary > .site-icon {
   border-radius: 50%;

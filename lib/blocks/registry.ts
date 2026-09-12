@@ -29,7 +29,7 @@ const icon = z
   .enum(ICON_NAMES)
   .optional()
   .describe(
-    'Símbolo relacionado ao assunto; o peso e o movimento vêm da vibe. Não substitui foto nem comprova certificação.',
+    'Opcional: omita quando texto ou foto já bastam. Use apenas para distinguir o assunto, evitando símbolos repetidos na lista e nas seções vizinhas. Sem icon, o item não recebe símbolo padrão. Peso e movimento vêm da vibe; não comprova certificação.',
   );
 
 const anchor = z

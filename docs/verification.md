@@ -102,6 +102,39 @@ e crítico foi exercitada com mocks e com os pixels reais; a chamada real ao
 crítico em modo `derivar` não foi executada nesta sessão. Os logos já
 aplicados não têm medição até serem reaplicados.
 
+## Proporção e repetição de ícones, 12/09/2026
+
+Os exemplos do operador mostravam livro e câmera de 20 px isolados ao lado de
+títulos grandes. O renderer deixou de inserir esses adornos, assim como os
+símbolos padrão em rótulos, estatísticas, fatos, etapas e legendas. Ícones
+escolhidos para itens ficam junto do título e acompanham sua escala; bento e
+recursos priorizam a foto. Abas preservam a seleção sem setas de link. O
+[contrato de design](design.md#tipografia-e-iconografia-por-vibe) também orienta
+a geração e registra o aviso não bloqueante `icones-repetidos`.
+
+Verificação local:
+
+- Tipos, lint global, formatação dos arquivos alterados e `git diff --check`
+  passaram. `npm run build:vercel` passou, incluindo os três checks de captura
+  serverless.
+- `npm run test:sites` com Chrome: 138 casos passaram, sem pulos. A suíte
+  admin passou em 137 casos; sete integrações foram puladas por ausência dos
+  recursos locais configurados para esses testes.
+- O navegador passou nos oito casos do sistema visual: quatro vibes, fontes
+  reais, texto sem JavaScript, abas e FAQ por teclado, foco e movimento
+  reduzido. Foram medidas 20 combinações de vibe e largura, em 320, 390, 768,
+  1440 e 1920 px, sem overflow. Os símbolos dos itens mediram aproximadamente
+  0,95 da fonte do título, com distância de 0,5 da fonte e alinhamento na
+  primeira linha. Títulos editoriais e de galeria ficaram sem ícones.
+- As capturas de texto, galeria e serviços foram inspecionadas em desktop e
+  celular. Capturas e medições ficam em `outputs/iconography/verified/`, fora
+  do Git. O teste aguarda dois frames após redimensionar antes de medir a
+  tipografia fluida.
+- O smoke com `next start` e agent-browser confirmou o institucional e o
+  formulário de login. Não houve envio de formulário, acesso ao banco,
+  geração paga nem publicação de páginas de clientes. O efeito da nova
+  orientação em uma geração real do modelo não foi avaliado.
+
 ## Edições pontuais pelo chat, 12/09/2026
 
 O [contrato de edição](chat-edits.md) reúne alterações por página em

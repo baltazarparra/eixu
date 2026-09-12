@@ -515,14 +515,27 @@ em cada página. O navegador busca apenas as famílias e estilos efetivamente us
 `lib/blocks/icon.tsx` usa [Phosphor](https://github.com/phosphor-icons/react)
 com imports individuais compatíveis com SSR e 26 símbolos semânticos. O campo
 opcional `icon` nos itens de serviços, bento, narrativa, explorer e recursos é
-validado por enum. Sem esse campo, o bloco mantém um símbolo neutro adequado
-à sua função. Ícones não substituem fotos nem sustentam alegações comerciais.
+validado por enum. Sem esse campo, o item usa apenas texto, sem símbolo padrão
+nem espaço reservado. Em bento e recursos, a foto tem prioridade sobre o ícone.
+Ícones não substituem fotos nem sustentam alegações comerciais.
 O renderer fornece a vibe resolvida no servidor; blocos não escolhem um peso
 arbitrário nem fornecem SVG ou URLs de ícones.
 
-Ações, menus, FAQs, abas, formulários, etapas, provas, conteúdos, rotas e
-contatos compartilham o sistema. Blocos de foto sem título/legenda continuam
-priorizando a imagem. Ícones são decorativos junto do texto, saem visíveis no
+Títulos de seção, rótulos, estatísticas, fatos, números de etapas e legendas
+não recebem ícones automáticos. Os símbolos escolhidos para itens de serviços,
+bento e narrativa ficam junto do título, com escala em `em`, distância de
+`0.5em` e alinhamento na primeira linha quando o texto quebra. O tamanho
+explícito continua disponível para controles e símbolos em destaque.
+
+Abas do explorer exibem só o símbolo escolhido e o título, sem seta de link;
+seus fatos usam marcadores de lista. Abas de endereço usam o nome da unidade.
+Menus, FAQs, formulários, ações e contatos mantêm os sinais funcionais.
+O pre-flight avisa sobre símbolos de conteúdo repetidos na página, inclusive
+entre blocos; não conta setas, checks ou outros sinais inseridos pelos controles.
+O aviso não altera escolhas salvas nem bloqueia publicação. O prompt orienta
+a omitir ícones dispensáveis, sem variar símbolos por decoração.
+
+Ícones são decorativos junto do texto, saem visíveis no
 SSR e não criam focos adicionais. Hover, foco visível, toque e estado aberto
 têm respostas em `iconography.css`; badges entram uma vez pelo `SiteMotion`,
 quando o dial permite. Não há animação infinita. Movimento reduzido desativa

@@ -18,6 +18,7 @@ const { designProfileInputSchema, completeDesignProfile } = await jiti.import(
 const { laneIssues, VIBE_LANE } = await jiti.import('../lib/design/vibes.ts');
 const { themeVars } = await jiti.import('../lib/blocks/theme.ts');
 const { blockSchemas } = await jiti.import('../lib/blocks/registry.ts');
+const { lintPage } = await jiti.import('../lib/taste/lint.ts');
 const { VisualSystemFixture, visualBlocks, visualTenant } = await jiti.import(
   './browser/fixtures/visual-system.tsx',
 );
@@ -106,6 +107,7 @@ await test('ícone passa pelo schema e pelo renderer em cada variante, sem aceit
     'feature.numbered',
     'feature.bento',
     'feature.explorer',
+    'narrative.split',
     'editorial.resources',
   ]) {
     const block = visualBlocks.find((block) => block.type === type);
@@ -138,4 +140,97 @@ await test('ícone passa pelo schema e pelo renderer em cada variante, sem aceit
     assert.equal(invalid.success, false);
     assert.equal(blockSchemas[type].safeParse(block.props).success, true);
   }
+});
+
+await test('omitir icon mantém conteúdo e ações sem acrescentar símbolos ou molduras vazias', () => {
+  const blocks = visualBlocks.map((block) => ({
+    ...block,
+    props: {
+      ...block.props,
+      ...(Array.isArray(block.props.items)
+        ? {
+            items: block.props.items.map(({ icon: _icon, ...item }) => item),
+          }
+        : {}),
+    },
+  }));
+  const html = renderToStaticMarkup(
+    createElement(VisualSystemFixture, { blocks }),
+  );
+  assert.doesNotMatch(html, /data-icon="(?:book|camera|compass|layers|route)"/);
+  assert.doesNotMatch(html, /site-resource-symbol|site-icon-heading/);
+  assert.match(html, /Ambientes desenhados para aprender/);
+  assert.match(html, /data-icon="plus"/);
+  assert.match(html, /data-icon="arrow-up-right"/);
+});
+
+await test('pre-flight avisa sobre repetição no conteúdo, preservando controles e prioridade da foto', () => {
+  const service = visualBlocks.find(
+    (block) => block.type === 'feature.numbered',
+  );
+  const bento = visualBlocks.find((block) => block.type === 'feature.bento');
+  const page = (blocks) => ({
+    blocks,
+    type: 'page',
+    title: 'Estudo',
+    seo: {},
+  });
+  const repeated = {
+    ...service,
+    props: {
+      ...service.props,
+      items: service.props.items.map((item) => ({ ...item, icon: 'leaf' })),
+    },
+  };
+  const warning = lintPage(page([repeated])).filter(
+    (finding) => finding.rule === 'icones-repetidos',
+  );
+  assert.equal(warning.length, 1);
+  assert.equal(warning[0].level, 'warn');
+  assert.match(warning[0].message, /3 itens/);
+
+  const adjacent = {
+    ...bento,
+    props: {
+      ...bento.props,
+      items: bento.props.items.map((item, index) => ({
+        ...item,
+        icon: index ? 'tools' : 'leaf',
+      })),
+    },
+  };
+  assert.ok(
+    lintPage(page([service, adjacent])).some(
+      (finding) => finding.rule === 'icones-repetidos',
+    ),
+  );
+  const withPhoto = {
+    ...adjacent,
+    props: {
+      ...adjacent.props,
+      items: adjacent.props.items.map((item) => ({
+        ...item,
+        image: 'https://assets.test/one.svg',
+      })),
+    },
+  };
+  assert.equal(
+    lintPage(page([service, withPhoto])).some(
+      (finding) => finding.rule === 'icones-repetidos',
+    ),
+    false,
+  );
+  const html = renderToStaticMarkup(
+    createElement(VisualSystemFixture, { blocks: [withPhoto] }),
+  );
+  assert.doesNotMatch(html, /data-icon=/);
+  const controls = visualBlocks.filter((block) =>
+    ['faq.accordion', 'pricing.table', 'form.lead'].includes(block.type),
+  );
+  assert.equal(
+    lintPage(page(controls)).some(
+      (finding) => finding.rule === 'icones-repetidos',
+    ),
+    false,
+  );
 });

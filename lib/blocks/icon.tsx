@@ -60,7 +60,7 @@ const icons = {
 export function SiteIcon({
   name,
   vibe = 'comercial',
-  size = 20,
+  size,
   badge = false,
   className = '',
 }: {
@@ -82,7 +82,7 @@ export function SiteIcon({
     >
       <Icon
         className="site-icon-svg"
-        size={size}
+        size={size ?? '1em'}
         weight={style.weight}
         focusable="false"
       />
