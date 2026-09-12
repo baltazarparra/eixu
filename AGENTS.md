@@ -60,9 +60,10 @@ reparo ou verificação. Não confunda esse modelo com o selecionado no editor.
 
 O chat e os runners compartilham `lib/ai/agent.ts`. Preserve metadados/assinaturas
 do histórico recente e o loop ativo do SDK. A revisão usa pixels como entrada
-multimodal do crítico, nunca base64 como texto de ferramenta. Só revisão completa
-do rascunho atual encerra a geração; falha de captura, limite ou recibo antigo são
-pendências. Não afrouxe esses controles para obter um resultado verde.
+multimodal do crítico, nunca base64 como texto de ferramenta. Conferir executa uma única passagem por geração. Falha de captura/crítica ou
+limite encerra a tentativa e entrega o rascunho com revisão pendente, sem repetir
+rodadas. A entrega não concede certificado visual: somente revisão completa do
+rascunho atual comprova essa conferência. Preserve erros e gates de publicação.
 
 ## Invariantes do produto
 

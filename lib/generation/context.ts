@@ -4,7 +4,6 @@ import {
   scenePlanText,
   sceneText,
 } from '@/lib/images/scene-plan';
-import { REVIEW_ROUNDS } from '@/lib/generation/marker';
 import { plannedScenes } from '@/lib/sites/generation';
 import { generatedPhotos } from '@/lib/taste/metrics';
 import type { Phase } from '@/lib/taste/phases';
@@ -91,24 +90,14 @@ export function scenesContext(tenant: Tenant, images: TenantImage[]) {
 }
 
 /**
- * Última leitura registrada. Em uma rodada seguinte, o cabeçalho diz de onde
- * o turno começa e quais pendências precisam de uma nova conferência.
+ * Última leitura registrada e limite da única passagem de conferência.
  */
-export function reviewContext(tenant: Tenant, round = 0): string {
+export function reviewContext(tenant: Tenant): string {
   const receipt = JSON.stringify(
     (tenant.brief.generation as { review?: unknown } | undefined)?.review ??
       null,
   );
-  if (round < 1) return receipt;
-  const continuation =
-    round < REVIEW_ROUNDS
-      ? 'Se ainda houver pendências e trabalho salvo, a geração pode abrir outra rodada automaticamente.'
-      : 'Esta é a última rodada desta execução. Se restarem pendências, informe o que falta sem prometer continuação automática.';
-  const previous =
-    round > 1
-      ? 'A anterior terminou sem conferência limpa. Comece por review_pages no rascunho atual e priorize os erros. '
-      : '';
-  return `Rodada ${round} de ${REVIEW_ROUNDS} da revisão. ${previous}${continuation} Última leitura registrada:\n${receipt}`;
+  return `Conferência única nesta geração. Comece por review_pages no rascunho atual. Indisponibilidade visual encerra a tentativa com pendência, sem editar por esse motivo nem abrir outra rodada automática. Última leitura registrada:\n${receipt}`;
 }
 
 /** Instruções completas de uma fase, prontas para o agente. */
@@ -117,8 +106,6 @@ export function phaseInstructions(input: {
   pages: Page[];
   images: TenantImage[];
   phase: Phase;
-  /** Rodada da revisão, quando a fase repete para conferir o rascunho atual. */
-  round?: number;
   page?: string;
   extra?: Partial<PromptContext>;
 }): string {
@@ -126,7 +113,7 @@ export function phaseInstructions(input: {
   const context: PromptContext = {
     phase,
     sources: sourcesText(tenant),
-    review: reviewContext(tenant, input.round ?? 0),
+    review: phase === 'revisao' ? reviewContext(tenant) : undefined,
     ...(phase === 'cenas' ? scenesContext(tenant, images) : {}),
     ...input.extra,
   };

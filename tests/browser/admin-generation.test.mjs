@@ -95,12 +95,12 @@ function generationServer(overrides = {}) {
         firstPhase === 'cenas' ? 'prepare_site_images' : 'read_reference',
       );
     },
-    finish() {
+    finish(reviewComplete = true) {
       site.generation = {
         ...site.generation,
         next: 'pronto',
         coveredScenes: 5,
-        reviewComplete: true,
+        reviewComplete,
       };
       add('phase_end', '5 de 5 cenas disponíveis');
       run = { ...run, status: 'done', finishedAt: serverTime() };
@@ -380,7 +380,9 @@ await test(
         );
         await mkdir('outputs/generation', { recursive: true });
         await new Promise((resolve) => setTimeout(resolve, 1200));
-        await page.screenshot({ path: 'outputs/generation/previa-diamante.png' });
+        await page.screenshot({
+          path: 'outputs/generation/previa-diamante.png',
+        });
 
         // Uma edição com a mesma quantidade de blocos precisa chegar ao iframe.
         backend.site.pages = [
@@ -415,7 +417,10 @@ await test(
         );
         assert.equal(counters.preview, beforePreview + 1);
         // Com página e execução viva, o indicador compacto segue na barra.
-        assert.equal(await page.$('.admin-preview-loader:not([data-compact])'), null);
+        assert.equal(
+          await page.$('.admin-preview-loader:not([data-compact])'),
+          null,
+        );
         assert.ok(await page.$('.admin-preview-loader[data-compact]'));
         await new Promise((resolve) => setTimeout(resolve, 3400));
         assert.equal(
@@ -852,6 +857,76 @@ await test(
             true,
           );
         }
+        assert.deepEqual(errors, []);
+      },
+    );
+  },
+);
+
+await test(
+  'conferência indisponível entrega o site, libera o chat e não reinicia após recarga',
+  { skip: !process.env.EIXU_CHROME_PATH },
+  async () => {
+    const backend = generationServer({
+      generation: { next: 'revisao', organicPages: 3 },
+      pages: ['', 'servicos', 'contato'].map((slug) => ({
+        slug,
+        type: 'page',
+        title: slug || 'Início',
+        blocks: 6,
+        published: false,
+        dirty: true,
+        errors: [],
+        warnings: [],
+      })),
+    });
+    backend.start();
+    await withWorkspace(
+      { backend, chat: await chatFixture() },
+      async ({ page, errors, click }) => {
+        await page.waitForFunction(() =>
+          document.body.innerText.includes('Etapa 3 de 3'),
+        );
+        backend.add('tool_end', 'Crítica visual indisponível', 'review_pages');
+        backend.finish(false);
+        await page.waitForFunction(() =>
+          document.body.innerText.includes('Site gerado com revisão pendente'),
+        );
+        for (const width of [1440, 390]) {
+          await page.setViewport({ width, height: 900 });
+          await page.reload({ waitUntil: 'networkidle0' });
+          if (width < 1024) await click('Conversa');
+          await page.waitForFunction(() =>
+            document.body.innerText.includes(
+              'Site gerado com revisão pendente',
+            ),
+          );
+          const buttons = await page.$$eval('button', (nodes) =>
+            nodes.map((node) => node.textContent.trim()),
+          );
+          assert.equal(buttons.includes('Tentar novamente'), false);
+          assert.equal(buttons.includes('Continuar'), false);
+          assert.equal(
+            await page.$eval('textarea', (node) => node.disabled),
+            false,
+          );
+          assert.ok(await page.$('iframe[src*="/s/stream-fixture/"]'));
+          assert.equal(await page.$('.admin-preview-loader'), null);
+          assert.equal(
+            await page.$eval('.admin-run-status', (node) => node.dataset.tone),
+            'warn',
+          );
+          assert.equal(
+            await page.$eval('.admin-run-name', (node) => node.textContent),
+            'Geração concluída',
+          );
+          await mkdir('outputs/generation', { recursive: true });
+          await page.screenshot({
+            path: `outputs/generation/entrega-revisao-pendente-${width}.png`,
+            fullPage: true,
+          });
+        }
+        assert.equal(backend.starts(), 1);
         assert.deepEqual(errors, []);
       },
     );

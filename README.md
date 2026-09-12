@@ -4,7 +4,7 @@ Site institucional da EIXU e MVP de uma plataforma operada por agentes para cria
 
 ## Qualidade dos agentes
 
-O modelo interno é **Gemini 3.8 Flash**, com raciocínio `high`. O harness prioriza qualidade: plano editorial por página, contexto recente preservado, composição com espaço para reparo e revisão das capturas em desktop/mobile. Uma revisão incompleta ou anterior à última alteração não encerra a geração. [SOUL.md](SOUL.md) define a identidade e entra no prompt; [harness](docs/harness.md) explica políticas, limites e avaliações.
+O modelo interno é **Gemini 3.8 Flash**, com raciocínio `high`. O harness prioriza qualidade: plano editorial por página, contexto recente preservado, composição com espaço para reparo e revisão das capturas em desktop/mobile. Conferir roda uma única vez: indisponibilidade ou limite entrega o rascunho com revisão pendente, sem novas rodadas automáticas. Entrega e aprovação visual são estados distintos; os erros de publicação continuam valendo. [SOUL.md](SOUL.md) define a identidade e entra no prompt; [harness](docs/harness.md) explica políticas, limites e avaliações.
 
 ## O que já existe
 

@@ -294,15 +294,29 @@ await test('recibo conta cenas só antes da composição e não chama site pront
   return loadModule('lib/ai/chat-progress.ts').then(
     ({ savedProgressMessage }) => {
       const scenes = savedProgressMessage({
-        generation: { next: 'cenas', coveredScenes: 2, targetScenes: 6, photos: 2 },
+        generation: {
+          next: 'cenas',
+          coveredScenes: 2,
+          targetScenes: 6,
+          photos: 2,
+        },
         pages: [],
       });
       assert.match(scenes, /^Progresso salvo: 2 de 6 cenas e 0 páginas\./);
       const done = savedProgressMessage({
-        generation: { next: 'pronto', coveredScenes: 3, targetScenes: 6, photos: 9 },
+        generation: {
+          next: 'pronto',
+          coveredScenes: 3,
+          targetScenes: 6,
+          photos: 9,
+          reviewComplete: true,
+        },
         pages: [1, 2, 3, 4, 5],
       });
-      assert.match(done, /^Progresso salvo: 5 páginas e 9 fotos na biblioteca\./);
+      assert.match(
+        done,
+        /^Progresso salvo: 5 páginas e 9 fotos na biblioteca\./,
+      );
       assert.match(done, /concluída sem erros/);
       assert.doesNotMatch(done, /3 de 6|Use Continuar/);
     },

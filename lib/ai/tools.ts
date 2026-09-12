@@ -808,7 +808,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
       execute: safe(async ({ pages: requestedPages }) => {
         if (reviewRounds >= REVIEW_CALLS_PER_TURN)
           throw new ToolError(
-            `${REVIEW_CALLS_PER_TURN} leituras neste turno. Informe as pendências e encerre o turno; uma nova rodada precisa partir do rascunho atual.`,
+            `${REVIEW_CALLS_PER_TURN} leituras neste turno. Informe as pendências e encerre; não há outra rodada automática. Uma nova revisão depende de pedido do operador.`,
           );
         reviewRounds += 1;
         const [pages, images, reviewedTenant] = await Promise.all([

@@ -17,12 +17,8 @@ import {
   type GenerationRun,
 } from '@/lib/generation/runs';
 import { phaseBlocker, phaseInstructions } from '@/lib/generation/context';
-import {
-  progressMarker,
-  reviewRound,
-  stalled,
-  REVIEW_ROUNDS,
-} from '@/lib/generation/marker';
+import { progressMarker, stalled } from '@/lib/generation/marker';
+import type { GenerationDelivery } from '@/lib/generation/delivery';
 import { listImages } from '@/lib/images/queries';
 import {
   currentReview,
@@ -41,9 +37,9 @@ import {
 import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
 import type { Tenant } from '@/lib/types';
 
-/** Teto de fases-passo encadeadas. Cenas e revisão repetem a mesma fase. */
+/** Teto de fases-passo encadeadas. Cenas podem precisar de lotes adicionais. */
 export const MAX_HOPS = 14;
-export const GENERATION_FLOW_VERSION = 'admin-v2';
+export const GENERATION_FLOW_VERSION = 'admin-v3-single-review';
 
 /** Quanto o runner espera entre consultas ao pedido de pausa. */
 const STOP_POLL_MS = 5_000;
@@ -133,23 +129,7 @@ function reviewTurnSummary(
 
 /** Uma etapa que repete a anterior sem produzir nada para de verdade. */
 function stallMessage(phase: Phase): string {
-  return phase === 'revisao'
-    ? 'A revisão terminou sem alterar o rascunho nem registrar leitura. Leia a última resposta no chat e ajuste por lá, ou use Tentar novamente.'
-    : `A etapa "${PHASE_LABEL[phase]}" não avançou. Leia a última resposta no chat e continue de lá.`;
-}
-
-/** Teto de rodadas: a revisão não fecha sozinha e o operador decide o resto. */
-function reviewCapMessage(
-  blockingErrors: number,
-  review: ReviewReceipt | null,
-): string {
-  const errors = Math.max(blockingErrors, review?.errors ?? 0);
-  const situation = !review
-    ? 'a conferência do rascunho atual não completou'
-    : !review.complete || review.visual !== 'complete'
-      ? 'a captura ou a crítica visual não completou; confira a prévia autenticada'
-      : `${errors} pendência(s) continuam`;
-  return `A revisão não fechou em ${REVIEW_ROUNDS} rodadas: ${situation}. Leia a última resposta no chat, ajuste por lá ou use Tentar novamente para abrir novas rodadas.`;
+  return `A etapa "${PHASE_LABEL[phase]}" não avançou. Leia a última resposta no chat e continue de lá.`;
 }
 
 /** O SDK aborta o turno com este erro ao estourar o tempo total. */
@@ -190,6 +170,36 @@ export async function markPhase(tenantId: string, phase: Phase): Promise<void> {
         updated_at = now()
     where id = ${tenantId}
   `;
+}
+
+/** Guarda a entrega sem sobrescrever o recibo visual, a fase ou suas pendências. */
+async function markDelivered(
+  tenant: Tenant,
+  fingerprint: string,
+): Promise<Tenant> {
+  const delivery: GenerationDelivery = {
+    fingerprint,
+    completedAt: new Date().toISOString(),
+  };
+  await db()`
+    update tenants
+    set brief = jsonb_set(
+          coalesce(brief, '{}'::jsonb), '{generation}',
+          coalesce(brief -> 'generation', '{}'::jsonb)
+            || ${JSON.stringify({ delivery })}::jsonb, true
+        ), updated_at = now()
+    where id = ${tenant.id}
+  `;
+  return {
+    ...tenant,
+    brief: {
+      ...tenant.brief,
+      generation: {
+        ...(tenant.brief.generation as Record<string, unknown> | undefined),
+        delivery,
+      },
+    },
+  };
 }
 
 /**
@@ -243,29 +253,24 @@ function outcomeLabel(
 
 /**
  * Decide o fim do turno pelo estado gravado. Uma fase que repete a si mesma só
- * continua quando o marcador mostra trabalho novo; a revisão ainda respeita o
- * teto de rodadas, porque o operador precisa entrar em algum momento.
+ * continua quando o marcador mostra trabalho novo. Conferir termina nesta
+ * passagem, mantendo a revisão pendente quando não há certificado atual.
  */
 function settleOutcome(input: {
   phase: Phase;
   marker: string;
   state: ReturnType<typeof generationState>;
   fingerprint: string;
-  review: ReviewReceipt | null;
   stopRequested: boolean;
 }): StepOutcome {
   const { phase, marker, state, fingerprint, stopRequested } = input;
   if (stopRequested) return { kind: 'paused' };
   if (state.next === 'pronto') return { kind: 'done' };
+  if (phase === 'revisao') return { kind: 'done' };
   if (state.next !== phase) return { kind: 'continue', phase: state.next };
   const next = progressMarker(phase, state, fingerprint, marker);
   if (stalled(marker, next))
     return { kind: 'failed', error: stallMessage(phase) };
-  if (reviewRound(next) > REVIEW_ROUNDS)
-    return {
-      kind: 'failed',
-      error: reviewCapMessage(state.blockingErrors, input.review),
-    };
   return { kind: 'continue', phase };
 }
 
@@ -294,24 +299,17 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
   const blocker = phaseBlocker(phase, tenant, pages);
   if (blocker) return { kind: 'failed', error: blocker };
 
-  // Cenas e revisão repetem o nome da fase: o marcador carrega a cobertura ou
-  // a leitura e a assinatura do rascunho, para distinguir avanço real de
-  // etapa parada. A revisão observa, corrige e confere; ler o nome da fase
-  // como repetição encerrava a geração logo depois do primeiro turno dela.
+  // O marcador legado continua legível ao retomar execuções anteriores.
+  // Conferir tem uma passagem por execução, sem abrir novas rodadas.
   const progress = progressMarker(
     phase,
     state,
     reviewFingerprint(tenant, pages, images),
     run.progress,
   );
-  const round = reviewRound(progress);
-  const stop = stalled(run.progress, progress)
-    ? stallMessage(phase)
-    : round > REVIEW_ROUNDS
-      ? reviewCapMessage(
-          state.blockingErrors,
-          currentReview(tenant, pages, images),
-        )
+  const stop =
+    phase !== 'revisao' && stalled(run.progress, progress)
+      ? stallMessage(phase)
       : null;
   if (stop) {
     // Sem este registro, a parada aparecia só no cabeçalho do painel: a linha
@@ -342,11 +340,8 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
     tenantId: tenant.id,
     phase,
     kind: 'phase_start',
-    label: round
-      ? `${PHASE_LABEL[phase]} · rodada ${round} de ${REVIEW_ROUNDS}`
-      : PHASE_LABEL[phase],
+    label: PHASE_LABEL[phase],
     payload: {
-      ...(round ? { round } : {}),
       flowVersion: GENERATION_FLOW_VERSION,
       harnessVersion: HARNESS_VERSION,
       deployment: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
@@ -387,6 +382,7 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
   const startedAt = Date.now();
   let steps = 0;
   let timedOut = false;
+  let reviewFailed = false;
   let spoken = '';
   let toolResults: ReviewToolResult[] = [];
   let usage: Record<string, unknown> | undefined;
@@ -493,7 +489,6 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
           pages,
           images,
           phase,
-          round,
         }),
       });
       const result = await agent.generate({
@@ -565,7 +560,17 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
     });
     // Tempo esgotado não apaga o que as ferramentas já salvaram: o turno
     // termina como qualquer outro e o progresso decide a continuação.
-    if (!isTimeout(error)) {
+    if (phase === 'revisao') {
+      reviewFailed = true;
+      await recordEvent({
+        runId: run.id,
+        tenantId: tenant.id,
+        phase,
+        kind: 'note',
+        label:
+          'Conferência indisponível. O rascunho será entregue com revisão pendente.',
+      });
+    } else if (!isTimeout(error)) {
       await recordEvent({
         runId: run.id,
         tenantId: tenant.id,
@@ -576,7 +581,7 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
       });
       return { kind: 'failed', error: message };
     }
-    timedOut = true;
+    timedOut = isTimeout(error);
   } finally {
     clearInterval(watcher);
   }
@@ -585,8 +590,15 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
     listPages(tenant.id),
     listImages(tenant.id),
   ]);
-  const fresh = (await getTenantBySlug(slug)) ?? tenant;
-  const after = generationState(fresh, freshPages, freshImages);
+  let fresh = (await getTenantBySlug(slug)) ?? tenant;
+  let after = generationState(fresh, freshPages, freshImages);
+  if (!stopRequested && phase === 'revisao') {
+    fresh = await markDelivered(
+      fresh,
+      reviewFingerprint(fresh, freshPages, freshImages),
+    );
+    after = generationState(fresh, freshPages, freshImages);
+  }
   const review = currentReview(fresh, freshPages, freshImages);
   // A próxima fase é decidida aqui, não no salto seguinte: assim o recibo do
   // chat e o motivo no painel contam a mesma história, e uma etapa que não
@@ -596,7 +608,6 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
     marker: progress,
     state: after,
     fingerprint: reviewFingerprint(fresh, freshPages, freshImages),
-    review,
     stopRequested,
   });
   const silent = !spoken;
@@ -612,6 +623,7 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
       ? `Este turno atingiu o limite de passos. ${receipt}`
       : receipt;
   const needsReceipt =
+    phase === 'revisao' ||
     timedOut ||
     steps >= PHASE_STEPS[phase] ||
     outcome.kind === 'failed' ||
@@ -635,6 +647,8 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
       next: after.next,
       ...(usage ? { usage } : {}),
       ...(timedOut ? { timeout: true } : {}),
+      ...(reviewFailed ? { reviewFailed: true } : {}),
+      ...(phase === 'revisao' ? { reviewComplete: after.reviewComplete } : {}),
       flowVersion: GENERATION_FLOW_VERSION,
       stopReason: outcome.kind,
       ...(sceneBatch

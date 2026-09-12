@@ -1,5 +1,6 @@
 import { isDesignProfile } from '@/lib/design/profile';
 import { currentReview } from '@/lib/review/state';
+import { currentDelivery } from '@/lib/generation/delivery';
 import {
   plannedSceneInputSchema,
   scenePlan,
@@ -108,6 +109,7 @@ export function generationState(
       organicPages: organic.length,
       blockingErrors,
       reviewRounds,
+      delivered: Boolean(currentDelivery(tenant, pages, images)),
       reviewComplete:
         review?.complete === true &&
         review.visual === 'complete' &&

@@ -5,7 +5,7 @@ import {
   PHASE_TOOLS,
   compositionReadyForReview,
   reviewConferenceDue,
-  reviewReadyToFinish,
+  reviewTurnFinished,
   type Phase,
 } from '../taste/phases';
 import { modelSettings, productModel, TURN_TIMEOUT_MS } from './models';
@@ -45,7 +45,7 @@ export function siteAgent(input: {
       ({ steps }) =>
         phase === 'composicao' &&
         compositionReadyForReview(steps.at(-1)?.toolResults ?? []),
-      ({ steps }) => phase === 'revisao' && reviewReadyToFinish(steps),
+      ({ steps }) => phase === 'revisao' && reviewTurnFinished(steps),
     ],
     prepareStep: ({ stepNumber, steps }) =>
       phase === 'revisao' && reviewConferenceDue(steps, stepNumber)
