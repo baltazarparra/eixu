@@ -66,7 +66,10 @@ A escrita tem um [contrato por vibe](copy.md), com linguagem simples em comum.
 e ao crítico. `lintPage` verifica rótulos de ação e aponta vocabulário/frases
 para revisão; o crítico julga compreensão e voz com textos completos, sinais e
 pixels. Erro material de linguagem impede a conclusão automática. A versão
-`gemini-3.8-quality-v2-copy` invalida recibos anteriores a esse critério.
+`gemini-3.8-quality-v4-gramatica-validada` invalida recibos anteriores aos
+contratos corrigidos de composição. A gramática da vibe entra apenas no perfil
+v4; retomadas e críticas de perfis v2/v3 preservam a direção e o plano de cenas
+existentes, mantendo as exigências de conteúdo, layout e apresentação.
 
 O prompt mantém fatos, restrições, vibe, marca, contatos, guia de imagens, fontes,
 plano editorial, plano semântico de cenas e biblioteca do tenant. Referências

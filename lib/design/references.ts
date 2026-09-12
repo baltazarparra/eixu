@@ -18,6 +18,17 @@ export const visualReadingSchema = z.object({
 });
 export type VisualReading = z.infer<typeof visualReadingSchema>;
 
+/** Aspectos que uma leitura visual pode documentar e dirigir. */
+export const REFERENCE_ASPECTS = [
+  'layout',
+  'typography',
+  'imagery',
+  'rhythm',
+  'surface',
+  'mobile',
+] as const;
+export type ReferenceAspect = (typeof REFERENCE_ASPECTS)[number];
+
 /** Decisões verificáveis em toda a composição, sem transformar a fonte em template. */
 export const referenceDirectionSchema = z.object({
   primaryUrl: z
@@ -28,14 +39,7 @@ export const referenceDirectionSchema = z.object({
   decisions: z
     .array(
       z.object({
-        aspect: z.enum([
-          'layout',
-          'typography',
-          'imagery',
-          'rhythm',
-          'surface',
-          'mobile',
-        ]),
+        aspect: z.enum(REFERENCE_ASPECTS),
         sourceUrl: z.url(),
         observed: observation.describe(
           'Característica observada na leitura visual desta URL.',
@@ -142,14 +146,33 @@ export function referenceDirectionIssues(
   return issues;
 }
 
-export function hasReferenceDirection(
+/** Direção por referência gravada no perfil, em qualquer versão suportada. */
+export function referenceDirectionOf(
   brand?: { design?: unknown } | null,
-): boolean {
+): ReferenceDirection | null {
   const design = brand?.design as
     | { version?: number; referenceDirection?: unknown }
     | undefined;
-  return (
-    (design?.version === 2 || design?.version === 3) &&
-    referenceDirectionSchema.safeParse(design.referenceDirection).success
-  );
+  if (!design || ![2, 3, 4].includes(design.version ?? 0)) return null;
+  const parsed = referenceDirectionSchema.safeParse(design.referenceDirection);
+  return parsed.success ? parsed.data : null;
+}
+
+export function hasReferenceDirection(
+  brand?: { design?: unknown } | null,
+): boolean {
+  return referenceDirectionOf(brand) !== null;
+}
+
+/**
+ * Aspectos que a referência documentou com traço observado e aplicação. Só
+ * eles liberam a faixa da vibe; uma leitura genérica não vira licença para
+ * trocar a silhueta. O schema já exige layout, typography, imagery e rhythm,
+ * então surface e mobile são o que varia entre clientes.
+ */
+export function referenceAspects(
+  brand?: { design?: unknown } | null,
+): Set<ReferenceAspect> {
+  const direction = referenceDirectionOf(brand);
+  return new Set(direction?.decisions.map((decision) => decision.aspect) ?? []);
 }

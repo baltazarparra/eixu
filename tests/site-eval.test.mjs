@@ -6,19 +6,21 @@ import { runEvaluationPhases } from '../scripts/lib/eval-site-flow.mjs';
 const { nextPhase } = await loadModule('lib/taste/phases.ts');
 const { scenePlan } = await loadModule('lib/images/scene-plan.ts');
 
-for (const layout of [
-  'split',
-  'cover',
-  'poster',
-  'editorial',
-  'offset',
-  'atelier',
+// A vibe acompanha a composição: o plano de cenas só sustenta a abertura que
+// a faixa da vibe permite, e atelier acrescenta a vaga do detalhe.
+for (const [layout, vibe] of [
+  ['split', 'comercial'],
+  ['cover', 'ousado'],
+  ['poster', 'ousado'],
+  ['editorial', 'moderno'],
+  ['offset', 'artistico'],
+  ['atelier', 'artistico'],
 ])
   await test(`avaliação ${layout} chega à revisão gerando as cenas sem aprovação`, async () => {
     const state = {
       hasDesign: false,
       coveredScenes: 0,
-      targetScenes: scenePlan({ heroComposition: layout }, 3).length,
+      targetScenes: scenePlan({ heroComposition: layout }, 3, vibe).length,
       organicPages: 0,
       blockingErrors: 0,
       reviewRounds: 0,

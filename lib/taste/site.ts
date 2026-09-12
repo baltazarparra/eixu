@@ -51,11 +51,16 @@ function destinations(blocks: BlockInstance[]): string[] {
   return links;
 }
 
-/** Contrato de projeto. Imagens disponíveis não exigem aprovação. */
+/**
+ * Contrato de projeto. Imagens disponíveis não exigem aprovação. `brand` traz
+ * vibe e perfil: sem eles a gramática da vibe não é verificada e o projeto
+ * volta a aceitar qualquer silhueta.
+ */
 export function lintSite(
   pages: SitePage[],
   images: TenantImage[],
   mode: 'draft' | 'publish',
+  brand?: { vibe?: string; design?: unknown },
 ): SiteFinding[] {
   const findings: SiteFinding[] = [];
   const fail = (page: string, rule: string, message: string) =>
@@ -182,7 +187,7 @@ export function lintSite(
     );
   // Composição: fotos por página, seção protagonista e ritmo tonal. Estas
   // regras vivem em metrics porque a revisão do agente usa as mesmas medidas.
-  for (const finding of structuralFindings(pages, images))
+  for (const finding of structuralFindings(pages, images, brand))
     findings.push(finding);
   if (mode === 'publish') {
     const used = new Set(pages.flatMap((p) => pageImageUrls(p.blocks)));

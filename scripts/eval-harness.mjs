@@ -332,7 +332,7 @@ for (let repetition = 1; repetition <= repetitions; repetition += 1) {
       );
     }
     run.findings = [
-      ...lintSite(state.pages, images, 'publish'),
+      ...lintSite(state.pages, images, 'publish', tenant.brand),
       ...state.pages.flatMap((page) =>
         lintPage(page, tenant.brand.design).map((finding) => ({
           ...finding,

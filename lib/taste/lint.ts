@@ -174,7 +174,8 @@ export function lintPage(
   // 3b. O perfil versionado só é rico quando chega aos blocos. Sem escolhas locais,
   // a página volta a ser a mesma sequência genérica pintada com outra paleta.
   if (
-    (design?.version === 2 || design?.version === 3) &&
+    design &&
+    [2, 3, 4].includes(design.version) &&
     page.type !== 'thank_you' &&
     page.type !== 'post'
   ) {
@@ -195,14 +196,14 @@ export function lintPage(
       push(
         'error',
         'composicao-generica',
-        `Direção v2 exige decisões de layout em pelo menos ${requiredLayouts} seções; há ${layoutDecisions}.`,
+        `Direção v${design.version} exige decisões de layout em pelo menos ${requiredLayouts} seções; há ${layoutDecisions}.`,
       );
     }
     if (presentationDecisions < requiredPresentations) {
       push(
         'error',
         'ritmo-generico',
-        `Direção v2 exige apresentação intencional em pelo menos ${requiredPresentations} seções; há ${presentationDecisions}.`,
+        `Direção v${design.version} exige apresentação intencional em pelo menos ${requiredPresentations} seções; há ${presentationDecisions}.`,
       );
     }
   }

@@ -730,7 +730,7 @@ await test('intake do operador vira resumo legível e ignora linha vazia', () =>
 });
 
 await test('plano de cenas cobre abertura, protagonista e páginas internas', () => {
-  const atelier = scenePlan({ heroComposition: 'atelier' }, 3);
+  const atelier = scenePlan({ heroComposition: 'atelier' }, 3, 'artistico');
   assert.deepEqual(
     atelier.map((scene) => scene.role),
     [
@@ -743,9 +743,9 @@ await test('plano de cenas cobre abertura, protagonista e páginas internas', ()
     ],
   );
   assert.equal(atelier[0].ratio, '4:5');
-  assert.equal(atelier[2].targetBlock, 'feature.explorer');
+  assert.equal(atelier[2].targetBlock, 'media.gallery');
   assert.equal(atelier[2].ratio, '4:3');
-  const editorial = scenePlan({ heroComposition: 'editorial' }, 3);
+  const editorial = scenePlan({ heroComposition: 'editorial' }, 3, 'moderno');
   assert.equal(editorial[0].targetBlock, 'hero.editorial');
   assert.equal(editorial[0].ratio, '16:9');
   assert.equal(
@@ -754,8 +754,49 @@ await test('plano de cenas cobre abertura, protagonista e páginas internas', ()
   );
 });
 
+await test('cada vibe pede um repertório próprio, e a abertura segue a gramática', () => {
+  // A causa da estrutura repetida: o plano pedia sempre os mesmos alvos, a foto
+  // nascia rotulada com o bloco e a composição montava exatamente aquilo.
+  const alvos = (vibe, composition) =>
+    scenePlan({ heroComposition: composition }, 3, vibe).map(
+      (scene) => scene.targetBlock,
+    );
+  assert.deepEqual(alvos('comercial', 'split'), [
+    'hero.split',
+    'feature.explorer',
+    'feature.explorer',
+    'narrative.split',
+    'media.image',
+  ]);
+  assert.deepEqual(alvos('moderno', 'editorial'), [
+    'hero.editorial',
+    'feature.bento',
+    'feature.bento',
+    'media.image',
+    'narrative.split',
+  ]);
+  assert.deepEqual(alvos('ousado', 'cover'), [
+    'hero.cover',
+    'media.gallery',
+    'media.gallery',
+    'media.image',
+    'media.image',
+  ]);
+  assert.deepEqual(alvos('artistico', 'offset'), [
+    'hero.offset',
+    'media.gallery',
+    'media.gallery',
+    'narrative.split',
+    'narrative.split',
+  ]);
+  // Composição fora da faixa da vibe cai na que a vibe sustenta: a foto de
+  // abertura precisa nascer na proporção que a home vai exibir.
+  assert.equal(alvos('ousado', 'atelier')[0], 'hero.cover');
+  assert.equal(alvos('comercial', 'editorial')[0], 'hero.split');
+});
+
 await test('a cobertura casa biblioteca aprovada com as vagas do plano', () => {
-  const plan = scenePlan({ heroComposition: 'split' }, 3);
+  const plan = scenePlan({ heroComposition: 'split' }, 3, 'comercial');
   const photo = (targetBlock, ratio) => ({ targetBlock, ratio });
   const exatas = plan.map((slot) => photo(slot.targetBlock, slot.ratio));
   assert.equal(sceneCoverage(plan, exatas).missing.length, 0);
@@ -767,7 +808,7 @@ await test('a cobertura casa biblioteca aprovada com as vagas do plano', () => {
   assert.equal(parcial.missing[0].targetBlock, 'feature.explorer');
 
   // Foto antiga de outro hero 4:5 cobre a vaga sem obrigar geração paga.
-  const offset = scenePlan({ heroComposition: 'offset' }, 3);
+  const offset = scenePlan({ heroComposition: 'offset' }, 3, 'moderno');
   const herdada = sceneCoverage(offset, [photo('hero.split', '4:5')]);
   assert.equal(herdada.covered.length, 1);
   assert.equal(herdada.covered[0].role, 'hero');
@@ -789,7 +830,7 @@ await test('a cobertura casa biblioteca aprovada com as vagas do plano', () => {
   assert.equal(panoramica.missing[0].role, 'hero');
 
   // As duas vagas do atelier precisam de duas fotos, não de uma repetida.
-  const atelier = scenePlan({ heroComposition: 'atelier' }, 3);
+  const atelier = scenePlan({ heroComposition: 'atelier' }, 3, 'artistico');
   assert.equal(
     sceneCoverage(atelier, [photo('hero.atelier', '4:5')]).missing[0].role,
     'hero-detail',
@@ -1390,11 +1431,234 @@ await test('a âncora da seção de localização pertence ao cadastro', () => {
 });
 
 await test('o plano de cenas continua guiado pelo hero do perfil', () => {
-  // A vibe ousado abre com hero.statement e reaproveita a cena do hero num
-  // media.image bleed: o plano não muda, e a proporção precisa casar.
   assert.deepEqual(
-    scenePlan({ heroComposition: 'editorial' }, 3).map((scene) => scene.ratio),
-    ['16:9', '4:3', '4:3', '5:6', '16:9'],
+    scenePlan({ heroComposition: 'editorial' }, 3, 'moderno').map(
+      (scene) => scene.ratio,
+    ),
+    ['16:9', '4:3', '4:3', '16:9', '5:6'],
   );
-  assert.equal(scenePlan({ heroComposition: 'poster' }, 3)[0].ratio, '4:5');
+  assert.equal(
+    scenePlan({ heroComposition: 'poster' }, 3, 'ousado')[0].ratio,
+    '4:5',
+  );
+});
+
+/* -------------------------------------------------------- gramática da vibe
+ * Medido em 12/09/2026 em produção: dois clientes de vibes diferentes, com
+ * referências diferentes, tinham 4 das 5 seções da home iguais e passavam em
+ * todos os gates. A silhueta passa a pertencer à vibe.
+ */
+const { VIBE_GRAMMAR, grammarDirection, laneIssues } = await j.import(
+  '../lib/design/vibes.ts',
+);
+const {
+  silhouette,
+  silhouetteSimilarity,
+  structuralFindings: structural,
+} = await j.import('../lib/taste/metrics.ts');
+
+const designV4 = (over = {}) => ({
+  version: 4,
+  concept: 'Conceito concreto do negócio',
+  signatureElement: 'Elemento repetido com intenção',
+  displayFont: 'humanist',
+  bodyFont: 'source',
+  heroComposition: 'split',
+  navigation: 'bar',
+  rhythm: 'alternating',
+  imageTreatment: 'framed',
+  surfaceStyle: 'flat',
+  motif: 'none',
+  signature: 'x',
+  definedAt: '2026-09-12T00:00:00.000Z',
+  ...over,
+});
+
+await test('a gramática da vibe governa abertura e seção protagonista da home', () => {
+  const brand = { vibe: 'comercial', design: designV4() };
+  // rich() abre em hero.split atelier e usa feature.explorer showroom.
+  const comercial = structural(rich(), images, brand).map((f) => f.rule);
+  assert.ok(comercial.includes('abertura-fora-da-vibe'));
+  assert.equal(comercial.includes('protagonista-fora-da-vibe'), false);
+
+  // A mesma home numa vibe ousada erra as duas decisões: lá a home abre com a
+  // foto cobrindo o hero e a seção protagonista é a galeria.
+  const ousado = structural(rich(), images, {
+    vibe: 'ousado',
+    design: designV4({ heroComposition: 'cover' }),
+  }).map((f) => f.rule);
+  assert.ok(ousado.includes('protagonista-fora-da-vibe'));
+
+  // Abertura conforme: o layout explícito entra na gramática comercial.
+  const conforme = rich();
+  conforme[0].blocks[1].props.layout = 'split';
+  const ok = structural(conforme, images, brand).map((f) => f.rule);
+  assert.equal(ok.includes('abertura-fora-da-vibe'), false);
+  assert.equal(ok.includes('protagonista-fora-da-vibe'), false);
+});
+
+await test('perfis v2 e v3 publicados não recebem a gramática', () => {
+  for (const version of [2, 3]) {
+    const rules = structural(rich(), images, {
+      vibe: 'ousado',
+      design: designV4({ version }),
+    }).map((f) => f.rule);
+    assert.equal(rules.includes('abertura-fora-da-vibe'), false, `v${version}`);
+    assert.equal(
+      rules.includes('protagonista-fora-da-vibe'),
+      false,
+      `v${version}`,
+    );
+  }
+  // Sem marca, o contrato antigo continua igual.
+  assert.equal(
+    structural(rich(), images).some((f) => f.rule.endsWith('-fora-da-vibe')),
+    false,
+  );
+});
+
+await test('a silhueta lê o layout que o visitante vê, não só o que foi digitado', () => {
+  const home = rich()[0];
+  // hero.split sem layout cai na composição do perfil; explorer no padrão.
+  delete home.blocks[1].props.layout;
+  assert.deepEqual(
+    silhouette(home.blocks, designV4({ heroComposition: 'offset' })),
+    ['hero.split:offset', 'editorial.text:narrow', 'feature.explorer:showroom'],
+  );
+  // nav e rodapé ficam fora: eles não são a composição da página.
+  assert.equal(silhouette(home.blocks).includes('nav.bar:bar'), false);
+});
+
+await test('silhuetas quase iguais são medidas, não só as idênticas', () => {
+  // As duas homes reais de 12/09/2026, com a única diferença observada.
+  const chiquinho = [
+    'hero.split:split',
+    'feature.explorer:showroom',
+    'editorial.facts:split',
+    'faq.accordion:split',
+    'cta.band:band',
+  ];
+  const tech = [
+    'hero.split:editorial',
+    'feature.explorer:showroom',
+    'editorial.facts:split',
+    'faq.accordion:split',
+    'cta.band:band',
+  ];
+  assert.equal(silhouetteSimilarity(chiquinho, tech), 0.8);
+  assert.equal(silhouetteSimilarity(chiquinho, chiquinho), 1);
+  // A gramática afasta as duas: cada vibe tem abertura e protagonista próprios.
+  const ousado = [
+    'hero.split:cover',
+    'media.gallery:collage',
+    'proof.stats:strip',
+    'faq.accordion:stack',
+    'cta.band:poster',
+  ];
+  assert.ok(silhouetteSimilarity(chiquinho, ousado) < 0.75);
+  assert.equal(silhouetteSimilarity([], tech), 0);
+});
+
+await test('cada vibe tem abertura, protagonista e fechamento próprios', () => {
+  const entries = Object.entries(VIBE_GRAMMAR);
+  for (const [vibe, grammar] of entries) {
+    assert.ok(grammar.openings.length, vibe);
+    assert.ok(grammar.protagonists.length, vibe);
+    assert.ok(grammar.support.length, vibe);
+    // A gramática precisa citar blocos que existem no catálogo.
+    for (const entry of [
+      ...grammar.openings,
+      ...grammar.protagonists,
+      ...grammar.innerOpenings,
+      ...grammar.closings,
+      ...grammar.avoid,
+    ]) {
+      const [type, layout] = entry.split(':');
+      assert.ok(blockSchemas[type], `${vibe}: ${entry}`);
+      const schema = blockSchemas[type].shape.layout;
+      const options = schema?.def?.innerType?.options ?? schema?.options;
+      if (options) assert.ok(options.includes(layout), `${vibe}: ${entry}`);
+    }
+    // Nenhuma vibe repete a seção protagonista de outra na mesma variante.
+    for (const [other, otherGrammar] of entries) {
+      if (other === vibe) continue;
+      for (const entry of grammar.protagonists)
+        assert.equal(
+          otherGrammar.protagonists.includes(entry),
+          false,
+          `${vibe} repete ${entry} de ${other}`,
+        );
+    }
+    assert.match(grammarDirection(vibe), /Abertura da home/);
+  }
+});
+
+await test('a referência libera só os eixos do aspecto que documentou', () => {
+  // Direção clara e serifada num cliente moderno: a leitura visual autoriza a
+  // fonte, mas não o papel branco nem a superfície plana.
+  const input = {
+    ink: '#111111',
+    paper: '#ffffff',
+    surface: '#eeeeee',
+    radius: 'lg',
+    displayFont: 'editorial',
+    bodyFont: 'sans',
+    heroComposition: 'offset',
+    navigation: 'bar',
+    rhythm: 'alternating',
+    imageTreatment: 'framed',
+    surfaceStyle: 'flat',
+    motif: 'none',
+    variance: 7,
+    motion: 3,
+    density: 3,
+  };
+  const semReferencia = laneIssues('moderno', input).join(' ');
+  assert.match(semReferencia, /displayFont/);
+  assert.match(semReferencia, /navigation/);
+
+  const parcial = laneIssues('moderno', input, [
+    'layout',
+    'typography',
+    'imagery',
+    'rhythm',
+  ]).join(' ');
+  assert.equal(parcial.includes('displayFont'), false);
+  assert.equal(parcial.includes('navigation'), false);
+  assert.match(parcial, /surfaceStyle/);
+  assert.match(parcial, /paper/);
+  assert.match(parcial, /variance/);
+
+  const comSuperficie = laneIssues('moderno', input, [
+    'layout',
+    'typography',
+    'imagery',
+    'rhythm',
+    'surface',
+  ]).join(' ');
+  assert.equal(comSuperficie.includes('surfaceStyle'), false);
+  assert.equal(comSuperficie.includes('paper'), false);
+  // Composição de hero, motivo, variância e movimento nunca são liberados.
+  assert.match(comSuperficie, /variance/);
+  const foraDaVibe = laneIssues(
+    'moderno',
+    { ...input, heroComposition: 'poster', motif: 'stripes', variance: 4 },
+    ['layout', 'typography', 'imagery', 'rhythm', 'surface'],
+  ).join(' ');
+  assert.match(foraDaVibe, /heroComposition/);
+  assert.match(foraDaVibe, /motif/);
+});
+
+await test('o catálogo diz o papel de cada bloco na vibe pedida', () => {
+  const neutro = catalogForPrompt();
+  assert.equal(neutro.includes('[vibe:'), false);
+  const ousado = catalogForPrompt({ vibe: 'ousado' });
+  assert.match(ousado, /media\.gallery · .*\[vibe: .*protagonista da home/);
+  assert.match(ousado, /cta\.band · .*fechamento em cta\.band:poster/);
+  const comercial = catalogForPrompt({ vibe: 'comercial' });
+  assert.match(
+    comercial,
+    /feature\.explorer · .*protagonista da home em feature\.explorer:showroom/,
+  );
+  assert.match(comercial, /media\.gallery · .*evite media\.gallery:collage/);
 });

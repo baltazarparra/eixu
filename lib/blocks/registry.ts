@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ICON_NAMES } from '@/lib/design/iconography';
+import { VIBE_GRAMMAR, type Vibe } from '@/lib/design/vibes';
 import { expectedRatio } from '../images/ratios';
 
 /**
@@ -588,6 +589,39 @@ export const blockMeta: Record<BlockType, Meta> = {
   },
 };
 
+/**
+ * Layout que o componente aplica quando as props não trazem `layout`. A
+ * gramática da vibe compara `tipo:layout`, então um bloco sem escolha
+ * explícita precisa ser lido pelo que o renderer realmente mostra. Hero e
+ * navegação caem na composição do perfil e são resolvidos em lib/taste/metrics.
+ */
+export const DEFAULT_LAYOUT: Record<BlockType, string> = {
+  'nav.bar': 'bar',
+  'hero.split': 'split',
+  'hero.statement': 'left',
+  'proof.logos': 'rail',
+  'proof.stats': 'strip',
+  'proof.testimonial': 'quote',
+  'feature.numbered': 'ledger',
+  'feature.bento': 'mosaic',
+  'feature.explorer': 'showroom',
+  'narrative.steps': 'timeline',
+  'narrative.split': 'split',
+  'editorial.resources': 'feature',
+  'editorial.facts': 'split',
+  'editorial.text': 'narrow',
+  'editorial.postList': 'grid',
+  'editorial.postBody': 'default',
+  'faq.accordion': 'split',
+  'cta.band': 'band',
+  'form.lead': 'split',
+  'media.gallery': 'grid',
+  'media.image': 'wide',
+  'media.map': 'split',
+  'pricing.table': 'cards',
+  'footer.compact': 'split',
+};
+
 export const BLOCK_TYPES = Object.keys(blockSchemas) as BlockType[];
 
 export function isBlockType(value: string): value is BlockType {
@@ -670,10 +704,34 @@ function ratioHint(type: BlockType): string {
   return ` [foto ${parts.join(', ')}]`;
 }
 
+/**
+ * Papel do bloco na gramática da vibe. Sem esta marcação o agente escolhia
+ * pelo nome e todas as vibes convergiam para as mesmas seções.
+ */
+function grammarRole(type: BlockType, vibe: Vibe): string {
+  const grammar = VIBE_GRAMMAR[vibe];
+  const belongs = (list: readonly string[]) =>
+    list.filter((entry) => entry.startsWith(`${type}:`));
+  const roles: string[] = [];
+  const opening = belongs(grammar.openings);
+  if (opening.length) roles.push(`abertura da home em ${opening.join('/')}`);
+  const protagonist = belongs(grammar.protagonists);
+  if (protagonist.length)
+    roles.push(`protagonista da home em ${protagonist.join('/')}`);
+  const inner = belongs(grammar.innerOpenings);
+  if (inner.length) roles.push(`abertura interna em ${inner.join('/')}`);
+  const closing = belongs(grammar.closings);
+  if (closing.length) roles.push(`fechamento em ${closing.join('/')}`);
+  const avoid = belongs(grammar.avoid);
+  if (avoid.length) roles.push(`evite ${avoid.join('/')}`);
+  return roles.length ? ` [vibe: ${roles.join('; ')}]` : '';
+}
+
 /** Catálogo com uso e props de cada bloco, injetado no prompt do agente. */
 export function catalogForPrompt(
-  options: { fullSchema?: boolean } = {},
+  options: { fullSchema?: boolean; vibe?: Vibe } = {},
 ): string {
+  const { vibe } = options;
   return (
     `Comum a todos: anchor?; presentation? { ${summarize(z.toJSONSchema(presentation.unwrap()) as Record<string, unknown>, 1)} }. ? = opcional; ≤ = máximo de caracteres.\n` +
     BLOCK_TYPES.map((type) => {
@@ -683,7 +741,7 @@ export function catalogForPrompt(
       >;
       // O uso vem junto: sem ele o agente ignora explorer e resources, que são
       // justamente as seções que sustentam uma home com fotos.
-      return `${type} · ${blockMeta[type].use}${ratioHint(type)}\n  ${options.fullSchema ? JSON.stringify(json) : summarize(json)}`;
+      return `${type} · ${blockMeta[type].use}${ratioHint(type)}${vibe ? grammarRole(type, vibe) : ''}\n  ${options.fullSchema ? JSON.stringify(json) : summarize(json)}`;
     }).join('\n')
   );
 }

@@ -6,7 +6,7 @@ import {
   DISPLAY_FONTS,
   DISPLAY_TYPE,
 } from './typography';
-import { plannedSceneInputSchema } from '@/lib/images/scene-plan';
+import { plannedSceneInputSchema } from '@/lib/images/scene-slots';
 
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
@@ -95,6 +95,13 @@ export const designProfileInputSchema = z.object({
 export type CreativeBrief = z.infer<typeof creativeBriefSchema>;
 export type DesignProfileInput = z.infer<typeof designProfileInputSchema>;
 
+/**
+ * Versões do perfil. 2 e 3 preservam sites publicados: uma referência
+ * verificada os renderiza na base comercial neutra. A 4 traz a gramática por
+ * vibe, a referência modulando aspectos e a vibe preservada no renderer.
+ */
+export const DESIGN_PROFILE_VERSION = 4;
+
 export type DesignProfile = Omit<
   DesignProfileInput,
   | 'brief'
@@ -108,7 +115,7 @@ export type DesignProfile = Omit<
   | 'motion'
   | 'density'
 > & {
-  version: 2 | 3;
+  version: 2 | 3 | 4;
   signature: string;
   definedAt: string;
 };
@@ -150,7 +157,7 @@ export function completeDesignProfile(
       : {}),
   };
   return {
-    version: 3,
+    version: DESIGN_PROFILE_VERSION,
     ...structural,
     signature: designSignature(structural),
     definedAt: now,
@@ -161,7 +168,7 @@ export function isDesignProfile(value: unknown): value is DesignProfile {
   if (!value || typeof value !== 'object') return false;
   const profile = value as Partial<DesignProfile>;
   return (
-    (profile.version === 2 || profile.version === 3) &&
+    [2, 3, 4].includes(profile.version ?? 0) &&
     typeof profile.concept === 'string' &&
     typeof profile.signatureElement === 'string' &&
     DESIGN_AXES.every((axis) => typeof profile[axis] === 'string')

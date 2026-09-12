@@ -13,7 +13,10 @@ import { attributionScript } from '@/lib/tracking';
 import { isAuthenticated } from '@/lib/auth';
 import { structuredData } from '@/lib/sites/structured-data';
 import { renderingVibeOf } from '@/lib/design/vibes';
-import { hasReferenceDirection } from '@/lib/design/references';
+import {
+  hasReferenceDirection,
+  referenceAspects,
+} from '@/lib/design/references';
 import { publicPage, publicTenant } from '@/lib/sites/snapshot';
 
 type Params = { tenant: string; slug?: string[] };
@@ -92,6 +95,15 @@ export default async function TenantPage({ params, searchParams }: Props) {
   const renderedTenant = isPreview ? tenant : publicTenant(tenant);
   const renderedPage = isPreview ? page : publicPage(page);
   const referenceDirected = hasReferenceDirection(renderedTenant.brand);
+  const designVersion = renderedTenant.brand.design?.version;
+  // No perfil v4 a referência modula aspectos e a vibe continua no CSS. Os
+  // perfis 2 e 3 mantêm a base neutra com que foram publicados.
+  const modulated = designVersion === 4 && referenceDirected;
+  const aspects = modulated
+    ? [...referenceAspects(renderedTenant.brand)]
+        .sort((a, b) => a.localeCompare(b))
+        .join(' ')
+    : undefined;
 
   // O painel pede `?preview=1` para ver o rascunho; o público vê o publicado.
   const blocks = isPreview ? page.blocks : (page.publishedBlocks ?? []);
@@ -120,8 +132,9 @@ export default async function TenantPage({ params, searchParams }: Props) {
       data-vibe={renderingVibeOf(renderedTenant.brand)}
       data-reference-direction={referenceDirected ? 'true' : undefined}
       data-design-version={
-        referenceDirected ? 'reference' : renderedTenant.brand.design?.version
+        referenceDirected && !modulated ? 'reference' : designVersion
       }
+      data-reference-aspects={aspects || undefined}
       data-hero={renderedTenant.brand.design?.heroComposition}
       data-navigation={renderedTenant.brand.design?.navigation}
       data-rhythm={renderedTenant.brand.design?.rhythm}

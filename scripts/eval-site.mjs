@@ -268,9 +268,11 @@ const [pages, images] = await Promise.all([
   listImages(tenant.id),
 ]);
 report.elapsedMs = Date.now() - started;
-report.metrics = siteMetrics(pages, images);
-report.site = lintSite(pages, images, 'draft');
-report.structural = structuralFindings(pages, images);
+report.metrics = siteMetrics(pages, images, tenant.brand.design);
+report.site = lintSite(pages, images, 'draft', tenant.brand);
+report.structural = structuralFindings(pages, images, tenant.brand);
+// A silhueta é o número que mostra se a vibe produziu composição própria.
+report.silhouette = report.metrics.silhouette;
 report.pageFindings = pages.flatMap((page) =>
   lintPage(page, tenant.brand.design)
     .filter((finding) => finding.level === 'error')

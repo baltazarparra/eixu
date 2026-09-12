@@ -18,12 +18,22 @@ import {
   isDesignProfile,
   nearestDesign,
 } from '@/lib/design/profile';
-import { hasDuplicateComposition } from '@/lib/design/uniqueness';
-import { VIBE_LABEL, laneIssues, vibeOf } from '@/lib/design/vibes';
+import {
+  compositionConflict,
+  compositionConflictMessage,
+} from '@/lib/design/uniqueness';
+import {
+  VIBE_GRAMMAR,
+  VIBE_LABEL,
+  grammarDirection,
+  laneIssues,
+  vibeOf,
+} from '@/lib/design/vibes';
 import {
   normalizeReferenceUrl,
   referenceUrls,
   referenceSources,
+  referenceAspects,
   referenceDirectionIssues,
 } from '@/lib/design/references';
 import { readReferenceVisual } from '@/lib/references/read';
@@ -324,11 +334,14 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         meta: p.meta,
       })),
     ];
-    const projectFindings = lintSite(prospective, images, 'draft');
-    if (home && (await hasDuplicateComposition(tenant.id, home.blocks))) {
-      throw new ToolError(
-        'A silhueta da home repete outro cliente. Troque tipos, layouts ou ritmo de apresentação antes de salvar.',
+    const projectFindings = lintSite(prospective, images, 'draft', activeBrand);
+    if (home) {
+      const conflict = await compositionConflict(
+        tenant.id,
+        home.blocks,
+        activeBrand.design,
       );
+      if (conflict) throw new ToolError(compositionConflictMessage(conflict));
     }
 
     const report: {
@@ -365,7 +378,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
       // Pendência de projeto não impede a gravação, mas impede a publicação.
       // Corrija-a com edições pontuais antes de encerrar.
       ...(projectFindings.length ? { pendencias: projectFindings } : {}),
-      publicationPending: lintSite(prospective, images, 'publish'),
+      publicationPending: lintSite(prospective, images, 'publish', activeBrand),
     };
   }
 
@@ -454,7 +467,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             // Relê a cobertura dentro do lock, pois outra requisição pode ter
             // gerado a mesma vaga depois do snapshot da rota.
             const library = await listImages(tenant.id);
-            const plan = scenePlan(design, 3);
+            const plan = scenePlan(design, 3, vibeOf(activeBrand));
             const { missing } = sceneCoverage(plan, generatedPhotos(library));
             if (inPhase) {
               if (!missing.length)
@@ -833,23 +846,27 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           label: 'Validando estrutura, conteúdo e publicação',
         });
         const deterministic = identifyFindings([
-          ...lintSite(pages, images, 'publish').map((finding) => ({
-            pagina: finding.page,
-            nivel: finding.level,
-            regra: finding.rule,
-            bloco: undefined as string | undefined,
-            correcao: finding.message,
-          })),
-          ...structuralFindings(pages, images).map((finding) => ({
-            pagina: finding.page,
-            nivel: finding.level,
-            regra: finding.rule,
-            bloco:
-              finding.blockIndex === undefined
-                ? undefined
-                : `${finding.blockIndex}: ${finding.blockType}#${finding.blockId}`,
-            correcao: finding.message,
-          })),
+          ...lintSite(pages, images, 'publish', reviewedTenant.brand).map(
+            (finding) => ({
+              pagina: finding.page,
+              nivel: finding.level,
+              regra: finding.rule,
+              bloco: undefined as string | undefined,
+              correcao: finding.message,
+            }),
+          ),
+          ...structuralFindings(pages, images, reviewedTenant.brand).map(
+            (finding) => ({
+              pagina: finding.page,
+              nivel: finding.level,
+              regra: finding.rule,
+              bloco:
+                finding.blockIndex === undefined
+                  ? undefined
+                  : `${finding.blockIndex}: ${finding.blockType}#${finding.blockId}`,
+              correcao: finding.message,
+            }),
+          ),
           ...pages.flatMap((page) =>
             lintPage(page, reviewedTenant.brand.design)
               .filter((finding) => finding.level === 'error')
@@ -863,7 +880,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           ),
         ]);
         const preflightMs = Date.now() - preflightStarted;
-        const metrics = siteMetrics(pages, images);
+        const metrics = siteMetrics(pages, images, reviewedTenant.brand.design);
         const previous = savedReview(reviewedTenant);
         const pageReceipts: Record<string, PageReviewReceipt> = {};
         if (previous?.version === 2 && previous.pages) {
@@ -1282,7 +1299,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           listPages(tenant.id),
           listImages(tenant.id),
         ]);
-        return { findings: lintSite(pages, images, 'publish') };
+        return { findings: lintSite(pages, images, 'publish', activeBrand) };
       }),
     }),
     list_images: tool({
@@ -1506,13 +1523,26 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           throw new ToolError(
             'Declare em brief.gaps as referências sem leitura visual; não trate texto ou URL como evidência de estilo.',
           );
-        // Referências visuais verificadas prevalecem; sem elas preservamos a faixa.
+        // Uma referência verificada decide dentro da vibe, não no lugar dela.
+        // Antes ela pulava a faixa inteira: os dois clientes medidos em
+        // 12/09/2026 gravaram eixos neutros e o renderer caía na base
+        // comercial. Agora cada aspecto documentado libera só os seus eixos;
+        // composição de hero, motivo, variância e movimento ficam com a vibe.
         const vibe = vibeOf(activeBrand);
         const referenceLed = !!input.referenceDirection;
-        const outOfLane = referenceLed ? [] : laneIssues(vibe, input);
+        const aspects = referenceAspects({
+          design: { version: 4, referenceDirection: input.referenceDirection },
+        });
+        const outOfLane = laneIssues(vibe, input, aspects);
         if (outOfLane.length) {
           throw new ToolError(
-            `A direção não cabe na vibe ${VIBE_LABEL[vibe]} escolhida no cadastro. ${outOfLane.join(' ')}`,
+            `A direção não cabe na vibe ${VIBE_LABEL[vibe]} escolhida no cadastro. ${outOfLane.join(
+              ' ',
+            )}${
+              referenceLed
+                ? ` A referência dirige ${[...aspects].join(', ')}; os demais eixos continuam da vibe.`
+                : ''
+            }`,
           );
         }
 
@@ -1521,7 +1551,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           context.phase === 'briefing' &&
           (!input.brief.imageScenes ||
             !sceneRequestsMatchPlan(
-              scenePlan(profile, 3),
+              scenePlan(profile, 3, vibe),
               input.brief.imageScenes,
             ))
         ) {
@@ -1529,6 +1559,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             `brief.imageScenes precisa preencher exatamente o plano estrutural: ${scenePlan(
               profile,
               3,
+              vibe,
             )
               .map((scene) => `${scene.role} (${scene.targetBlock})`)
               .join(
@@ -1595,6 +1626,10 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           ok: true,
           vibe,
           visualAuthority: referenceLed ? 'references' : 'vibe',
+          referenceAspects: [...aspects],
+          gramatica: grammarDirection(vibe),
+          aberturaDaHome: VIBE_GRAMMAR[vibe].openings,
+          protagonistaDaHome: VIBE_GRAMMAR[vibe].protagonists,
           ...(referenceLed && nearest && nearest.distance < 3
             ? {
                 warning:
@@ -1705,14 +1740,14 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
       execute: safe(async ({ page: slug, blocks }) => {
         const page = await requirePage(tenant.id, slug);
         const next = toBlocks(blocks);
-        if (
-          page.slug === '' &&
-          isDesignProfile(activeBrand.design) &&
-          (await hasDuplicateComposition(tenant.id, next))
-        ) {
-          throw new ToolError(
-            'A silhueta da home repete outro cliente. Troque tipos, layouts ou apresentação.',
+        if (page.slug === '' && isDesignProfile(activeBrand.design)) {
+          const conflict = await compositionConflict(
+            tenant.id,
+            next,
+            activeBrand.design,
           );
+          if (conflict)
+            throw new ToolError(compositionConflictMessage(conflict));
         }
         await db()`
           update pages set blocks = ${JSON.stringify(next)}::jsonb, updated_at = now()

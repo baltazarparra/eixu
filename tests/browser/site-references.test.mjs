@@ -25,7 +25,7 @@ await test(
       '../../lib/design/profile.ts',
     );
     const { renderingVibeOf } = await j.import('../../lib/design/vibes.ts');
-    const { hasReferenceDirection } = await j.import(
+    const { hasReferenceDirection, referenceAspects } = await j.import(
       '../../lib/design/references.ts',
     );
     const { blockSchemas } = await j.import('../../lib/blocks/registry.ts');
@@ -92,6 +92,9 @@ await test(
           design: completeDesignProfile({ ...direction, referenceDirection }),
         };
         const referenceDirected = hasReferenceDirection(tenant.brand);
+        const aspects = [...referenceAspects(tenant.brand)]
+          .sort((a, b) => a.localeCompare(b))
+          .join(' ');
         tenant.dials = { variance: 7, motion: 2, density: 3 };
         const tree = createElement(
           'div',
@@ -99,9 +102,8 @@ await test(
             className: 'site-theme',
             'data-vibe': renderingVibeOf(tenant.brand),
             'data-reference-direction': referenceDirected ? 'true' : undefined,
-            'data-design-version': referenceDirected
-              ? 'reference'
-              : tenant.brand.design?.version,
+            'data-design-version': tenant.brand.design?.version,
+            'data-reference-aspects': aspects,
             'data-density': 'airy',
             'data-motion': 'still',
             style: {
@@ -127,6 +129,7 @@ await test(
             return {
               vibe: theme.dataset.vibe,
               designVersion: theme.dataset.designVersion,
+              aspects: theme.dataset.referenceAspects,
               width: innerWidth,
               scrollWidth: document.documentElement.scrollWidth,
               surface: getComputedStyle(soft)
@@ -139,8 +142,13 @@ await test(
               ).position,
             };
           });
-          assert.equal(measured.vibe, 'comercial');
-          assert.equal(measured.designVersion, 'reference');
+          // O perfil v4 preserva a vibe no renderer; a referência decide os
+          // aspectos que documentou. Antes qualquer leitura visual derrubava o
+          // site inteiro para a base comercial.
+          assert.equal(measured.vibe, vibe);
+          assert.equal(measured.designVersion, '4');
+          assert.match(measured.aspects, /surface/);
+          // A superfície documentada vale como está, sem a lavagem artística.
           assert.equal(measured.surface, '#eeeeee');
           assert.match(measured.font, /Georgia/);
           assert.ok(
@@ -150,7 +158,7 @@ await test(
           assert.notEqual(
             measured.heroCopyPosition,
             'absolute',
-            'O cartão artístico não deve se impor à referência',
+            'O cartão do hero não pode sair do fluxo e cobrir o conteúdo',
           );
           if (vibe === 'moderno')
             await page.screenshot({

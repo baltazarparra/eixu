@@ -7,6 +7,7 @@ import {
   sceneRequestsMatchPlan,
   type PlannedScene,
 } from '@/lib/images/scene-plan';
+import { vibeOf } from '@/lib/design/vibes';
 import { lintPage } from '@/lib/taste/lint';
 import { generatedPhotos } from '@/lib/taste/metrics';
 import { nextPhase, type Phase } from '@/lib/taste/phases';
@@ -36,7 +37,7 @@ export function plannedScenes(tenant: Tenant): PlannedScene[] {
   const design = isDesignProfile(tenant.brand.design)
     ? tenant.brand.design
     : undefined;
-  const structural = scenePlan(design, 3);
+  const structural = scenePlan(design, 3, vibeOf(tenant.brand));
   const parsed = plannedSceneInputSchema
     .array()
     .safeParse(tenant.brief.imageScenes);
@@ -67,7 +68,12 @@ export function generationState(
   tenant: Tenant,
   pages: Page[],
   images: TenantImage[],
-  siteFindings: SiteFinding[] = lintSite(pages, images, 'publish'),
+  siteFindings: SiteFinding[] = lintSite(
+    pages,
+    images,
+    'publish',
+    tenant.brand,
+  ),
 ): GenerationState {
   const design = isDesignProfile(tenant.brand.design)
     ? tenant.brand.design

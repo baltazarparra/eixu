@@ -8,6 +8,7 @@ import {
 import type { Brand } from '@/lib/types';
 import { BODY_TYPE, DISPLAY_TYPE } from '@/lib/design/typography';
 import { renderingVibeOf } from '@/lib/design/vibes';
+import { referenceAspects } from '@/lib/design/references';
 
 const RADIUS: Record<string, string> = {
   none: '0px',
@@ -38,12 +39,16 @@ export function themeVars(brand: Brand): Record<string, string> {
   // A lavagem artística precisa ser a mesma superfície usada nos cálculos
   // de texto. Se a mistura tirar o contraste da tinta, preserve o papel.
   const artisticSurface = mixHex(paper, accentAlt, 0.11);
-  const surface =
-    renderingVibeOf(brand) === 'artistico'
-      ? contrastRatio(ink, artisticSurface) >= 4.5
-        ? artisticSurface
-        : paper
-      : brand.surface || mixHex(ink, paper, 0.04);
+  // A lavagem é decisão de superfície. Quando a referência documenta superfície,
+  // a superfície escolhida na direção vale como está.
+  const washes =
+    renderingVibeOf(brand) === 'artistico' &&
+    !referenceAspects(brand).has('surface');
+  const surface = washes
+    ? contrastRatio(ink, artisticSurface) >= 4.5
+      ? artisticSurface
+      : paper
+    : brand.surface || mixHex(ink, paper, 0.04);
   const servicesSurface = mixHex(paper, ink, 0.03);
   const legacyFont =
     brand.font === 'serif'
