@@ -39,7 +39,23 @@ Verificação local:
 Limites: o tenant `grupofisk` foi removido do banco durante a sessão, então a
 conferência no `next start` de produção usou `skytattoo` (200) e o chunk CSS; a
 composição v4 com título curto e médio foi vista alterando o DOM da página, não
-por um cliente gerado. Nada foi publicado.
+por um cliente gerado.
+
+Publicado em 12/09/2026 pelo PR #31, squash
+`01d3bf99fa818349a0fdbb45e9b3cb8dcad496c1`, deployment Vercel
+`dpl_9SBMaSf4TzfUgrJPFDYri1bejhHw` em estado `READY` no alvo de produção, com
+os aliases `eixu.com.br` e `*.eixu.com.br`; o preview do PR também ficou
+`READY`. O smoke respondeu 200 na home institucional e nos sites
+`portoembalagens`, `skytattoo` e `escolafisk`; `/admin` sem sessão responde
+200 transmitindo o redirecionamento para `/admin/login?returnTo=/admin`, e
+`POST /api/chat` e `/api/admin/*/state` respondem 401. Os três chunks CSS
+publicados contêm `data-length=long`, a dupla da masonry, a ilha e o campo de
+cor do atelier, sem a rotação da colagem; o HTML de `skytattoo` sai do
+servidor com `data-length="long"`. Capturado em produção a 1440, 1280 e 390 px:
+o hero atelier de `skytattoo` com o detalhe dentro da foto e legendas
+inteiras, sem overflow horizontal. Nenhum cliente artístico v4 estava
+publicado para conferir a ilha e a escala do título em produção; essa prova
+fica nas capturas locais e no chunk.
 
 ## Conversa recolhível no editor, 12/09/2026
 
