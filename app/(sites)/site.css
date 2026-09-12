@@ -772,6 +772,23 @@ details[open] > summary .site-disclosure {
 .site-gallery-masonry li:nth-child(3n + 2) img {
   aspect-ratio: 4 / 5;
 }
+/* A contagem de colunas segue o acervo: com duas fotos, três colunas deixavam
+   a terceira vazia e um terço da seção em branco. Duas viram uma dupla
+   editorial em largura inteira, alinhada pela base; uma fica em coluna única. */
+.site-gallery-masonry ul:has(> li:nth-child(2):last-child) {
+  display: grid;
+  columns: auto;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 1.25rem;
+  align-items: end;
+}
+.site-gallery-masonry ul:has(> li:nth-child(2):last-child) li {
+  margin-bottom: 0;
+}
+.site-gallery-masonry ul:has(> li:only-child) {
+  max-width: 56rem;
+  columns: 1;
+}
 .site-gallery-filmstrip ul {
   grid-template-columns: none;
   grid-auto-flow: column;
@@ -889,9 +906,11 @@ details[open] > summary .site-disclosure {
 .site-theme[data-imagery='cutout'] .site-hero-media img {
   object-fit: contain;
 }
+/* Colagem: uma lâmina de cor deslocada atrás da foto, sem rotação. A foto
+   torta com sombra dura na cor da marca era o sinal mais forte de descuido. */
 .site-theme[data-imagery='collage'] .site-hero-media {
-  transform: rotate(-1.5deg);
-  box-shadow: 18px 18px 0 var(--accent-2);
+  box-shadow: 1rem 1rem 0
+    color-mix(in oklab, var(--accent-2) 38%, var(--paper));
 }
 .site-theme[data-motif='grid'] .site-hero,
 .site-theme[data-motif='grid'] main > .site-block:nth-child(3n) {
@@ -1009,6 +1028,9 @@ details[open] > summary .site-disclosure {
   }
   .site-gallery-masonry ul {
     columns: 1;
+  }
+  .site-gallery-masonry ul:has(> li:nth-child(2):last-child) {
+    grid-template-columns: 1fr;
   }
   .site-gallery-collage li:first-child {
     grid-column: auto;

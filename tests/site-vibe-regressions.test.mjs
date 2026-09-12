@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createElement } from 'react';
+import { renderToString } from 'react-dom/server';
 import { createJiti } from 'jiti';
 import { Output } from 'ai';
 import { loadModule } from './helpers/load-module.mjs';
@@ -14,6 +16,9 @@ const { plannedScenes, generationState } = await j.import(
   '../lib/sites/generation.ts',
 );
 const { systemPrompt } = await j.import('../lib/taste/prompt.ts');
+const { grammarDirection, VIBE_GRAMMAR } = await j.import(
+  '../lib/design/vibes.ts',
+);
 const { blockSchemas } = await j.import('../lib/blocks/registry.ts');
 const plain = (value) => JSON.parse(JSON.stringify(value));
 const photo = (n) => `https://assets.test/cena-${n}.webp`;
@@ -447,4 +452,77 @@ await test('crítico preserva a composição v2/v3 e recebe gramática apenas em
       version === 4,
     );
   }
+});
+
+// Medido em 12/09/2026 no cliente grupofisk: 48 caracteres a 8vw em 11ch viravam
+// uma palavra por linha e seis linhas de hero. A vibe agora tem orçamento de
+// headline, e o renderer marca o comprimento para o CSS reduzir a escala.
+await test('headline acima do orçamento da vibe vira aviso só no perfil v4', () => {
+  const long = 'Franquia de escolas para empresários em Curitiba';
+  assert.equal(long.length, 48);
+  const warnings = (version, vibe, headline) => {
+    const f = fixture(version);
+    f.tenant.brand.vibe = vibe;
+    f.pages[0].blocks.find((b) => b.id === 'hero').props.headline = headline;
+    return lintSite(f.pages, f.images, 'publish', f.tenant.brand).filter(
+      (finding) => finding.rule === 'headline-fora-da-vibe',
+    );
+  };
+  const [warning] = warnings(4, 'artistico', long);
+  assert.equal(warning.level, 'warn');
+  assert.equal(warning.page, '/');
+  assert.equal(warning.blockId, 'hero');
+  assert.match(warning.message, /48 caracteres/);
+  assert.match(warning.message, /até 40/);
+  assert.equal(warnings(4, 'artistico', long.slice(0, 40)).length, 0);
+  assert.equal(warnings(4, 'comercial', long).length, 0);
+  assert.equal(warnings(4, 'ousado', long.slice(0, 37)).length, 1);
+  assert.equal(warnings(4, 'ousado', long.slice(0, 36)).length, 0);
+  for (const version of [2, 3])
+    assert.equal(warnings(version, 'artistico', long).length, 0);
+  assert.equal(VIBE_GRAMMAR.artistico.headline, 40);
+  assert.match(grammarDirection('artistico'), /até 40 caracteres/);
+  assert.match(grammarDirection('ousado'), /até 36 caracteres/);
+});
+
+await test('o renderer marca o comprimento do headline para a escala da display', async () => {
+  const jsx = createJiti(import.meta.url, {
+    alias: { '@': process.cwd() },
+    jsx: { runtime: 'automatic' },
+    fsCache: false,
+  });
+  const { HeroSplit, HeroStatement, headlineScale } = await jsx.import(
+    '../lib/blocks/components.tsx',
+  );
+  assert.equal(headlineScale('A natureza desenha.'), 'short');
+  assert.equal(headlineScale('Franquia de escolas em Curitiba'), 'medium');
+  assert.equal(
+    headlineScale('Franquia de escolas para empresários em Curitiba'),
+    'long',
+  );
+  const ctx = {
+    tenant: fixture().tenant,
+    pagePath: '/',
+  };
+  const cta = { label: 'Falar pelo WhatsApp', href: '/contato' };
+  const split = renderToString(
+    createElement(HeroSplit, {
+      headline: 'Franquia de escolas para empresários em Curitiba',
+      layout: 'atelier',
+      image: photo(1),
+      secondaryImage: photo(2),
+      cta,
+      ctx,
+    }),
+  );
+  assert.match(split, /<h1[^>]*class="site-headline[^"]*"[^>]*data-length="long"/);
+  const statement = renderToString(
+    createElement(HeroStatement, {
+      headline: 'Fale com a equipe',
+      layout: 'center',
+      cta,
+      ctx,
+    }),
+  );
+  assert.match(statement, /<h1[^>]*data-length="short"/);
 });

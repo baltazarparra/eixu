@@ -265,6 +265,53 @@ essa superfície depois do cálculo. O cartão sobreposto do hero offset usa o
 papel do tom da própria seção, conservando o par texto/fundo também em `ink`,
 `accent` e `secondary`.
 
+## Refinamento da vibe artística
+
+Medido em 12/09/2026 no cliente `grupofisk` (artístico, perfil v4, hero
+atelier, navegação flutuante fixa, tratamento collage, galeria masonry com
+duas fotos). A prévia mostrava quatro defeitos que o pre-flight não vê: a
+headline de 48 caracteres a 8vw em `max-width: 11ch` virava uma palavra por
+linha e seis linhas de hero; o atelier somava painel parcial, foto rotacionada
+com sombra dura na cor da marca, detalhe com legenda cortada pelo
+`overflow: clip` e cartão de legenda, quatro camadas disputando com o título;
+a masonry criava três colunas para duas fotos e deixava um terço da seção
+vazio; a ilha do cabeçalho ficava numa faixa de papel colada à lavagem do
+hero, e as seções pares deslocadas 2vw à esquerda pareciam desalinhadas.
+
+- **Escala pelo comprimento.** `HeroSplit` e `HeroStatement` emitem
+  `data-length` (`short` até 24 caracteres, `medium` até 40, `long` acima)
+  por `headlineScale`, em `lib/blocks/components.tsx`. No artístico v3/v4 a
+  display cai de 8vw/11ch para 5,6vw/14ch e 3,9vw/18ch; a declaração
+  centralizada ganha 17ch e 22ch. O hero atelier tem os mesmos degraus para
+  perfis v2. Medido a 1440 px: os 48 caracteres passaram de 115 px em seis
+  linhas para 56 px em três.
+- **Orçamento de headline na gramática.** `VIBE_GRAMMAR.headline` fixa 56
+  caracteres para comercial e moderno, 36 para ousado e 40 para artístico.
+  `grammarDirection` leva o número ao prompt e `headline-fora-da-vibe` é
+  aviso em perfis v4. O erro `hero-headline` de duas linhas continua global.
+- **Ilha do cabeçalho.** No artístico v3/v4, `nav.bar` flutuante é uma ilha
+  translúcida de 68 px com desfoque, CTA em pílula com fio e cantos redondos
+  a partir de 1024 px. Com `position: fixed`, a moldura deixa de reservar
+  altura, a abertura sobe até o topo e paga o respiro com
+  `--navigation-offset`, medido pela `NavigationFrame`; o fallback de 6rem
+  cobre o primeiro paint. A direção da vibe passa a pedir esse par. O
+  deslocamento das seções pares saiu.
+- **Atelier.** O campo de cor ocupa a coluna inteira à direita (36%,
+  `accent-2` a 14%) e a foto de ambiente se sobrepõe a ele, reta, com sombra
+  difusa e o raio do painel; a colagem é o detalhe sobreposto, dentro da
+  altura da foto, com moldura de papel e legenda própria. A legenda da foto
+  principal fica no canto oposto, com fundo translúcido. `imagePosition: left`
+  espelha os três. O tratamento collage global perdeu a rotação e a sombra
+  dura: a lâmina de cor atrás da foto usa `accent-2` a 38% sobre o papel.
+- **Masonry pelo acervo.** Duas fotos viram uma dupla em grade
+  `1.15fr 0.85fr`, alinhada pela base, com a segunda em 4:5; uma foto fica em
+  coluna única de até 56rem; três ou mais mantêm as três colunas. O renderer
+  não muda o conteúdo.
+
+As regras de v3/v4 valem para todos os clientes artísticos publicados nessas
+versões. O atelier, a colagem e a masonry valem também para v2, porque são
+correções do renderizador, como a do filmstrip.
+
 ## Referências acima da vibe
 
 `read_reference` continua extraindo texto e, para URLs presentes em

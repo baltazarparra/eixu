@@ -105,6 +105,16 @@ function Action({
   );
 }
 
+/**
+ * Escala do headline pelo comprimento. A display serifada da vibe artística
+ * cresce até 8vw e uma frase de 48 caracteres virava uma palavra por linha.
+ * O CSS lê `data-length` e reduz a escala para o título caber em três linhas.
+ */
+export function headlineScale(text: string): 'short' | 'medium' | 'long' {
+  const length = text.trim().length;
+  return length <= 24 ? 'short' : length <= 40 ? 'medium' : 'long';
+}
+
 export function NavBar({
   vibe = 'comercial',
   logoText,
@@ -241,7 +251,12 @@ export function HeroSplit({
       <div className={`${shell} site-hero-grid`}>
         <div className="site-hero-copy flex flex-col items-start gap-6">
           <Eyebrow vibe={vibe}>{eyebrow}</Eyebrow>
-          <h1 className="site-headline text-balance">{headline}</h1>
+          <h1
+            className="site-headline text-balance"
+            data-length={headlineScale(headline)}
+          >
+            {headline}
+          </h1>
           {subtext ? (
             <p className="max-w-[44ch] text-[1.08rem] leading-relaxed text-[var(--muted)]">
               {subtext}
@@ -325,7 +340,12 @@ export function HeroStatement({
       <div className={`${shell} site-hero-grid`}>
         <div className="site-hero-copy flex flex-col items-start gap-7">
           <Eyebrow vibe={vibe}>{eyebrow}</Eyebrow>
-          <h1 className="site-headline text-balance">{headline}</h1>
+          <h1
+            className="site-headline text-balance"
+            data-length={headlineScale(headline)}
+          >
+            {headline}
+          </h1>
           {subtext ? (
             <p className="max-w-[48ch] text-[1.1rem] leading-relaxed text-[var(--muted)]">
               {subtext}

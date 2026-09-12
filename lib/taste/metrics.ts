@@ -291,6 +291,21 @@ function grammarFindings(
         blockType: opening.block.type,
         message: `A abertura ${opening.signature} não pertence à vibe ${label}. Use uma destas: ${allowedOpenings.join(', ')}.`,
       });
+    for (const [index, mark] of marks.entries()) {
+      if (!mark.block.type.startsWith('hero.')) continue;
+      const headline = mark.block.props.headline;
+      if (typeof headline !== 'string' || headline.length <= grammar.headline)
+        continue;
+      findings.push({
+        page: path,
+        level: 'warn',
+        rule: 'headline-fora-da-vibe',
+        blockId: mark.block.id,
+        blockIndex: index,
+        blockType: mark.block.type,
+        message: `Headline com ${headline.length} caracteres. A vibe ${label} sustenta até ${grammar.headline}: encurte o título e leve o resto para o subtext.`,
+      });
+    }
     if (
       home &&
       !marks.some(

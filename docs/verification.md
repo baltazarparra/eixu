@@ -1,5 +1,46 @@
 # Validação e publicação
 
+## Refinamento da vibe artística, 12/09/2026
+
+O operador reprovou a home artística do cliente `grupofisk`: título de 48
+caracteres em seis linhas, hero atelier com quatro camadas e legenda cortada,
+masonry de três colunas com duas fotos e ilha do cabeçalho colada ao hero. O
+contrato resultante está em [Design](design.md#refinamento-da-vibe-artística):
+`data-length` no headline, orçamento de headline por vibe com o aviso
+`headline-fora-da-vibe` em v4, ilha flutuante sobre a abertura, atelier com
+campo de cor e detalhe dentro da foto, colagem sem rotação e masonry pela
+contagem de fotos. Não há migração nem mudança de schema.
+
+Verificação local:
+
+- Tipos, lint global, `git diff --check` e formatação da documentação
+  passaram. O build Next.js de produção passou com o cache do Turbopack limpo,
+  incluindo os três checks dos artefatos de captura serverless; o chunk CSS
+  contém `data-length=long`, a dupla da masonry e a ilha, e não contém mais a
+  rotação da colagem.
+- `npm run test:sites`: 127 casos, 126 passaram e um foi pulado. Dois são
+  novos: o aviso de headline vale só em v4 e respeita 40/36/56 caracteres por
+  vibe, e o SSR de `HeroSplit` e `HeroStatement` emite `data-length`.
+- `npm run test:admin`: 119 casos, 114 passaram e cinco foram pulados por
+  ausência de `EIXU_TEST_POSTGRES_URL`.
+- `EIXU_CHROME_PATH=/usr/bin/google-chrome` nos testes de navegador dos sites
+  (sistema visual, regressões de UI e navegação): 14 casos passaram com o CSS
+  compilado.
+- Capturas com `next dev` e Chrome headless, antes e depois, em
+  `outputs/vibes/`: a 1440 px a headline passou de 115 px em seis linhas para
+  56 px em três, a ilha flutua sobre a lavagem, o atelier mostra campo de cor,
+  foto reta, detalhe com legenda inteira e a masonry preenche a largura com
+  duas fotos (também conferida com uma, três e quatro clonadas no DOM); a
+  1280 e 390 px sem overflow horizontal. A página interna com `hero.statement`
+  centralizado ficou em duas linhas. Os clientes artísticos v2 `portoembalagens`
+  (offset com colagem) e `skytattoo` (atelier emoldurado) continuam íntegros
+  com a lâmina de cor sem rotação e o detalhe dentro da foto.
+
+Limites: o tenant `grupofisk` foi removido do banco durante a sessão, então a
+conferência no `next start` de produção usou `skytattoo` (200) e o chunk CSS; a
+composição v4 com título curto e médio foi vista alterando o DOM da página, não
+por um cliente gerado. Nada foi publicado.
+
 ## Conversa recolhível no editor, 12/09/2026
 
 O grupo PRÉVIA ganhou um botão que recolhe a conversa a partir de 1024 px e

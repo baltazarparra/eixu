@@ -193,6 +193,8 @@ export type VibeGrammar = {
   avoid: readonly string[];
   /** Alvos de cena das páginas internas, usados em ordem. */
   support: readonly string[];
+  /** Caracteres que o headline do hero sustenta na escala da display. */
+  headline: number;
   /** Uma linha para o prompt e para a mensagem de recusa. */
   summary: string;
 };
@@ -219,6 +221,7 @@ export const VIBE_GRAMMAR: Record<Vibe, VibeGrammar> = {
       'cta.band:poster',
     ],
     support: ['narrative.split', 'media.image'],
+    headline: 56,
     summary:
       'abre em hero.split split ou cover, carrega a home com feature.explorer showroom ou feature.bento gallery e fecha em cta.band band ou form.lead.',
   },
@@ -234,6 +237,7 @@ export const VIBE_GRAMMAR: Record<Vibe, VibeGrammar> = {
       'faq.accordion:cards',
     ],
     support: ['media.image', 'narrative.split'],
+    headline: 56,
     summary:
       'abre em hero.split editorial ou offset, carrega a home com feature.bento showcase ou feature.explorer panorama e fecha em cta.band minimal ou split.',
   },
@@ -249,6 +253,7 @@ export const VIBE_GRAMMAR: Record<Vibe, VibeGrammar> = {
       'feature.bento:gallery',
     ],
     support: ['media.image', 'media.image'],
+    headline: 36,
     summary:
       'abre em hero.split cover ou poster, carrega a home com media.gallery collage ou grid em largura cheia e fecha em cta.band poster.',
   },
@@ -263,6 +268,7 @@ export const VIBE_GRAMMAR: Record<Vibe, VibeGrammar> = {
       'feature.numbered:cards',
     ],
     support: ['narrative.split', 'narrative.split'],
+    headline: 40,
     summary:
       'abre em hero.split offset ou atelier, carrega a home com media.gallery masonry ou editorial.resources feature e fecha em cta.band split ou form.lead stack.',
   },
@@ -287,6 +293,7 @@ export function grammarDirection(vibe: Vibe): string {
 - Seção protagonista da home, com duas fotos deste cliente: ${grammar.protagonists.join(' ou ')}.
 - Abertura das páginas internas: ${[...grammar.innerOpenings, ...grammar.openings].join(', ')}.
 - Fechamento de cada página: ${grammar.closings.join(' ou ')}.
+- Headline de todo hero: até ${grammar.headline} caracteres. O que sobrar vai para o subtext.
 - Evite nesta vibe: ${grammar.avoid.join(', ')}.
 Referência verificada escolhe dentro desta gramática e decide tipografia, imagens, ritmo e superfície. Ela não troca a silhueta da vibe.`;
 }
@@ -419,7 +426,9 @@ export const VIBE_DIRECTION: Record<Vibe, string> = {
 - Blocos inteiros em presentation.tone "ink"; rótulos curtos em caixa alta; cantos retos e nenhuma sombra.
 - Contraste alto e uma cor de acento só. Texto curto e firme, com a explicação logo abaixo do título.`,
   artistico: `Vibe artístico: papel claro e quente, display serifada e composição editorial com sobreposição.
-- Navegação floating, tratamento collage ou cutout e superfície layered. Deixe o texto sobrepor a foto e use legenda nas imagens.
+- Navegação floating com position "fixed": a ilha flutua sobre a abertura. Tratamento collage ou cutout e superfície layered. Deixe o texto sobrepor a foto e use legenda nas imagens.
+- Headline do hero com até 40 caracteres, de preferência três ou quatro palavras: a display serifada cresce até 8vw e uma frase longa vira uma palavra por linha. A explicação fica no subtext.
+- media.gallery layout masonry aceita duas fotos: elas viram uma dupla em largura inteira. Com três ou mais, as colunas alternam alturas.
 - narrative.split layout overlap, editorial.text layout lead com presentation.align "center" nas declarações, faq.accordion layout cards em tom "soft".
 - Escolha motif rings ou corners como elemento-assinatura e realize-o nas props, não só no conceito.
 - As cores do cadastro aparecem como lavagem suave entre seções; mantenha o texto sempre sobre superfície legível.`,
