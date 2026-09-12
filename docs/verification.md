@@ -313,6 +313,30 @@ recolhido. Os erros de runtime da última hora vêm do deployment anterior
 foi exercitado em produção porque exige sessão; a prova interativa fica no
 teste de navegador.
 
+### Controles de recolhimento no cabeçalho e na conversa
+
+O controle da conversa saiu do grupo PRÉVIA e passou a ser a ação primária ao
+lado de **Voltar**, que permanece secundário. Com a conversa aberta, um segundo
+controle com chevron fica no centro de sua borda direita e a recolhe; a
+reabertura continua no cabeçalho. Abaixo de 1024 px, ambos somem e as vistas
+continuam alternando por Conversa e Prévia. Não há migração nem mudança de API.
+
+Verificação local:
+
+- Tipos, lint global, `git diff --check`, formatação e o build Next.js de
+  produção passaram; os três checks dos artefatos serverless também passaram.
+- `npm run test:admin`: 144 casos, 137 passaram e sete integrações foram puladas
+  por ausência dos recursos externos locais configurados para elas.
+- `EIXU_CHROME_PATH=/usr/bin/google-chrome npm run test:admin:browser`: dez
+  casos passaram. O fluxo específico confirma os dois acionadores, hierarquia
+  primária/secundária, `aria-expanded`, prévia em largura inteira e retorno da
+  conversa em 1440, 1100 e 390 px. O handoff completo também passou em 320,
+  390, 1280, 1440 e 1920 px, sem overflow ou sobreposição. Capturas em
+  `outputs/generation/conversa-{aberta,recolhida}-1440.png`.
+
+Os testes usaram fixtures locais, sem chamada paga, escrita em Neon/Blob,
+publicação de página de cliente ou alteração de variáveis remotas.
+
 ## Geração concluída com revisão humana, 12/09/2026
 
 Esta mudança substitui a conferência única descrita no registro anterior. O

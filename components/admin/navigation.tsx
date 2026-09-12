@@ -16,8 +16,9 @@ import { useAdminSession } from './session';
 
 type TenantIdentity = { slug: string; name: string; status?: string };
 type Area = 'site' | 'imagens' | 'trafego' | 'dados';
-/** Dois pontos de montagem na barra: o grupo da prévia e o da decisão. */
+/** Pontos de montagem na barra para os controles vivos do editor. */
 type HeaderSlots = {
+  conversation: HTMLDivElement | null;
   preview: HTMLDivElement | null;
   decision: HTMLDivElement | null;
 };
@@ -43,11 +44,13 @@ const AREAS = [
 function TenantHeader({
   tenant,
   active,
+  conversation,
   preview,
   decision,
 }: {
   tenant: TenantIdentity;
   active: Area;
+  conversation?: ReactNode;
   preview?: ReactNode;
   decision?: ReactNode;
 }) {
@@ -58,12 +61,13 @@ function TenantHeader({
       <div className="admin-bar-identity">
         <Link
           href="/admin"
-          className="admin-back"
+          className="admin-secondary admin-back"
           aria-label="Voltar para a lista de clientes"
           title="Clientes"
         >
           <ArrowLeft size={15} aria-hidden="true" />
         </Link>
+        {conversation}
         <div>
           <div>
             <strong>{tenant.name}</strong>
@@ -118,9 +122,13 @@ export function TenantFrame({
     suffix === 'imagens' || suffix === 'trafego' || suffix === 'dados'
       ? suffix
       : 'site';
+  const [conversation, setConversation] = useState<HTMLDivElement | null>(null);
   const [preview, setPreview] = useState<HTMLDivElement | null>(null);
   const [decision, setDecision] = useState<HTMLDivElement | null>(null);
-  const slots = useMemo(() => ({ preview, decision }), [preview, decision]);
+  const slots = useMemo(
+    () => ({ conversation, preview, decision }),
+    [conversation, preview, decision],
+  );
   const editor = active === 'site';
   return (
     <RefreshTenant.Provider value={() => router.refresh()}>
@@ -129,8 +137,15 @@ export function TenantFrame({
           <TenantHeader
             tenant={tenant}
             active={active}
+            conversation={
+              editor ? (
+                <div ref={setConversation} className="admin-bar-slot" />
+              ) : null
+            }
             preview={
-              editor ? <div ref={setPreview} className="admin-bar-slot" /> : null
+              editor ? (
+                <div ref={setPreview} className="admin-bar-slot" />
+              ) : null
             }
             decision={
               editor ? (
@@ -151,10 +166,13 @@ export function TenantFrame({
 
 export function WorkspaceHeader({
   tenant,
+  conversation,
   preview,
   decision,
 }: {
   tenant: TenantIdentity;
+  /** Recolhe ou reabre a conversa, junto do retorno à lista de clientes. */
+  conversation: ReactNode;
   /** Grupo PRÉVIA: página em foco, largura e abrir em outra aba. */
   preview: ReactNode;
   /** O que condiciona a publicação: andamento, aviso de revisão e Publicar. */
@@ -164,6 +182,9 @@ export function WorkspaceHeader({
   if (slots) {
     return (
       <>
+        {slots.conversation
+          ? createPortal(conversation, slots.conversation)
+          : null}
         {slots.preview ? createPortal(preview, slots.preview) : null}
         {slots.decision ? createPortal(decision, slots.decision) : null}
       </>
@@ -174,6 +195,7 @@ export function WorkspaceHeader({
     <TenantHeader
       tenant={tenant}
       active="site"
+      conversation={conversation}
       preview={preview}
       decision={decision}
     />
