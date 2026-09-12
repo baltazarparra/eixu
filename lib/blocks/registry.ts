@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { contrastRatio } from './contrast';
 import { ICON_NAMES } from '@/lib/design/iconography';
 import { VIBE_GRAMMAR, type Vibe } from '@/lib/design/vibes';
 import { expectedRatio } from '../images/ratios';
@@ -65,11 +66,38 @@ const logoHeight = z
 const presentation = z
   .object({
     tone: z.enum(['paper', 'soft', 'ink', 'accent', 'secondary']).optional(),
+    background: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .optional()
+      .describe(
+        'Cor de fundo exclusiva desta seção. Prevalece sobre tone sem mudar a marca; texto com contraste automático.',
+      ),
+    foreground: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .optional()
+      .describe(
+        'Cor do texto desta seção; exige background explícito e contraste mínimo de 4,5:1. Omita para contraste automático.',
+      ),
     motion: z.enum(['none', 'reveal', 'stagger', 'image']).optional(),
     width: z.enum(['narrow', 'normal', 'wide', 'full']).optional(),
     spacing: z.enum(['tight', 'normal', 'airy']).optional(),
     align: z.enum(['left', 'center', 'offset']).optional(),
     edge: z.enum(['none', 'line', 'panel', 'bleed']).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (
+      value.foreground &&
+      (!value.background ||
+        contrastRatio(value.foreground, value.background) < 4.5)
+    )
+      ctx.addIssue({
+        code: 'custom',
+        path: ['foreground'],
+        message:
+          'Informe background e foreground com contraste mínimo de 4,5:1; ou omita foreground para usar contraste automático.',
+      });
   })
   .optional();
 

@@ -67,7 +67,7 @@ async function fixture(text = request) {
         async (_parts, ...values) => {
           writes.push(values);
           pages[0].blocks = JSON.parse(values[0]);
-          return [];
+          return [{ id: 'page' }];
         },
     },
     '@/lib/tenant-queries': { getPage: async () => structuredClone(pages[0]) },
@@ -142,9 +142,20 @@ await test('props inválidas e desconhecidas são recusadas antes de gravar um b
     { arbitraryCss: 'position:fixed' },
   ]) {
     const f = await fixture('Ajuste o bloco da home.');
+    const snapshot = await f.tools.get_page.execute({ page: '' });
     assert.ok(
-      (await f.tools.update_block.execute({ page: '', block: 'nav', props }))
-        .error,
+      (
+        await f.tools.edit_page.execute({
+          page: '',
+          revision: snapshot.revision,
+          operations: Object.entries(props).map(([path, value]) => ({
+            op: 'set',
+            block: 'nav',
+            path,
+            value,
+          })),
+        })
+      ).error,
     );
     assert.equal(f.writes.length, 0);
   }

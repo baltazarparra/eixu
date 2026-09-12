@@ -7,6 +7,7 @@ import { SiteLocation } from '@/lib/blocks/location';
 import { contactsOf } from '@/lib/tenant-contacts';
 import { renderingVibeOf, VIBE_LOCATION_TONE } from '@/lib/design/vibes';
 import { previewProps } from '@/lib/sites/preview';
+import { sectionColorVars } from '@/lib/blocks/section-colors';
 
 export type RenderContext = {
   tenant: Tenant;
@@ -35,15 +36,17 @@ export function RenderBlocks({
   blocks: BlockInstance[];
   ctx: RenderContext;
 }) {
-  const isChrome = (block: BlockInstance) =>
-    block.type.startsWith('nav.') || block.type.startsWith('footer.');
-  const leading: BlockInstance[] = [];
-  const content: BlockInstance[] = [];
-  const trailing: BlockInstance[] = [];
-  for (const block of blocks) {
-    if (isChrome(block)) (content.length ? trailing : leading).push(block);
-    else content.push(block);
-  }
+  // Preserve a ordem salva, inclusive se o operador inserir conteúdo depois
+  // do rodapé. Um único main contém o miolo; o fechamento fica fora dele.
+  let start = 0;
+  while (blocks[start]?.type.startsWith('nav.')) start += 1;
+  const footer = blocks.findIndex(
+    (block, i) => i >= start && block.type.startsWith('footer.'),
+  );
+  const end = footer < 0 ? blocks.length : footer;
+  const leading = blocks.slice(0, start);
+  const content = blocks.slice(start, end);
+  const trailing = blocks.slice(end);
   const usedAnchors = new Set<string>();
   const contacts = contactsOf(ctx.tenant.contacts, ctx.tenant.whatsapp);
   const showLocation =
@@ -252,7 +255,9 @@ function renderList(
             id={anchor}
             className="site-block"
             data-block={block.type}
-            data-tone={presentation?.tone}
+            data-block-id={block.id}
+            data-tone={presentation?.background ? 'custom' : presentation?.tone}
+            style={sectionColorVars(presentation, ctx.tenant.brand)}
             data-width={presentation?.width}
             data-spacing={presentation?.spacing}
             data-align={presentation?.align}

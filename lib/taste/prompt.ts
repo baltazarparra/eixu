@@ -21,6 +21,8 @@ export type PromptContext = {
   phase?: Phase;
   editing?: boolean;
   editScope?: string;
+  /** Snapshot e schemas da página em foco lidos neste turno pelo servidor. */
+  editPage?: string;
   /** Papéis de cena que a direção pede, montados por scenePlan. */
   scenePlan?: string;
   /** Quantas vagas do plano já têm foto disponível. */
@@ -108,6 +110,19 @@ const FREE = `## Execução com critério de qualidade
 - O catálogo abaixo traz uso, proporção e limites de cada bloco. describe_block só se restar dúvida de schema. Omita opcionais sem conteúdo.
 - Execute com o contexto disponível; pergunte só se faltar informação que mude materialmente o resultado. Nunca publique ou apague página sem pedido do operador.`;
 
+const EDIT = `## Edição de um site já gerado
+- Cada operação usa os campos op e block. Exemplo de troca literal: operations: [{"op":"replace_text","block":"ID_ATUAL","from":"texto antigo","to":"texto novo"}]. Exemplo de campo: {"op":"set","block":"ID_ATUAL","path":"items.0.title","value":"Novo título"}. Exemplo de inserção: {"op":"insert","block":{"type":"editorial.text","props":{"title":"Título","body":"Texto completo com ao menos vinte caracteres."}},"position":{"relation":"after","block":"ID_DO_RODAPE"}}. No movimento, block é o ID existente; position tem esse mesmo formato. Copie revision da leitura atual.
+- Cumpra o pedido atual na página indicada pelo operador; na ausência de outra indicação, use a página em foco. A leitura atual abaixo já contém blocos, props, revisão e schemas. Não repita get_page/list_state/describe_block para dados que já estão aqui. Use get_page para outra página ou após conflito. Nunca use revisão ou ID de um turno antigo.
+- Prefira uma chamada de edit_page por página, reunindo as operações do pedido. Mantenha o raciocínio necessário, mas não replaneje o site, releia fontes ou gere imagens para uma troca de texto, cor ou posição. Uma edição pequena não exige mensagem preliminar.
+- "Troque X por Y": replace_text com from/to exatos, sem reescrever a frase ao redor. A busca trata maiúsculas e acentos literalmente. Se houver mais de uma ocorrência e o pedido não disser todas, identifique o bloco/campo pelo contexto ou pergunte; não aumente occurrences para contornar ambiguidade.
+- Para um campo aninhado use set por caminho, como cta.label ou items.0.title. Não reenvie a lista, o objeto ou o bloco inteiro para trocar uma parte. unset remove um opcional e restaura o padrão. Preserve IDs, imagens, links e campos fora do pedido. Para trocar o tipo do bloco, consulte o schema novo e use replace_block com block (ID atual) e replacement {type, props completas}; preserve todo conteúdo compatível. Trocar apenas layout continua usando set.
+- Cor de uma seção: set em presentation.background com a cor hex exata. O texto recebe contraste automático; presentation.foreground só quando o operador pedir uma cor de texto, sempre junto de background para verificar contraste. presentation.tone usa os tons da marca. set_brand só para pedido explicitamente global. Para voltar ao tom da marca remova background e foreground com unset.
+- Inserir/mover: use position before/after com ID do bloco de referência; start/end só quando o pedido disser início/fim da página. "Abaixo do footer" é after do rodapé, inclusive na prévia. Sem posição, insira antes do rodapé. Para tipo novo, consulte describe_block e complete o schema antes de gravar. Não invente bloco, HTML ou CSS livre.
+- Se o pedido combinar várias páginas, leia e edite cada alvo; a gravação é atômica por página. Se uma delas falhar, informe o que já foi salvo e o que falta. Nunca diga que o pedido inteiro foi salvo quando houve recusa.
+- A ferramenta retorna mudanças, nova revisão e pre-flight. Use o recibo para concluir; não repita lint/get_page nem abra review_pages depois de uma edição bem-sucedida. Erros anteriores fora do pedido são pendências, não autorização para outras mudanças. Falha recusa o lote inteiro: corrija a entrada ou releia após conflito, sem repetir cegamente uma mutação.
+- Tamanho/fixação do cabeçalho usam logoHeight/position/backgroundOpacity. Imagem por número usa update_image; logo e publicação exigem pedido explícito. Não há aprovação de imagens. Revisão visual automática somente por pedido explícito, independente da edição.
+- Responda brevemente com a alteração realmente salva no rascunho e eventual pendência. A prévia é a revisão humana; não alegue que viu pixels ou publicou. Em dúvida material de alvo ou intenção, faça uma pergunta curta sem alterar nada.`;
+
 /** Direção das duas skills; contratos completos continuam no schema e no pre-flight. */
 export function systemPrompt(
   tenant: Tenant,
@@ -120,6 +135,7 @@ export function systemPrompt(
     phase,
     editing,
     editScope,
+    editPage,
     scenePlan,
     coverage,
     missingScenes,
@@ -164,10 +180,10 @@ export function systemPrompt(
     `## Identidade EIXU\n${soul}`,
     FACTS,
     copyDirection(vibe),
-    visualSources.length || hasReferenceDirection(tenant.brand)
+    !editing && (visualSources.length || hasReferenceDirection(tenant.brand))
       ? referencesDirection(legacy)
       : '',
-    phase ? PHASE_BRIEF[phase] : FREE,
+    phase ? PHASE_BRIEF[phase] : editing ? EDIT : FREE,
     editScope ? `## Escopo da edição atual\n${editScope}` : '',
     wantsComposition ? COMPOSITION : '',
     !legacy && (wantsComposition || wantsDirection)
@@ -220,6 +236,7 @@ ${imagesSummary || '(nenhuma)'}
 Página em foco: ${currentPage || '/'}
 Páginas:
 ${pagesSummary || '(nenhuma)'}`,
+    editPage ? `## Página em foco, versão atual\n${editPage}` : '',
   ].filter(Boolean);
 
   return `Você é creative developer e diretor de arte dos sites EIXU. Compõe identidade, imagens, interação e conteúdo de inbound como uma experiência coerente. Português do Brasil, voz do cliente e fatos verificáveis.
