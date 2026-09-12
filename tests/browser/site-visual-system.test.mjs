@@ -146,6 +146,12 @@ await test(
           await page.evaluate(() => document.fonts.ready);
           for (const width of [320, 390, 768, 1440, 1920]) {
             await page.setViewport({ width, height: 1000 });
+            await page.evaluate(
+              () =>
+                new Promise((resolve) => {
+                  requestAnimationFrame(() => requestAnimationFrame(resolve));
+                }),
+            );
             const metrics = await page.evaluate(() => {
               const h1 = document.querySelector('h1');
               const body = document.querySelector('.site-text p:last-child');
@@ -175,6 +181,27 @@ await test(
                   ),
                 ).display,
                 icons: document.querySelectorAll('.site-icon').length,
+                decorativeIcons: document.querySelectorAll(
+                  '.site-eyebrow .site-icon, .site-text .site-icon, .site-gallery .site-icon, .site-step-number .site-icon, .site-explorer-tabs [data-icon="arrow-up-right"], .site-explorer-copy li .site-icon',
+                ).length,
+                itemIcons: [
+                  ...document.querySelectorAll(
+                    '.site-item-heading > .site-icon',
+                  ),
+                ].map((icon) => {
+                  const heading = icon.parentElement;
+                  const label = icon.nextElementSibling;
+                  const svg = icon.querySelector('svg').getBoundingClientRect();
+                  const text = label.getBoundingClientRect();
+                  const font = parseFloat(getComputedStyle(heading).fontSize);
+                  return {
+                    title: heading.textContent,
+                    ratio: svg.width / font,
+                    gap: (text.x - svg.right) / font,
+                    top: (svg.y - text.y) / font,
+                    right: text.right,
+                  };
+                }),
               };
             });
             assert.ok(
@@ -202,12 +229,38 @@ await test(
                 (a, b) => a.localeCompare(b),
               ),
             );
-            assert.ok(metrics.icons > 20);
+            assert.equal(metrics.decorativeIcons, 0);
+            assert.ok(metrics.itemIcons.length > 0);
+            for (const icon of metrics.itemIcons) {
+              assert.ok(
+                icon.ratio >= 0.85 && icon.ratio <= 1.05,
+                JSON.stringify(icon),
+              );
+              assert.ok(
+                icon.gap >= 0.4 && icon.gap <= 0.6,
+                JSON.stringify(icon),
+              );
+              assert.ok(
+                icon.top >= 0 && icon.top <= 0.25,
+                JSON.stringify(icon),
+              );
+              assert.ok(icon.right <= width, JSON.stringify(icon));
+            }
             reports.push({ vibe, ...metrics });
             if ([390, 1440].includes(width)) {
               await page.screenshot({
                 path: `outputs/visual-system/${vibe}-${width}.png`,
               });
+              for (const selector of [
+                '.site-text',
+                '.site-gallery',
+                '.site-services',
+              ])
+                await (
+                  await page.$(selector)
+                ).screenshot({
+                  path: `outputs/visual-system/icons-${vibe}-${width}-${selector.slice(6)}.png`,
+                });
             }
           }
           await page.setViewport({ width: 390, height: 1000 });

@@ -92,7 +92,7 @@ export const visualBlocks: BlockInstance[] = [
       items: [
         {
           icon: 'compass',
-          title: 'Direção e descoberta',
+          title: 'Direção e descoberta para cada nova ideia',
           body: 'Entender o contexto antes de desenhar o próximo passo.',
           href: '#contato',
         },
@@ -115,9 +115,47 @@ export const visualBlocks: BlockInstance[] = [
     id: 'text',
     type: 'editorial.text',
     props: {
-      title: 'O espaço também diz.',
+      title: 'Ensino sólido com espaço acolhedor',
       layout: 'lead',
+      presentation: { align: 'center' },
       body: 'Uma boa leitura precisa de ritmo. O título abre a conversa, o parágrafo desenvolve a ideia e a legenda oferece contexto.\n\nA experiência de leitura depende do tamanho das letras, da distância entre as linhas e da largura de cada parágrafo. Acentos como ação, criação, equilíbrio e coração devem aparecer com clareza em todos os tamanhos. O contraste entre famílias ajuda a reconhecer a hierarquia sem exigir esforço de quem lê.',
+    },
+  },
+  {
+    id: 'gallery',
+    type: 'media.gallery',
+    props: {
+      title: 'Ambientes desenhados para aprender',
+      layout: 'filmstrip',
+      images: [
+        {
+          src: 'https://assets.test/one.svg',
+          alt: 'Composição sintética de teste',
+        },
+        {
+          src: 'https://assets.test/two.svg',
+          alt: 'Segunda composição sintética',
+        },
+      ],
+    },
+  },
+  {
+    id: 'narrative',
+    type: 'narrative.split',
+    props: {
+      title: 'Aprender começa na descoberta',
+      layout: 'editorial',
+      items: [
+        {
+          icon: 'book',
+          title: 'Leitura e imaginação em cada etapa',
+          body: 'Um texto longo permite conferir a quebra de linha ao lado do símbolo.',
+        },
+        {
+          title: 'Espaço para aprender',
+          body: 'Sem escolha de ícone, o texto ocupa seu lugar sem adorno.',
+        },
+      ],
     },
   },
   {
