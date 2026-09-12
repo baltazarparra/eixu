@@ -26,8 +26,16 @@ automático nem inércia, incluindo mudança da preferência com a página abert
 Não houve erro de shader ou console.
 
 Capturas, fixture e medições ficam em `outputs/diamond-check/`, ignorado pelo
-Git. A verificação de toque usou emulação; não houve teste em aparelho físico
-nem deploy.
+Git. A verificação de toque usou emulação; não houve teste em aparelho físico.
+
+O código funcional corresponde a `10099405ee53b373574778a4333d832bebe99d08`,
+com deployment Vercel `dpl_Atx7TcjaKH4B28xAb17jQXuvPQ2j` em estado `READY`
+no alvo de produção. O build remoto confirmou o mesmo commit e passou nos três
+checks dos artefatos serverless. O smoke em `eixu.com.br` respondeu 200 na home
+e no login administrativo; a consulta dos logs do deployment não encontrou
+erros. A interação do diamante não foi repetida em produção porque exige sessão
+e uma geração ativa; a prova interativa permaneceu na fixture local, sem
+geração paga nem escrita em banco.
 
 ## Diamante da geração na prévia, 12/09/2026
 
