@@ -12,8 +12,10 @@ import { hasReferenceDirection, type ReferenceAspect } from './references';
  * referência dirige o visual.
  *
  * Referências lidas em 10/09/2026: linear.app (moderno), 14islands.com
- * (ousado) e actionline.io (artistico). Elas orientam a linguagem visual; o
- * conteúdo continua vindo do briefing do cliente.
+ * (ousado) e actionline.io (artistico). Em 12/09/2026 o moderno foi recriado
+ * sobre linear.app, resend.com e untold.site/pt: sistema tipográfico com fio
+ * de 1px, rótulos em mono e nenhuma grade decorativa. Elas orientam a
+ * linguagem visual; o conteúdo continua vindo do briefing do cliente.
  */
 export const VIBES = ['comercial', 'moderno', 'ousado', 'artistico'] as const;
 export type Vibe = (typeof VIBES)[number];
@@ -58,7 +60,7 @@ export const VIBE_HINT: Record<Vibe, string> = {
   comercial:
     'Clareza acolhedora: benefício, prova e contato em um percurso direto e simples.',
   moderno:
-    'Sistema preciso: fundo escuro, grade e capítulos espaçados, com voz clara e tranquila.',
+    'Sistema tipográfico: papel quase preto, fios de 1px, rótulos em mono e muito respiro, com voz clara e tranquila.',
   ousado:
     'Impacto gráfico: título como imagem, escala extrema e texto curto e firme.',
   artistico:
@@ -75,10 +77,13 @@ export const VIBE_PALETTE: Record<
     secondary: '#dbeafe',
     highlight: '#b45309',
   },
+  // Índigo apagado para a única seção colorida, grafite para a superfície
+  // elevada e ação lavanda para links e numerais: o botão principal do moderno
+  // é tinta sobre papel, não a cor de destaque.
   moderno: {
-    primary: '#111827',
-    secondary: '#1f2937',
-    highlight: '#22d3ee',
+    primary: '#5b63d6',
+    secondary: '#1b1e24',
+    highlight: '#c9d1ff',
   },
   ousado: {
     primary: '#ff3d00',
@@ -121,6 +126,9 @@ export const VIBE_LANE: Record<Vibe, Lane> = {
     paper: [0.82, 1],
     dials: { variance: [2, 5], motion: [2, 4], density: [4, 7] },
   },
+  // O motivo grid saiu da faixa: a grade atravessava todas as seções e
+  // nenhuma referência a usa. Perfis v2 já gravados com grid continuam sendo
+  // renderizados como foram publicados.
   moderno: {
     axes: {
       displayFont: ['geometric', 'grotesk'],
@@ -130,9 +138,9 @@ export const VIBE_LANE: Record<Vibe, Lane> = {
       rhythm: ['chapters'],
       imageTreatment: ['framed'],
       surfaceStyle: ['outlined'],
-      motif: ['none', 'grid'],
+      motif: ['none'],
     },
-    radius: ['sm'],
+    radius: ['sm', 'md'],
     paper: [0, 0.12],
     ink: [0.75, 1],
     dials: { variance: [3, 5], motion: [3, 5], density: [3, 5] },
@@ -232,7 +240,11 @@ export const VIBE_GRAMMAR: Record<Vibe, VibeGrammar> = {
     closings: ['cta.band:minimal', 'cta.band:split', 'form.lead:panel'],
     avoid: [
       'feature.bento:gallery',
+      'feature.numbered:cards',
+      'proof.stats:cards',
+      'hero.statement:oversize',
       'media.gallery:collage',
+      'media.gallery:masonry',
       'cta.band:poster',
       'faq.accordion:cards',
     ],
@@ -415,11 +427,12 @@ export const VIBE_DIRECTION: Record<Vibe, string> = {
 - A home abre com benefício, foto documental e CTA visível, e o miolo alterna oferta, aplicações reais, dúvidas e contato. Não transforme tudo em cartões.
 - feature.numbered layout ledger para serviços, proof.testimonial só com depoimento real, faq.accordion layout split.
 - Ícones regulares e semânticos só onde aceleram leitura. Cantos discretos, movimento funcional e hierarquia de conversão clara.`,
-  moderno: `Vibe moderno: superfície escura e monocromática, uma cor de acento só, linhas de 1px e muito respiro.
-- paper e surface quase pretos, ink quase branco, radius sm. As cores do cadastro pintam acento, botões e uma única seção colorida.
-- Componha em capítulos: narrative.split layout editorial, feature.numbered layout rail e proof.stats layout strip para números. Nada de card decorado.
-- A grade e a linha fina organizam a página inteira. Use presentation.edge "line" nas transições e no máximo duas seções com motion "reveal".
-- Fotos de detalhe, produto ou processo, emolduradas. Evite pessoa posando para a câmera.`,
+  moderno: `Vibe moderno: papel quase preto e liso, fios de 1px entre capítulos, rótulos em mono e muito respiro, como linear.app e resend.com.
+- paper e surface quase pretos, ink quase branco, radius sm ou md, motif none. Não existe grade nem textura de fundo: os capítulos se separam por um fio de 1px.
+- nav.bar layout minimal com position "fixed". Abra com hero.split layout editorial: headline de até 56 caracteres, lead curto e o painel de foto largo abaixo, que some no papel.
+- Componha em capítulos: feature.numbered layout rail (índice em mono e fio vertical), proof.stats layout strip para números, editorial.text layout lead como declaração em duas cores e narrative.split layout editorial. Nada de card decorado.
+- O botão principal é uma pílula clara. As cores do cadastro pintam links, numerais e no máximo uma seção com presentation.tone "accent". Use presentation.edge "line" só onde o fio ajuda e no máximo duas seções com motion "reveal".
+- Fotos de detalhe, produto ou processo com borda fina, sem moldura. Evite pessoa posando para a câmera.`,
   ousado: `Vibe ousado: escala tipográfica extrema, imagem de borda a borda e faixas de cor.
 - A home abre com o hero coberto pela foto e headline de até 36 caracteres: a fonte cresce até 11vw e uma frase longa vira quatro linhas. Nas páginas internas, hero.statement layout oversize sustenta a abertura sem foto.
 - Navegação contrast, imagem full-bleed, superfície contrast e motif stripes. A galeria da home usa presentation.width "full".
@@ -439,7 +452,7 @@ export const VIBE_IMAGE_DIRECTION: Record<Vibe, string> = {
   comercial:
     'Fotografia documental do negócio real, luz natural, sem cara de banco de imagens.',
   moderno:
-    'Luz fria e controlada, foco em objeto, detalhe ou processo, fundo escuro ou neutro, pouca presença humana. Nada de sorriso para a câmera.',
+    'Luz fria e controlada, foco em objeto, detalhe ou processo, fundo escuro ou neutro e liso, pouca presença humana. Nada de sorriso para a câmera. Um painel de produto ou processo aceita sumir no papel pela borda de baixo.',
   ousado:
     'Fotografia gráfica e contrastada, recorte fechado, ângulo incomum, cor em bloco. O assunto precisa sobreviver a um recorte panorâmico.',
   artistico:

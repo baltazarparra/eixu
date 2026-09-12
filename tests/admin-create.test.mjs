@@ -10,7 +10,8 @@ async function fixture({
   const deleted = [],
     inserted = [],
     scheduled = [],
-    refreshed = [];
+    refreshed = [],
+    derived = [];
   const logo = 'https://blob.test/tenants/fixture/logo/cadastro.png';
   const { createTenantAction } = await loadModule(
     'app/(admin)/admin/actions.ts',
@@ -48,6 +49,11 @@ async function fixture({
         syncSocialProfile: async () => {},
       },
       'next/server': { after: (callback) => scheduled.push(callback) },
+      '@/lib/images/logo-apply': {
+        deriveLogoAssets: async (_tenant, url) => {
+          derived.push(url);
+        },
+      },
       'next/cache': { revalidatePath: (path) => refreshed.push(path) },
       'next/navigation': {
         redirect: (path) => {
@@ -88,6 +94,7 @@ async function fixture({
     inserted,
     scheduled,
     refreshed,
+    derived,
     logo,
   };
 }
@@ -97,15 +104,18 @@ await test('cadastro preserva o logo e abre o editor quando a leitura social fal
   await assert.rejects(f.run, /redirect:\/admin\/fixture/);
   assert.equal(f.inserted[0].brand.logoUrl, f.logo);
   assert.equal(f.deleted.length, 0);
-  assert.equal(f.scheduled.length, 0);
+  // Só a medição do logo fica agendada; a leitura social falhou antes.
+  assert.equal(f.scheduled.length, 1);
+  await Promise.all(f.scheduled.map((run) => run()));
+  assert.deepEqual(f.derived, [f.logo]);
   assert.deepEqual(f.refreshed, ['/admin']);
 });
 
-await test('cadastro agenda a leitura social depois de persistir a marca', async () => {
+await test('cadastro agenda a leitura social e a medição do logo depois de persistir a marca', async () => {
   const f = await fixture();
   await assert.rejects(f.run, /redirect:\/admin\/fixture/);
   assert.equal(f.inserted.length, 1);
-  assert.equal(f.scheduled.length, 1);
+  assert.equal(f.scheduled.length, 2);
   assert.equal(f.deleted.length, 0);
   // A leitura sai da lista de redes, que substituiu o campo do briefing.
   assert.equal(

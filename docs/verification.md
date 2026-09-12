@@ -1,5 +1,72 @@
 # Validação e publicação
 
+## Recriação da vibe moderna e logo sobre fundo escuro, 12/09/2026
+
+O operador reprovou o fundo quadriculado que a vibe moderna pintava em toda
+geração e o logo com placa branca sobre o site escuro. O contrato está em
+[Design](design.md#recriação-da-vibe-moderna) e em
+[Logo sobre superfície escura](design.md#logo-sobre-superfície-escura). Não há
+migração: `logoDarkUrl` e `logoFit` são chaves novas no JSON de `brand`.
+
+Verificação local, num worktree a partir de `origin/main` (`1a81234`):
+
+- Tipos (`next typegen` e `tsc --noEmit`), `oxlint`, `git diff --check` e
+  a formatação da documentação passaram.
+- `npm run test:sites`: 135 casos, 134 passaram e um foi pulado. Novos:
+  `tests/site-logo-fit.test.mjs`, com cinco casos (medição de placa e tinta
+  em PNG, JPEG e SVG sintéticos; problema por superfície; recorte por
+  luminância preservando o texto vazado; achado `logo-fundo-escuro` pelo
+  papel real do cabeçalho e do rodapé; escolha do logo por `logoFor`), e três
+  em `tests/site-vibe-regressions.test.mjs` (a faixa recusa `grid`, o
+  pre-flight avisa e some com a versão escura, o SSR de nav e rodapé emite a
+  versão escura sobre papel escuro e em tom `ink`).
+- `npm run test:admin`: 123 casos, 118 passaram e cinco foram pulados por
+  ausência de `EIXU_TEST_POSTGRES_URL`. Novo `tests/admin-logo-apply.test.mjs`
+  (agendamento por `after`, medição e versão escura aprovada, reprovada, logo
+  trocado no meio da derivação e idempotência); o cadastro passa a agendar a
+  derivação do logo junto da leitura social.
+- `npm run build:vercel` com o cache do Turbopack limpo passou, com os checks
+  dos artefatos de captura. No chunk CSS das vibes: zero ocorrências de
+  `min(8vw,7rem)` e do gradiente de 1px sob `data-vibe=moderno`; `--hairline`
+  presente; `var(--font-mono)` nos rótulos; três regras de pílula em
+  `border-radius:999px`; duas de `mask-image`. O `data-motif=grid` continua
+  no chunk de `site.css`, para o perfil v2.
+- Testes de navegador com `EIXU_CHROME_PATH=/usr/bin/google-chrome` sobre o
+  CSS compilado: sites 16 de 16 (inclui as medições novas do moderno:
+  `background-image` da raiz `none`, ação sólida em `999px`, fio de `1px`
+  entre capítulos e declaração na display), admin 10 de 10.
+- Capturas de uma home moderna v4 sintética (nav minimal fixa, hero
+  editorial, declaração, rail, stats strip, bento showcase, narrative
+  editorial, FAQ, cta minimal), renderizada pelo mesmo renderer com o CSS do
+  build de `origin/main` e com o deste trabalho, em
+  `outputs/vibes/moderno-{antes,depois}-{1440,390}.png` (diretório local,
+  ignorado pelo git). Medido a 1440 px: antes, gradiente de grade na raiz,
+  fio entre capítulos de 0 px, eyebrow em Geist, ação em 8 px na cor de
+  destaque, card em destaque do bento claro, faixa de conversão com texto
+  apagado e headline em três linhas; depois, `background-image: none`, fio
+  de 1 px, eyebrow em Geist Mono, pílula de 999 px na tinta também na faixa
+  de conversão, card em destaque escuro com a foto sumindo antes do texto e
+  headline de 63 px em duas linhas. A 390 px, sem overflow horizontal nos
+  dois. A captura emula movimento reduzido e força as imagens lazy, como o
+  capturador do produto; o CSS entra pelos chunks de `.site-theme`, sem o do
+  institucional.
+- Logos reais lidos dos blobs públicos, sem gravar nada: `escolafisk` (PNG
+  sem alfa, o logo da captura do operador) e `daniel-carmona` (JPEG) medem
+  placa clara e acusam `placa-clara-em-fundo-escuro`; `iterum` mede
+  luminância 0,13 sem pixel claro e acusa `tinta-escura-em-fundo-escuro`;
+  `fiskprivate` e `neidemarialimpeza` não acusam nada. As versões brancas por
+  recorte saem com cobertura 0,49, 0,24, 1,0, 0,72 e 0,88: balão branco com
+  texto vazado no Fisk, wordmark branco no iterum, placa removida e texto
+  branco no Carmona; a ilustração da Neide vira silhueta e depende do crítico.
+- `neidemarialimpeza` em produção responde com `data-design-version="2"` e
+  `data-motif="grid"`: é o único moderno no ar, e nada aqui muda o v2.
+
+Limites: nenhum cliente moderno v4 existe para conferir a rota real; a
+evidência visual é o fixture com o CSS compilado. A derivação com Blob, banco
+e crítico foi exercitada com mocks e com os pixels reais; a chamada real ao
+crítico em modo `derivar` não foi executada nesta sessão. Os logos já
+aplicados não têm medição até serem reaplicados.
+
 ## Refinamento da vibe artística, 12/09/2026
 
 O operador reprovou a home artística do cliente `grupofisk`: título de 48

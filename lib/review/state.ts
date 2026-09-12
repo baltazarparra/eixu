@@ -43,6 +43,7 @@ function imageDependencies(tenant: Tenant, page: Page, images: TenantImage[]) {
   const references = new Set<string>();
   collectStrings(page.blocks, references);
   if (tenant.brand.logoUrl) references.add(tenant.brand.logoUrl);
+  if (tenant.brand.logoDarkUrl) references.add(tenant.brand.logoDarkUrl);
   return images
     .filter((image) => references.has(image.url))
     .sort((a, b) => a.id.localeCompare(b.id))

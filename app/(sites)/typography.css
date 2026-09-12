@@ -12,7 +12,7 @@
   font-optical-sizing: auto;
 }
 .site-theme[data-vibe='moderno'] {
-  --type-title: clamp(2rem, 1.3rem + 2.2vw, 3.25rem);
+  --type-title: clamp(2.1rem, 1.3rem + 2.4vw, 3.4rem);
 }
 .site-theme[data-vibe='ousado'] {
   --type-title: clamp(2.4rem, 1.4rem + 4.5vw, 5.5rem);

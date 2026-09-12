@@ -110,6 +110,7 @@ await test(
               ...themeVars(tenant.brand),
               '--font-display-editorial': 'Georgia',
               '--font-sans': 'Arial',
+              '--font-mono': 'Courier New',
             },
           },
           createElement(RenderBlocks, {
@@ -126,6 +127,10 @@ await test(
             const h1 = document.querySelector('h1');
             const theme = document.querySelector('.site-theme');
             const soft = document.querySelector('[data-tone="soft"]');
+            const blocks = document.querySelectorAll('main > .site-block');
+            const lead = document.querySelector(
+              '.site-text-lead .site-shell > div > p:first-child',
+            );
             return {
               vibe: theme.dataset.vibe,
               designVersion: theme.dataset.designVersion,
@@ -140,8 +145,24 @@ await test(
               heroCopyPosition: getComputedStyle(
                 document.querySelector('.site-hero-copy'),
               ).position,
+              themeBackgroundImage: getComputedStyle(theme).backgroundImage,
+              actionRadius: getComputedStyle(
+                document.querySelector('.site-action[data-variant="solid"]'),
+              ).borderRadius,
+              chapterLine: blocks[1]
+                ? getComputedStyle(blocks[1]).borderTopWidth
+                : null,
+              leadFont: lead ? getComputedStyle(lead).fontFamily : null,
             };
           });
+          if (vibe === 'moderno') {
+            // O sistema moderno é papel liso, fio entre capítulos e pílula
+            // clara; a grade que ficava na raiz não pode voltar.
+            assert.equal(measured.themeBackgroundImage, 'none');
+            assert.equal(measured.actionRadius, '999px');
+            assert.equal(measured.chapterLine, '1px');
+            assert.match(measured.leadFont, /Georgia/);
+          }
           // O perfil v4 preserva a vibe no renderer; a referência decide os
           // aspectos que documentou. Antes qualquer leitura visual derrubava o
           // site inteiro para a base comercial.

@@ -1049,13 +1049,17 @@ textarea.admin-input {
   height: 7px;
   border-radius: 3px;
 }
+/* Papel liso, um fio e uma pílula clara: o que a vibe entrega, sem grade. */
 .admin-vibe-preview[data-vibe='moderno'] {
   color: #f2f6fa;
-  background-color: #090d12;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-  background-size: 20px 20px;
+  background-color: #0b0d10;
+  background-image: linear-gradient(
+    rgba(255, 255, 255, 0.12),
+    rgba(255, 255, 255, 0.12)
+  );
+  background-size: 100% 1px;
+  background-repeat: no-repeat;
+  background-position: 0 22px;
 }
 .admin-vibe-preview[data-vibe='moderno'] .admin-vibe-nav {
   width: 55%;
@@ -2163,6 +2167,16 @@ textarea.admin-input {
 .admin-image-frame[data-kind='logo'] .admin-image {
   object-fit: contain;
   padding: 16px;
+}
+/* A versão branca só existe sobre escuro: o xadrez claro a esconderia. */
+.admin-image-frame[data-kind='logo'][data-surface='dark'] {
+  background: repeating-conic-gradient(#2a2d33 0% 25%, #15171b 0% 50%) 50%/16px
+    16px;
+}
+.admin-logo-previews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .admin-image-status {
   position: absolute;

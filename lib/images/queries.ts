@@ -166,8 +166,13 @@ export async function referenceReason(
       and (blocks::text like ${'%' + url + '%'} or published_blocks::text like ${'%' + url + '%'}) limit 1
   `) as Row[];
   if (inPages.length) return 'pagina';
+  // Rascunho e snapshot publicado, logo principal e versão para fundo escuro.
   const asLogo = (await db()`
-    select 1 from tenants where id = ${tenantId} and brand->>'logoUrl' = ${url} limit 1
+    select 1 from tenants where id = ${tenantId}
+      and (brand->>'logoUrl' = ${url} or brand->>'logoDarkUrl' = ${url}
+        or published_snapshot->'brand'->>'logoUrl' = ${url}
+        or published_snapshot->'brand'->>'logoDarkUrl' = ${url})
+    limit 1
   `) as Row[];
   return asLogo.length ? 'logo' : null;
 }

@@ -6,6 +6,7 @@
 import { z } from 'zod';
 import { SiteIcon } from '@/lib/blocks/icon';
 import { renderingVibeOf, type Vibe } from '@/lib/design/vibes';
+import { logoFor } from '@/lib/blocks/theme';
 import { MotionLink } from '@/lib/blocks/motion';
 import { NavigationFrame } from '@/lib/blocks/navigation-frame';
 import { SocialIcon } from '@/lib/blocks/social-icons';
@@ -124,9 +125,10 @@ export function NavBar({
   layout,
   position,
   backgroundOpacity,
+  presentation,
   ctx,
 }: NavBarProps & { ctx: RenderContext }) {
-  const logo = ctx.tenant.brand.logoUrl;
+  const logo = logoFor(ctx.tenant.brand, presentation);
   const resolvedLayout = layout ?? ctx.tenant.brand.design?.navigation ?? 'bar';
   return (
     <NavigationFrame position={position}>
@@ -1198,9 +1200,10 @@ export function FooterCompact({
   links,
   legal,
   layout = 'split',
+  presentation,
   ctx,
 }: FooterCompactProps & { ctx: RenderContext }) {
-  const logo = ctx.tenant.brand.logoUrl;
+  const logo = logoFor(ctx.tenant.brand, presentation);
   return (
     <footer className={`site-footer site-footer-${layout} py-14`}>
       <div className={`${shell} flex flex-col gap-8`}>

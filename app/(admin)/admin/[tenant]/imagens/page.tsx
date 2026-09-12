@@ -35,6 +35,7 @@ export default async function ImagesPage({
         guide,
         images,
         logoUrl: tenant.brand.logoUrl ?? null,
+        logoDarkUrl: tenant.brand.logoDarkUrl ?? null,
         usage: imageUsage(tenant, pages, images),
       }}
     />

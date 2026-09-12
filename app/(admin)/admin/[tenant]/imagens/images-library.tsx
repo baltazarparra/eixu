@@ -15,6 +15,8 @@ type LibraryState = {
   guide: ImageGuide;
   images: TenantImage[];
   logoUrl?: string | null;
+  /** Versão do logo que a nav e o rodapé usam sobre papel escuro. */
+  logoDarkUrl?: string | null;
   usage: Record<string, ImageUsage[]>;
 };
 
@@ -93,7 +95,21 @@ export function ImagesLibrary({
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ logoUrl: url }),
       });
-      setNotice(`Logo #${seq} aplicado no site.`);
+      setNotice(
+        `Logo #${seq} aplicado no site. A versão para fundo escuro é preparada em seguida.`,
+      );
+    });
+  }
+
+  /** A nav e o rodapé usam esta imagem quando o papel da seção é escuro. */
+  async function applyAsDarkLogo(url: string, seq: number) {
+    await runAction(`${url}#escuro`, async () => {
+      await adminFetch(`/api/admin/${tenant.slug}/settings`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ logoDarkUrl: url }),
+      });
+      setNotice(`Logo #${seq} aplicado sobre fundo escuro.`);
     });
   }
 
@@ -227,6 +243,11 @@ export function ImagesLibrary({
                       className="admin-image-frame"
                       data-ratio={image.ratio}
                       data-kind={image.kind}
+                      data-surface={
+                        image.critique?.variante === 'branca'
+                          ? 'dark'
+                          : undefined
+                      }
                     >
                       <span className="admin-image-status">
                         <StatusPill
@@ -262,7 +283,9 @@ export function ImagesLibrary({
                           {image.kind}
                           {image.url === library.logoUrl
                             ? ' · logo do site'
-                            : ''}
+                            : image.url === library.logoDarkUrl
+                              ? ' · logo em fundo escuro'
+                              : ''}
                         </span>
                         <span data-tone={scoreTone(image.score)}>
                           {image.score === null
@@ -295,6 +318,20 @@ export function ImagesLibrary({
                             className="admin-secondary"
                           >
                             Usar como logo
+                          </button>
+                        ) : null}
+                        {image.status !== 'rejeitada' &&
+                        image.kind === 'logo' &&
+                        image.url !== library.logoDarkUrl ? (
+                          <button
+                            type="button"
+                            disabled={Boolean(actionId)}
+                            onClick={() =>
+                              void applyAsDarkLogo(image.url, image.seq)
+                            }
+                            className="admin-secondary"
+                          >
+                            Usar sobre fundo escuro
                           </button>
                         ) : null}
                         {image.status !== 'rejeitada' &&

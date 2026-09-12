@@ -6,13 +6,27 @@ function channel(value: number): number {
   return srgb <= 0.04045 ? srgb / 12.92 : ((srgb + 0.055) / 1.055) ** 2.4;
 }
 
+/** Luminância relativa de um pixel sRGB de 0 a 255, a fórmula do WCAG. */
+export function luminanceOf(r: number, g: number, b: number): number {
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+}
+
 export function relativeLuminance(hex: string): number {
   const value = hex.replace('#', '');
   if (value.length !== 6) return 0;
-  const [r, g, b] = [0, 2, 4].map((i) =>
-    channel(parseInt(value.slice(i, i + 2), 16)),
-  );
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(value.slice(i, i + 2), 16));
+  return luminanceOf(r, g, b);
+}
+
+/**
+ * Superfície escura para efeito de logo: abaixo disso um logo de placa branca
+ * vira um retângulo e uma tinta escura some. Metade da escala de luminância
+ * separa os papéis quase pretos das vibes escuras dos papéis claros.
+ */
+export const DARK_SURFACE = 0.4;
+
+export function isDarkSurface(hex: string): boolean {
+  return relativeLuminance(hex) < DARK_SURFACE;
 }
 
 export function contrastRatio(a: string, b: string): number {

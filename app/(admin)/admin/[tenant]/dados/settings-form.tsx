@@ -35,6 +35,10 @@ export function SettingsForm({
     status: string;
     contactEmail: string | null;
     logoUrl?: string;
+    logoDarkUrl?: string;
+    paper?: string;
+    /** Problema medido do logo sobre o papel da marca, ou null. */
+    logoIssue?: string | null;
     vibe: Vibe;
     pageCount: number;
     leadCount: number;
@@ -98,6 +102,30 @@ export function SettingsForm({
   const [notice, setNotice] = useState('');
   const [saving, setSaving] = useState(false);
   const [logoUrl, setLogoUrl] = useState(tenant.logoUrl);
+  const [logoDarkUrl, setLogoDarkUrl] = useState(tenant.logoDarkUrl);
+  async function setDarkLogo(url: string | null) {
+    setSaving(true);
+    setNotice('');
+    try {
+      await adminFetch(`/api/admin/${tenant.slug}/settings`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ logoDarkUrl: url }),
+      });
+      setLogoDarkUrl(url ?? undefined);
+      setNotice(
+        url
+          ? 'Versão para fundo escuro aplicada ao rascunho.'
+          : 'Versão para fundo escuro removida do rascunho.',
+      );
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : 'Não foi possível salvar.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
   const [profile, setProfile] = useState(social);
   const [socialUrl, setSocialUrl] = useState(intake.socialUrl ?? '');
   const [deleting, setDeleting] = useState(false);
@@ -184,8 +212,10 @@ export function SettingsForm({
         body: JSON.stringify({ logoUrl: url }),
       });
       setLogoUrl(url);
+      // A versão escura do logo anterior sai junto; a do novo chega depois.
+      setLogoDarkUrl(undefined);
       setNotice(
-        'Logo aplicado ao rascunho. O site no ar muda na próxima publicação.',
+        'Logo aplicado ao rascunho. A versão para fundo escuro é preparada em seguida; recarregue para conferir. O site no ar muda na próxima publicação.',
       );
     } catch (error) {
       setNotice(
@@ -270,22 +300,57 @@ export function SettingsForm({
         </form>
         <section id="marca" className="admin-form-section admin-brand-section">
           {logoUrl ? (
-            <Image
-              src={logoUrl}
-              alt={`Logo de ${tenant.name}`}
-              width={112}
-              height={80}
-              unoptimized
-              className="h-20 w-28 rounded-lg border bg-white p-3 object-contain"
-            />
+            // Duas prévias: sobre o papel da marca e sobre um papel escuro. A
+            // placa branca de um PNG sem alfa só aparece na segunda.
+            <div className="admin-logo-previews">
+              <Image
+                src={logoUrl}
+                alt={`Logo de ${tenant.name} sobre o papel da marca`}
+                width={112}
+                height={80}
+                unoptimized
+                className="h-20 w-28 rounded-lg border p-3 object-contain"
+                style={{ background: tenant.paper ?? '#ffffff' }}
+              />
+              <Image
+                src={logoDarkUrl ?? logoUrl}
+                alt={`Logo de ${tenant.name} sobre fundo escuro`}
+                width={112}
+                height={80}
+                unoptimized
+                className="h-20 w-28 rounded-lg border p-3 object-contain"
+                style={{ background: '#0b0e14' }}
+              />
+            </div>
           ) : (
             <div className="admin-logo-placeholder">Sem logo</div>
           )}
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold">Logo do site</h2>
             <p className="mt-1 text-sm text-[var(--color-muted)]">
-              Envie o arquivo final ou escolha um logo na biblioteca.
+              Envie o arquivo final ou escolha um logo na biblioteca. Ao
+              aplicar, o logo é medido e ganha uma versão para fundo escuro
+              quando o recorte funciona.
             </p>
+            {logoDarkUrl ? (
+              <p className="mt-2 text-sm text-[var(--color-muted)]">
+                Versão para fundo escuro aplicada.{' '}
+                <button
+                  type="button"
+                  className="underline"
+                  disabled={saving}
+                  onClick={() => void setDarkLogo(null)}
+                >
+                  Remover
+                </button>
+              </p>
+            ) : tenant.logoIssue ? (
+              <p className="mt-2 text-sm" data-tone="warn">
+                Sobre o papel da marca, {tenant.logoIssue}. Envie um PNG com
+                fundo transparente ou escolha a versão para fundo escuro na
+                biblioteca.
+              </p>
+            ) : null}
             <label className="admin-field mt-4">
               <span>Enviar e aplicar logo</span>
               <input

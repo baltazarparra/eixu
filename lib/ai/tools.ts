@@ -87,8 +87,8 @@ import {
   getPage,
   getTenantBySlug,
   listPages,
-  setBrandLogo,
 } from '@/lib/tenant-queries';
+import { applyBrandLogo } from '@/lib/images/logo-apply';
 import { REVIEW_CALLS_PER_TURN, type Phase } from '@/lib/taste/phases';
 import {
   editTools,
@@ -723,7 +723,8 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             `A imagem #${image.seq} foi rejeitada anteriormente. Escolha outro logo ou peça uma nova versão.`,
           );
         activeBrand = { ...activeBrand, logoUrl: image.url };
-        await setBrandLogo(tenant.id, image.url);
+        // Mede o logo e deriva a versão para fundo escuro depois da resposta.
+        await applyBrandLogo({ ...tenant, brand: activeBrand }, image.url);
         return { ok: true, numero: `#${image.seq}` };
       }),
     }),
