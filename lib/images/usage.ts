@@ -27,9 +27,16 @@ export function imageUsage(
   return Object.fromEntries(
     images.map((image) => {
       const usage: ImageUsage[] = [];
-      if (tenant.brand.logoUrl === image.url)
+      // A versão para fundo escuro é uso de logo tanto quanto a principal.
+      const draft = tenant.brand;
+      const published = tenant.publishedSnapshot?.brand;
+      if (draft.logoUrl === image.url || draft.logoDarkUrl === image.url)
         usage.push({ scope: 'draft', page: null, block: null, kind: 'logo' });
-      if (tenant.publishedSnapshot?.brand.logoUrl === image.url)
+      if (
+        published &&
+        (published.logoUrl === image.url ||
+          published.logoDarkUrl === image.url)
+      )
         usage.push({
           scope: 'published',
           page: null,

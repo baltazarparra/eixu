@@ -39,9 +39,15 @@ await test('acervo distingue uso no rascunho, no publicado e no logo sem casar t
     seq: 6,
     url: 'https://assets.test/outra.webp',
   };
+  const dark = {
+    ...original,
+    id: '00000000-0000-4000-8000-000000000007',
+    seq: 7,
+    url: 'https://assets.test/branca.png',
+  };
   const client = {
     ...tenant,
-    brand: { logoUrl: other.url },
+    brand: { logoUrl: other.url, logoDarkUrl: dark.url },
     publishedSnapshot: { brand: { logoUrl: original.url } },
   };
   const pages = [

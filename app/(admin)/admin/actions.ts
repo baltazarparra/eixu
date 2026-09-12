@@ -1,5 +1,6 @@
 'use server';
 
+import { randomUUID } from 'node:crypto';
 import { redirect } from 'next/navigation';
 import { after } from 'next/server';
 import { revalidatePath } from 'next/cache';
@@ -27,6 +28,8 @@ import { TenantRemovedError, withTenantLock } from '@/lib/tenant-lock';
 import { confirmationAccepted } from '@/lib/admin/tenant-delete';
 import { normalizeSocialUrl } from '@/lib/social-profile';
 import { markSocialReading, syncSocialProfile } from '@/lib/ai/social';
+import { deriveLogoAssets } from '@/lib/images/logo-apply';
+import type { Brand } from '@/lib/types';
 
 async function guard() {
   if (!(await isAuthenticated())) redirect('/admin/login');
@@ -112,7 +115,7 @@ export async function createTenantAction(
     highlight: colors.data.highlight,
     paletteSource,
     vibe: vibe.data,
-    ...(logoUrl ? { logoUrl } : {}),
+    ...(logoUrl ? { logoUrl, logoRevision: randomUUID() } : {}),
   };
 
   let tenantId: string;
@@ -133,6 +136,15 @@ export async function createTenantAction(
   } catch {
     if (logoUrl) await del(logoUrl).catch(() => undefined);
     return 'Não foi possível criar o cliente. Seus dados continuam no formulário; tente novamente.';
+  }
+
+  // O logo do cadastro é medido e ganha a versão para fundo escuro depois da
+  // resposta, como a leitura social; uma falha não desfaz o cadastro.
+  if (logoUrl) {
+    const id = tenantId;
+    after(() =>
+      deriveLogoAssets({ id, slug, name, brand: brand as Brand }, logoUrl),
+    );
   }
 
   // O cadastro já existe: falhas da leitura social não podem apagar seu logo

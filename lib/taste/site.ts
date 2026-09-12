@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import type { BlockInstance, Page, TenantImage } from '../types';
+import { logoFindings } from '@/lib/images/logo-fit';
+import type { BlockInstance, Brand, Page, TenantImage } from '../types';
 import type { Finding } from './lint';
 import {
   contentText,
@@ -56,11 +57,26 @@ function destinations(blocks: BlockInstance[]): string[] {
  * vibe e perfil: sem eles a gramática da vibe não é verificada e o projeto
  * volta a aceitar qualquer silhueta.
  */
+/** Marca que o pre-flight lê: vibe e perfil para a gramática, logo e papel para o achado do logo. */
+export type LintBrand = { vibe?: string; design?: unknown } & Partial<
+  Pick<
+    Brand,
+    | 'logoUrl'
+    | 'logoDarkUrl'
+    | 'logoFit'
+    | 'paper'
+    | 'ink'
+    | 'surface'
+    | 'accent'
+    | 'accentAlt'
+  >
+>;
+
 export function lintSite(
   pages: SitePage[],
   images: TenantImage[],
   mode: 'draft' | 'publish',
-  brand?: { vibe?: string; design?: unknown },
+  brand?: LintBrand,
 ): SiteFinding[] {
   const findings: SiteFinding[] = [];
   const fail = (page: string, rule: string, message: string) =>
@@ -189,6 +205,11 @@ export function lintSite(
   // regras vivem em metrics porque a revisão do agente usa as mesmas medidas.
   for (const finding of structuralFindings(pages, images, brand))
     findings.push(finding);
+  // O logo aplicado contra o papel real do cabeçalho e do rodapé. Aviso, não
+  // bloqueio: o logo é escolha do operador e a versão escura resolve o caso.
+  if (brand?.logoUrl)
+    for (const finding of logoFindings(brand, pages, images))
+      findings.push({ page: '/', ...finding });
   if (mode === 'publish') {
     const used = new Set(pages.flatMap((p) => pageImageUrls(p.blocks)));
     const rejected = images.filter(

@@ -87,6 +87,8 @@ A geração acontece no estúdio compartilhado com o chat. `prepare_site_images`
 
 Logos podem ser criados ou modernizados a partir de referência por `generate_logo`, passam por Sharp e por um crítico específico de legibilidade/fidelidade. Fotos e logos retornam número e URL para uso imediato, sem aprovação. A crítica registra qualidade e problemas, mas não bloqueia a disponibilidade. A aplicação de um logo na marca continua exigindo pedido do usuário.
 
+Aplicar um logo (`/settings` ou `set_site_logo`) passa por `applyBrandLogo` em `lib/images/logo-apply.ts`: grava `brand.logoUrl` com uma nova `brand.logoRevision` e, depois da resposta, mede o arquivo (`brand.logoFit`: alfa, luminância, placa) e deriva por recorte de luminância uma versão branca para papel escuro. O cadastro persiste a versão antes de agendar a mesma derivação. A variante entra na biblioteca como imagem de tipo logo referenciando o original, passa pelo crítico em modo `derivar` e, aprovada, vira `brand.logoDarkUrl`. Cada gravação compara URL e versão da aplicação; reaplicar o logo ou escolher/remover manualmente a variante invalida trabalhos anteriores. Trocar a URL apaga medição e variante; reaplicar a mesma preserva ambas. O chat adota a marca devolvida pela aplicação, e `set_brand`/`set_design` mesclam só os campos que alteram, preservando gravações concorrentes de logo. Medição e versão operacional ficam fora do snapshot publicado; a versão também fica fora do fingerprint visual. Nav, rodapé e `lintSite` resolvem a mesma superfície do CSS, incluindo tom `ink` moderno, `soft`, fundo local e navegação `contrast`. O aviso `logo-fundo-escuro` indica logo inadequado no cabeçalho ou rodapé escuro sem variante aplicada. Ver [Design](design.md#logo-sobre-superfície-escura).
+
 | Papel                      | Configuração no código                              |
 | -------------------------- | --------------------------------------------------- |
 | Chat do site               | `EIXU_MODEL` → `google/gemini-3.8-flash`            |
@@ -121,13 +123,16 @@ aplicação falhar, e a ferramenta informa a falha com o novo número.
 A galeria mostra as imagens disponíveis, onde cada URL aparece no rascunho e
 no publicado, e dois atalhos: **Usar no site** e **Solicitar alteração** abrem
 o chat com o número preenchido, sem enviar nem gerar automaticamente.
-Remoção verifica uso em rascunhos, publicados e marca; falha no Blob conserva
-o registro. Aplicar logo exige um pedido detectado na última mensagem e uma
-imagem de tipo logo disponível; por `/settings`, exige logo da biblioteca do
-tenant ou upload manual no caminho de logo daquele cliente. A home continua
-exigindo duas fotos geradas distintas da biblioteca do tenant. Fontes:
-`lib/ai/tools.ts`, `lib/images/queries.ts`, `lib/images/revise.ts`,
-`lib/images/replacement.ts`, `lib/sites/generation.ts` e `lib/taste/site.ts`.
+Remoção verifica uso em rascunhos, publicados e marca, inclusive a versão do
+logo para fundo escuro; falha no Blob conserva o registro. Aplicar logo exige
+um pedido detectado na última mensagem e uma imagem de tipo logo disponível;
+por `/settings`, exige logo da biblioteca do tenant ou upload manual no
+caminho de logo daquele cliente, e o mesmo portão vale para `logoDarkUrl`,
+que a biblioteca aplica por **Usar sobre fundo escuro** e Dados remove. A
+home continua exigindo duas fotos geradas distintas da biblioteca do tenant.
+Fontes: `lib/ai/tools.ts`, `lib/images/queries.ts`, `lib/images/revise.ts`,
+`lib/images/replacement.ts`, `lib/images/logo-apply.ts`,
+`lib/sites/generation.ts` e `lib/taste/site.ts`.
 
 ## Dados, conversão e tráfego
 

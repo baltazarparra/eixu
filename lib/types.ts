@@ -34,6 +34,35 @@ export type Brand = {
   logoText?: string;
   /** URL pública do logo enviado pelo painel. Nav e rodapé usam quando existe. */
   logoUrl?: string;
+  /**
+   * Versão do logo para superfície escura, derivada ao aplicar o logo ou
+   * escolhida na biblioteca. Nav e rodapé a usam quando o papel da seção é
+   * escuro (lib/blocks/theme.ts).
+   */
+  logoDarkUrl?: string;
+  /** Versão operacional da aplicação do logo; não compõe o snapshot visual. */
+  logoRevision?: string;
+  /** Medição por pixel do logo aplicado; só vale enquanto `source` for o logoUrl. */
+  logoFit?: LogoFit;
+};
+
+/** Medição do logo feita ao aplicá-lo (lib/images/logo-measure.ts). */
+export type LogoFit = {
+  source: string;
+  measuredAt: string;
+  width: number;
+  height: number;
+  hasAlpha: boolean;
+  /** Fração de pixels transparentes (alfa abaixo de 16). */
+  transparentFraction: number;
+  /** Luminância relativa média dos pixels opacos, de 0 a 1. */
+  opaqueLuminance: number;
+  /** Fração dos opacos com luminância acima de 0,85. */
+  lightFraction: number;
+  /** Fração dos opacos com luminância abaixo de 0,3. */
+  darkFraction: number;
+  /** Placa: arquivo sem alfa ou retângulo opaco claro em volta da arte. */
+  plate: 'light' | 'dark' | null;
 };
 
 export type PublishedTenantSnapshot = {

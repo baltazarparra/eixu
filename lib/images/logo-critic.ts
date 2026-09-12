@@ -83,11 +83,26 @@ export async function logoPrecheck(bytes: Uint8Array): Promise<Precheck> {
 }
 
 /** Prévia do logo no tamanho real de uso, reampliada para o modelo enxergar. */
-async function thumbnail(bytes: Uint8Array): Promise<Uint8Array> {
+async function thumbnail(
+  bytes: Uint8Array,
+  background: string,
+): Promise<Uint8Array> {
   const png = await sharp(Buffer.from(bytes))
     .resize(48, 48, { fit: 'inside' })
     .resize(192, 192, { kernel: 'nearest' })
-    .flatten({ background: '#ffffff' })
+    .flatten({ background })
+    .png()
+    .toBuffer();
+  return new Uint8Array(png);
+}
+
+/** O visualizador do modelo compõe sobre branco; um logo branco sumiria. */
+async function flattened(
+  bytes: Uint8Array,
+  background: string,
+): Promise<Uint8Array> {
+  const png = await sharp(Buffer.from(bytes))
+    .flatten({ background })
     .png()
     .toBuffer();
   return new Uint8Array(png);
@@ -100,21 +115,53 @@ const normalize = (value: string): string =>
     .replace(/[^a-z0-9]/gi, '')
     .toLowerCase();
 
+const GENERATED_INSTRUCTIONS = `Você é um diretor de identidade visual revisando um logotipo que vai virar a marca de um cliente real. Seja específico e duro.
+
+Reprove, ou seja aprovado = false, quando:
+- o nome aparece com grafia errada, letra trocada, letra a mais ou faltando;
+- há palavra, slogan ou sigla além do nome pedido;
+- o fundo não é transparente, ou há retângulo de fundo desenhado;
+- parece render 3D, foto, adesivo ou mockup em vez de vetor chapado;
+- some ou vira borrão na miniatura de 48 pixels;
+- na variante fiel, a fidelidade ao original fica abaixo de 5, porque descaracterizou a marca;
+- na variante ousada, a fidelidade fica acima de 9, porque não mudou nada.
+
+Em nome_lido escreva exatamente o que você lê na imagem, caractere por caractere, mesmo que esteja errado. É assim que a grafia é conferida.
+Escreva em português do Brasil. Problemas em frases curtas e concretas.`;
+
+const DERIVED_INSTRUCTIONS = `Você é um diretor de identidade visual conferindo a versão branca de um logotipo, derivada do original por recorte de luminância, para o cabeçalho de um site de fundo escuro. Seja específico e duro.
+
+Reprove, ou seja aprovado = false, quando:
+- o nome ou o símbolo do original deixou de ser reconhecível: letras perdidas, texto vazado ilegível, símbolo virado em mancha;
+- a versão virou um bloco ou retângulo chapado sem a silhueta do original;
+- some ou vira borrão na miniatura de 48 pixels sobre a superfície indicada;
+- o fundo não é transparente.
+
+Não reprove por ser monocromática nem por perder as cores: isso é a intenção. Em nome_lido escreva exatamente o que você lê na versão branca. Em fidelidade_original, dê a nota da silhueta em relação ao original.
+Escreva em português do Brasil. Problemas em frases curtas e concretas.`;
+
 export async function critiqueLogo(input: {
   id: string;
   bytes: Uint8Array;
   variant: string;
-  mode: 'modernizar' | 'criar';
+  mode: 'modernizar' | 'criar' | 'derivar';
   brandName: string;
   wordmark: boolean;
   reference?: Buffer;
+  /** Superfície em que o logo vai ser usado; a versão branca precisa de escuro. */
+  surface?: string;
 }): Promise<Critique> {
   const precheck = await logoPrecheck(input.bytes);
+  const derived = input.mode === 'derivar';
+  const surface = input.surface ?? '#ffffff';
 
   try {
-    const preview = await thumbnail(input.bytes);
+    const preview = await thumbnail(input.bytes, surface);
+    const shown = input.surface
+      ? await flattened(input.bytes, surface)
+      : input.bytes;
     const content: (FilePart | TextPart)[] = [
-      { type: 'file', data: input.bytes, mediaType: 'image/png' },
+      { type: 'file', data: shown, mediaType: 'image/png' },
       { type: 'file', data: preview, mediaType: 'image/png' },
       ...(input.reference
         ? [
@@ -128,11 +175,13 @@ export async function critiqueLogo(input: {
       {
         type: 'text',
         text: [
-          `Modo: ${input.mode}. Variante: ${input.variant}.`,
-          input.wordmark
-            ? `Nome que deve aparecer escrito, exatamente: "${input.brandName}".`
-            : 'Este logo não deve ter texto nenhum.',
-          'A primeira imagem é o logo. A segunda é o mesmo logo reduzido a 48 pixels e reampliado, para você julgar a legibilidade no tamanho real de uso.',
+          `Modo: ${input.mode}. Variante: ${input.variant}. Superfície de uso: ${surface}.`,
+          derived
+            ? `Versão monocromática branca derivada do logo original de "${input.brandName}", para uso sobre fundo escuro.`
+            : input.wordmark
+              ? `Nome que deve aparecer escrito, exatamente: "${input.brandName}".`
+              : 'Este logo não deve ter texto nenhum.',
+          `A primeira imagem é o logo${input.surface ? ` composto sobre ${surface}` : ''}. A segunda é o mesmo logo reduzido a 48 pixels e reampliado, para você julgar a legibilidade no tamanho real de uso.`,
           input.reference
             ? 'A terceira imagem é o logo original, para comparar.'
             : 'Não existe logo original.',
@@ -147,19 +196,7 @@ export async function critiqueLogo(input: {
       output: Output.object({ schema: logoCritiqueSchema }),
       maxRetries: 1,
       timeout: { totalMs: CRITIC_TIMEOUT_MS },
-      instructions: `Você é um diretor de identidade visual revisando um logotipo que vai virar a marca de um cliente real. Seja específico e duro.
-
-Reprove, ou seja aprovado = false, quando:
-- o nome aparece com grafia errada, letra trocada, letra a mais ou faltando;
-- há palavra, slogan ou sigla além do nome pedido;
-- o fundo não é transparente, ou há retângulo de fundo desenhado;
-- parece render 3D, foto, adesivo ou mockup em vez de vetor chapado;
-- some ou vira borrão na miniatura de 48 pixels;
-- na variante fiel, a fidelidade ao original fica abaixo de 5, porque descaracterizou a marca;
-- na variante ousada, a fidelidade fica acima de 9, porque não mudou nada.
-
-Em nome_lido escreva exatamente o que você lê na imagem, caractere por caractere, mesmo que esteja errado. É assim que a grafia é conferida.
-Escreva em português do Brasil. Problemas em frases curtas e concretas.`,
+      instructions: derived ? DERIVED_INSTRUCTIONS : GENERATED_INSTRUCTIONS,
       messages: [{ role: 'user', content }],
     });
 

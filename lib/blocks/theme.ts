@@ -1,7 +1,9 @@
 import {
   accessibleAccent,
   contrastRatio,
+  isDarkSurface,
   mixHex,
+  mixOklabHex,
   readableHighlight,
   readableMuted,
 } from '@/lib/blocks/contrast';
@@ -112,4 +114,64 @@ export function themeVars(brand: Brand): Record<string, string> {
         : 'normal',
     '--panel-radius': `min(${RADIUS[brand.radius ?? 'md'] ?? '0.5rem'}, 1.5rem)`,
   };
+}
+
+/**
+ * Papel efetivo de uma seção pelo tom, com as mesmas cores medidas acima. Uma
+ * cor de fundo local válida prevalece sobre o tom. Serve para decidir o que
+ * fica sobre a seção antes de renderizar, como a versão do logo.
+ */
+export function surfaceOf(
+  brand: Brand,
+  tone?: string,
+  background?: string,
+  navigation?: string,
+): string {
+  const ink = brand.ink || '#14161a';
+  const paper = brand.paper || '#ffffff';
+  // .site-nav-contrast redefine o papel dentro da ilha de navegação.
+  if (navigation === 'contrast') return ink;
+  if (background && /^#[0-9a-f]{6}$/i.test(background)) return background;
+  switch (tone) {
+    case 'ink':
+      return renderingVibeOf(brand) === 'moderno'
+        ? mixOklabHex(paper, ink, 0.12)
+        : ink;
+    case 'accent':
+      return accessibleAccent(brand.accent || '#1f6feb').accent;
+    case 'secondary':
+      return accessibleAccent(brand.accentAlt || brand.accent || '#1f6feb')
+        .accent;
+    case 'soft':
+      // Reutiliza a lavagem artística e o fallback efetivamente emitidos.
+      return themeVars(brand)['--surface'];
+    default:
+      return paper;
+  }
+}
+
+/**
+ * Logo que a nav ou o rodapé mostram: a versão para fundo escuro quando a
+ * seção é escura e ela existe; senão o logo principal. A escolha é medida no
+ * servidor, não pelo tema do aparelho: o site não tem modo escuro, tem papel.
+ */
+export function logoFor(
+  brand: Brand,
+  presentation?: { tone?: string; background?: string },
+  navigation?: string,
+): string | undefined {
+  if (!brand.logoUrl) return undefined;
+  if (
+    brand.logoDarkUrl &&
+    isDarkSurface(
+      surfaceOf(
+        brand,
+        presentation?.tone,
+        presentation?.background,
+        navigation,
+      ),
+    )
+  )
+    return brand.logoDarkUrl;
+  return brand.logoUrl;
 }

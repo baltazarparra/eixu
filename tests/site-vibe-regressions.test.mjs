@@ -526,3 +526,122 @@ await test('o renderer marca o comprimento do headline para a escala da display'
   );
   assert.match(statement, /<h1[^>]*data-length="short"/);
 });
+
+await test('a vibe moderno recusa a grade e a direção fala em fio, mono e pílula', async () => {
+  const { VIBE_LANE, VIBE_DIRECTION, VIBE_HINT, laneIssues } = await j.import(
+    '../lib/design/vibes.ts',
+  );
+  assert.deepEqual(VIBE_LANE.moderno.axes.motif, ['none']);
+  const input = {
+    displayFont: 'grotesk',
+    bodyFont: 'sans',
+    heroComposition: 'editorial',
+    navigation: 'minimal',
+    rhythm: 'chapters',
+    imageTreatment: 'framed',
+    surfaceStyle: 'outlined',
+    motif: 'grid',
+    radius: 'md',
+    ink: '#f5f6f8',
+    paper: '#0b0c0e',
+    surface: '#131519',
+    variance: 3,
+    motion: 4,
+    density: 4,
+  };
+  const issues = laneIssues('moderno', input);
+  assert.equal(issues.length, 1);
+  assert.match(issues[0], /motif: "grid".*Use none/);
+  assert.deepEqual(laneIssues('moderno', { ...input, motif: 'none' }), []);
+  assert.doesNotMatch(VIBE_DIRECTION.moderno, /grade e a linha fina/);
+  assert.doesNotMatch(VIBE_HINT.moderno, /grade/);
+  assert.match(VIBE_DIRECTION.moderno, /fios de 1px/);
+  assert.match(VIBE_DIRECTION.moderno, /mono/);
+  assert.match(VIBE_DIRECTION.moderno, /pílula clara/);
+  assert.match(VIBE_DIRECTION.moderno, /position "fixed"/);
+  assert.match(grammarDirection('moderno'), /Abertura da home/);
+});
+
+await test('o pre-flight avisa logo de placa clara sobre papel escuro e some com a versão escura', () => {
+  const f = fixture();
+  const logoUrl = 'https://blob.test/tenants/fixture/logo/1-logo.png';
+  f.tenant.brand = {
+    ...f.tenant.brand,
+    paper: '#0b0e14',
+    ink: '#f5f5f4',
+    logoUrl,
+    logoFit: {
+      source: logoUrl,
+      measuredAt: '2026-09-12T00:00:00Z',
+      width: 185,
+      height: 148,
+      hasAlpha: false,
+      transparentFraction: 0,
+      opaqueLuminance: 0.611,
+      lightFraction: 0.511,
+      darkFraction: 0.3,
+      plate: 'light',
+    },
+  };
+  const logoWarnings = () =>
+    lintSite(f.pages, f.images, 'publish', f.tenant.brand).filter(
+      (finding) => finding.rule === 'logo-fundo-escuro',
+    );
+  const [warning] = logoWarnings();
+  assert.ok(warning);
+  assert.equal(warning.level, 'warn');
+  assert.equal(warning.page, '/');
+  assert.match(warning.message, /placa clara/);
+  f.tenant.brand.logoDarkUrl = 'https://blob.test/tenants/fixture/logo/b/branca.png';
+  assert.equal(logoWarnings().length, 0);
+  // A medição de um logo anterior não acusa o logo atual.
+  f.tenant.brand.logoDarkUrl = undefined;
+  f.tenant.brand.logoUrl = 'https://blob.test/tenants/fixture/logo/2-outro.png';
+  assert.equal(logoWarnings().length, 0);
+});
+
+await test('nav e rodapé mostram a versão escura do logo sobre papel escuro', async () => {
+  const jsx = createJiti(import.meta.url, {
+    alias: { '@': process.cwd() },
+    jsx: { runtime: 'automatic' },
+    fsCache: false,
+  });
+  const { NavBar, FooterCompact } = await jsx.import(
+    '../lib/blocks/components.tsx',
+  );
+  const tenant = fixture().tenant;
+  const logoUrl = 'https://blob.test/logo.png';
+  const logoDarkUrl = 'https://blob.test/branca.png';
+  const render = (brand, presentation) => ({
+    nav: renderToString(
+      createElement(NavBar, {
+        logoText: 'Matéria',
+        links: [],
+        presentation,
+        ctx: { tenant: { ...tenant, brand }, pagePath: '/' },
+      }),
+    ),
+    footer: renderToString(
+      createElement(FooterCompact, {
+        logoText: 'Matéria',
+        links: [],
+        presentation,
+        ctx: { tenant: { ...tenant, brand }, pagePath: '/' },
+      }),
+    ),
+  });
+  const dark = { ...tenant.brand, paper: '#0b0e14', ink: '#f5f5f4', logoUrl, logoDarkUrl };
+  const onDark = render(dark);
+  assert.match(onDark.nav, /src="https:\/\/blob\.test\/branca\.png"/);
+  assert.match(onDark.footer, /src="https:\/\/blob\.test\/branca\.png"/);
+  const light = { ...dark, paper: '#ffffff', ink: '#14161a' };
+  const onLight = render(light);
+  assert.match(onLight.nav, /src="https:\/\/blob\.test\/logo\.png"/);
+  assert.match(onLight.footer, /src="https:\/\/blob\.test\/logo\.png"/);
+  // Uma seção escura num site claro pede a versão escura; sem ela, a original.
+  assert.match(render(light, { tone: 'ink' }).nav, /branca\.png/);
+  assert.match(
+    render({ ...light, logoDarkUrl: undefined }, { tone: 'ink' }).nav,
+    /logo\.png/,
+  );
+});

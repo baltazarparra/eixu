@@ -2,12 +2,13 @@ import { z } from 'zod';
 import { after } from 'next/server';
 import { isAuthenticated } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { getTenantBySlug, setBrandLogo } from '@/lib/tenant-queries';
+import { getTenantBySlug, setBrandLogoDark } from '@/lib/tenant-queries';
 import { intakeSchema } from '@/lib/tenant-intake';
 import { contactsSchema, primaryWhatsapp } from '@/lib/tenant-contacts';
 import { tenantDetailsSchema } from '@/lib/admin/tenant-input';
 import { vibeOf, vibeSchema } from '@/lib/design/vibes';
 import { canApplyLogo } from '@/lib/images/logo-access';
+import { applyBrandLogo } from '@/lib/images/logo-apply';
 import { normalizeSocialUrl, parseSocialRecord } from '@/lib/social-profile';
 import {
   clearSocialProfile,
@@ -15,6 +16,7 @@ import {
   syncSocialProfile,
 } from '@/lib/ai/social';
 import { activeRun } from '@/lib/generation/runs';
+import type { Brand } from '@/lib/types';
 
 const patch = z
   .object({
@@ -22,6 +24,8 @@ const patch = z
     contacts: contactsSchema.optional(),
     contactEmail: tenantDetailsSchema.shape.contactEmail.nullable().optional(),
     logoUrl: z.url().nullable().optional(),
+    /** Versão do logo para superfície escura; null remove a escolha. */
+    logoDarkUrl: z.url().nullable().optional(),
     intake: intakeSchema.optional(),
     vibe: vibeSchema.optional(),
   })
@@ -49,13 +53,16 @@ export async function PATCH(
     );
   const input = parsed.data;
 
-  if (input.logoUrl) {
+  // O mesmo portão vale para o logo principal e para a versão de fundo
+  // escuro: logo da biblioteca deste cliente ou upload no caminho dele.
+  for (const url of [input.logoUrl, input.logoDarkUrl]) {
+    if (!url) continue;
     const images =
-      (await db()`select kind, status from images where tenant_id = ${tenant.id} and url = ${input.logoUrl} limit 1`) as {
+      (await db()`select kind, status from images where tenant_id = ${tenant.id} and url = ${url} limit 1`) as {
         kind: string;
         status: string;
       }[];
-    if (!canApplyLogo(tenant.slug, input.logoUrl, images[0]))
+    if (!canApplyLogo(tenant.slug, url, images[0]))
       return Response.json(
         {
           error:
@@ -93,10 +100,13 @@ export async function PATCH(
       updated_at = now()
     where id = ${tenant.id}
   `;
-  const brand =
-    input.logoUrl === undefined
-      ? tenant.brand
-      : await setBrandLogo(tenant.id, input.logoUrl);
+  // O logo principal agenda medição e versão escura; a versão escura escolhida
+  // à mão só troca o campo. As duas podem vir no mesmo pedido, nessa ordem.
+  let brand = tenant.brand;
+  if (input.logoUrl !== undefined)
+    brand = await applyBrandLogo(tenant, input.logoUrl);
+  if (input.logoDarkUrl !== undefined)
+    brand = (await setBrandLogoDark(tenant.id, input.logoDarkUrl)) as Brand;
 
   // O perfil vive em brief.social, fora de brief.intake, porque o update acima
   // substitui o intake inteiro. A leitura corre depois da resposta.

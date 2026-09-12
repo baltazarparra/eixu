@@ -47,6 +47,7 @@ export async function GET(
     guide,
     images,
     logoUrl: resolved.tenant.brand.logoUrl ?? null,
+    logoDarkUrl: resolved.tenant.brand.logoDarkUrl ?? null,
     usage: imageUsage(resolved.tenant, pages, images),
   });
 }

@@ -5,6 +5,7 @@ import { countTenantData } from '@/lib/tenant-queries';
 import { intakeSchema } from '@/lib/tenant-intake';
 import { parseSocialRecord } from '@/lib/social-profile';
 import { vibeOf } from '@/lib/design/vibes';
+import { logoIssueText } from '@/lib/images/logo-fit';
 import { SettingsForm } from './settings-form';
 
 export const dynamic = 'force-dynamic';
@@ -42,6 +43,11 @@ export default async function SettingsPage({
             status: tenant.status,
             contactEmail: tenant.contactEmail,
             logoUrl: tenant.brand.logoUrl,
+            logoDarkUrl: tenant.brand.logoDarkUrl,
+            paper: tenant.brand.paper,
+            // O achado de composição usa o papel real do cabeçalho; aqui a
+            // prévia avisa pelo papel da marca, que é o caso comum.
+            logoIssue: logoIssueText(tenant.brand),
             vibe: vibeOf(tenant.brand),
             pageCount: counts.pages,
             leadCount: counts.leads,

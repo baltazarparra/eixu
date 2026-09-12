@@ -18,8 +18,8 @@ internacionais curtos já gravados sem o sinal precisam ser reinformados com
 `+`, pois não é possível distingui-los de números locais só pelos dígitos.
 
 Em **Direção visual**, compare miniaturas com a mesma estrutura: **Comercial**
-prioriza percurso direto, prova e contato; **Moderno** usa superfície escura,
-grade e capítulos; **Ousado** usa tipografia condensada/expressiva, contraste e
+prioriza percurso direto, prova e contato; **Moderno** usa papel quase preto,
+fios de 1px, rótulos em mono e pílula clara; **Ousado** usa tipografia condensada/expressiva, contraste e
 imagem de borda a borda; **Artístico** usa serifas editoriais, assimetria e
 colagem controlada. Sem referência visual verificada, a vibe limita tipografia,
 abertura, navegação, ritmo, superfície, imagens, ícones e movimento. Uma

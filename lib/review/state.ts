@@ -43,6 +43,7 @@ function imageDependencies(tenant: Tenant, page: Page, images: TenantImage[]) {
   const references = new Set<string>();
   collectStrings(page.blocks, references);
   if (tenant.brand.logoUrl) references.add(tenant.brand.logoUrl);
+  if (tenant.brand.logoDarkUrl) references.add(tenant.brand.logoDarkUrl);
   return images
     .filter((image) => references.has(image.url))
     .sort((a, b) => a.id.localeCompare(b.id))
@@ -52,11 +53,12 @@ function imageDependencies(tenant: Tenant, page: Page, images: TenantImage[]) {
 /** Dependências globais que alteram a renderização ou o julgamento factual. */
 function reviewContext(tenant: Tenant) {
   const { generation: _generation, ...brief } = tenant.brief;
+  const { logoRevision: _logoRevision, ...brand } = tenant.brand;
   return {
     harness: HARNESS_VERSION,
     deployment: deploymentVersion(),
     name: tenant.name,
-    brand: tenant.brand,
+    brand,
     dials: tenant.dials,
     contacts: tenant.contacts,
     whatsapp: tenant.whatsapp,

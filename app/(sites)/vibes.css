@@ -237,22 +237,77 @@
   height: 2.35rem;
 }
 
+/* Moderno v3/v4: sistema tipográfico lido em 12/09/2026 em linear.app,
+   resend.com e untold.site/pt. Papel liso quase preto, um fio de 1px entre
+   capítulos, rótulos em mono caixa alta, painel de mídia que some no papel e
+   pílula clara como ação. A grade de fundo que vivia aqui (dois gradientes de
+   1px na raiz e seções a 94% de opacidade) saiu: nenhuma referência usa grade
+   e ela atravessava todas as seções. Não há moderno v3 no ar, então o bloco
+   vale para v3 e v4; o v2 publicado continua no bloco legado acima. --line,
+   --radius e as cores são inline (themeVars) e não se redefinem na raiz. */
 .site-theme:is(
     [data-design-version='3'],
     [data-design-version='4']
   )[data-vibe='moderno'] {
-  background-image:
-    linear-gradient(var(--line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--line) 1px, transparent 1px);
-  background-size: min(8vw, 7rem) min(8vw, 7rem);
+  --section-space: clamp(5.5rem, 11vw, 10rem);
+  --hairline: color-mix(in oklab, var(--ink) 9%, var(--paper));
+}
+/* Um fio entre capítulos; as seções deixam de desenhar o próprio. */
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  main
+  > .site-block
+  + .site-block {
+  border-top: 1px solid var(--hairline);
 }
 .site-theme:is(
     [data-design-version='3'],
     [data-design-version='4']
   )[data-vibe='moderno']
   main
-  > .site-block {
-  background-color: color-mix(in oklab, var(--paper) 94%, transparent);
+  > .site-block
+  > :is(section, article) {
+  border-bottom-color: transparent;
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  main
+  > .site-block[data-edge='line'] {
+  border-bottom-width: 0;
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  .site-cta-minimal
+  .site-shell {
+  border-top: 0;
+  padding-top: 0;
+}
+/* Rótulos em mono: eyebrow, menu, legendas, índices e rótulos de números. */
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  :is(
+    .site-eyebrow,
+    .site-nav-link,
+    .site-explorer-kicker,
+    .site-resource-category,
+    figcaption,
+    .site-hero-caption,
+    .site-stats .site-shell > div > p:last-child,
+    .site-services-rail li::before
+  ) {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 .site-theme:is(
     [data-design-version='3'],
@@ -260,17 +315,238 @@
   )[data-vibe='moderno']
   .site-headline {
   max-width: 16ch;
-  font-size: clamp(2.5rem, 4.6vw, 4.8rem);
+  font-size: clamp(2.4rem, 4.4vw, 4.4rem);
+  font-weight: 500;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
 }
 .site-theme:is(
     [data-design-version='3'],
     [data-design-version='4']
   )[data-vibe='moderno']
-  :is(.site-eyebrow, .site-nav-link) {
-  font-family: var(--font-body);
-  font-size: 0.68rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  .site-hero-copy
+  > p:not(.site-eyebrow) {
+  max-width: 40ch;
+  font-size: 1.05rem;
+  color: var(--muted);
+}
+/* Mídia com borda fina, sem moldura; o painel do hero editorial some no papel. */
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  main
+  img {
+  padding: 0;
+  border: 1px solid var(--hairline);
+  border-radius: var(--panel-radius);
+  background: transparent;
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  :is(.site-hero-media img, .site-bento-showcase .site-bento-item:first-child img) {
+  border: 0;
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  .site-hero-editorial
+  .site-hero-media {
+  border: 1px solid var(--hairline);
+  border-radius: var(--panel-radius);
+  -webkit-mask-image: linear-gradient(#000 55%, transparent);
+  mask-image: linear-gradient(#000 55%, transparent);
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  .site-bento-item {
+  border: 1px solid var(--hairline);
+  background: color-mix(in oklab, var(--ink) 3%, var(--paper));
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  .site-bento-showcase
+  .site-bento-item:first-child
+  img {
+  opacity: 0.7;
+  -webkit-mask-image: linear-gradient(to top, transparent 12%, #000 70%);
+  mask-image: linear-gradient(to top, transparent 12%, #000 70%);
+}
+/* O card em destaque herda os tokens da seção: a troca legada de tinta e
+   papel o pintava de claro, e a foto some no painel escuro antes do texto. */
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  .site-bento-featured {
+  --ink: inherit;
+  --paper: inherit;
+  color: var(--ink);
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  .site-bento-featured
+  > div {
+  background: transparent;
+}
+/* Colunas com índice em mono e fio vertical. */
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  .site-services-rail
+  ul {
+  counter-reset: service;
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  .site-services-rail
+  li {
+  counter-increment: service;
+  border-inline-start-color: var(--hairline);
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  .site-services-rail
+  li::before {
+  display: block;
+  margin-bottom: 1.25rem;
+  color: var(--muted);
+  content: counter(service, decimal-leading-zero);
+}
+/* Números tabulares na display, rótulo em mono, fio lateral. */
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  .site-stats-strip
+  .site-shell {
+  gap: 0;
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  .site-stats-strip
+  .site-shell
+  > div {
+  padding: 1.5rem clamp(1rem, 2.5vw, 2rem);
+  border-inline-start: 1px solid var(--hairline);
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  .site-stats
+  .site-shell
+  > div
+  > p:first-child {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+/* Declaração em duas cores: primeiro parágrafo na tinta, o resto apagado. */
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  .site-text-lead
+  .site-shell
+  > div
+  > p:first-child {
+  max-width: 30ch;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  .site-text-lead
+  .site-shell
+  > div
+  > p:not(:first-child) {
+  color: var(--muted);
+}
+/* A faixa de conversão herda os tokens da seção (a troca legada de tinta e
+   papel sairia do caminho da pílula) e, sem tom, vira um escuro elevado. */
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  .site-cta {
+  --ink: inherit;
+  --paper: inherit;
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  .site-block:not([data-tone])
+  > .site-cta {
+  background: color-mix(in oklab, var(--paper) 88%, var(--ink));
+  color: var(--ink);
+}
+/* Pílula clara: a ação é tinta sobre papel; a cor do cadastro fica em links,
+   numerais e na seção com tom accent. */
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  :is(
+    .site-action[data-variant='solid'],
+    .site-cta .site-action,
+    .site-nav-cta,
+    .site-explorer-cta
+  ) {
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: none;
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  .site-action[data-variant='ghost'] {
+  border-radius: 999px;
+  border-color: var(--line);
+}
+/* Cabeçalho mínimo com fio; fixo, vira translúcido sobre o conteúdo. */
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  .site-nav-minimal {
+  border-color: var(--hairline);
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  .site-navigation-frame[data-position='fixed']
+  .site-nav {
+  background: color-mix(in oklab, var(--paper) 78%, transparent);
+  backdrop-filter: blur(16px);
 }
 
 /* Inversão do cabeçalho é decisão de layout. Uma referência que documenta

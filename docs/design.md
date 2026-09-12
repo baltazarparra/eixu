@@ -175,13 +175,15 @@ a direção de arte decide; `comercial` deixou de poder reproduzir qualquer uma
 das outras. Referências
 lidas em 10/09/2026: [Linear](https://linear.app/) para `moderno`,
 [14islands](https://www.14islands.com/) para `ousado` e
-[Actionline](https://actionline.io/) para `artistico`. Elas orientam a
-linguagem visual; o conteúdo continua vindo do briefing do cliente.
+[Actionline](https://actionline.io/) para `artistico`; em 12/09/2026 o
+moderno foi recriado sobre Linear, [Resend](https://resend.com/) e
+[Untold](https://untold.site/pt). Elas orientam a linguagem visual; o
+conteúdo continua vindo do briefing do cliente.
 
 | Vibe        | O que a faixa exige                                                                                                                      |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `comercial` | Display humanista/slab, hero split/cover, navegação em barra, ritmo direto, fotos emolduradas, superfície plana e cantos discretos.      |
-| `moderno`   | Papel escuro, display geométrica/grotesca, hero editorial/offset, navegação mínima, capítulos, molduras e superfícies delineadas.        |
+| `moderno`   | Papel quase preto e liso, display geométrica/grotesca, hero editorial/offset, navegação mínima, capítulos com fio de 1px, rótulos mono.  |
 | `ousado`    | Display condensada/expressiva, hero cover/poster, navegação de contraste, fluxo contínuo, fotografia full-bleed, faixas e cantos retos.  |
 | `artistico` | Display editorial/clássica, hero offset/atelier, navegação flutuante, alternância, colagem/cutout, camadas e motivos de anéis ou cantos. |
 
@@ -263,6 +265,9 @@ sobrepõe o de `data-density`, porque a faixa já limita os dials. Em papel
 escuro, as faixas que pintam o fundo com a cor do texto (`cta.band`,
 `editorial.facts` escuro, plano em destaque, card do bento e seções com tom
 `ink`) viram um escuro elevado em vez de um bloco branco no meio da página.
+Variáveis emitidas inline por `themeVars` (`--line`, `--radius`, cores) não se
+redefinem na raiz pelo CSS da vibe; o moderno usa `--hairline` própria para o
+fio entre capítulos.
 
 Na vibe artística, `themeVars` resolve a lavagem de cor da superfície `soft`
 antes de calcular os tokens de tinta, apoio e destaque. Se a mistura tirar o
@@ -317,6 +322,96 @@ hero, e as seções pares deslocadas 2vw à esquerda pareciam desalinhadas.
 As regras de v3/v4 valem para todos os clientes artísticos publicados nessas
 versões. O atelier, a colagem e a masonry valem também para v2, porque são
 correções do renderizador, como a do filmstrip.
+
+## Recriação da vibe moderna
+
+Medido em 12/09/2026: a vibe pintava uma grade de dois gradientes de 1px na
+raiz da página, com célula de `min(8vw, 7rem)`, e deixava cada seção a 94% de
+opacidade para a grade atravessar o site inteiro (`vibes.css`, perfis v3/v4);
+um cliente com `motif: grid` recebia uma segunda grade de 3rem no hero e a
+cada terceira seção, e a miniatura do cadastro repetia o padrão. Nenhuma das
+referências lidas nesse dia usa grade: [Linear](https://linear.app/) e
+[Resend](https://resend.com/) são papel quase preto com um fio de 1px entre
+capítulos, rótulos em mono caixa alta, painel de produto que some no papel e
+botão primário em pílula clara; [Untold](https://untold.site/pt) é papel creme
+com display enorme, rótulos mono entre parênteses e um acento só. O moderno
+continua escuro; Untold entra pelos rótulos e pelo ritmo, não pela cor.
+
+- **Papel liso.** A grade saiu da raiz e das seções, e `motif` da faixa vale só
+  `none`. O CSS de `data-motif='grid'` fica para o único moderno publicado,
+  `neidemarialimpeza`, em perfil v2; nenhum perfil novo grava `grid`.
+- **Um fio entre capítulos.** `--hairline` (tinta a 9%) desenha `border-top`
+  entre os blocos de `main`; o `border-b` das seções, `edge "line"`, a faixa
+  de conversão e o fechamento minimal deixam de desenhar o próprio fio.
+- **Rótulos em mono.** Eyebrow, links do menu, kicker do explorer, categoria
+  dos recursos, legendas, rótulos de números e o índice do rail usam Geist
+  Mono em caixa alta a 0,68rem com tracking 0,12em.
+- **Headline e declaração.** Grotesk 500 até 16ch com lead pequeno e apagado;
+  `editorial.text layout lead` vira declaração em duas cores: o primeiro
+  parágrafo na display e na tinta, os demais apagados.
+- **Painéis com fade.** A mídia do hero editorial ganha borda fina, raio do
+  painel e `mask-image` que a dissolve no papel; a imagem do item em destaque
+  do bento showcase faz o mesmo, e esse item herda os tokens da seção em vez
+  da troca legada de tinta e papel, que o pintava de claro. Fotos têm borda
+  de 1px sem moldura.
+- **Colunas e números.** `feature.numbered layout rail` recebe índice `01` em
+  mono e fio vertical; `proof.stats layout strip` recebe numerais tabulares na
+  display e fio lateral.
+- **Pílula clara.** A ação sólida, o botão da faixa de conversão, o CTA do
+  menu e o do explorer são tinta sobre papel em pílula; o ghost é pílula com
+  fio. A faixa de conversão herda
+  os tokens da seção e, sem tom, vira um escuro elevado. A cor do cadastro
+  fica em links, numerais e na única seção `tone "accent"`.
+- **Cabeçalho.** `nav.bar layout minimal` com fio; com `position "fixed"` fica
+  translúcido sobre o conteúdo. A direção da vibe passa a pedir esse par.
+- **Paleta sugerida.** Índigo apagado para a seção colorida, grafite para a
+  superfície elevada e ação lavanda: a demonstração deixou de ser azul-marinho
+  com ciano.
+
+O bloco vale para perfis v3 e v4, como o restante dos contratos v3; não há
+moderno v3 no ar. O perfil v2 continua no bloco legado.
+
+## Logo sobre superfície escura
+
+O logo `transferir.png` de um cliente era um PNG sem alfa: sobre o papel escuro
+virava uma placa branca no cabeçalho, e nada media isso, porque `logoPrecheck`
+só corria em `generate_logo` e `update_image`. Agora aplicar um logo, por
+upload, pela biblioteca ou pelo chat, passa por
+`applyBrandLogo`: grava `logoUrl` e a versão operacional `logoRevision`, e
+depois da resposta mede o arquivo com `measureLogoFit` (alfa, luminância dos
+pixels pintados, placa) em
+`brand.logoFit` e deriva uma versão branca por recorte de luminância
+(`deriveWhiteLogo`): pixel escuro ou colorido vira branco, pixel claro vira
+transparente, o que preserva o texto vazado de uma placa colorida e apaga a
+placa de um arquivo sem alfa. A versão entra na biblioteca com número e
+`reference_urls` do original, passa pelo crítico de logo em modo `derivar`,
+composta sobre papel escuro, e, aprovada, vira `brand.logoDarkUrl`.
+O cadastro persiste a mesma versão antes de agendar `deriveLogoAssets`.
+
+`NavBar` e `FooterCompact` escolhem o logo pelo papel real da seção
+(`logoFor` em `lib/blocks/theme.ts`): tom `ink`, `accent`, `secondary`, `soft`
+ou o papel da marca, com luminância abaixo de 0,4 contando como escuro.
+O tom `ink` moderno usa a mistura elevada de papel e tinta em Oklab emitida
+pelo CSS; `soft` usa a superfície resolvida do tema, incluindo a lavagem
+artística. Uma cor local prevalece sobre o tom; a navegação `contrast` tem
+papel próprio, resolvido pelo layout local ou pelo perfil. Renderer e
+pre-flight usam essas mesmas regras, respeitando o fallback das referências
+nos perfis antigos. O site não tem modo escuro; tem papel. `lintSite` emite o
+aviso `logo-fundo-escuro`
+quando o cabeçalho ou o rodapé da home é escuro, a medição acusa placa clara ou
+tinta escura sem pixels claros e não há versão escura; `logo-fundo-claro` cobre
+o caso inverso. Dados mostra o logo sobre o papel da marca e sobre um papel
+escuro, e a biblioteca oferece **Usar sobre fundo escuro** e a remoção. Trocar
+o logo apaga a medição e a versão escura do anterior. Cada aplicação ou escolha
+manual da versão escura, inclusive remoção, renova `logoRevision`: a derivação
+só grava se a URL e essa versão ainda coincidirem. Reaplicar a mesma URL
+preserva a medição e a variante existentes, invalidando trabalhos anteriores.
+O chat usa a marca devolvida pela aplicação; ajustes de cor e design mesclam
+somente seus campos no banco, preservando escolhas e derivados concorrentes.
+Medição e versão operacional ficam fora do snapshot publicado; renovar a
+versão não marca o rascunho como alterado nem invalida a evidência visual.
+Ilustrações e logos de meio-tom não têm versão por recorte: o aviso permanece e a versão pode ser
+pedida ao modelo pelo chat.
 
 ## Referências acima da vibe
 
@@ -394,12 +489,12 @@ de display e sete de corpo (algumas famílias atendem aos dois papéis). Schema,
 prompt e `themeVars` compartilham o catálogo. IDs anteriores continuam válidos;
 a mudança não reescreve direções de clientes nem exige migração.
 
-| Vibe      | Possibilidades de pareamento                               | Iconografia e gesto                                           |
-| --------- | ---------------------------------------------------------- | ------------------------------------------------------------- |
-| Comercial | Roboto Slab + Source Sans 3; Manrope; Fraunces + Work Sans | Traço regular, suporte arredondado, elevação breve            |
-| Moderno   | Sora + Source Sans 3; Space Grotesk + Geist                | Traço leve, suporte delineado e pequeno deslocamento diagonal |
-| Ousado    | Barlow Condensed + Work Sans; Syne + Geist                 | Traço forte, suporte quadrado e impulso diagonal              |
-| Artístico | Bodoni Moda + Source Sans 3; Fraunces + Literata           | Duotone, suporte orgânico e inclinação suave                  |
+| Vibe      | Possibilidades de pareamento                                       | Iconografia e gesto                                           |
+| --------- | ------------------------------------------------------------------ | ------------------------------------------------------------- |
+| Comercial | Roboto Slab + Source Sans 3; Manrope; Fraunces + Work Sans         | Traço regular, suporte arredondado, elevação breve            |
+| Moderno   | Sora + Source Sans 3; Space Grotesk + Geist; rótulos em Geist Mono | Traço leve, suporte delineado e pequeno deslocamento diagonal |
+| Ousado    | Barlow Condensed + Work Sans; Syne + Geist                         | Traço forte, suporte quadrado e impulso diagonal              |
+| Artístico | Bodoni Moda + Source Sans 3; Fraunces + Literata                   | Duotone, suporte orgânico e inclinação suave                  |
 
 São opções de direção, não pares obrigatórios. O contexto do negócio orienta
 a escolha. Display inclui Geist, Fraunces, Space Grotesk, Manrope, Geist Mono,
