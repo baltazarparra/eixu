@@ -126,7 +126,7 @@ async function consumerFixture({
     phase: 'briefing',
     origin: 'https://fixture.test',
   };
-  const phases = ['briefing', 'cenas', 'composicao', 'revisao'];
+  const phases = ['briefing', 'cenas', 'composicao'];
   const pending = [],
     events = [],
     executed = [];
@@ -197,13 +197,13 @@ async function consumerFixture({
   return { run, executed, events, pending, consume, options, message };
 }
 
-await test('fila conduz as quatro fases, inclusive a revisão, sem navegador', async () => {
+await test('fila conclui após composição, sem etapa de revisão nem navegador', async () => {
   const f = await consumerFixture();
   f.pending.push(f.message(0));
   while (f.pending.length) await f.consume(f.pending.shift());
-  assert.deepEqual(f.executed, ['briefing', 'cenas', 'composicao', 'revisao']);
+  assert.deepEqual(f.executed, ['briefing', 'cenas', 'composicao']);
   assert.equal(f.run.status, 'done');
-  assert.equal(f.run.hops, 4);
+  assert.equal(f.run.hops, 3);
 });
 
 await test('duplicatas simultâneas aguardam o trabalho sem repetir reserva nem modelo', async () => {
@@ -271,7 +271,7 @@ await test('resposta perdida do envio não encerra a reserva seguinte', async ()
   assert.equal(f.events.length, 0);
 });
 
-await test('recibo com revisão pendente não promete despacho bem-sucedido', async () => {
+await test('recibo legado de revisão entrega para conferência humana', async () => {
   const { savedProgressMessage } = await loadModule('lib/ai/chat-progress.ts');
   const text = savedProgressMessage(
     {
@@ -285,8 +285,8 @@ await test('recibo com revisão pendente não promete despacho bem-sucedido', as
     },
     true,
   );
-  assert.match(text, /revisão visual.*pendente/);
-  assert.match(text, /Acompanhe pelo painel/);
+  assert.match(text, /Site gerado.*Confira a prévia/);
+  assert.doesNotMatch(text, /pendente|Acompanhe pelo painel/);
   assert.doesNotMatch(text, /começa em seguida|Use Continuar/);
 });
 
@@ -317,7 +317,7 @@ await test('recibo conta cenas só antes da composição e não chama site pront
         done,
         /^Progresso salvo: 5 páginas e 9 fotos na biblioteca\./,
       );
-      assert.match(done, /concluída sem erros/);
+      assert.match(done, /Site gerado/);
       assert.doesNotMatch(done, /3 de 6|Use Continuar/);
     },
   );

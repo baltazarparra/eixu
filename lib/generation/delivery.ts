@@ -1,22 +1,18 @@
-import { reviewFingerprint } from '@/lib/review/state';
-import type { Page, Tenant, TenantImage } from '@/lib/types';
+import type { Page, Tenant } from '@/lib/types';
 
-/** Entrega do rascunho, independente do certificado de revisão visual. */
+/** Registro histórico da entrega, sem certificar qualidade visual. */
 export type GenerationDelivery = {
-  fingerprint: string;
   completedAt: string;
+  /** Preservado nos recibos antigos; não condiciona a conclusão da geração. */
+  fingerprint?: string;
 };
 
 export function currentDelivery(
   tenant: Tenant,
   pages: Page[],
-  images: TenantImage[],
 ): GenerationDelivery | null {
   const delivery = (
     tenant.brief.generation as { delivery?: GenerationDelivery } | undefined
   )?.delivery;
-  return delivery?.completedAt &&
-    delivery.fingerprint === reviewFingerprint(tenant, pages, images)
-    ? delivery
-    : null;
+  return pages.length > 0 && delivery?.completedAt ? delivery : null;
 }

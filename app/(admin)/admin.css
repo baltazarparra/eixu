@@ -526,14 +526,7 @@ textarea.admin-input {
   width: 32px;
   height: 32px;
 }
-.admin-bar-review {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 11.5px;
-  color: var(--color-warn);
-  white-space: nowrap;
-}
+
 .admin-tenant-content {
   flex: 1;
   min-height: 0;
@@ -1832,7 +1825,7 @@ textarea.admin-input {
 }
 .admin-run-steps {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 5px;
   margin-top: 2px;
 }

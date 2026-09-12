@@ -283,7 +283,6 @@ const GEM_FRAGMENT = /* glsl */ `
 const STAGE_HINT: Record<CreationProgress['stage']['id'], string> = {
   preparar: 'briefing e direção de arte',
   criar: 'imagens e páginas',
-  conferir: 'revisão visual',
 };
 
 export function GenerationDiamond({

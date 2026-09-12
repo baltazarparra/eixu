@@ -141,7 +141,7 @@ idempotência combina run e salto; o consumidor reconfirma o tenant e reserva
 atomicamente o salto no banco antes de executar. Uma entrega repetida não
 executa outra chamada paga. Falha de envio só encerra o run se a reserva ainda
 pertencer à etapa que observou o erro, inclusive no primeiro envio. O painel
-oferece **Tentar novamente**, preservando páginas, cenas e revisão pendente.
+oferece **Tentar novamente**, preservando páginas e cenas. Sites já montados permanecem concluídos.
 Mensagens ficam disponíveis por uma hora; falhas antes da reserva têm até
 cinco entregas, espaçadas em 30 segundos. Interrupção após a reserva não
 reexecuta automaticamente trabalho pago: vale a recuperação por inatividade
@@ -194,35 +194,24 @@ um turno do coordenador só para repetir o plano. O runner chama o executor de
 isolamento do tenant e recibos do estúdio. O caminho com agente continua como
 fallback para briefings antigos sem plano válido.
 
-Conferir ocupa uma única passagem por execução. O loop força `review_pages` no
-primeiro passo e encerra imediatamente quando a captura/crítica está indisponível
-ou desativada, sem editar conteúdo por esse motivo. Erros conhecidos permitem
-reparo e uma conferência focal no mesmo turno; a segunda leitura encerra a
-tentativa mesmo se restarem pendências. Não há rodadas automáticas adicionais.
-Cenas usam a cobertura do plano; briefing e composição precisam produzir a fase
-seguinte. O teto global segue em 14 saltos.
+A geração percorre briefing, cenas e composição; a interface mostra Preparar e
+Criar. `nextPhase` encerra ao encontrar as páginas orgânicas montadas, inclusive
+em clientes legados sem recibo visual. Cenas usam a cobertura do plano e fases
+incompletas precisam produzir avanço. O teto global segue em 14 saltos.
 
-O runner grava a entrega em `brief.generation.delivery`, com fingerprint do
-rascunho e data, sem sobrescrever `review`. Esse recibo encerra a geração e
-sobrevive à recarga, mas não comprova qualidade visual. O painel e o chat dizem
-que o site foi gerado com revisão pendente, quando necessário. Falhas técnicas e
-achados do recibo incompleto atual continuam no relatório. Uma edição posterior
-invalida a entrega; uma nova revisão também pode ser pedida pelo chat.
+O runner grava `brief.generation.delivery` ao terminar a composição. A data
+registra entrega, sem certificar revisão visual. Edições e deploys não invalidam
+a conclusão. O chat entrega um recibo determinístico e a prévia fica disponível
+para revisão humana. Não há Conferir automático, revisão visual pendente nem
+Continuar para sites concluídos. `review_pages` continua disponível por pedido
+explícito; seus recibos só comprovam uma análise com evidência atual.
 
-Quando o turno de revisão termina sem texto do agente, o resumo conta ajustes
-somente quando a ferramenta confirma `ok: true`. Leituras contam quando captura
-e crítica completaram, mesmo que apontem erros no rascunho; recusas, limite de
-leituras e revisão visual indisponível ou desativada não contam como leitura
-concluída. O certificado visual continua exigindo evidência atual; entrega não é aprovação.
-
-Quando o SDK devolve `TimeoutError`, o runner relê o estado salvo. Em Conferir,
-a tentativa termina com entrega e pendência; nas etapas anteriores, a evidência
-decide continuação ou falha. Erro de execução durante Conferir também preserva a
-entrega, com nota explícita. A pausa do operador tem prioridade. Esse caminho
-não inventa consumo que o SDK não devolveu. O timeout depende de a chamada em
-andamento respeitar o sinal de aborto; não garante que ferramentas independentes
-terminem dentro do limite da função. Falha de banco que impeça confirmar ou
-persistir o estado continua sendo falha de execução, não entrega comprovada.
+Quando o SDK falha ou devolve `TimeoutError`, o runner relê o estado salvo.
+Páginas concluídas preservam a entrega; sem elas, o progresso decide continuação
+ou falha. A pausa do operador continua sendo respeitada. Esse caminho não inventa
+consumo que o SDK não devolveu. O timeout depende de a chamada em andamento
+respeitar o sinal de aborto. Falha de banco que impeça confirmar ou persistir o
+estado continua sendo falha de execução.
 
 O painel mostra leituras da única passagem, sem usar o contador acumulado do
 cliente. Os eventos legados de rodadas continuam legíveis. **Tentar novamente**

@@ -48,20 +48,19 @@ await test('progresso da criação soma etapas feitas e unidades medidas, sem es
   assert.equal(briefing.position, 1);
   assert.deepEqual(
     briefing.stages.map((stage) => stage.state),
-    ['active', 'todo', 'todo'],
+    ['active', 'todo'],
   );
   assert.equal(briefing.detail, null, 'o briefing não tem unidade medida');
 
   const cenas = creationProgress(state('cenas'), 'cenas', []);
   assert.equal(cenas.position, 2);
-  assert.ok(Math.abs(cenas.fraction - 1.2 / 3) < 1e-9);
+  assert.ok(Math.abs(cenas.fraction - 1.2 / 2) < 1e-9);
   assert.equal(cenas.detail, '2 de 5 cenas prontas');
   assert.deepEqual(
     cenas.stages.map((stage) => [stage.state, stage.fill]),
     [
       ['done', 1],
       ['active', 0.2],
-      ['todo', 0],
     ],
   );
 
@@ -71,7 +70,7 @@ await test('progresso da criação soma etapas feitas e unidades medidas, sem es
     'composicao',
     [],
   );
-  assert.equal(composicao.fraction, 0.5);
+  assert.equal(composicao.fraction, 0.75);
   assert.equal(composicao.detail, 'montando as páginas');
 
   // Parada, a próxima etapa aparece ativa, sem unidades de uma fase que não roda.
@@ -87,16 +86,16 @@ await test('progresso da criação soma etapas feitas e unidades medidas, sem es
     'revisao',
     [event(1, 'phase_start'), event(2, 'tool_end', 'review_pages')],
   );
-  assert.equal(revisao.stages[2].fill, 0.5);
-  assert.ok(Math.abs(revisao.fraction - 2.5 / 3) < 1e-9);
-  assert.equal(revisao.detail, '1 de 2 leituras concluídas');
+  assert.equal(revisao.stages[1].fill, 1);
+  assert.ok(Math.abs(revisao.fraction - 1) < 1e-9);
+  assert.equal(revisao.detail, null);
 
   const done = creationProgress(state('pronto'), null, []);
   assert.equal(done.done, true);
   assert.equal(done.fraction, 1);
   assert.deepEqual(
     done.stages.map((stage) => stage.state),
-    ['done', 'done', 'done'],
+    ['done', 'done'],
   );
 });
 
@@ -133,7 +132,7 @@ await test('marcador distingue leitura, alteração de rascunho e repetição se
     assert.equal(reviewRound(marker), 0);
 });
 
-await test('prompt define conferência única e não promete outra rodada', () => {
+await test('prompt de análise solicitada não reabre a geração', () => {
   const instructions = phaseInstructions({
     tenant: {
       id: 'fixture',
@@ -148,7 +147,10 @@ await test('prompt define conferência única e não promete outra rodada', () =
     images: [],
     phase: 'revisao',
   });
-  assert.match(instructions, /Conferência única nesta geração/);
+  assert.match(
+    instructions,
+    /Análise solicitada pelo operador, fora da geração/,
+  );
   assert.match(instructions, /Comece por review_pages no rascunho atual/);
   assert.match(instructions, /"errors":2/);
   assert.doesNotMatch(
@@ -455,7 +457,7 @@ async function runnerFixture({
     },
     '@/lib/ai/chat-progress': {
       savedProgressMessage: (state, running) =>
-        `Progresso salvo: recibo sintético. ${state.generation.next === 'pronto' ? 'Site gerado com revisão pendente.' : running ? 'Continua.' : 'Parado.'}`,
+        `Progresso salvo: recibo sintético. ${state.generation.next === 'pronto' ? 'Site gerado.' : running ? 'Continua.' : 'Parado.'}`,
     },
     '@/lib/auth': { createSessionToken: async () => 'token' },
     '@/lib/ai/tools': { buildTools: () => ({}) },
@@ -505,45 +507,6 @@ async function runnerFixture({
     calls: () => calls,
   };
 }
-
-await test('revisão sem texto do agente registra o resumo do turno antes do recibo', async () => {
-  // A conferência limpa encerra o laço no passo da ferramenta: o histórico
-  // recebia só "Progresso salvo", sem dizer o que a revisão fez.
-  const f = await runnerFixture({
-    states: [
-      { next: 'revisao', reviewRounds: 4 },
-      { next: 'pronto', reviewRounds: 5, reviewComplete: true },
-    ],
-    text: '',
-    stepCount: 3,
-    toolResults: [
-      [
-        {
-          toolName: 'review_pages',
-          output: { visual: 'complete', review: { complete: true } },
-        },
-      ],
-      [
-        { toolName: 'update_block', output: { ok: true } },
-        { toolName: 'lint_page' },
-      ],
-      [
-        {
-          toolName: 'review_pages',
-          output: { visual: 'complete', review: { complete: true } },
-        },
-      ],
-    ],
-  });
-  const outcome = await f.executeStep(f.run);
-  assert.equal(outcome.kind, 'done');
-  const reply = f.messages[0].text;
-  assert.match(
-    reply,
-    /^A revisão fez 2 leituras do rascunho renderizado e aplicou 1 ajuste\./,
-  );
-  assert.match(reply, /Progresso salvo: recibo sintético\. Site gerado/);
-});
 
 await test('edição recusada pela ferramenta real não vira ajuste no resumo do SDK', async () => {
   let writes = 0;
@@ -608,81 +571,18 @@ await test('edição recusada pela ferramenta real não vira ajuste no resumo do
   }).generate({ prompt: 'Teste sintético sem rede.' });
   assert.equal(writes, 0);
   assert.match(result.steps[0].toolResults[0].output.error, /Nenhum bloco/);
-  const f = await runnerFixture({
-    states: [{ next: 'revisao', reviewRounds: 1 }],
-    text: '',
-    stepCount: result.steps.length,
-    toolResults: result.steps.map((step) => step.toolResults),
-  });
-  assert.equal((await f.executeStep(f.run)).kind, 'done');
-  assert.match(f.messages[0].text, /fez 0 leituras.*aplicou 0 ajustes/);
-  assert.match(f.messages[0].text, /Site gerado com revisão pendente/);
-});
-
-await test('resumo conta leituras completas com achados e só edições confirmadas', async () => {
-  const refusedReads = [
-    { error: 'Limite de leituras atingido.' },
-    { visual: 'unavailable', review: { complete: false } },
-    { visual: 'disabled', review: { complete: false } },
-    { visual: 'complete', review: { complete: false } },
-    null,
-  ];
-  const edits = [
-    'update_block',
-    'insert_block',
-    'move_block',
-    'remove_block',
-    'set_blocks',
-    'set_seo',
-  ];
-  const results = [
-    ...refusedReads.map((output) => ({ toolName: 'review_pages', output })),
-    // Encontrar erros não significa falha de leitura: o recibo visual completou.
-    {
-      toolName: 'review_pages',
-      output: {
-        complete: false,
-        visual: 'complete',
-        review: { complete: true, errors: 2 },
-      },
-    },
-    {
-      toolName: 'review_pages',
-      output: {
-        complete: true,
-        visual: 'complete',
-        review: { complete: true, errors: 0 },
-      },
-    },
-    ...edits.flatMap((toolName) => [
-      { toolName, output: { error: 'Tentativa recusada.' } },
-      { toolName, output: { ok: false } },
-      { toolName, output: null },
-      { toolName, output: { ok: true } },
-    ]),
-    { toolName: 'lint_page', output: { ok: true } },
-  ];
-  const f = await runnerFixture({
-    states: [
-      { next: 'revisao', reviewRounds: 1 },
-      { next: 'pronto', reviewRounds: 2, reviewComplete: true },
-    ],
-    text: '',
-    toolResults: [results],
-  });
-  assert.equal((await f.executeStep(f.run)).kind, 'done');
-  assert.match(f.messages[0].text, /fez 2 leituras.*aplicou 6 ajustes/);
-  assert.match(f.messages[0].text, /Progresso salvo: recibo sintético/);
 });
 
 await test('a etapa grava linha do tempo, mensagens e aponta a próxima fase', async () => {
   const f = await runnerFixture({
-    states: [{ next: 'composicao' }, { next: 'revisao' }],
+    states: [{ next: 'composicao' }, { next: 'pronto' }],
   });
   const outcome = await f.executeStep(f.run);
 
-  assert.equal(outcome.kind, 'continue');
-  assert.equal(outcome.phase, 'revisao');
+  assert.equal(outcome.kind, 'done');
+  assert.equal(f.calls(), 1);
+  assert.equal((await f.executeStep(f.run)).kind, 'done');
+  assert.equal(f.calls(), 1, 'recarregar não abre conferência');
   assert.equal(
     f.events.map((event) => event.kind).join(','),
     'phase_start,tool_start,tool_end,phase_end',
@@ -691,7 +591,10 @@ await test('a etapa grava linha do tempo, mensagens e aponta a próxima fase', a
   assert.match(f.events[2].label, /Projeto salvo/);
   // O histórico do painel continua coerente mesmo sem navegador aberto.
   assert.equal(f.messages.map((row) => row.role).join(','), 'assistant');
-  assert.equal(f.messages[0].text, 'Etapa concluída.');
+  assert.match(
+    f.messages[0].text,
+    /Etapa concluída.*\n\nProgresso salvo.*Site gerado/,
+  );
   assert.equal(f.run.hops, 1);
   assert.equal(f.run.progress, 'composicao');
   // O painel perdeu a contagem quando a geração saiu do navegador: sem o
@@ -733,82 +636,18 @@ await test('etapa sem avanço encerra a execução em vez de repetir para sempre
   assert.equal(f.calls(), 0);
 });
 
-await test('Conferir entrega após uma passagem, inclusive sem avanço ou com falha visual', async () => {
-  for (const input of [
-    { states: [{ next: 'revisao', reviewRounds: 2 }] },
-    { states: [{ next: 'revisao' }, { next: 'composicao', organicPages: 2 }] },
-    {
-      states: [{ next: 'revisao' }, { next: 'revisao', reviewRounds: 1 }],
-      stepCount: 32,
-    },
-    {
-      states: [
-        { next: 'revisao' },
-        {
-          next: 'revisao',
-          review: { complete: false, visual: 'unavailable', errors: 1 },
-        },
-      ],
-    },
-    {
-      states: [
-        { next: 'revisao' },
-        {
-          next: 'revisao',
-          review: { complete: true, visual: 'complete', errors: 2 },
-        },
-      ],
-    },
-    {
-      states: [
-        { next: 'revisao', draft: 'Antes' },
-        { next: 'revisao', draft: 'Depois' },
-      ],
-    },
-    {
-      states: [{ next: 'revisao' }],
-      onGenerate: () => {
-        throw new Error('Provedor indisponível');
-      },
-    },
-  ]) {
-    const f = await runnerFixture({ text: '', ...input });
-    const outcome = await f.executeStep(f.run);
-    assert.equal(outcome.kind, 'done');
-    await f.settleRun(f.run, outcome);
-    assert.equal(f.run.status, 'done');
-    assert.equal(f.run.error, null);
-    assert.equal(f.calls(), 1);
-    assert.equal(f.events.filter((e) => e.kind === 'phase_start').length, 1);
-    assert.equal(
-      f.events.find((e) => e.kind === 'phase_start').label,
-      'Conferir',
-    );
-    assert.equal(
-      f.events.some((e) => e.kind === 'error'),
-      false,
-    );
-    assert.match(f.messages.at(-1).text, /Site gerado com revisão pendente/);
-    assert.doesNotMatch(
-      f.messages.at(-1).text,
-      /Continuar|Continua\.|3 rodadas/,
-    );
-    // Mesmo com entrega duplicada/recarga, o recibo persistido impede outra chamada.
-    assert.equal((await f.executeStep(f.run)).kind, 'done');
-    assert.equal(f.calls(), 1);
-  }
-});
-
-await test('execução legada na terceira rodada pode terminar sem esbarrar no teto antigo', async () => {
+await test('checkpoint legado de revisão termina sem chamar o modelo', async () => {
   const f = await runnerFixture({
-    states: [{ next: 'revisao', reviewRounds: 3 }],
+    states: [{ next: 'pronto', reviewRounds: 3 }],
   });
+  f.run.phase = 'revisao';
   f.run.progress = 'revisao:3:2:anterior';
   assert.equal((await f.executeStep(f.run)).kind, 'done');
-  assert.equal(f.calls(), 1);
+  assert.equal(f.calls(), 0);
+  assert.equal(f.events.length, 0);
 });
 
-await test('timeout da revisão entrega com pendência; falha na composição continua explícita', async () => {
+await test('falha após salvar páginas conclui; composição não salva continua com erro', async () => {
   const timeout = () =>
     new ToolLoopAgent({
       model: new MockLanguageModelV4({
@@ -830,13 +669,22 @@ await test('timeout da revisão entrega com pendência; falha na composição co
       maxRetries: 0,
     }).generate({ prompt: 'Teste sintético sem rede.' });
   const f = await runnerFixture({
-    states: [{ next: 'revisao' }],
+    states: [{ next: 'composicao' }, { next: 'pronto' }],
     onGenerate: timeout,
   });
   assert.equal((await f.executeStep(f.run)).kind, 'done');
   assert.match(f.messages[0].text, /excedeu o tempo limite/);
-  assert.match(f.messages[0].text, /Site gerado com revisão pendente/);
+  assert.match(f.messages[0].text, /Site gerado/);
   assert.equal(f.events.at(-1).payload.timeout, true);
+  const saved = await runnerFixture({
+    states: [{ next: 'composicao' }, { next: 'pronto' }],
+    onGenerate: () => {
+      throw new Error('Provedor falhou depois de gravar');
+    },
+  });
+  assert.equal((await saved.executeStep(saved.run)).kind, 'done');
+  assert.match(saved.messages[0].text, /Site gerado/);
+
   for (const onGenerate of [
     timeout,
     () => {
@@ -851,9 +699,9 @@ await test('timeout da revisão entrega com pendência; falha na composição co
   }
 });
 
-await test('pausa do operador tem prioridade sobre entrega com revisão pendente', async () => {
+await test('pausa do operador interrompe composição ainda incompleta', async () => {
   const f = await runnerFixture({
-    states: [{ next: 'revisao' }],
+    states: [{ next: 'composicao' }],
     stopping: true,
     onGenerate: async () => {
       await new Promise((resolve) => setTimeout(resolve, 5100));
@@ -958,7 +806,7 @@ await test('repetir o despacho durante uma chamada ativa não encerra nem assume
   const entered = Promise.withResolvers(),
     release = Promise.withResolvers();
   const f = await stepRouteFixture({
-    states: [{ next: 'composicao' }, { next: 'revisao' }, { next: 'pronto' }],
+    states: [{ next: 'briefing' }, { next: 'composicao' }, { next: 'pronto' }],
     onGenerate: async () => {
       entered.resolve();
       await release.promise;
@@ -981,7 +829,7 @@ await test('repetir o despacho durante uma chamada ativa não encerra nem assume
   assert.equal(
     (await f.post(0)).status,
     200,
-    'o token anterior não assume a revisão',
+    'o token anterior não assume a composição',
   );
   await f.jobs.shift()();
   assert.equal(f.run.status, 'done');

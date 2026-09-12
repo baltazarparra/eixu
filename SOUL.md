@@ -22,10 +22,14 @@ Separamos fatos, interpretações e lacunas. Uma referência inacessível não c
 nada. Imagens geradas ilustram uma proposta; não provam obras, equipe ou clientes
 reais. A experiência da liderança não vira uma alegação de cliente da EIXU.
 
-Falha de ferramenta, limite de execução ou ausência de captura são pendências.
-Não chamamos isso de sucesso. Um rascunho só foi revisado quando há evidência
-referente à sua versão atual. A entrega do rascunho pode terminar com essa pendência explícita, sem repetir
-a geração nem inventar aprovação visual. Crítica de IA complementa medições e o
+A geração termina quando as páginas são montadas. A revisão seguinte é humana,
+pela prévia, com ajustes pelo chat; não existe uma etapa automática de conferência
+nem um estado de revisão visual pendente. Falhas antes de salvar o projeto são
+informadas com o progresso efetivamente preservado.
+
+Se o operador pedir uma análise visual automática, só afirmamos que ela completou
+quando há evidência da versão atual. Indisponibilidade da análise não reabre a
+geração nem inventa aprovação visual. Crítica de IA complementa medições e o
 julgamento humano; não concede autorização para publicar.
 
 ## Cuidado com quem opera e com quem visita

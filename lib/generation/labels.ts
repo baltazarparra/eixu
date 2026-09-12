@@ -75,7 +75,7 @@ export function describeTool(
         out.visual === 'unavailable' ||
         out.visual === 'disabled'
       )
-        return 'Revisão visual pendente';
+        return 'A análise solicitada não completou';
       const erradas = num(out.erros);
       const apontamentos = Array.isArray(out.apontamentos)
         ? out.apontamentos.length

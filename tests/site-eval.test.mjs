@@ -16,7 +16,7 @@ for (const [layout, vibe] of [
   ['offset', 'artistico'],
   ['atelier', 'artistico'],
 ])
-  await test(`avaliação ${layout} chega à revisão gerando as cenas sem aprovação`, async () => {
+  await test(`avaliação ${layout} termina na composição gerando as cenas sem aprovação`, async () => {
     const state = {
       hasDesign: false,
       coveredScenes: 0,
@@ -47,8 +47,8 @@ for (const [layout, vibe] of [
     });
     assert.equal(result.completed, true);
     assert.equal(result.next, 'pronto');
-    assert.equal(calls.at(-1), 'revisao');
-    assert.equal(result.attempts, state.targetScenes + 3);
+    assert.equal(calls.at(-1), 'composicao');
+    assert.equal(result.attempts, state.targetScenes + 2);
     assert.equal(images.length, state.targetScenes);
   });
 

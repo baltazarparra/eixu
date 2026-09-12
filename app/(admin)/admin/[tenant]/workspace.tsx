@@ -16,7 +16,7 @@ import {
 import { ChatUsageDetails } from '@/components/admin/chat-usage';
 import { GenerationDiamond } from '@/components/admin/generation-diamond';
 import { PagePicker } from '@/components/admin/page-picker';
-import { SegmentedControl, StatusDot } from '@/components/admin/primitives';
+import { SegmentedControl } from '@/components/admin/primitives';
 import { adminFetch } from '@/lib/admin/http';
 import { mergeSavedMessages } from '@/lib/admin/chat-messages';
 import type { SiteState } from '@/lib/admin/state';
@@ -274,7 +274,6 @@ export function Workspace({
     site.pages.length > 0 &&
     !running &&
     (totalErrors > 0 ||
-      reviewState.current ||
       reviewFindings.length > 0 ||
       site.warnings.length > 0 ||
       (page?.warnings.length ?? 0) > 0);
@@ -283,9 +282,6 @@ export function Workspace({
     totalErrors === 0 &&
     !locked &&
     (site.tenant.dirty || site.pages.some((item) => item.dirty));
-  // Publicação manual vale pelo pre-flight; a revisão visual é outra garantia.
-  const reviewPending =
-    site.pages.length > 0 && !site.generation.reviewComplete;
 
   async function publishAll() {
     setPublishing(true);
@@ -410,15 +406,6 @@ export function Workspace({
                 active={generating}
               />
             ) : null}
-            {reviewPending && !running ? (
-              <span
-                className="admin-bar-review"
-                title="A publicação vale pelo pre-flight, sem a conferência dos pixels"
-              >
-                <StatusDot tone="warn" />
-                Revisão pendente
-              </span>
-            ) : null}
             <button
               type="button"
               onClick={publishAll}
@@ -426,9 +413,7 @@ export function Workspace({
               title={
                 totalErrors
                   ? `${totalErrors} pendências bloqueiam a publicação`
-                  : reviewPending
-                    ? 'Revisão visual pendente: a publicação vale pelo pre-flight'
-                    : 'Publicar as alterações revisadas'
+                  : 'Publicar as alterações revisadas'
               }
               className="admin-primary"
             >
@@ -646,20 +631,11 @@ export function Workspace({
               >
                 {totalErrors
                   ? `${totalErrors} pendências para publicar`
-                  : reviewState.complete
-                    ? `Pronto para sua conferência${reviewSuggestions ? ` · ${reviewSuggestions} sugestão(ões)` : ''}`
-                    : !reviewState.current
-                      ? 'Revisão visual do rascunho atual pendente'
-                      : site.pages.length
-                        ? site.pages.some((item) => item.dirty)
-                          ? 'Rascunho pronto para sua revisão'
-                          : 'Páginas publicadas e atualizadas'
-                        : 'Crie as páginas para começar'}
+                  : `Confira antes de publicar${reviewSuggestions ? ` · ${reviewSuggestions} sugestão(ões)` : ''}`}
               </summary>
               <p className="mt-2 text-[var(--color-muted)]">
-                {reviewState.complete
-                  ? 'Desktop e celular têm evidência da versão atual. Sugestões estéticas não bloqueiam a publicação.'
-                  : 'Confira a prévia e as imagens antes de publicar. Os ajustes feitos pelo chat são salvos no rascunho.'}
+                Confira a prévia e as imagens antes de publicar. Os ajustes
+                feitos pelo chat são salvos no rascunho.
               </p>
               <ul>
                 {reviewFindings.map((finding) => {
@@ -735,18 +711,16 @@ export function Workspace({
                 className="admin-preview-frame"
                 data-device={device}
               />
+            ) : locked || generating ? (
+              <GenerationDiamond
+                progress={creation}
+                active={generating}
+                message="A prévia aparece quando a composição gravar a primeira página."
+              />
             ) : (
-              locked || generating ? (
-                <GenerationDiamond
-                  progress={creation}
-                  active={generating}
-                  message="A prévia aparece quando a composição gravar a primeira página."
-                />
-              ) : (
-                <div className="admin-preview-empty">
-                  Nenhuma página em rascunho ainda.
-                </div>
-              )
+              <div className="admin-preview-empty">
+                Nenhuma página em rascunho ainda.
+              </div>
             )}
           </div>
         </section>

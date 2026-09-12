@@ -4,12 +4,12 @@ Site institucional da EIXU e MVP de uma plataforma operada por agentes para cria
 
 ## Qualidade dos agentes
 
-O modelo interno é **Gemini 3.8 Flash**, com raciocínio `high`. O harness prioriza qualidade: plano editorial por página, contexto recente preservado, composição com espaço para reparo e revisão das capturas em desktop/mobile. Conferir roda uma única vez: indisponibilidade ou limite entrega o rascunho com revisão pendente, sem novas rodadas automáticas. Entrega e aprovação visual são estados distintos; os erros de publicação continuam valendo. [SOUL.md](SOUL.md) define a identidade e entra no prompt; [harness](docs/harness.md) explica políticas, limites e avaliações.
+O modelo interno é **Gemini 3.8 Flash**, com raciocínio `high`. O harness prioriza plano editorial, contexto recente preservado e composição com espaço para reparo. A geração termina quando as páginas são montadas; a revisão é humana pela prévia, com ajustes pelo chat. Não há etapa automática Conferir nem estado de revisão visual pendente. Os erros de publicação continuam valendo. [SOUL.md](SOUL.md) define a identidade e entra no prompt; [harness](docs/harness.md) explica políticas, limites e avaliações.
 
 ## O que já existe
 
 - Institucional com home, oferta de passagem de vibe coding para produção e cases de SaldoPix e NaiaCRM.
-- Painel com login de operador, busca e filtros de clientes, cadastro compacto com quatro direções visuais comparáveis, geração em Preparar/Criar/Conferir, chat com histórico recente, prévia em desktop/mobile, dados e briefing editáveis e publicação.
+- Painel com login de operador, busca e filtros de clientes, cadastro compacto com quatro direções visuais comparáveis, geração em Preparar/Criar, chat com histórico recente, prévia em desktop/mobile, dados e briefing editáveis e publicação.
 - Páginas orgânicas, landing pages pagas, posts e páginas de agradecimento compostas por blocos com schemas Zod. O agente edita conteúdo por ferramentas; o painel também permite ajustar dados do cliente e gerenciar imagens.
 - Imagens geradas na conversa do site, com guia por cliente e crítica, disponíveis sem aprovação. A biblioteca em `/admin/[tenant]/imagens` mantém números para pedir alterações, como “atualize a imagem #5 com outro carro”. A nova versão substitui a anterior nos rascunhos e ambas ficam salvas; aplicar um logo continua sendo uma ação do usuário.
 - Contatos do cadastro renderizados sozinhos no site: telefones, e-mail e redes sociais no rodapé, e uma seção de localização com mapa acima dele quando há endereço.

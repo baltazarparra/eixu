@@ -11,7 +11,7 @@ const { reviewFingerprint, currentReview } = await j.import(
 );
 const {
   nextPhase,
-  compositionReadyForReview,
+  compositionReadyToFinish,
   reviewConferenceDue,
   reviewReadyToFinish,
   PHASE_STEPS,
@@ -171,9 +171,9 @@ await test('composição transfere avisos para revisão e mantém erros e recusa
       pendencias: [{ level: 'warn', rule: 'imagem-proporcao' }],
     },
   };
-  assert.equal(compositionReadyForReview([saved]), true);
+  assert.equal(compositionReadyToFinish([saved]), true);
   assert.equal(
-    compositionReadyForReview([
+    compositionReadyToFinish([
       {
         ...saved,
         output: { ...saved.output, publicationPending: [{ level: 'error' }] },
@@ -182,14 +182,14 @@ await test('composição transfere avisos para revisão e mantém erros e recusa
     false,
   );
   assert.equal(
-    compositionReadyForReview([
+    compositionReadyToFinish([
       saved,
       { toolName: 'repair_site', output: { ok: false } },
     ]),
     false,
   );
   assert.equal(
-    compositionReadyForReview([
+    compositionReadyToFinish([
       { toolName: 'lint_site', output: { ok: true } },
     ]),
     false,
@@ -379,7 +379,7 @@ await test('recibo é invalidado por conteúdo, SEO, marca, contato e imagem usa
   );
 });
 
-await test('revisão antiga, incompleta ou desatualizada nunca encerra a geração', () => {
+await test('páginas montadas encerram a geração sem depender do recibo visual', () => {
   const state = {
     hasDesign: true,
     coveredScenes: 4,
@@ -388,8 +388,8 @@ await test('revisão antiga, incompleta ou desatualizada nunca encerra a geraç�
     blockingErrors: 0,
     reviewRounds: 9,
   };
-  assert.equal(nextPhase(state), 'revisao');
-  assert.equal(nextPhase({ ...state, reviewComplete: false }), 'revisao');
+  assert.equal(nextPhase(state), 'pronto');
+  assert.equal(nextPhase({ ...state, reviewComplete: false }), 'pronto');
   assert.equal(nextPhase({ ...state, reviewComplete: true }), 'pronto');
 });
 

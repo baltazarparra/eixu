@@ -39,7 +39,6 @@ function useNow(active: boolean): number {
 
 function statusLine(
   run: GenerationRun | null,
-  state: SiteState,
 ): { tone: 'ok' | 'warn' | 'err' | 'info'; text: string } | null {
   if (!run || isRunning(run)) return null;
   if (run.status === 'paused')
@@ -51,23 +50,6 @@ function statusLine(
     return {
       tone: 'err',
       text: run.error ?? 'A geração parou por um erro. Confira o chat.',
-    };
-  if (
-    run.status === 'done' &&
-    state.generation.next === 'pronto' &&
-    !state.generation.reviewComplete
-  )
-    return {
-      tone: 'warn',
-      text: 'Site gerado com revisão pendente. Confira a prévia e os avisos antes de publicar. Para conferir novamente, peça uma nova revisão pelo chat.',
-    };
-  // Um run só fecha como concluído quando o estado dizia "pronto". Se uma
-  // etapa voltou a existir, foi o rascunho, o acervo ou o gerador que mudaram
-  // depois; culpar a execução mandava o operador procurar um erro que não houve.
-  if (run.status === 'done' && state.generation.next !== 'pronto')
-    return {
-      tone: 'warn',
-      text: 'A geração terminou, mas o rascunho ou o gerador mudaram depois disso. A revisão visual do rascunho atual está pendente; use Continuar para refazê-la.',
     };
   return null;
 }
@@ -114,7 +96,7 @@ export function GenerationPanel({
     : runStarted;
   const phaseSeconds =
     running && phaseStarted ? (now - phaseStarted) / 1000 : 0;
-  const status = statusLine(run, state);
+  const status = statusLine(run);
   const activeStage = phase ? productStage(phase) : null;
   const nextStage = done ? null : productStage(next as Phase);
   const reached = (index: number) =>
@@ -166,7 +148,7 @@ export function GenerationPanel({
           ]
             .filter(Boolean)
             .join(' · ')
-        : `Próxima etapa: ${nextStage?.label ?? 'Conferir'}`;
+        : `Próxima etapa: ${nextStage?.label ?? 'Criar'}`;
 
   const action = starting ? null : running ? (
     <button
@@ -217,9 +199,7 @@ export function GenerationPanel({
             run?.status === 'failed'
               ? 'err'
               : finished
-                ? state.generation.reviewComplete
-                  ? 'ok'
-                  : 'warn'
+                ? 'ok'
                 : running || starting
                   ? 'accent'
                   : 'neutral'
@@ -321,7 +301,7 @@ export function GenerationPanel({
               ? 'A etapa atual termina e a próxima não começa.'
               : (activity?.label ?? 'Preparando a etapa')}
             <small>
-              O tempo acima é o observado; o progresso usa páginas e capturas
+              O tempo acima é o observado; o progresso usa páginas e imagens
               concluídas.
             </small>
           </span>
