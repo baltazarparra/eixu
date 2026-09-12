@@ -1,5 +1,38 @@
 # Validação e publicação
 
+## Correção do resumo da revisão no PR #22, 12/09/2026
+
+O resumo silencioso contava nomes de ferramentas, incluindo recusas devolvidas
+por `safe()` como `{ error }`. Uma edição de bloco inexistente, com zero
+gravações, aparecia no chat como "aplicou 1 ajuste". O runner agora preserva os
+resultados e conta somente edições confirmadas com `ok: true` e leituras com
+captura e crítica completas. Uma leitura que encontra erros continua sendo
+leitura válida; indisponibilidade, desativação e limite não viram conclusão.
+O recibo do rascunho atual mantém a decisão de concluir ou continuar a geração.
+
+A branch incorporou a `main` em `7f60691`, preservando o painel dentro da
+conversa e os dois registros que conflitavam neste documento.
+
+- As duas regressões falharam antes da correção e passaram depois. Uma executa
+  o SDK instalado com modelo simulado e a ferramenta `update_block` real,
+  confirmando zero gravações e zero ajustes. A outra cobre as seis ferramentas
+  de edição e diferencia leitura com achados de revisão incompleta ou recusada.
+- `npx next typegen && npx tsc --noEmit` e `npm run lint`: sem erros, com a
+  configuração versionada do PR em checkout separado.
+- `npm run test:admin`: 112 passaram, 5 pulados na execução inicial. Os dois
+  casos de `tests/admin-capture.test.mjs` passaram depois com Chromium local;
+  restam três testes de integração não executados por falta de PostgreSQL local.
+- `npm run test:sites`: 85 passaram, sem pulos.
+- `npm run build:vercel`: aprovado, incluindo os três checks dos artefatos de
+  captura serverless.
+- `npm run test:admin:browser` com Chromium local: oito testes passaram, sem
+  pulos, usando o CSS do build e serviços sintéticos. Cobrem chat, publicação,
+  geração, recarga, revisão em rodadas, início automático, cronômetro, consumo,
+  navegação e handoff em desktop e celular.
+
+Não houve geração paga, alteração de banco remoto ou publicação de páginas de
+clientes. Os testes simulam o modelo; não constituem avaliação de geração real.
+
 ## Gate de publicação e mensagens da geração, 12/09/2026
 
 Caso real do cliente portopedras, entre 00:37 e 00:55 UTC de 12/09/2026, lido
