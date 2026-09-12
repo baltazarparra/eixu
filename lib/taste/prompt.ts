@@ -3,6 +3,7 @@ import { soul } from '../ai/soul';
 import { copyDirection } from '../copy/policy';
 import { TYPOGRAPHY_DIRECTION } from '../design/typography';
 import { ICON_STYLE } from '../design/iconography';
+import { RESPONSIVE_CONTRACT } from '../design/responsive';
 import { hasReferenceDirection, referenceSources } from '../design/references';
 import {
   VIBE_DIRECTION,
@@ -80,7 +81,6 @@ ${TYPOGRAPHY_DIRECTION}
 - hero.split aceita split, cover, poster, editorial, offset ou atelier. Atelier é composição de ambiente mais detalhe com secondaryImage, alt e captions. Outras composições distribuem a segunda imagem na narrativa. Não use imagem gerada como prova de obra, equipe ou instalação real: identifique como inspiração na legenda.
 - Em cada seção relevante, escolha layout e presentation. Em cada página orgânica, pelo menos duas seções variam tone, width, spacing, align ou edge; somente motion não satisfaz esse contrato.
 - signatureElement descreve o que a seção signature.composition realiza. Todo perfil v5 usa exatamente um desses blocos na home, no layout indicado pela estrutura, com papéis de conteúdo próprios e duas fotos geradas. Não prometa faixas, veios ou grafismos fora das opções escolhidas.
-- Mobile precisa preservar hierarquia e CTA. O renderizador reduz para uma coluna e respeita movimento reduzido; escolha títulos e recortes que continuem fortes em 390 px.
 - Escolha uma abertura, conteúdo que responda à necessidade e fechamento com cta.band ou form.lead. Prova só com evidência. Formulário exige obrigado (thank_you). paid_lp e thank_you com noindex.
 - Âncoras internas apontam ao campo anchor do bloco, sem # nesse campo. Use #contato para form.lead sem anchor. Links de navegação apontam a páginas ou âncoras que existem.`;
 
@@ -208,6 +208,7 @@ export function systemPrompt(
         : `## Direção de imagem da vibe\n${VIBE_IMAGE_DIRECTION[vibe]}`
       : '',
     wantsDirection || phase === 'revisao' ? DIRECTION : '',
+    RESPONSIVE_CONTRACT,
     wantsCatalog ? LIMITS : '',
     `- prepare_site_images, update_image e generate_logo salvam imagens com número e URL para uso imediato, sem aprovação. Elas continuam visíveis em Imagens; o usuário pede mudanças pelo número no chat. Orientações de aprovação em conversas antigas estão obsoletas. A aplicação de logo e a publicação seguem o pedido do operador.`,
     wantsCatalog

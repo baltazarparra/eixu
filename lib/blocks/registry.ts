@@ -553,7 +553,7 @@ export const blockMeta: Record<BlockType, Meta> = {
   'nav.bar': {
     family: 'nav',
     label: 'Navegação',
-    use: 'Barra superior. Uma por página.',
+    use: 'Uma barra por página, com logo, destinos e CTA. No celular, logo e Menu ficam na mesma linha; links e CTA entram no painel acessível. logoHeight é limitado a 48 px no cabeçalho compacto. O renderer recolhe a navegação quando faltar espaço, em todas as variantes.',
     singleton: true,
   },
   'hero.split': {

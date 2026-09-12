@@ -66,12 +66,21 @@ A escrita tem um [contrato por vibe](copy.md), com linguagem simples em comum.
 e ao crítico. `lintPage` verifica rótulos de ação e aponta vocabulário/frases
 para revisão; o crítico julga compreensão e voz com textos completos, sinais e
 pixels. Erro material de linguagem impede a aprovação visual automática. A versão
-`gemini-3.8-quality-v5-estruturas-autorais` identifica o contrato do crítico e
+`gemini-3.8-quality-v5-estruturas-mobile` identifica o contrato do crítico e
 invalida recibos anteriores aos contratos corrigidos de composição. A gramática
 ampla da vibe entra no perfil v4; o perfil v5 compara três estruturas, persiste
 a escolha com justificativa e exige uma composição autoral com duas cenas.
 Retomadas e críticas de perfis v2/v3 preservam a direção e o plano de cenas
 existentes, mantendo as exigências de conteúdo, layout e apresentação.
+
+A responsividade é um contrato compartilhado pelo autor e pelo crítico em
+`lib/design/responsive.ts`: hierarquia, recortes, texto, ação principal e
+navegação utilizáveis desde 320 px. Vale também para os perfis legados. O renderer
+implementa barra compacta e painel mobile; `lib/review/navigation.ts` exercita os
+controles sem seguir links. Na revisão solicitada, falhas de abertura, toque,
+geometria, foco ou restauração de rolagem geram `navegacao-responsiva`, mesmo se
+não houver overflow na página. Os pixels do menu aberto seguem como imagem
+binária adicional para o crítico, e o chat recebe apenas medições e achados.
 
 O prompt mantém fatos, restrições, vibe, marca, contatos, guia de imagens, fontes,
 plano editorial, plano semântico de cenas e biblioteca do tenant. Referências

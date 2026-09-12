@@ -935,7 +935,7 @@ await test(
 );
 
 await test(
-  'recolher a conversa devolve a largura inteira à prévia acima de 1024 px',
+  'recolher a conversa mantém uma faixa de até 10% e o botão reabre o painel',
   { skip: !process.env.EIXU_CHROME_PATH },
   async () => {
     const backend = generationServer({
@@ -996,6 +996,7 @@ await test(
                   ?.querySelector('.admin-back')
                   ?.classList.contains('admin-secondary') ?? false,
               edgeToggle: Boolean(edgeToggle?.getClientRects().length),
+              edgeExpanded: edgeToggle?.getAttribute('aria-expanded') ?? null,
               overflow: document.documentElement.scrollWidth > innerWidth + 1,
             };
           });
@@ -1009,6 +1010,7 @@ await test(
           assert.equal(before.toggleBesideBack, true);
           assert.equal(before.backSecondary, true);
           assert.equal(before.edgeToggle, true);
+          assert.equal(before.edgeExpanded, 'true');
           assert.ok(before.conversation >= 300, `${width}: conversa aberta`);
           assert.ok(before.content < width);
           if (width === 1440) {
@@ -1021,19 +1023,27 @@ await test(
           await toggle();
           await page.waitForFunction(
             () =>
-              document.querySelector('.admin-conversation').getClientRects()
-                .length === 0,
+              document.querySelector('.admin-workspace').dataset
+                .conversation === 'collapsed',
             { timeout: 2000 },
           );
           const after = await layout();
-          assert.equal(after.conversation, 0);
           assert.ok(
-            Math.abs(after.content - width) <= 1,
+            after.conversation > 0,
+            `${width}: faixa permanece visível`,
+          );
+          assert.ok(
+            after.conversation <= width * 0.1,
+            `${width}: faixa com ${after.conversation} px`,
+          );
+          assert.ok(
+            after.content >= width - after.conversation - 1,
             `${width}: prévia com ${after.content} px`,
           );
           assert.ok(after.frame > before.frame, `${width}: iframe cresceu`);
           assert.equal(after.expanded, 'false');
-          assert.equal(after.edgeToggle, false);
+          assert.equal(after.edgeToggle, true);
+          assert.equal(after.edgeExpanded, 'false');
           assert.equal(after.overflow, false);
           assert.equal(
             await page.$eval(
@@ -1050,8 +1060,8 @@ await test(
           await toggle();
           await page.waitForFunction(
             () =>
-              document.querySelector('.admin-conversation').getClientRects()
-                .length > 0,
+              document.querySelector('.admin-workspace').dataset
+                .conversation !== 'collapsed',
             { timeout: 2000 },
           );
           assert.equal((await layout()).expanded, 'true');
@@ -1063,14 +1073,26 @@ await test(
         );
         await page.waitForFunction(
           () =>
-            document.querySelector('.admin-conversation').getClientRects()
-              .length === 0,
+            document.querySelector('.admin-workspace').dataset.conversation ===
+            'collapsed',
           { timeout: 2000 },
         );
         assert.equal((await layout()).expanded, 'false');
+        assert.equal((await layout()).edgeExpanded, 'false');
 
-        // Recolhida no desktop, a conversa continua alcançável no celular,
-        // onde as vistas alternam e o botão não existe.
+        await page.$eval('.admin-conversation-edge-toggle', (node) =>
+          node.click(),
+        );
+        await page.waitForFunction(
+          () =>
+            document.querySelector('.admin-workspace').dataset.conversation !==
+            'collapsed',
+          { timeout: 2000 },
+        );
+        assert.equal((await layout()).expanded, 'true');
+        assert.equal((await layout()).edgeExpanded, 'true');
+
+        // No celular as vistas alternam e o botão desktop não existe.
         await page.setViewport({ width: 390, height: 844 });
         assert.equal((await layout()).toggles, 0);
         await click('Conversa');

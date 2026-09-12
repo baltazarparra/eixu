@@ -2672,17 +2672,17 @@ textarea.admin-input {
     grid-template-columns: 230px minmax(0, 1fr);
   }
 }
-/* Conversa recolhida: entre 1024 e 1440 px a coluna de 42% deixava a prévia
-   desktop apertada. Abaixo de 1024 px as vistas alternam e o botão sai. */
+/* Conversa recolhida: a faixa de 56 px ocupa no máximo 5,5% da viewport desde
+   1024 px e mantém o toggle disponível. Abaixo disso as vistas alternam. */
 @media (min-width: 1024px) {
   .admin-workspace[data-conversation='collapsed'] .admin-workspace-body {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: 56px minmax(0, 1fr);
   }
-  .admin-workspace[data-conversation='collapsed'] .admin-conversation {
+  .admin-workspace[data-conversation='collapsed'] .admin-conversation > * {
     display: none;
   }
-  .admin-workspace[data-conversation='collapsed'] .admin-content {
-    grid-column: 1;
+  .admin-workspace[data-conversation='collapsed'] .admin-conversation {
+    overflow: hidden;
   }
 }
 @media (max-width: 1023px) {

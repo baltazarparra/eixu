@@ -14,10 +14,11 @@ O painel usa Geist e Geist Mono locais, acompanhadas da
 contextual pertence ao layout do cliente e abre com **Voltar** secundário e o
 controle primário da conversa; sair fica no fim das ações. O editor reserva 42% (até 520 px) à conversa,
 com o andamento dentro dela, e devolve a altura inteira à prévia. A partir de
-1024 px, esse botão recolhe a conversa e entrega a largura inteira à prévia;
-outro controle simples fica no centro da borda direita da conversa para a mesma
-ação: entre 1024 e 1440 px a coluna de 42% deixava o desktop apertado. No
-celular, conversa e prévia são alternáveis.
+1024 px, esse botão recolhe a conversa até uma faixa de 56 px — no máximo 5,5%
+da viewport — e entrega o restante à prévia. Outro controle simples fica no
+centro da borda direita da conversa e permanece na faixa: ele recolhe e expande
+o painel como um toggle. Entre 1024 e 1440 px a coluna de 42% deixava o desktop
+apertado. No celular, conversa e prévia são alternáveis.
 
 O handoff `design_handoff_cabecalho_unico`, recebido em 12/09/2026, substituiu
 os três cabeçalhos do editor (página, conversa e prévia, 207 px somados) por
@@ -82,7 +83,7 @@ automática continua antes dele. Veja o [contrato de edição](chat-edits.md).
 O cabeçalho `nav.bar` aceita `position: fixed` sem trocar layout ou direção da
 marca. `backgroundOpacity` controla o fundo entre 70 e 100%; o tom escuro vem de
 `presentation.tone: ink`. A ilha `NavigationFrame` mede e reserva sua altura,
-incluindo o menu mobile, e ajusta a margem de rolagem das âncoras.
+sem incluir o painel mobile, e ajusta a margem de rolagem das âncoras.
 
 A variante `media.gallery/filmstrip` cria uma coluna por foto. Duas imagens
 preenchem a largura disponível em desktop; acervos maiores rolam horizontalmente.
@@ -108,6 +109,28 @@ agora escala com o tamanho da página, até cinco e quatro. `expectedRatio`
 traduz a variante de layout na proporção real exibida, porque o recorte é
 `object-cover`: uma foto 4:3 num hero editorial perde um quarto da cena, que
 foi o defeito observado em produção.
+
+## Navegação responsiva
+
+O contrato em `lib/design/responsive.ts` vale para todas as vibes, referências e
+perfis legados, sem migrar sua composição. `navigation.css` mantém logo e Menu
+na mesma barra, com alvos de pelo menos 44 px. `logoHeight` define a altura
+desejada no desktop; no cabeçalho compacto o limite é 48 px e a largura
+disponível, preservando a proporção. Abaixo de 1024 px, ou quando a largura real
+dos destinos não cabe, `NavigationFrame` recolhe links e CTA juntos.
+
+`MobileNavigation` abre um diálogo nativo acima das camadas do site, com fundo
+opaco no tom do cabeçalho, página atual e CTA. O painel tem altura dinâmica,
+áreas seguras e rolagem própria; a barra não aumenta nem empurra a abertura.
+Escape, Fechar, toque no fundo e escolha de destino encerram o menu. Foco e
+rolagem voltam ao contexto anterior; âncoras respeitam a barra fixa. Ao voltar ao
+desktop ou desmontar a página, a rolagem é liberada. Sem JavaScript, o mesmo
+conteúdo continua disponível por `details`.
+
+Direção, composição e edição recebem o contrato responsivo. Quando solicitada,
+a revisão automática exercita abertura e fechamento e envia também os pixels do
+menu aberto ao crítico. As medições entram como erros de revisão; não ligam uma
+revisão automática após gerar nem substituem o pre-flight de publicação.
 
 ## Geração em etapas
 

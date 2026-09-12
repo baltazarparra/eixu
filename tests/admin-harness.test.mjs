@@ -189,9 +189,7 @@ await test('composição transfere avisos para revisão e mantém erros e recusa
     false,
   );
   assert.equal(
-    compositionReadyToFinish([
-      { toolName: 'lint_site', output: { ok: true } },
-    ]),
+    compositionReadyToFinish([{ toolName: 'lint_site', output: { ok: true } }]),
     false,
   );
 });
@@ -396,6 +394,7 @@ await test('páginas montadas encerram a geração sem depender do recibo visual
 for (const mode of [
   'complete',
   'overflow',
+  'navigation-error',
   'missing-view',
   'critic-error',
   'material-error',
@@ -478,6 +477,19 @@ for (const mode of [
               scrollWidth: mode === 'overflow' ? 600 : 390,
               overflow: mode === 'overflow',
               brokenImages: 0,
+              navigation: {
+                compact: viewport === 'mobile',
+                opened: true,
+                closed: true,
+                issues:
+                  mode === 'navigation-error' && viewport === 'mobile'
+                    ? ['Abrir o menu desloca o conteúdo da página.']
+                    : [],
+              },
+              menuJpeg:
+                viewport === 'mobile'
+                  ? Buffer.from('synthetic menu pixels')
+                  : undefined,
               jpeg: Buffer.from('synthetic pixels'),
             })),
       },

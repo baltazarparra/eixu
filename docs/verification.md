@@ -1,5 +1,64 @@
 # Validação e publicação
 
+## Toggle da conversa recolhida, 12/09/2026
+
+A conversa não desaparece mais por inteiro no desktop. Ao recolher, ela mantém
+uma faixa de 56 px — 5,5% da viewport em 1024 px e menos nas larguras maiores —
+com o controle lateral no centro. Esse mesmo controle alterna entre recolher e
+expandir; o botão do cabeçalho preserva a mesma ação. No celular, as vistas
+continuam alternando pelas abas Conversa e Prévia.
+
+Verificação local:
+
+- Tipos, lint global, `git diff --check` e `npm run build:vercel` passaram; o
+  build inclui os três checks dos artefatos de captura serverless.
+- O teste focal em Chromium passou em 1440 e 1100 px, medindo a faixa abaixo de
+  10%, o crescimento da prévia, os dois sentidos do toggle e a ausência de
+  overflow. Em 390 px, a conversa continuou acessível pela aba própria.
+- `npm run test:admin`: 138 casos passaram e sete integrações dependentes de
+  recursos locais ficaram sem execução. As capturas verificadas estão em
+  `outputs/generation/conversa-recolhida-{1440,1100}.png`.
+
+Os testes não executaram migração, escrita remota ou publicação.
+
+## Navegação responsiva no harness, 12/09/2026
+
+A barra mobile anterior distribuía logo, CTA e Menu em várias linhas; abrir o
+menu aumentava a altura reservada do cabeçalho fixo. O renderer compartilhado
+agora mantém uma barra compacta e um painel independente, em todas as vibes e
+perfis legados, v2, v3 e v4. O [contrato responsivo](design.md#navegação-responsiva)
+entra na geração, edição e crítica. A revisão solicitada mede interação e recebe
+também os pixels do menu aberto; falhas geram `navegacao-responsiva`. O runner
+de avaliação conserva essas medições e a imagem do menu nos artefatos.
+
+Verificação local no `main` após os PRs #33 e #34:
+
+- `next typegen`, `tsc --noEmit`, lint global, formatação e `git diff --check`
+  passaram. `npm run build:vercel` passou, incluindo os três checks dos
+  artefatos de captura serverless.
+- `npm run test:sites`: 139 passaram e um teste de captura sem navegador foi
+  pulado. `npm run test:admin`: 138 passaram e sete integrações locais foram
+  puladas por ausência dos recursos opcionais nessa execução. Nenhum teste usou
+  banco remoto, Blob real ou geração paga.
+- `npm run test:sites:browser`: 42 passaram com Chromium e CSS do build. O gate
+  agora executa os arquivos em série, porque servidores Vite paralelos
+  compartilhavam o cache de otimização e produziam `504 Outdated Optimize Dep`.
+  `npm run test:admin:browser` usa a mesma serialização; seus dez casos passaram.
+- A navegação responde por 25 casos: quatro vibes nos perfis legado, v2, v3 e
+  v4, quatro layouts explícitos, contraste herdado, barra fixa e estática, logos
+  quadrados e largos, rótulos extensos, ausência de links ou CTA, toque, ciclo de
+  foco, Escape, Fechar, fundo, âncoras, rotação, desmontagem e HTML sem
+  JavaScript. Foram medidas 123 combinações em 320, 390, 768, 1024 e 1440 px,
+  além de 844 × 390 em paisagem, sem overflow ou erro de interação.
+  Com movimento habilitado, o inspetor aguarda a animação do painel antes de
+  medir e capturar seus pixels.
+
+As capturas usam dados sintéticos e Chromium; não representam ensaio em aparelho
+físico ou Safari. O contrato foi exercitado com modelos substituídos nos testes;
+seu efeito em uma nova geração paga ainda não foi avaliado. Nenhuma página de
+cliente foi republicada: a mudança alcança os sites existentes pelo renderer,
+sem regerar conteúdo nem alterar snapshots publicados.
+
 ## Correções da revisão do PR #33, 12/09/2026
 
 Corrigidos três problemas do fluxo de logo: estado antigo mantido no chat
@@ -1999,12 +2058,13 @@ Os gates locais passaram:
 
 - `npx next typegen && npx tsc --noEmit`;
 - `npm run lint`;
-- `npm run test:sites`: 146 testes, 145 aprovados e 1 ignorado por depender do
+- `npm run test:sites`: 148 testes, 147 aprovados e 1 ignorado por depender do
   ambiente de integração;
-- `npm run test:admin`: 144 testes, 137 aprovados e 7 ignorados por dependerem
+- `npm run test:admin`: 145 testes, 138 aprovados e 7 ignorados por dependerem
   de serviços ou configuração externa;
 - `npm run build:vercel`, incluindo os três testes dos artefatos de runtime;
-- suíte de sites no Chromium: 31 de 31 verificações aprovadas.
+- suíte de sites no Chromium: 55 de 55 verificações aprovadas, incluindo o
+  contrato completo da navegação responsiva integrado da `main`.
 
 O teste específico renderizou as 12 composições em 320, 390, 768 e 1440 px:
 48 combinações de estrutura e viewport, com checagem de overflow, imagens,

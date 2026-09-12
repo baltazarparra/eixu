@@ -1130,6 +1130,17 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
                   viewport: shot.viewport,
                   correcao: `${shot.viewport}: ${shot.overflow ? 'overflow horizontal; ' : ''}${shot.brokenImages} imagem(ns) quebrada(s). Corrija e capture novamente.`,
                 })),
+              ...pageShots.flatMap((shot) =>
+                (shot.navigation?.issues ?? []).map((issue) => ({
+                  pagina: path,
+                  nivel: 'error',
+                  regra: 'navegacao-responsiva',
+                  viewport: shot.viewport,
+                  evidencia: issue,
+                  correcao:
+                    'Corrija a navegação e confira novamente o menu aberto e fechado. Falha do componente compartilhado exige correção do renderer; não remova destinos para ocultá-la.',
+                })),
+              ),
               ...captureFailures
                 .filter((failure) => failure.page === path)
                 .map((failure) => ({
@@ -1318,6 +1329,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             larguraDaPagina: shot.scrollWidth,
             overflow: shot.overflow,
             imagensQuebradas: shot.brokenImages,
+            navegacao: shot.navigation,
           })),
           rodada: reviewRounds,
           paginas: pages.map((page) => {
