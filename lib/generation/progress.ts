@@ -154,3 +154,164 @@ export function phaseRecords(
   }
   return records;
 }
+
+/**
+ * Etapas de produto que o painel e o diamante da prévia mostram. O servidor
+ * tem quatro fases; o operador vê três: imagens e páginas são o mesmo "Criar".
+ */
+export const PRODUCT_STAGES = [
+  { id: 'preparar', label: 'Preparar', phases: ['briefing'] },
+  { id: 'criar', label: 'Criar', phases: ['cenas', 'composicao'] },
+  { id: 'conferir', label: 'Conferir', phases: ['revisao'] },
+] as const satisfies readonly {
+  id: string;
+  label: string;
+  phases: readonly Phase[];
+}[];
+
+export type ProductStage = (typeof PRODUCT_STAGES)[number];
+
+export function productStage(phase: Phase): ProductStage {
+  return PRODUCT_STAGES.find((stage) =>
+    (stage.phases as readonly Phase[]).includes(phase),
+  )!;
+}
+
+/** O que o cálculo de progresso lê do estado do site. */
+export type ProgressState = {
+  generation: {
+    next: Phase | 'pronto';
+    coveredScenes: number;
+    targetScenes: number;
+  };
+  pages: { length: number };
+};
+
+/** O que a etapa em execução já produziu, medido no estado e nos eventos. */
+export function phaseProgress(
+  state: ProgressState,
+  phase: Phase | null,
+  events: GenerationEvent[],
+): string | null {
+  const generation = state.generation;
+  if (phase === 'cenas')
+    return `${generation.coveredScenes} de ${generation.targetScenes} cenas prontas`;
+  if (phase === 'composicao')
+    return state.pages.length
+      ? `${state.pages.length} páginas gravadas`
+      : 'montando as páginas';
+  if (phase === 'revisao') {
+    const review = reviewProgress(events);
+    const reads = review.reads
+      ? `${review.reads} de ${review.total} leituras concluídas`
+      : 'preparando a primeira leitura';
+    return review.round > 1 ? `rodada ${review.round} · ${reads}` : reads;
+  }
+  return null;
+}
+
+export type StageProgress = {
+  id: ProductStage['id'];
+  label: string;
+  state: 'done' | 'active' | 'todo';
+  /** Unidades medidas da etapa, de 0 a 1. Sem total conhecido, fica em 0. */
+  fill: number;
+};
+
+export type CreationProgress = {
+  /** Etapas concluídas mais a fração medida da ativa, de 0 a 1. */
+  fraction: number;
+  stages: StageProgress[];
+  /** Etapa ativa ou, parada, a próxima a rodar. */
+  stage: ProductStage;
+  /** Posição da etapa mostrada, de 1 a 3. */
+  position: number;
+  /** Unidades medidas da fase em execução; null quando não há total. */
+  detail: string | null;
+  done: boolean;
+};
+
+const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
+
+/**
+ * Fração medida da fase, nunca estimada: cenas comparam cobertura, páginas
+ * existem ou não, a revisão conta leituras. O briefing não tem unidade e fica
+ * em zero enquanto roda; o movimento do diamante é que diz que há trabalho.
+ */
+function phaseFill(
+  state: ProgressState,
+  phase: Phase,
+  events: GenerationEvent[],
+): number {
+  if (phase === 'cenas')
+    return state.generation.targetScenes > 0
+      ? clamp01(state.generation.coveredScenes / state.generation.targetScenes)
+      : 0;
+  if (phase === 'composicao') return state.pages.length > 0 ? 1 : 0;
+  if (phase === 'revisao') {
+    const review = reviewProgress(events);
+    return review.total > 0 ? clamp01(review.reads / review.total) : 0;
+  }
+  return 0;
+}
+
+/**
+ * Progresso da criação do site em três etapas, para o diamante da prévia. O
+ * mesmo estado que o painel lê; nada aqui usa tempo decorrido como estimativa.
+ */
+export function creationProgress(
+  state: ProgressState,
+  phase: Phase | null,
+  events: GenerationEvent[],
+): CreationProgress {
+  const next = state.generation.next;
+  if (!phase && next === 'pronto') {
+    return {
+      fraction: 1,
+      stages: PRODUCT_STAGES.map((stage) => ({
+        id: stage.id,
+        label: stage.label,
+        state: 'done',
+        fill: 1,
+      })),
+      stage: PRODUCT_STAGES[PRODUCT_STAGES.length - 1],
+      position: PRODUCT_STAGES.length,
+      detail: null,
+      done: true,
+    };
+  }
+  const current: Phase = phase ?? (next as Phase);
+  const active = productStage(current);
+  const activeIndex = PRODUCT_STAGES.findIndex(
+    (stage) => stage.id === active.id,
+  );
+  // "Criar" soma as duas fases do servidor: imagens valem metade, páginas a
+  // outra metade. Uma fase já passada dentro da etapa conta como completa.
+  const phases = active.phases as readonly Phase[];
+  const position = phases.indexOf(current);
+  const fill =
+    phases.reduce(
+      (sum, _item, index) =>
+        sum +
+        (index < position
+          ? 1
+          : index === position
+            ? phaseFill(state, current, events)
+            : 0),
+      0,
+    ) / phases.length;
+  return {
+    fraction: clamp01((activeIndex + fill) / PRODUCT_STAGES.length),
+    stages: PRODUCT_STAGES.map((stage, index) => ({
+      id: stage.id,
+      label: stage.label,
+      state:
+        index < activeIndex ? 'done' : index === activeIndex ? 'active' : 'todo',
+      fill: index < activeIndex ? 1 : index === activeIndex ? fill : 0,
+    })),
+    stage: active,
+    position: activeIndex + 1,
+    detail: phase ? phaseProgress(state, phase, events) : null,
+    done: false,
+  };
+}

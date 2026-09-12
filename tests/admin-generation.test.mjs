@@ -25,7 +25,77 @@ const { progressMarker, reviewRound, stalled } = await jiti.import(
   '../lib/generation/marker.ts',
 );
 const { reviewFingerprint } = await jiti.import('../lib/review/state.ts');
+const { creationProgress } = await jiti.import('../lib/generation/progress.ts');
 const { phaseInstructions } = await jiti.import('../lib/generation/context.ts');
+
+await test('progresso da criação soma etapas feitas e unidades medidas, sem estimativa', () => {
+  const event = (id, kind, tool = null) => ({
+    id,
+    phase: 'revisao',
+    kind,
+    tool,
+    label: '',
+    payload: {},
+    createdAt: new Date(0).toISOString(),
+  });
+  const state = (next, extra = {}) => ({
+    generation: { next, coveredScenes: 2, targetScenes: 5, ...extra },
+    pages: [],
+  });
+
+  const briefing = creationProgress(state('briefing'), 'briefing', []);
+  assert.equal(briefing.fraction, 0);
+  assert.equal(briefing.position, 1);
+  assert.deepEqual(
+    briefing.stages.map((stage) => stage.state),
+    ['active', 'todo', 'todo'],
+  );
+  assert.equal(briefing.detail, null, 'o briefing não tem unidade medida');
+
+  const cenas = creationProgress(state('cenas'), 'cenas', []);
+  assert.equal(cenas.position, 2);
+  assert.ok(Math.abs(cenas.fraction - 1.2 / 3) < 1e-9);
+  assert.equal(cenas.detail, '2 de 5 cenas prontas');
+  assert.deepEqual(
+    cenas.stages.map((stage) => [stage.state, stage.fill]),
+    [
+      ['done', 1],
+      ['active', 0.2],
+      ['todo', 0],
+    ],
+  );
+
+  // A fase de páginas já passou pelas cenas: metade da etapa "Criar" está feita.
+  const composicao = creationProgress(
+    state('composicao', { coveredScenes: 5 }),
+    'composicao',
+    [],
+  );
+  assert.equal(composicao.fraction, 0.5);
+  assert.equal(composicao.detail, 'montando as páginas');
+
+  // Parada, a próxima etapa aparece ativa, sem unidades de uma fase que não roda.
+  const paused = creationProgress(state('cenas'), null, []);
+  assert.equal(paused.stage.id, 'criar');
+  assert.equal(paused.detail, null);
+
+  const revisao = creationProgress(
+    { generation: { next: 'revisao', coveredScenes: 5, targetScenes: 5 }, pages: [{}, {}, {}] },
+    'revisao',
+    [event(1, 'phase_start'), event(2, 'tool_end', 'review_pages')],
+  );
+  assert.equal(revisao.stages[2].fill, 0.5);
+  assert.ok(Math.abs(revisao.fraction - 2.5 / 3) < 1e-9);
+  assert.equal(revisao.detail, '1 de 2 leituras concluídas');
+
+  const done = creationProgress(state('pronto'), null, []);
+  assert.equal(done.done, true);
+  assert.equal(done.fraction, 1);
+  assert.deepEqual(
+    done.stages.map((stage) => stage.state),
+    ['done', 'done', 'done'],
+  );
+});
 
 await test('marcador distingue leitura, alteração de rascunho e repetição sem trabalho', () => {
   const state = { coveredScenes: 3, reviewRounds: 7 };
