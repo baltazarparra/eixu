@@ -8,6 +8,7 @@ import { GenerationPanel } from './generation-panel';
 import { isRunning, useGeneration } from './use-generation';
 
 import {
+  ChevronLeft,
   ExternalLink,
   ImagePlus,
   PanelLeftClose,
@@ -399,23 +400,26 @@ export function Workspace({
           <ExternalLink size={14} aria-hidden="true" />
         </a>
       ) : null}
-      <button
-        type="button"
-        onClick={() => setCollapsed((value) => !value)}
-        className="admin-icon-button admin-conversation-toggle"
-        aria-expanded={!collapsed}
-        aria-controls="admin-conversation"
-        title={collapsed ? 'Mostrar a conversa' : 'Recolher a conversa'}
-        aria-label={collapsed ? 'Mostrar a conversa' : 'Recolher a conversa'}
-      >
-        {collapsed ? (
-          <PanelLeftOpen size={14} aria-hidden="true" />
-        ) : (
-          <PanelLeftClose size={14} aria-hidden="true" />
-        )}
-        {collapsed && locked ? <StatusDot tone="accent" pulse /> : null}
-      </button>
     </div>
+  );
+
+  const conversationToggle = (
+    <button
+      type="button"
+      onClick={() => setCollapsed((value) => !value)}
+      className="admin-primary admin-conversation-toggle"
+      aria-expanded={!collapsed}
+      aria-controls="admin-conversation"
+      title={collapsed ? 'Mostrar a conversa' : 'Recolher a conversa'}
+      aria-label={collapsed ? 'Mostrar a conversa' : 'Recolher a conversa'}
+    >
+      {collapsed ? (
+        <PanelLeftOpen size={15} aria-hidden="true" />
+      ) : (
+        <PanelLeftClose size={15} aria-hidden="true" />
+      )}
+      {collapsed && locked ? <StatusDot tone="accent" pulse /> : null}
+    </button>
   );
 
   return (
@@ -426,6 +430,7 @@ export function Workspace({
     >
       <WorkspaceHeader
         tenant={site.tenant}
+        conversation={conversationToggle}
         preview={previewControls}
         decision={
           <>
@@ -647,6 +652,20 @@ export function Workspace({
           </form>
           <ChatUsageDetails messages={messages} events={generation.events} />
         </section>
+
+        {!collapsed ? (
+          <button
+            type="button"
+            onClick={() => setCollapsed(true)}
+            className="admin-conversation-edge-toggle"
+            aria-controls="admin-conversation"
+            aria-expanded="true"
+            aria-label="Recolher a conversa"
+            title="Recolher a conversa"
+          >
+            <ChevronLeft size={16} aria-hidden="true" />
+          </button>
+        ) : null}
 
         <section className="admin-content" aria-label="Prévia e revisão">
           {previewControls}

@@ -327,8 +327,11 @@ textarea.admin-input {
   flex-shrink: 0;
   width: 32px;
   height: 32px;
-  border: 1px solid var(--color-line);
+  min-height: 32px;
+  padding: 0;
+  border: 1px solid var(--color-line-strong);
   border-radius: 8px;
+  background: var(--color-surface);
   color: var(--color-muted);
 }
 .admin-back:hover {
@@ -508,17 +511,19 @@ textarea.admin-input {
 .admin-bar-open:hover {
   color: var(--color-text);
 }
-/* Recolher a conversa: a prévia recebe a largura inteira. O ponto pulsante
-   avisa que o agente ainda trabalha atrás do painel fechado. */
+/* A ação principal da conversa fica junto de Voltar. O ponto pulsante avisa
+   que o agente ainda trabalha atrás do painel fechado. */
 .admin-conversation-toggle {
   position: relative;
   width: 32px;
   height: 32px;
-}
-.admin-conversation-toggle:hover {
-  color: var(--color-text);
+  min-height: 32px;
+  padding: 0;
+  flex: none;
 }
 .admin-conversation-toggle .admin-status-dot {
+  --status: var(--color-accent-ink);
+
   position: absolute;
   top: 4px;
   right: 4px;
@@ -1625,6 +1630,31 @@ textarea.admin-input {
   flex: 1;
   min-height: 0;
 }
+.admin-conversation-edge-toggle {
+  z-index: 4;
+  grid-column: 1;
+  grid-row: 1;
+  place-self: center end;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 42px;
+  transform: translateX(50%);
+  border: 1px solid var(--color-line-strong);
+  border-radius: 999px;
+  background: var(--color-raised);
+  color: var(--color-muted);
+  box-shadow: var(--shadow-panel);
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease;
+}
+.admin-conversation-edge-toggle:hover {
+  border-color: var(--color-line-hover);
+  background: var(--color-segment);
+  color: var(--color-text);
+}
 .admin-conversation {
   grid-column: 1;
   grid-row: 1;
@@ -2691,6 +2721,9 @@ textarea.admin-input {
     overflow-y: auto;
   }
   .admin-conversation-toggle {
+    display: none;
+  }
+  .admin-conversation-edge-toggle {
     display: none;
   }
   .admin-mobile-views {
