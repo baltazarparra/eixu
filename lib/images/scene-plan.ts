@@ -46,17 +46,25 @@ export type PlannedScene = {
  * media.image, e a foto nascia rotulada com esse bloco: a composição montava a
  * mesma sequência em qualquer vibe, porque usar a foto em outro lugar virava
  * aviso de proporção. Medido em 12/09/2026 nos clientes chiquinho e tech.
+ * Perfis v2/v3 conservam o plano anterior para retomar sem descartar pedidos
+ * semânticos nem reabrir vagas já cobertas pela biblioteca.
  */
 export function scenePlan(
-  design: Pick<DesignProfile, 'heroComposition'> | undefined,
+  design:
+    | (Pick<DesignProfile, 'heroComposition'> &
+        Partial<Pick<DesignProfile, 'version'>>)
+    | undefined,
   organicPages = 3,
   vibe: Vibe = 'comercial',
 ): PlannedScene[] {
-  const grammar = VIBE_GRAMMAR[vibe];
+  const legacy = design?.version === 2 || design?.version === 3;
+  const grammar = legacy ? undefined : VIBE_GRAMMAR[vibe];
   // A abertura da home pertence à vibe. Sob direção por referência o eixo pode
   // ter sido escolhido fora da faixa; a cena segue a composição que a vibe
   // sustenta, senão a foto nasceria na proporção de um hero que a home não usa.
-  const composition = heroCompositionFor(vibe, design?.heroComposition);
+  const composition = legacy
+    ? design.heroComposition
+    : heroCompositionFor(vibe, design?.heroComposition);
   const heroBlock = `hero.${composition}`;
   const scenes: PlannedScene[] = [
     {
@@ -73,17 +81,20 @@ export function scenePlan(
       ratio: expectedRatio('hero.atelier'),
       hint: 'O detalhe em primeiro plano que acompanha o ambiente na abertura.',
     });
-  const [protagonist] = grammar.protagonists[0].split(':');
+  const [protagonist] = (
+    grammar?.protagonists[0] ?? 'feature.explorer:showroom'
+  ).split(':');
   for (let i = 0; i < 2; i++)
     scenes.push({
       role: 'protagonista',
       targetBlock: protagonist,
       ratio: expectedRatio(protagonist),
-      hint: `Uma aplicação concreta do serviço ou produto, para a seção protagonista da home em ${grammar.protagonists[0]}.`,
+      hint: `Uma aplicação concreta do serviço ou produto, para a seção protagonista da home em ${grammar?.protagonists[0] ?? 'feature.explorer:showroom'}.`,
     });
   const inner = Math.max(0, Math.min(3, organicPages - 1));
   for (let i = 0; i < inner; i++) {
-    const block = grammar.support[i % grammar.support.length];
+    const support = grammar?.support ?? ['narrative.split', 'media.image'];
+    const block = support[i % support.length];
     scenes.push({
       role: 'subpagina',
       targetBlock: block,

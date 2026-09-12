@@ -5,7 +5,7 @@ import {
   silhouetteSimilarity,
 } from '../taste/metrics';
 import type { BlockInstance } from '../types';
-import type { DesignProfile } from './profile';
+import { compositionSignature, type DesignProfile } from './profile';
 
 type Row = { blocks?: BlockInstance[]; design?: unknown };
 
@@ -23,24 +23,36 @@ export type CompositionConflict = {
  * A versão anterior exigia igualdade exata da sequência, incluindo tom e
  * borda: trocar a cor de fundo de uma seção já passava pela trava. Em
  * 12/09/2026 dois clientes de vibes diferentes tinham 4 das 5 seções da home
- * iguais e nenhuma recusa. Agora a medida é a proporção de seções repetidas.
+ * iguais e nenhuma recusa. No perfil v4 a medida é a proporção de seções
+ * repetidas; v2/v3 conservam a comparação exata.
  */
 export async function compositionConflict(
   tenantId: string,
   blocks: BlockInstance[],
-  design?: Pick<DesignProfile, 'heroComposition' | 'navigation'>,
+  design?: Pick<DesignProfile, 'version' | 'heroComposition' | 'navigation'>,
 ): Promise<CompositionConflict | null> {
+  const legacy = design?.version !== 4;
   const own = silhouette(blocks, design);
   if (own.length < 4) return null;
+  const exact = legacy ? compositionSignature(blocks) : undefined;
 
   const rows = (await db()`
     select
-      t.brand->'design' as design,
+      case when snapshot.kind = 'published'
+        then coalesce(t.published_snapshot->'brand', t.brand)->'design'
+        else t.brand->'design'
+      end as design,
       jsonb_agg(
         jsonb_build_object(
           'id', item.ordinality::text,
           'type', item.block->>'type',
-          'props', jsonb_build_object('layout', item.block->'props'->'layout')
+          'props', jsonb_build_object(
+            'layout', item.block->'props'->'layout',
+            'presentation', jsonb_build_object(
+              'tone', item.block->'props'->'presentation'->'tone',
+              'edge', item.block->'props'->'presentation'->'edge'
+            )
+          )
         ) order by item.ordinality
       ) as blocks
     from pages p
@@ -57,6 +69,13 @@ export async function compositionConflict(
   let worst: CompositionConflict | null = null;
   for (const row of rows) {
     if (!Array.isArray(row.blocks)) continue;
+    // v2/v3 conservam a trava exata, inclusive ordem, tom e borda. Só uma
+    // recomposição em v4 adota o limite novo de similaridade.
+    if (legacy) {
+      if (compositionSignature(row.blocks) === exact)
+        return { similarity: 1, shared: own };
+      continue;
+    }
     const other = silhouette(
       row.blocks,
       row.design as DesignProfile | undefined,
@@ -81,5 +100,5 @@ export async function compositionConflict(
 export function compositionConflictMessage(
   conflict: CompositionConflict,
 ): string {
-  return `A silhueta da home repete ${Math.round(conflict.similarity * 100)}% de outro cliente. Seções em comum: ${conflict.shared.join(', ')}. Troque tipos, layouts ou a ordem das seções dentro da gramática da vibe.`;
+  return `A silhueta da home repete ${Math.round(conflict.similarity * 100)}% de outro cliente. Seções em comum: ${conflict.shared.join(', ')}. Troque tipos ou layouts respeitando o perfil do site.`;
 }

@@ -262,6 +262,7 @@ function grammarFindings(
   pages: SitePage[],
   vibe: Vibe,
   design: Pick<DesignProfile, 'heroComposition' | 'navigation'>,
+  generatedUrls: Set<string>,
 ): StructuralFinding[] {
   const grammar = VIBE_GRAMMAR[vibe];
   const findings: StructuralFinding[] = [];
@@ -290,12 +291,20 @@ function grammarFindings(
         blockType: opening.block.type,
         message: `A abertura ${opening.signature} não pertence à vibe ${label}. Use uma destas: ${allowedOpenings.join(', ')}.`,
       });
-    if (home && !marks.some((m) => grammar.protagonists.includes(m.signature)))
+    if (
+      home &&
+      !marks.some(
+        (m) =>
+          grammar.protagonists.includes(m.signature) &&
+          blockImageUrls(m.block).filter((url) => generatedUrls.has(url))
+            .length >= 2,
+      )
+    )
       findings.push({
         page: path,
         level: 'error',
         rule: 'protagonista-fora-da-vibe',
-        message: `A home precisa da seção protagonista da vibe ${label}: ${grammar.protagonists.join(' ou ')}. Ela carrega as duas fotos do cliente.`,
+        message: `A home precisa da seção protagonista da vibe ${label}: ${grammar.protagonists.join(' ou ')}. Coloque duas fotos geradas distintas deste cliente no próprio bloco.`,
       });
     const closing = marks[marks.length - 1];
     if (!grammar.closings.includes(closing.signature))
@@ -436,7 +445,12 @@ export function structuralFindings(
 
   if (design?.version === 4)
     findings.push(
-      ...grammarFindings(pages, vibeOf({ vibe: brand?.vibe }), design),
+      ...grammarFindings(
+        pages,
+        vibeOf({ vibe: brand?.vibe }),
+        design,
+        new Set(byUrl.keys()),
+      ),
     );
 
   return findings;

@@ -1,5 +1,40 @@
 # Validação e publicação
 
+## Correções da revisão do PR #26, 12/09/2026
+
+Os cinco achados foram corrigidos antes do merge. A unicidade preserva a
+comparação exata para perfis v2/v3 e aplica o limite proporcional só em v4;
+layouts implícitos de outro cliente são resolvidos pela marca do respectivo
+snapshot. A publicação pontual usa a marca publicada em todos os validadores,
+enquanto publicação completa ou primeira publicação sem snapshot usa a marca
+do rascunho. O piso de decisões de layout e apresentação também alcança v4.
+Retomadas legadas conservam o plano de cenas, pedidos semânticos e cobertura;
+prompt e crítico respeitam a mesma versão. A seção protagonista de v4 precisa
+reunir duas fotos geradas distintas do cliente no próprio bloco permitido.
+
+- Os 13 testes novos em `tests/site-vibe-regressions.test.mjs` passaram. Na
+  versão original do PR, `ae8231a`, dez deles falharam. Os casos exercitam os
+  validadores reais, publicação sem gravações quando recusada, `set_blocks`,
+  versões v2/v3/v4, snapshots de marca, retomada nas quatro vibes e o contrato
+  enviado ao crítico. Banco e modelo são simulados nesses testes.
+- `EIXU_CHROME_PATH=/usr/bin/google-chrome npm run test:sites`: 125 passaram.
+- `EIXU_CHROME_PATH=/usr/bin/google-chrome npm run test:admin`: 117 passaram;
+  três integrações foram puladas por falta de `EIXU_TEST_POSTGRES_URL`.
+- Tipos, lint e `npm run build:vercel`: aprovados, incluindo os três checks
+  dos arquivos necessários à captura serverless.
+- Navegador com Chrome local: 16 testes de sites e oito de admin passaram.
+  Formatação de README, AGENTS, documentação e arquivos alterados, além de
+  `git diff --check`, também passaram.
+- A consulta SQL real de `compositionConflict` foi executada separadamente
+  em PGlite temporário, fora das dependências do projeto: passou nos casos de
+  marca publicada diferente do rascunho, exclusão do próprio tenant,
+  igualdade exata legada, mudança de tom em v3 e similaridade em v4. Esse
+  ensaio verifica a consulta, sem substituir as integrações Neon/WebSocket.
+
+Não houve geração paga, acesso a dados de produção, migração nem publicação
+de páginas de clientes. O teste do crítico verifica instruções e transporte,
+sem avaliar a qualidade de uma chamada real do modelo.
+
 ## Gramática da vibe na composição, 12/09/2026
 
 Diagnóstico medido no banco de produção, em leitura apenas: `chiquinho`

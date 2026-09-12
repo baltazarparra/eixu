@@ -213,14 +213,21 @@ entra no prompt em toda fase com composição e na crítica visual.
 
 Essas regras valem só para o perfil versão 4. Sites publicados em v2 e v3
 continuam com a composição que já têm; recompor exige uma nova direção e uma
-nova publicação.
+nova publicação. Na retomada, o plano de cenas conserva os alvos, proporções,
+pedidos semânticos e cobertura do perfil antigo; o prompt e o crítico também
+preservam essa composição. A seção protagonista de v4 precisa conter, ela
+própria, duas URLs distintas de fotos geradas disponíveis do cliente. Fotos em
+outro bloco não completam essa exigência.
 
 A unicidade passou a medir proporção em vez de igualdade. `silhouette` reduz a
 página à sequência `tipo:layout`, sem texto, imagem nem tom;
 `silhouetteSimilarity` conta as seções em comum sobre a página maior; acima de
 `SILHOUETTE_LIMIT`, 0,75, a home é recusada em `build_site`, `set_blocks` e na
-publicação. As duas homes medidas em produção dão 0,80. A comparação atravessa
-todas as vibes e não devolve texto, nome ou imagem do outro cliente.
+publicação de perfis v4. As duas homes medidas em produção dão 0,80. Perfis
+v2/v3 conservam a trava de igualdade exata, incluindo ordem, tom e borda. A
+comparação atravessa todas as vibes e não devolve texto, nome ou imagem do
+outro cliente. Cada snapshot usa seu próprio perfil para resolver layouts
+implícitos: o rascunho usa a marca atual; o publicado, a marca publicada.
 
 O CSS por vibe fica em `app/(sites)/vibes.css`, sempre sob
 `.site-theme[data-vibe='…']`, e realiza o que só o CSS resolve: escala e peso
@@ -376,11 +383,11 @@ recomposição explícita e nova publicação.
 
 `set_design` compara oito decisões estruturais com os perfis dos outros tenants da mesma vibe. Sem direção por referências verificadas, exige distância de três eixos. Com referências, essa distância é informativa: não se trocam os traços da fonte por variações arbitrárias. Nome, briefing, texto, imagens e identidade do outro cliente não são retornados ao agente.
 
-A home também é medida pela silhueta: a sequência `tipo:layout` das seções de conteúdo, com o layout resolvido como o visitante o vê. Texto, URL, imagem e tom são ignorados. `silhouetteSimilarity` conta as seções em comum sobre a página maior, e acima de 0,75 `build_site`, `set_blocks`, as ferramentas de publicação e a API administrativa recusam a home, listando as seções repetidas sem revelar o outro cliente. A régua anterior exigia igualdade exata da sequência inteira, incluindo tom e borda, então trocar a cor de fundo de uma seção já passava. Páginas com menos de quatro blocos de conteúdo ficam fora dessa trava para não forçar diferenças artificiais em obrigado ou páginas curtas.
+No perfil v4, a home também é medida pela silhueta: a sequência `tipo:layout` das seções de conteúdo, com o layout resolvido como o visitante o vê. Texto, URL, imagem e tom são ignorados. `silhouetteSimilarity` conta as seções em comum sobre a página maior, e acima de 0,75 `build_site`, `set_blocks`, as ferramentas de publicação e a API administrativa recusam a home, listando as seções repetidas sem revelar o outro cliente. Perfis v2/v3 continuam na régua de igualdade exata da sequência inteira, incluindo tom e borda; essa compatibilidade evita bloquear republicações anteriores ao v4. Páginas com menos de quatro blocos de conteúdo ficam fora dessa trava para não forçar diferenças artificiais em obrigado ou páginas curtas.
 
 Essas verificações detectam repetição estrutural; não medem qualidade estética nem comprovam coerência semântica. A revisão visual precisa conferir a ligação entre briefing, imagens, silhueta, ritmo e elemento-assinatura. Trocar cores e fontes para vencer o gate não substitui uma direção própria. Uma empresa de pedras pode privilegiar matéria e aplicações; isso não obriga outros negócios a usar a mesma colagem ou as mesmas abas.
 
-O pre-flight v2 exige decisões locais de layout e presentation em páginas comerciais; somente escolher motion não conta como decisão de composição. `build_site` valida páginas e projeto antes de gravar o lote em uma transação. Um erro não substitui páginas válidas. Edições incrementais podem produzir rascunho inválido, mas a publicação continua bloqueada.
+O pre-flight exige decisões locais de layout e presentation em páginas comerciais dos perfis v2, v3 e v4; somente escolher motion não conta como decisão de composição. `build_site` valida páginas e projeto antes de gravar o lote em uma transação. Um erro não substitui páginas válidas. Edições incrementais podem produzir rascunho inválido, mas a publicação continua bloqueada.
 
 `lintSite` exige três páginas orgânicas com pelo menos 100 palavras de conteúdo, intenções e SEO distintos, etapas de inbound, links/âncoras válidos e alcance a partir da home. Também aplica o piso de composição descrito acima: duas fotos geradas distintas e uma seção protagonista na home, cor de marca em uma seção e imagem em toda página orgânica. A contagem de palavras impede páginas vazias, mas não prova utilidade editorial. `lib/sites/publish.ts` é compartilhado pela API, `publish_page` e `publish_site`: valida o estado que ficará ao vivo e publica o lote atomicamente. Uma publicação pontual não conta rascunhos de outras páginas como conteúdo publicado.
 
