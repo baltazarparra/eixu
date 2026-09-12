@@ -5,8 +5,8 @@ import { DESIGN_AXES, type DesignProfileInput } from '@/lib/design/profile';
 /**
  * Vibe do site, escolhida pelo operador no cadastro. Ela não substitui a
  * direção de arte: continua sendo o agente que decide conceito, estrutura e
- * tipografia, mas dentro da faixa da vibe. `comercial` é o contrato que já
- * existia e não restringe nada.
+ * tipografia, mas dentro da faixa da vibe. `comercial` não restringe os eixos
+ * visuais. A voz de cada vibe está em lib/copy/policy.ts.
  *
  * Referências lidas em 10/09/2026: linear.app (moderno), 14islands.com
  * (ousado) e actionline.io (artistico). Elas orientam a linguagem visual; o
@@ -37,13 +37,13 @@ export const VIBE_LABEL: Record<Vibe, string> = {
 
 export const VIBE_HINT: Record<Vibe, string> = {
   comercial:
-    'Equilíbrio entre prova e conversão, com fotos do negócio e seções claras. O padrão.',
+    'Fotos do negócio e seções claras. Texto direto, que explica a oferta e ajuda a escolher.',
   moderno:
-    'Superfície escura, monocromia com um acento, linhas finas e capítulos espaçados.',
+    'Fundo escuro, linhas finas e espaço entre seções. Texto claro, preciso e tranquilo.',
   ousado:
-    'Tipografia enorme na abertura, muito branco, imagens de borda a borda e blocos pretos.',
+    'Letras grandes, contraste e fotos que ocupam a tela. Texto curto, firme e cheio de energia.',
   artistico:
-    'Papel quente, display serifada, lavagens de cor entre seções e cartões sobrepostos.',
+    'Fundo claro, cores suaves e fotos em destaque. Texto próximo, com atenção aos detalhes.',
 };
 
 type Axis = (typeof DESIGN_AXES)[number];

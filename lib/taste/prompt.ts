@@ -1,5 +1,6 @@
 import { catalogForPrompt } from '../blocks/registry';
 import { soul } from '../ai/soul';
+import { copyDirection } from '../copy/policy';
 import { TYPOGRAPHY_DIRECTION } from '../design/typography';
 import { ICON_STYLE } from '../design/iconography';
 import {
@@ -86,7 +87,7 @@ const FREE = `## Execução com critério de qualidade
 - Alteração por número: para "quero atualizar a imagem #5, quero outro carro", chame update_image com image "#5" e o pedido de mudança. A ferramenta usa a original como referência e troca suas ocorrências nos rascunhos; a nova versão ganha outro número e ambas ficam na biblioteca. Informe o novo número e o resultado. Não peça aprovação, não gere uma cena avulsa nem publique por causa desse pedido.
 - Falha de build_site não grava nada: o lote fica em memória neste turno. Use repair_site com somente os campos que falharam, por slug e índice do bloco. Para adicionar ou remover páginas, envie novo build_site.
 - build_site já valida páginas e projeto e retorna publicationPending. Com ok=true, use esse relatório; não chame lint_site de novo sem outra edição.
-- Antes de encerrar uma composição ou mudança visual, use review_pages e confira o resultado. Em edição, corrija somente problemas introduzidos pela alteração solicitada e dentro do mesmo escopo. Relate problemas antigos ou de outros blocos sem tentar corrigi-los. Em composição/revisão completa, trate os problemas materiais e confira depois da última correção. Em edição pontual de conteúdo, valide a página afetada com lint_page. Um retorno ok não garante qualidade visual.
+- Antes de encerrar uma composição ou mudança de texto ou visual, use review_pages e confira o resultado. Em edição, corrija somente problemas introduzidos pela alteração solicitada e dentro do mesmo escopo. Relate problemas antigos ou de outros blocos sem tentar corrigi-los. Em composição/revisão completa, trate os problemas materiais e confira depois da última correção. lint_page ajuda no diagnóstico, mas um retorno ok não garante clareza, voz coerente nem qualidade visual.
 - O catálogo abaixo traz uso, proporção e limites de cada bloco. describe_block só se restar dúvida de schema. Omita opcionais sem conteúdo.
 - Execute com o contexto disponível; pergunte só se faltar informação que mude materialmente o resultado. Nunca publique ou apague página sem pedido do operador.`;
 
@@ -139,6 +140,7 @@ export function systemPrompt(
   const sections = [
     `## Identidade EIXU\n${soul}`,
     FACTS,
+    copyDirection(vibe),
     phase ? PHASE_BRIEF[phase] : FREE,
     editScope ? `## Escopo da edição atual\n${editScope}` : '',
     wantsComposition ? COMPOSITION : '',

@@ -61,6 +61,13 @@ segundos. Esgotar um limite não prova conclusão; o painel retoma pelo estado.
 
 ## Contexto e decisões
 
+A escrita tem um [contrato por vibe](copy.md), com linguagem simples em comum.
+`lib/copy/policy.ts` fornece a mesma base ao autor, em todas as fases e edições,
+e ao crítico. `lintPage` verifica rótulos de ação e aponta vocabulário/frases
+para revisão; o crítico julga compreensão e voz com textos completos, sinais e
+pixels. Erro material de linguagem impede a conclusão automática. A versão
+`gemini-3.8-quality-v2-copy` invalida recibos anteriores a esse critério.
+
 O prompt mantém fatos, restrições, vibe, marca, contatos, guia de imagens, fontes,
 plano editorial e biblioteca do tenant. Referências lidas acompanham também a
 composição e a revisão. `brief.pagePlan` guarda intenção, etapa de inbound,

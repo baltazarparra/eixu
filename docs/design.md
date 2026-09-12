@@ -115,6 +115,12 @@ O plano editorial em `brief.pagePlan` diferencia intenção, etapa, conteúdo e 
 
 ## Vibes
 
+Cada vibe também tem uma [voz de escrita](copy.md). Comercial é direta e
+prestativa; moderno, claro e preciso; ousado, firme e curto; artístico, próximo
+e sensível. Todas usam palavras do dia a dia. `lib/copy/policy.ts` é a fonte
+compartilhada pela geração, edição e crítica; o estilo visual não autoriza
+inglês, jargão ou texto difícil.
+
 O operador escolhe a vibe no cadastro do cliente e ela vale para o site
 inteiro. `comercial` é o contrato descrito acima e não restringe nada; as
 outras três delimitam a faixa em que a direção de arte decide. Referências
