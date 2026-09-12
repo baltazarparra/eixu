@@ -8,30 +8,16 @@ import {
   summarizeUsage,
 } from '@/lib/admin/usage-summary';
 import {
+  PRODUCT_STAGES,
   currentActivity,
+  phaseProgress,
   phaseRecords,
-  reviewProgress,
+  productStage,
 } from '@/lib/generation/progress';
 import type { GenerationEvent, GenerationRun } from '@/lib/generation/runs';
 import type { Phase } from '@/lib/taste/phases';
 import { StatusPill } from '@/components/admin/primitives';
 import { isRunning } from './use-generation';
-
-const PRODUCT_STAGES = [
-  { id: 'preparar', label: 'Preparar', phases: ['briefing'] },
-  { id: 'criar', label: 'Criar', phases: ['cenas', 'composicao'] },
-  { id: 'conferir', label: 'Conferir', phases: ['revisao'] },
-] as const satisfies readonly {
-  id: string;
-  label: string;
-  phases: readonly Phase[];
-}[];
-
-function productStage(phase: Phase): (typeof PRODUCT_STAGES)[number] {
-  return PRODUCT_STAGES.find((stage) =>
-    (stage.phases as readonly Phase[]).includes(phase),
-  )!;
-}
 
 const plural = (count: number, one: string, many: string): string =>
   `${count} ${count === 1 ? one : many}`;
@@ -49,29 +35,6 @@ function useNow(active: boolean): number {
     return () => clearInterval(timer);
   }, [active]);
   return now;
-}
-
-/** O que a etapa em execução já produziu, medido no estado e nos eventos. */
-function phaseProgress(
-  state: SiteState,
-  phase: Phase | null,
-  events: GenerationEvent[],
-): string | null {
-  const generation = state.generation;
-  if (phase === 'cenas')
-    return `${generation.coveredScenes} de ${generation.targetScenes} cenas prontas`;
-  if (phase === 'composicao')
-    return state.pages.length
-      ? `${state.pages.length} páginas gravadas`
-      : 'montando as páginas';
-  if (phase === 'revisao') {
-    const review = reviewProgress(events);
-    const reads = review.reads
-      ? `${review.reads} de ${review.total} leituras concluídas`
-      : 'preparando a primeira leitura';
-    return review.round > 1 ? `rodada ${review.round} · ${reads}` : reads;
-  }
-  return null;
 }
 
 function statusLine(

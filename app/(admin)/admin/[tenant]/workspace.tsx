@@ -14,10 +14,12 @@ import {
   useRefreshTenant,
 } from '@/components/admin/navigation';
 import { ChatUsageDetails } from '@/components/admin/chat-usage';
+import { GenerationDiamond } from '@/components/admin/generation-diamond';
 import { adminFetch } from '@/lib/admin/http';
 import { mergeSavedMessages } from '@/lib/admin/chat-messages';
 import type { SiteState } from '@/lib/admin/state';
 import type { ChatMessage } from '@/lib/ai/usage';
+import { creationProgress } from '@/lib/generation/progress';
 import type { PublishResult } from '@/lib/sites/publish';
 
 type Props = {
@@ -137,6 +139,17 @@ export function Workspace({
   });
   const running = isRunning(generation.run);
   const { start: startRun, ready, everRan } = generation;
+  const runPhase = running ? (generation.run?.phase ?? null) : null;
+  // Só a geração move o diamante. Um turno livre do chat também trava a
+  // prévia, mas anunciar etapa em execução ali contradiz o painel ao lado,
+  // que nesse momento mostra a execução como parada.
+  const generating = running || generation.starting;
+  // O diamante da prévia lê o mesmo estado que o painel: etapas feitas e
+  // unidades medidas, nunca uma porcentagem estimada pelo tempo.
+  const creation = useMemo(
+    () => creationProgress(site, runPhase, generation.events),
+    [site, runPhase, generation.events],
+  );
 
   const startGeneration = useCallback(
     async (focus = true) => {
@@ -613,6 +626,9 @@ export function Workspace({
                 </a>
               ) : null}
             </fieldset>
+            {running && site.pages.length > 0 ? (
+              <GenerationDiamond compact progress={creation} active={generating} />
+            ) : null}
           </div>
 
           {showReview ? (
@@ -719,11 +735,17 @@ export function Workspace({
                 data-device={device}
               />
             ) : (
-              <div className="admin-preview-empty">
-                {locked
-                  ? 'A prévia aparece quando a composição gravar a primeira página.'
-                  : 'Nenhuma página em rascunho ainda.'}
-              </div>
+              locked || generating ? (
+                <GenerationDiamond
+                  progress={creation}
+                  active={generating}
+                  message="A prévia aparece quando a composição gravar a primeira página."
+                />
+              ) : (
+                <div className="admin-preview-empty">
+                  Nenhuma página em rascunho ainda.
+                </div>
+              )
             )}
           </div>
         </section>

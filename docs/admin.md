@@ -123,6 +123,15 @@ atual — uma ferramenta já iniciada termina e salva; a pausa não desfaz
 escritas. Ao terminar, o painel mostra páginas, fotos, tempo e consumo até você
 fechar.
 
+Enquanto a composição não grava a primeira página, a prévia mostra um diamante
+negro em 3D. As facetas se fecham conforme as etapas medidas e o anel em
+órbita repete as três trilhas do painel: feita, ativa e a fazer, com as mesmas
+unidades (cenas prontas, páginas gravadas, leituras da revisão). Nada ali é
+porcentagem estimada pelo tempo. Depois da primeira página, a versão compacta
+do mesmo indicador fica na barra da prévia até a geração terminar. Sem WebGL,
+só o texto da etapa aparece; com movimento reduzido, o diamante fica parado e
+atualiza apenas quando o progresso muda.
+
 Enquanto a geração roda, o chat fica em espera e diz por quê: os dois disputariam as mesmas páginas. Se uma etapa falhar ou não avançar, a execução para com o motivo no painel; leia a última resposta antes de retomar. Se aparecer que a próxima etapa não pôde ser iniciada, **Tentar novamente** retoma pelo progresso salvo. Cenas e páginas prontas continuam disponíveis; uma revisão visual pendente ainda precisa ser concluída antes de considerar a geração pronta.
 
 A revisão tem até três rodadas, com até duas leituras em cada uma: uma avaliação

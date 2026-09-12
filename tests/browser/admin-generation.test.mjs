@@ -360,6 +360,27 @@ await test(
           true,
           'O chat espera a geração terminar, e a tela diz isso.',
         );
+        // Sem página, a prévia mostra o diamante com a mesma etapa e unidade
+        // medida do painel; ele nunca inventa porcentagem.
+        assert.equal(
+          await page.$eval(
+            '.admin-preview-loader:not([data-compact])',
+            (node) => node.textContent,
+          ),
+          'Etapa 2 de 3 · Criar2 de 5 cenas prontasA prévia aparece quando a composição gravar a primeira página.',
+        );
+        assert.ok(
+          ['live', 'fallback'].includes(
+            await page.$eval(
+              '.admin-preview-loader',
+              (node) => node.dataset.state ?? '',
+            ),
+          ),
+          'o diamante declara se renderiza ou caiu no texto',
+        );
+        await mkdir('outputs/generation', { recursive: true });
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        await page.screenshot({ path: 'outputs/generation/previa-diamante.png' });
 
         // Uma edição com a mesma quantidade de blocos precisa chegar ao iframe.
         backend.site.pages = [
@@ -393,6 +414,9 @@ await test(
           { timeout: 12000 },
         );
         assert.equal(counters.preview, beforePreview + 1);
+        // Com página e execução viva, o indicador compacto segue na barra.
+        assert.equal(await page.$('.admin-preview-loader:not([data-compact])'), null);
+        assert.ok(await page.$('.admin-preview-loader[data-compact]'));
         await new Promise((resolve) => setTimeout(resolve, 3400));
         assert.equal(
           counters.preview,
@@ -417,6 +441,11 @@ await test(
         assert.equal(
           await page.$eval('textarea', (node) => node.disabled),
           false,
+        );
+        assert.equal(
+          await page.$('.admin-preview-loader'),
+          null,
+          'concluída, a geração leva o indicador junto',
         );
 
         // O comando textual usa a rota e o stream reais e reativa o acompanhamento.

@@ -1,5 +1,58 @@
 # Validação e publicação
 
+## Diamante da geração na prévia, 12/09/2026
+
+A prévia vazia durante a geração passou a mostrar um diamante negro em WebGL
+(`components/admin/generation-diamond.tsx`, com o `three` já instalado):
+lapidação brilhante procedural, shader próprio com fresnel, refração com
+dispersão e estúdio escuro, facetas que se fecham conforme o progresso e anel
+em órbita com as três etapas do painel. Depois da primeira página, a versão
+compacta fica na barra da prévia até a execução terminar. O progresso vem de
+`creationProgress`, em `lib/generation/progress.ts`, que passou a concentrar
+também `PRODUCT_STAGES` e `phaseProgress` usados pelo painel: só etapas feitas
+e unidades medidas, sem porcentagem estimada pelo tempo.
+
+Verificação na base `main`, com as alterações locais:
+
+- `npx next typegen && npx tsc --noEmit`, `npm run lint`,
+  `npm run format -- --check README.md AGENTS.md docs` e `git diff --check`:
+  sem erros.
+- `EIXU_CHROME_PATH=/usr/bin/google-chrome npm run test:admin`: 120 testes;
+  117 passaram e 3 integrações com PostgreSQL foram puladas por falta de
+  `EIXU_TEST_POSTGRES_URL`. Inclui o teste novo de `creationProgress`
+  (briefing sem unidade, cenas, composição, pausa, revisão e concluída).
+- `EIXU_CHROME_PATH=/usr/bin/google-chrome npm run test:sites`: 104 passaram.
+- `npm run build:vercel`: Next.js 16.3.3 compilou e os três checks dos
+  artefatos serverless passaram. O CSS gerado contém `.sr-only` e
+  `.admin-preview-loader`.
+- `EIXU_CHROME_PATH=/usr/bin/google-chrome npm run test:admin:browser`: 8
+  passaram. O teste da geração agora afirma que, sem página, o loader mostra
+  a mesma etapa e unidade do painel e declara `data-state` `live` ou
+  `fallback`; com página e execução viva só o compacto permanece; concluída,
+  nenhum indicador fica. Captura real do workspace em
+  `outputs/generation/previa-diamante.png`.
+- Harness isolado fora do repositório (esbuild + Chrome headless com
+  SwiftShader, WebGL 2): os estados briefing, cenas, composição, revisão,
+  concluída, aguardando e compacto renderizaram sem erro de shader ou console,
+  inclusive com `prefers-reduced-motion: reduce`; sequência de quadros
+  confirmou rotação, precessão do anel e variação dos brilhos. Capturas
+  conferidas em 900×640, 830×880 e 1440×1000.
+
+A revisão do diff apontou dois defeitos, corrigidos antes da publicação. O
+diamante recebia `active` fixo em verdadeiro e anunciava etapa em execução
+durante um turno livre do chat, contradizendo a pílula "Parada" do painel ao
+lado; agora só a geração o move, e parado ele mostra "aguardando". E
+`renderer.dispose()` não encerra o contexto WebGL, então cada montagem deixava
+um contexto vivo numa aba que troca de cliente o dia todo; a limpeza passou a
+chamar `forceContextLoss()`. O laço também deixou de alocar vetores por quadro
+e trata `webglcontextlost` caindo para o texto da etapa.
+
+Não houve geração paga, escrita em banco remoto, publicação nem deploy. O
+desempenho do WebGL foi observado só em SwiftShader; em GPU real o custo é
+menor, mas não foi medido. A vista **Prévia** no celular com o diamante não
+foi fotografada; o layout usa as mesmas regras do desktop com altura mínima de
+320 px.
+
 ## Admin, criação e revisão incremental, 12/09/2026
 
 O fluxo administrativo foi revisto da entrada a Tráfego. A criação apresenta

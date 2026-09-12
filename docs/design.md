@@ -16,6 +16,14 @@ lista; sair fica no fim das ações. O editor reserva 42% (até 520 px) à conve
 com o andamento dentro dela, e devolve a altura inteira à prévia. No celular,
 conversa e prévia são alternáveis.
 
+A prévia vazia durante a geração usa um diamante negro em WebGL
+(`components/admin/generation-diamond.tsx`): lapidação brilhante procedural com
+shader próprio, fresnel, refração com dispersão sobre um estúdio escuro e anel
+em âmbar `#f0a868` para as três etapas. Ele não estima porcentagem: fecha
+facetas e preenche o anel só com unidades medidas em `creationProgress`, a
+mesma leitura do painel. A versão compacta de 40 px acompanha a barra da prévia
+quando já existe página.
+
 `app/(admin)/admin.css` concentra os tokens e componentes `admin-*`; os três
 grupos de rotas mantêm CSS e fontes separados. Textos funcionais pequenos usam
 `--color-support: #938b7e`: os tons faint/dim da referência têm contraste baixo

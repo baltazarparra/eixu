@@ -1571,6 +1571,93 @@ textarea.admin-input {
   width: 390px;
   max-width: 100%;
 }
+
+/* Diamante da geração: ocupa a prévia até a primeira página existir. */
+.admin-preview-loader {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  overflow: hidden;
+  border-radius: 13px;
+  isolation: isolate;
+}
+.admin-preview-loader::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(
+      ellipse 46% 34% at 50% 56%,
+      rgba(240, 168, 104, 0.09),
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 72% 58% at 50% 44%,
+      rgba(255, 255, 255, 0.03),
+      transparent 70%
+    );
+}
+.admin-preview-loader-stage {
+  position: relative;
+  min-height: 0;
+}
+.admin-preview-loader-stage canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 22px rgba(240, 168, 104, 0.16));
+}
+.admin-preview-loader[data-compact] .admin-preview-loader-stage canvas {
+  filter: none;
+}
+.admin-preview-loader-caption {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 0 24px 30px;
+  text-align: center;
+}
+.admin-preview-loader-caption strong {
+  color: var(--color-ink);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}
+.admin-preview-loader-caption p {
+  max-width: 36ch;
+  margin: 2px 0 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.admin-preview-loader[data-state='fallback'] {
+  align-content: center;
+}
+.admin-preview-loader[data-state='fallback'] .admin-preview-loader-stage {
+  display: none;
+}
+.admin-preview-loader[data-compact] {
+  display: block;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  min-height: 0;
+  margin-left: auto;
+  border-radius: 50%;
+}
+.admin-preview-loader[data-compact]::before {
+  display: none;
+}
+.admin-preview-loader[data-compact] .admin-preview-loader-stage {
+  position: absolute;
+  inset: 0;
+}
 .admin-review {
   max-height: 32dvh;
   overflow: auto;
