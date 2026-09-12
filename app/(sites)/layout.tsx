@@ -20,6 +20,7 @@ import './creative.css';
 import './vibes.css';
 import './typography.css';
 import './iconography.css';
+import './navigation.css';
 
 const sans = Geist({
   subsets: ['latin'],

@@ -9,6 +9,7 @@ import { gatewayOptions, sumGatewayCosts, usageRecord } from '@/lib/ai/usage';
 import type { Page, Tenant } from '@/lib/types';
 import type { Shot } from './capture';
 import { copyDirection, COPY_REVIEW } from '@/lib/copy/policy';
+import { RESPONSIVE_CONTRACT } from '@/lib/design/responsive';
 import {
   VIBE_GRAMMAR,
   VIBE_LABEL,
@@ -178,13 +179,26 @@ export async function critiquePages(
     ...shots.flatMap((shot): (TextPart | FilePart)[] => [
       {
         type: 'text',
-        text: `Página ${shot.page}; viewport ${shot.viewport}, ${shot.width}px. Captura da página inteira. Overflow: ${shot.overflow}; imagens quebradas: ${shot.brokenImages}.`,
+        text: `Página ${shot.page}; viewport ${shot.viewport}, ${shot.width}px. Captura da página inteira com menu fechado. Overflow: ${shot.overflow}; imagens quebradas: ${shot.brokenImages}. Navegação medida: ${JSON.stringify(shot.navigation ?? null)}.`,
       },
       {
         type: 'file',
         data: new Uint8Array(shot.jpeg),
         mediaType: 'image/jpeg',
       },
+      ...(shot.menuJpeg
+        ? [
+            {
+              type: 'text' as const,
+              text: `Página ${shot.page}; ${shot.width}px; menu aberto, recorte da viewport. Confira legibilidade, hierarquia e ação principal neste estado.`,
+            },
+            {
+              type: 'file' as const,
+              data: new Uint8Array(shot.menuJpeg),
+              mediaType: 'image/jpeg',
+            },
+          ]
+        : []),
     ]),
   ];
   const model = productModel('critic');
@@ -207,6 +221,7 @@ Se brand.logoFit existir, confira o logo do cabeçalho e do rodapé sobre a supe
 Quando brand.design.referenceDirection existe, ela prevalece sobre a vibe nos aspectos listados em aspectosDaReferencia: compare os pixels do rascunho com as observações visuais persistidas em brief.sources e as aplicações planejadas. Confira layout, escala tipográfica, papel/recorte das imagens e ritmo na home e nas outras páginas como um conjunto. Não reivindique comparação com pixels da referência original: você recebe sua leitura visual, além dos pixels atuais do cliente. Use criterio referencias para desvios concretos; uma direção que ignora os traços centrais documentados sem adaptação justificada é erro material. Similaridade apenas de cor ou fonte não satisfaz o plano. Adaptação por marca, factualidade, legibilidade e jornada pode ser correta; mistura incoerente entre fontes precisa de correção. Sem referenceDirection, a vibe orienta também tipografia, imagens e superfície. Imagem de inspiração não prova obra/equipe real. Não proponha serviço, prova, recurso ou gráfico não sustentado pelo briefing e pelo catálogo existente.
 ${copyDirection(vibeOf(tenant.brand))}
 ${COPY_REVIEW}
+${RESPONSIVE_CONTRACT}
 Cada achado precisa citar evidência observável, página e bloco existente quando identificável; use blockId null quando não conseguir localizá-lo. Error é defeito material: afirmação contradita/sem evidência, texto ilegível, conteúdo cortado, ação inacessível, imagem quebrada. Preferência estética é warn. Não invente defeitos para parecer rigoroso. Registre o que funciona para o editor preservar. Não autorize publicação e não afirme ter visto páginas ou viewports ausentes.`,
     messages: [{ role: 'user', content }],
   });

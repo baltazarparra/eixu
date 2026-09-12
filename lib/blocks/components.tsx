@@ -8,6 +8,7 @@ import { SiteIcon } from '@/lib/blocks/icon';
 import { renderingVibeOf, type Vibe } from '@/lib/design/vibes';
 import { logoFor } from '@/lib/blocks/theme';
 import { MotionLink } from '@/lib/blocks/motion';
+import { MobileNavigation } from '@/lib/blocks/mobile-navigation';
 import { NavigationFrame } from '@/lib/blocks/navigation-frame';
 import { SocialIcon } from '@/lib/blocks/social-icons';
 import {
@@ -125,6 +126,27 @@ export function NavBar({
 }: NavBarProps & { ctx: RenderContext }) {
   const resolvedLayout = layout ?? ctx.tenant.brand.design?.navigation ?? 'bar';
   const logo = logoFor(ctx.tenant.brand, presentation, resolvedLayout);
+  const currentHref = previewHref(ctx.pagePath, ctx);
+  const navigationLinks = links.map((link) => (
+    <a
+      key={link.href + link.label}
+      href={link.href}
+      aria-current={link.href === currentHref ? 'page' : undefined}
+      className="site-nav-link"
+    >
+      {link.label}
+    </a>
+  ));
+  const action = cta ? (
+    <a
+      href={cta.href}
+      className="site-nav-cta rounded-[var(--radius)] bg-[var(--highlight)] px-5 py-2.5 text-[0.9rem] font-medium text-[var(--highlight-ink)]"
+      data-track={cta.href.startsWith('/go/wa') ? 'whatsapp' : undefined}
+    >
+      <span>{cta.label}</span>
+      <SiteIcon name="arrow-up-right" vibe={vibe} size={18} />
+    </a>
+  ) : null;
   return (
     <NavigationFrame position={position}>
       <header
@@ -138,12 +160,10 @@ export function NavBar({
               }
         }
       >
-        <div
-          className={`${shell} flex min-h-20 flex-wrap items-center justify-between gap-4 py-4`}
-        >
+        <div className={`${shell} site-nav-row`}>
           <a
-            href="/"
-            className="flex max-w-full shrink-0 items-center text-[1.05rem] font-semibold tracking-[-0.01em]"
+            href={previewHref('/', ctx)}
+            className="site-nav-brand text-[1.05rem] font-semibold tracking-[-0.01em]"
             aria-label={`${logoText}, início`}
           >
             {logo ? (
@@ -153,64 +173,30 @@ export function NavBar({
                 width={logoHeight === undefined ? 160 : undefined}
                 height={logoHeight ?? 40}
                 style={
-                  logoHeight === undefined ? undefined : { height: logoHeight }
+                  {
+                    '--logo-height': `${logoHeight ?? 48}px`,
+                  } as React.CSSProperties
                 }
-                className={
-                  logoHeight === undefined
-                    ? 'h-12 w-auto max-w-[140px] object-contain'
-                    : 'w-auto max-w-full object-contain object-left'
-                }
+                className="site-nav-logo"
                 decoding="async"
               />
             ) : (
               logoText
             )}
           </a>
-          <nav
-            className="hidden items-center gap-6 lg:flex"
-            aria-label="Navegação principal"
-          >
-            {links.map((link) => (
-              <a
-                key={link.href + link.label}
-                href={link.href}
-                aria-current={link.href === ctx.pagePath ? 'page' : undefined}
-                className="site-nav-link text-[0.92rem] text-[var(--muted)] hover:text-[var(--ink)]"
-              >
-                {link.label}
-              </a>
-            ))}
-          </nav>
-          {cta ? (
-            <a
-              href={cta.href}
-              className="site-nav-cta rounded-[var(--radius)] bg-[var(--highlight)] px-5 py-2.5 text-[0.9rem] font-medium text-[var(--highlight-ink)]"
-              data-track={
-                cta.href.startsWith('/go/wa') ? 'whatsapp' : undefined
-              }
-            >
-              {cta.label}
-              <SiteIcon name="arrow-up-right" vibe={vibe} size={18} />
-            </a>
-          ) : null}
-          {links.length ? (
-            <details className="site-mobile-nav w-full lg:hidden">
-              <summary className="flex min-h-11 cursor-pointer items-center justify-between text-sm font-medium">
-                Menu
-                <SiteIcon name="plus" vibe={vibe} />
-              </summary>
-              <nav aria-label="Navegação mobile" className="grid gap-1 pb-2">
-                {links.map((link) => (
-                  <a
-                    key={link.href + link.label}
-                    href={link.href}
-                    className="py-3 text-sm"
-                  >
-                    {link.label}
-                  </a>
-                ))}
-              </nav>
-            </details>
+          <div className="site-nav-desktop">
+            {links.length ? (
+              <nav aria-label="Navegação principal">{navigationLinks}</nav>
+            ) : null}
+            {action}
+          </div>
+          {links.length || cta ? (
+            <MobileNavigation label={logoText}>
+              {links.length ? (
+                <nav aria-label="Navegação mobile">{navigationLinks}</nav>
+              ) : null}
+              {action}
+            </MobileNavigation>
           ) : null}
         </div>
       </header>

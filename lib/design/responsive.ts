@@ -1,0 +1,7 @@
+/** Mesmo contrato para direção, composição, edições e crítica de qualquer perfil. */
+export const RESPONSIVE_CONTRACT = `## Responsividade como requisito do site
+- Celular é uma composição de primeira classe em todas as vibes e versões. Planeje hierarquia, ordem de leitura, recortes e ação principal em 320 e 390 px, tablet e desktop; reduzir tudo a uma coluna não basta.
+- Use um nav.bar por página, com destinos reais, rótulos claros e uma ação principal. Logo e Menu dividem uma barra compacta; o renderer coloca links e CTA no painel mobile e recolhe a barra desktop se não couber. Não duplique a navegação em blocos, não crie uma versão de página por aparelho e não remova destinos para disfarçar overflow.
+- logoHeight define a altura desejada no desktop; no cabeçalho compacto o logo preserva proporção e fica limitado a 48 px e à largura disponível. O menu deve continuar alcançável com logos largos e nomes longos.
+- Preserve tamanho de texto legível, alvos de toque de pelo menos 44 px, foco visível e movimento reduzido. Nenhuma ação pode depender de hover; títulos, imagens, tabelas, grades e formulários precisam caber sem rolagem horizontal da página.
+- Se houver pedido de análise visual automática, confira barra fechada e menu aberto: fundo legível, página atual, CTA, fechamento, área segura e rolagem em telas baixas. Captura fechada ou ausência de overflow não comprovam navegação utilizável. Sem evidência atual, não afirme que o mobile foi verificado. A geração continua encerrando na composição, com revisão humana pela prévia.`;

@@ -350,19 +350,12 @@ details[open] > summary .site-disclosure {
   display: flow-root;
 }
 .site-navigation-frame[data-position='fixed'] {
-  height: var(--navigation-height, 8.5rem);
+  height: var(--navigation-height, 5rem);
 }
 .site-navigation-frame[data-position='fixed'] > .site-navigation-content {
   position: fixed;
   inset: 0 0 auto;
   z-index: 50;
-  max-height: 100dvh;
-  overflow-y: auto;
-}
-@media (min-width: 1024px) {
-  .site-navigation-frame[data-position='fixed'] {
-    height: var(--navigation-height, 5.5rem);
-  }
 }
 .site-nav {
   position: relative;
@@ -371,7 +364,6 @@ details[open] > summary .site-disclosure {
 }
 .site-nav-floating {
   margin: 0.8rem clamp(0.75rem, 3vw, 2.5rem) 0;
-  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: max(var(--radius), 1rem);
   box-shadow: 0 18px 55px -42px var(--ink);
@@ -381,7 +373,7 @@ details[open] > summary .site-disclosure {
   background: transparent;
 }
 .site-nav-minimal .site-shell {
-  min-height: 5.5rem;
+  --nav-min-height: 5.5rem;
 }
 .site-nav-split nav[aria-label='Navegação principal'] {
   margin-inline-start: auto;

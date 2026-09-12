@@ -1,5 +1,41 @@
 # Validação e publicação
 
+## Navegação responsiva no harness, 12/09/2026
+
+A barra mobile anterior distribuía logo, CTA e Menu em várias linhas; abrir o
+menu aumentava a altura reservada do cabeçalho fixo. O renderer compartilhado
+agora mantém uma barra compacta e um painel independente, em todas as vibes e
+perfis legados, v2, v3 e v4. O [contrato responsivo](design.md#navegação-responsiva)
+entra na geração, edição e crítica. A revisão solicitada mede interação e recebe
+também os pixels do menu aberto; falhas geram `navegacao-responsiva`. O runner
+de avaliação conserva essas medições e a imagem do menu nos artefatos.
+
+Verificação local no `main` após os PRs #33 e #34:
+
+- `next typegen`, `tsc --noEmit`, lint global, formatação e `git diff --check`
+  passaram. `npm run build:vercel` passou, incluindo os três checks dos
+  artefatos de captura serverless.
+- `npm run test:sites`: 139 passaram e um teste de captura sem navegador foi
+  pulado. `npm run test:admin`: 138 passaram e sete integrações locais foram
+  puladas por ausência dos recursos opcionais nessa execução. Nenhum teste usou
+  banco remoto, Blob real ou geração paga.
+- `npm run test:sites:browser`: 41 passaram com Chromium e CSS do build. O gate
+  agora executa os arquivos em série, porque servidores Vite paralelos
+  compartilhavam o cache de otimização e produziam `504 Outdated Optimize Dep`.
+  `npm run test:admin:browser` usa a mesma serialização; seus dez casos passaram.
+- A navegação responde por 24 casos: quatro vibes nos perfis legado, v2, v3 e
+  v4, quatro layouts explícitos, contraste herdado, barra fixa e estática, logos
+  quadrados e largos, rótulos extensos, ausência de links ou CTA, toque, ciclo de
+  foco, Escape, Fechar, fundo, âncoras, rotação, desmontagem e HTML sem
+  JavaScript. Foram medidas 123 combinações em 320, 390, 768, 1024 e 1440 px,
+  além de 844 × 390 em paisagem, sem overflow ou erro de interação.
+
+As capturas usam dados sintéticos e Chromium; não representam ensaio em aparelho
+físico ou Safari. O contrato foi exercitado com modelos substituídos nos testes;
+seu efeito em uma nova geração paga ainda não foi avaliado. Nenhuma página de
+cliente foi republicada: a mudança alcança os sites existentes pelo renderer,
+sem regerar conteúdo nem alterar snapshots publicados.
+
 ## Correções da revisão do PR #33, 12/09/2026
 
 Corrigidos três problemas do fluxo de logo: estado antigo mantido no chat
