@@ -18,7 +18,10 @@ export function editPolicyFor(
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
   const header = /\b(header|nav|navbar|cabecalho|menu)\b/.test(request);
-  const other = /\b(hero|rodape|footer|galeria|gallery)\b/.test(request);
+  const other =
+    /\b(hero|rodape|footer|galeria|gallery|texto|titulo|logo|links?|cta|botao|fonte|tamanho)\b/.test(
+      request,
+    );
   const position = /\b(fix\w*|rolagem|scroll|grudad\w*)\b/.test(request);
   const background =
     /\b(bg|fundo|background|dark\w*|escur\w*|transparen\w*|opaci\w*|solid\w*)\b/.test(
@@ -46,7 +49,14 @@ export function editPolicyFor(
     ),
     paths: [
       ...(position ? ['position'] : []),
-      ...(background ? ['backgroundOpacity', 'presentation.tone'] : []),
+      ...(background
+        ? [
+            'backgroundOpacity',
+            'presentation.tone',
+            'presentation.background',
+            'presentation.foreground',
+          ]
+        : []),
     ],
   };
 }
@@ -62,9 +72,16 @@ const NAVIGATION_TOOLS = new Set([
   'get_page',
   'describe_block',
   'update_block',
+  'edit_page',
   'lint_page',
   'lint_site',
   'review_pages',
+]);
+const LEGACY_EDIT_TOOLS = new Set([
+  'update_block',
+  'insert_block',
+  'move_block',
+  'remove_block',
 ]);
 
 /** Remove capacidades do runtime, além do catálogo exposto ao modelo. */
@@ -74,7 +91,7 @@ export function editTools<T extends ToolSet>(tools: T, policy?: EditPolicy): T {
     Object.entries(tools).filter(([name]) =>
       policy.kind === 'navigation-style'
         ? NAVIGATION_TOOLS.has(name)
-        : !REBUILD_TOOLS.has(name),
+        : !REBUILD_TOOLS.has(name) && !LEGACY_EDIT_TOOLS.has(name),
     ),
   ) as T;
 }

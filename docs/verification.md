@@ -1,5 +1,54 @@
 # Validação e publicação
 
+## Edições pontuais pelo chat, 12/09/2026
+
+O [contrato de edição](chat-edits.md) reúne alterações por página em
+`edit_page`, com snapshot atual no contexto, caminhos aninhados, troca literal,
+posição relativa e cor exclusiva por seção. A gravação recusa versões antigas
+e novos erros de pre-flight; mantém os snapshots publicados. A prévia respeita
+conteúdo depois do rodapé. Não há migração de schema nem mudança de modelo ou
+do raciocínio `high`.
+
+Verificação local:
+
+- Tipos, lint global, formatação e `git diff --check` passaram. O
+  `npm run build:vercel` passou, incluindo os três checks dos artefatos de
+  captura serverless.
+- `npm run test:sites` com Chromium local: 127 casos passaram, sem pulos.
+  A suíte `tests/admin-*.test.mjs` passou nos 151 casos, também sem pulos,
+  usando PostgreSQL local descartável para as integrações. Duas conexões
+  leram a mesma versão; só uma gravou. A outra recebeu conflito, sem alterar
+  outra página, tenant ou snapshot publicado. Os casos também cobrem lote
+  inválido, texto padrão do renderer, nomes técnicos preservados e ambiguidade.
+- Navegador: 17 casos de sites e dez de admin passaram. O executor real,
+  renderer e CSS de produção foram conferidos em 1440, 390 e 320 px nas vibes
+  comercial, artística e moderna: texto, fundo exato, contraste, ordem após o
+  footer, um único `main`, sem overflow ou erro no navegador. Capturas em
+  `outputs/page-edits/browser/`.
+- A rota de chat foi exercitada com o SDK real e modelo simulado: página interna
+  em foco, resposta textual, recibo quando o loop termina após ferramenta e
+  pergunta por troca literal ambígua sem chamada ao modelo.
+- Smoke de `next start`: institucional e login responderam 200; o navegador
+  confirmou `/admin` redirecionando ao login. Chat, estado e publicação sem
+  sessão responderam 401. Nenhum dado de cliente foi usado nesse smoke.
+
+A avaliação paga com Gemini 3.8 Flash passou nos seis cenários sintéticos.
+Troca literal, campo aninhado, cor, inserção e movimento fizeram uma chamada de
+`edit_page` e uma gravação cada, em dois passos do modelo, com durações de
+12,6 a 18,7 segundos. O caso ambíguo testou diretamente a proteção do executor:
+uma tentativa recusada, nenhuma gravação e pergunta ao operador. Na rota,
+o reconhecimento restrito dessa frase pergunta antes do modelo. O
+[registro resumido](../evals/results/page-edits-2026-09-12.json) permite conferir
+os resultados sem incluir assinaturas do provedor ou credenciais. O ensaio usa
+o prompt e os executores do produto com páginas em memória; não acessa banco
+remoto, Blob nem publicação. Não é uma medição de latência em produção nem uma
+comparação estatística com a versão anterior.
+
+Limites: a atomicidade é por página. A preservação da ordem também passa a
+valer para arrays antigos que já tenham conteúdo depois do footer; esses
+blocos aparecerão na posição salva. A entrega foi validada localmente e não
+publica código nem páginas de clientes por si só.
+
 ## Refinamento da vibe artística, 12/09/2026
 
 O operador reprovou a home artística do cliente `grupofisk`: título de 48

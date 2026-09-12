@@ -142,6 +142,15 @@ problemas para orientar ajustes; nota baixa não abre uma fila de decisão.
 
 O chat recebe o histórico textual recente do cliente. Escreva mudanças específicas e indique a página quando necessário. Sugestões apenas preenchem a caixa; **Enviar** executa o pedido. Enter envia, Shift+Enter quebra a linha. Imagens podem ser anexadas, coladas ou arrastadas para a conversa.
 
+Para editar, selecione a página na prévia e peça, por exemplo: **“troque ‘Escolha
+com calma’ por ‘Compare os acabamentos’”**, **“mude só o fundo do bloco Como
+escolher para #173f54”** ou **“adicione um bloco de texto abaixo do rodapé”**.
+Também é possível mudar uma pergunta específica, mover uma seção antes de outra
+e combinar ajustes na mesma página. O restante do conteúdo é preservado. Se o
+mesmo texto aparecer em mais de um lugar, indique qual deles ou peça todas as
+ocorrências. Uma edição em outra aba pode exigir releitura antes de salvar. As
+alterações aparecem no rascunho; a publicação continua sendo uma ação separada.
+
 No computador, conversa e prévia ficam lado a lado; o ícone ao lado de abrir em outra aba recolhe a conversa e devolve a largura inteira à prévia, útil para conferir a versão desktop em telas menores. O mesmo botão a traz de volta, e um ponto âmbar nele avisa quando o agente ainda está trabalhando. No celular, alterne **Conversa** e **Prévia**. A barra do editor reúne identidade, áreas do cliente, prévia e publicação. O seletor mostra o caminho da página em edição e marca **rascunho** quando ela tem mudanças; ao lado ficam as larguras Desktop e Celular e o ícone que abre a página em foco em outra aba. Os links internos mantêm o modo de rascunho. A prévia exige sessão, não envia formulários e não registra eventos de tráfego.
 
 Os textos das 60 mensagens mais recentes são recuperados ao abrir a tela. Ferramentas, anexos e contagens de custo antigos não são restaurados. Registre decisões duráveis no briefing; não dependa de uma conversa extensa como única fonte do negócio.

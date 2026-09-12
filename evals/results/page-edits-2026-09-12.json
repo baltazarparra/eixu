@@ -1,0 +1,61 @@
+{
+  "date": "2026-09-12",
+  "model": "google/gemini-3.8-flash",
+  "scope": "Gemini real; prompt e executores do produto; páginas sintéticas em memória. Sem banco remoto, Blob ou publicação. Não é medição de latência em produção.",
+  "runs": [
+    {
+      "case": "text",
+      "correct": true,
+      "harnessVersion": "gemini-3.8-quality-v4-edicoes-pontuais",
+      "steps": 2,
+      "durationMs": 13242,
+      "calls": ["edit_page"],
+      "writes": 1
+    },
+    {
+      "case": "nested",
+      "correct": true,
+      "harnessVersion": "gemini-3.8-quality-v4-edicoes-pontuais",
+      "steps": 2,
+      "durationMs": 15737,
+      "calls": ["edit_page"],
+      "writes": 1
+    },
+    {
+      "case": "color",
+      "correct": true,
+      "harnessVersion": "gemini-3.8-quality-v4-edicoes-pontuais",
+      "steps": 2,
+      "durationMs": 18692,
+      "calls": ["edit_page"],
+      "writes": 1
+    },
+    {
+      "case": "insert",
+      "correct": true,
+      "harnessVersion": "gemini-3.8-quality-v4-edicoes-pontuais",
+      "steps": 2,
+      "durationMs": 12626,
+      "calls": ["edit_page"],
+      "writes": 1
+    },
+    {
+      "case": "move",
+      "correct": true,
+      "harnessVersion": "gemini-3.8-quality-v4-edicoes-pontuais",
+      "steps": 2,
+      "durationMs": 13614,
+      "calls": ["edit_page"],
+      "writes": 1
+    },
+    {
+      "case": "ambiguous",
+      "correct": true,
+      "harnessVersion": "gemini-3.8-quality-v4-edicoes-pontuais",
+      "steps": 2,
+      "durationMs": 29495,
+      "calls": ["edit_page"],
+      "writes": 0
+    }
+  ]
+}

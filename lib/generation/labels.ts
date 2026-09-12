@@ -122,6 +122,14 @@ export function describeTool(
       return pending
         ? `Ajustando um bloco em ${page}`
         : `Ajustou um bloco em ${page}`;
+    case 'edit_page':
+      return pending
+        ? `Aplicando alterações em ${page}`
+        : out.ok !== true
+          ? `Alterações em ${page} não foram salvas`
+          : out.changed === false
+            ? `${page} já estava como solicitado`
+            : `Alterações salvas no rascunho de ${page}`;
     case 'insert_block': {
       const type =
         (inp.block as { type?: string } | undefined)?.type ?? 'bloco';
