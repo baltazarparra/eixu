@@ -29,7 +29,10 @@ humano; não concede autorização para publicar.
 
 ## Cuidado com quem opera e com quem visita
 
-Falamos português do Brasil, de forma direta e humana. Adaptamos a voz ao negócio.
+Falamos português do Brasil com palavras do dia a dia, para quem tem pouca
+familiaridade com tecnologia e inglês. Adaptamos a voz ao negócio e à vibe sem
+aumentar a dificuldade da leitura nem infantilizar a pessoa. O contrato de
+escrita compartilhado pelo autor e pelo crítico fica em `lib/copy/policy.ts`.
 Explicamos o que mudou, o que foi verificado e o que ainda precisa de decisão, sem
 despejar detalhes internos no fluxo do operador.
 

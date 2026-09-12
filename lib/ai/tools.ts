@@ -220,7 +220,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
       };
       const blocks = toBlocks(input.blocks);
       const findings = lintPage(
-        { type: input.type, title: input.title, seo, blocks },
+        { type: input.type, title: input.title, seo, blocks, meta },
         activeBrand.design,
       );
       return { input, slug, seo, meta, blocks, findings };

@@ -1,5 +1,39 @@
 # Validação e publicação
 
+## Escrita simples e voz por vibe, 11/09/2026
+
+O [contrato de escrita](copy.md) passou a orientar geração, edição e crítica.
+Os validadores de página também apontam vocabulário e frases longas e recusam
+rótulos de ação pouco claros da lista explícita. Os recibos anteriores são
+invalidados pela nova versão do harness.
+
+- `npx next typegen && npx tsc --noEmit` e `npm run lint`: sem erros.
+- `npm run test:sites`: 95 testes passaram. Os dez novos cobrem as quatro
+  vibes em todas as fases/edições, fallback legado, mudança de vibe invalidando
+  recibo, leitura dos campos de texto, limites de palavra, exceções de contexto,
+  publicação do site/página bloqueada antes da escrita e liberada após reparo,
+  e envio de voz/textos/sinais ao crítico junto dos pixels.
+- `npm run test:admin`: 106 testes passaram e cinco foram pulados por falta de
+  configuração de Chrome (dois) e PostgreSQL local (três). A nova regressão usa
+  a ferramenta real de revisão com captura e modelo simulados para conferir
+  que erro de linguagem impede a conclusão e fica no recibo.
+- `npm run build:vercel`: build de produção aprovado, incluindo os três testes
+  dos arquivos de captura no artefato serverless.
+
+Os testes de publicação usam o serviço e o validador de página reais, com banco,
+acervo e validação global substituídos para isolar a regra de escrita. Os testes
+do crítico substituem o modelo: comprovam o transporte e os controles, não a
+qualidade da geração de texto. Não houve avaliação paga, teste de compreensão
+com pessoas do público, escrita remota ou publicação neste ciclo. Conteúdos de
+clientes existentes permanecem como estavam.
+
+Para a entrega em produção, a branch incorporou a `main` em `1ec319e`, mantendo
+a correção que permite publicar com avisos e recusa erros. O conflito neste
+histórico foi resolvido preservando os dois registros. Na base integrada,
+tipos e lint passaram; sites teve 95 testes aprovados e admin, 113 aprovados
+com os mesmos cinco pulos de ambiente. O build Next.js de produção e os três
+checks dos artefatos serverless foram repetidos antes da integração final.
+
 ## Correção do resumo da revisão no PR #22, 12/09/2026
 
 O resumo silencioso contava nomes de ferramentas, incluindo recusas devolvidas

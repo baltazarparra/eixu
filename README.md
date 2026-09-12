@@ -13,7 +13,7 @@ O modelo interno é **Gemini 3.8 Flash**, com raciocínio `high`. O harness prio
 - Páginas orgânicas, landing pages pagas, posts e páginas de agradecimento compostas por blocos com schemas Zod. O agente edita conteúdo por ferramentas; o painel também permite ajustar dados do cliente e gerenciar imagens.
 - Imagens geradas na conversa do site, com guia por cliente e crítica, disponíveis sem aprovação. A biblioteca em `/admin/[tenant]/imagens` mantém números para pedir alterações, como “atualize a imagem #5 com outro carro”. A nova versão substitui a anterior nos rascunhos e ambas ficam salvas; aplicar um logo continua sendo uma ação do usuário.
 - Contatos do cadastro renderizados sozinhos no site: telefones, e-mail e redes sociais no rodapé, e uma seção de localização com mapa acima dele quando há endereço.
-- Quatro vibes de site escolhidas na criação do cliente, que delimitam a direção de arte, o CSS e a direção de imagem.
+- Quatro vibes de site escolhidas na criação do cliente, com direção de arte, imagens e [voz de escrita](docs/copy.md) próprias. Todas usam linguagem simples, com verificação de textos e revisão de clareza.
 - Formulários, WhatsApp rastreado, atribuição de campanhas, exportação de contatos em CSV e painel de tráfego com gastos informados à mão.
 
 É um MVP de operação centralizada: há uma credencial administrativa compartilhada, sem contas ou permissões por cliente, cobrança ou integração automática com plataformas de anúncios. Os [limites atuais](docs/architecture.md#limites-atuais) fazem parte do contrato de desenvolvimento.
