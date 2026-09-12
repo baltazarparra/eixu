@@ -18,11 +18,15 @@ conversa e prévia são alternáveis.
 
 A prévia vazia durante a geração usa um diamante negro em WebGL
 (`components/admin/generation-diamond.tsx`): lapidação brilhante procedural com
-shader próprio, fresnel, refração com dispersão sobre um estúdio escuro e anel
-em âmbar `#f0a868` para as três etapas. Ele não estima porcentagem: fecha
-facetas e preenche o anel só com unidades medidas em `creationProgress`, a
-mesma leitura do painel. A versão compacta de 40 px acompanha a barra da prévia
-quando já existe página.
+shader próprio, fresnel e refração com dispersão sobre um estúdio escuro, sem
+anel. A pedra tem 70% da escala inicial e gira à metade da velocidade original.
+Passar o mouse ou arrastar com toque na pedra dá impulso horizontal: a favor
+do giro acelera; contra freia e pode inverter o sentido. O impulso se dissipa
+até a velocidade automática. Com movimento reduzido, só o gesto move a pedra,
+sem inércia; a rolagem vertical e o zoom por toque continuam disponíveis.
+Ele não estima porcentagem: fecha facetas só com unidades medidas em
+`creationProgress`, a mesma leitura do painel. A versão compacta mantém a área
+de 40 px na barra da prévia quando já existe página, com a pedra também menor.
 
 `app/(admin)/admin.css` concentra os tokens e componentes `admin-*`; os três
 grupos de rotas mantêm CSS e fontes separados. Textos funcionais pequenos usam

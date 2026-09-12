@@ -1,5 +1,34 @@
 # Validação e publicação
 
+## Ajuste do diamante e interação, 12/09/2026
+
+O anel foi removido da cena, incluindo geometria, shaders e estado exclusivo.
+A pedra usa 70% da escala anterior nas duas versões; a área compacta continua
+com 40 px. A velocidade automática caiu de 0,55 para 0,275 rad/s durante a
+geração e de 0,12 para 0,06 rad/s em espera. Mouse sobre a pedra e arraste por
+toque acrescentam impulso horizontal, permitindo acelerar, frear e inverter
+o giro, com retorno gradual à velocidade automática.
+
+Tipos, lint global, build Next.js com os três checks serverless e os oito
+testes de navegador do admin passaram. `test:sites` passou nos 104 casos;
+`test:admin` passou nos 117 executados, com três integrações PostgreSQL puladas
+por falta de `EIXU_TEST_POSTGRES_URL`.
+
+Uma fixture local com o componente real e CSS do build foi conferida em Chrome
+com SwiftShader, em 1000×800 e 390×844, com eventos nativos de mouse e toque
+emulado. A cena contém apenas a pedra. O giro medido passou de 0,275 para
+0,879 rad/s com o mouse, caiu para 0,383 com o gesto contrário e chegou a
+-0,346 ao inverter. Por toque, acelerou para 0,949 e inverteu para -0,591.
+A rolagem vertical continuou disponível e soltou a captura do ponteiro.
+Também passaram liberação fora da pedra, versão compacta, giro em espera,
+perda do contexto WebGL e movimento reduzido: manipulação direta sem giro
+automático nem inércia, incluindo mudança da preferência com a página aberta.
+Não houve erro de shader ou console.
+
+Capturas, fixture e medições ficam em `outputs/diamond-check/`, ignorado pelo
+Git. A verificação de toque usou emulação; não houve teste em aparelho físico
+nem deploy.
+
 ## Diamante da geração na prévia, 12/09/2026
 
 A prévia vazia durante a geração passou a mostrar um diamante negro em WebGL
