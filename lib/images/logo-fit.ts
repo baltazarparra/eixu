@@ -92,10 +92,11 @@ export type LogoFinding = {
 export function logoFindings(
   brand: LogoBrand,
   pages: PageLike[],
-  images: Pick<
+  images: (Pick<
     TenantImage,
     'seq' | 'kind' | 'status' | 'referenceUrls' | 'url'
-  >[],
+  > &
+    Partial<Pick<TenantImage, 'critique'>>)[],
 ): LogoFinding[] {
   const fit = brand.logoFit;
   if (!brand.logoUrl || !fit || fit.source !== brand.logoUrl) return [];
@@ -131,6 +132,7 @@ export function logoFindings(
     const white = images.find(
       (image) =>
         image.kind === 'logo' &&
+        image.critique?.variante === 'branca' &&
         image.status !== 'rejeitada' &&
         image.url !== brand.logoUrl &&
         image.referenceUrls?.includes(brand.logoUrl!),

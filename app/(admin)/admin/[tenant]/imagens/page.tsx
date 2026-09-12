@@ -1,3 +1,4 @@
+import { logoStudioSummary } from '@/lib/images/logo-studio-state';
 import { adminTenant } from '@/lib/admin/queries';
 import { notFound, redirect } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
@@ -36,6 +37,7 @@ export default async function ImagesPage({
         images,
         logoUrl: tenant.brand.logoUrl ?? null,
         logoDarkUrl: tenant.brand.logoDarkUrl ?? null,
+        logoStudioSummary: logoStudioSummary(tenant.brief, tenant.brand),
         usage: imageUsage(tenant, pages, images),
       }}
     />

@@ -25,6 +25,23 @@ export function describeTool(
   const pending = state !== 'output-available';
 
   switch (name) {
+    case 'logo_studio': {
+      if (pending) return 'Modernizando o logo em paralelo ao briefing';
+      if (out.status === 'failed')
+        return 'A modernização do logo não completou';
+      const applied = out.applied as { seq?: number } | undefined;
+      const proposals = Array.isArray(out.proposals)
+        ? (out.proposals as number[])
+        : [];
+      return applied?.seq
+        ? `Logo #${applied.seq} aplicado${proposals
+            .filter((seq) => seq !== applied.seq)
+            .map((seq) => `; #${seq} disponível`)
+            .join('')}`
+        : proposals.length
+          ? `Propostas ${proposals.map((seq) => `#${seq}`).join(' e ')} disponíveis`
+          : 'Logo preservado';
+    }
     // Agente de sites
     case 'build_site':
     case 'repair_site': {

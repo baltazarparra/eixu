@@ -1,79 +1,98 @@
 import { randomUUID } from 'node:crypto';
 import { after } from 'next/server';
 import { putTenantBlob } from '@/lib/blob/tenant-files';
-import { fetchReference } from '@/lib/images/logo';
+import { fetchReferenceRaw } from '@/lib/images/logo';
+import {
+  prepareLogoAsset,
+  prepareLogoRendition,
+} from '@/lib/images/logo-asset';
+import {
+  currentLogoAsset,
+  currentDarkLogoAsset,
+} from '@/lib/images/logo-schema';
 import { critiqueLogo } from '@/lib/images/logo-critic';
 import { measureLogoFit } from '@/lib/images/logo-measure';
 import { deriveWhiteLogo } from '@/lib/images/logo-white';
 import { insertImage } from '@/lib/images/queries';
-import { setBrandLogo, setBrandLogoDerived } from '@/lib/tenant-queries';
+import {
+  setBrandLogo,
+  setBrandLogoDark,
+  setBrandLogoDerived,
+} from '@/lib/tenant-queries';
 import type { Brand, Tenant } from '@/lib/types';
 
-/** Registrado em images.model: a versão branca não passa por modelo de imagem. */
 export const WHITE_LOGO_MODEL = 'sharp/luminance-cut';
-/** Superfície em que o crítico vê a versão branca: o papel das vibes escuras. */
 const DARK_PREVIEW = '#0b0e14';
-
 type LogoTenant = Pick<Tenant, 'id' | 'slug' | 'name'> & { brand: Brand };
+type ApplyOptions = { wait?: boolean; read?: boolean; signal?: AbortSignal };
 
-/**
- * Corre depois da resposta quando há request (rota, ação); fora dele, corre
- * solto e registra a falha. A derivação nunca decide o resultado da chamada
- * que aplicou o logo.
- */
+function guarded(run: () => Promise<void>) {
+  return run().catch((error) =>
+    console.warn(
+      '[logo] derivação falhou:',
+      error instanceof Error ? error.message : 'erro desconhecido',
+    ),
+  );
+}
+
 function defer(run: () => Promise<void>): void {
-  const guarded = () =>
-    run().catch((error) => {
-      console.warn('[logo] derivação da versão escura falhou:', error);
-    });
   try {
-    after(guarded);
+    after(() => guarded(run));
   } catch {
-    void guarded();
+    void guarded(run);
   }
 }
 
-/**
- * Aplica o logo e agenda a medição e a versão para fundo escuro. O logo
- * aplicado é decisão do operador; a versão escura é o mesmo logo adaptado ao
- * papel da seção, e só entra quando a medição e o crítico aprovam.
- */
 export async function applyBrandLogo(
   tenant: LogoTenant,
   url: string | null,
+  options: ApplyOptions = {},
 ): Promise<Brand> {
   const brand = (await setBrandLogo(tenant.id, url)) as Brand;
-  if (url) defer(() => deriveLogoAssets({ ...tenant, brand }, url));
+  if (url) {
+    const run = () =>
+      deriveLogoAssets({ ...tenant, brand }, url, {
+        ...options,
+        read: options.read ?? false,
+      });
+    if (options.wait) await guarded(run);
+    else defer(run);
+  }
   return brand;
 }
 
-/**
- * Mede o logo, grava a medição e deriva a versão branca. Idempotente para o
- * mesmo logo já derivado. Cada gravação confere a versão da aplicação: uma
- * escolha manual ou nova aplicação invalida o trabalho ainda em andamento.
- */
+/** Prepara o master antes de medir; ambas as gravações comparam a aplicação vigente. */
 export async function deriveLogoAssets(
   tenant: LogoTenant,
   source: string,
+  options: ApplyOptions = {},
 ): Promise<void> {
   const revision = tenant.brand.logoRevision;
-  // Aplicação e cadastro persistem a versão antes de agendar este trabalho.
   if (!revision) return;
-  if (tenant.brand.logoFit?.source === source && tenant.brand.logoDarkUrl)
+  if (
+    currentLogoAsset(tenant.brand)?.source === source &&
+    tenant.brand.logoFit?.source === source &&
+    currentDarkLogoAsset(tenant.brand)
+  )
     return;
-  // SVG, webp e formatos exóticos viram PNG de até 1024 px, com o alfa.
-  const original = await fetchReference(source);
-  const fit = await measureLogoFit(original, source);
-  if (!(await setBrandLogoDerived(tenant.id, source, { fit }, revision)))
+  const { bytes: original } = await fetchReferenceRaw(source, options.signal);
+  options.signal?.throwIfAborted();
+  const { asset, master } = await prepareLogoAsset({
+    tenant,
+    source,
+    bytes: original,
+    read: options.read ?? true,
+  });
+  const fit = await measureLogoFit(
+    asset.background === 'opaque' ? original : master,
+    source,
+  );
+  if (!(await setBrandLogoDerived(tenant.id, source, { fit, asset }, revision)))
     return;
-
-  const white = await deriveWhiteLogo(original);
-  if (!white) {
-    console.info(
-      `[logo] ${tenant.slug}: sem versão branca por recorte; o chat pode pedir uma ao modelo.`,
-    );
-    return;
-  }
+  Object.assign(tenant.brand, { logoFit: fit, logoAsset: asset });
+  const white = await deriveWhiteLogo(master);
+  if (!white) return;
+  options.signal?.throwIfAborted();
   const batchId = randomUUID();
   const blob = await putTenantBlob(
     tenant.id,
@@ -86,13 +105,15 @@ export async function deriveLogoAssets(
     batchId,
     requestText: 'Versão branca do logo para fundo escuro',
     targetBlock: 'logo',
-    ratio: '1:1',
+    ratio: white.width > white.height ? '4:3' : '1:1',
     model: WHITE_LOGO_MODEL,
     promptFinal: `Recorte por luminância de ${source}; cobertura ${white.coverage}.`,
     url: blob.url,
     blobPath: blob.pathname,
     kind: 'logo',
     referenceUrls: [source],
+    width: white.width,
+    height: white.height,
   });
   const critique = await critiqueLogo({
     id: row.id,
@@ -101,14 +122,50 @@ export async function deriveLogoAssets(
     mode: 'derivar',
     brandName: tenant.name,
     wordmark: false,
-    reference: original,
+    reference: master,
     surface: DARK_PREVIEW,
+    signal: options.signal,
   });
-  if (critique.aprovado)
+  if (!critique.aprovado || options.signal?.aborted) return;
+  const { rendition: darkAsset } = await prepareLogoRendition(
+    { tenant, source: blob.url, bytes: white.png },
+    { dark: true },
+  );
+  if (
     await setBrandLogoDerived(
       tenant.id,
       source,
-      { darkUrl: blob.url },
+      { darkUrl: blob.url, darkAsset },
       revision,
-    );
+    )
+  )
+    Object.assign(tenant.brand, {
+      logoDarkUrl: blob.url,
+      logoDarkAsset: darkAsset,
+    });
+}
+
+/** Uma escolha manual escura invalida jobs antigos e recebe somente sua própria rendição. */
+export async function applyBrandLogoDark(
+  tenant: LogoTenant,
+  url: string | null,
+  options: ApplyOptions = {},
+): Promise<Brand> {
+  const brand = (await setBrandLogoDark(tenant.id, url)) as Brand;
+  if (url && brand.logoUrl && brand.logoRevision) {
+    const source = brand.logoUrl,
+      revision = brand.logoRevision;
+    const run = async () => {
+      const { bytes } = await fetchReferenceRaw(url, options.signal);
+      const { rendition: darkAsset } = await prepareLogoRendition(
+        { tenant, source: url, bytes },
+        { dark: true },
+      );
+      if (await setBrandLogoDerived(tenant.id, source, { darkAsset }, revision))
+        brand.logoDarkAsset = darkAsset;
+    };
+    if (options.wait) await guarded(run);
+    else defer(run);
+  }
+  return brand;
 }

@@ -44,6 +44,66 @@ export type Brand = {
   logoRevision?: string;
   /** Medição por pixel do logo aplicado; só vale enquanto `source` for o logoUrl. */
   logoFit?: LogoFit;
+  /** Assets de apresentação; válidos apenas para a URL que os originou. */
+  logoAsset?: LogoAsset;
+  logoDarkAsset?: LogoRendition;
+};
+
+export type LogoRendition = {
+  version: 1;
+  source: string;
+  sourceHash: string;
+  background: 'transparent' | 'removed' | 'opaque';
+  master: { url: string; width: number; height: number };
+  nav: { url: string; width: number; height: number };
+  svg?: { url: string; bytes: number; traced: boolean };
+  aspect: number;
+  displayHeight: 40 | 48 | 56 | 64;
+  preparedAt: string;
+};
+
+export type LogoAsset = LogoRendition & {
+  icon: {
+    svg?: string;
+    png32: string;
+    png192: string;
+    png512: string;
+    maskable512: string;
+    apple180: string;
+  };
+  og: { url: string; width: 1200; height: 630 };
+  mark?: {
+    box: [number, number, number, number];
+    from: 'componentes' | 'leitura';
+  };
+  reading?: {
+    nome?: string;
+    tipo: 'wordmark' | 'simbolo' | 'combinado';
+    readAt: string;
+  };
+};
+
+export type LogoStudioState = {
+  status: 'running' | 'done' | 'failed' | 'skipped';
+  sourceHash: string;
+  startedAt: string;
+  finishedAt?: string;
+  error?: string;
+  original?: { seq: number };
+  proposals: {
+    seq: number;
+    imageId: string;
+    variant: 'fiel' | 'ousada';
+    url: string;
+    score: number | null;
+    aprovado: boolean;
+    nomeCorreto: boolean | null;
+    fidelidade: number | null;
+    aspect: number;
+  }[];
+  recommended?: number;
+  applied?: { seq: number; at: string };
+  gate?: string;
 };
 
 /** Medição do logo feita ao aplicá-lo (lib/images/logo-measure.ts). */
@@ -144,6 +204,8 @@ export type TenantImage = {
   alt: string | null;
   description: string | null;
   createdAt: string;
+  width?: number;
+  height?: number;
 };
 
 export type Tenant = {

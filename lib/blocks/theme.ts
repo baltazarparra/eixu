@@ -1,4 +1,8 @@
 import {
+  currentLogoAsset,
+  currentDarkLogoAsset,
+} from '@/lib/images/logo-schema';
+import {
   accessibleAccent,
   contrastRatio,
   isDarkSurface,
@@ -174,4 +178,28 @@ export function logoFor(
   )
     return brand.logoDarkUrl;
   return brand.logoUrl;
+}
+
+/** Acrescenta dimensões reais sem mudar a regra de escolha por superfície. */
+export function logoImage(
+  brand: Brand,
+  presentation?: { tone?: string; background?: string },
+  navigation?: string,
+):
+  | { src: string; width?: number; height?: number; displayHeight: number }
+  | undefined {
+  const src = logoFor(brand, presentation, navigation);
+  if (!src) return undefined;
+  const asset =
+    src === brand.logoDarkUrl
+      ? currentDarkLogoAsset(brand)
+      : currentLogoAsset(brand);
+  return asset
+    ? {
+        src: asset.nav.url,
+        width: asset.nav.width,
+        height: asset.nav.height,
+        displayHeight: asset.displayHeight,
+      }
+    : { src, displayHeight: 48 };
 }

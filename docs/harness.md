@@ -25,11 +25,18 @@ prompt sozinho não garante.
 
 ## Modelo e orçamento de qualidade
 
-`lib/ai/models.ts` é a fonte única dos modelos e limites. O chat, os críticos de
-foto/logo, a descrição de avatar, a crítica do site renderizado e os runners usam
+`lib/ai/models.ts` é a fonte única dos modelos e limites. O chat, o crítico de
+foto, a descrição de avatar, a crítica do site renderizado e os runners usam
 `google/gemini-3.8-flash`. `EIXU_MODEL` permite configuração explícita do agente;
 `EIXU_CRITIC_MODEL` prevalece para os críticos, depois cai em `EIXU_MODEL` e no
 padrão. Antes de publicar, confira os valores do ambiente de destino.
+
+O fallback de leitura/crítica de logo é `anthropic/claude-sonnet-5`, escolhido
+pela sonda sintética de 12/09/2026 registrada em [Verificação](verification.md).
+Overrides explícitos continuam prevalecendo; o restante do produto mantém Gemini.
+Em um ambiente que já define `EIXU_MODEL` ou `EIXU_CRITIC_MODEL`, configure
+`EIXU_LOGO_CRITIC_MODEL=anthropic/claude-sonnet-5` para usar Sonnet somente no
+logo. Alterar o fallback no código não substitui essas variáveis existentes.
 
 O ID foi conferido no [catálogo do Gateway](https://vercel.com/ai-gateway/models/gemini-3.8-flash)
 e na [documentação do Google](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash).
@@ -44,15 +51,16 @@ thinking em `providerOptions` nem reduza saída a poucas centenas de tokens: o
 raciocínio também precisa caber. Os geradores de imagens mantêm seu modelo próprio;
 um modelo que entende imagens não necessariamente as gera.
 
-| Tarefa                        | Máximo de saída por passo |    Passos por turno |
-| ----------------------------- | ------------------------: | ------------------: |
-| Briefing e plano editorial    |                    16.384 |                  12 |
-| Cena individual (fallback)    |                     8.192 |                   2 |
-| Composição e reparo           |                    49.152 |                  24 |
-| Revisão e correção            |                    24.576 |                  32 |
-| Edição livre                  |                    24.576 |                  32 |
-| Crítica de foto, logo ou site |                    16.384 | chamada estruturada |
-| Descrição de avatar           |                     4.096 |     chamada textual |
+| Tarefa                        | Máximo de saída por passo |             Passos por turno |
+| ----------------------------- | ------------------------: | ---------------------------: |
+| Briefing e plano editorial    |                    16.384 |                           12 |
+| Cena individual (fallback)    |                     8.192 |                            2 |
+| Composição e reparo           |                    49.152 |                           24 |
+| Revisão e correção            |                    24.576 |                           32 |
+| Edição livre                  |                    24.576 |                           32 |
+| Crítica de foto, logo ou site |                    16.384 |          chamada estruturada |
+| Descrição de avatar           |                     4.096 |              chamada textual |
+| Leitura de logo               |                     2.048 | estruturada, 12 s, sem retry |
 
 São tetos operacionais, não metas de verbosidade. `lib/ai/agent.ts` instancia o
 `ToolLoopAgent` compartilhado entre chat e avaliação. O turno tem 760 segundos no
@@ -241,15 +249,33 @@ mesmo comando. O chat permite solicitar outra revisão explicitamente.
 
 ## Compor, observar, corrigir, conferir
 
-O fluxo continua briefing → cenas → composição → revisão. O planejamento escolhe
+O fluxo automático é briefing → cenas → composição, seguido de revisão humana.
+O planejamento escolhe
 alternativas coerentes com as referências visuais verificadas e o negócio,
 usando a vibe como apoio; o plano editorial diferencia as intenções das
 páginas. A composição grava o lote validado e usa `repair_site` para corrigir
 recusas sem reenviar tudo. Um lote salvo sem erros encerra o loop de composição
-por condição externa do SDK e segue para a revisão. Avisos de recorte são
+por condição externa do SDK e entrega a prévia ao operador. Avisos de recorte são
 julgados nos pixels; não provocam reenvios do projeto para zerar contagens.
 Erros continuam bloqueando a transição. Imagens ficam disponíveis por número, conforme o fluxo
-atual do produto; aplicar logo e publicar continuam dependendo do pedido.
+atual do produto; aplicar logo pelo chat e publicar continuam dependendo do pedido.
+
+O estúdio do briefing é um job paralelo ao agente, fora de `PHASE_TOOLS`.
+Prepara os assets, registra o original e gera fiel/ousada. A única aplicação
+automática é fiel aprovada, nome correto, nota ≥ 8 e fidelidade ≥ 7 sobre upload
+manual ainda atual. URL e revisão são comparadas no banco; o operador pode
+reverter pelo número. O runner aguarda o job, registra eventos/recibo e propaga
+a pausa; falha no estúdio não muda o resultado da fase. `EIXU_LOGO_AUTO_APPLY=0`
+mantém só as propostas. Isso não cria etapa Conferir nem publica páginas.
+
+Leitura multimodal e crítica de logo têm papel próprio: `EIXU_LOGO_CRITIC_MODEL`
+prevalece sobre `EIXU_CRITIC_MODEL` e `EIXU_MODEL`, depois usa o fallback do papel.
+A leitura recebe pixels, não base64 textual; erro vira ausência de leitura.
+O schema usa array homogêneo de quatro números para a caixa do símbolo, pois
+o provedor Gemini rejeita `items` em formato de tupla. A crítica vê o master
+recortado e a miniatura de altura real. `EIXU_LOGO_IMAGE_MODEL` mantém GPT Image 2
+como padrão; `input_fidelity` não é habilitado sem evidência da sonda.
+`HARNESS_VERSION` é `gemini-3.8-quality-v5-logo`, preservando o perfil v5 vigente.
 
 Na edição de um site existente, a rota deriva uma política da **mensagem atual**,
 sem herdar pedidos de reconstrução do histórico. Por padrão, remove `set_design`,

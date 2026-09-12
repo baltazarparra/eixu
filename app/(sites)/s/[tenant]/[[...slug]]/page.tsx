@@ -1,5 +1,5 @@
 import { cache } from 'react';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { RenderBlocks } from '@/lib/blocks/render';
@@ -18,6 +18,8 @@ import {
   referenceAspects,
 } from '@/lib/design/references';
 import { publicPage, publicTenant } from '@/lib/sites/snapshot';
+import { currentLogoAsset } from '@/lib/images/logo-schema';
+import { logoThemeColor, siteOrigin } from '@/lib/sites/logo-metadata';
 
 type Params = { tenant: string; slug?: string[] };
 type Props = {
@@ -58,8 +60,8 @@ export async function generateMetadata({
 
   // Canônica absoluta: relativa é ignorada pelos buscadores.
   const host = (await headers()).get('host') ?? `${tenant.slug}.eixu.com.br`;
-  const protocol = host.startsWith('localhost') ? 'http' : 'https';
-  const base = `${protocol}://${host}`;
+  const base = siteOrigin(host);
+  const asset = currentLogoAsset(renderedTenant.brand);
   // Home fica com a barra final; as demais sem barra, para não gerar duas
   // URLs equivalentes para o mesmo conteúdo.
   const canonical =
@@ -71,14 +73,69 @@ export async function generateMetadata({
     description: seo.description,
     robots: noindex ? { index: false, follow: false } : undefined,
     alternates: { canonical },
+    ...(asset
+      ? {
+          icons: {
+            icon: [
+              ...(asset.icon.svg
+                ? [{ url: asset.icon.svg, sizes: 'any', type: 'image/svg+xml' }]
+                : []),
+              { url: asset.icon.png32, sizes: '32x32', type: 'image/png' },
+              { url: asset.icon.png192, sizes: '192x192', type: 'image/png' },
+            ],
+            apple: [
+              { url: asset.icon.apple180, sizes: '180x180', type: 'image/png' },
+            ],
+          },
+          manifest: preview
+            ? `/manifest.webmanifest?__tenant=${tenant.slug}`
+            : '/manifest.webmanifest',
+        }
+      : {}),
+    twitter: {
+      card: asset ? 'summary_large_image' : 'summary',
+      title,
+      description: seo.description,
+      ...(asset ? { images: [asset.og.url] } : {}),
+    },
     openGraph: {
+      url: canonical,
       title,
       description: seo.description,
       type: renderedPage.type === 'post' ? 'article' : 'website',
       locale: renderedTenant.locale.replace('-', '_'),
       siteName: renderedTenant.name,
+      ...(asset
+        ? {
+            images: [
+              {
+                url: asset.og.url,
+                width: 1200,
+                height: 630,
+                alt: `Logo de ${renderedTenant.name}`,
+              },
+            ],
+          }
+        : {}),
     },
   };
+}
+
+export async function generateViewport({
+  params,
+  searchParams,
+}: Props): Promise<Viewport> {
+  const preview = (await searchParams).preview === '1';
+  if (preview && !(await isAuthenticated())) notFound();
+  const { tenant: slug, slug: parts } = await params;
+  const resolved = await resolve(slug, parts ?? []);
+  if (!resolved) return {};
+  if (!preview && !resolved.page.publishedBlocks) notFound();
+  const tenant = preview ? resolved.tenant : publicTenant(resolved.tenant);
+  const blocks = preview
+    ? resolved.page.blocks
+    : (resolved.page.publishedBlocks ?? []);
+  return { themeColor: logoThemeColor(tenant.brand, blocks) };
 }
 
 export default async function TenantPage({ params, searchParams }: Props) {
@@ -114,6 +171,9 @@ export default async function TenantPage({ params, searchParams }: Props) {
     ? await listPublishedPosts(tenant.id)
     : [];
   const pagePath = `/${page.slug}`;
+  const base = siteOrigin(
+    (await headers()).get('host') ?? `${tenant.slug}.eixu.com.br`,
+  );
 
   return (
     <div
@@ -155,7 +215,7 @@ export default async function TenantPage({ params, searchParams }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify(
-            structuredData(renderedTenant, renderedPage, isPreview),
+            structuredData(renderedTenant, renderedPage, isPreview, base),
           ).replace(/</g, '\\u003c'),
         }}
       />

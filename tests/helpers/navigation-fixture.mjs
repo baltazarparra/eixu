@@ -1,3 +1,4 @@
+import sharp from 'sharp';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { createElement } from 'react';
@@ -87,7 +88,22 @@ export async function navigationFixtureServer() {
 export async function navigationPage(browser) {
   const page = await browser.newPage();
   await page.setRequestInterception(true);
+  const nav = await sharp(
+    Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="384" height="256"><path d="M12 244V12h100v232z M140 244V12h232v80H220v72h152v80z" fill="#245b48"/></svg>',
+    ),
+  )
+    .png()
+    .toBuffer();
   page.on('request', (request) => {
+    if (request.url() === 'https://assets.test/nav-asset.png') {
+      void request.respond({
+        status: 200,
+        contentType: 'image/png',
+        body: nav,
+      });
+      return;
+    }
     if (request.url().startsWith('https://assets.test/')) {
       const width = request.url().includes('wide') ? 1600 : 640;
       const height = request.url().includes('logo') ? 640 : 480;

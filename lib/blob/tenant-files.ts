@@ -74,6 +74,31 @@ export function putTenantBlob(
   );
 }
 
+export type TenantBlobFile = {
+  path: string;
+  body: Parameters<typeof put>[1];
+  options: Parameters<typeof put>[2];
+};
+
+/** Um único lock mantém a exclusão aguardando todos os derivados, inclusive em falha parcial. */
+export function putTenantBlobs(tenantId: string, files: TenantBlobFile[]) {
+  return withTenantLock(tenantId, 'upload', async (tenant) => {
+    const results = await Promise.allSettled(
+      files.map((file) =>
+        put(
+          `${tenantBlobPrefix(tenant.slug)}${file.path}`,
+          file.body,
+          file.options,
+        ),
+      ),
+    );
+    return results.map((result) => {
+      if (result.status === 'rejected') throw result.reason;
+      return result.value;
+    });
+  });
+}
+
 /**
  * Apaga tudo o que o cliente tem no Blob: fotos geradas, logos, uploads e a
  * cópia do avatar social. Idempotente, para uma segunda tentativa depois de

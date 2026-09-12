@@ -10,7 +10,7 @@ import {
   SIGNATURE_MAP_LAYOUTS,
   signatureItemsInRenderOrder,
 } from '@/lib/design/structures';
-import { logoFor } from '@/lib/blocks/theme';
+import { logoImage } from '@/lib/blocks/theme';
 import { MotionLink } from '@/lib/blocks/motion';
 import { MobileNavigation } from '@/lib/blocks/mobile-navigation';
 import { NavigationFrame } from '@/lib/blocks/navigation-frame';
@@ -130,7 +130,8 @@ export function NavBar({
   ctx,
 }: NavBarProps & { ctx: RenderContext }) {
   const resolvedLayout = layout ?? ctx.tenant.brand.design?.navigation ?? 'bar';
-  const logo = logoFor(ctx.tenant.brand, presentation, resolvedLayout);
+  const logo = logoImage(ctx.tenant.brand, presentation, resolvedLayout);
+  const height = logoHeight ?? logo?.displayHeight ?? 48;
   const currentHref = previewHref(ctx.pagePath, ctx);
   const navigationLinks = links.map((link) => (
     <a
@@ -173,13 +174,17 @@ export function NavBar({
           >
             {logo ? (
               <img
-                src={logo}
+                src={logo.src}
                 alt={logoText}
-                width={logoHeight === undefined ? 160 : undefined}
-                height={logoHeight ?? 40}
+                width={
+                  logo.width && logo.height
+                    ? Math.round((logo.width / logo.height) * height)
+                    : undefined
+                }
+                height={height}
                 style={
                   {
-                    '--logo-height': `${logoHeight ?? 48}px`,
+                    '--logo-height': `${height}px`,
                   } as React.CSSProperties
                 }
                 className="site-nav-logo"
@@ -1322,7 +1327,8 @@ export function FooterCompact({
   presentation,
   ctx,
 }: FooterCompactProps & { ctx: RenderContext }) {
-  const logo = logoFor(ctx.tenant.brand, presentation);
+  const logo = logoImage(ctx.tenant.brand, presentation);
+  const height = logoHeight ?? Math.round((logo?.displayHeight ?? 48) * 0.75);
   return (
     <footer className={`site-footer site-footer-${layout} py-14`}>
       <div className={`${shell} flex flex-col gap-8`}>
@@ -1330,18 +1336,16 @@ export function FooterCompact({
           <div className="flex max-w-full flex-col gap-2">
             {logo ? (
               <img
-                src={logo}
+                src={logo.src}
                 alt={logoText}
-                width={logoHeight === undefined ? 140 : undefined}
-                height={logoHeight ?? 36}
-                style={
-                  logoHeight === undefined ? undefined : { height: logoHeight }
+                width={
+                  logo.width && logo.height
+                    ? Math.round((logo.width / logo.height) * height)
+                    : undefined
                 }
-                className={
-                  logoHeight === undefined
-                    ? 'h-8 w-auto max-w-[160px] object-contain'
-                    : 'w-auto max-w-full self-start object-contain object-left'
-                }
+                height={height}
+                style={{ height }}
+                className="w-auto max-w-full self-start object-contain object-left"
                 loading="lazy"
                 decoding="async"
               />

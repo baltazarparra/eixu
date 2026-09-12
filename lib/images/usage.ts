@@ -30,12 +30,19 @@ export function imageUsage(
       // A versão para fundo escuro é uso de logo tanto quanto a principal.
       const draft = tenant.brand;
       const published = tenant.publishedSnapshot?.brand;
-      if (draft.logoUrl === image.url || draft.logoDarkUrl === image.url)
+      if (
+        draft.logoUrl === image.url ||
+        draft.logoDarkUrl === image.url ||
+        containsUrl(draft.logoAsset, image.url) ||
+        containsUrl(draft.logoDarkAsset, image.url)
+      )
         usage.push({ scope: 'draft', page: null, block: null, kind: 'logo' });
       if (
         published &&
         (published.logoUrl === image.url ||
-          published.logoDarkUrl === image.url)
+          published.logoDarkUrl === image.url ||
+          containsUrl(published.logoAsset, image.url) ||
+          containsUrl(published.logoDarkAsset, image.url))
       )
         usage.push({
           scope: 'published',

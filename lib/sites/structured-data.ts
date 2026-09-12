@@ -1,17 +1,26 @@
 import { contactsOf, phoneE164, socialLinks } from '@/lib/tenant-contacts';
 import type { Page, Tenant } from '@/lib/types';
+import { currentLogoAsset } from '@/lib/images/logo-schema';
 
 /** SEO e FAQ seguem o mesmo snapshot que o visitante está vendo. */
-export function structuredData(tenant: Tenant, page: Page, preview = false) {
+export function structuredData(
+  tenant: Tenant,
+  page: Page,
+  preview = false,
+  base?: string,
+) {
   const seo = preview ? page.seo : (page.publishedSeo ?? {});
   const contacts = contactsOf(tenant.contacts, tenant.whatsapp);
   const phone = contacts.phones[0]?.number ?? tenant.whatsapp;
   const social = socialLinks(contacts).map((link) => link.url);
+  const asset = currentLogoAsset(tenant.brand);
   const graph: Record<string, unknown>[] = [
     {
       '@type': 'Organization',
       '@id': `#organization`,
       name: tenant.name,
+      ...(base ? { url: base } : {}),
+      ...(asset ? { logo: asset.icon.png512 } : {}),
       ...(phone ? { telephone: phoneE164(phone) } : {}),
       ...(tenant.contactEmail ? { email: tenant.contactEmail } : {}),
       ...(social.length ? { sameAs: social } : {}),

@@ -312,6 +312,7 @@ async function runnerFixture({
   stopping = false,
   /** Perfil social ainda em leitura na primeira consulta ao cliente. */
   socialReading = false,
+  logoStudio,
 } = {}) {
   const events = [];
   const messages = [];
@@ -337,6 +338,10 @@ async function runnerFixture({
   runs.set(run.id, run);
 
   const runner = await loadModule('lib/generation/runner.ts', {
+    '@/lib/images/logo-studio': {
+      shouldRunLogoStudio: () => Boolean(logoStudio),
+      runLogoStudio: logoStudio ?? (async () => ({ status: 'skipped' })),
+    },
     '@/lib/db': {
       db:
         () =>
@@ -873,3 +878,72 @@ await test('pausa recebida antes do próximo salto não abre chamada paga', asyn
   assert.equal(f.calls(), 0);
   assert.equal(f.run.status, 'paused');
 });
+
+await test('briefing aguarda estúdio paralelo, eventos e recibo sem depender dele para concluir', async () => {
+  for (const status of ['done', 'failed']) {
+    let started = false;
+    let finishLogo;
+    const completed = new Promise((resolve) => {
+      finishLogo = resolve;
+    });
+    const f = await runnerFixture({
+      states: [{ next: 'briefing' }, { next: 'cenas' }],
+      logoStudio: async (input) => {
+        started = true;
+        await input.onEvent({ kind: 'start', label: 'Modernizando o logo' });
+        await completed;
+        await input.persistReceipt('Recibo do logo sintético.');
+        await input.onEvent({
+          kind: 'end',
+          label: 'Estúdio concluído',
+          payload: { status },
+        });
+        return { status };
+      },
+      onGenerate: async () => {
+        assert.equal(started, true);
+        finishLogo();
+      },
+    });
+    const outcome = await f.executeStep(f.run);
+    assert.equal(outcome.kind, 'continue');
+    const events = f.events.filter((event) => event.tool === 'logo_studio');
+    assert.deepEqual(
+      events.map((event) => event.kind),
+      ['tool_start', 'tool_end'],
+    );
+    assert.equal(events[0].payload.callId, events[1].payload.callId);
+    assert.ok(
+      f.messages.some(
+        (message) => message.text === 'Recibo do logo sintético.',
+      ),
+    );
+    assert.equal(
+      f.events.find((event) => event.kind === 'phase_end').payload.logoStudio,
+      status,
+    );
+  }
+});
+
+await test(
+  'pausa aborta o estúdio mesmo depois de o agente terminar o briefing',
+  { timeout: 10_000 },
+  async () => {
+    let cancelled = false;
+    const f = await runnerFixture({
+      states: [{ next: 'briefing' }, { next: 'cenas' }],
+      stopping: true,
+      logoStudio: async ({ signal }) => {
+        await new Promise((resolve) =>
+          signal.addEventListener('abort', resolve, { once: true }),
+        );
+        cancelled = signal.aborted;
+        return { status: 'failed' };
+      },
+    });
+    assert.equal((await f.executeStep(f.run)).kind, 'paused');
+    assert.equal(cancelled, true);
+    assert.equal(f.events.at(-1).payload.stopReason, 'paused');
+    assert.equal(f.events.at(-1).payload.logoStudio, 'failed');
+  },
+);

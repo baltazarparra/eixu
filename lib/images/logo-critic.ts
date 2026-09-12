@@ -87,9 +87,12 @@ async function thumbnail(
   bytes: Uint8Array,
   background: string,
 ): Promise<Uint8Array> {
-  const png = await sharp(Buffer.from(bytes))
-    .resize(48, 48, { fit: 'inside' })
-    .resize(192, 192, { kernel: 'nearest' })
+  const small = await sharp(Buffer.from(bytes))
+    .resize({ height: 48 })
+    .png()
+    .toBuffer();
+  const png = await sharp(small)
+    .resize({ height: 192, kernel: 'nearest' })
     .flatten({ background })
     .png()
     .toBuffer();
@@ -150,6 +153,10 @@ export async function critiqueLogo(input: {
   reference?: Buffer;
   /** Superfície em que o logo vai ser usado; a versão branca precisa de escuro. */
   surface?: string;
+  signal?: AbortSignal;
+  /** Sonda sintética compara modelos sem gravar imagens no banco. */
+  model?: string;
+  persist?: boolean;
 }): Promise<Critique> {
   const precheck = await logoPrecheck(input.bytes);
   const derived = input.mode === 'derivar';
@@ -191,11 +198,12 @@ export async function critiqueLogo(input: {
     ];
 
     const { output } = await generateText({
-      model: productModel('critic'),
+      model: input.model ?? productModel('logo-critic'),
       ...modelSettings('critic'),
       output: Output.object({ schema: logoCritiqueSchema }),
       maxRetries: 1,
       timeout: { totalMs: CRITIC_TIMEOUT_MS },
+      abortSignal: input.signal,
       instructions: derived ? DERIVED_INSTRUCTIONS : GENERATED_INSTRUCTIONS,
       messages: [{ role: 'user', content }],
     });
@@ -230,7 +238,7 @@ export async function critiqueLogo(input: {
         transparentFraction: Number(precheck.transparentFraction.toFixed(3)),
       },
     };
-    await saveCritique(input.id, critique);
+    if (input.persist !== false) await saveCritique(input.id, critique);
     return critique;
   } catch (error) {
     const failed: Critique = {
@@ -244,7 +252,7 @@ export async function critiqueLogo(input: {
         transparentFraction: Number(precheck.transparentFraction.toFixed(3)),
       },
     };
-    await saveCritique(input.id, failed);
+    if (input.persist !== false) await saveCritique(input.id, failed);
     return failed;
   }
 }

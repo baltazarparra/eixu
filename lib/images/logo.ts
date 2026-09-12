@@ -3,6 +3,10 @@ import { generateImage } from 'ai';
 import { putTenantBlob } from '@/lib/blob/tenant-files';
 import sharp from 'sharp';
 import { insertImage } from '@/lib/images/queries';
+import { safeLogoSvg } from '@/lib/images/logo-trace';
+import { cleanLogo, prepareLogoRendition } from '@/lib/images/logo-asset';
+import { LOGO_IMAGE_MODEL } from '@/lib/ai/models';
+import { dimensionsFor } from '@/lib/images/ratios';
 import type { ImageGuide, Tenant, TenantImage } from '@/lib/types';
 
 /**
@@ -10,7 +14,6 @@ import type { ImageGuide, Tenant, TenantImage } from '@/lib/types';
  * PNG com alfa real, com e sem imagem de referência. O flux-kontext aceita a
  * referência mas entrega fundo branco, o que não serve para uma marca.
  */
-const LOGO_MODEL = 'openai/gpt-image-2';
 
 const MAX_REFERENCE_BYTES = 8 * 1024 * 1024;
 
@@ -27,16 +30,49 @@ export type LogoCandidate = TenantImage & {
   variant: LogoVariant;
 };
 
-/** Baixa o logo antigo do Blob e normaliza para PNG quadrado. */
-export async function fetchReference(url: string): Promise<Buffer> {
-  const response = await fetch(url);
+/** Baixa a origem sem perder o vetor, com limite de tamanho e prazo. */
+export async function fetchReferenceRaw(
+  url: string,
+  signal?: AbortSignal,
+): Promise<{ bytes: Buffer; contentType: string }> {
+  if (!/^https?:\/\//.test(url)) throw new Error('URL de referência inválida.');
+  const response = await fetch(url, {
+    signal: signal
+      ? AbortSignal.any([signal, AbortSignal.timeout(20_000)])
+      : AbortSignal.timeout(20_000),
+  });
   if (!response.ok)
     throw new Error(
       `Não consegui baixar a imagem de referência (${response.status}).`,
     );
-  const raw = Buffer.from(await response.arrayBuffer());
-  if (raw.length > MAX_REFERENCE_BYTES)
-    throw new Error('A imagem de referência passa de 8 MB.');
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error('Imagem de referência vazia.');
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    length += value.length;
+    if (length > MAX_REFERENCE_BYTES) {
+      await reader.cancel();
+      throw new Error('A imagem de referência passa de 8 MB.');
+    }
+    chunks.push(value);
+  }
+  const bytes = Buffer.concat(chunks);
+  safeLogoSvg(bytes);
+  return {
+    bytes,
+    contentType:
+      response.headers.get('content-type') ?? 'application/octet-stream',
+  };
+}
+
+export async function fetchReference(
+  url: string,
+  signal?: AbortSignal,
+): Promise<Buffer> {
+  const { bytes: raw } = await fetchReferenceRaw(url, signal);
   // SVG e formatos exóticos viram PNG; o modelo só aceita bitmap.
   return sharp(raw)
     .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
@@ -45,7 +81,7 @@ export async function fetchReference(url: string): Promise<Buffer> {
 }
 
 const BASE =
-  'Logotipo vetorial flat, formas limpas e sólidas, fundo totalmente transparente. Sem sombra, sem gradiente fotográfico, sem textura, sem mockup, sem moldura, sem cartão de visita, sem fundo colorido.';
+  'Logotipo vetorial flat, formas limpas e sólidas, fundo totalmente transparente. A arte ocupa pelo menos 80% da largura e da altura da tela, sem margens vazias, sem moldura. Sem sombra, sem gradiente fotográfico, sem textura, sem mockup, sem cartão de visita, sem fundo colorido.';
 
 function nameRule(brandName: string, wordmark: boolean): string {
   if (!wordmark)
@@ -120,6 +156,7 @@ export async function generateLogoCandidates(input: {
   referenceUrl?: string;
   variants: number;
   revision?: string;
+  signal?: AbortSignal;
 }): Promise<{ batchId: string; images: LogoCandidate[]; failures: string[] }> {
   const batchId = randomUUID();
   const variants = variantsFor(input.mode, input.variants);
@@ -143,17 +180,18 @@ export async function generateLogoCandidates(input: {
         ? `${basePrompt} Alteração solicitada: ${input.revision}. Este pedido prevalece sobre a preservação do original; mantenha apenas o que não foi solicitado mudar.`
         : basePrompt;
       const result = await generateImage({
-        model: LOGO_MODEL,
+        model: LOGO_IMAGE_MODEL,
         prompt: input.reference ? { text, images: [input.reference] } : text,
-        size: '1024x1024',
+        ...logoDimensions(input.wordmark),
         providerOptions: {
           openai: { background: 'transparent', output_format: 'png' },
         },
         maxRetries: 1,
+        abortSignal: input.signal,
       });
       if (result.warnings.length) {
         console.warn(
-          `[logo] ${LOGO_MODEL} ignorou parâmetros:`,
+          `[logo] ${LOGO_IMAGE_MODEL} ignorou parâmetros:`,
           JSON.stringify(result.warnings),
         );
       }
@@ -179,9 +217,8 @@ export async function generateLogoCandidates(input: {
       // mas quantizado: arte chapada em paleta cai de cerca de 880 KB para
       // 140 KB sem perda visível, e esse arquivo aparece em toda página do
       // cliente, na navegação e no rodapé.
-      const png = await sharp(Buffer.from(file.uint8Array))
-        .png({ palette: true, quality: 90, effort: 8 })
-        .toBuffer();
+      input.signal?.throwIfAborted();
+      const { master: png } = await cleanLogo(Buffer.from(file.uint8Array));
       const blob = await putTenantBlob(
         input.tenant.id,
         `logo/${batchId}/${variant}.png`,
@@ -189,20 +226,27 @@ export async function generateLogoCandidates(input: {
         { access: 'public', addRandomSuffix: false, contentType: 'image/png' },
       );
 
+      const { rendition, master } = await prepareLogoRendition({
+        tenant: input.tenant,
+        source: blob.url,
+        bytes: png,
+      });
       const row = await insertImage({
         tenantId: input.tenant.id,
         batchId,
         requestText,
         targetBlock: 'logo',
-        ratio: '1:1',
-        model: LOGO_MODEL,
+        ratio: input.wordmark ? '4:3' : '1:1',
+        model: LOGO_IMAGE_MODEL,
         promptFinal: text,
-        url: blob.url,
-        blobPath: blob.pathname,
+        url: rendition.master.url,
+        blobPath: new URL(rendition.master.url).pathname.slice(1),
+        width: rendition.master.width,
+        height: rendition.master.height,
         kind: 'logo',
         referenceUrls: input.referenceUrl ? [input.referenceUrl] : [],
       });
-      images.push({ ...row, bytes: new Uint8Array(png), variant });
+      images.push({ ...row, bytes: new Uint8Array(master), variant });
     } catch (error) {
       failures.push(
         `${variant}: ${error instanceof Error ? error.message.slice(0, 140) : 'falha ao salvar'}`,
@@ -211,4 +255,8 @@ export async function generateLogoCandidates(input: {
   }
 
   return { batchId, images, failures };
+}
+
+export function logoDimensions(wordmark: boolean, model = LOGO_IMAGE_MODEL) {
+  return dimensionsFor(model, wordmark ? '4:3' : '1:1');
 }
