@@ -19,16 +19,18 @@ Verificação local no `main` após os PRs #33 e #34:
   pulado. `npm run test:admin`: 138 passaram e sete integrações locais foram
   puladas por ausência dos recursos opcionais nessa execução. Nenhum teste usou
   banco remoto, Blob real ou geração paga.
-- `npm run test:sites:browser`: 41 passaram com Chromium e CSS do build. O gate
+- `npm run test:sites:browser`: 42 passaram com Chromium e CSS do build. O gate
   agora executa os arquivos em série, porque servidores Vite paralelos
   compartilhavam o cache de otimização e produziam `504 Outdated Optimize Dep`.
   `npm run test:admin:browser` usa a mesma serialização; seus dez casos passaram.
-- A navegação responde por 24 casos: quatro vibes nos perfis legado, v2, v3 e
+- A navegação responde por 25 casos: quatro vibes nos perfis legado, v2, v3 e
   v4, quatro layouts explícitos, contraste herdado, barra fixa e estática, logos
   quadrados e largos, rótulos extensos, ausência de links ou CTA, toque, ciclo de
   foco, Escape, Fechar, fundo, âncoras, rotação, desmontagem e HTML sem
   JavaScript. Foram medidas 123 combinações em 320, 390, 768, 1024 e 1440 px,
   além de 844 × 390 em paisagem, sem overflow ou erro de interação.
+  Com movimento habilitado, o inspetor aguarda a animação do painel antes de
+  medir e capturar seus pixels.
 
 As capturas usam dados sintéticos e Chromium; não representam ensaio em aparelho
 físico ou Safari. O contrato foi exercitado com modelos substituídos nos testes;

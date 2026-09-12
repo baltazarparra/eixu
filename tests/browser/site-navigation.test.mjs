@@ -157,6 +157,30 @@ await test(
         },
       );
       await t.test(
+        'medição e captura aguardam a animação do painel',
+        async () => {
+          await page.emulateMediaFeatures([
+            { name: 'prefers-reduced-motion', value: 'no-preference' },
+          ]);
+          try {
+            await visit('layout=bar', 390);
+            await page.addStyleTag({
+              content:
+                '.site-menu-dialog[open] { animation-duration: 400ms !important; }',
+            });
+            const started = Date.now();
+            const check = await inspectNavigation(page);
+            assert.ok(Date.now() - started >= 300);
+            assert.deepEqual(check.navigation.issues, []);
+            assert.ok(check.menuJpeg?.length);
+          } finally {
+            await page.emulateMediaFeatures([
+              { name: 'prefers-reduced-motion', value: 'reduce' },
+            ]);
+          }
+        },
+      );
+      await t.test(
         'toque abre e fecha; medição recusa um painel que sai da viewport',
         async () => {
           await visit('layout=bar', 390);
