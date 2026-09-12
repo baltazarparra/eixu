@@ -102,7 +102,11 @@ await test(
             className: 'site-theme',
             'data-vibe': renderingVibeOf(tenant.brand),
             'data-reference-direction': referenceDirected ? 'true' : undefined,
-            'data-design-version': tenant.brand.design?.version,
+            'data-design-version':
+              tenant.brand.design?.version === 5
+                ? 4
+                : tenant.brand.design?.version,
+            'data-profile-version': tenant.brand.design?.version,
             'data-reference-aspects': aspects,
             'data-density': 'airy',
             'data-motion': 'still',
@@ -134,6 +138,7 @@ await test(
             return {
               vibe: theme.dataset.vibe,
               designVersion: theme.dataset.designVersion,
+              profileVersion: theme.dataset.profileVersion,
               aspects: theme.dataset.referenceAspects,
               width: innerWidth,
               scrollWidth: document.documentElement.scrollWidth,
@@ -163,11 +168,12 @@ await test(
             assert.equal(measured.chapterLine, '1px');
             assert.match(measured.leadFont, /Georgia/);
           }
-          // O perfil v4 preserva a vibe no renderer; a referência decide os
-          // aspectos que documentou. Antes qualquer leitura visual derrubava o
-          // site inteiro para a base comercial.
+          // O perfil v5 preserva a vibe no renderer; a referência decide os
+          // aspectos que documentou. O CSS reutiliza o contrato visual v4 e a
+          // versão persistida continua observável separadamente.
           assert.equal(measured.vibe, vibe);
           assert.equal(measured.designVersion, '4');
+          assert.equal(measured.profileVersion, '5');
           assert.match(measured.aspects, /surface/);
           // A superfície documentada vale como está, sem a lavagem artística.
           assert.equal(measured.surface, '#eeeeee');

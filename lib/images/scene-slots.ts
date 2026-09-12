@@ -27,6 +27,7 @@ export const SCENE_TARGET_BLOCKS = [
   'editorial.resources',
   'media.image',
   'media.gallery',
+  'signature.composition',
 ] as const;
 
 export const plannedSceneInputSchema = z.object({

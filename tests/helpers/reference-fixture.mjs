@@ -38,6 +38,9 @@ export const direction = {
   },
   concept: 'Recortes da matéria em escala arquitetônica',
   signatureElement: 'Janela vertical de matéria',
+  structure: 'moderno-sistema',
+  structureRationale:
+    'O mapa de sistema relaciona materiais, aplicações e orientação antes do contato.',
   accent: '#87522a',
   accentAlt: '#315b48',
   ink: '#111111',

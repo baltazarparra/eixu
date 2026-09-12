@@ -108,6 +108,12 @@ function renderList(
                   {...(props as B.EditorialResourcesProps)}
                 />
               );
+            case 'signature.composition':
+              return (
+                <B.SignatureComposition
+                  {...(props as B.SignatureCompositionProps)}
+                />
+              );
             case 'nav.bar':
               return (
                 <B.NavBar key={key} {...(props as B.NavBarProps)} ctx={ctx} />

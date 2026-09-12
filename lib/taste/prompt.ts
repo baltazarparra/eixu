@@ -74,12 +74,12 @@ ${TYPOGRAPHY_DIRECTION}
   .join(
     '; ',
   )}), aplicada também aos controles e contatos, inclusive quando referências dirigem o visual. icon é opcional: prefira texto e fotos; use símbolo só quando ajudar a distinguir assuntos. Títulos de seção, rótulos, números, etapas e legendas não recebem adornos automáticos. Evite repetir símbolos na lista ou em seções vizinhas; omita os dispensáveis, sem trocar por ícones aleatórios para variar. Não use shield como promessa de certificação nem troque fotos por ícones. Foco, toque, abertura e seleção têm microinterações; elas não contam como seções com motion.
-- Comece pelo assunto: público, oferta, ação esperada, personalidade e evidências. Escolha um conceito concreto e um elemento-assinatura reconhecível. Se a direção servir sem alteração para outra empresa, ela está genérica.
-- set_design oferece seis composições de hero, ritmos, tratamentos de imagem, superfícies, motivos e pares tipográficos, dentro da faixa da vibe. Cada aspecto documentado em referenceDirection libera os eixos daquele aspecto: layout libera a navegação, typography as fontes, imagery o tratamento de imagem, rhythm o ritmo e a densidade, surface a superfície, o raio e a luminância. Composição de hero, motivo, variância e movimento continuam da vibe em qualquer caso. Sem referências verificadas, a ferramenta também recusa perfis próximos demais. Home com a silhueta de outro cliente continua recusada.
+- Comece pelo assunto: público, oferta, ação esperada, personalidade e evidências. Para site novo, compare as três estruturas da vibe e grave em structure a que melhor organiza esta jornada; explique a escolha em structureRationale. Escolha também um conceito concreto e um elemento-assinatura reconhecível. Se a direção servir sem alteração para outra empresa, ela está genérica.
+- set_design oferece três estruturas completas por vibe, seis composições de hero, ritmos, tratamentos de imagem, superfícies, motivos e pares tipográficos. Cada aspecto documentado em referenceDirection libera os eixos daquele aspecto: layout libera a navegação, typography as fontes, imagery o tratamento de imagem, rhythm o ritmo e a densidade, surface a superfície, o raio e a luminância. Estrutura, composição de hero, motivo, variância e movimento continuam da vibe em qualquer caso. A home com composição estrutural repetida continua recusada.
 - As cores da marca vêm do cadastro do cliente e não mudam: accent pinta seções e superfícies fortes, accentAlt é o tom complementar e a cor de acento fica nos botões e links, aplicada pelo renderizador. Escolha ink, paper e surface que leiam bem com elas. Não deixe a segunda cor apenas armazenada no perfil. Faça a tipografia cumprir um papel e evite vidro genérico, repetição de cards e rótulos.
 - hero.split aceita split, cover, poster, editorial, offset ou atelier. Atelier é composição de ambiente mais detalhe com secondaryImage, alt e captions. Outras composições distribuem a segunda imagem na narrativa. Não use imagem gerada como prova de obra, equipe ou instalação real: identifique como inspiração na legenda.
 - Em cada seção relevante, escolha layout e presentation. Em cada página orgânica, pelo menos duas seções variam tone, width, spacing, align ou edge; somente motion não satisfaz esse contrato.
-- signatureElement descreve algo que o renderer realmente mostra, citando onde. Não prometa faixas, veios ou grafismos fora das opções escolhidas.
+- signatureElement descreve o que a seção signature.composition realiza. Todo perfil v5 usa exatamente um desses blocos na home, no layout indicado pela estrutura, com papéis de conteúdo próprios e duas fotos geradas. Não prometa faixas, veios ou grafismos fora das opções escolhidas.
 - Mobile precisa preservar hierarquia e CTA. O renderizador reduz para uma coluna e respeita movimento reduzido; escolha títulos e recortes que continuem fortes em 390 px.
 - Escolha uma abertura, conteúdo que responda à necessidade e fechamento com cta.band ou form.lead. Prova só com evidência. Formulário exige obrigado (thank_you). paid_lp e thank_you com noindex.
 - Âncoras internas apontam ao campo anchor do bloco, sem # nesse campo. Use #contato para form.lead sem anchor. Links de navegação apontam a páginas ou âncoras que existem.`;
@@ -187,10 +187,13 @@ export function systemPrompt(
     editScope ? `## Escopo da edição atual\n${editScope}` : '',
     wantsComposition ? COMPOSITION : '',
     !legacy && (wantsComposition || wantsDirection)
-      ? `## Gramática da vibe ${VIBE_LABEL[vibe]}\n${grammarDirection(vibe)}`
+      ? `## Gramática da vibe ${VIBE_LABEL[vibe]}\n${grammarDirection(
+          vibe,
+          phase === 'briefing' ? undefined : tenant.brand.design,
+        )}`
       : '',
     legacy
-      ? `## Continuidade do perfil v${tenant.brand.design?.version}\nPreserve a composição e o plano de cenas existentes durante edição e retomada. A gramática v4 só entra numa nova direção solicitada pelo operador; set_design cria essa nova versão.`
+      ? `## Continuidade do perfil v${tenant.brand.design?.version}\nPreserve a composição e o plano de cenas existentes durante edição e retomada. A gramática v5 só entra numa nova direção solicitada pelo operador; set_design cria essa nova versão.`
       : '',
     wantsDirection
       ? referenceLed
@@ -211,6 +214,7 @@ export function systemPrompt(
       ? `## Catálogo\n${catalogForPrompt({
           fullSchema: phase === 'composicao' || phase === 'revisao',
           vibe: legacy ? undefined : vibe,
+          design: tenant.brand.design,
         })}`
       : '',
     scenePlan ? `## Plano de cenas\n${scenePlan}` : '',

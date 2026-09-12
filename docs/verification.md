@@ -1987,3 +1987,34 @@ esta entrega: ela muda o gerador, não o conteúdo já publicado.
 `EIXU_REVIEW_CAPTURE` não foi configurada em produção. Sem ela a revisão é
 estrutural; para ligar a captura, defina a variável no projeto e confira o
 tempo da função na primeira execução.
+
+## Estruturas v5 e composição autoral, 12/09/2026
+
+O perfil v5 passou a escolher uma entre três estruturas por vibe e a exigir
+uma única `signature.composition`, vinculada à estrutura escolhida. A seção
+autoral usa duas cenas geradas e entra na sequência estrutural, no plano de
+imagens, no catálogo do agente, no pre-flight e na comparação de silhueta.
+
+Os gates locais passaram:
+
+- `npx next typegen && npx tsc --noEmit`;
+- `npm run lint`;
+- `npm run test:sites`: 146 testes, 145 aprovados e 1 ignorado por depender do
+  ambiente de integração;
+- `npm run test:admin`: 144 testes, 137 aprovados e 7 ignorados por dependerem
+  de serviços ou configuração externa;
+- `npm run build:vercel`, incluindo os três testes dos artefatos de runtime;
+- suíte de sites no Chromium: 31 de 31 verificações aprovadas.
+
+O teste específico renderizou as 12 composições em 320, 390, 768 e 1440 px:
+48 combinações de estrutura e viewport, com checagem de overflow, imagens,
+papéis semânticos, limites dos itens, largura dos títulos e altura da seção.
+Foram inspecionadas capturas representativas das quatro famílias semânticas. A
+primeira captura de `ousado-manifesto` revelou títulos estreitos e uma página
+excessivamente alta; a grade e a escala foram corrigidas antes da rodada final.
+
+Esta validação não executou geração paga, mutação no banco, publicação de tenant
+ou avaliação humana pela rubrica. Ela comprova os contratos determinísticos, o
+renderizador e o CSS de produção com fixtures atuais; a variedade e a qualidade
+editorial das saídas reais ainda precisam ser medidas em uma rodada controlada
+com as três estruturas de cada vibe.

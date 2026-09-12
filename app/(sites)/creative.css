@@ -230,6 +230,359 @@
   background: var(--surface);
   color: var(--brand-ink);
 }
+
+/* ---------------------------------------------------- composição autoral v5
+ * Um único contrato de conteúdo produz quatro árvores semânticas. Cada uma
+ * ganha um arranjo próprio por estrutura, sem HTML/CSS livre por tenant.
+ */
+.site-signature {
+  overflow: clip;
+  border-bottom: 1px solid var(--line);
+}
+.site-signature-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(16rem, 0.75fr);
+  gap: 1.5rem 4rem;
+  align-items: end;
+  margin-bottom: clamp(2.5rem, 6vw, 5rem);
+}
+.site-signature-header .site-eyebrow {
+  grid-column: 1 / -1;
+}
+.site-signature-header > p:last-child {
+  max-width: 52ch;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.site-signature :is(ol, ul) {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.site-signature h3 {
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 2.2vw, 2rem);
+  font-weight: var(--display-weight, 600);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+}
+.site-signature-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.8rem;
+}
+.site-signature-copy > p:not(.site-signature-label) {
+  max-width: 46ch;
+  color: var(--muted);
+  line-height: 1.65;
+}
+.site-signature-label,
+.site-signature-media figcaption,
+.site-signature-step {
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+}
+.site-signature-media {
+  position: relative;
+  min-width: 0;
+}
+.site-signature-media img {
+  display: block;
+  width: 100%;
+  min-height: 12rem;
+  max-height: 32rem;
+  object-fit: cover;
+}
+.site-signature-media figcaption {
+  margin-top: 0.65rem;
+}
+
+/* Percurso: etapas encadeadas, com mídia alternada e ordem explícita. */
+.site-signature-path {
+  position: relative;
+  display: grid;
+  gap: 0;
+}
+.site-signature-path::before {
+  position: absolute;
+  inset-block: 1.25rem;
+  left: 1.25rem;
+  width: 1px;
+  content: '';
+  background: var(--line);
+}
+.site-signature-path > li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 1.5rem;
+  align-items: center;
+  padding: clamp(1.5rem, 4vw, 3.5rem) 0;
+  border-top: 1px solid var(--line);
+}
+.site-signature-path > li:nth-child(even) .site-signature-media {
+  order: 3;
+}
+.site-signature-path > li:nth-child(even) .site-signature-copy {
+  order: 2;
+}
+.site-signature-step {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+}
+.site-signature-campaign-sequence .site-signature-path {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.site-signature-campaign-sequence .site-signature-path::before {
+  display: none;
+}
+.site-signature-campaign-sequence .site-signature-path > li {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  border: 1px solid var(--line);
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+}
+.site-signature-campaign-sequence .site-signature-path > li:nth-child(even) {
+  transform: translateY(clamp(1.5rem, 4vw, 3rem));
+}
+.site-signature-story-orbit .site-signature-path::before {
+  left: 50%;
+}
+.site-signature-story-orbit .site-signature-path > li {
+  grid-template-columns: minmax(0, 1fr) 3rem minmax(0, 1fr);
+}
+.site-signature-story-orbit .site-signature-step {
+  grid-column: 2;
+}
+.site-signature-story-orbit .site-signature-media {
+  grid-column: 1;
+  grid-row: 1;
+}
+.site-signature-story-orbit .site-signature-copy {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+/* Lente: um foco dominante e recortes de apoio em grade assimétrica. */
+.site-signature-lens {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: clamp(1rem, 2vw, 1.5rem);
+}
+.site-signature-lens > article {
+  grid-column: span 4;
+  display: grid;
+  align-content: start;
+  gap: 1.25rem;
+  min-width: 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+.site-signature-lens > article[data-role='focus'] {
+  grid-column: span 8;
+  grid-row: span 2;
+}
+.site-signature-lens > article[data-role='focus'] .site-signature-media img {
+  min-height: clamp(20rem, 45vw, 37rem);
+}
+.site-signature-detail-lens .site-signature-lens > article {
+  padding: clamp(1rem, 2vw, 1.75rem);
+  border: 1px solid var(--line);
+}
+.site-signature-visual-selector
+  .site-signature-lens
+  > article[data-role='focus'] {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 0.6fr);
+  align-items: end;
+  padding: 0;
+  border: 0;
+}
+
+/* Mapa: uma cena principal e evidências conectadas em uma coluna lateral. */
+.site-signature-map {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(18rem, 0.8fr);
+  gap: clamp(2rem, 5vw, 5rem);
+  align-items: start;
+}
+.site-signature-map-focus {
+  display: grid;
+  gap: 1.5rem;
+  position: sticky;
+  top: 7rem;
+}
+.site-signature-map-support {
+  display: grid;
+}
+.site-signature-map-support > li {
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.75rem 0;
+  border-top: 1px solid var(--line);
+}
+.site-signature-system-map .site-signature-map-support > li {
+  position: relative;
+  padding-left: 2rem;
+}
+.site-signature-system-map .site-signature-map-support > li::before {
+  position: absolute;
+  top: 2.15rem;
+  left: 0;
+  width: 0.65rem;
+  height: 0.65rem;
+  content: '';
+  background: var(--highlight);
+  border-radius: 50%;
+  box-shadow: 0 0 0 0.35rem
+    color-mix(in oklab, var(--highlight) 18%, transparent);
+}
+.site-signature-material-table .site-signature-map-focus {
+  transform: rotate(-1deg);
+}
+.site-signature-material-table
+  .site-signature-map-support
+  > li:nth-child(even) {
+  transform: translateX(clamp(0rem, 4vw, 3rem));
+}
+.site-signature-proof-route .site-signature-map-focus {
+  padding: clamp(1.5rem, 4vw, 3rem);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+/* Ensaio: títulos e imagens compartilham a página como matéria editorial. */
+.site-signature-editorial {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(2rem, 7vw, 7rem) clamp(1.5rem, 5vw, 5rem);
+}
+.site-signature-editorial > article {
+  display: grid;
+  gap: 1.5rem;
+  align-content: start;
+}
+.site-signature-editorial > article:nth-child(3n + 1) {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
+  align-items: end;
+}
+.site-signature-editorial-index .site-signature-editorial > article {
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+}
+.site-signature-editorial-index .site-signature-editorial > article::before {
+  content: attr(data-index);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+.site-signature-impact-manifesto .site-signature-editorial {
+  grid-template-columns: minmax(0, 1fr);
+}
+.site-signature-impact-manifesto .site-signature-editorial > article {
+  grid-column: auto;
+  grid-template-columns: minmax(18rem, 0.9fr) minmax(0, 1.1fr);
+  align-items: center;
+  padding-block: 1.5rem;
+  border-top: 1px solid currentColor;
+}
+.site-signature-impact-manifesto
+  .site-signature-editorial
+  > article:not(:has(.site-signature-media)) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.site-signature-impact-manifesto
+  .site-signature-editorial
+  > article:not(:has(.site-signature-media))
+  .site-signature-copy {
+  max-width: 42rem;
+}
+.site-signature-impact-manifesto .site-signature-editorial h3 {
+  font-size: clamp(2.4rem, 5vw, 5.5rem);
+  line-height: 0.94;
+}
+.site-signature-editorial-spread
+  .site-signature-editorial
+  > article:nth-child(even) {
+  transform: translateY(clamp(1.5rem, 5vw, 4rem));
+}
+
+@media (max-width: 767px) {
+  .site-signature-header,
+  .site-signature-path > li,
+  .site-signature-story-orbit .site-signature-path > li,
+  .site-signature-map,
+  .site-signature-editorial,
+  .site-signature-editorial > article:nth-child(3n + 1),
+  .site-signature-impact-manifesto .site-signature-editorial > article,
+  .site-signature-visual-selector
+    .site-signature-lens
+    > article[data-role='focus'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .site-signature-path::before,
+  .site-signature-story-orbit .site-signature-path::before {
+    left: 1.25rem;
+  }
+  .site-signature-path > li,
+  .site-signature-story-orbit .site-signature-path > li {
+    padding-left: 4rem;
+  }
+  .site-signature-path > li .site-signature-step,
+  .site-signature-story-orbit .site-signature-path > li .site-signature-step {
+    position: absolute;
+    top: 1.5rem;
+    left: 0;
+  }
+  .site-signature-path > li :is(.site-signature-media, .site-signature-copy),
+  .site-signature-story-orbit
+    .site-signature-path
+    > li
+    :is(.site-signature-media, .site-signature-copy) {
+    grid-column: 1;
+    grid-row: auto;
+    order: initial;
+  }
+  .site-signature-campaign-sequence .site-signature-path {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+  .site-signature-campaign-sequence .site-signature-path > li:nth-child(even),
+  .site-signature-material-table .site-signature-map-focus,
+  .site-signature-material-table
+    .site-signature-map-support
+    > li:nth-child(even),
+  .site-signature-editorial-spread
+    .site-signature-editorial
+    > article:nth-child(even) {
+    transform: none;
+  }
+  .site-signature-lens {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .site-signature-lens > article,
+  .site-signature-lens > article[data-role='focus'] {
+    grid-column: auto;
+  }
+  .site-signature-map-focus {
+    position: static;
+  }
+  .site-signature-impact-manifesto .site-signature-editorial h3 {
+    font-size: clamp(2.25rem, 12vw, 3.4rem);
+  }
+}
 .site-explorer-photo {
   position: relative;
   min-height: 100%;

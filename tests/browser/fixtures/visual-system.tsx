@@ -15,12 +15,20 @@ export const VISUAL_PAIRS = {
   artistico: ['classic', 'literary'],
 } as const;
 
+const VISUAL_STRUCTURES = {
+  comercial: ['comercial-atendimento', 'split'],
+  moderno: ['moderno-editorial', 'editorial'],
+  ousado: ['ousado-campanha', 'poster'],
+  artistico: ['artistico-revista', 'offset'],
+} as const;
+
 export function visualTenant(
   vibe: Vibe,
   display?: string,
   body?: string,
 ): Tenant {
   const pair = VISUAL_PAIRS[vibe];
+  const [structure, heroComposition] = VISUAL_STRUCTURES[vibe];
   const dark = vibe === 'moderno';
   return {
     id: 'visual-fixture',
@@ -38,9 +46,12 @@ export function visualTenant(
       design: completeDesignProfile({
         concept: 'Matéria e forma em um estudo tipográfico',
         signatureElement: 'Símbolos e contraste entre título e leitura',
+        structure,
+        structureRationale:
+          'A estrutura sustenta o estudo visual e a leitura em diferentes telas.',
         displayFont: display ?? pair[0],
         bodyFont: body ?? pair[1],
-        heroComposition: 'editorial',
+        heroComposition,
         navigation: 'minimal',
         rhythm: 'chapters',
         imageTreatment: 'framed',
