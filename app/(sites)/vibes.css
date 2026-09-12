@@ -4,8 +4,14 @@
  * só o CSS realiza: escala tipográfica, respiro, superfície e tratamento.
  *
  * As regras anteriores das três vibes não comerciais continuam compatíveis
- * com perfis v2. A seção de contratos v3, mais abaixo, separa as quatro faixas
- * sem redesenhar automaticamente os sites já publicados.
+ * com perfis v2. A seção de contratos v3, mais abaixo, vale também para o v4 e
+ * separa as quatro faixas sem redesenhar automaticamente os sites já
+ * publicados.
+ *
+ * No perfil v4 a vibe chega ao renderer mesmo com referência verificada; antes
+ * qualquer leitura visual derrubava o site inteiro para a base comercial.
+ * `data-reference-aspects` lista o que a referência documentou, e as duas
+ * decisões mais opinativas da vibe saem do caminho do aspecto correspondente.
  *
  * Nada aqui toca variáveis emitidas por themeVars no atributo style (--radius,
  * fontes e cores): elas são inline e a faixa da vibe é quem as restringe.
@@ -147,7 +153,7 @@
       transparent 60%
     );
 }
-.site-theme[data-vibe='artistico']
+.site-theme[data-vibe='artistico']:not([data-reference-aspects~='surface'])
   main
   > .site-block:not([data-tone]):nth-child(3n + 2) {
   background-image: linear-gradient(
@@ -193,39 +199,68 @@
  * Perfis novos recebem combinações exclusivas no gate de set_design. Estes
  * ajustes ficam sob a versão para não redesenhar perfis publicados antigos.
  */
-.site-theme[data-design-version='3'][data-vibe='comercial'] {
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='comercial'] {
   --section-space: clamp(4.5rem, 8vw, 7.5rem);
 }
-.site-theme[data-design-version='3'][data-vibe='comercial'] .site-headline {
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='comercial']
+  .site-headline {
   max-width: 13ch;
   font-size: clamp(2.8rem, 6.2vw, 6rem);
   line-height: 0.98;
 }
-.site-theme[data-design-version='3'][data-vibe='comercial']
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='comercial']
   :is(.site-services-cards li, .site-steps-cards li, .site-faq-cards details) {
   border-top: 2px solid var(--accent);
   background: var(--paper);
   box-shadow: none;
 }
-.site-theme[data-design-version='3'][data-vibe='comercial'] .site-icon-badge {
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='comercial']
+  .site-icon-badge {
   width: 2.35rem;
   height: 2.35rem;
 }
 
-.site-theme[data-design-version='3'][data-vibe='moderno'] {
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno'] {
   background-image:
     linear-gradient(var(--line) 1px, transparent 1px),
     linear-gradient(90deg, var(--line) 1px, transparent 1px);
   background-size: min(8vw, 7rem) min(8vw, 7rem);
 }
-.site-theme[data-design-version='3'][data-vibe='moderno'] main > .site-block {
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  main
+  > .site-block {
   background-color: color-mix(in oklab, var(--paper) 94%, transparent);
 }
-.site-theme[data-design-version='3'][data-vibe='moderno'] .site-headline {
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  .site-headline {
   max-width: 16ch;
   font-size: clamp(2.5rem, 4.6vw, 4.8rem);
 }
-.site-theme[data-design-version='3'][data-vibe='moderno']
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
   :is(.site-eyebrow, .site-nav-link) {
   font-family: var(--font-body);
   font-size: 0.68rem;
@@ -233,15 +268,27 @@
   text-transform: uppercase;
 }
 
-.site-theme[data-design-version='3'][data-vibe='ousado'] .site-nav {
+/* Inversão do cabeçalho é decisão de layout. Uma referência que documenta
+   layout decide o cabeçalho dela; o resto da vibe continua. */
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='ousado']:not([data-reference-aspects~='layout'])
+  .site-nav {
   mix-blend-mode: difference;
   color: white;
 }
-.site-theme[data-design-version='3'][data-vibe='ousado']
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='ousado']
   :is(.site-services-cards, .site-steps-cards) {
   gap: 0;
 }
-.site-theme[data-design-version='3'][data-vibe='ousado']
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='ousado']
   :is(.site-services-cards li, .site-steps-cards li) {
   border: 0;
   border-top: 3px solid currentColor;
@@ -249,46 +296,74 @@
   background: transparent;
   box-shadow: none;
 }
-.site-theme[data-design-version='3'][data-vibe='ousado'] .site-icon-badge {
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='ousado']
+  .site-icon-badge {
   width: 3.25rem;
   height: 3.25rem;
   border: 2px solid currentColor;
   border-radius: 0;
 }
-.site-theme[data-design-version='3'][data-vibe='ousado']
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='ousado']
   main
   > .site-block[data-tone='ink'] {
   border-block: clamp(0.65rem, 1.3vw, 1.2rem) solid var(--highlight);
 }
 
-.site-theme[data-design-version='3'][data-vibe='artistico'] {
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='artistico'] {
   --section-space: clamp(5rem, 11vw, 11rem);
 }
-.site-theme[data-design-version='3'][data-vibe='artistico'] .site-headline {
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='artistico']
+  .site-headline {
   max-width: 11ch;
   font-size: clamp(3.2rem, 8vw, 8.4rem);
   font-style: italic;
 }
-.site-theme[data-design-version='3'][data-vibe='artistico']
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='artistico']
   main
   > .site-block:nth-child(even)
   > :is(section, article) {
   transform: translateX(clamp(-1.5rem, -2vw, -0.5rem));
 }
-.site-theme[data-design-version='3'][data-vibe='artistico'] .site-icon-badge {
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='artistico']
+  .site-icon-badge {
   width: 2.8rem;
   height: 2.8rem;
   transform: rotate(-8deg);
 }
 
 @media (max-width: 767px) {
-  .site-theme[data-design-version='3'][data-vibe='artistico']
+  .site-theme:is(
+      [data-design-version='3'],
+      [data-design-version='4']
+    )[data-vibe='artistico']
     main
     > .site-block:nth-child(even)
     > :is(section, article) {
     transform: none;
   }
-  .site-theme[data-design-version='3'][data-vibe='ousado'] .site-nav {
+  .site-theme:is(
+      [data-design-version='3'],
+      [data-design-version='4']
+    )[data-vibe='ousado']
+    .site-nav {
     mix-blend-mode: normal;
     color: var(--ink);
   }

@@ -1,6 +1,6 @@
 /** Política única do produto e das avaliações. IDs confirmados no AI Gateway. */
 export const DEFAULT_MODEL = 'google/gemini-3.8-flash';
-export const HARNESS_VERSION = 'gemini-3.8-quality-v2-copy';
+export const HARNESS_VERSION = 'gemini-3.8-quality-v3-gramatica';
 export const TURN_TIMEOUT_MS = 760_000;
 export const CRITIC_TIMEOUT_MS = 150_000;
 

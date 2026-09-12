@@ -15,12 +15,16 @@ export const reading = {
 };
 export const referenceDirection = {
   primaryUrl: url,
-  decisions: ['layout', 'typography', 'imagery', 'rhythm'].map((aspect) => ({
-    aspect,
-    sourceUrl: url,
-    observed: reading[aspect],
-    application: `Aplicar ${aspect} na abertura e capítulos com hero.split offset, galeria e narrative.split editorial.`,
-  })),
+  // surface entra porque a leitura descreve fundo branco: sem esse aspecto a
+  // faixa da vibe continua exigindo papel escuro no moderno.
+  decisions: ['layout', 'typography', 'imagery', 'rhythm', 'surface'].map(
+    (aspect) => ({
+      aspect,
+      sourceUrl: url,
+      observed: reading[aspect],
+      application: `Aplicar ${aspect} na abertura e capítulos com hero.split offset, galeria e narrative.split editorial.`,
+    }),
+  ),
   adaptations:
     'Preservar as cores cadastradas e fotos de matéria; manter a mesma escala e respiro nas páginas internas.',
 };
@@ -48,7 +52,7 @@ export const direction = {
   imageTreatment: 'framed',
   surfaceStyle: 'flat',
   motif: 'none',
-  variance: 7,
+  variance: 5,
   motion: 3,
   density: 3,
 };

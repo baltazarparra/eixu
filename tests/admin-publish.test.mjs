@@ -73,7 +73,10 @@ async function gate({
     '@/lib/tenant-queries': { listPages: async () => pages },
     '@/lib/images/queries': { listImages: async () => [] },
     '@/lib/design/uniqueness': {
-      hasDuplicateComposition: async () => duplicate,
+      compositionConflict: async () =>
+        duplicate ? { similarity: 0.8, shared: ['cta.band:band'] } : null,
+      compositionConflictMessage: (conflict) =>
+        `A silhueta da home repete ${Math.round(conflict.similarity * 100)}% de outro cliente.`,
     },
     '@/lib/taste/site': { ...taste, lintSite: () => siteFindings },
     '@/lib/taste/lint': {

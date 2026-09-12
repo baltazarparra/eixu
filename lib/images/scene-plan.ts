@@ -1,50 +1,30 @@
-import { z } from 'zod';
 import {
   RATIOS,
   expectedRatio,
   ratioFits,
   type Ratio,
 } from '@/lib/images/ratios';
+import {
+  SCENE_ROLES,
+  SCENE_TARGET_BLOCKS,
+  plannedSceneInputSchema,
+  type PlannedSceneInput,
+  type SceneRole,
+} from '@/lib/images/scene-slots';
+import {
+  VIBE_GRAMMAR,
+  heroCompositionFor,
+  type Vibe,
+} from '@/lib/design/vibes';
 import type { DesignProfile } from '@/lib/design/profile';
 
-export const SCENE_ROLES = [
-  'hero',
-  'hero-detail',
-  'protagonista',
-  'subpagina',
-  'apoio',
-] as const;
-export type SceneRole = (typeof SCENE_ROLES)[number];
-
-export const SCENE_TARGET_BLOCKS = [
-  'hero.split',
-  'hero.cover',
-  'hero.poster',
-  'hero.editorial',
-  'hero.offset',
-  'hero.atelier',
-  'narrative.split',
-  'feature.bento',
-  'feature.explorer',
-  'editorial.resources',
-  'media.image',
-  'media.gallery',
-] as const;
-
-export const plannedSceneInputSchema = z.object({
-  request: z
-    .string()
-    .min(30)
-    .max(500)
-    .describe(
-      'Cena concreta ligada ao conteúdo da página: assunto, ação, ambiente e enquadramento.',
-    ),
-  role: z.enum(SCENE_ROLES),
-  targetBlock: z.enum(SCENE_TARGET_BLOCKS),
-  page: z.string().max(160).optional(),
-});
-
-export type PlannedSceneInput = z.infer<typeof plannedSceneInputSchema>;
+export {
+  SCENE_ROLES,
+  SCENE_TARGET_BLOCKS,
+  plannedSceneInputSchema,
+  type PlannedSceneInput,
+  type SceneRole,
+};
 
 export type PlannedScene = {
   role: SceneRole;
@@ -59,14 +39,24 @@ export type PlannedScene = {
 /**
  * Repertório mínimo para a composição prevista no contrato: abertura, detalhe
  * de materialidade quando o hero é atelier, aplicações da seção protagonista e
- * uma cena por página orgânica. Sem esse plano o agente gerava duas fotos e
- * montava três páginas de texto.
+ * uma cena por página orgânica.
+ *
+ * Os alvos vêm da gramática da vibe (lib/design/vibes.ts), não de uma lista
+ * fixa. Antes o plano pedia sempre feature.explorer, narrative.split e
+ * media.image, e a foto nascia rotulada com esse bloco: a composição montava a
+ * mesma sequência em qualquer vibe, porque usar a foto em outro lugar virava
+ * aviso de proporção. Medido em 12/09/2026 nos clientes chiquinho e tech.
  */
 export function scenePlan(
   design: Pick<DesignProfile, 'heroComposition'> | undefined,
   organicPages = 3,
+  vibe: Vibe = 'comercial',
 ): PlannedScene[] {
-  const composition = design?.heroComposition ?? 'split';
+  const grammar = VIBE_GRAMMAR[vibe];
+  // A abertura da home pertence à vibe. Sob direção por referência o eixo pode
+  // ter sido escolhido fora da faixa; a cena segue a composição que a vibe
+  // sustenta, senão a foto nasceria na proporção de um hero que a home não usa.
+  const composition = heroCompositionFor(vibe, design?.heroComposition);
   const heroBlock = `hero.${composition}`;
   const scenes: PlannedScene[] = [
     {
@@ -83,16 +73,17 @@ export function scenePlan(
       ratio: expectedRatio('hero.atelier'),
       hint: 'O detalhe em primeiro plano que acompanha o ambiente na abertura.',
     });
+  const [protagonist] = grammar.protagonists[0].split(':');
   for (let i = 0; i < 2; i++)
     scenes.push({
       role: 'protagonista',
-      targetBlock: 'feature.explorer',
-      ratio: expectedRatio('feature.explorer'),
-      hint: 'Uma aplicação concreta do serviço ou produto, para a seção protagonista da home.',
+      targetBlock: protagonist,
+      ratio: expectedRatio(protagonist),
+      hint: `Uma aplicação concreta do serviço ou produto, para a seção protagonista da home em ${grammar.protagonists[0]}.`,
     });
   const inner = Math.max(0, Math.min(3, organicPages - 1));
   for (let i = 0; i < inner; i++) {
-    const block = i % 2 === 0 ? 'narrative.split' : 'media.image';
+    const block = grammar.support[i % grammar.support.length];
     scenes.push({
       role: 'subpagina',
       targetBlock: block,

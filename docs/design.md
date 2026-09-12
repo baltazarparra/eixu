@@ -160,13 +160,67 @@ linguagem visual; o conteúdo continua vindo do briefing do cliente.
 | `artistico` | Display editorial/clássica, hero offset/atelier, navegação flutuante, alternância, colagem/cutout, camadas e motivos de anéis ou cantos. |
 
 `lib/design/vibes.ts` guarda essas faixas, o texto de direção que entra no
-prompt e a direção de imagem por vibe. Sem referência visual verificada,
-`set_design` recusa a direção que sair da faixa, apontando eixo, valor recebido
-e valores permitidos. A trava de unicidade compara apenas clientes da mesma
-vibe e conserva a distância mínima de três eixos. Com referência verificada,
-as aplicações persistidas prevalecem e essa distância vira informação: não se
-trocam traços da fonte apenas para satisfazer enums. O catálogo tipográfico
-amplia as combinações estruturais dentro de cada faixa.
+prompt e a direção de imagem por vibe. `set_design` recusa a direção que sair
+da faixa, apontando eixo, valor recebido e valores permitidos. A trava de
+unicidade compara clientes da mesma vibe e conserva a distância mínima de três
+eixos quando não há referência verificada. O catálogo tipográfico amplia as
+combinações estruturais dentro de cada faixa.
+
+## Gramática da vibe
+
+Medido em 12/09/2026 nos clientes `chiquinho` (artístico) e `tech` (ousado),
+com vibes e referências diferentes: as duas homes tinham quatro das cinco
+seções iguais, nos mesmos layouts e na mesma ordem, e passavam em todos os
+gates. A silhueta não pertencia à vibe. Três causas se somavam.
+
+1. `scenePlan` pedia sempre os mesmos alvos, qualquer que fosse a vibe. A foto
+   nasce com `target_block` gravado e usá-la em outro bloco vira aviso de
+   proporção, então a composição montava exatamente o que a biblioteca
+   rotulava.
+2. Uma referência visual verificada pulava a faixa inteira em `set_design`, e
+   `renderingVibeOf` devolvia `comercial`: CSS da vibe, iconografia e tom da
+   localização sumiam junto.
+3. A trava de unicidade exigia igualdade exata da sequência, com tom e borda.
+   Trocar a cor de fundo de uma seção já passava.
+
+`VIBE_GRAMMAR` define, por vibe, a abertura da home, a seção protagonista, as
+aberturas internas, os fechamentos, as combinações a evitar e os alvos de cena
+das páginas internas. A notação é `tipo:layout`, e o layout ausente nas props é
+resolvido pelo padrão do componente (`DEFAULT_LAYOUT` em `lib/blocks/registry.ts`)
+ou, no hero e na navegação, pela composição do perfil.
+
+| Vibe        | Abertura da home                            | Seção protagonista                                     | Cenas das páginas internas           |
+| ----------- | ------------------------------------------- | ------------------------------------------------------ | ------------------------------------ |
+| `comercial` | `hero.split:split`, `hero.split:cover`      | `feature.explorer:showroom`, `feature.bento:gallery`   | `narrative.split`, `media.image`     |
+| `moderno`   | `hero.split:editorial`, `hero.split:offset` | `feature.bento:showcase`, `feature.explorer:panorama`  | `media.image`, `narrative.split`     |
+| `ousado`    | `hero.split:cover`, `hero.split:poster`     | `media.gallery:collage`, `media.gallery:grid`          | `media.image`, `media.image`         |
+| `artistico` | `hero.split:offset`, `hero.split:atelier`   | `media.gallery:masonry`, `editorial.resources:feature` | `narrative.split`, `narrative.split` |
+
+As aberturas saem da composição de hero da própria faixa, então o plano de
+cenas e a gramática nunca pedem proporções diferentes. `scenePlan` recebe a
+vibe e deriva os alvos dessa tabela; uma composição fora da faixa cai na que a
+vibe sustenta, para a foto de abertura nascer na proporção que a home exibe.
+`catalogForPrompt({ vibe })` marca o papel de cada bloco, e `grammarDirection`
+entra no prompt em toda fase com composição e na crítica visual.
+
+| Regra                           | Nível | O que exige                                                         |
+| ------------------------------- | ----- | ------------------------------------------------------------------- |
+| `abertura-fora-da-vibe`         | erro  | A primeira seção da home está na lista de aberturas da vibe.        |
+| `protagonista-fora-da-vibe`     | erro  | A home tem a seção protagonista da vibe, que carrega as duas fotos. |
+| `abertura-interna-fora-da-vibe` | aviso | A abertura de cada página interna sai da gramática.                 |
+| `fechamento-fora-da-vibe`       | aviso | A última seção da página é um fechamento da vibe.                   |
+| `secao-vetada`                  | aviso | Nenhuma seção usa uma combinação que contradiz a vibe.              |
+
+Essas regras valem só para o perfil versão 4. Sites publicados em v2 e v3
+continuam com a composição que já têm; recompor exige uma nova direção e uma
+nova publicação.
+
+A unicidade passou a medir proporção em vez de igualdade. `silhouette` reduz a
+página à sequência `tipo:layout`, sem texto, imagem nem tom;
+`silhouetteSimilarity` conta as seções em comum sobre a página maior; acima de
+`SILHOUETTE_LIMIT`, 0,75, a home é recusada em `build_site`, `set_blocks` e na
+publicação. As duas homes medidas em produção dão 0,80. A comparação atravessa
+todas as vibes e não devolve texto, nome ou imagem do outro cliente.
 
 O CSS por vibe fica em `app/(sites)/vibes.css`, sempre sob
 `.site-theme[data-vibe='…']`, e realiza o que só o CSS resolve: escala e peso
@@ -201,13 +255,23 @@ do cadastro e visualmente verificadas podem sustentar essas decisões. Texto
 lido, URL removida, fonte de outro contexto ou captura bloqueada não liberam
 a faixa. Sem leitura visual, o fallback mantém a vibe e exige lacuna declarada.
 
-Com esse plano persistido, a faixa da vibe deixa de restringir os eixos e a
-comparação de distância é informativa. O renderer usa `renderingVibeOf` para
-aplicar a base comercial neutra, preservando `brand.vibe` como escolha do
-cadastro. Assim CSS, lavagem de superfície, iconografia e localização não
-reimpõem a vibe sobre os tokens e as props da referência. Clientes sem esse
-plano preservam o comportamento anterior. Cores do operador, contraste,
-catálogo, composição mínima e bloqueio de home idêntica continuam obrigatórios.
+Com esse plano persistido, cada aspecto documentado libera os eixos daquele
+aspecto, e só eles: `layout` libera a navegação, `typography` as duas fontes,
+`imagery` o tratamento de imagem, `rhythm` o ritmo e a densidade, `surface` a
+superfície, o raio e a luminância de papel, tinta e superfície. Composição de
+hero, motivo, variância e movimento continuam da vibe em qualquer caso, porque
+são o que distingue dois clientes que citam a mesma referência. A comparação de
+distância entre perfis vira informativa; a trava de silhueta assume o papel de
+unicidade.
+
+No perfil v4 o renderer preserva `brand.vibe`: CSS da vibe, iconografia e tom
+da localização continuam valendo. `data-reference-aspects` lista no elemento
+raiz o que a referência documentou, e as duas decisões mais opinativas saem do
+caminho do aspecto correspondente: o cabeçalho invertido do ousado cede a
+`layout` e a lavagem de cor entre seções do artístico cede a `surface`, tanto
+no CSS quanto em `themeVars`. Perfis v2 e v3 com referência continuam na base
+comercial neutra com que foram publicados. Cores do operador, contraste,
+catálogo, composição mínima e a trava de silhueta continuam obrigatórios.
 
 A fonte principal organiza o conjunto; outras fontes complementam a mesma
 linguagem. Composição e cenas recebem as observações e o plano. A crítica
@@ -297,9 +361,9 @@ recomposição explícita e nova publicação.
 
 | Recurso              | Comportamento                                                                                                                                                                                                                                                                                                                                   |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Perfil persistido    | `brand.design`, versão 3, guarda conceito, elemento-assinatura, oito eixos estruturais e, quando verificada, `referenceDirection`. A leitura aceita v2 para preservar sites existentes. `tenant.brief` guarda também plano editorial e cenas semânticas.                                                                                        |
+| Perfil persistido    | `brand.design`, versão 4, guarda conceito, elemento-assinatura, oito eixos estruturais e, quando verificada, `referenceDirection`. A leitura aceita v2 e v3 para preservar sites existentes. `tenant.brief` guarda também plano editorial e cenas semânticas.                                                                                   |
 | Tipografia           | 14 famílias, dez opções de display e sete de corpo, descritas acima. `next/font` auto-hospeda os arquivos; o navegador carrega somente as famílias usadas. Escala, peso, entrelinha, medida, legendas e números têm papéis consistentes.                                                                                                        |
-| Vibe                 | `brand.vibe` limita eixos, raio, luminância do papel e dials quando não há referência verificada. `referenceDirection` prevalece sobre esses limites e desliga os overrides radicais de CSS da vibe; a voz escrita continua. Ausente significa `comercial`.                                                                                     |
+| Vibe                 | `brand.vibe` define a gramática da composição e limita eixos, raio, luminância do papel e dials. Cada aspecto de `referenceDirection` libera os eixos daquele aspecto; abertura, protagonista, motivo, variância e movimento continuam da vibe. A voz escrita continua. Ausente significa `comercial`.                                          |
 | Paleta               | O cadastro oferece uma sugestão por vibe. Enquanto `paletteSource` for `sugerida`, a direção pode adaptá-la ao negócio; editar qualquer cor muda a origem para `operador` e trava `accent`, `accentAlt` e `highlight`. `ink`, `paper` e `surface` continuam com a direção. Contraste AA e diferença entre primária/secundária permanecem gates. |
 | Composição global    | Seis heroes, quatro navegações, quatro ritmos, quatro tratamentos de imagem, quatro superfícies e cinco motivos formam a gramática do cliente. Dials controlam variância, densidade e motion. Atelier compõe ambiente e detalhe; não é padrão obrigatório.                                                                                      |
 | Apresentação local   | Todo bloco aceita `presentation`: tom (incluindo a cor secundária), largura, respiro, alinhamento, borda e motion (`none`, `reveal`, `stagger`, `image`). Use um a três momentos de movimento coerentes com a narrativa.                                                                                                                        |
@@ -312,7 +376,7 @@ recomposição explícita e nova publicação.
 
 `set_design` compara oito decisões estruturais com os perfis dos outros tenants da mesma vibe. Sem direção por referências verificadas, exige distância de três eixos. Com referências, essa distância é informativa: não se trocam os traços da fonte por variações arbitrárias. Nome, briefing, texto, imagens e identidade do outro cliente não são retornados ao agente.
 
-A home também recebe uma assinatura de composição baseada em sequência de tipos, layout, tom e borda das seções. Texto, URL e imagem são ignorados. `build_site`, `set_blocks`, as ferramentas de publicação e a API administrativa recusam uma home com assinatura idêntica a um rascunho ou snapshot publicado de outro tenant. Páginas com menos de quatro blocos de conteúdo ficam fora dessa trava para não forçar diferenças artificiais em obrigado ou páginas curtas.
+A home também é medida pela silhueta: a sequência `tipo:layout` das seções de conteúdo, com o layout resolvido como o visitante o vê. Texto, URL, imagem e tom são ignorados. `silhouetteSimilarity` conta as seções em comum sobre a página maior, e acima de 0,75 `build_site`, `set_blocks`, as ferramentas de publicação e a API administrativa recusam a home, listando as seções repetidas sem revelar o outro cliente. A régua anterior exigia igualdade exata da sequência inteira, incluindo tom e borda, então trocar a cor de fundo de uma seção já passava. Páginas com menos de quatro blocos de conteúdo ficam fora dessa trava para não forçar diferenças artificiais em obrigado ou páginas curtas.
 
 Essas verificações detectam repetição estrutural; não medem qualidade estética nem comprovam coerência semântica. A revisão visual precisa conferir a ligação entre briefing, imagens, silhueta, ritmo e elemento-assinatura. Trocar cores e fontes para vencer o gate não substitui uma direção própria. Uma empresa de pedras pode privilegiar matéria e aplicações; isso não obriga outros negócios a usar a mesma colagem ou as mesmas abas.
 

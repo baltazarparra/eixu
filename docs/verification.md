@@ -1,5 +1,44 @@
 # Validação e publicação
 
+## Gramática da vibe na composição, 12/09/2026
+
+Diagnóstico medido no banco de produção, em leitura apenas: `chiquinho`
+(artístico) e `tech` (ousado), com vibes e referências diferentes, tinham
+quatro das cinco seções da home iguais, nos mesmos layouts e na mesma ordem, e
+nenhum gate apontava nada. A silhueta medida pelos dois rascunhos dá 0,80 de
+similaridade, acima do limite de 0,75 que passou a recusar a home.
+
+A vibe passou a definir a silhueta: `VIBE_GRAMMAR` em `lib/design/vibes.ts`
+guarda abertura, seção protagonista, aberturas internas, fechamentos, vetos e
+alvos de cena; `scenePlan` deriva o repertório de fotos dessa gramática; o
+pre-flight recusa a home que abra fora dela ou sem a seção protagonista da
+vibe. Uma referência verificada deixou de pular a faixa inteira e passou a
+liberar só os eixos do aspecto documentado. O perfil subiu para a versão 4, que
+preserva a vibe no renderer; v2 e v3 continuam como foram publicados.
+
+Verificação na base `main` com as alterações locais:
+
+- `npx next typegen && npx tsc --noEmit`, `npm run lint`,
+  `npm run format -- --check README.md AGENTS.md docs`: sem erros.
+- `npm run test:sites`: 111 passaram, incluindo oito testes novos de gramática,
+  silhueta, faixa por aspecto e catálogo por vibe.
+- `npm run test:admin`: 115 passaram.
+- `EIXU_CHROME_PATH=... npm run test:sites:browser`: 16 passaram, com o teste
+  de referência conferindo no CSS real que a vibe permanece, que a superfície
+  documentada não recebe a lavagem artística e que não há rolagem horizontal
+  em 390 e 1440 px.
+- `EIXU_CHROME_PATH=... npm run test:admin:browser`: 8 passaram.
+- `npm run build:vercel`: Next.js 16.3.3 compilou e os três checks dos
+  artefatos serverless passaram.
+- Script de leitura contra o banco de produção, sem escrita: confirmou a
+  similaridade de 0,80, que os perfis v3 dos dois clientes não recebem
+  apontamento novo e que, sob a versão 4, a mesma composição receberia
+  `abertura-fora-da-vibe` e `protagonista-fora-da-vibe` nas duas homes.
+
+Não houve avaliação de geração com o modelo. Recompor `chiquinho` e `tech` com
+o perfil v4 é geração paga e depende de pedido do operador; os dois continuam
+no ar com a composição atual.
+
 ## Diamante da geração na prévia, 12/09/2026
 
 A prévia vazia durante a geração passou a mostrar um diamante negro em WebGL

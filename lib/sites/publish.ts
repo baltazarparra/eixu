@@ -1,6 +1,9 @@
 import { db } from '@/lib/db';
 import { isDesignProfile } from '@/lib/design/profile';
-import { hasDuplicateComposition } from '@/lib/design/uniqueness';
+import {
+  compositionConflict,
+  compositionConflictMessage,
+} from '@/lib/design/uniqueness';
 import { listImages } from '@/lib/images/queries';
 import { formatFindings, lintPage } from '@/lib/taste/lint';
 import { lintSite, publicationState } from '@/lib/taste/site';
@@ -47,19 +50,22 @@ export async function publishSite(
   // (proporção, ritmo tonal, silhueta) orientam a revisão e ficam à vista;
   // tratá-los como bloqueio deixava o botão Publicar habilitado e a
   // publicação recusada.
-  for (const finding of lintSite(live, images, 'publish'))
+  for (const finding of lintSite(live, images, 'publish', tenant.brand))
     if (finding.level === 'error')
       block(finding.page, formatFindings([finding]));
   const home = live.find((p) => p.slug === '');
-  if (
-    home &&
-    isDesignProfile(tenant.brand.design) &&
-    (await hasDuplicateComposition(tenant.id, home.blocks))
-  )
-    block(
-      '/',
-      'ERRO [composicao-duplicada] A home repete a silhueta estrutural de outro cliente.',
+  if (home && isDesignProfile(tenant.brand.design)) {
+    const conflict = await compositionConflict(
+      tenant.id,
+      home.blocks,
+      tenant.brand.design,
     );
+    if (conflict)
+      block(
+        '/',
+        `ERRO [composicao-duplicada] ${compositionConflictMessage(conflict)}`,
+      );
+  }
   const url = `https://${tenant.slug}.eixu.com.br`;
   const blocked = [...reasons].map(([page, lines]) => ({
     page,

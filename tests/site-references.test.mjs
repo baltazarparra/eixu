@@ -156,7 +156,7 @@ await test('sem referência verificada permanece a faixa, com lacuna declarada n
   assert.equal(f.queries.length, 0);
 });
 
-await test('todas as etapas mantêm evidência e prioridade; renderer não aplica lavagem nem preset da vibe antiga', () => {
+await test('todas as etapas mantêm evidência e prioridade; a referência modula aspectos e a vibe segue no renderer', () => {
   const tenant = referenceTenant();
   tenant.brand.design = completeDesignProfile(
     designProfileInputSchema.parse({ ...direction, referenceDirection }),
@@ -166,13 +166,27 @@ await test('todas as etapas mantêm evidência e prioridade; renderer não aplic
     const prompt = systemPrompt(tenant, '', '/', '', { phase, sources });
     assert.ok(prompt.includes(reading.rhythm), phase);
     assert.ok(prompt.includes(referenceDirection.adaptations), phase);
-    assert.match(prompt, /prevalecem sobre o estilo da vibe/);
+    assert.match(prompt, /acima do estilo da vibe/);
     assert.equal(prompt.includes('paper e surface quase pretos'), false);
     assert.equal(prompt.includes('Luz fria e controlada'), false);
+    // A silhueta continua sendo da vibe em todas as fases com composição.
+    if (phase !== 'briefing' && phase !== 'cenas')
+      assert.match(prompt, /Gramática obrigatória da vibe Moderno/, phase);
   }
   assert.equal(vibeOf(tenant.brand), 'moderno');
-  assert.equal(renderingVibeOf(tenant.brand), 'comercial');
+  // O perfil v4 conserva a vibe no renderer: a referência modula aspectos, e
+  // antes qualquer leitura visual derrubava o site para a base comercial.
+  assert.equal(tenant.brand.design.version, 4);
+  assert.equal(renderingVibeOf(tenant.brand), 'moderno');
   assert.equal(renderingVibeOf({ vibe: 'moderno' }), 'moderno');
+  // Perfis já publicados preservam a base neutra com que foram ao ar.
+  assert.equal(
+    renderingVibeOf({
+      ...tenant.brand,
+      design: { ...tenant.brand.design, version: 3 },
+    }),
+    'comercial',
+  );
   const artistic = {
     ...tenant.brand,
     vibe: 'artistico',
@@ -180,11 +194,27 @@ await test('todas as etapas mantêm evidência e prioridade; renderer não aplic
     surface: '#eeeeee',
     ink: '#111111',
   };
+  // A referência documenta superfície, então a lavagem artística não sobrepõe
+  // a superfície escolhida na direção.
   assert.equal(themeVars(artistic)['--surface'], '#eeeeee');
   assert.notEqual(
     themeVars({ ...artistic, design: undefined })['--surface'],
     '#eeeeee',
   );
+  // Sem o aspecto surface documentado, a lavagem da vibe volta a valer.
+  const semSuperficie = {
+    ...artistic,
+    design: {
+      ...artistic.design,
+      referenceDirection: {
+        ...referenceDirection,
+        decisions: referenceDirection.decisions.filter(
+          (d) => d.aspect !== 'surface',
+        ),
+      },
+    },
+  };
+  assert.notEqual(themeVars(semSuperficie)['--surface'], '#eeeeee');
   const old = reviewFingerprint(tenant, [], []);
   tenant.brand.design.referenceDirection.adaptations += ' Ajustar galeria.';
   assert.notEqual(reviewFingerprint(tenant, [], []), old);

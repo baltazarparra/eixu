@@ -1,5 +1,13 @@
-import { blockSchemas, familyOf, isBlockType } from '../blocks/registry';
+import {
+  DEFAULT_LAYOUT,
+  blockSchemas,
+  familyOf,
+  isBlockType,
+  type BlockType,
+} from '../blocks/registry';
 import { expectedRatio, ratioFits } from '../images/ratios';
+import { VIBE_GRAMMAR, VIBE_LABEL, vibeOf, type Vibe } from '../design/vibes';
+import type { DesignProfile } from '../design/profile';
 import type { BlockInstance, Page, TenantImage } from '../types';
 
 export type SitePage = Pick<
@@ -29,6 +37,56 @@ function layoutOf(block: BlockInstance): string | undefined {
     ? block.props.layout
     : undefined;
 }
+
+/**
+ * Layout que o visitante realmente vê. Sem `layout` nas props, hero e
+ * navegação caem na composição do perfil e os demais no padrão do componente.
+ * A gramática da vibe compara essa leitura, não o que foi digitado.
+ */
+export function resolvedLayout(
+  block: BlockInstance,
+  design?: Pick<DesignProfile, 'heroComposition' | 'navigation'>,
+): string {
+  const explicit = layoutOf(block);
+  if (explicit) return explicit;
+  if (block.type === 'hero.split') return design?.heroComposition ?? 'split';
+  if (block.type === 'nav.bar') return design?.navigation ?? 'bar';
+  return isBlockType(block.type)
+    ? (DEFAULT_LAYOUT[block.type as BlockType] ?? 'default')
+    : 'default';
+}
+
+/** Silhueta da página: tipo e layout de cada seção, sem texto nem imagem. */
+export function silhouette(
+  blocks: BlockInstance[],
+  design?: Pick<DesignProfile, 'heroComposition' | 'navigation'>,
+): string[] {
+  return contentBlocks(blocks).map(
+    (block) => `${block.type}:${resolvedLayout(block, design)}`,
+  );
+}
+
+/**
+ * Quanto duas silhuetas se repetem, de 0 a 1. Conta pares tipo:layout em comum
+ * sobre a página maior. A trava anterior exigia igualdade exata da sequência
+ * inteira, então trocar só o tom de uma seção já passava: em 12/09/2026 duas
+ * homes de vibes diferentes tinham 4 das 5 seções idênticas e nenhuma recusa.
+ */
+export function silhouetteSimilarity(a: string[], b: string[]): number {
+  if (!a.length || !b.length) return 0;
+  const pool = [...b];
+  let shared = 0;
+  for (const item of a) {
+    const index = pool.indexOf(item);
+    if (index === -1) continue;
+    pool.splice(index, 1);
+    shared += 1;
+  }
+  return shared / Math.max(a.length, b.length);
+}
+
+/** Acima disto duas páginas são a mesma composição pintada de outra cor. */
+export const SILHOUETTE_LIMIT = 0.75;
 
 function toneOf(block: BlockInstance): string {
   const presentation = block.props.presentation as
@@ -166,8 +224,13 @@ export function pageMetrics(
   };
 }
 
-export function siteMetrics(pages: SitePage[], images: TenantImage[]) {
+export function siteMetrics(
+  pages: SitePage[],
+  images: TenantImage[],
+  design?: Pick<DesignProfile, 'heroComposition' | 'navigation'>,
+) {
   const perPage = pages.map((page) => pageMetrics(page, images));
+  const home = pages.find((page) => page.slug === '');
   const organic = pages.filter(
     (p) =>
       ['page', 'post'].includes(p.type) && !p.seo.noindex && p.blocks.length,
@@ -175,6 +238,8 @@ export function siteMetrics(pages: SitePage[], images: TenantImage[]) {
   return {
     pages: perPage,
     home: perPage.find((p) => p.slug === '') ?? null,
+    /** Sequência tipo:layout da home, para comparar composições entre clientes. */
+    silhouette: home ? silhouette(home.blocks, design) : [],
     organic: organic.length,
     generatedPhotos: generatedPhotos(images).length,
     pagesWithoutImage: perPage.filter(
@@ -188,11 +253,83 @@ export function siteMetrics(pages: SitePage[], images: TenantImage[]) {
  * páginas aprovadas em todos os validadores anteriores ainda saíam como lista
  * de texto: sem foto no miolo, sem seção protagonista e com um tom só.
  */
+/**
+ * Gramática da vibe: a silhueta pertence à vibe escolhida no cadastro, e uma
+ * referência verificada decide dentro dela. Só vale para o perfil v4; sites
+ * publicados em v2 e v3 continuam com a composição que já têm.
+ */
+function grammarFindings(
+  pages: SitePage[],
+  vibe: Vibe,
+  design: Pick<DesignProfile, 'heroComposition' | 'navigation'>,
+): StructuralFinding[] {
+  const grammar = VIBE_GRAMMAR[vibe];
+  const findings: StructuralFinding[] = [];
+  const label = VIBE_LABEL[vibe];
+  for (const page of pages) {
+    if (page.type === 'thank_you' || page.type === 'post') continue;
+    const content = contentBlocks(page.blocks);
+    if (!content.length) continue;
+    const marks = content.map((block) => ({
+      block,
+      signature: `${block.type}:${resolvedLayout(block, design)}`,
+    }));
+    const path = `/${page.slug}`;
+    const home = page.slug === '';
+    const opening = marks[0];
+    const allowedOpenings = home
+      ? [...grammar.openings]
+      : [...new Set([...grammar.innerOpenings, ...grammar.openings])];
+    if (!allowedOpenings.includes(opening.signature))
+      findings.push({
+        page: path,
+        level: home ? 'error' : 'warn',
+        rule: home ? 'abertura-fora-da-vibe' : 'abertura-interna-fora-da-vibe',
+        blockId: opening.block.id,
+        blockIndex: 0,
+        blockType: opening.block.type,
+        message: `A abertura ${opening.signature} não pertence à vibe ${label}. Use uma destas: ${allowedOpenings.join(', ')}.`,
+      });
+    if (home && !marks.some((m) => grammar.protagonists.includes(m.signature)))
+      findings.push({
+        page: path,
+        level: 'error',
+        rule: 'protagonista-fora-da-vibe',
+        message: `A home precisa da seção protagonista da vibe ${label}: ${grammar.protagonists.join(' ou ')}. Ela carrega as duas fotos do cliente.`,
+      });
+    const closing = marks[marks.length - 1];
+    if (!grammar.closings.includes(closing.signature))
+      findings.push({
+        page: path,
+        level: 'warn',
+        rule: 'fechamento-fora-da-vibe',
+        blockId: closing.block.id,
+        blockIndex: marks.length - 1,
+        blockType: closing.block.type,
+        message: `O fechamento ${closing.signature} não é o da vibe ${label}. Prefira uma destas: ${grammar.closings.join(', ')}.`,
+      });
+    for (const [index, mark] of marks.entries())
+      if (grammar.avoid.includes(mark.signature))
+        findings.push({
+          page: path,
+          level: 'warn',
+          rule: 'secao-vetada',
+          blockId: mark.block.id,
+          blockIndex: index,
+          blockType: mark.block.type,
+          message: `${mark.signature} contradiz a vibe ${label}. Escolha outro layout para esta seção.`,
+        });
+  }
+  return findings;
+}
+
 export function structuralFindings(
   pages: SitePage[],
   images: TenantImage[],
+  brand?: { vibe?: string; design?: unknown },
 ): StructuralFinding[] {
   const findings: StructuralFinding[] = [];
+  const design = brand?.design as DesignProfile | undefined;
   const generated = generatedPhotos(images);
   const byUrl = new Map(generated.map((i) => [i.url, i]));
   const libraryByUrl = new Map(
@@ -296,6 +433,11 @@ export function structuralFindings(
         message: `A home usa ${tones.size} tom(ns) (${[...tones].join(', ')}). Alterne pelo menos três entre paper, soft, accent, secondary e ink para criar ritmo.`,
       });
   }
+
+  if (design?.version === 4)
+    findings.push(
+      ...grammarFindings(pages, vibeOf({ vibe: brand?.vibe }), design),
+    );
 
   return findings;
 }
