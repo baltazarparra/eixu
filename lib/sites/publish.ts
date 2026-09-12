@@ -7,8 +7,18 @@ import { lintSite, publicationState } from '@/lib/taste/site';
 import { listPages } from '@/lib/tenant-queries';
 import type { Tenant } from '@/lib/types';
 
+export type PublishResult = {
+  published: string[];
+  /** Uma entrada por página recusada, com os motivos do pre-flight. */
+  blocked: { page: string; preflight: string }[];
+  url: string;
+};
+
 /** API e agente publicam pelo mesmo gate e pela mesma transação. */
-export async function publishSite(tenant: Tenant, slug?: string) {
+export async function publishSite(
+  tenant: Tenant,
+  slug?: string,
+): Promise<PublishResult> {
   const [pages, images] = await Promise.all([
     listPages(tenant.id),
     listImages(tenant.id),
@@ -16,12 +26,13 @@ export async function publishSite(tenant: Tenant, slug?: string) {
   const clean = slug?.replace(/^\/+|\/+$/g, '');
   const targets =
     clean === undefined ? pages : pages.filter((p) => p.slug === clean);
-  const blocked: { page: string; preflight: string }[] = [];
+  // Motivos agrupados por página: o painel repetia "/" para cada regra e não
+  // dizia qual era o problema.
+  const reasons = new Map<string, string[]>();
+  const block = (page: string, preflight: string) =>
+    reasons.set(page, [...(reasons.get(page) ?? []), preflight]);
   if (!targets.length)
-    blocked.push({
-      page: clean ?? '/',
-      preflight: 'Nenhuma página encontrada para publicar.',
-    });
+    block(`/${clean ?? ''}`, 'Nenhuma página encontrada para publicar.');
   const ids = new Set(targets.map((p) => p.id));
   // Uma publicação pontual não pode contar rascunhos ainda fora do ar.
   const live = publicationState(pages, ids);
@@ -29,27 +40,31 @@ export async function publishSite(tenant: Tenant, slug?: string) {
     const errors = lintPage(page, tenant.brand.design).filter(
       (f) => f.level === 'error',
     );
-    if (errors.length)
-      blocked.push({
-        page: `/${page.slug}`,
-        preflight: formatFindings(errors),
-      });
+    if (errors.length) block(`/${page.slug}`, formatFindings(errors));
   }
+  // Só erro recusa o lote, como no pre-flight do painel. Avisos do contrato
+  // (proporção, ritmo tonal, silhueta) orientam a revisão e ficam à vista;
+  // tratá-los como bloqueio deixava o botão Publicar habilitado e a
+  // publicação recusada.
   for (const finding of lintSite(live, images, 'publish'))
-    blocked.push({ page: finding.page, preflight: formatFindings([finding]) });
+    if (finding.level === 'error')
+      block(finding.page, formatFindings([finding]));
   const home = live.find((p) => p.slug === '');
   if (
     home &&
     isDesignProfile(tenant.brand.design) &&
     (await hasDuplicateComposition(tenant.id, home.blocks))
   )
-    blocked.push({
-      page: '/',
-      preflight:
-        'ERRO [composicao-duplicada] A home repete a silhueta estrutural de outro cliente.',
-    });
+    block(
+      '/',
+      'ERRO [composicao-duplicada] A home repete a silhueta estrutural de outro cliente.',
+    );
   const url = `https://${tenant.slug}.eixu.com.br`;
-  if (blocked.length) return { published: [] as string[], blocked, url };
+  const blocked = [...reasons].map(([page, lines]) => ({
+    page,
+    preflight: lines.join('\n'),
+  }));
+  if (blocked.length) return { published: [], blocked, url };
   const sql = db();
   // Publica exatamente os valores validados, mesmo se um rascunho mudar durante a consulta.
   await sql.transaction([

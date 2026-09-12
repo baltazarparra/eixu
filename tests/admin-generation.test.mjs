@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ToolLoopAgent } from 'ai';
+import { ToolLoopAgent, stepCountIs } from 'ai';
 import { MockLanguageModelV4 } from 'ai/test';
 import { createJiti } from 'jiti';
 import { loadModule } from './helpers/load-module.mjs';
@@ -237,6 +237,8 @@ async function runnerFixture({
   text = 'Etapa concluída.',
   /** Passos do turno; o limite da fase muda o recibo persistido. */
   stepCount = 1,
+  /** Resultados de ferramenta por passo, para o resumo do turno silencioso. */
+  toolResults = [],
   stopping = false,
   /** Perfil social ainda em leitura na primeira consulta ao cliente. */
   socialReading = false,
@@ -373,6 +375,7 @@ async function runnerFixture({
             text,
             steps: Array.from({ length: stepCount }, (_, index) => ({
               text: index === stepCount - 1 ? text : '',
+              toolResults: toolResults[index] ?? [],
               providerMetadata: {},
             })),
             usage: {},
@@ -391,6 +394,178 @@ async function runnerFixture({
     calls: () => calls,
   };
 }
+
+await test('revisão sem texto do agente registra o resumo do turno antes do recibo', async () => {
+  // A conferência limpa encerra o laço no passo da ferramenta: o histórico
+  // recebia só "Progresso salvo", sem dizer o que a revisão fez.
+  const f = await runnerFixture({
+    states: [
+      { next: 'revisao', reviewRounds: 4 },
+      { next: 'pronto', reviewRounds: 5, reviewComplete: true },
+    ],
+    text: '',
+    stepCount: 3,
+    toolResults: [
+      [
+        {
+          toolName: 'review_pages',
+          output: { visual: 'complete', review: { complete: true } },
+        },
+      ],
+      [
+        { toolName: 'update_block', output: { ok: true } },
+        { toolName: 'lint_page' },
+      ],
+      [
+        {
+          toolName: 'review_pages',
+          output: { visual: 'complete', review: { complete: true } },
+        },
+      ],
+    ],
+  });
+  const outcome = await f.executeStep(f.run);
+  assert.equal(outcome.kind, 'done');
+  const reply = f.messages[1].text;
+  assert.match(
+    reply,
+    /^A revisão fez 2 leituras do rascunho renderizado e aplicou 1 ajuste\./,
+  );
+  assert.match(reply, /Progresso salvo: recibo sintético\. Parado\./);
+});
+
+await test('edição recusada pela ferramenta real não vira ajuste no resumo do SDK', async () => {
+  let writes = 0;
+  const { buildTools } = await loadModule('lib/ai/tools.ts', {
+    '@/lib/db': {
+      db: () => async () => {
+        writes += 1;
+        return [];
+      },
+    },
+    '@/lib/tenant-queries': {
+      getPage: async () => ({
+        id: 'page-1',
+        slug: '',
+        blocks: [
+          {
+            id: 'nav',
+            type: 'nav.bar',
+            props: { logoText: 'Teste', links: [] },
+          },
+        ],
+      }),
+    },
+  });
+  const tools = buildTools(
+    {
+      id: 'fixture',
+      slug: 'fixture',
+      name: 'Fixture',
+      brand: {},
+      brief: {},
+      dials: {},
+      imageGuide: {},
+    },
+    { phase: 'revisao' },
+  );
+  const result = await new ToolLoopAgent({
+    model: new MockLanguageModelV4({
+      doGenerate: async () => ({
+        content: [
+          {
+            type: 'tool-call',
+            toolCallId: 'rejected-edit',
+            toolName: 'update_block',
+            input: JSON.stringify({
+              page: '',
+              block: 'inexistente',
+              props: { logoText: 'Novo' },
+            }),
+          },
+        ],
+        finishReason: { unified: 'tool-calls', raw: 'tool-calls' },
+        usage: {
+          inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 },
+          outputTokens: { total: 10, text: 10, reasoning: 0 },
+        },
+        warnings: [],
+      }),
+    }),
+    tools: { update_block: tools.update_block },
+    stopWhen: stepCountIs(1),
+  }).generate({ prompt: 'Teste sintético sem rede.' });
+  assert.equal(writes, 0);
+  assert.match(result.steps[0].toolResults[0].output.error, /Nenhum bloco/);
+  const f = await runnerFixture({
+    states: [{ next: 'revisao', reviewRounds: 1 }],
+    text: '',
+    stepCount: result.steps.length,
+    toolResults: result.steps.map((step) => step.toolResults),
+  });
+  assert.equal((await f.executeStep(f.run)).kind, 'failed');
+  assert.match(f.messages[1].text, /fez 0 leituras.*aplicou 0 ajustes/);
+  assert.match(
+    f.messages[1].text,
+    /sem alterar o rascunho nem registrar leitura/,
+  );
+});
+
+await test('resumo conta leituras completas com achados e só edições confirmadas', async () => {
+  const refusedReads = [
+    { error: 'Limite de leituras atingido.' },
+    { visual: 'unavailable', review: { complete: false } },
+    { visual: 'disabled', review: { complete: false } },
+    { visual: 'complete', review: { complete: false } },
+    null,
+  ];
+  const edits = [
+    'update_block',
+    'insert_block',
+    'move_block',
+    'remove_block',
+    'set_blocks',
+    'set_seo',
+  ];
+  const results = [
+    ...refusedReads.map((output) => ({ toolName: 'review_pages', output })),
+    // Encontrar erros não significa falha de leitura: o recibo visual completou.
+    {
+      toolName: 'review_pages',
+      output: {
+        complete: false,
+        visual: 'complete',
+        review: { complete: true, errors: 2 },
+      },
+    },
+    {
+      toolName: 'review_pages',
+      output: {
+        complete: true,
+        visual: 'complete',
+        review: { complete: true, errors: 0 },
+      },
+    },
+    ...edits.flatMap((toolName) => [
+      { toolName, output: { error: 'Tentativa recusada.' } },
+      { toolName, output: { ok: false } },
+      { toolName, output: null },
+      { toolName, output: { ok: true } },
+    ]),
+    { toolName: 'lint_page', output: { ok: true } },
+  ];
+  const f = await runnerFixture({
+    states: [
+      { next: 'revisao', reviewRounds: 1 },
+      { next: 'pronto', reviewRounds: 2, reviewComplete: true },
+    ],
+    text: '',
+    toolResults: [results],
+  });
+  assert.equal((await f.executeStep(f.run)).kind, 'done');
+  assert.match(f.messages[1].text, /fez 2 leituras.*aplicou 6 ajustes/);
+  assert.match(f.messages[1].text, /Progresso salvo: recibo sintético/);
+});
 
 await test('a etapa grava linha do tempo, mensagens e aponta a próxima fase', async () => {
   const f = await runnerFixture({

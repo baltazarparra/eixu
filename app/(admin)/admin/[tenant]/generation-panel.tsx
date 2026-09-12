@@ -79,10 +79,13 @@ function statusLine(
       tone: 'err',
       text: run.error ?? 'A geração parou por um erro. Confira o chat.',
     };
+  // Um run só fecha como concluído quando o estado dizia "pronto". Se uma
+  // etapa voltou a existir, foi o rascunho, o acervo ou o gerador que mudaram
+  // depois; culpar a execução mandava o operador procurar um erro que não houve.
   if (run.status === 'done' && state.generation.next !== 'pronto')
     return {
       tone: 'warn',
-      text: 'A execução terminou com etapas pendentes. Confira a última resposta.',
+      text: 'A geração terminou, mas o rascunho ou o gerador mudaram depois disso. A revisão visual do rascunho atual está pendente; use Continuar para refazê-la.',
     };
   return null;
 }
