@@ -114,6 +114,42 @@ botão Continuar reabre uma rodada paga por cliente. A comparação de silhueta
 com outros clientes continua só no gate de publicação, fora do estado do
 painel.
 
+## Prioridade de referências no cadastro, 11/09/2026
+
+Referências do cadastro passaram a orientar estrutura, tipografia, imagens e
+ritmo acima da vibe, com leitura visual separada e aplicações persistidas para
+composição e crítica. O fallback de clientes sem leitura visual preserva a
+faixa, e a direção aplicada impede que o CSS da vibe volte a impor outro estilo.
+A implementação e seus limites estão em [Design](design.md#referências-acima-da-vibe).
+
+- Tipos, lint global e build Next.js de produção passaram, incluindo os três
+  checks dos artefatos de captura serverless.
+- Sites: 103 testes passaram, sem pulos. A regressão cobre leitura obrigatória,
+  fonte removida ou bloqueada, evidência só textual, prioridades contrárias à
+  vibe, paleta do operador, contraste e gravação no tenant correto. O plano
+  persiste em todas as fases e sua alteração invalida a revisão anterior.
+- Admin: 115 testes passaram; três integrações foram puladas por ausência de
+  PostgreSQL local. Os testes de captura com Chrome foram executados.
+- Navegador: 16 testes passaram, sem pulos. O caso novo mede as três vibes
+  restritivas com direção por referência em 390/1440 px, usando componentes e
+  CSS do build. Superfície, família tipográfica declarada e posição do hero
+  seguem a direção; não houve overflow. A suíte existente também verifica as
+  fontes reais, teclado, contraste e comportamento sem JavaScript.
+- O teste de captura externa executa CSS e JavaScript em navegador real,
+  verifica desktop/mobile, corte de altura, recusa de POST e rede privada,
+  inclusive após redirect. Uma página pesada no desktop não consome o
+  orçamento do mobile. Os testes de análise e crítica usam substitutos do
+  modelo e conferem bytes como partes de imagem, sem base64 no histórico.
+- Uma leitura pública do Linear confirmou extração textual e capturas nas duas
+  larguras. Recursos bloqueados/ausentes e corte de altura limitam essa leitura;
+  não a tratamos como observação integral da fonte. As capturas sintéticas e
+  desse ensaio ficam em `outputs/references/`, ignorado pelo Git.
+
+Sem migração, escrita remota, geração paga, publicação de código ou publicação
+de páginas de clientes. Os checks confirmam o contrato e a apresentação do
+renderer; a qualidade de uma geração completa com referências pelo Gemini
+continua sem avaliação real neste ciclo.
+
 ## Progresso da geração dentro da conversa, 11/09/2026
 
 O andamento ocupava a faixa superior da coluna direita e empurrava a prévia para

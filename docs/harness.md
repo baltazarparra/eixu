@@ -69,8 +69,11 @@ pixels. Erro material de linguagem impede a conclusão automática. A versão
 `gemini-3.8-quality-v2-copy` invalida recibos anteriores a esse critério.
 
 O prompt mantém fatos, restrições, vibe, marca, contatos, guia de imagens, fontes,
-plano editorial e biblioteca do tenant. Referências lidas acompanham também a
-composição e a revisão. `brief.pagePlan` guarda intenção, etapa de inbound,
+plano editorial e biblioteca do tenant. Referências visuais do cadastro prevalecem sobre a vibe. Capturas são
+analisadas em uma chamada multimodal separada; as observações em
+`brief.sources[].visual` e as aplicações em `brand.design.referenceDirection`
+acompanham cenas, composição e revisão. O crítico final confronta os pixels do
+rascunho com essa leitura persistida; não recebe os pixels originais da fonte. `brief.pagePlan` guarda intenção, etapa de inbound,
 conteúdo e evidências de cada página; é opcional no schema para ler briefings
 legados. O agente é instruído a preenchê-lo ao definir uma nova direção.
 
@@ -207,7 +210,8 @@ novamente** abre uma execução com novas rodadas, preservando o rascunho.
 ## Compor, observar, corrigir, conferir
 
 O fluxo continua briefing → cenas → composição → revisão. O planejamento escolhe
-alternativas coerentes com a vibe; o plano editorial diferencia as intenções das
+alternativas coerentes com as referências visuais verificadas e o negócio,
+usando a vibe como apoio; o plano editorial diferencia as intenções das
 páginas. A composição grava o lote validado e usa `repair_site` para corrigir
 recusas sem reenviar tudo. Um lote salvo sem erros encerra o loop de composição
 por condição externa do SDK e segue para a revisão. Avisos de recorte são

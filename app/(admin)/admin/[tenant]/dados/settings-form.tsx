@@ -203,8 +203,9 @@ export function SettingsForm({
             </p>
             <p className="mt-3 text-xs leading-relaxed text-[var(--color-muted)]">
               Vibe do site: <strong>{VIBE_LABEL[tenant.vibe]}</strong>.{' '}
-              {VIBE_HINT[tenant.vibe]} Ela é definida no cadastro; mudar exige
-              reconstruir as páginas na conversa do site.
+              {VIBE_HINT[tenant.vibe]} Referências visuais têm prioridade na
+              geração. Ela é definida no cadastro; mudar exige reconstruir as
+              páginas na conversa do site.
             </p>
           </fieldset>
         </form>

@@ -5,7 +5,7 @@
 // oxlint-disable next/no-img-element
 import { z } from 'zod';
 import { SiteIcon } from '@/lib/blocks/icon';
-import { vibeOf, type Vibe } from '@/lib/design/vibes';
+import { renderingVibeOf, type Vibe } from '@/lib/design/vibes';
 import { MotionLink } from '@/lib/blocks/motion';
 import { NavigationFrame } from '@/lib/blocks/navigation-frame';
 import { SocialIcon } from '@/lib/blocks/social-icons';
@@ -1077,7 +1077,7 @@ export function PricingTable({
  * continua sem campo de telefone, e-mail ou rede para o modelo preencher.
  */
 function FooterContacts({ ctx }: { ctx: RenderContext }) {
-  const vibe = vibeOf(ctx.tenant.brand);
+  const vibe = renderingVibeOf(ctx.tenant.brand);
   const contacts = contactsOf(ctx.tenant.contacts, ctx.tenant.whatsapp);
   const email = ctx.tenant.contactEmail;
   const social = socialLinks(contacts);
@@ -1468,7 +1468,7 @@ export function FloatingWhatsapp({ ctx }: { ctx: RenderContext }) {
     >
       <span
         className="site-icon"
-        data-icon-vibe={vibeOf(ctx.tenant.brand)}
+        data-icon-vibe={renderingVibeOf(ctx.tenant.brand)}
         aria-hidden="true"
       >
         <svg

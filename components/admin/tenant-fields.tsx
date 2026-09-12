@@ -113,8 +113,10 @@ export function TenantFields({
               placeholder="Uma URL por linha, até 3"
             />
             <small>
-              Site atual, materiais ou inspirações que o agente pode abrir.
-              Instagram e LinkedIn vão em Contatos, no campo Redes sociais.
+              Sites que devem orientar o resultado: estrutura, tipografia,
+              imagens e ritmo terão prioridade sobre a vibe, mantendo a marca e
+              a coerência do site completo. Instagram e LinkedIn vão em
+              Contatos, no campo Redes sociais.
             </small>
           </label>
           <EvidenceFields initial={intake.evidence} />

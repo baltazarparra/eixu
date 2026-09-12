@@ -121,8 +121,9 @@ e sensível. Todas usam palavras do dia a dia. `lib/copy/policy.ts` é a fonte
 compartilhada pela geração, edição e crítica; o estilo visual não autoriza
 inglês, jargão ou texto difícil.
 
-O operador escolhe a vibe no cadastro do cliente e ela vale para o site
-inteiro. `comercial` é o contrato descrito acima e não restringe nada; as
+O operador escolhe a vibe no cadastro como direção inicial para o site
+inteiro. Referências visuais informadas nesse cadastro têm prioridade sobre
+a vibe. Sem referência visual verificada, `comercial` não restringe e as
 outras três delimitam a faixa em que a direção de arte decide. Referências
 lidas em 10/09/2026: [Linear](https://linear.app/) para `moderno`,
 [14islands](https://www.14islands.com/) para `ousado` e
@@ -137,8 +138,9 @@ linguagem visual; o conteúdo continua vindo do briefing do cliente.
 | `artistico` | Papel claro, display serifada ou humanista, hero deslocado/ateliê, superfície em camadas, motivo de anéis ou cantos, raio grande ou pílula. |
 
 `lib/design/vibes.ts` guarda essas faixas, o texto de direção que entra no
-prompt e a direção de imagem por vibe. `set_design` recusa a direção que sair
-da faixa, apontando eixo, valor recebido e valores permitidos, e a trava de
+prompt e a direção de imagem por vibe. Sem referência visual verificada,
+`set_design` recusa a direção que sair da faixa, apontando eixo, valor recebido
+e valores permitidos, e a trava de
 unicidade passou a comparar só clientes da mesma vibe: as faixas se sobrepõem
 em vários eixos, e um site moderno bloqueado por um ousado com os mesmos enums
 seria uma recusa sem relação com o que se vê na tela. O catálogo tipográfico ampliou as combinações estruturais dentro de cada faixa,
@@ -159,6 +161,49 @@ contraste mínimo da tinta escolhida, usa o papel da marca. O CSS não substitui
 essa superfície depois do cálculo. O cartão sobreposto do hero offset usa o
 papel do tom da própria seção, conservando o par texto/fundo também em `ink`,
 `accent` e `secondary`.
+
+## Referências acima da vibe
+
+`read_reference` continua extraindo texto e, para URLs presentes em
+`brief.intake.references`, também captura desktop (1440 px) e mobile (390 px).
+Uma chamada multimodal separada lê composição, tipografia, imagens, ritmo,
+superfícies e adaptação mobile. Pixels não entram no histórico textual nem no
+banco; `brief.sources[].visual` guarda as observações, limites e estado da
+leitura. Perfis sociais são contexto factual, sem liberar estilo por uma bio.
+
+`set_design` exige a tentativa de leitura de todas as URLs do cadastro. Quando
+há leitura visual válida, exige `referenceDirection`: fonte principal,
+características observadas e aplicação no catálogo para layout, tipografia,
+imagens e ritmo, além das adaptações para unificar as fontes. Só URLs atuais
+do cadastro e visualmente verificadas podem sustentar essas decisões. Texto
+lido, URL removida, fonte de outro contexto ou captura bloqueada não liberam
+a faixa. Sem leitura visual, o fallback mantém a vibe e exige lacuna declarada.
+
+Com esse plano persistido, a faixa da vibe deixa de restringir os eixos e a
+comparação de distância é informativa. O renderer usa `renderingVibeOf` para
+aplicar a base comercial neutra, preservando `brand.vibe` como escolha do
+cadastro. Assim CSS, lavagem de superfície, iconografia e localização não
+reimpõem a vibe sobre os tokens e as props da referência. Clientes sem esse
+plano preservam o comportamento anterior. Cores do operador, contraste,
+catálogo, composição mínima e bloqueio de home idêntica continuam obrigatórios.
+
+A fonte principal organiza o conjunto; outras fontes complementam a mesma
+linguagem. Composição e cenas recebem as observações e o plano. A crítica
+compara os pixels atuais do cliente com essas observações persistidas,
+verificando os traços centrais em toda a jornada. Desvio material sem adaptação
+justificada pode ser erro `referencias`; preferência estética continua aviso.
+Isso não é medição automática de similaridade pixel a pixel. Marca, oferta e
+contatos de terceiros não são conteúdo confirmado do cliente.
+
+A captura externa usa navegador sem sessão, com rede direta indisponível.
+Cada recurso passa por GET no servidor com IP público validado e fixado ao
+socket, inclusive após redirects; credenciais, portas não padrão e redes
+privadas são recusadas. Há limite total de 55 segundos, 400 requisições e 50 MB por
+viewport, 5 MB por recurso e 9000 px por viewport. Cada viewport tem seu
+próprio orçamento para o desktop não impedir a leitura mobile. Cortes e
+recursos ausentes ficam explicitamente registrados nos limites da leitura. Site bloqueado ou captura/crítica indisponível vira lacuna explícita.
+Cada leitura visual acrescenta uma chamada ao crítico; não há nova geração
+paga em testes de contrato.
 
 ## Contatos e localização automáticos
 
@@ -194,7 +239,7 @@ São opções de direção, não pares obrigatórios. O contexto do negócio ori
 a escolha. Display inclui Geist, Fraunces, Space Grotesk, Manrope, Geist Mono,
 Sora, Barlow Condensed, Syne, Bodoni Moda e Roboto Slab. Corpo inclui Geist,
 Newsreader, Space Grotesk, Manrope, Work Sans, Literata e Source Sans 3.
-Condensadas e displays expressivas ficam fora do corpo. As faixas de cada vibe
+Condensadas e displays expressivas ficam fora do corpo. Sem direção por referências verificadas, as faixas de cada vibe
 continuam validadas por `set_design`.
 
 `app/(sites)/typography.css` coordena títulos, subtítulos, lead, corpo, rótulos,
@@ -232,7 +277,7 @@ não são alterados por esta implementação.
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Perfil persistido    | `brand.design`, versão 2, guarda conceito, elemento-assinatura e oito eixos estruturais. `tenant.brief` guarda público, oferta, objetivo, personalidade, evidências e restrições. Não exige migração porque ambos os campos já são JSONB.                                                                                                                                                                                                                                                                                                                                                                  |
 | Tipografia           | 14 famílias, dez opções de display e sete de corpo, descritas acima. `next/font` auto-hospeda os arquivos; o navegador carrega somente as famílias usadas. Escala, peso, entrelinha, medida, legendas e números têm papéis consistentes.                                                                                                                                                                                                                                                                                                                                                                   |
-| Vibe                 | `brand.vibe` limita os eixos, o raio, a luminância do papel e os dials que `set_design` aceita. Ausente significa `comercial`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Vibe                 | `brand.vibe` orienta o fallback. Referências visuais verificadas, com aplicações em `design.referenceDirection`, prevalecem sobre seus eixos, raio, luminância e dials. Sem referências, a faixa continua obrigatória; ausente significa `comercial`.                                                                                                                                                                                                                                                                                                                                                      |
 | Paleta               | `accent`, `accentAlt` e `highlight` vêm do cadastro do cliente e a direção não as reescreve: superfície de marca, tom complementar e cor da ação. `ink`, `paper` e `surface` continuam com a direção. A ferramenta recusa texto sem contraste AA em paper/surface e cores primária/secundária iguais; o render ainda ajusta acentos que não suportam texto legível. Sem `highlight`, a ação usa a primária. Botões usam `--highlight`/`--highlight-ink`; texto de destaque usa `--highlight-text`, medido contra o tom da seção ou a superfície interna do card/formulário, com contraste mínimo de 4,5:1. |
 | Composição global    | Seis heroes, quatro navegações, quatro ritmos, quatro tratamentos de imagem, quatro superfícies e cinco motivos formam a gramática do cliente. Dials controlam variância, densidade e motion. Atelier compõe ambiente e detalhe; não é padrão obrigatório.                                                                                                                                                                                                                                                                                                                                                 |
 | Apresentação local   | Todo bloco aceita `presentation`: tom (incluindo a cor secundária), largura, respiro, alinhamento, borda e motion (`none`, `reveal`, `stagger`, `image`). Use um a três momentos de movimento coerentes com a narrativa.                                                                                                                                                                                                                                                                                                                                                                                   |
@@ -243,7 +288,7 @@ não são alterados por esta implementação.
 
 ## Unicidade e coerência
 
-`set_design` compara oito decisões estruturais com os perfis dos outros tenants da mesma vibe. A direção precisa diferir em pelo menos três eixos do perfil mais próximo. Nome, briefing, texto, imagens e identidade do outro cliente não são retornados ao agente.
+`set_design` compara oito decisões estruturais com os perfis dos outros tenants da mesma vibe. Sem direção por referências verificadas, exige distância de três eixos. Com referências, essa distância é informativa: não se trocam os traços da fonte por variações arbitrárias. Nome, briefing, texto, imagens e identidade do outro cliente não são retornados ao agente.
 
 A home também recebe uma assinatura de composição baseada em sequência de tipos, layout, tom e borda das seções. Texto, URL e imagem são ignorados. `build_site`, `set_blocks`, as ferramentas de publicação e a API administrativa recusam uma home com assinatura idêntica a um rascunho ou snapshot publicado de outro tenant. Páginas com menos de quatro blocos de conteúdo ficam fora dessa trava para não forçar diferenças artificiais em obrigado ou páginas curtas.
 

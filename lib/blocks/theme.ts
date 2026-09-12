@@ -7,6 +7,7 @@ import {
 } from '@/lib/blocks/contrast';
 import type { Brand } from '@/lib/types';
 import { BODY_TYPE, DISPLAY_TYPE } from '@/lib/design/typography';
+import { renderingVibeOf } from '@/lib/design/vibes';
 
 const RADIUS: Record<string, string> = {
   none: '0px',
@@ -38,7 +39,7 @@ export function themeVars(brand: Brand): Record<string, string> {
   // de texto. Se a mistura tirar o contraste da tinta, preserve o papel.
   const artisticSurface = mixHex(paper, accentAlt, 0.11);
   const surface =
-    brand.vibe === 'artistico'
+    renderingVibeOf(brand) === 'artistico'
       ? contrastRatio(ink, artisticSurface) >= 4.5
         ? artisticSurface
         : paper

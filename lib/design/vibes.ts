@@ -1,12 +1,15 @@
 import { z } from 'zod';
 import { relativeLuminance } from '@/lib/blocks/contrast';
 import { DESIGN_AXES, type DesignProfileInput } from '@/lib/design/profile';
+import { hasReferenceDirection } from './references';
 
 /**
  * Vibe do site, escolhida pelo operador no cadastro. Ela não substitui a
  * direção de arte: continua sendo o agente que decide conceito, estrutura e
- * tipografia, mas dentro da faixa da vibe. `comercial` não restringe os eixos
- * visuais. A voz de cada vibe está em lib/copy/policy.ts.
+ * tipografia. Referências visuais verificadas prevalecem sobre essa faixa;
+ * sem elas, a direção permanece dentro da vibe. `comercial` não restringe os
+ * eixos visuais. A voz de cada vibe está em lib/copy/policy.ts e continua
+ * valendo mesmo quando uma referência dirige o visual.
  *
  * Referências lidas em 10/09/2026: linear.app (moderno), 14islands.com
  * (ousado) e actionline.io (artistico). Elas orientam a linguagem visual; o
@@ -26,6 +29,13 @@ export function isVibe(value: unknown): value is Vibe {
 /** Sem vibe gravada, o cliente continua no contrato comercial. */
 export function vibeOf(brand: { vibe?: string } | null | undefined): Vibe {
   return isVibe(brand?.vibe) ? brand.vibe : 'comercial';
+}
+
+/** Referência aplicada usa os tokens e as props escolhidos, sem overrides da vibe. */
+export function renderingVibeOf(
+  brand: { vibe?: string; design?: unknown } | null | undefined,
+): Vibe {
+  return hasReferenceDirection(brand) ? 'comercial' : vibeOf(brand);
 }
 
 export const VIBE_LABEL: Record<Vibe, string> = {

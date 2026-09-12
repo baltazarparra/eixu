@@ -34,9 +34,9 @@ export function BrandFields() {
       <fieldset className="mt-7 border-t pt-6">
         <legend className="text-base font-semibold">Vibe do site</legend>
         <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
-          Define a linguagem visual que o agente pode usar: tipografia, ritmo,
-          superfícies e tratamento de imagem. Vale para o site inteiro e é
-          escolhida só aqui; mudar depois exige reconstruir as páginas.
+          Define a direção inicial do site. Se você informar referências, elas
+          terão prioridade no visual; a vibe completa o que faltar. A escolha
+          vale para o site inteiro.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           {VIBES.map((vibe, index) => (

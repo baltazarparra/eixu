@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { referenceDirectionSchema } from './references';
 import {
   BODY_FONTS,
   BODY_TYPE,
@@ -35,6 +36,11 @@ export const creativeBriefSchema = z.object({
 
 export const designProfileInputSchema = z.object({
   brief: creativeBriefSchema,
+  referenceDirection: referenceDirectionSchema
+    .optional()
+    .describe(
+      'Obrigatória quando há referência visual do cadastro verificada; prevalece sobre a faixa da vibe.',
+    ),
   concept: z
     .string()
     .min(16)
@@ -136,6 +142,9 @@ export function completeDesignProfile(
     imageTreatment: input.imageTreatment,
     surfaceStyle: input.surfaceStyle,
     motif: input.motif,
+    ...(input.referenceDirection
+      ? { referenceDirection: input.referenceDirection }
+      : {}),
   };
   return {
     version: 2,

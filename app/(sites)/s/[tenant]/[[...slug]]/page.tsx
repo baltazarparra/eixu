@@ -12,7 +12,7 @@ import {
 import { attributionScript } from '@/lib/tracking';
 import { isAuthenticated } from '@/lib/auth';
 import { structuredData } from '@/lib/sites/structured-data';
-import { vibeOf } from '@/lib/design/vibes';
+import { renderingVibeOf } from '@/lib/design/vibes';
 
 type Params = { tenant: string; slug?: string[] };
 type Props = {
@@ -108,7 +108,7 @@ export default async function TenantPage({ params, searchParams }: Props) {
             : 'normal'
       }
       data-motion={tenant.dials.motion <= 3 ? 'still' : 'gentle'}
-      data-vibe={vibeOf(tenant.brand)}
+      data-vibe={renderingVibeOf(tenant.brand)}
       data-design-version={tenant.brand.design?.version}
       data-hero={tenant.brand.design?.heroComposition}
       data-navigation={tenant.brand.design?.navigation}
