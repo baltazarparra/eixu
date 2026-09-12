@@ -16,6 +16,7 @@ import {
   heroCompositionFor,
   type Vibe,
 } from '@/lib/design/vibes';
+import { structureFor } from '@/lib/design/structures';
 import type { DesignProfile } from '@/lib/design/profile';
 
 export {
@@ -52,13 +53,20 @@ export type PlannedScene = {
 export function scenePlan(
   design:
     | (Pick<DesignProfile, 'heroComposition'> &
+        Partial<Pick<DesignProfile, 'structure'>> &
         Partial<Pick<DesignProfile, 'version'>>)
     | undefined,
   organicPages = 3,
   vibe: Vibe = 'comercial',
 ): PlannedScene[] {
   const legacy = design?.version === 2 || design?.version === 3;
-  const grammar = legacy ? undefined : VIBE_GRAMMAR[vibe];
+  const structure =
+    design?.version === 5 ? structureFor(vibe, design.structure) : null;
+  const grammar = legacy
+    ? undefined
+    : structure
+      ? { ...VIBE_GRAMMAR[vibe], ...structure }
+      : VIBE_GRAMMAR[vibe];
   // A abertura da home pertence à vibe. Sob direção por referência o eixo pode
   // ter sido escolhido fora da faixa; a cena segue a composição que a vibe
   // sustenta, senão a foto nasceria na proporção de um hero que a home não usa.
@@ -81,14 +89,16 @@ export function scenePlan(
       ratio: expectedRatio('hero.atelier'),
       hint: 'O detalhe em primeiro plano que acompanha o ambiente na abertura.',
     });
-  const [protagonist] = (
+  const [protagonist, protagonistLayout] = (
     grammar?.protagonists[0] ?? 'feature.explorer:showroom'
   ).split(':');
   for (let i = 0; i < 2; i++)
     scenes.push({
       role: 'protagonista',
       targetBlock: protagonist,
-      ratio: expectedRatio(protagonist),
+      ratio:
+        structure?.signatureRatio ??
+        expectedRatio(protagonist, protagonistLayout),
       hint: `Uma aplicação concreta do serviço ou produto, para a seção protagonista da home em ${grammar?.protagonists[0] ?? 'feature.explorer:showroom'}.`,
     });
   const inner = Math.max(0, Math.min(3, organicPages - 1));

@@ -6,7 +6,13 @@ import {
   type BlockType,
 } from '../blocks/registry';
 import { expectedRatio, ratioFits } from '../images/ratios';
-import { VIBE_GRAMMAR, VIBE_LABEL, vibeOf, type Vibe } from '../design/vibes';
+import { signatureItemsInRenderOrder } from '../design/structures';
+import {
+  VIBE_LABEL,
+  structureGrammar,
+  vibeOf,
+  type Vibe,
+} from '../design/vibes';
 import type { DesignProfile } from '../design/profile';
 import type { BlockInstance, Page, TenantImage } from '../types';
 
@@ -67,6 +73,38 @@ export function silhouette(
 }
 
 /**
+ * Silhueta usada entre tenants na v5. A composição autoral contribui com o
+ * arranjo de papéis e de mídia, sem expor texto, URL ou outro dado do cliente.
+ * Assim, dois sites podem partir da mesma estrutura sem repetir o mesmo bloco.
+ */
+export function uniquenessSilhouette(
+  blocks: BlockInstance[],
+  design?: Pick<DesignProfile, 'heroComposition' | 'navigation'>,
+): string[] {
+  return contentBlocks(blocks).flatMap((block) => {
+    const layout = resolvedLayout(block, design);
+    const base = `${block.type}:${layout}`;
+    if (block.type !== 'signature.composition') return [base];
+    const items = Array.isArray(block.props.items) ? block.props.items : [];
+    const traits = signatureItemsInRenderOrder(layout, items).map((value) => {
+      if (!value || typeof value !== 'object') return 'invalid';
+      const item = value as Record<string, unknown>;
+      const role = typeof item.role === 'string' ? item.role : 'unknown';
+      const hasImage = item.image === true || typeof item.image === 'string';
+      const hasCta =
+        item.cta === true ||
+        (item.cta !== null && typeof item.cta === 'object');
+      return `${role}:${hasImage ? 'media' : 'text'}:${hasCta ? 'action' : 'plain'}`;
+    });
+    return [
+      base,
+      `signature.roles:${traits.map((trait) => trait.split(':')[0]).join('>')}`,
+      `signature.arrangement:${traits.join('>')}`,
+    ];
+  });
+}
+
+/**
  * Quanto duas silhuetas se repetem, de 0 a 1. Conta pares tipo:layout em comum
  * sobre a página maior. A trava anterior exigia igualdade exata da sequência
  * inteira, então trocar só o tom de uma seção já passava: em 12/09/2026 duas
@@ -87,6 +125,26 @@ export function silhouetteSimilarity(a: string[], b: string[]): number {
 
 /** Acima disto duas páginas são a mesma composição pintada de outra cor. */
 export const SILHOUETTE_LIMIT = 0.75;
+
+/**
+ * Similaridade de sequência pela maior subsequência comum. A v5 usa esta
+ * medida para preservar o papel narrativo da ordem: só pares que aparecem na
+ * mesma sequência contribuem integralmente para a repetição.
+ */
+export function orderedSilhouetteSimilarity(a: string[], b: string[]): number {
+  if (!a.length || !b.length) return 0;
+  const previous = Array.from({ length: b.length + 1 }, () => 0);
+  for (const left of a) {
+    const current = [0];
+    for (let index = 1; index <= b.length; index += 1)
+      current[index] =
+        left === b[index - 1]
+          ? previous[index - 1] + 1
+          : Math.max(previous[index], current[index - 1]);
+    previous.splice(0, previous.length, ...current);
+  }
+  return previous[b.length] / Math.max(a.length, b.length);
+}
 
 function toneOf(block: BlockInstance): string {
   const presentation = block.props.presentation as
@@ -255,16 +313,16 @@ export function siteMetrics(
  */
 /**
  * Gramática da vibe: a silhueta pertence à vibe escolhida no cadastro, e uma
- * referência verificada decide dentro dela. Só vale para o perfil v4; sites
- * publicados em v2 e v3 continuam com a composição que já têm.
+ * referência verificada decide dentro dela. V4 usa a faixa ampla da vibe; v5
+ * usa a estrutura escolhida. Sites v2 e v3 mantêm a composição publicada.
  */
 function grammarFindings(
   pages: SitePage[],
   vibe: Vibe,
-  design: Pick<DesignProfile, 'heroComposition' | 'navigation'>,
+  design: DesignProfile,
   generatedUrls: Set<string>,
 ): StructuralFinding[] {
-  const grammar = VIBE_GRAMMAR[vibe];
+  const grammar = structureGrammar(vibe, design);
   const findings: StructuralFinding[] = [];
   const label = VIBE_LABEL[vibe];
   for (const page of pages) {
@@ -277,6 +335,35 @@ function grammarFindings(
     }));
     const path = `/${page.slug}`;
     const home = page.slug === '';
+
+    if (home && grammar.structure) {
+      let cursor = -1;
+      const missing: string[] = [];
+      for (const expected of grammar.structure.sequence) {
+        const next = marks.findIndex(
+          (mark, index) => index > cursor && mark.signature === expected,
+        );
+        if (next === -1) missing.push(expected);
+        else cursor = next;
+      }
+      if (missing.length)
+        findings.push({
+          page: path,
+          level: 'error',
+          rule: 'estrutura-v5-incompleta',
+          message: `A estrutura ${grammar.structure.label} precisa preservar esta ordem mínima: ${grammar.structure.sequence.join(' > ')}. Ausentes ou fora de ordem: ${missing.join(', ')}.`,
+        });
+      const signatureBlocks = marks.filter(
+        (mark) => mark.block.type === 'signature.composition',
+      );
+      if (signatureBlocks.length !== 1)
+        findings.push({
+          page: path,
+          level: 'error',
+          rule: 'composicao-autoral-obrigatoria',
+          message: `A home v5 precisa de exatamente uma signature.composition; recebeu ${signatureBlocks.length}.`,
+        });
+    }
     const opening = marks[0];
     const allowedOpenings = home
       ? [...grammar.openings]
@@ -458,7 +545,7 @@ export function structuralFindings(
       });
   }
 
-  if (design?.version === 4)
+  if (design && design.version >= 4)
     findings.push(
       ...grammarFindings(
         pages,

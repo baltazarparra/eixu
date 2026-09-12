@@ -1247,6 +1247,9 @@ await test('ferramentas preservam o perfil e o intake atualizados durante o turn
     },
     concept: 'Recortes da matéria em escala arquitetônica',
     signatureElement: 'Janela vertical de matéria',
+    structure: 'comercial-atendimento',
+    structureRationale:
+      'O atendimento guiado organiza as escolhas do cliente antes do contato.',
     accent: '#87522a',
     accentAlt: '#315b48',
     ink: '#111111',
@@ -1296,6 +1299,9 @@ const modernDirection = {
   },
   concept: 'Painel escuro com uma única linha de acento por capítulo',
   signatureElement: 'Régua de 1px separando os capítulos',
+  structure: 'moderno-editorial',
+  structureRationale:
+    'Os capítulos editoriais explicam a operação técnica com ordem e precisão.',
   accent: '#4b6bdd',
   accentAlt: '#2f8f6b',
   ink: '#f5f6f8',

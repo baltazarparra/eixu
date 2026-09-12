@@ -5,13 +5,14 @@ Análise feita em 12/09/2026 sobre o código em `main` e sobre os tenants
 documento registra o diagnóstico com evidência e o plano de implementação em
 fases.
 
-**Estado:** o PR 1, com as fases 0, 1 e 2, está implementado e verificado. O
-contrato resultante vive em [Design](design.md); a verificação, em
-[Verificação](verification.md). As fases 3 a 7 continuam pendentes e mantêm a
-descrição abaixo como escrita. Em 12/09/2026 a recriação da vibe moderna
-cumpriu, só para essa vibe e sem blocos novos, a parte de CSS da fase 3 (fio
-entre capítulos, painéis com fade, pílula) e os rótulos em mono da fase 4; ver
-[Recriação da vibe moderna](design.md#recriação-da-vibe-moderna).
+**Estado:** as fases 0, 1 e 2 foram entregues no primeiro PR. A expansão v5
+entrega três estruturas completas por vibe, um bloco autoral controlado em doze
+layouts e gates de ordem, cenas e unicidade. O contrato resultante vive em
+[Design](design.md); a verificação, em [Verificação](verification.md). As partes
+das fases 3 a 7 que tratam de tipografia variável, mais iconografia e gramáticas
+de movimento continuam como evolução separada. A recriação da vibe moderna já
+cumpria, só para essa vibe, fio entre capítulos, painéis com fade, pílula e
+rótulos em mono; ver [Recriação da vibe moderna](design.md#recriação-da-vibe-moderna).
 
 ## 1. Diagnóstico
 

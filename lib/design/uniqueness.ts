@@ -2,7 +2,9 @@ import { db } from '../db';
 import {
   SILHOUETTE_LIMIT,
   silhouette,
+  orderedSilhouetteSimilarity,
   silhouetteSimilarity,
+  uniquenessSilhouette,
 } from '../taste/metrics';
 import type { BlockInstance } from '../types';
 import { compositionSignature, type DesignProfile } from './profile';
@@ -31,8 +33,11 @@ export async function compositionConflict(
   blocks: BlockInstance[],
   design?: Pick<DesignProfile, 'version' | 'heroComposition' | 'navigation'>,
 ): Promise<CompositionConflict | null> {
-  const legacy = design?.version !== 4;
-  const own = silhouette(blocks, design);
+  const legacy = !design?.version || design.version < 4;
+  const own =
+    design?.version === 5
+      ? uniquenessSilhouette(blocks, design)
+      : silhouette(blocks, design);
   if (own.length < 4) return null;
   const exact = legacy ? compositionSignature(blocks) : undefined;
 
@@ -51,7 +56,23 @@ export async function compositionConflict(
             'presentation', jsonb_build_object(
               'tone', item.block->'props'->'presentation'->'tone',
               'edge', item.block->'props'->'presentation'->'edge'
-            )
+            ),
+            'items', coalesce((
+              select jsonb_agg(
+                jsonb_build_object(
+                  'role', signature_item.value->'role',
+                  'image', signature_item.value ? 'image',
+                  'cta', signature_item.value ? 'cta'
+                ) order by signature_item.ordinality
+              )
+              from jsonb_array_elements(
+                case
+                  when jsonb_typeof(item.block->'props'->'items') = 'array'
+                    then item.block->'props'->'items'
+                  else '[]'::jsonb
+                end
+              ) with ordinality as signature_item(value, ordinality)
+            ), '[]'::jsonb)
           )
         ) order by item.ordinality
       ) as blocks
@@ -70,17 +91,21 @@ export async function compositionConflict(
   for (const row of rows) {
     if (!Array.isArray(row.blocks)) continue;
     // v2/v3 conservam a trava exata, inclusive ordem, tom e borda. Só uma
-    // recomposição em v4 adota o limite novo de similaridade.
+    // recomposição em v4/v5 adota o limite novo de similaridade.
     if (legacy) {
       if (compositionSignature(row.blocks) === exact)
         return { similarity: 1, shared: own };
       continue;
     }
-    const other = silhouette(
-      row.blocks,
-      row.design as DesignProfile | undefined,
-    );
-    const similarity = silhouetteSimilarity(own, other);
+    const otherDesign = row.design as DesignProfile | undefined;
+    const other =
+      design?.version === 5
+        ? uniquenessSilhouette(row.blocks, otherDesign)
+        : silhouette(row.blocks, otherDesign);
+    const similarity =
+      design?.version === 5
+        ? orderedSilhouetteSimilarity(own, other)
+        : silhouetteSimilarity(own, other);
     if (similarity < SILHOUETTE_LIMIT) continue;
     if (worst && worst.similarity >= similarity) continue;
     const pool = [...other];

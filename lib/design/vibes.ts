@@ -2,6 +2,11 @@ import { z } from 'zod';
 import { relativeLuminance } from '@/lib/blocks/contrast';
 import { DESIGN_AXES, type DesignProfileInput } from '@/lib/design/profile';
 import { hasReferenceDirection, type ReferenceAspect } from './references';
+import {
+  structureFor,
+  structuresDirection,
+  type SiteStructure,
+} from './structures';
 
 /**
  * Vibe do site, escolhida pelo operador no cadastro. Ela não substitui a
@@ -44,7 +49,7 @@ export function renderingVibeOf(
   brand: { vibe?: string; design?: unknown } | null | undefined,
 ): Vibe {
   const version = (brand?.design as { version?: number } | undefined)?.version;
-  return version !== 4 && hasReferenceDirection(brand)
+  return (!version || version < 4) && hasReferenceDirection(brand)
     ? 'comercial'
     : vibeOf(brand);
 }
@@ -207,6 +212,29 @@ export type VibeGrammar = {
   summary: string;
 };
 
+type GrammarProfile = { version?: number; structure?: unknown } | undefined;
+
+/** A v5 usa a família escolhida; v4 preserva a gramática ampla já publicada. */
+export function structureGrammar(
+  vibe: Vibe,
+  design?: GrammarProfile,
+): VibeGrammar & { structure?: SiteStructure } {
+  const base = VIBE_GRAMMAR[vibe];
+  const structure =
+    design?.version === 5 ? structureFor(vibe, design.structure) : null;
+  if (!structure) return base;
+  return {
+    ...base,
+    openings: structure.openings,
+    protagonists: structure.protagonists,
+    innerOpenings: structure.innerOpenings,
+    closings: structure.closings,
+    support: structure.support,
+    summary: `${structure.label}: ${structure.intent}`,
+    structure,
+  };
+}
+
 const openingsOf = (vibe: Vibe): string[] =>
   VIBE_LANE[vibe].axes.heroComposition.map(
     (composition) => `hero.split:${composition}`,
@@ -298,8 +326,12 @@ export function heroCompositionFor(
 }
 
 /** Texto da gramática para o prompt e para as mensagens de recusa. */
-export function grammarDirection(vibe: Vibe): string {
-  const grammar = VIBE_GRAMMAR[vibe];
+export function grammarDirection(vibe: Vibe, design?: GrammarProfile): string {
+  const grammar = structureGrammar(vibe, design);
+  const choices =
+    design?.version === 5
+      ? ''
+      : `\nEstruturas disponíveis para sites novos:\n${structuresDirection(vibe)}`;
   return `Gramática obrigatória da vibe ${VIBE_LABEL[vibe]}, em tipo:layout. A vibe ${grammar.summary}
 - Abertura da home: ${grammar.openings.join(' ou ')}.
 - Seção protagonista da home, com duas fotos deste cliente: ${grammar.protagonists.join(' ou ')}.
@@ -307,7 +339,8 @@ export function grammarDirection(vibe: Vibe): string {
 - Fechamento de cada página: ${grammar.closings.join(' ou ')}.
 - Headline de todo hero: até ${grammar.headline} caracteres. O que sobrar vai para o subtext.
 - Evite nesta vibe: ${grammar.avoid.join(', ')}.
-Referência verificada escolhe dentro desta gramática e decide tipografia, imagens, ritmo e superfície. Ela não troca a silhueta da vibe.`;
+${grammar.structure ? `- Estrutura selecionada: ${grammar.structure.key}. Sequência mínima: ${grammar.structure.sequence.join(' > ')}.` : ''}
+Referência verificada escolhe dentro desta gramática e decide tipografia, imagens, ritmo e superfície. Ela não troca a silhueta da vibe.${choices}`;
 }
 
 const AXIS_LABEL: Record<Axis, string> = {
@@ -368,6 +401,23 @@ export function laneIssues(
   const lane = VIBE_LANE[vibe];
   const relaxed = relaxedBy(aspects);
   const issues: string[] = [];
+  // O schema de set_design exige a estrutura no perfil v5. A ausência segue
+  // aceita aqui porque esta função também audita perfis v2-v4 publicados.
+  if (input.structure !== undefined) {
+    const selectedStructure = structureFor(vibe, input.structure);
+    if (!selectedStructure)
+      issues.push(
+        `structure: "${input.structure}" não pertence à vibe ${VIBE_LABEL[vibe]}. Use ${structuresDirection(vibe).replaceAll('\n', ' ')}`,
+      );
+    else if (
+      !selectedStructure.openings.includes(
+        `hero.split:${input.heroComposition}`,
+      )
+    )
+      issues.push(
+        `heroComposition: "${input.heroComposition}" não abre a estrutura ${selectedStructure.label}. Use ${selectedStructure.openings.join(' ou ')}.`,
+      );
+  }
   for (const axis of DESIGN_AXES) {
     const allowed = lane.axes[axis] as readonly string[];
     if (!relaxed.axes.has(axis) && !allowed.includes(input[axis]))

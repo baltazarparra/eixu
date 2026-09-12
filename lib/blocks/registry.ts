@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { contrastRatio } from './contrast';
 import { ICON_NAMES } from '@/lib/design/iconography';
-import { VIBE_GRAMMAR, type Vibe } from '@/lib/design/vibes';
+import { structureGrammar, type Vibe } from '@/lib/design/vibes';
+import { SIGNATURE_LAYOUTS, type StructureKey } from '@/lib/design/structures';
 import { expectedRatio } from '../images/ratios';
 
 /**
@@ -20,6 +21,7 @@ export const FAMILIES = [
   'editorial',
   'media',
   'pricing',
+  'signature',
   'footer',
 ] as const;
 
@@ -330,6 +332,57 @@ export const blockSchemas = {
       .max(4),
   }),
 
+  'signature.composition': z
+    .object({
+      anchor,
+      presentation,
+      layout: z.enum(SIGNATURE_LAYOUTS),
+      eyebrow: z.string().max(48).optional(),
+      title: z.string().min(4).max(90),
+      body: z.string().min(20).max(320),
+      items: z
+        .array(
+          z.object({
+            role: z.enum(['focus', 'support', 'detail', 'action']),
+            icon,
+            label: z.string().max(36).optional(),
+            title: z.string().min(2).max(64),
+            body: z.string().min(12).max(220),
+            image: z.url().startsWith('http').optional(),
+            imageAlt: z.string().min(5).max(140).optional(),
+            caption: z.string().max(120).optional(),
+            cta: link.optional(),
+          }),
+        )
+        .min(3)
+        .max(6),
+    })
+    .superRefine((value, ctx) => {
+      const focusCount = value.items.filter(
+        (item) => item.role === 'focus',
+      ).length;
+      if (focusCount !== 1)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['items'],
+          message: `A composição precisa de exatamente um item focus; recebeu ${focusCount}.`,
+        });
+      if (!value.items.some((item) => item.role === 'support'))
+        ctx.addIssue({
+          code: 'custom',
+          path: ['items'],
+          message: 'A composição precisa de ao menos um item support.',
+        });
+      value.items.forEach((item, index) => {
+        if (item.image && !item.imageAlt)
+          ctx.addIssue({
+            code: 'custom',
+            path: ['items', index, 'imageAlt'],
+            message: 'Descreva a imagem exibida neste item.',
+          });
+      });
+    }),
+
   'editorial.facts': z.object({
     anchor,
     presentation,
@@ -609,6 +662,12 @@ export const blockMeta: Record<BlockType, Meta> = {
     label: 'Planos',
     use: 'Tabela de preços ou pacotes.',
   },
+  'signature.composition': {
+    family: 'signature',
+    label: 'Composição autoral',
+    use: 'Seção exclusiva do cliente. Traduza o elemento-assinatura em uma composição útil com duas fotos geradas, papéis distintos e conteúdo confirmado. O layout precisa ser o da estrutura escolhida; não copie a mesma organização para outro projeto.',
+    singleton: true,
+  },
   'footer.compact': {
     family: 'footer',
     label: 'Rodapé',
@@ -647,6 +706,7 @@ export const DEFAULT_LAYOUT: Record<BlockType, string> = {
   'media.image': 'wide',
   'media.map': 'split',
   'pricing.table': 'cards',
+  'signature.composition': 'decision-path',
   'footer.compact': 'split',
 };
 
@@ -714,6 +774,7 @@ const IMAGE_LAYOUTS: Partial<Record<BlockType, string[]>> = {
   'feature.explorer': [],
   'media.gallery': [],
   'editorial.resources': [],
+  'signature.composition': [...SIGNATURE_LAYOUTS],
 };
 
 /** Diz em que proporção a foto será exibida, por variante de layout. */
@@ -736,8 +797,12 @@ function ratioHint(type: BlockType): string {
  * Papel do bloco na gramática da vibe. Sem esta marcação o agente escolhia
  * pelo nome e todas as vibes convergiam para as mesmas seções.
  */
-function grammarRole(type: BlockType, vibe: Vibe): string {
-  const grammar = VIBE_GRAMMAR[vibe];
+function grammarRole(
+  type: BlockType,
+  vibe: Vibe,
+  design?: { version?: number; structure?: StructureKey },
+): string {
+  const grammar = structureGrammar(vibe, design);
   const belongs = (list: readonly string[]) =>
     list.filter((entry) => entry.startsWith(`${type}:`));
   const roles: string[] = [];
@@ -757,9 +822,13 @@ function grammarRole(type: BlockType, vibe: Vibe): string {
 
 /** Catálogo com uso e props de cada bloco, injetado no prompt do agente. */
 export function catalogForPrompt(
-  options: { fullSchema?: boolean; vibe?: Vibe } = {},
+  options: {
+    fullSchema?: boolean;
+    vibe?: Vibe;
+    design?: { version?: number; structure?: StructureKey };
+  } = {},
 ): string {
-  const { vibe } = options;
+  const { vibe, design } = options;
   return (
     `Comum a todos: anchor?; presentation? { ${summarize(z.toJSONSchema(presentation.unwrap()) as Record<string, unknown>, 1)} }. ? = opcional; ≤ = máximo de caracteres.\n` +
     BLOCK_TYPES.map((type) => {
@@ -769,7 +838,7 @@ export function catalogForPrompt(
       >;
       // O uso vem junto: sem ele o agente ignora explorer e resources, que são
       // justamente as seções que sustentam uma home com fotos.
-      return `${type} · ${blockMeta[type].use}${ratioHint(type)}${vibe ? grammarRole(type, vibe) : ''}\n  ${options.fullSchema ? JSON.stringify(json) : summarize(json)}`;
+      return `${type} · ${blockMeta[type].use}${ratioHint(type)}${vibe ? grammarRole(type, vibe, design) : ''}\n  ${options.fullSchema ? JSON.stringify(json) : summarize(json)}`;
     }).join('\n')
   );
 }

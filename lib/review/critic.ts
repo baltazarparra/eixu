@@ -11,9 +11,9 @@ import type { Shot } from './capture';
 import { copyDirection, COPY_REVIEW } from '@/lib/copy/policy';
 import { RESPONSIVE_CONTRACT } from '@/lib/design/responsive';
 import {
-  VIBE_GRAMMAR,
   VIBE_LABEL,
   grammarDirection,
+  structureGrammar,
   vibeOf,
 } from '@/lib/design/vibes';
 import { referenceAspects } from '@/lib/design/references';
@@ -157,7 +157,7 @@ export async function critiquePages(
         vibe: VIBE_LABEL[vibeOf(tenant.brand)],
         gramaticaDaVibe: legacy
           ? undefined
-          : VIBE_GRAMMAR[vibeOf(tenant.brand)],
+          : structureGrammar(vibeOf(tenant.brand), tenant.brand.design),
         // A silhueta que o pre-flight mediu, para o crítico conferir nos
         // pixels se a abertura e a seção protagonista são mesmo as da vibe.
         silhuetaDaHome: silhouette(
@@ -215,7 +215,7 @@ Verifique factualidade da oferta, identidade ligada ao negócio, decisão de abe
 ${
   legacy
     ? 'O perfil v2/v3 conserva sua composição e a prioridade das referências verificadas. Não aplique a gramática v4 nem peça migração de abertura ou protagonista ao revisar esse perfil.'
-    : `${grammarDirection(vibeOf(tenant.brand))}\nUse criterio identidade-da-vibe quando os pixels não realizam essa gramática: abertura genérica, seção protagonista ausente ou a página lendo como um modelo neutro que serviria para qualquer negócio. Uma referência verificada decide tipografia, imagens, ritmo e superfície; ela não justifica trocar a silhueta da vibe.`
+    : `${grammarDirection(vibeOf(tenant.brand), tenant.brand.design)}\nUse criterio identidade-da-vibe quando os pixels não realizam essa gramática: abertura genérica, seção protagonista ausente ou a página lendo como um modelo neutro que serviria para qualquer negócio. Uma referência verificada decide tipografia, imagens, ritmo e superfície; ela não justifica trocar a silhueta da vibe.`
 }
 Se brand.logoFit existir, confira o logo do cabeçalho e do rodapé sobre a superfície real: placa branca de um arquivo sem transparência ou tinta sem contraste sobre fundo escuro é erro de identidade; brand.logoDarkUrl é a versão usada sobre papel escuro.
 Quando brand.design.referenceDirection existe, ela prevalece sobre a vibe nos aspectos listados em aspectosDaReferencia: compare os pixels do rascunho com as observações visuais persistidas em brief.sources e as aplicações planejadas. Confira layout, escala tipográfica, papel/recorte das imagens e ritmo na home e nas outras páginas como um conjunto. Não reivindique comparação com pixels da referência original: você recebe sua leitura visual, além dos pixels atuais do cliente. Use criterio referencias para desvios concretos; uma direção que ignora os traços centrais documentados sem adaptação justificada é erro material. Similaridade apenas de cor ou fonte não satisfaz o plano. Adaptação por marca, factualidade, legibilidade e jornada pode ser correta; mistura incoerente entre fontes precisa de correção. Sem referenceDirection, a vibe orienta também tipografia, imagens e superfície. Imagem de inspiração não prova obra/equipe real. Não proponha serviço, prova, recurso ou gráfico não sustentado pelo briefing e pelo catálogo existente.

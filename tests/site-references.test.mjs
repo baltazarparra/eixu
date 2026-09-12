@@ -172,14 +172,27 @@ await test('todas as etapas mantêm evidência e prioridade; a referência modul
     assert.match(prompt, /acima do estilo da vibe/);
     assert.equal(prompt.includes('paper e surface quase pretos'), false);
     assert.equal(prompt.includes('Luz fria e controlada'), false);
+    if (phase === 'briefing') {
+      assert.match(prompt, /Estruturas disponíveis para sites novos/);
+      assert.match(prompt, /moderno-editorial/);
+      assert.match(prompt, /moderno-sistema/);
+      assert.match(prompt, /moderno-exploracao/);
+    }
     // A silhueta continua sendo da vibe em todas as fases com composição.
-    if (phase !== 'briefing' && phase !== 'cenas')
+    if (phase !== 'briefing' && phase !== 'cenas') {
       assert.match(prompt, /Gramática obrigatória da vibe Moderno/, phase);
+      assert.match(prompt, /Estrutura selecionada: moderno-sistema/, phase);
+      assert.doesNotMatch(
+        prompt,
+        /Estruturas disponíveis para sites novos/,
+        phase,
+      );
+    }
   }
   assert.equal(vibeOf(tenant.brand), 'moderno');
-  // O perfil v4 conserva a vibe no renderer: a referência modula aspectos, e
+  // O perfil v5 conserva a vibe no renderer: a referência modula aspectos, e
   // antes qualquer leitura visual derrubava o site para a base comercial.
-  assert.equal(tenant.brand.design.version, 4);
+  assert.equal(tenant.brand.design.version, 5);
   assert.equal(renderingVibeOf(tenant.brand), 'moderno');
   assert.equal(renderingVibeOf({ vibe: 'moderno' }), 'moderno');
   // Perfis já publicados preservam a base neutra com que foram ao ar.

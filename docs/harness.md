@@ -66,9 +66,11 @@ A escrita tem um [contrato por vibe](copy.md), com linguagem simples em comum.
 e ao crítico. `lintPage` verifica rótulos de ação e aponta vocabulário/frases
 para revisão; o crítico julga compreensão e voz com textos completos, sinais e
 pixels. Erro material de linguagem impede a aprovação visual automática. A versão
-`gemini-3.8-quality-v4-mobile` identifica o contrato atual e invalida recibos anteriores aos
-contratos corrigidos de composição. A gramática da vibe entra apenas no perfil
-v4; retomadas e críticas de perfis v2/v3 preservam a direção e o plano de cenas
+`gemini-3.8-quality-v5-estruturas-mobile` identifica o contrato do crítico e
+invalida recibos anteriores aos contratos corrigidos de composição. A gramática
+ampla da vibe entra no perfil v4; o perfil v5 compara três estruturas, persiste
+a escolha com justificativa e exige uma composição autoral com duas cenas.
+Retomadas e críticas de perfis v2/v3 preservam a direção e o plano de cenas
 existentes, mantendo as exigências de conteúdo, layout e apresentação.
 
 A responsividade é um contrato compartilhado pelo autor e pelo crítico em
@@ -89,8 +91,18 @@ acompanham cenas, composição e revisão. O crítico final confronta os pixels 
 rascunho com essa leitura persistida; não recebe os pixels originais da fonte.
 `brief.pagePlan` guarda intenção, etapa de inbound, conteúdo e evidências de
 cada página; `brief.imageScenes` liga página, papel, bloco, proporção e pedido
-semântico a cada foto planejada. Ambos são opcionais no schema para ler
-briefings legados e obrigatórios em uma nova direção validada.
+semântico a cada foto planejada. `brand.design.structure` e
+`structureRationale` registram a jornada selecionada. Ambos os planos são
+opcionais no schema para ler briefings legados e obrigatórios em uma nova
+direção validada.
+
+Na fase de briefing, o modelo recebe as três estruturas da vibe e precisa
+compará-las contra oferta, público, conteúdo disponível e ação principal. Após
+`set_design`, prompt, catálogo, plano de cenas, composição, pre-flight e crítico
+recebem somente a gramática selecionada. O bloco `signature.composition` usa o
+layout dessa estrutura, papéis distintos e duas fotos geradas; HTML e código
+livre por tenant ficam fora do schema. A trava entre tenants mede a ordem e o
+arranjo da assinatura sem ler conteúdo comercial.
 
 O catálogo deriva do schema. Composição e revisão recebem os schemas JSON
 completos, com campos obrigatórios, limites e descrições. Edições livres recebem

@@ -6,6 +6,10 @@
 import { z } from 'zod';
 import { SiteIcon } from '@/lib/blocks/icon';
 import { renderingVibeOf, type Vibe } from '@/lib/design/vibes';
+import {
+  SIGNATURE_MAP_LAYOUTS,
+  signatureItemsInRenderOrder,
+} from '@/lib/design/structures';
 import { logoFor } from '@/lib/blocks/theme';
 import { MotionLink } from '@/lib/blocks/motion';
 import { MobileNavigation } from '@/lib/blocks/mobile-navigation';
@@ -48,6 +52,7 @@ export type MediaMapProps = S<'media.map'>;
 export type PricingTableProps = S<'pricing.table'>;
 export type FooterCompactProps = S<'footer.compact'>;
 export type EditorialResourcesProps = S<'editorial.resources'>;
+export type SignatureCompositionProps = S<'signature.composition'>;
 
 const shell =
   'site-shell mx-auto w-full max-w-[var(--site-max,76rem)] px-6 md:px-10';
@@ -336,6 +341,179 @@ export function HeroStatement({
           ) : null}
           <Action vibe={vibe} href={cta.href} label={cta.label} />
         </div>
+      </div>
+    </section>
+  );
+}
+
+type SignatureItem = SignatureCompositionProps['items'][number];
+
+function SignatureMedia({ item }: { item: SignatureItem }) {
+  if (!item.image) return null;
+  return (
+    <figure className="site-signature-media">
+      <img
+        src={item.image}
+        alt={item.imageAlt ?? ''}
+        width={960}
+        height={720}
+        loading="lazy"
+        decoding="async"
+      />
+      {item.caption ? <figcaption>{item.caption}</figcaption> : null}
+    </figure>
+  );
+}
+
+function SignatureCopy({ item, vibe }: { item: SignatureItem; vibe: Vibe }) {
+  return (
+    <div className="site-signature-copy">
+      {item.label ? <p className="site-signature-label">{item.label}</p> : null}
+      {item.icon ? (
+        <SiteIcon name={item.icon} vibe={vibe} size={24} badge />
+      ) : null}
+      <h3>{item.title}</h3>
+      <p>{item.body}</p>
+      {item.cta ? (
+        <Action
+          href={item.cta.href}
+          label={item.cta.label}
+          variant="ghost"
+          vibe={vibe}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function SignaturePath({
+  items,
+  vibe,
+}: {
+  items: SignatureItem[];
+  vibe: Vibe;
+}) {
+  return (
+    <ol className="site-signature-path">
+      {items.map((item, index) => (
+        <li key={`${item.title}-${index}`} data-role={item.role}>
+          <span className="site-signature-step" aria-hidden="true">
+            {String(index + 1).padStart(2, '0')}
+          </span>
+          <SignatureMedia item={item} />
+          <SignatureCopy item={item} vibe={vibe} />
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function SignatureLens({
+  items,
+  vibe,
+}: {
+  items: SignatureItem[];
+  vibe: Vibe;
+}) {
+  return (
+    <div className="site-signature-lens">
+      {items.map((item, index) => (
+        <article key={`${item.title}-${index}`} data-role={item.role}>
+          <SignatureMedia item={item} />
+          <SignatureCopy item={item} vibe={vibe} />
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function SignatureMap({ items, vibe }: { items: SignatureItem[]; vibe: Vibe }) {
+  const [focus, ...support] = items;
+  return (
+    <div className="site-signature-map">
+      <article className="site-signature-map-focus" data-role={focus.role}>
+        <SignatureMedia item={focus} />
+        <SignatureCopy item={focus} vibe={vibe} />
+      </article>
+      <ul className="site-signature-map-support">
+        {support.map((item, index) => (
+          <li key={`${item.title}-${index}`} data-role={item.role}>
+            <SignatureMedia item={item} />
+            <SignatureCopy item={item} vibe={vibe} />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function SignatureEditorial({
+  items,
+  vibe,
+}: {
+  items: SignatureItem[];
+  vibe: Vibe;
+}) {
+  return (
+    <div className="site-signature-editorial">
+      {items.map((item, index) => (
+        <article
+          key={`${item.title}-${index}`}
+          data-role={item.role}
+          data-index={index + 1}
+        >
+          <SignatureCopy item={item} vibe={vibe} />
+          <SignatureMedia item={item} />
+        </article>
+      ))}
+    </div>
+  );
+}
+
+const PATH_SIGNATURES = new Set([
+  'decision-path',
+  'campaign-sequence',
+  'story-orbit',
+]);
+const LENS_SIGNATURES = new Set([
+  'service-lens',
+  'detail-lens',
+  'visual-selector',
+]);
+
+/**
+ * O layout vem da estrutura v5, mas o conteúdo e a combinação de papéis vêm
+ * do briefing. Quatro árvores semânticas cobrem percurso, seleção, mapa e
+ * ensaio editorial sem permitir HTML ou código arbitrário gerado por tenant.
+ */
+export function SignatureComposition({
+  vibe = 'comercial',
+  eyebrow,
+  title,
+  body,
+  items,
+  layout,
+}: SignatureCompositionProps) {
+  return (
+    <section className={`${section} site-signature site-signature-${layout}`}>
+      <div className={shell}>
+        <header className="site-signature-header">
+          <Eyebrow>{eyebrow}</Eyebrow>
+          <h2 className={h2Class}>{title}</h2>
+          <p>{body}</p>
+        </header>
+        {PATH_SIGNATURES.has(layout) ? (
+          <SignaturePath items={items} vibe={vibe} />
+        ) : LENS_SIGNATURES.has(layout) ? (
+          <SignatureLens items={items} vibe={vibe} />
+        ) : SIGNATURE_MAP_LAYOUTS.includes(layout) ? (
+          <SignatureMap
+            items={signatureItemsInRenderOrder(layout, items)}
+            vibe={vibe}
+          />
+        ) : (
+          <SignatureEditorial items={items} vibe={vibe} />
+        )}
       </div>
     </section>
   );

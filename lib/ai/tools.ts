@@ -23,10 +23,10 @@ import {
   compositionConflictMessage,
 } from '@/lib/design/uniqueness';
 import {
-  VIBE_GRAMMAR,
   VIBE_LABEL,
   grammarDirection,
   laneIssues,
+  structureGrammar,
   vibeOf,
 } from '@/lib/design/vibes';
 import {
@@ -1643,9 +1643,10 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
               )}. Escreva cada pedido com o assunto da página correspondente.`,
           );
         }
-        // A comparação é dentro da mesma vibe: faixas diferentes se sobrepõem
-        // em vários eixos e um site moderno não repete um ousado com os
-        // mesmos enums.
+        // A distância entre eixos continua informativa. Na v5 a família e a
+        // silhueta completa são verificadas na composição; bloquear a direção
+        // aqui impediria a terceira estrutura de moderno e ousado, cujas
+        // faixas visuais têm poucos enums por definição.
         const rows = (await db()`
           select brand->'design' as design
           from tenants
@@ -1656,7 +1657,12 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           profile,
           rows.map((row) => row.design),
         );
-        if (!referenceLed && nearest && nearest.distance < 3) {
+        if (
+          profile.version < 5 &&
+          !referenceLed &&
+          nearest &&
+          nearest.distance < 3
+        ) {
           throw new ToolError(
             `Direção estrutural muito parecida com outro site da vibe ${VIBE_LABEL[vibe]}: distância ${nearest.distance}/8. Mude pelo menos ${3 - nearest.distance} decisões entre heroComposition, navigation, rhythm, imageTreatment, surfaceStyle, motif e tipografia, sempre dentro da vibe.`,
           );
@@ -1703,9 +1709,11 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           vibe,
           visualAuthority: referenceLed ? 'references' : 'vibe',
           referenceAspects: [...aspects],
-          gramatica: grammarDirection(vibe),
-          aberturaDaHome: VIBE_GRAMMAR[vibe].openings,
-          protagonistaDaHome: VIBE_GRAMMAR[vibe].protagonists,
+          structure: profile.structure,
+          structureRationale: profile.structureRationale,
+          gramatica: grammarDirection(vibe, profile),
+          aberturaDaHome: structureGrammar(vibe, profile).openings,
+          protagonistaDaHome: structureGrammar(vibe, profile).protagonists,
           ...(referenceLed && nearest && nearest.distance < 3
             ? {
                 warning:

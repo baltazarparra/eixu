@@ -16,6 +16,7 @@ export const RATIO_BY_BLOCK: Record<string, Ratio> = {
   'editorial.resources': '16:9',
   'media.image': '16:9',
   'media.gallery': '4:3',
+  'signature.composition': '4:3',
   livre: '1:1',
 };
 
@@ -48,6 +49,8 @@ export const FRAMING: Record<string, string> = {
   'media.image': 'enquadramento panorâmico, assunto centralizado',
   'media.gallery':
     'enquadramento paisagem, assunto único e legível em miniatura',
+  'signature.composition':
+    'cena com assunto isolado e espaço negativo; o arranjo autoral decide o recorte final',
   livre: 'enquadramento quadrado equilibrado',
 };
 
@@ -117,6 +120,15 @@ export function expectedRatio(type: string, layout?: string): Ratio {
     case 'feature.explorer':
     case 'media.gallery':
       return '4:3';
+    case 'signature.composition':
+      return layout === 'editorial-index' ||
+        layout === 'impact-manifesto' ||
+        layout === 'editorial-spread' ||
+        layout === 'proof-route'
+        ? '16:9'
+        : layout === 'visual-selector' || layout === 'story-orbit'
+          ? '4:5'
+          : '4:3';
     case 'editorial.resources':
       return '16:9';
     default:

@@ -61,7 +61,7 @@ adaptados às APIs reais; o handoff não autoriza esses serviços adicionais.
 
 ## Direção e qualidade
 
-A composição parte do briefing, da marca e de cenas coerentes com o cliente: uma seção protagonista, hierarquia de texto e variação de layout. Não há receita obrigatória de home. Cada projeto tem pelo menos três páginas orgânicas conectadas, com intenções de descoberta, consideração e conversão. Obrigado e landing de anúncio não completam esse mínimo. Serviços usam listas editoriais; números de ordem ficam em processos. Provas, garantias, equipamentos e capacidades operacionais dependem de evidência do briefing.
+A composição parte do briefing, da marca e de cenas coerentes com o cliente: uma seção protagonista, hierarquia de texto e variação de layout. Não há uma única receita de home: o perfil v5 escolhe uma de três estruturas completas da vibe a partir da oferta, do público e da jornada. Cada projeto tem pelo menos três páginas orgânicas conectadas, com intenções de descoberta, consideração e conversão. Obrigado e landing de anúncio não completam esse mínimo. Serviços usam listas editoriais; números de ordem ficam em processos. Provas, garantias, equipamentos e capacidades operacionais dependem de evidência do briefing.
 
 As skills divergem: frontend-design recomenda movimento pontual e identidade específica; taste-v1 propõe animações contínuas e uma estética fixa para certos bentos. Prevalecem a marca e o pedido atual do operador. Framer Motion realiza entradas coordenadas, revelações de seções, seleção visual e respostas a hover/toque em componentes de cliente isolados. O conteúdo sai visível do servidor, continua acessível sem JavaScript e respeita movimento reduzido. Dados inventados e fotos aleatórias sugeridos como placeholders na v1 não servem para sites de clientes reais.
 
@@ -213,10 +213,50 @@ conteúdo continua vindo do briefing do cliente.
 
 `lib/design/vibes.ts` guarda essas faixas, o texto de direção que entra no
 prompt e a direção de imagem por vibe. `set_design` recusa a direção que sair
-da faixa, apontando eixo, valor recebido e valores permitidos. A trava de
-unicidade compara clientes da mesma vibe e conserva a distância mínima de três
-eixos quando não há referência verificada. O catálogo tipográfico amplia as
-combinações estruturais dentro de cada faixa.
+da faixa, apontando eixo, valor recebido e valores permitidos. No perfil v5,
+`lib/design/structures.ts` guarda a estrutura completa e a composição autoral;
+a unicidade é conferida quando a home é montada. O catálogo tipográfico amplia
+as combinações visuais dentro de cada faixa.
+
+## Estruturas v5 e composição autoral
+
+Sites novos gravam `structure` e `structureRationale` no perfil v5. Cada vibe
+tem três jornadas completas, e cada jornada fixa abertura, ordem mínima,
+protagonista, apoios, fechamento, proporção das cenas e um layout de
+`signature.composition`. Seções úteis podem entrar entre as marcas obrigatórias;
+a ordem dessas marcas não pode mudar.
+
+| Vibe      | Estrutura               | Sequência mínima da home                                                        |
+| --------- | ----------------------- | ------------------------------------------------------------------------------- |
+| Comercial | `comercial-atendimento` | hero split, percurso numerado, `decision-path`, dúvidas, formulário             |
+| Comercial | `comercial-vitrine`     | hero cover, `service-lens`, explorador, recursos, CTA split                     |
+| Comercial | `comercial-confianca`   | hero split, contexto, dúvidas, `proof-route`, CTA band                          |
+| Moderno   | `moderno-editorial`     | hero editorial, texto lead, `editorial-index`, narrativa editorial, CTA minimal |
+| Moderno   | `moderno-sistema`       | hero offset, `system-map`, trilho numerado, etapas, CTA split                   |
+| Moderno   | `moderno-exploracao`    | hero editorial, explorador, `detail-lens`, recursos, formulário                 |
+| Ousado    | `ousado-manifesto`      | hero cover, `impact-manifesto`, texto lead, imagem bleed, CTA poster            |
+| Ousado    | `ousado-campanha`       | hero poster, colagem, `campaign-sequence`, etapas horizontais, CTA band         |
+| Ousado    | `ousado-mostruario`     | hero cover, `visual-selector`, galeria, fatos poster, CTA poster                |
+| Artístico | `artistico-atelier`     | hero atelier, `material-table`, narrativa overlap, galeria masonry, formulário  |
+| Artístico | `artistico-revista`     | hero offset, texto lead, `editorial-spread`, recursos, CTA split                |
+| Artístico | `artistico-galeria`     | hero atelier, filmstrip, `story-orbit`, narrativa reverse, CTA band             |
+
+`signature.composition` é um bloco controlado e editável, renderizado no
+servidor. O schema exige de três a seis itens, exatamente um `focus`, pelo
+menos um `support`, alt em toda imagem e o layout da estrutura. Percurso,
+lente, mapa e ensaio editorial têm árvores semânticas distintas; as doze
+variantes mudam a composição em CSS e colapsam para uma coluna em tela estreita.
+No celular, as etapas da campanha reservam espaço para a numeração sem cobrir
+texto, foto ou ação.
+O bloco recebe duas cenas geradas do assunto do cliente. Não aceita HTML,
+JavaScript ou CSS gerado por tenant.
+
+O pre-flight v5 recusa home sem uma única composição autoral, sequência fora de
+ordem ou protagonista sem duas fotos geradas. A comparação entre tenants usa
+tipo, layout, ordem, papéis, presença de mídia e ação da assinatura. Texto,
+nome, imagem e URL do outro cliente não entram na assinatura nem na mensagem.
+Isso permite partir da mesma estrutura quando a composição interna muda de
+verdade, sem aceitar a mesma home pintada de outra cor.
 
 ## Gramática da vibe
 
@@ -263,21 +303,23 @@ entra no prompt em toda fase com composição e na crítica visual.
 | `fechamento-fora-da-vibe`       | aviso | A última seção da página é um fechamento da vibe.                   |
 | `secao-vetada`                  | aviso | Nenhuma seção usa uma combinação que contradiz a vibe.              |
 
-Essas regras valem só para o perfil versão 4. Sites publicados em v2 e v3
-continuam com a composição que já têm; recompor exige uma nova direção e uma
-nova publicação. Na retomada, o plano de cenas conserva os alvos, proporções,
-pedidos semânticos e cobertura do perfil antigo; o prompt e o crítico também
-preservam essa composição. A seção protagonista de v4 precisa conter, ela
-própria, duas URLs distintas de fotos geradas disponíveis do cliente. Fotos em
-outro bloco não completam essa exigência.
+Essas regras valem para os perfis 4 e 5. V4 conserva a faixa ampla da vibe;
+v5 aplica a estrutura selecionada e a composição autoral. Sites publicados em
+v2 e v3 continuam com a composição que já têm; recompor exige uma nova direção
+e uma nova publicação. Na retomada, o plano de cenas conserva os alvos,
+proporções, pedidos semânticos e cobertura do perfil antigo; o prompt e o
+crítico também preservam essa composição. A seção protagonista precisa conter,
+ela própria, duas URLs distintas de fotos geradas disponíveis do cliente. Fotos
+em outro bloco não completam essa exigência.
 
 A unicidade passou a medir proporção em vez de igualdade. `silhouette` reduz a
 página à sequência `tipo:layout`, sem texto, imagem nem tom;
 `silhouetteSimilarity` conta as seções em comum sobre a página maior; acima de
 `SILHOUETTE_LIMIT`, 0,75, a home é recusada em `build_site`, `set_blocks` e na
-publicação de perfis v4. As duas homes medidas em produção dão 0,80. Perfis
-v2/v3 conservam a trava de igualdade exata, incluindo ordem, tom e borda. A
-comparação atravessa todas as vibes e não devolve texto, nome ou imagem do
+publicação de perfis v4. V5 usa a maior subsequência comum e expande a marca da
+assinatura com papéis, mídia e ação. As duas homes medidas em produção dão 0,80.
+Perfis v2/v3 conservam a trava de igualdade exata, incluindo ordem, tom e borda.
+A comparação atravessa todas as vibes e não devolve texto, nome ou imagem do
 outro cliente. Cada snapshot usa seu próprio perfil para resolver layouts
 implícitos: o rascunho usa a marca atual; o publicado, a marca publicada.
 
@@ -565,19 +607,20 @@ quando o dial permite. Não há animação infinita. Movimento reduzido desativa
 as transições e as entradas e mantém o estado aberto reconhecível.
 
 O institucional e o painel administrativo conservam fontes e estilos próprios.
-As regras radicais de composição em `vibes.css` ficam limitadas a perfis de
-design v3. Perfis v2 e sites legados preservam a apresentação atual até uma
-recomposição explícita e nova publicação.
+As regras radicais de composição em `vibes.css` ficam limitadas aos contratos
+visuais v3 e v4; perfis v5 reutilizam o contrato CSS v4 e acrescentam a
+estrutura pelo bloco autoral. Perfis v2 e sites legados preservam a
+apresentação atual até uma recomposição explícita e nova publicação.
 
-## Contrato visual v3
+## Contrato visual versionado
 
 | Recurso              | Comportamento                                                                                                                                                                                                                                                                                                                                   |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Perfil persistido    | `brand.design`, versão 4, guarda conceito, elemento-assinatura, oito eixos estruturais e, quando verificada, `referenceDirection`. A leitura aceita v2 e v3 para preservar sites existentes. `tenant.brief` guarda também plano editorial e cenas semânticas.                                                                                   |
+| Perfil persistido    | `brand.design`, versão 5, guarda conceito, elemento-assinatura, estrutura, justificativa, oito eixos visuais e, quando verificada, `referenceDirection`. A leitura aceita v2-v4 para preservar sites existentes. `tenant.brief` guarda também plano editorial e cenas semânticas.                                                               |
 | Tipografia           | 14 famílias, dez opções de display e sete de corpo, descritas acima. `next/font` auto-hospeda os arquivos; o navegador carrega somente as famílias usadas. Escala, peso, entrelinha, medida, legendas e números têm papéis consistentes.                                                                                                        |
 | Vibe                 | `brand.vibe` define a gramática da composição e limita eixos, raio, luminância do papel e dials. Cada aspecto de `referenceDirection` libera os eixos daquele aspecto; abertura, protagonista, motivo, variância e movimento continuam da vibe. A voz escrita continua. Ausente significa `comercial`.                                          |
 | Paleta               | O cadastro oferece uma sugestão por vibe. Enquanto `paletteSource` for `sugerida`, a direção pode adaptá-la ao negócio; editar qualquer cor muda a origem para `operador` e trava `accent`, `accentAlt` e `highlight`. `ink`, `paper` e `surface` continuam com a direção. Contraste AA e diferença entre primária/secundária permanecem gates. |
-| Composição global    | Seis heroes, quatro navegações, quatro ritmos, quatro tratamentos de imagem, quatro superfícies e cinco motivos formam a gramática do cliente. Dials controlam variância, densidade e motion. Atelier compõe ambiente e detalhe; não é padrão obrigatório.                                                                                      |
+| Composição global    | Três estruturas por vibe combinam abertura, ordem mínima, assinatura e fechamento. Seis heroes, quatro navegações, quatro ritmos, quatro tratamentos de imagem, quatro superfícies e cinco motivos modulam o resultado. Dials controlam variância, densidade e motion.                                                                          |
 | Apresentação local   | Todo bloco aceita `presentation`: tom (incluindo a cor secundária), largura, respiro, alinhamento, borda e motion (`none`, `reveal`, `stagger`, `image`). Use um a três momentos de movimento coerentes com a narrativa.                                                                                                                        |
 | Exploração e inbound | `feature.explorer` oferece seleção de aplicações com imagem, texto, fatos e CTA por aba; suporta teclado. `editorial.resources` conecta páginas com hierarquia editorial e imagem ou símbolo. Ambos oferecem layouts próprios.                                                                                                                  |
 | Imagens              | Hero aceita posição, `cover`/`contain`, ponto focal e legendas; atelier aceita imagem secundária. A home exige duas fotos geradas distintas da biblioteca do tenant. Imagens geradas chegam ao agente com número e URL para uso imediato, sem aprovação.                                                                                        |
@@ -586,13 +629,34 @@ recomposição explícita e nova publicação.
 
 ## Unicidade e coerência
 
-`set_design` compara oito decisões estruturais com os perfis dos outros tenants da mesma vibe. Sem direção por referências verificadas, exige distância de três eixos. Com referências, essa distância é informativa: não se trocam os traços da fonte por variações arbitrárias. Nome, briefing, texto, imagens e identidade do outro cliente não são retornados ao agente.
+`set_design` mede a distância entre os eixos dos perfis da mesma vibe. Em v5,
+essa leitura é informativa: estruturas moderno e ousado têm poucos enums e uma
+distância fixa impediria a terceira jornada. A recusa acontece sobre a home
+completa, depois que estrutura, ordem e assinatura existem. Nome, briefing,
+texto, imagens e identidade do outro cliente não são retornados ao agente.
 
-No perfil v4, a home também é medida pela silhueta: a sequência `tipo:layout` das seções de conteúdo, com o layout resolvido como o visitante o vê. Texto, URL, imagem e tom são ignorados. `silhouetteSimilarity` conta as seções em comum sobre a página maior, e acima de 0,75 `build_site`, `set_blocks`, as ferramentas de publicação e a API administrativa recusam a home, listando as seções repetidas sem revelar o outro cliente. Perfis v2/v3 continuam na régua de igualdade exata da sequência inteira, incluindo tom e borda; essa compatibilidade evita bloquear republicações anteriores ao v4. Páginas com menos de quatro blocos de conteúdo ficam fora dessa trava para não forçar diferenças artificiais em obrigado ou páginas curtas.
+No perfil v4, a home é medida pela silhueta: a sequência `tipo:layout` das
+seções de conteúdo, com o layout resolvido como o visitante o vê. V5 preserva
+a ordem pela maior subsequência comum e acrescenta dois sinais estruturais da
+assinatura: sequência de papéis e distribuição de mídia/ação. Texto, URL,
+imagem e tom são ignorados. Mapas usam a ordem efetivamente renderizada: o
+`focus` vem primeiro, seguido dos demais itens na ordem salva. Essa ordenação
+é compartilhada com o renderer; mover apenas o `focus` no JSON não diferencia
+duas composições idênticas. Trocar a ordem dos itens de apoio continua contando.
+Acima de 0,75, `build_site`, `set_blocks`, as
+ferramentas de publicação e a API administrativa recusam a home, listando as
+marcas repetidas sem revelar o outro cliente. Perfis v2/v3 continuam na régua
+de igualdade exata da sequência inteira, incluindo tom e borda; essa
+compatibilidade evita bloquear republicações anteriores ao v4. Páginas com
+menos de quatro marcas ficam fora da trava.
 
 Essas verificações detectam repetição estrutural; não medem qualidade estética nem comprovam coerência semântica. A revisão visual precisa conferir a ligação entre briefing, imagens, silhueta, ritmo e elemento-assinatura. Trocar cores e fontes para vencer o gate não substitui uma direção própria. Uma empresa de pedras pode privilegiar matéria e aplicações; isso não obriga outros negócios a usar a mesma colagem ou as mesmas abas.
 
-O pre-flight exige decisões locais de layout e presentation em páginas comerciais dos perfis v2, v3 e v4; somente escolher motion não conta como decisão de composição. `build_site` valida páginas e projeto antes de gravar o lote em uma transação. Um erro não substitui páginas válidas. Edições incrementais podem produzir rascunho inválido, mas a publicação continua bloqueada.
+O pre-flight exige decisões locais de layout e presentation em páginas
+comerciais dos perfis v2-v5; somente escolher motion não conta como decisão de
+composição. `build_site` valida páginas e projeto antes de gravar o lote em uma
+transação. Um erro não substitui páginas válidas. Edições incrementais podem
+produzir rascunho inválido, mas a publicação continua bloqueada.
 
 `lintSite` exige três páginas orgânicas com pelo menos 100 palavras de conteúdo, intenções e SEO distintos, etapas de inbound, links/âncoras válidos e alcance a partir da home. Também aplica o piso de composição descrito acima: duas fotos geradas distintas e uma seção protagonista na home, cor de marca em uma seção e imagem em toda página orgânica. A contagem de palavras impede páginas vazias, mas não prova utilidade editorial. `lib/sites/publish.ts` é compartilhado pela API, `publish_page` e `publish_site`: valida o estado que ficará ao vivo e publica o lote atomicamente. Uma publicação pontual não conta rascunhos de outras páginas como conteúdo publicado.
 

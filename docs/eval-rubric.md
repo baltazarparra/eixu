@@ -24,17 +24,19 @@ publica.
 Medido por `siteMetrics` e pelos gates; abaixo disso a saída nem chega à
 revisão humana.
 
-| Medida                                      | Mínimo                          |
-| ------------------------------------------- | ------------------------------- |
-| Páginas orgânicas conectadas                | 3                               |
-| Palavras úteis por página orgânica          | 100                             |
-| Fotos geradas distintas na home             | 2                               |
-| Páginas orgânicas com pelo menos uma imagem | todas                           |
-| Seção protagonista na home                  | 1                               |
-| Tons distintos na home                      | 3, um deles accent ou secondary |
-| Momentos de motion                          | 1 a 3                           |
-| Erros de `lintPage` e `lintSite`            | 0                               |
-| Overflow horizontal em 1440 e 390           | nenhum                          |
+| Medida                                      | Mínimo                              |
+| ------------------------------------------- | ----------------------------------- |
+| Páginas orgânicas conectadas                | 3                                   |
+| Palavras úteis por página orgânica          | 100                                 |
+| Fotos geradas distintas na home             | 2                                   |
+| Páginas orgânicas com pelo menos uma imagem | todas                               |
+| Seção protagonista na home                  | 1                                   |
+| Estrutura v5 escolhida e preservada         | 1 das 3 da vibe                     |
+| Composição autoral v5                       | 1, com duas fotos e papéis próprios |
+| Tons distintos na home                      | 3, um deles accent ou secondary     |
+| Momentos de motion                          | 1 a 3                               |
+| Erros de `lintPage` e `lintSite`            | 0                                   |
+| Overflow horizontal em 1440 e 390           | nenhum                              |
 
 ## Rubrica, 0 a 3
 
@@ -66,11 +68,16 @@ própria e coerente. O aceite é média 2 sem nenhum critério em 0.
     preservado. Frase curta ou glossário limpo não provam compreensão.
 11. **Voz da vibe.** O texto segue o [perfil escolhido](copy.md) com coerência,
     preservando clareza e fatos. Não exige repetir os exemplos do contrato.
+12. **Estrutura e assinatura.** A estrutura escolhida responde à jornada, e a
+    `signature.composition` transforma conteúdo, cenas, papéis e ação daquele
+    cliente em uma seção reconhecível. Trocar apenas cores ou texto num arranjo
+    repetido não atende.
 
 Clareza e voz precisam de nota pelo menos 2, além da regra geral de aceite.
 Uma média alta em aparência não compensa texto difícil.
 
-Para avaliar a escrita, use a mesma oferta confirmada nas quatro vibes. Inclua
+Para avaliar a escrita e a variação estrutural, use a mesma oferta confirmada
+nas quatro vibes e execute as três estruturas de cada uma. Inclua
 um negócio de serviço e um de produto; repita a geração e uma edição pontual.
 Registre textos automáticos antes de qualquer intervenção. Inclua nomes oficiais,
 um termo técnico necessário e explicado, e casos com inglês desnecessário,
