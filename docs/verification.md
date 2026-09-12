@@ -24,6 +24,18 @@ Verificação local:
   por isso. Limpar o cache e reconstruir resolveu. Quando uma regra nova não
   aparecer no chunk, confira o cache antes de suspeitar do componente.
 
+Publicado em 12/09/2026 pelo PR #30, squash
+`30c3136467bc1fd012d6f9483c78dfce555abbb6`, deployment Vercel
+`dpl_HSCQLyEsJkxrQs5V6wCNXWG5fbvd` em estado `READY` no alvo de produção, com
+os aliases `eixu.com.br` e `*.eixu.com.br`. O smoke respondeu 200 na home e no
+login; `/admin` sem sessão transmite o redirecionamento 307 para
+`/admin/login?returnTo=/admin`, e `/api/admin/*/state` e `POST /api/chat`
+respondem 401. O chunk CSS publicado contém as regras do botão e do estado
+recolhido. Os erros de runtime da última hora vêm do deployment anterior
+(`[review] crítica indisponível` em `/api/chat`), não desta entrega. O botão não
+foi exercitado em produção porque exige sessão; a prova interativa fica no
+teste de navegador.
+
 ## Geração concluída com revisão humana, 12/09/2026
 
 Esta mudança substitui a conferência única descrita no registro anterior. O
@@ -55,18 +67,6 @@ A geração foi exercitada com fixtures e modelos simulados no SDK real, sem
 chamadas pagas nem escrita em clientes. `fiskprivate`, excluído pelo operador,
 não foi recriado. A validação de release deve confirmar o SHA do merge, READY
 na Vercel e smoke das rotas públicas e da barreira de autenticação.
-
-Publicado em 12/09/2026 pelo PR #30, squash
-`30c3136467bc1fd012d6f9483c78dfce555abbb6`, deployment Vercel
-`dpl_HSCQLyEsJkxrQs5V6wCNXWG5fbvd` em estado `READY` no alvo de produção, com
-os aliases `eixu.com.br` e `*.eixu.com.br`. O smoke respondeu 200 na home e no
-login; `/admin` sem sessão transmite o redirecionamento 307 para
-`/admin/login?returnTo=/admin`, e `/api/admin/*/state` e `POST /api/chat`
-respondem 401. O chunk CSS publicado contém as regras do botão e do estado
-recolhido. Os erros de runtime da última hora vêm do deployment anterior
-(`[review] crítica indisponível` em `/api/chat`), não desta entrega. O botão não
-foi exercitado em produção porque exige sessão; a prova interativa fica no
-teste de navegador.
 
 ## Conferência única com entrega do rascunho, 12/09/2026
 
