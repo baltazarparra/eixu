@@ -50,6 +50,59 @@ export type StepOutcome =
   | { kind: 'paused' }
   | { kind: 'failed'; error: string };
 
+/** Ferramentas que alteram o rascunho na revisão; leitura e conferência ficam de fora. */
+const REVIEW_EDIT_TOOLS = new Set([
+  'update_block',
+  'insert_block',
+  'move_block',
+  'remove_block',
+  'set_blocks',
+  'set_seo',
+]);
+
+const plural = (count: number, one: string, many: string): string =>
+  `${count} ${count === 1 ? one : many}`;
+
+type ReviewToolResult = { toolName: string; output: unknown };
+
+/**
+ * A conferência limpa encerra o laço no passo da ferramenta, sem texto do
+ * agente, e o histórico ficava só com o recibo genérico. Resume o turno.
+ */
+function reviewTurnSummary(
+  toolResults: ReviewToolResult[],
+  review: ReviewReceipt | null,
+): string {
+  // safe() devolve recusas em toolResults. Só o payload confirma o trabalho.
+  const reads = toolResults.filter(({ toolName, output }) => {
+    const reading = output as {
+      visual?: string;
+      review?: { complete?: boolean };
+    } | null;
+    // Uma leitura com achados é válida; complete no topo exige zero erros.
+    return (
+      toolName === 'review_pages' &&
+      reading?.visual === 'complete' &&
+      reading.review?.complete === true
+    );
+  }).length;
+  const edits = toolResults.filter(
+    ({ toolName, output }) =>
+      REVIEW_EDIT_TOOLS.has(toolName) &&
+      (output as { ok?: boolean } | null)?.ok === true,
+  ).length;
+  const suggestions =
+    review?.findings?.filter((finding) => finding.nivel === 'warn').length ?? 0;
+  return [
+    `A revisão fez ${plural(reads, 'leitura', 'leituras')} do rascunho renderizado e aplicou ${plural(edits, 'ajuste', 'ajustes')}.`,
+    suggestions
+      ? `${plural(suggestions, 'sugestão ficou registrada', 'sugestões ficaram registradas')} no relatório, sem bloquear a publicação.`
+      : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+}
+
 /** Uma etapa que repete a anterior sem produzir nada para de verdade. */
 function stallMessage(phase: Phase): string {
   return phase === 'revisao'
@@ -296,6 +349,7 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
   let steps = 0;
   let timedOut = false;
   let spoken = '';
+  let toolResults: ReviewToolResult[] = [];
   let usage: Record<string, unknown> | undefined;
   try {
     const tools = buildTools(ready, {
@@ -352,6 +406,7 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
       },
     });
     steps = result.steps.length;
+    toolResults = result.steps.flatMap((step) => step.toolResults);
     // O painel perdeu a contagem quando a geração saiu do navegador: o recibo
     // do stream não existe aqui. Só números e nome do modelo entram no evento.
     usage = {
@@ -431,6 +486,9 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
     review,
     stopRequested,
   });
+  const silent = !spoken;
+  if (silent && phase === 'revisao' && toolResults.length)
+    spoken = reviewTurnSummary(toolResults, review);
   const receipt = savedProgressMessage(
     workspaceState(fresh, freshPages, freshImages),
     outcome.kind === 'continue',
@@ -447,7 +505,7 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
     outcome.kind === 'paused';
   const text = [
     spoken,
-    !spoken || needsReceipt ? fallback : '',
+    silent || needsReceipt ? fallback : '',
     outcome.kind === 'failed' ? outcome.error : '',
   ]
     .filter(Boolean)

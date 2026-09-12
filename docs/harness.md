@@ -184,6 +184,12 @@ briefing e composição precisam produzir a fase seguinte. O teto global segue
 em 14 saltos. Sem avanço ou ao esgotar as rodadas, o runner decide a parada no
 fim do turno e registra o motivo no chat e em um evento de erro.
 
+Quando o turno de revisão termina sem texto do agente, o resumo conta ajustes
+somente quando a ferramenta confirma `ok: true`. Leituras contam quando captura
+e crítica completaram, mesmo que apontem erros no rascunho; recusas, limite de
+leituras e revisão visual indisponível ou desativada não contam como leitura
+concluída. O recibo do estado atual continua decidindo a conclusão da geração.
+
 Quando o SDK devolve `TimeoutError` por esgotar o turno de 760 segundos, o
 runner relê o estado salvo e aplica a mesma decisão: continua se houve avanço,
 conclui se a revisão atual está completa, ou encerra com o motivo. A pausa do

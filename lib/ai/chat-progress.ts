@@ -44,14 +44,22 @@ export function savedProgressMessage(
   running = false,
 ): string {
   const progress = state.generation;
-  const saved = `Progresso salvo: ${progress.coveredScenes} de ${progress.targetScenes} cenas e ${state.pages.length} páginas.`;
+  // A cobertura do plano de cenas só governa até a composição. Depois dela,
+  // "3 de 6 cenas" num site montado e revisado soava como trabalho pela metade.
+  const composing =
+    progress.next === 'briefing' ||
+    progress.next === 'cenas' ||
+    progress.next === 'composicao';
+  const saved = composing
+    ? `Progresso salvo: ${progress.coveredScenes} de ${progress.targetScenes} cenas e ${state.pages.length} páginas.`
+    : `Progresso salvo: ${state.pages.length} páginas e ${progress.photos} fotos na biblioteca.`;
   const next = {
     briefing: 'A direção visual ainda precisa ser concluída.',
     cenas: 'Ainda há cenas do plano para gerar.',
     composicao: 'A composição das páginas ainda está pendente.',
     revisao: 'A revisão visual do rascunho atual ainda está pendente.',
     pronto:
-      'A revisão visual do rascunho atual foi concluída. Confira a prévia no painel.',
+      'A revisão visual do rascunho atual foi concluída sem erros. Confira a prévia no painel antes de publicar.',
   }[progress.next];
   if (progress.next === 'pronto') return `${saved} ${next}`;
   return `${saved} ${next}${
