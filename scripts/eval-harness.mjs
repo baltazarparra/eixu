@@ -350,11 +350,28 @@ for (let repetition = 1; repetition <= repetitions; repetition += 1) {
       tenant.slug,
       state.pages.map((page) => page.slug),
     );
-    for (const shot of shots)
+    run.navigation = shots.map(({ page, viewport, navigation }) => ({
+      page,
+      viewport,
+      ...navigation,
+    }));
+    run.passed &&= shots.every(
+      (shot) =>
+        !shot.overflow &&
+        shot.brokenImages === 0 &&
+        !shot.navigation?.issues.length,
+    );
+    for (const shot of shots) {
       await writeFile(
         `${directory}/${repetition}-${shot.page.slice(1).replaceAll('/', '-') || 'home'}-${shot.viewport}.jpg`,
         shot.jpeg,
       );
+      if (shot.menuJpeg)
+        await writeFile(
+          `${directory}/${repetition}-${shot.page.slice(1).replaceAll('/', '-') || 'home'}-${shot.viewport}-menu.jpg`,
+          shot.menuJpeg,
+        );
+    }
     await writeFile(
       `${directory}/output-${repetition}.json`,
       JSON.stringify({ tenant, pages: state.pages, images }, null, 2),

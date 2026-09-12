@@ -78,6 +78,9 @@ Somente evidência atual comprova essa análise. Preserve erros e gates de publi
   O admin atual é global, sem autorização individual por tenant.
 - Novo bloco exige schema/catálogo, renderizador, componente e pre-flight coerentes
   em `lib/blocks/` e `lib/taste/`. Não afrouxe validação para aceitar uma geração.
+- Responsividade é requisito de todas as vibes e versões. Preserve o contrato de
+  `lib/design/responsive.ts` e valide navegação fechada/aberta, toque, teclado e
+  telas estreitas/baixas com o CSS de produção; ausência de overflow não basta.
 - Site novo sai pelo fluxo em etapas de `lib/taste/phases.ts` e cumpre o piso de
   composição de `lib/taste/metrics.ts`: seção protagonista com fotos na home,
   imagem em toda página orgânica, ritmo tonal e proporção coerente com o layout.
