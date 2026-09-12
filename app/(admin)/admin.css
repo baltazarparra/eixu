@@ -508,6 +508,21 @@ textarea.admin-input {
 .admin-bar-open:hover {
   color: var(--color-text);
 }
+/* Recolher a conversa: a prévia recebe a largura inteira. O ponto pulsante
+   avisa que o agente ainda trabalha atrás do painel fechado. */
+.admin-conversation-toggle {
+  position: relative;
+  width: 32px;
+  height: 32px;
+}
+.admin-conversation-toggle:hover {
+  color: var(--color-text);
+}
+.admin-conversation-toggle .admin-status-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
 /* Grupo de decisão: só o que condiciona a publicação, depois do divisor. */
 .admin-bar-decide {
   display: flex;
@@ -2613,6 +2628,19 @@ textarea.admin-input {
     grid-template-columns: 230px minmax(0, 1fr);
   }
 }
+/* Conversa recolhida: entre 1024 e 1440 px a coluna de 42% deixava a prévia
+   desktop apertada. Abaixo de 1024 px as vistas alternam e o botão sai. */
+@media (min-width: 1024px) {
+  .admin-workspace[data-conversation='collapsed'] .admin-workspace-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .admin-workspace[data-conversation='collapsed'] .admin-conversation {
+    display: none;
+  }
+  .admin-workspace[data-conversation='collapsed'] .admin-content {
+    grid-column: 1;
+  }
+}
 @media (max-width: 1023px) {
   .admin-bar {
     flex-wrap: wrap;
@@ -2647,6 +2675,9 @@ textarea.admin-input {
     flex: 1;
     border: 0;
     overflow-y: auto;
+  }
+  .admin-conversation-toggle {
+    display: none;
   }
   .admin-mobile-views {
     display: flex;
