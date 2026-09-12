@@ -40,6 +40,9 @@ await test(
       css.includes('.site-signature'),
       'Execute build:vercel antes deste teste.',
     );
+    const fontClasses = [...css.matchAll(/\.([\w-]+)\{--font-[\w-]+:/g)]
+      .map((match) => match[1])
+      .join(' ');
 
     const server = await createServer({
       configFile: false,
@@ -93,7 +96,7 @@ await test(
               res.end(
                 await vite.transformIndexHtml(
                   '/',
-                  `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:"><style>${css}</style></head><body><div id="root">${markup}</div><script type="module" src="/tests/browser/fixtures/signature-structures.tsx"></script></body></html>`,
+                  `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:"><style>${css}</style></head><body class="${fontClasses}"><div id="root">${markup}</div><script type="module" src="/tests/browser/fixtures/signature-structures.tsx"></script></body></html>`,
                 ),
               );
             });
@@ -135,6 +138,7 @@ await test(
           await page.goto(`${origin}/?structure=${structure}`, {
             waitUntil: 'networkidle0',
           });
+          await page.evaluate(() => document.fonts.ready);
           for (const width of [320, 390, 768, 1440]) {
             await page.setViewport({ width, height: 1000 });
             await page.evaluate(
@@ -146,6 +150,28 @@ await test(
             const report = await page.evaluate(() => ({
               width: window.innerWidth,
               scrollWidth: document.documentElement.scrollWidth,
+              numberOverlaps: [
+                ...document.querySelectorAll('.site-signature-path > li'),
+              ].flatMap((item, index) => {
+                const number = item
+                  .querySelector('.site-signature-step')
+                  .getBoundingClientRect();
+                return [
+                  ...item.querySelectorAll(
+                    'img, .site-signature-copy h3, .site-signature-copy p, .site-signature-copy a',
+                  ),
+                ]
+                  .filter((element) => {
+                    const rect = element.getBoundingClientRect();
+                    return (
+                      number.left < rect.right &&
+                      number.right > rect.left &&
+                      number.top < rect.bottom &&
+                      number.bottom > rect.top
+                    );
+                  })
+                  .map((element) => `${index + 1}: ${element.tagName}`);
+              }),
               focus: document.querySelectorAll('[data-role="focus"]').length,
               support: document.querySelectorAll('[data-role="support"]')
                 .length,
@@ -186,6 +212,11 @@ await test(
               `${structure} ${width}: overflow ${report.scrollWidth}`,
             );
             assert.equal(report.focus, 1, `${structure} ${width}`);
+            assert.deepEqual(
+              report.numberOverlaps,
+              [],
+              `${structure} ${width}: número sobre o conteúdo`,
+            );
             assert.equal(report.support, 1, `${structure} ${width}`);
             assert.equal(report.images.length, 2, `${structure} ${width}`);
             assert.ok(

@@ -537,6 +537,7 @@
     left: 1.25rem;
   }
   .site-signature-path > li,
+  .site-signature-campaign-sequence .site-signature-path > li,
   .site-signature-story-orbit .site-signature-path > li {
     padding-left: 4rem;
   }

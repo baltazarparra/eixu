@@ -6,6 +6,10 @@
 import { z } from 'zod';
 import { SiteIcon } from '@/lib/blocks/icon';
 import { renderingVibeOf, type Vibe } from '@/lib/design/vibes';
+import {
+  SIGNATURE_MAP_LAYOUTS,
+  signatureItemsInRenderOrder,
+} from '@/lib/design/structures';
 import { logoFor } from '@/lib/blocks/theme';
 import { MotionLink } from '@/lib/blocks/motion';
 import { MobileNavigation } from '@/lib/blocks/mobile-navigation';
@@ -424,8 +428,7 @@ function SignatureLens({
 }
 
 function SignatureMap({ items, vibe }: { items: SignatureItem[]; vibe: Vibe }) {
-  const focus = items.find((item) => item.role === 'focus') ?? items[0];
-  const support = items.filter((item) => item !== focus);
+  const [focus, ...support] = items;
   return (
     <div className="site-signature-map">
       <article className="site-signature-map-focus" data-role={focus.role}>
@@ -477,7 +480,6 @@ const LENS_SIGNATURES = new Set([
   'detail-lens',
   'visual-selector',
 ]);
-const MAP_SIGNATURES = new Set(['proof-route', 'system-map', 'material-table']);
 
 /**
  * O layout vem da estrutura v5, mas o conteúdo e a combinação de papéis vêm
@@ -504,8 +506,11 @@ export function SignatureComposition({
           <SignaturePath items={items} vibe={vibe} />
         ) : LENS_SIGNATURES.has(layout) ? (
           <SignatureLens items={items} vibe={vibe} />
-        ) : MAP_SIGNATURES.has(layout) ? (
-          <SignatureMap items={items} vibe={vibe} />
+        ) : SIGNATURE_MAP_LAYOUTS.includes(layout) ? (
+          <SignatureMap
+            items={signatureItemsInRenderOrder(layout, items)}
+            vibe={vibe}
+          />
         ) : (
           <SignatureEditorial items={items} vibe={vibe} />
         )}

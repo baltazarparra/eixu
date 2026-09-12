@@ -6,6 +6,7 @@ import {
   type BlockType,
 } from '../blocks/registry';
 import { expectedRatio, ratioFits } from '../images/ratios';
+import { signatureItemsInRenderOrder } from '../design/structures';
 import {
   VIBE_LABEL,
   structureGrammar,
@@ -81,10 +82,11 @@ export function uniquenessSilhouette(
   design?: Pick<DesignProfile, 'heroComposition' | 'navigation'>,
 ): string[] {
   return contentBlocks(blocks).flatMap((block) => {
-    const base = `${block.type}:${resolvedLayout(block, design)}`;
+    const layout = resolvedLayout(block, design);
+    const base = `${block.type}:${layout}`;
     if (block.type !== 'signature.composition') return [base];
     const items = Array.isArray(block.props.items) ? block.props.items : [];
-    const traits = items.map((value) => {
+    const traits = signatureItemsInRenderOrder(layout, items).map((value) => {
       if (!value || typeof value !== 'object') return 'invalid';
       const item = value as Record<string, unknown>;
       const role = typeof item.role === 'string' ? item.role : 'unknown';

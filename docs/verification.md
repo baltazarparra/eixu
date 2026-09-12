@@ -1,5 +1,40 @@
 # Validação e publicação
 
+## Correções da revisão do PR #39, 12/09/2026
+
+A comparação entre tenants e o renderer compartilham a ordem dos itens dos
+mapas autorais. Mover apenas o `focus` no JSON mantém a mesma assinatura e a
+home continua recusada como duplicada; mudar a ordem do apoio ainda diferencia
+composições. A campanha mobile reserva espaço para seus números sem cobrir
+texto, foto ou ação.
+
+Verificação em checkout isolado:
+
+- Os testes de regressão falharam antes das correções: HTML idêntico com
+  similaridade de 71,4% e sete colisões de numeração em 320 px. Após a
+  correção, a reprodução idêntica mede 100% e retorna conflito. O contrato
+  cobre os três layouts de mapa, todas as posições do foco, a projeção sem
+  dados comerciais e mudanças reais na ordem dos itens de apoio.
+- Tipos, lint global, formatação, `git diff --check` e `build:vercel` passaram,
+  incluindo os três checks dos artefatos serverless. `test:sites` passou nos
+  149 casos; `test:admin` passou em 140, com cinco integrações de PostgreSQL
+  local sem execução por ausência desse recurso configurado.
+- A suíte de navegador passou nos 55 casos. A fixture de navegação prepara
+  explicitamente suas dependências antes das visitas: a descoberta durante
+  o teste produzia `504 Outdated Optimize Dep`, inclusive após limpar o cache.
+  O teste continua recusando qualquer erro do navegador.
+- As 12 composições foram medidas em 320, 390, 768 e 1440 px com CSS de
+  produção, fontes reais e o seletor visual v4 usado pelo perfil v5. Os 48
+  cenários passaram em largura, imagens, hierarquia e ausência de colisão
+  dos números com o conteúdo. A captura da campanha em 390 px foi inspecionada
+  em `outputs/signature-structures/ousado-campanha-390.png`.
+- O smoke local de `next start` confirmou institucional e login com 200,
+  redirecionamento do admin sem sessão no navegador e 401 nas APIs de chat,
+  estado e publicação.
+
+Os ensaios usam conteúdo sintético, sem banco remoto, Blob, geração paga ou
+publicação de páginas de clientes. O envio do commit ao PR não faz merge.
+
 ## Toggle da conversa recolhida, 12/09/2026
 
 A conversa não desaparece mais por inteiro no desktop. Ao recolher, ela mantém

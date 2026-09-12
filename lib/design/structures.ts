@@ -41,6 +41,30 @@ export const SIGNATURE_LAYOUTS = [
 
 export type SignatureLayout = (typeof SIGNATURE_LAYOUTS)[number];
 
+export const SIGNATURE_MAP_LAYOUTS: readonly SignatureLayout[] = [
+  'proof-route',
+  'system-map',
+  'material-table',
+];
+
+/** Ordem compartilhada pelo renderer e pela comparação entre tenants. */
+export function signatureItemsInRenderOrder<T>(
+  layout: string,
+  items: T[],
+): T[] {
+  if (!SIGNATURE_MAP_LAYOUTS.some((candidate) => candidate === layout))
+    return items;
+  const focus = items.findIndex(
+    (item) =>
+      item !== null &&
+      typeof item === 'object' &&
+      'role' in item &&
+      item.role === 'focus',
+  );
+  if (focus <= 0) return items;
+  return [items[focus], ...items.slice(0, focus), ...items.slice(focus + 1)];
+}
+
 export type SiteStructure = {
   key: StructureKey;
   vibe: Vibe;

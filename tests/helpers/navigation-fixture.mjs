@@ -36,6 +36,19 @@ export async function navigationFixtureServer() {
     configFile: false,
     root,
     cacheDir: 'node_modules/.vite/site-navigation-test',
+    // A fixture chega pelo middleware, fora das entradas descobertas pelo Vite.
+    // Prepare suas dependências antes de navegar para não invalidar módulos em uso.
+    optimizeDeps: {
+      noDiscovery: true,
+      include: [
+        'react',
+        'react-dom/client',
+        'react/jsx-runtime',
+        'react/jsx-dev-runtime',
+        'framer-motion',
+        'zod',
+      ],
+    },
     plugins: [
       react(),
       {

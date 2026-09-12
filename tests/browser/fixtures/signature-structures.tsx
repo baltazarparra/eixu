@@ -108,6 +108,7 @@ export function SignatureStructureFixture({
       data-vibe={structure.vibe}
       data-structure={structure.key}
       data-profile-version="5"
+      data-design-version="4"
       data-motion="gentle"
       style={themeVars(tenant.brand)}
     >

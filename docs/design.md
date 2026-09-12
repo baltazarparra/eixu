@@ -246,6 +246,8 @@ servidor. O schema exige de três a seis itens, exatamente um `focus`, pelo
 menos um `support`, alt em toda imagem e o layout da estrutura. Percurso,
 lente, mapa e ensaio editorial têm árvores semânticas distintas; as doze
 variantes mudam a composição em CSS e colapsam para uma coluna em tela estreita.
+No celular, as etapas da campanha reservam espaço para a numeração sem cobrir
+texto, foto ou ação.
 O bloco recebe duas cenas geradas do assunto do cliente. Não aceita HTML,
 JavaScript ou CSS gerado por tenant.
 
@@ -637,7 +639,11 @@ No perfil v4, a home é medida pela silhueta: a sequência `tipo:layout` das
 seções de conteúdo, com o layout resolvido como o visitante o vê. V5 preserva
 a ordem pela maior subsequência comum e acrescenta dois sinais estruturais da
 assinatura: sequência de papéis e distribuição de mídia/ação. Texto, URL,
-imagem e tom são ignorados. Acima de 0,75, `build_site`, `set_blocks`, as
+imagem e tom são ignorados. Mapas usam a ordem efetivamente renderizada: o
+`focus` vem primeiro, seguido dos demais itens na ordem salva. Essa ordenação
+é compartilhada com o renderer; mover apenas o `focus` no JSON não diferencia
+duas composições idênticas. Trocar a ordem dos itens de apoio continua contando.
+Acima de 0,75, `build_site`, `set_blocks`, as
 ferramentas de publicação e a API administrativa recusam a home, listando as
 marcas repetidas sem revelar o outro cliente. Perfis v2/v3 continuam na régua
 de igualdade exata da sequência inteira, incluindo tom e borda; essa

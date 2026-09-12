@@ -410,3 +410,96 @@ await test('catálogo da composição aponta somente o layout selecionado', () =
   );
   assert.match(catalog, /layout\(decision-path\|service-lens\|proof-route/);
 });
+
+await test('mover o focus no JSON não diferencia mapas com o mesmo HTML', async () => {
+  for (const key of [
+    'comercial-confianca',
+    'moderno-sistema',
+    'artistico-atelier',
+  ]) {
+    const structure = structures.SITE_STRUCTURES[key];
+    const design = designFor(structure);
+    const original = homeFor(structure);
+    const signature = original.blocks.find(
+      (block) => block.type === 'signature.composition',
+    );
+    const html = renderToStaticMarkup(
+      createElement(SignatureComposition, signature.props),
+    );
+    const shape = metrics.uniquenessSilhouette(original.blocks, design);
+    for (
+      let position = 1;
+      position < signature.props.items.length;
+      position++
+    ) {
+      const reordered = structuredClone(original);
+      const candidate = reordered.blocks.find(
+        (block) => block.type === 'signature.composition',
+      );
+      const [focus] = candidate.props.items.splice(0, 1);
+      candidate.props.items.splice(position, 0, focus);
+      assert.equal(
+        renderToStaticMarkup(
+          createElement(SignatureComposition, candidate.props),
+        ),
+        html,
+        key,
+      );
+      assert.deepEqual(
+        metrics.uniquenessSilhouette(reordered.blocks, design),
+        shape,
+        key,
+      );
+      const projected = reordered.blocks.map((block) => ({
+        ...block,
+        props: {
+          layout: block.props.layout,
+          items: block.props.items?.map((item) => ({
+            role: item.role,
+            image: Object.hasOwn(item, 'image'),
+            cta: Object.hasOwn(item, 'cta'),
+          })),
+        },
+      }));
+      const uniqueness = await loadModule('lib/design/uniqueness.ts', {
+        '../db': { db: () => async () => [{ blocks: projected, design }] },
+        '../taste/metrics': metrics,
+        './profile': profile,
+      });
+      assert.equal(
+        (
+          await uniqueness.compositionConflict(
+            'fixture',
+            original.blocks,
+            design,
+          )
+        )?.similarity,
+        1,
+        key,
+      );
+    }
+    const changed = structuredClone(original);
+    const items = changed.blocks.find(
+      (block) => block.type === 'signature.composition',
+    ).props.items;
+    [items[1], items[2]] = [items[2], items[1]];
+    assert.notEqual(
+      renderToStaticMarkup(
+        createElement(
+          SignatureComposition,
+          changed.blocks.find((block) => block.type === 'signature.composition')
+            .props,
+        ),
+      ),
+      html,
+      key,
+    );
+    assert.ok(
+      metrics.orderedSilhouetteSimilarity(
+        shape,
+        metrics.uniquenessSilhouette(changed.blocks, design),
+      ) < metrics.SILHOUETTE_LIMIT,
+      key,
+    );
+  }
+});
