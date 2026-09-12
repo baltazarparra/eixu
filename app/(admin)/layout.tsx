@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import localFont from 'next/font/local';
+import { LogOut } from 'lucide-react';
 import { isAuthenticated } from '@/lib/auth';
-import { railClients } from '@/lib/admin/queries';
 import { AdminShell } from '@/components/admin/admin-shell';
 import { logoutAction } from './admin/actions';
 import './admin.css';
@@ -32,22 +32,21 @@ export default async function AdminRootLayout({
   children: ReactNode;
 }) {
   const authenticated = await isAuthenticated();
-  const clients = authenticated ? await railClients() : [];
+  const operator = process.env.ADMIN_USER || 'admin';
   return (
     <html lang="pt-BR" className={`${sans.variable} ${mono.variable}`}>
       <body>
         {authenticated ? (
           <AdminShell
-            clients={clients}
-            operator={process.env.ADMIN_USER || 'admin'}
+            operator={operator}
             logout={
               <form action={logoutAction}>
                 <button
                   className="admin-icon-button"
                   aria-label="Sair do painel"
-                  title="Sair"
+                  title={`Sair (${operator})`}
                 >
-                  ↪
+                  <LogOut size={15} aria-hidden="true" />
                 </button>
               </form>
             }

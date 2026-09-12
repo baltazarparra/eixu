@@ -47,6 +47,40 @@ botão Continuar reabre uma rodada paga por cliente. A comparação de silhueta
 com outros clientes continua só no gate de publicação, fora do estado do
 painel.
 
+## Progresso da geração dentro da conversa, 11/09/2026
+
+O andamento ocupava a faixa superior da coluna direita e empurrava a prévia para
+baixo, e o rail de clientes tomava 252 px em toda tela do painel. Esta entrega
+move o painel de geração para dentro da conversa, como bloco compacto logo
+abaixo do cabeçalho dela, devolve a altura inteira à prévia e troca o rail por um
+botão de voltar no cabeçalho do cliente. A identidade do operador e a saída
+passam a viajar por contexto e são desenhadas nos cabeçalhos da lista e do
+cliente. Nada de novo aparece: os mesmos dados, rótulos e estados do painel,
+reorganizados. O nome e o resultado de cada fase saem das trilhas e viram o
+`title` delas; a linha do tempo continua trazendo o mesmo conteúdo.
+
+- `npx next typegen && npx tsc --noEmit`: sem erros.
+- `npm run lint`: zero apontamentos.
+- `npm run test:admin`: 110 testes, 105 passaram e 5 pularam por falta de
+  PostgreSQL local. A asserção de `railClients` saiu junto com a consulta.
+- `npm run test:sites`: 85 testes, sem pulos.
+- `npm run build:vercel`: aprovado, incluindo os três testes dos arquivos de
+  captura no artefato serverless.
+- `npm run test:admin:browser` com Chrome local: 8 testes, todos passaram. O
+  caso do handoff passou a navegar pela linha da lista e a voltar pelo botão do
+  cabeçalho, conferindo que não existem mais rail nem barra móvel e que a saída
+  aparece uma vez por tela. O caso da geração passou a exigir o bloco com altura
+  real na vista Conversa do celular, no lugar da faixa que foi removida.
+- Capturas do painel real, com o CSS do build, em `outputs/generation/`
+  (execução, conclusão, início automático, celular e consumo) e em
+  `outputs/admin-handoff/` (lista, editor, imagens, dados e tráfego em 390 e
+  1440 px).
+
+Limite assumido: no celular, na vista **Prévia**, não há indicador de execução —
+a faixa que duplicava o painel foi removida com ele. O andamento continua na
+vista **Conversa**. Sem migração, seed, geração paga, escrita remota ou
+publicação de cliente neste ciclo.
+
 ## Iconografia e tipografia das quatro vibes, 11/09/2026
 
 O gerador ganhou 14 famílias tipográficas e 26 símbolos semânticos, com

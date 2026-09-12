@@ -18,10 +18,11 @@ Em Marca, envie o logo, opcional, e escolha três cores: a primária pinta seç�
 
 O painel é uma operação administrativa global: quem tem a credencial pode acessar todos os clientes. Não compartilhe essa sessão com clientes finais.
 
-A navegação lateral acompanha as áreas do cliente e permite trocar de cadastro.
-Na lista, busque por nome/endereço ou filtre publicados e rascunhos. Os números
-mostram clientes, leads recebidos nos últimos 30 dias e execuções em fila,
-rodando ou encerrando uma etapa. No celular, **Clientes** abre a navegação.
+A lista de clientes é a base da navegação: busque por nome/endereço ou filtre
+publicados e rascunhos. Os números mostram clientes, leads recebidos nos últimos
+30 dias e execuções em fila, rodando ou encerrando uma etapa. Dentro de um
+cliente, a seta no canto do cabeçalho volta para a lista, em qualquer aparelho.
+O botão de sair fica no fim das ações do cabeçalho, na lista e no cliente.
 
 ## Preparar os dados
 
@@ -65,7 +66,7 @@ Um cliente recém-cadastrado começa a construção sozinho: ao abrir Site, a pr
 
 **Continuar** roda briefing e direção, cenas, composição e revisão, uma etapa por vez. **Retomar** aparece depois de uma pausa e **Tentar novamente** depois de uma falha. A sequência roda no servidor, não na aba: recarregar a tela, trocar de aparelho ou fechar o navegador não interrompe nem duplica nada, e o painel volta mostrando a etapa e a atividade em andamento. Digitar "continuar" no chat faz a mesma coisa que o botão.
 
-O andamento fica acima da prévia no computador e na área de trabalho no celular: a etapa atual e sua posição na sequência, a barra das quatro etapas, o que cada uma produziu, a ferramenta em execução, o tempo desta etapa e o tempo total, e a **Linha do tempo** com tudo que foi registrado. **Pausar** encerra depois do passo atual — uma ferramenta já iniciada termina e salva; a pausa não desfaz escritas. Ao terminar, o painel mostra páginas, fotos, tempo e consumo até você fechar.
+O andamento fica dentro da conversa, logo abaixo do título dela, e a prévia ocupa a altura inteira: a etapa atual e sua posição na sequência, as quatro trilhas (o nome e o resultado de cada uma aparecem ao passar o mouse), o que a etapa já produziu, a ferramenta em execução, o tempo desta etapa e o tempo total, e a **Linha do tempo** com tudo que foi registrado. No celular, o andamento acompanha a vista **Conversa**; na vista **Prévia** ele não aparece. **Pausar** encerra depois do passo atual — uma ferramenta já iniciada termina e salva; a pausa não desfaz escritas. Ao terminar, o painel mostra páginas, fotos, tempo e consumo até você fechar.
 
 Enquanto a geração roda, o chat fica em espera e diz por quê: os dois disputariam as mesmas páginas. Se uma etapa falhar ou não avançar, a execução para com o motivo no painel; leia a última resposta antes de retomar. Se aparecer que a próxima etapa não pôde ser iniciada, **Tentar novamente** retoma pelo progresso salvo. Cenas e páginas prontas continuam disponíveis; uma revisão visual pendente ainda precisa ser concluída antes de considerar a geração pronta.
 

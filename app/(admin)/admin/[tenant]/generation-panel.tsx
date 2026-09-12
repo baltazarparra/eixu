@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ChevronRight } from 'lucide-react';
 import type { SiteState } from '@/lib/admin/state';
 import {
   formatCost,
@@ -161,10 +160,17 @@ export function GenerationPanel({
     return (end - runStarted) / 1000;
   })();
 
-  const meta = starting
+  // A etapa e o que ela já produziu ficam à esquerda; os tempos, à direita,
+  // para o bloco caber acima da conversa sem roubar altura da prévia.
+  const stage = starting
     ? 'Abrindo a primeira etapa no servidor'
     : running && runStarted
-      ? `Etapa ${position} de ${PHASES.length} · ${clock(phaseSeconds)} nesta etapa · ${clock(totalSeconds ?? 0)} no total`
+      ? [
+          `Etapa ${position} de ${PHASES.length}`,
+          phaseProgress(state, phase, events),
+        ]
+          .filter(Boolean)
+          .join(' · ')
       : finished
         ? [
             plural(state.pages.length, 'página', 'páginas'),
@@ -215,37 +221,33 @@ export function GenerationPanel({
   return (
     <section
       className="admin-run"
-      data-running={running || starting ? '' : undefined}
       aria-live="polite"
       aria-busy={running || starting}
     >
       <div className="admin-run-head">
-        <div className="admin-run-title">
-          <StatusPill
-            tone={
-              run?.status === 'failed'
-                ? 'err'
-                : finished
-                  ? 'ok'
-                  : running || starting
-                    ? 'accent'
-                    : 'neutral'
-            }
-            pulse={running && run?.status !== 'stopping'}
-          >
-            {run?.status === 'stopping'
-              ? 'Pausando'
-              : running || starting
-                ? 'Em execução'
-                : finished
-                  ? 'Concluída'
-                  : run?.status === 'failed'
-                    ? 'Interrompida'
-                    : 'Parada'}
-          </StatusPill>
-          <strong className="admin-run-name">{title}</strong>
-          <span className="admin-run-meta">{meta}</span>
-        </div>
+        <StatusPill
+          tone={
+            run?.status === 'failed'
+              ? 'err'
+              : finished
+                ? 'ok'
+                : running || starting
+                  ? 'accent'
+                  : 'neutral'
+          }
+          pulse={running && run?.status !== 'stopping'}
+        >
+          {run?.status === 'stopping'
+            ? 'Pausando'
+            : running || starting
+              ? 'Em execução'
+              : finished
+                ? 'Concluída'
+                : run?.status === 'failed'
+                  ? 'Interrompida'
+                  : 'Parada'}
+        </StatusPill>
+        <strong className="admin-run-name">{title}</strong>
         {action}
       </div>
 
@@ -262,54 +264,57 @@ export function GenerationPanel({
           </p>
         )
       ) : (
-        <>
-          <ol className="admin-run-steps">
-            {PHASES.map((item) => {
-              const active = phase === item;
-              const complete = reached(item);
-              const record = records[item];
-              const detail = active
-                ? phaseProgress(state, item, events)
+        <ol className="admin-run-steps">
+          {PHASES.map((item) => {
+            const active = phase === item;
+            const complete = reached(item);
+            const record = records[item];
+            const failed =
+              run?.status === 'failed' && (run.phase ?? next) === item;
+            const outcome = [
+              record?.outcome,
+              record?.seconds ? `em ${clock(record.seconds)}` : null,
+            ]
+              .filter(Boolean)
+              .join(' ');
+            // O nome da fase e o que ela produziu saem da trilha e viram o
+            // título dela; a linha do tempo continua trazendo o mesmo conteúdo.
+            const hint = failed
+              ? `${PHASE_LABEL[item]} · interrompida`
+              : active
+                ? `${PHASE_LABEL[item]} · em execução`
                 : complete
-                  ? record?.outcome
-                  : null;
-              const aside =
-                complete && record?.seconds
-                  ? clock(record.seconds)
-                  : !complete && !active
-                    ? `~${Math.round(ESTIMATE_S[item] / 60)} min`
-                    : null;
-              return (
-                <li
-                  key={item}
-                  data-state={
-                    run?.status === 'failed' && (run.phase ?? next) === item
-                      ? 'failed'
-                      : active
-                        ? 'active'
-                        : complete
-                          ? 'done'
-                          : 'todo'
-                  }
-                >
-                  <span className="admin-step-track" aria-hidden="true" />
-                  <div className="admin-run-step">
-                    <span className="admin-run-step-name">
-                      {PHASE_LABEL[item]}
-                    </span>
-                    {detail ? (
-                      <span className="admin-run-sub">{detail}</span>
-                    ) : null}
-                  </div>
-                  {aside ? (
-                    <span className="admin-run-step-time">{aside}</span>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ol>
-        </>
+                  ? `${PHASE_LABEL[item]}${outcome ? ` · ${outcome}` : ''}`
+                  : `${PHASE_LABEL[item]} · ~${Math.round(ESTIMATE_S[item] / 60)} min`;
+            return (
+              <li
+                key={item}
+                title={hint}
+                data-state={
+                  failed
+                    ? 'failed'
+                    : active
+                      ? 'active'
+                      : complete
+                        ? 'done'
+                        : 'todo'
+                }
+              >
+                <span className="admin-step-track" aria-hidden="true" />
+              </li>
+            );
+          })}
+        </ol>
       )}
+
+      <p className="admin-run-stage">
+        <span>{stage}</span>
+        {running && runStarted ? (
+          <span className="admin-run-meta">
+            {clock(phaseSeconds)} · {clock(totalSeconds ?? 0)} no total
+          </span>
+        ) : null}
+      </p>
 
       {running ? (
         <p className="admin-run-activity">
@@ -358,34 +363,5 @@ export function GenerationPanel({
         </details>
       ) : null}
     </section>
-  );
-}
-
-/** Versão compacta para o celular, onde a conversa pode estar oculta. */
-export function GenerationBar({
-  run,
-  events,
-  state,
-  onOpen,
-}: {
-  run: GenerationRun | null;
-  events: GenerationEvent[];
-  state: SiteState;
-  onOpen: () => void;
-}) {
-  const running = isRunning(run);
-  if (!running) return null;
-  const activity = currentActivity(events);
-  const phase = run?.phase ?? (state.generation.next as Phase);
-  const progress = phaseProgress(state, phase, events);
-  return (
-    <button type="button" onClick={onOpen} className="admin-run-bar">
-      <span className="admin-run-pulse" aria-hidden="true" />
-      <span className="admin-run-bar-text">
-        <strong>{PHASE_LABEL[phase]}</strong>
-        <span>{progress ?? activity?.label ?? 'em andamento'}</span>
-      </span>
-      <ChevronRight size={16} aria-hidden="true" />
-    </button>
   );
 }

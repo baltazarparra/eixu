@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client';
+import { LogOut } from 'lucide-react';
 import { AdminShell } from '@/components/admin/admin-shell';
 import { TenantFrame } from '@/components/admin/navigation';
 import { Clients } from '@/app/(admin)/admin/clients';
@@ -76,7 +77,6 @@ createRoot(document.getElementById('root')!).render(
     <LoginPage />
   ) : (
     <AdminShell
-      clients={data.empty ? [] : data.clients}
       operator="Operação"
       logout={
         <button
@@ -84,7 +84,7 @@ createRoot(document.getElementById('root')!).render(
           className="admin-icon-button"
           aria-label="Sair do painel"
         >
-          ↪
+          <LogOut size={15} aria-hidden="true" />
         </button>
       }
     >
