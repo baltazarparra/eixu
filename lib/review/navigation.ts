@@ -63,6 +63,20 @@ export async function inspectNavigation(page: Page): Promise<{
   try {
     await page.click('.site-menu-toggle');
     await page.waitForSelector('.site-menu-dialog[open]', { timeout: 2000 });
+    await page.evaluate(async () => {
+      const modal = document.querySelector<HTMLDialogElement>(
+        '.site-menu-dialog[open]',
+      );
+      if (!modal) return;
+      await Promise.all(
+        modal
+          .getAnimations()
+          .map((animation) => animation.finished.catch(() => undefined)),
+      );
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => resolve()),
+      );
+    });
     navigation.opened = true;
     navigation.issues.push(
       ...(await page.evaluate((reserved) => {
