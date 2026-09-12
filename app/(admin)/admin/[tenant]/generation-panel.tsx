@@ -52,6 +52,15 @@ function statusLine(
       tone: 'err',
       text: run.error ?? 'A geração parou por um erro. Confira o chat.',
     };
+  if (
+    run.status === 'done' &&
+    state.generation.next === 'pronto' &&
+    !state.generation.reviewComplete
+  )
+    return {
+      tone: 'warn',
+      text: 'Site gerado com revisão pendente. Confira a prévia e os avisos antes de publicar. Para conferir novamente, peça uma nova revisão pelo chat.',
+    };
   // Um run só fecha como concluído quando o estado dizia "pronto". Se uma
   // etapa voltou a existir, foi o rascunho, o acervo ou o gerador que mudaram
   // depois; culpar a execução mandava o operador procurar um erro que não houve.
@@ -208,7 +217,9 @@ export function GenerationPanel({
             run?.status === 'failed'
               ? 'err'
               : finished
-                ? 'ok'
+                ? state.generation.reviewComplete
+                  ? 'ok'
+                  : 'warn'
                 : running || starting
                   ? 'accent'
                   : 'neutral'

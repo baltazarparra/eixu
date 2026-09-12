@@ -1,5 +1,39 @@
 # Validação e publicação
 
+## Conferência única com entrega do rascunho, 12/09/2026
+
+Conferir passou a ter uma única passagem por geração. O SDK força a primeira
+leitura e encerra na indisponibilidade visual, sem edições motivadas pela falha.
+Erros conhecidos ainda permitem reparo e uma conferência focal no mesmo turno;
+não há novas rodadas automáticas. Timeout, recusa ou pendências na conferência
+entregam o rascunho com aviso, preservando os erros e o pre-flight de publicação.
+O recibo `brief.generation.delivery` é separado do certificado visual e fica
+inválido quando o rascunho muda. Não há migração de schema.
+
+Verificação local:
+
+- Tipos (`npx next typegen && npx tsc --noEmit`), lint global,
+  `git diff --check` e build Next.js de produção passaram, incluindo os três
+  checks dos artefatos de captura serverless.
+- `EIXU_CHROME_PATH=/usr/bin/google-chrome npm run test:admin`: 120 casos,
+  117 passaram e três integrações PostgreSQL foram puladas por ausência de
+  `EIXU_TEST_POSTGRES_URL`. O SDK real com modelo simulado fez uma única chamada
+  ao receber indisponibilidade, sem editar. O runner foi verificado com timeout,
+  erro do provedor, ausência de avanço, limite de passos, reparo que deixou
+  erro estrutural, pausa e retomada de execução legada.
+- `npm run test:sites` com Chromium local: 125 casos passaram, incluindo os
+  contratos de publicação e preservação do snapshot.
+- Oito testes de navegador existentes passaram. O novo teste de entrega com
+  revisão pendente passou após corrigir o seletor do iframe e abrir a aba
+  Conversa no celular: em 1440 e 390 px, geração concluída, aviso visível, chat
+  liberado, prévia preservada e nenhuma nova execução após recarga. Capturas em
+  `outputs/generation/entrega-revisao-pendente-{1440,390}.png`.
+
+Não houve geração paga, escrita de cliente ou deploy. O operador excluiu
+`fiskprivate` durante o diagnóstico; o caso foi reproduzido com fixtures, sem
+recriar o cliente. A causa específica da indisponibilidade do crítico naquele
+run não foi confirmada pelos logs de produção.
+
 ## Cabeçalho único do editor, 12/09/2026
 
 O handoff `design_handoff_cabecalho_unico` trocou os três cabeçalhos do editor

@@ -65,7 +65,7 @@ A escrita tem um [contrato por vibe](copy.md), com linguagem simples em comum.
 `lib/copy/policy.ts` fornece a mesma base ao autor, em todas as fases e edições,
 e ao crítico. `lintPage` verifica rótulos de ação e aponta vocabulário/frases
 para revisão; o crítico julga compreensão e voz com textos completos, sinais e
-pixels. Erro material de linguagem impede a conclusão automática. A versão
+pixels. Erro material de linguagem impede a aprovação visual automática. A versão
 `gemini-3.8-quality-v4-gramatica-validada` invalida recibos anteriores aos
 contratos corrigidos de composição. A gramática da vibe entra apenas no perfil
 v4; retomadas e críticas de perfis v2/v3 preservam a direção e o plano de cenas
@@ -194,33 +194,40 @@ um turno do coordenador só para repetir o plano. O runner chama o executor de
 isolamento do tenant e recibos do estúdio. O caminho com agente continua como
 fallback para briefings antigos sem plano válido.
 
-A revisão pode ocupar até três rodadas por execução, cada uma com turno e
-limite de leituras próprios. `lib/generation/marker.ts` compara a quantidade de
-leituras registradas e a assinatura do rascunho: repetir a fase `revisao` com
-algum desses valores alterado é avanço. Cenas usam a cobertura do plano;
-briefing e composição precisam produzir a fase seguinte. O teto global segue
-em 14 saltos. Sem avanço ou ao esgotar as rodadas, o runner decide a parada no
-fim do turno e registra o motivo no chat e em um evento de erro.
+Conferir ocupa uma única passagem por execução. O loop força `review_pages` no
+primeiro passo e encerra imediatamente quando a captura/crítica está indisponível
+ou desativada, sem editar conteúdo por esse motivo. Erros conhecidos permitem
+reparo e uma conferência focal no mesmo turno; a segunda leitura encerra a
+tentativa mesmo se restarem pendências. Não há rodadas automáticas adicionais.
+Cenas usam a cobertura do plano; briefing e composição precisam produzir a fase
+seguinte. O teto global segue em 14 saltos.
+
+O runner grava a entrega em `brief.generation.delivery`, com fingerprint do
+rascunho e data, sem sobrescrever `review`. Esse recibo encerra a geração e
+sobrevive à recarga, mas não comprova qualidade visual. O painel e o chat dizem
+que o site foi gerado com revisão pendente, quando necessário. Falhas técnicas e
+achados do recibo incompleto atual continuam no relatório. Uma edição posterior
+invalida a entrega; uma nova revisão também pode ser pedida pelo chat.
 
 Quando o turno de revisão termina sem texto do agente, o resumo conta ajustes
 somente quando a ferramenta confirma `ok: true`. Leituras contam quando captura
 e crítica completaram, mesmo que apontem erros no rascunho; recusas, limite de
 leituras e revisão visual indisponível ou desativada não contam como leitura
-concluída. O recibo do estado atual continua decidindo a conclusão da geração.
+concluída. O certificado visual continua exigindo evidência atual; entrega não é aprovação.
 
-Quando o SDK devolve `TimeoutError` por esgotar o turno de 760 segundos, o
-runner relê o estado salvo e aplica a mesma decisão: continua se houve avanço,
-conclui se a revisão atual está completa, ou encerra com o motivo. A pausa do
-operador tem prioridade. Esse caminho grava o fim da fase sem inventar consumo
-que o SDK não devolveu. O timeout depende de a chamada em andamento respeitar
-o sinal de aborto; ele não garante que ferramentas independentes terminem
-dentro do limite da função.
+Quando o SDK devolve `TimeoutError`, o runner relê o estado salvo. Em Conferir,
+a tentativa termina com entrega e pendência; nas etapas anteriores, a evidência
+decide continuação ou falha. Erro de execução durante Conferir também preserva a
+entrega, com nota explícita. A pausa do operador tem prioridade. Esse caminho
+não inventa consumo que o SDK não devolveu. O timeout depende de a chamada em
+andamento respeitar o sinal de aborto; não garante que ferramentas independentes
+terminem dentro do limite da função. Falha de banco que impeça confirmar ou
+persistir o estado continua sendo falha de execução, não entrega comprovada.
 
-O painel mostra leituras dentro da rodada atual, sem usar o contador acumulado
-do cliente. O número da rodada fica no evento de início para sobreviver ao
-corte de eventos antigos no feed. O último turno recebe instrução explícita
-para relatar pendências sem prometer continuação automática. **Tentar
-novamente** abre uma execução com novas rodadas, preservando o rascunho.
+O painel mostra leituras da única passagem, sem usar o contador acumulado do
+cliente. Os eventos legados de rodadas continuam legíveis. **Tentar novamente**
+retoma uma execução antiga que falhou; uma geração já entregue não reinicia pelo
+mesmo comando. O chat permite solicitar outra revisão explicitamente.
 
 ## Compor, observar, corrigir, conferir
 
@@ -290,7 +297,7 @@ cobertura incompleta ou crítica inválida deixam a revisão incompleta.
 avaliação e, quando houve reparo, uma conferência focal. A primeira avaliação
 com cobertura completa e sem erro material já encerra; avisos opcionais ficam
 no relatório. A crítica é sugestão verificável, não autorização humana.
-O loop força a conferência no último passo somente se ainda houver leitura
+O loop força a primeira avaliação e reserva o último passo para a conferência se ainda houver leitura
 disponível; uma terceira chamada seria recusada pela ferramenta. As correções
 da mesma página podem ser agrupadas antes da nova leitura. Depois do refinamento, uma nova
 revisão completa e sem erros encerra a fase por condição externa, mantendo os
@@ -302,12 +309,12 @@ fingerprint SHA-256 por página. A dependência inclui conteúdo, SEO, marca,
 contatos, briefing, imagens efetivamente usadas, versão do harness e deployment.
 Uma página intacta reaproveita desktop e mobile; mudança global invalida o
 conjunto dependente, e foto solta no acervo não invalida nada. O certificado
-completo nasce dos recibos atuais de todas as páginas. `nextPhase` exige revisão
-visual completa e sem erro material: contar chamadas já não encerra a geração.
+completo nasce dos recibos atuais de todas as páginas. `nextPhase` encerra com certificado visual completo e sem erro material ou com
+entrega explícita do rascunho atual. Contar chamadas não comprova aprovação.
 
 A publicação manual mantém o pre-flight determinístico em ambos os caminhos.
-O recibo do crítico governa a conclusão automática, sem transformar uma opinião
-do modelo em permissão para publicar.
+O recibo do crítico governa a aprovação visual, sem transformar uma opinião
+do modelo em permissão para publicar ou indisponibilidade em falha da entrega.
 
 ## Avaliação reproduzível
 

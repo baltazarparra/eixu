@@ -2,6 +2,7 @@ import { isDesignProfile } from '@/lib/design/profile';
 import { generationState } from '@/lib/sites/generation';
 import {
   currentReview,
+  reviewFingerprint,
   previewFingerprint,
   savedReview,
 } from '@/lib/review/state';
@@ -62,6 +63,12 @@ export function workspaceState(
     : undefined;
   const saved = savedReview(tenant);
   const review = currentReview(tenant, pages, images);
+  // A tentativa incompleta também tem achados úteis. Não a trate como
+  // certificado, nem esconda seus erros técnicos ao entregar o rascunho.
+  const report =
+    saved?.fingerprint === reviewFingerprint(tenant, pages, images)
+      ? saved
+      : null;
   const pagePaths = new Set(pages.map((page) => `/${page.slug}`));
   const projectFindings = findings.filter(
     (finding) => !pagePaths.has(finding.page),
@@ -84,8 +91,8 @@ export function workspaceState(
         review.errors === 0,
       visual: review?.visual ?? saved?.visual ?? null,
       reviewedAt: review?.reviewedAt ?? saved?.reviewedAt ?? null,
-      errors: review?.errors ?? 0,
-      findings: (review?.findings ?? []).map((finding) => ({
+      errors: report?.errors ?? 0,
+      findings: (report?.findings ?? []).map((finding) => ({
         id: finding.id ?? `${finding.pagina}-${finding.regra}`,
         page: finding.pagina,
         level: finding.nivel,
@@ -96,7 +103,7 @@ export function workspaceState(
         viewport: finding.viewport ?? null,
         status: finding.status ?? 'open',
       })),
-      pages: Object.entries(review?.pages ?? {}).map(([page, receipt]) => ({
+      pages: Object.entries(report?.pages ?? {}).map(([page, receipt]) => ({
         page,
         visual: receipt.visual,
         desktop: receipt.viewports.desktop,

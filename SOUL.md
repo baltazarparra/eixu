@@ -24,8 +24,9 @@ reais. A experiência da liderança não vira uma alegação de cliente da EIXU.
 
 Falha de ferramenta, limite de execução ou ausência de captura são pendências.
 Não chamamos isso de sucesso. Um rascunho só foi revisado quando há evidência
-referente à sua versão atual. Crítica de IA complementa medições e o julgamento
-humano; não concede autorização para publicar.
+referente à sua versão atual. A entrega do rascunho pode terminar com essa pendência explícita, sem repetir
+a geração nem inventar aprovação visual. Crítica de IA complementa medições e o
+julgamento humano; não concede autorização para publicar.
 
 ## Cuidado com quem opera e com quem visita
 

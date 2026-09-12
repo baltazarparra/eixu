@@ -100,7 +100,7 @@ porcentagem. A prévia acompanha as alterações salvas. Quando a geração est�
 parada, os motivos que bloqueiam a publicação continuam visíveis, mesmo com a
 revisão ainda pendente.
 
-O agente interno usa Gemini 3.8 Flash e dedica mais raciocínio à composição e à revisão. Ele planeja intenções distintas por página, confere o resultado em desktop e celular e corrige problemas materiais. Uma revisão que falhou ou ficou desatualizada não marca o site como pronto. Durante a geração, atingir o limite do turno pode abrir outra rodada de revisão automaticamente; o rascunho e as pendências permanecem. A revisão não publica por conta própria.
+O agente interno usa Gemini 3.8 Flash e dedica mais raciocínio à composição e à revisão. Ele planeja intenções distintas por página, confere o resultado em desktop e celular e corrige problemas materiais. A geração entrega o rascunho mesmo quando a revisão falha ou atinge o limite do turno. O painel distingue **Geração concluída** de **Revisão pendente**, sem repetir Conferir automaticamente; isso não equivale a aprovação visual. A revisão não publica por conta própria.
 
 ## Gerar e editar o site
 
@@ -133,17 +133,16 @@ geração terminar. Sem WebGL,
 só o texto da etapa aparece; com movimento reduzido, o diamante fica parado e
 atualiza apenas quando o progresso muda.
 
-Enquanto a geração roda, o chat fica em espera e diz por quê: os dois disputariam as mesmas páginas. Se uma etapa falhar ou não avançar, a execução para com o motivo no painel; leia a última resposta antes de retomar. Se aparecer que a próxima etapa não pôde ser iniciada, **Tentar novamente** retoma pelo progresso salvo. Cenas e páginas prontas continuam disponíveis; uma revisão visual pendente ainda precisa ser concluída antes de considerar a geração pronta.
+Enquanto a geração roda, o chat fica em espera e diz por quê: os dois disputariam as mesmas páginas. Se uma etapa falhar ou não avançar, a execução para com o motivo no painel; leia a última resposta antes de retomar. Se aparecer que a próxima etapa não pôde ser iniciada, **Tentar novamente** retoma pelo progresso salvo. Cenas e páginas prontas continuam disponíveis. Falha na conferência visual entrega o rascunho com aviso de revisão pendente, sem interromper a geração.
 
-A revisão tem até três rodadas, com até duas leituras em cada uma: uma avaliação
-e, se houver reparo, uma conferência das páginas afetadas. Uma primeira leitura
+Conferir roda uma única vez por geração, com uma avaliação e, se houver reparo,
+uma conferência das páginas afetadas no mesmo turno. Uma primeira leitura
 completa sem erro material termina a revisão; sugestões opcionais permanecem no
-relatório. O painel mostra, por exemplo, **rodada 2 · leitura 1 de 2** quando o
-agente continua observando e corrigindo o rascunho. A rodada seguinte só começa
-se houve leitura registrada ou alteração salva. Se a revisão não fechar até a terceira rodada,
-o chat e a linha do tempo mostram o motivo, incluindo falha de captura ou
-pendências visuais. Confira a prévia e use **Tentar novamente** para abrir novas
-rodadas, ou ajuste o que falta pelo chat.
+relatório. Se a captura ou o crítico falhar, a tentativa termina sem novas
+leituras ou alterações motivadas pela indisponibilidade. O site fica disponível
+na prévia e no chat, com suas pendências explícitas. Para conferir outra vez,
+peça uma nova revisão pelo chat. Erros de página ou projeto continuam bloqueando
+**Publicar**; a geração não publica por conta própria.
 
 Na etapa de cenas, o plano preparado já contém cada pedido de foto, página e
 proporção. O runner envia o lote direto ao estúdio, sem um turno do coordenador

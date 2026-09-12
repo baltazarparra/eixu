@@ -3,14 +3,9 @@ import type { Phase } from '@/lib/taste/phases';
 /**
  * Marcador de avanço gravado em `generation_runs.progress`. Ele responde a uma
  * pergunta só: o salto anterior produziu alguma coisa? Cenas comparam a
- * cobertura; a revisão compara leitura registrada e conteúdo do rascunho,
- * porque ela repete a mesma fase por desenho, observando, corrigindo e
- * conferindo. Sem esse detalhe, o segundo salto de revisão era lido como
- * etapa parada e encerrava a geração com progresso salvo.
+ * cobertura. O formato da revisão mantém leitura e conteúdo do rascunho para
+ * compatibilidade com execuções legadas; o runner atual não encadeia rodadas.
  */
-
-/** Rodadas de revisão por execução. Cada uma tem o próprio turno e leituras. */
-export const REVIEW_ROUNDS = 3;
 
 /** Estado mínimo que o marcador observa. */
 export type MarkerState = {

@@ -58,8 +58,9 @@ export function savedProgressMessage(
     cenas: 'Ainda há cenas do plano para gerar.',
     composicao: 'A composição das páginas ainda está pendente.',
     revisao: 'A revisão visual do rascunho atual ainda está pendente.',
-    pronto:
-      'A revisão visual do rascunho atual foi concluída sem erros. Confira a prévia no painel antes de publicar.',
+    pronto: progress.reviewComplete
+      ? 'A revisão visual do rascunho atual foi concluída sem erros. Confira a prévia no painel antes de publicar.'
+      : 'Site gerado. A revisão ainda tem pendências; confira a prévia e os avisos antes de publicar. Você pode pedir uma nova revisão pelo chat.',
   }[progress.next];
   if (progress.next === 'pronto') return `${saved} ${next}`;
   return `${saved} ${next}${

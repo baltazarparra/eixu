@@ -78,13 +78,15 @@ export function compositionReadyForReview(
 }
 
 /**
- * Conferência obrigatória no último passo. Forçar a chamada depois de esgotar
+ * Avaliação obrigatória no primeiro passo e conferência reservada no último.
+ * Forçar a chamada depois de esgotar
  * as leituras do turno só produziria uma recusa e queimaria o passo reservado.
  */
 export function reviewConferenceDue(
   steps: { toolResults: { toolName: string }[] }[],
   stepNumber: number,
 ): boolean {
+  if (stepNumber === 0) return true;
   if (stepNumber !== PHASE_STEPS.revisao - 1) return false;
   const reads = steps
     .flatMap((step) => step.toolResults)
@@ -119,6 +121,29 @@ export function reviewReadyToFinish(
   return true;
 }
 
+/** Uma falha visual encerra a tentativa; a segunda leitura encerra o reparo. */
+export function reviewTurnFinished(
+  steps: { toolResults: { toolName: string; output: unknown }[] }[],
+): boolean {
+  if (reviewReadyToFinish(steps)) return true;
+  const reads = steps
+    .flatMap((step) => step.toolResults)
+    .filter((result) => result.toolName === 'review_pages');
+  const last = reads.at(-1);
+  if (!last) return false;
+  const output = last.output as {
+    error?: string;
+    visual?: string;
+    preflightOnly?: boolean;
+  } | null;
+  return (
+    reads.length >= REVIEW_CALLS_PER_TURN ||
+    Boolean(output?.error) ||
+    (output?.preflightOnly !== true &&
+      ['unavailable', 'disabled'].includes(output?.visual ?? ''))
+  );
+}
+
 /** Objetivo e condição de parada. Entra no prompt no lugar do roteiro geral. */
 export const PHASE_BRIEF: Record<Phase, string> = {
   briefing: `## Preparar: briefing, plano e direção
@@ -141,9 +166,9 @@ Objetivo: olhar o resultado completo e corrigir o que ficou pobre, inclusive des
 Chame review_pages e trate erros estruturais, editoriais e visuais observados: oferta sem evidência, linguagem difícil, inglês desnecessário, ação pouco clara, voz incoerente com a vibe, jornada repetida, seção sem foto, recorte ruim, tom repetido, headline ilegível, overflow, imagem quebrada ou referência visual descaracterizada. A crítica lê as capturas como imagens quando a captura está habilitada.
 Corrija com as ferramentas da página apontada, preservando o que está bom. Chame review_pages novamente depois da última correção, informando as páginas afetadas. Há até ${REVIEW_CALLS_PER_TURN} leituras por turno: uma avaliação e uma conferência focal. Uma primeira avaliação já completa e sem erro material encerra; avisos opcionais ficam no relatório. Falha de captura/crítica ou limite esgotado é pendência explícita, nunca aceite.
 Agrupe as correções da mesma página no mesmo passo; use set_blocks quando forem muitas. O último dos ${PHASE_STEPS.revisao} passos é reservado à conferência quando ainda houver leitura disponível. Uma conferência completa e sem erros após o refinamento encerra esta fase; sugestões restantes continuam no relatório, sem iniciar outra reconstrução.
-Se o limite de passos ou de leituras chegar antes da conferência limpa, encerre o turno com um resumo curto do que ainda falta, sem tratar pendência como concluída. Uma próxima rodada deve partir do rascunho atual.
+Esta é a única passagem de Conferir nesta geração. Se a captura ou a crítica estiver indisponível, encerre imediatamente, sem repetir a leitura nem editar o conteúdo por esse motivo. O rascunho será entregue com revisão pendente, sem afirmar aprovação visual. Se o limite de passos ou de leituras chegar antes da conferência limpa, encerre com um resumo curto do que falta; não prometa outra rodada automática.
 Avisos são pistas para julgamento: confira o defeito nos pixels e no briefing antes de alterar. Uma diferença nominal de proporção com o assunto íntegro não exige reconstruir a página; texto cortado, ilegível ou conteúdo sem evidência exige correção.
-Pare quando a revisão do rascunho atual estiver completa e sem erros materiais. Não publique: a publicação depende do pedido do operador.`,
+Pare quando a revisão do rascunho atual estiver completa e sem erros materiais, ou encerre com a pendência explícita nos casos acima. Não publique: a publicação depende do pedido do operador.`,
 };
 
 /** Mensagem que o painel envia para abrir cada fase. */
@@ -172,6 +197,8 @@ export type GenerationState = {
   blockingErrors: number;
   reviewRounds: number;
   reviewComplete: boolean;
+  /** Conferir já encerrou nesta versão; não equivale a aprovação visual. */
+  delivered?: boolean;
 };
 
 /**
@@ -180,6 +207,9 @@ export type GenerationState = {
  */
 export function nextPhase(state: GenerationState): Phase | 'pronto' {
   if (!state.hasDesign) return 'briefing';
+  // Um reparo da conferência pode deixar erro estrutural. Registre a pendência
+  // para o operador, sem reiniciar composição e voltar a Conferir no mesmo run.
+  if (state.delivered) return 'pronto';
   // A cobertura do plano governa só antes da composição: o repertório existe
   // para a montagem ter o que usar. Depois que as páginas existem, foto que
   // falte vira erro de pre-flight e quem resolve é a revisão. Sem esse
