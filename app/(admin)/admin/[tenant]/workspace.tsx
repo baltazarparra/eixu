@@ -7,7 +7,12 @@ import { ChatActivity, Message, chatErrorMessage } from './chat-parts';
 import { GenerationPanel } from './generation-panel';
 import { isRunning, useGeneration } from './use-generation';
 
-import { ExternalLink, ImagePlus } from 'lucide-react';
+import {
+  ExternalLink,
+  ImagePlus,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from 'lucide-react';
 import {
   WorkspaceHeader,
   MobileViews,
@@ -16,7 +21,7 @@ import {
 import { ChatUsageDetails } from '@/components/admin/chat-usage';
 import { GenerationDiamond } from '@/components/admin/generation-diamond';
 import { PagePicker } from '@/components/admin/page-picker';
-import { SegmentedControl } from '@/components/admin/primitives';
+import { SegmentedControl, StatusDot } from '@/components/admin/primitives';
 import { adminFetch } from '@/lib/admin/http';
 import { mergeSavedMessages } from '@/lib/admin/chat-messages';
 import type { SiteState } from '@/lib/admin/state';
@@ -66,6 +71,10 @@ export function Workspace({
     initial.pages.length && !imageRequest ? 'content' : 'chat',
   );
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
+  // Recolher a conversa devolve a largura inteira à prévia: entre 1024 e
+  // 1440 px a coluna de 42% deixava o desktop apertado. Abaixo de 1024 px as
+  // vistas já alternam pelos botões e este estado não se aplica.
+  const [collapsed, setCollapsed] = useState(false);
   const [nonce, setNonce] = useState(0);
   const [publishing, setPublishing] = useState(false);
   const [notice, setNotice] = useState<{
@@ -239,12 +248,13 @@ export function Workspace({
     }
   }, [completedTools, refresh, fail]);
 
+  // Reabrir a conversa também rola ao fim: o painel recolhido perde a rolagem.
   useEffect(() => {
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
       behavior: 'smooth',
     });
-  }, [messages, status]);
+  }, [messages, status, collapsed]);
 
   // Conversa livre e geração disputariam as mesmas páginas: enquanto uma roda,
   // a outra espera, e a tela diz por quê.
@@ -389,11 +399,31 @@ export function Workspace({
           <ExternalLink size={14} aria-hidden="true" />
         </a>
       ) : null}
+      <button
+        type="button"
+        onClick={() => setCollapsed((value) => !value)}
+        className="admin-icon-button admin-conversation-toggle"
+        aria-expanded={!collapsed}
+        aria-controls="admin-conversation"
+        title={collapsed ? 'Mostrar a conversa' : 'Recolher a conversa'}
+        aria-label={collapsed ? 'Mostrar a conversa' : 'Recolher a conversa'}
+      >
+        {collapsed ? (
+          <PanelLeftOpen size={14} aria-hidden="true" />
+        ) : (
+          <PanelLeftClose size={14} aria-hidden="true" />
+        )}
+        {collapsed && locked ? <StatusDot tone="accent" pulse /> : null}
+      </button>
     </div>
   );
 
   return (
-    <div className="admin-workspace" data-view={view}>
+    <div
+      className="admin-workspace"
+      data-view={view}
+      data-conversation={collapsed ? 'collapsed' : undefined}
+    >
       <WorkspaceHeader
         tenant={site.tenant}
         preview={previewControls}
@@ -440,7 +470,11 @@ export function Workspace({
         </output>
       ) : null}
       <div className="admin-workspace-body">
-        <section className="admin-conversation" aria-label="Conversa de edição">
+        <section
+          id="admin-conversation"
+          className="admin-conversation"
+          aria-label="Conversa de edição"
+        >
           <GenerationPanel
             run={generation.run}
             events={generation.events}

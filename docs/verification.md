@@ -1,5 +1,29 @@
 # Validação e publicação
 
+## Conversa recolhível no editor, 12/09/2026
+
+O grupo PRÉVIA ganhou um botão que recolhe a conversa a partir de 1024 px e
+devolve a largura inteira à prévia; o mesmo botão a reabre e mostra um ponto
+âmbar enquanto o agente trabalha. Abaixo de 1024 px nada muda: as vistas seguem
+alternando por Conversa e Prévia. Não há migração nem mudança de API.
+
+Verificação local:
+
+- Tipos, lint global, `git diff --check`, formatação da documentação e build
+  Next.js de produção passaram, com os três checks dos artefatos de captura.
+- `EIXU_CHROME_PATH=/usr/bin/google-chrome npm run test:admin:browser`: dez casos
+  passaram, incluindo o novo, que mede em 1440 e 1100 px a conversa sem caixa, a
+  coluna da prévia na largura da janela, o iframe maior que antes, `aria-expanded`
+  coerente e nenhum overflow horizontal; em 390 px o botão não existe e Conversa
+  continua alcançável. Capturas em
+  `outputs/generation/conversa-recolhida-{1440,1100}.png`.
+- `npm run test:admin`: 119 casos, 116 passaram e três integrações PostgreSQL
+  foram puladas por ausência de `EIXU_TEST_POSTGRES_URL`.
+- O primeiro build reaproveitou o cache do Turbopack em `.next/cache/turbopack`
+  e entregou o chunk CSS anterior, sem a regra nova; o teste de navegador falhou
+  por isso. Limpar o cache e reconstruir resolveu. Quando uma regra nova não
+  aparecer no chunk, confira o cache antes de suspeitar do componente.
+
 ## Geração concluída com revisão humana, 12/09/2026
 
 Esta mudança substitui a conferência única descrita no registro anterior. O

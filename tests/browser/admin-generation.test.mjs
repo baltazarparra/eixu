@@ -933,3 +933,124 @@ await test(
     );
   },
 );
+
+await test(
+  'recolher a conversa devolve a largura inteira à prévia acima de 1024 px',
+  { skip: !process.env.EIXU_CHROME_PATH },
+  async () => {
+    const backend = generationServer({
+      generation: { next: 'pronto', organicPages: 3, reviewComplete: true },
+      pages: ['', 'servicos', 'contato'].map((slug) => ({
+        slug,
+        type: 'page',
+        title: slug || 'Início',
+        blocks: 6,
+        published: false,
+        dirty: true,
+        errors: [],
+        warnings: [],
+      })),
+    });
+    await withWorkspace(
+      { backend, chat: await chatFixture() },
+      async ({ page, errors, click }) => {
+        // O grupo PRÉVIA tem duas cópias no DOM; só uma tem caixa por largura.
+        const toggle = async () => {
+          for (const handle of await page.$$('.admin-conversation-toggle')) {
+            if (await handle.boundingBox()) {
+              await handle.click();
+              return;
+            }
+          }
+          assert.fail('Botão de recolher a conversa ausente ou invisível.');
+        };
+        const layout = () =>
+          page.evaluate(() => {
+            const width = (selector) =>
+              Math.round(
+                document.querySelector(selector)?.getBoundingClientRect()
+                  .width ?? 0,
+              );
+            const toggles = [
+              ...document.querySelectorAll('.admin-conversation-toggle'),
+            ].filter((node) => node.getClientRects().length > 0);
+            return {
+              conversation: width('.admin-conversation'),
+              content: width('.admin-content'),
+              frame: width('.admin-preview-frame'),
+              toggles: toggles.length,
+              expanded: toggles[0]?.getAttribute('aria-expanded') ?? null,
+              overflow: document.documentElement.scrollWidth > innerWidth + 1,
+            };
+          });
+        await page.waitForSelector('.admin-preview-frame');
+        for (const width of [1440, 1100]) {
+          await page.setViewport({ width, height: 900 });
+          const before = await layout();
+          assert.equal(before.toggles, 1, `${width}: um botão visível`);
+          assert.equal(before.expanded, 'true');
+          assert.ok(before.conversation >= 300, `${width}: conversa aberta`);
+          assert.ok(before.content < width);
+
+          await toggle();
+          await page.waitForFunction(
+            () =>
+              document.querySelector('.admin-conversation').getClientRects()
+                .length === 0,
+            { timeout: 2000 },
+          );
+          const after = await layout();
+          assert.equal(after.conversation, 0);
+          assert.ok(
+            Math.abs(after.content - width) <= 1,
+            `${width}: prévia com ${after.content} px`,
+          );
+          assert.ok(after.frame > before.frame, `${width}: iframe cresceu`);
+          assert.equal(after.expanded, 'false');
+          assert.equal(after.overflow, false);
+          assert.equal(
+            await page.$eval(
+              '.admin-workspace',
+              (node) => node.dataset.conversation,
+            ),
+            'collapsed',
+          );
+          await mkdir('outputs/generation', { recursive: true });
+          await page.screenshot({
+            path: `outputs/generation/conversa-recolhida-${width}.png`,
+          });
+
+          await toggle();
+          await page.waitForFunction(
+            () =>
+              document.querySelector('.admin-conversation').getClientRects()
+                .length > 0,
+            { timeout: 2000 },
+          );
+          assert.equal((await layout()).expanded, 'true');
+        }
+
+        // Recolhida no desktop, a conversa continua alcançável no celular,
+        // onde as vistas alternam e o botão não existe.
+        await toggle();
+        await page.setViewport({ width: 390, height: 844 });
+        assert.equal((await layout()).toggles, 0);
+        await click('Conversa');
+        await page.waitForFunction(
+          () =>
+            document.querySelector('.admin-conversation').getClientRects()
+              .length > 0,
+          { timeout: 2000 },
+        );
+        assert.equal(
+          await page.$eval(
+            'textarea',
+            (node) => node.getClientRects().length > 0,
+          ),
+          true,
+        );
+        assert.deepEqual(errors, []);
+      },
+    );
+  },
+);
