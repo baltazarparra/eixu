@@ -27,6 +27,13 @@ qualidade da geração de texto. Não houve avaliação paga, teste de compreens
 com pessoas do público, escrita remota ou publicação neste ciclo. Conteúdos de
 clientes existentes permanecem como estavam.
 
+Para a entrega em produção, a branch incorporou a `main` em `1ec319e`, mantendo
+a correção que permite publicar com avisos e recusa erros. O conflito neste
+histórico foi resolvido preservando os dois registros. Na base integrada,
+tipos e lint passaram; sites teve 95 testes aprovados e admin, 113 aprovados
+com os mesmos cinco pulos de ambiente. O build Next.js de produção e os três
+checks dos artefatos serverless foram repetidos antes da integração final.
+
 ## Correção do resumo da revisão no PR #22, 12/09/2026
 
 O resumo silencioso contava nomes de ferramentas, incluindo recusas devolvidas
