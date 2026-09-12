@@ -63,14 +63,9 @@ const eyebrowClass =
 const h2Class =
   'site-h2 text-balance text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.08] tracking-[-0.02em]';
 
-function Eyebrow({ children, vibe }: { children?: string; vibe?: Vibe }) {
+function Eyebrow({ children }: { children?: string }) {
   if (!children) return null;
-  return (
-    <p className={eyebrowClass}>
-      <SiteIcon name="compass" vibe={vibe} size={16} />
-      {children}
-    </p>
-  );
+  return <p className={eyebrowClass}>{children}</p>;
 }
 
 /** Link de ação. Rota do WhatsApp passa pelo redirecionador rastreado. */
@@ -252,7 +247,7 @@ export function HeroSplit({
     >
       <div className={`${shell} site-hero-grid`}>
         <div className="site-hero-copy flex flex-col items-start gap-6">
-          <Eyebrow vibe={vibe}>{eyebrow}</Eyebrow>
+          <Eyebrow>{eyebrow}</Eyebrow>
           <h1
             className="site-headline text-balance"
             data-length={headlineScale(headline)}
@@ -341,7 +336,7 @@ export function HeroStatement({
     <section className={`site-hero site-hero-text site-statement-${layout}`}>
       <div className={`${shell} site-hero-grid`}>
         <div className="site-hero-copy flex flex-col items-start gap-7">
-          <Eyebrow vibe={vibe}>{eyebrow}</Eyebrow>
+          <Eyebrow>{eyebrow}</Eyebrow>
           <h1
             className="site-headline text-balance"
             data-length={headlineScale(headline)}
@@ -360,22 +355,13 @@ export function HeroStatement({
   );
 }
 
-export function ProofLogos({
-  vibe = 'comercial',
-  title,
-  logos,
-  layout = 'rail',
-}: ProofLogosProps) {
+export function ProofLogos({ title, logos, layout = 'rail' }: ProofLogosProps) {
   return (
     <section
       className={`site-proof-logos site-proof-logos-${layout} border-b border-[var(--line)] py-12`}
     >
       <div className={shell}>
-        {title ? (
-          <p className={`${eyebrowClass} mb-7`}>
-            <SiteIcon name="handshake" vibe={vibe} size={18} /> {title}
-          </p>
-        ) : null}
+        {title ? <p className={`${eyebrowClass} mb-7`}>{title}</p> : null}
         <ul className="flex flex-wrap items-center gap-x-10 gap-y-5">
           {logos.map((logo) => (
             <li
@@ -391,11 +377,7 @@ export function ProofLogos({
   );
 }
 
-export function ProofStats({
-  vibe = 'comercial',
-  items,
-  layout = 'strip',
-}: ProofStatsProps) {
+export function ProofStats({ items, layout = 'strip' }: ProofStatsProps) {
   return (
     <section
       className={`${section} site-stats site-stats-${layout} border-b border-[var(--line)]`}
@@ -409,7 +391,7 @@ export function ProofStats({
               {item.value}
             </p>
             <p className="text-[0.95rem] leading-snug text-[var(--muted)]">
-              <SiteIcon name="chart" vibe={vibe} size={16} /> {item.label}
+              {item.label}
             </p>
           </div>
         ))}
@@ -462,7 +444,7 @@ export function FeatureBento({
     <section className={section}>
       <div className={shell}>
         <div className="flex flex-col gap-4">
-          <Eyebrow vibe={vibe}>{eyebrow}</Eyebrow>
+          <Eyebrow>{eyebrow}</Eyebrow>
           <h2 className={`${h2Class} max-w-[22ch]`}>{title}</h2>
         </div>
         <div className={`site-bento site-bento-${layout} mt-12 grid gap-5`}>
@@ -483,14 +465,11 @@ export function FeatureBento({
                 />
               ) : null}
               <div className="flex flex-col gap-3 p-7 md:p-9">
-                <SiteIcon
-                  name={item.icon ?? 'layers'}
-                  vibe={vibe}
-                  size={24}
-                  badge
-                />
-                <h3 className="text-[1.3rem] font-semibold leading-tight tracking-[-0.02em]">
-                  {item.title}
+                <h3 className="site-item-heading text-[1.3rem] font-semibold leading-tight tracking-[-0.02em]">
+                  {item.icon && !item.image ? (
+                    <SiteIcon name={item.icon} vibe={vibe} />
+                  ) : null}
+                  <span>{item.title}</span>
                 </h3>
                 <p className="max-w-[52ch] text-base leading-relaxed text-[var(--muted)]">
                   {item.body}
@@ -505,7 +484,6 @@ export function FeatureBento({
 }
 
 export function NarrativeSteps({
-  vibe = 'comercial',
   eyebrow,
   title,
   steps,
@@ -517,7 +495,7 @@ export function NarrativeSteps({
     >
       <div className={`${shell} grid gap-14 md:grid-cols-12`}>
         <div className="flex flex-col gap-4 md:col-span-4">
-          <Eyebrow vibe={vibe}>{eyebrow}</Eyebrow>
+          <Eyebrow>{eyebrow}</Eyebrow>
           <h2 className={h2Class}>{title}</h2>
         </div>
         <ol className="flex flex-col md:col-span-8">
@@ -527,7 +505,6 @@ export function NarrativeSteps({
               className="flex gap-6 border-t border-[var(--line)] py-7 first:border-t-0 first:pt-0"
             >
               <span className="site-step-number shrink-0 whitespace-nowrap pt-1 text-[0.85rem] text-[var(--muted)]">
-                <SiteIcon name="route" vibe={vibe} size={18} />
                 {String(index + 1).padStart(2, '0')}
               </span>
               <div className="flex min-w-0 flex-col gap-2">
@@ -752,7 +729,6 @@ export function FormLead({
 }
 
 export function EditorialText({
-  vibe = 'comercial',
   title,
   body,
   layout = 'narrow',
@@ -762,12 +738,7 @@ export function EditorialText({
       className={`${section} site-text site-text-${layout} border-b border-[var(--line)]`}
     >
       <div className={`${shell} max-w-[48rem]`}>
-        {title ? (
-          <h2 className={`${h2Class} mb-7 site-icon-heading`}>
-            <SiteIcon name="book" vibe={vibe} />
-            {title}
-          </h2>
-        ) : null}
+        {title ? <h2 className={`${h2Class} mb-7`}>{title}</h2> : null}
         <div className="flex flex-col gap-5">
           {body.split('\n\n').map((paragraph) => (
             <p
@@ -812,16 +783,11 @@ export function EditorialResources({
                       decoding="async"
                     />
                   </div>
-                ) : (
+                ) : item.icon ? (
                   <div className="site-resource-symbol" aria-hidden="true">
-                    <SiteIcon
-                      name={item.icon ?? 'book'}
-                      vibe={vibe}
-                      size={56}
-                      badge
-                    />
+                    <SiteIcon name={item.icon} vibe={vibe} size={56} badge />
                   </div>
-                )}
+                ) : null}
                 <div className="site-resource-copy">
                   <span className="site-resource-category">
                     {item.category}
@@ -878,8 +844,7 @@ export function EditorialPostList({
                     </time>
                   ) : null}
                   <h2 className="text-[1.3rem] font-semibold leading-snug tracking-[-0.015em]">
-                    {post.title}{' '}
-                    <SiteIcon name="arrow-up-right" vibe={vibe} size={18} />
+                    {post.title} <SiteIcon name="arrow-up-right" vibe={vibe} />
                   </h2>
                   {post.excerpt ? (
                     <p className="text-[0.97rem] leading-relaxed text-[var(--muted)]">
@@ -896,10 +861,7 @@ export function EditorialPostList({
   );
 }
 
-export function EditorialPostBody({
-  vibe = 'comercial',
-  body,
-}: EditorialPostBodyProps) {
+export function EditorialPostBody({ body }: EditorialPostBodyProps) {
   const nodes = body
     .split('\n\n')
     .map((chunk) => chunk.trim())
@@ -909,7 +871,6 @@ export function EditorialPostBody({
       className={`${section} site-post-body border-b border-[var(--line)]`}
     >
       <div className={`${shell} flex max-w-[44rem] flex-col gap-6`}>
-        <SiteIcon name="book" vibe={vibe} size={24} />
         {nodes.map((node) => {
           const key = node.slice(0, 48);
           if (node.startsWith('## ')) {
@@ -961,7 +922,6 @@ export function EditorialPostBody({
 }
 
 export function MediaGallery({
-  vibe = 'comercial',
   title,
   images,
   layout = 'grid',
@@ -971,12 +931,7 @@ export function MediaGallery({
       className={`${section} site-gallery site-gallery-${layout} border-b border-[var(--line)]`}
     >
       <div className={shell}>
-        {title ? (
-          <h2 className={`${h2Class} mb-10 site-icon-heading`}>
-            <SiteIcon name="camera" vibe={vibe} />
-            {title}
-          </h2>
-        ) : null}
+        {title ? <h2 className={`${h2Class} mb-10`}>{title}</h2> : null}
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {images.map((image) => (
             <li key={image.src}>
@@ -1275,7 +1230,7 @@ export function FeatureNumbered({
     <section className={`${section} site-services site-services-${layout}`}>
       <div className={`${shell} site-services-grid grid gap-12`}>
         <div className="flex max-w-[40rem] flex-col items-start gap-4">
-          <Eyebrow vibe={vibe}>{eyebrow}</Eyebrow>
+          <Eyebrow>{eyebrow}</Eyebrow>
           <h2 className={h2Class}>{title}</h2>
           {lead ? (
             <p className="text-[1.02rem] leading-relaxed text-[var(--muted)]">
@@ -1287,14 +1242,9 @@ export function FeatureNumbered({
           {items.map((item) => {
             const inner = (
               <>
-                <SiteIcon
-                  name={item.icon ?? 'layers'}
-                  vibe={vibe}
-                  size={24}
-                  badge
-                />
-                <h3 className="text-[1.15rem] font-semibold tracking-[-0.01em]">
-                  {item.title}
+                <h3 className="site-item-heading text-[1.15rem] font-semibold tracking-[-0.01em]">
+                  {item.icon ? <SiteIcon name={item.icon} vibe={vibe} /> : null}
+                  <span>{item.title}</span>
                 </h3>
                 <p className="mt-3 text-[0.97rem] leading-relaxed text-[var(--muted)]">
                   {item.body}
@@ -1356,7 +1306,7 @@ export function NarrativeSplit({
           </figure>
         ) : null}
         <div>
-          <Eyebrow vibe={vibe}>{eyebrow}</Eyebrow>
+          <Eyebrow>{eyebrow}</Eyebrow>
           <h2 className={`${h2Class} mt-4 mb-8 max-w-[24ch]`}>{title}</h2>
           <ul className={`grid gap-x-10 ${hasImage ? '' : 'md:grid-cols-2'}`}>
             {items.map((item) => (
@@ -1364,13 +1314,8 @@ export function NarrativeSplit({
                 key={item.title}
                 className="border-t border-[var(--line)] py-6"
               >
-                <SiteIcon
-                  name={item.icon ?? 'compass'}
-                  vibe={vibe}
-                  size={22}
-                  badge
-                />
-                <h3 className="text-lg font-semibold tracking-[-0.01em]">
+                <h3 className="site-item-heading text-lg font-semibold tracking-[-0.01em]">
+                  {item.icon ? <SiteIcon name={item.icon} vibe={vibe} /> : null}
                   {item.href ? (
                     <a
                       href={item.href}
@@ -1379,7 +1324,7 @@ export function NarrativeSplit({
                       {item.title}
                     </a>
                   ) : (
-                    item.title
+                    <span>{item.title}</span>
                   )}
                 </h3>
                 <p className="mt-2 max-w-[52ch] text-base leading-relaxed text-[var(--muted)]">
@@ -1395,7 +1340,6 @@ export function NarrativeSplit({
 }
 
 export function EditorialFacts({
-  vibe = 'comercial',
   eyebrow,
   title,
   body,
@@ -1434,7 +1378,7 @@ export function EditorialFacts({
               <dt
                 className={`text-[0.9rem] ${dark ? 'opacity-60' : 'text-[var(--muted)]'}`}
               >
-                <SiteIcon name="check" vibe={vibe} size={16} /> {fact.label}
+                {fact.label}
               </dt>
               <dd className="text-right text-[0.98rem] font-medium">
                 {fact.value}
@@ -1448,7 +1392,6 @@ export function EditorialFacts({
 }
 
 export function MediaImage({
-  vibe = 'comercial',
   src,
   alt,
   caption,
@@ -1470,7 +1413,7 @@ export function MediaImage({
         />
         {caption ? (
           <figcaption className="mt-3 text-[0.88rem] text-[var(--muted)]">
-            <SiteIcon name="camera" vibe={vibe} size={16} /> {caption}
+            {caption}
           </figcaption>
         ) : null}
       </figure>

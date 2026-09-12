@@ -87,6 +87,7 @@ export function lintPage(
     message: string,
     blockId?: string,
   ) => findings.push({ level, rule, message, blockId });
+  const contentIcons = new Map<string, string[]>();
 
   // 1. Tipos válidos e props conformes ao schema.
   for (const block of blocks) {
@@ -109,7 +110,31 @@ export function lintPage(
         `${block.type}: ${issue.path.join('.') || 'props'} ${issue.message}`,
         block.id,
       );
+    } else if ('items' in parsed.data && Array.isArray(parsed.data.items)) {
+      for (const item of parsed.data.items) {
+        if (!('icon' in item) || typeof item.icon !== 'string') continue;
+        // Fotos ocupam o lugar do símbolo nestes dois componentes.
+        if (
+          ['feature.bento', 'editorial.resources'].includes(block.type) &&
+          'image' in item &&
+          item.image
+        )
+          continue;
+        const occurrences = contentIcons.get(item.icon) ?? [];
+        occurrences.push(block.id);
+        contentIcons.set(item.icon, occurrences);
+      }
     }
+  }
+
+  for (const [name, occurrences] of contentIcons) {
+    if (occurrences.length < 2) continue;
+    push(
+      'warn',
+      'icones-repetidos',
+      `O símbolo "${name}" aparece em ${occurrences.length} itens da página. Remova os ícones dispensáveis; escolha outro só quando representar melhor o assunto. Ícones de ações e controles não entram nesta contagem.`,
+      occurrences[1],
+    );
   }
 
   // Âncoras precisam de um destino único, inclusive o formulário legado.

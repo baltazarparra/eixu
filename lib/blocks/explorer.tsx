@@ -80,9 +80,8 @@ export function VisualExplorer({
                   }
                 />
               )}
-              <SiteIcon name={entry.icon ?? 'layers'} vibe={vibe} size={20} />
+              {entry.icon ? <SiteIcon name={entry.icon} vibe={vibe} /> : null}
               <span>{entry.title}</span>
-              <SiteIcon name="arrow-up-right" vibe={vibe} size={18} />
             </button>
           ))}
         </div>
@@ -122,10 +121,7 @@ export function VisualExplorer({
             <p>{item.body}</p>
             <ul>
               {item.facts.map((fact) => (
-                <li key={fact}>
-                  <SiteIcon name="check" vibe={vibe} size={17} />
-                  {fact}
-                </li>
+                <li key={fact}>{fact}</li>
               ))}
             </ul>
             <MotionLink

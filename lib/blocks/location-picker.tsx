@@ -65,7 +65,6 @@ export function LocationPicker({
               onKeyDown={(event) => navigate(event, index)}
               onClick={() => select(index)}
             >
-              <SiteIcon name="pin" vibe={vibe} size={18} />
               {address.label || `Endereço ${index + 1}`}
             </button>
           ))}
