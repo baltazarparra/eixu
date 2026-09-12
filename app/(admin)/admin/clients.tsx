@@ -4,6 +4,7 @@ import { startTransition, useActionState, useState } from 'react';
 import Link from 'next/link';
 import { BrandFields } from '@/components/admin/brand-fields';
 import { TenantFields } from '@/components/admin/tenant-fields';
+import { useAdminSession } from '@/components/admin/session';
 import {
   EmptyState,
   MetricCard,
@@ -35,6 +36,7 @@ export function Clients({
   tenants: ClientSummary[];
   summary: { leads30d: number; running: number };
 }) {
+  const session = useAdminSession();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('todos');
   const [creating, setCreating] = useState(false);
@@ -67,7 +69,10 @@ export function Clients({
           <h1>Clientes</h1>
           <p>Seus sites, os contatos que chegaram e o trabalho em andamento.</p>
         </div>
-        {newClient}
+        <div className="admin-page-actions">
+          {newClient}
+          {session?.logout}
+        </div>
       </div>
       {creating ? (
         <section id="new-client" className="admin-new-client">

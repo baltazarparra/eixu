@@ -10,10 +10,11 @@ referência para os componentes, sem rota de demonstração no produto.
 
 O painel usa Geist e Geist Mono locais, acompanhadas da
 [licença OFL](<../app/(admin)/fonts/LICENSE.txt>) do [projeto Geist](https://github.com/vercel/geist-font/blob/main/LICENSE.txt), fundo quente `#0c0b0a`, painéis
-`#100f0e`, âmbar `#f0a868`, verde `#5fc98c` e vermelho `#f0705d`. A navegação
-lateral mede 252 px no desktop; o cabeçalho contextual pertence ao layout do
-cliente. O editor reserva 42% (até 520 px) à conversa e mantém o andamento
-acima da prévia. No celular, navegação e vistas são alternáveis.
+`#100f0e`, âmbar `#f0a868`, verde `#5fc98c` e vermelho `#f0705d`. O cabeçalho
+contextual pertence ao layout do cliente e abre com o botão de voltar para a
+lista; sair fica no fim das ações. O editor reserva 42% (até 520 px) à conversa,
+com o andamento dentro dela, e devolve a altura inteira à prévia. No celular,
+conversa e prévia são alternáveis.
 
 `app/(admin)/admin.css` concentra os tokens e componentes `admin-*`; os três
 grupos de rotas mantêm CSS e fontes separados. Textos funcionais pequenos usam
@@ -271,11 +272,11 @@ execução incompleta e código de saída 1.
 
 ## Interface de operação do admin
 
-O painel usa Geist, superfícies escuras, texto claro e acento areia, com CSS isolado em `(admin)`. A hierarquia privilegia a tarefa: encontrar cliente; abrir Site, Imagens, Tráfego ou Dados; revisar antes de publicar. Cadastro novo fica recolhido até ser solicitado. Em desktop, conversa e prévia/biblioteca ficam lado a lado e ocupam a altura da tela. Abaixo de 1024 px, alternam por botões, mantendo navegação, publicação e avisos acessíveis.
+O painel usa Geist, superfícies escuras, texto claro e acento areia, com CSS isolado em `(admin)`. A hierarquia privilegia a tarefa: encontrar cliente; abrir Site, Imagens, Tráfego ou Dados; revisar antes de publicar. Cadastro novo fica recolhido até ser solicitado. Em desktop, conversa e prévia/biblioteca ficam lado a lado e ocupam a altura da tela, sem faixa de navegação lateral: voltar para a lista é um botão no cabeçalho do cliente. Abaixo de 1024 px, conversa e prévia alternam por botões, mantendo cabeçalho, publicação e avisos acessíveis.
 
 Sugestões preenchem o compositor e aguardam envio. A prévia oferece seletor de página, largura desktop/celular e pendências de projeto e página. Erros HTTP aparecem como avisos, exclusão de imagem pede confirmação local e ações em andamento ficam desabilitadas. Dados simples e briefing têm formulário direto, sem chamada ao modelo. Tokens e custo ficam em detalhes recolhidos, com seu escopo declarado.
 
-A coluna da conversa é o lugar do andamento, não só do texto: a faixa da geração traz eyebrow, etapa atual, posição na sequência, barra de quatro segmentos, uma lista vertical com o que cada etapa produziu e a ferramenta em execução aninhada sob a etapa ativa. A escala tipográfica tem piso de 12 px — o painel chegou a usar quatro tamanhos entre 0,65 e 0,75 rem sem nenhum token governando —, com 14 px no corpo das mensagens e a família monoespaçada nos tempos, contagens e custos, em `tabular-nums`. Movimento é pontual: pulso na etapa ativa, varredura no topo enquanto a execução está viva e giro no ícone da ferramenta, todos desligados em `prefers-reduced-motion`. A coluna passou de 330–380 px para 380–440 px porque etapa, atividade e tempos disputavam a mesma linha.
+A coluna da conversa é o lugar do andamento, não só do texto: logo abaixo do cabeçalho dela, um bloco compacto traz estado, etapa atual e ação numa linha, quatro trilhas sem rótulo, a posição na sequência com o subprogresso à esquerda e os tempos à direita, a ferramenta em execução e a linha do tempo recolhida. O nome e o resultado de cada etapa passam para o `title` da trilha; a linha do tempo continua sendo a via acessível para o mesmo conteúdo. A escala tipográfica tem piso de 12 px — o painel chegou a usar quatro tamanhos entre 0,65 e 0,75 rem sem nenhum token governando —, com 14 px no corpo das mensagens e a família monoespaçada nos tempos, contagens e custos, em `tabular-nums`. Movimento é pontual: pulso na etapa ativa, varredura no topo enquanto a execução está viva e giro no ícone da ferramenta, todos desligados em `prefers-reduced-motion`. A coluna passou de 330–380 px para 380–440 px porque etapa, atividade e tempos disputavam a mesma linha.
 
 Cliente sem tentativa ou conversa anterior começa sozinho ao abrir a tela, sem botão e sem pergunta de abertura: ele chegou ali pelo cadastro. A condição inclui o histórico anterior à geração no servidor, nenhuma página e a primeira etapa pendente, porque retomar sozinho um rascunho antigo gastaria geração paga sem pedido. O consumo soma as fases gravadas no servidor e os turnos livres do stream.
 

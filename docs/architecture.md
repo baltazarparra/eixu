@@ -20,9 +20,10 @@ O [contrato visual](design.md) descreve variantes, dials, âncoras e a aplicaç�
 
 ## Composição administrativa
 
-O layout raiz consulta a sessão antes de carregar a navegação. `railClients`
-transmite somente nome, slug e status; `adminTenant` deduplica a resolução do
-cliente durante o render com React `cache`, sem persistir entre sessões. O
+O layout raiz consulta a sessão antes de montar a casca e entrega identidade do
+operador e formulário de saída por contexto, desenhados nos cabeçalhos.
+`adminTenant` deduplica a resolução do cliente durante o render com React
+`cache`, sem persistir entre sessões. O
 layout de `[tenant]` repete a autenticação e fornece cabeçalho e abas. O editor
 insere suas ações no cabeçalho por um portal React, conservando a decisão de
 publicação junto ao estado vivo do workspace. Publicar atualiza também os

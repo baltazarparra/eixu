@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { ArrowLeft } from 'lucide-react';
 import { StatusPill } from './primitives';
+import { useAdminSession } from './session';
 
 type TenantIdentity = { slug: string; name: string; status?: string };
 type Area = 'site' | 'imagens' | 'trafego' | 'dados';
@@ -25,9 +27,18 @@ function TenantHeader({
   children?: ReactNode;
 }) {
   const root = `/admin/${tenant.slug}`;
+  const session = useAdminSession();
   return (
     <header className="admin-tenant-header">
       <div className="admin-tenant-top">
+        <Link
+          href="/admin"
+          className="admin-back"
+          aria-label="Voltar para a lista de clientes"
+          title="Clientes"
+        >
+          <ArrowLeft size={15} aria-hidden="true" />
+        </Link>
         <div className="admin-tenant-identity">
           <div>
             <p>{tenant.name}</p>
@@ -53,6 +64,7 @@ function TenantHeader({
             Ver prévia <span aria-hidden="true">↗</span>
           </a>
           {children}
+          {session?.logout}
         </div>
       </div>
       <nav className="admin-tenant-tabs" aria-label="Área do cliente">

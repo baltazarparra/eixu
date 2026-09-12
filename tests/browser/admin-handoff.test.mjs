@@ -50,7 +50,7 @@ await test(
       await page.$$('.admin-client-row').then((rows) => rows.length),
       5,
     );
-    await page.click('.admin-rail-clients a:nth-child(2)');
+    await page.click('.admin-client-table li:nth-child(2) .admin-client-row');
     await page.waitForFunction(
       () => location.pathname === '/admin/clinica-vertice',
     );
@@ -59,10 +59,14 @@ await test(
       await page.$eval('.admin-tenant-identity', (node) => node.textContent),
       /Clínica Vértice/,
     );
+    // Sem rail, o retorno à lista e a saída vivem no cabeçalho do cliente.
     assert.equal(
-      await page
-        .$$('.admin-rail-clients [aria-current]')
-        .then((rows) => rows.length),
+      await page.$eval('.admin-back', (node) => node.getAttribute('href')),
+      '/admin',
+    );
+    assert.equal(await page.$('.admin-rail'), null);
+    assert.equal(
+      await page.$$('[aria-label="Sair do painel"]').then((rows) => rows.length),
       1,
     );
     assert.equal(
@@ -248,17 +252,24 @@ await test(
     }
     await page.setViewport({ width: 390, height: 844 });
     await open('/admin');
-    await page.click('.admin-mobile-top button');
+    assert.equal(await page.$('.admin-mobile-top'), null);
     assert.equal(
-      await page.$eval('.admin-rail', (node) => getComputedStyle(node).display),
-      'flex',
+      await page.$$('[aria-label="Sair do painel"]').then((rows) => rows.length),
+      1,
     );
-    await page.click('.admin-rail-clients a');
+    await page.click('.admin-client-row .admin-client-name');
     await page.waitForSelector('.admin-tenant-header');
+    // O botão de voltar é o caminho de volta no celular: precisa estar à vista.
     assert.equal(
-      await page.$eval('.admin-rail', (node) => getComputedStyle(node).display),
-      'none',
+      await page.$eval('.admin-back', (node) => {
+        const box = node.getBoundingClientRect();
+        return box.top >= 0 && box.left >= 0 && box.right <= innerWidth;
+      }),
+      true,
     );
+    await page.click('.admin-back');
+    await page.waitForFunction(() => location.pathname === '/admin');
+    await page.waitForSelector('.admin-client-row');
     await page.emulateMediaFeatures([
       { name: 'prefers-reduced-motion', value: 'reduce' },
     ]);

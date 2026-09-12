@@ -451,15 +451,17 @@ await test(
           'Somente o comando textual disparou uma requisição de chat.',
         );
 
-        // Celular: a conversa pode estar oculta, mas a execução continua à vista.
+        // Celular: o andamento acompanha a conversa, com altura de verdade.
         await page.setViewport({ width: 390, height: 844 });
         await page.waitForFunction(
           () => document.documentElement.scrollWidth <= innerWidth + 1,
         );
+        await click('Conversa');
         assert.ok(
-          await page.evaluate(
-            () => !!document.querySelector('.admin-run-bar, .admin-run'),
-          ),
+          await page.evaluate(() => {
+            const run = document.querySelector('.admin-run');
+            return !!run && run.getBoundingClientRect().height > 0;
+          }),
         );
         await mkdir('outputs/generation', { recursive: true });
         await page.screenshot({
@@ -637,8 +639,8 @@ await test(
         () => {
           const meta = document.querySelector('.admin-run-meta')?.textContent;
           return (
-            meta?.includes('nesta etapa') &&
-            !meta.includes('0:00 nesta etapa') &&
+            meta?.includes('no total') &&
+            !meta.startsWith('0:00') &&
             !meta.includes('0:00 no total')
           );
         },

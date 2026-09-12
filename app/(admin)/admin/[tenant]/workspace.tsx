@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, getToolName, isToolUIPart } from 'ai';
 import { ChatActivity, Message, chatErrorMessage } from './chat-parts';
-import { GenerationBar, GenerationPanel } from './generation-panel';
+import { GenerationPanel } from './generation-panel';
 import { isRunning, useGeneration } from './use-generation';
 
 import { ImagePlus } from 'lucide-react';
@@ -365,30 +365,23 @@ export function Workspace({
           </button>
         </output>
       ) : null}
-      <GenerationBar
-        run={generation.run}
-        events={generation.events}
-        state={site}
-        onOpen={() => setView('chat')}
-      />
       <div className="admin-workspace-body">
-        <GenerationPanel
-          run={generation.run}
-          events={generation.events}
-          state={site}
-          clockOffsetMs={generation.clockOffsetMs}
-          error={generation.error}
-          busy={busy}
-          starting={generation.starting}
-          onStart={() => void startGeneration()}
-          onStop={() => void stopGeneration()}
-        />
-
         <section className="admin-conversation" aria-label="Conversa de edição">
           <div className="admin-conversation-heading">
             <span className="admin-label">Conversa com o agente</span>
             <span>{messages.length} turnos</span>
           </div>
+          <GenerationPanel
+            run={generation.run}
+            events={generation.events}
+            state={site}
+            clockOffsetMs={generation.clockOffsetMs}
+            error={generation.error}
+            busy={busy}
+            starting={generation.starting}
+            onStart={() => void startGeneration()}
+            onStop={() => void stopGeneration()}
+          />
           <div ref={scrollRef} className="admin-thread">
             {!messages.length && locked ? (
               <p className="admin-thread-empty">

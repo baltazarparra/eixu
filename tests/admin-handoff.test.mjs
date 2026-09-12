@@ -88,15 +88,9 @@ await test(
         .success,
       false,
     );
-    const { railClients, operationSummary } = await loadModule(
-      'lib/admin/queries.ts',
-      { '@/lib/db': database },
-    );
-    const rail = await railClients();
-    assert.ok(
-      rail.some((row) => row.slug === tenant && row.name === 'Handoff A'),
-    );
-    assert.deepEqual(Object.keys(rail[0]).sort(), ['name', 'slug', 'status']);
+    const { operationSummary } = await loadModule('lib/admin/queries.ts', {
+      '@/lib/db': database,
+    });
     await database.query(
       "insert into leads(tenant_id,created_at) values ($1,now()),($1,now()-interval '31 days')",
       [tenant],
