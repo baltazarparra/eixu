@@ -1,5 +1,6 @@
 'use server';
 
+import { randomUUID } from 'node:crypto';
 import { redirect } from 'next/navigation';
 import { after } from 'next/server';
 import { revalidatePath } from 'next/cache';
@@ -114,7 +115,7 @@ export async function createTenantAction(
     highlight: colors.data.highlight,
     paletteSource,
     vibe: vibe.data,
-    ...(logoUrl ? { logoUrl } : {}),
+    ...(logoUrl ? { logoUrl, logoRevision: randomUUID() } : {}),
   };
 
   let tenantId: string;

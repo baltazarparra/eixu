@@ -60,7 +60,7 @@ type LogoBrand = Pick<
   | 'surface'
   | 'accent'
   | 'accentAlt'
->;
+> & { vibe?: string; design?: unknown };
 
 type PageLike = {
   slug: string;
@@ -92,21 +92,35 @@ export type LogoFinding = {
 export function logoFindings(
   brand: LogoBrand,
   pages: PageLike[],
-  images: Pick<TenantImage, 'seq' | 'kind' | 'status' | 'referenceUrls' | 'url'>[],
+  images: Pick<
+    TenantImage,
+    'seq' | 'kind' | 'status' | 'referenceUrls' | 'url'
+  >[],
 ): LogoFinding[] {
   const fit = brand.logoFit;
   if (!brand.logoUrl || !fit || fit.source !== brand.logoUrl) return [];
+  const renderingBrand = brand as Brand;
   const home = pages.find((page) => page.slug === '');
+  const nav = home?.blocks.find((block) => block.type === 'nav.bar');
+  const navigation =
+    typeof nav?.props.layout === 'string'
+      ? nav.props.layout
+      : renderingBrand.design?.navigation;
   const surfaces = [
-    ['cabeçalho', presentationOf(home, 'nav.bar')],
-    ['rodapé', presentationOf(home, 'footer.compact')],
+    ['cabeçalho', presentationOf(home, 'nav.bar'), navigation],
+    ['rodapé', presentationOf(home, 'footer.compact'), undefined],
   ] as const;
   const issues = surfaces
-    .map(([where, presentation]) => ({
+    .map(([where, presentation, navigation]) => ({
       where,
       issue: logoSurfaceIssue(
         fit,
-        surfaceOf(brand as Brand, presentation?.tone, presentation?.background),
+        surfaceOf(
+          renderingBrand,
+          presentation?.tone,
+          presentation?.background,
+          navigation,
+        ),
       ),
     }))
     .filter((entry) => entry.issue);

@@ -83,11 +83,7 @@ import {
   type ReviewFindingReceipt,
   type ReviewReceipt,
 } from '@/lib/review/state';
-import {
-  getPage,
-  getTenantBySlug,
-  listPages,
-} from '@/lib/tenant-queries';
+import { getPage, getTenantBySlug, listPages } from '@/lib/tenant-queries';
 import { applyBrandLogo } from '@/lib/images/logo-apply';
 import { REVIEW_CALLS_PER_TURN, type Phase } from '@/lib/taste/phases';
 import {
@@ -95,7 +91,13 @@ import {
   scopedUpdateError,
   type EditPolicy,
 } from '@/lib/ai/edit-policy';
-import type { BlockInstance, Page, Tenant, TenantImage } from '@/lib/types';
+import type {
+  BlockInstance,
+  Brand,
+  Page,
+  Tenant,
+  TenantImage,
+} from '@/lib/types';
 import {
   applyPageEdit,
   PageEditError,
@@ -772,9 +774,11 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           throw new ToolError(
             `A imagem #${image.seq} foi rejeitada anteriormente. Escolha outro logo ou peça uma nova versão.`,
           );
-        activeBrand = { ...activeBrand, logoUrl: image.url };
         // Mede o logo e deriva a versão para fundo escuro depois da resposta.
-        await applyBrandLogo({ ...tenant, brand: activeBrand }, image.url);
+        activeBrand = await applyBrandLogo(
+          { ...tenant, brand: activeBrand },
+          image.url,
+        );
         return { ok: true, numero: `#${image.seq}` };
       }),
     }),
@@ -1475,8 +1479,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         density: z.number().int().min(1).max(10).optional(),
       }),
       execute: async (input) => {
-        const brand = {
-          ...activeBrand,
+        const brandPatch = {
           ...(input.accent ? { accent: input.accent } : {}),
           ...(input.accentAlt ? { accentAlt: input.accentAlt } : {}),
           ...(input.highlight ? { highlight: input.highlight } : {}),
@@ -1490,12 +1493,14 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           motion: input.motion ?? activeDials.motion,
           density: input.density ?? activeDials.density,
         };
-        await db()`
-          update tenants set brand = ${JSON.stringify(brand)}::jsonb,
+        const saved = (await db()`
+          update tenants set brand = brand || ${JSON.stringify(brandPatch)}::jsonb,
                              dials = ${JSON.stringify(dials)}::jsonb,
                              updated_at = now()
           where id = ${tenant.id}
-        `;
+          returning brand
+        `) as { brand: Brand }[];
+        const brand = saved[0]?.brand ?? { ...activeBrand, ...brandPatch };
         activeBrand = brand;
         activeDials = dials;
 
@@ -1651,8 +1656,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             : profile.displayFont === 'mono'
               ? 'mono'
               : 'sans';
-        const brand = {
-          ...activeBrand,
+        const brandPatch = {
           accent,
           accentAlt,
           ink: input.ink,
@@ -1670,16 +1674,17 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         // O brief guarda também intake, fontes lidas e progresso da geração:
         // sobrescrever o objeto inteiro apagaria esse contexto.
         const brief = { ...activeBrief, ...input.brief };
-        await db()`
+        const saved = (await db()`
           update tenants
           set brief = brief || ${JSON.stringify(input.brief)}::jsonb,
-              brand = ${JSON.stringify(brand)}::jsonb,
+              brand = brand || ${JSON.stringify(brandPatch)}::jsonb,
               dials = ${JSON.stringify(dials)}::jsonb,
               updated_at = now()
           where id = ${tenant.id}
-        `;
+          returning brand
+        `) as { brand: Brand }[];
         activeBrief = brief;
-        activeBrand = brand;
+        activeBrand = saved[0]?.brand ?? { ...activeBrand, ...brandPatch };
         activeDials = dials;
         return {
           ok: true,

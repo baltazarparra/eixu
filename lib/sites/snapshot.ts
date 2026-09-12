@@ -1,9 +1,13 @@
 import type { Page, PublishedTenantSnapshot, Tenant } from '@/lib/types';
 
 export function tenantDraftSnapshot(tenant: Tenant): PublishedTenantSnapshot {
-  // A medição do logo não é apresentação: medir não pode marcar o rascunho
-  // como alterado nem entrar no snapshot publicado.
-  const { logoFit: _logoFit, ...brand } = tenant.brand;
+  // Medição e versão operacional do logo não são apresentação: não podem
+  // marcar o rascunho como alterado nem entrar no snapshot publicado.
+  const {
+    logoFit: _logoFit,
+    logoRevision: _logoRevision,
+    ...brand
+  } = tenant.brand;
   return {
     name: tenant.name,
     brand,

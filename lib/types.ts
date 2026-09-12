@@ -40,6 +40,8 @@ export type Brand = {
    * escuro (lib/blocks/theme.ts).
    */
   logoDarkUrl?: string;
+  /** Versão operacional da aplicação do logo; não compõe o snapshot visual. */
+  logoRevision?: string;
   /** Medição por pixel do logo aplicado; só vale enquanto `source` for o logoUrl. */
   logoFit?: LogoFit;
 };

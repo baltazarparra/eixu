@@ -49,19 +49,23 @@ export async function applyBrandLogo(
 
 /**
  * Mede o logo, grava a medição e deriva a versão branca. Idempotente para o
- * mesmo logo já derivado. Cada gravação confere que o logo medido ainda é o
- * atual: o operador pode ter trocado o logo enquanto isto corria.
+ * mesmo logo já derivado. Cada gravação confere a versão da aplicação: uma
+ * escolha manual ou nova aplicação invalida o trabalho ainda em andamento.
  */
 export async function deriveLogoAssets(
   tenant: LogoTenant,
   source: string,
 ): Promise<void> {
+  const revision = tenant.brand.logoRevision;
+  // Aplicação e cadastro persistem a versão antes de agendar este trabalho.
+  if (!revision) return;
   if (tenant.brand.logoFit?.source === source && tenant.brand.logoDarkUrl)
     return;
   // SVG, webp e formatos exóticos viram PNG de até 1024 px, com o alfa.
   const original = await fetchReference(source);
   const fit = await measureLogoFit(original, source);
-  if (!(await setBrandLogoDerived(tenant.id, source, { fit }))) return;
+  if (!(await setBrandLogoDerived(tenant.id, source, { fit }, revision)))
+    return;
 
   const white = await deriveWhiteLogo(original);
   if (!white) {
@@ -101,5 +105,10 @@ export async function deriveLogoAssets(
     surface: DARK_PREVIEW,
   });
   if (critique.aprovado)
-    await setBrandLogoDerived(tenant.id, source, { darkUrl: blob.url });
+    await setBrandLogoDerived(
+      tenant.id,
+      source,
+      { darkUrl: blob.url },
+      revision,
+    );
 }

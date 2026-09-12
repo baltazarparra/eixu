@@ -50,7 +50,12 @@ async function fixture({
       },
       'next/server': { after: (callback) => scheduled.push(callback) },
       '@/lib/images/logo-apply': {
-        deriveLogoAssets: async (_tenant, url) => {
+        deriveLogoAssets: async (tenant, url) => {
+          assert.ok(inserted[0].brand.logoRevision);
+          assert.equal(
+            tenant.brand.logoRevision,
+            inserted[0].brand.logoRevision,
+          );
           derived.push(url);
         },
       },

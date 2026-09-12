@@ -34,6 +34,20 @@ const tenant = {
 // reference-equal aos daqui. A comparação estrutural passa por JSON.
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
+await test('versão operacional do logo não altera snapshot nem evidência visual', async () => {
+  const { tenantDraftSnapshot } = await j.import('../lib/sites/snapshot.ts');
+  const { reviewFingerprint } = await j.import('../lib/review/state.ts');
+  const changed = {
+    ...tenant,
+    brand: { ...tenant.brand, logoRevision: 'new-application' },
+  };
+  assert.deepEqual(tenantDraftSnapshot(changed), tenantDraftSnapshot(tenant));
+  assert.equal(
+    reviewFingerprint(changed, [], []),
+    reviewFingerprint(tenant, [], []),
+  );
+});
+
 /**
  * O gate real com lint controlado: as regras têm teste próprio em
  * site-contract; aqui interessa o que recusa, o que agrupa e o que grava.

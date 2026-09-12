@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { db } from '@/lib/db';
 import { contactsOf } from '@/lib/tenant-contacts';
 import { intakeSocialUrl } from '@/lib/tenant-intake';
@@ -121,7 +122,7 @@ export async function countTenantData(
 /**
  * Define o logo do site. Nav e rodapé passam a usar a imagem. Trocar ou
  * limpar o logo invalida a medição e a versão escura do anterior; reaplicar a
- * mesma URL preserva as duas.
+ * mesma URL preserva as duas. Cada aplicação invalida trabalhos anteriores.
  */
 export async function setBrandLogo(
   tenantId: string,
@@ -129,11 +130,11 @@ export async function setBrandLogo(
 ): Promise<Record<string, unknown>> {
   const rows = (await db()`
     update tenants set
-      brand = case
+      brand = (case
         when ${url}::text is null then brand - 'logoUrl' - 'logoFit' - 'logoDarkUrl'
         when brand->>'logoUrl' = ${url}::text then brand
         else (brand - 'logoFit' - 'logoDarkUrl') || jsonb_build_object('logoUrl', ${url}::text)
-      end,
+      end) || jsonb_build_object('logoRevision', ${randomUUID()}::text),
       updated_at = now()
     where id = ${tenantId}
     returning brand
@@ -142,14 +143,15 @@ export async function setBrandLogo(
 }
 
 /**
- * Grava a medição e a versão escura derivadas de um logo, só enquanto ele for
- * o logo atual: a derivação corre depois da resposta e o operador pode ter
- * trocado o logo no meio. Devolve false quando a marca já mudou.
+ * Grava a medição e a versão escura só na aplicação que iniciou o trabalho.
+ * Uma escolha manual da versão escura ou outra aplicação, mesmo da mesma
+ * URL, invalida a gravação atrasada. Devolve false quando a versão já mudou.
  */
 export async function setBrandLogoDerived(
   tenantId: string,
   source: string,
   derived: { fit?: LogoFit; darkUrl?: string },
+  revision: string,
 ): Promise<boolean> {
   const patch: Record<string, unknown> = {};
   if (derived.fit) patch.logoFit = derived.fit;
@@ -159,6 +161,7 @@ export async function setBrandLogoDerived(
       brand = brand || ${JSON.stringify(patch)}::jsonb,
       updated_at = case when ${Boolean(derived.darkUrl)} then now() else updated_at end
     where id = ${tenantId} and brand->>'logoUrl' = ${source}
+      and brand->>'logoRevision' = ${revision}
     returning id
   `) as Row[];
   return rows.length > 0;
@@ -171,8 +174,9 @@ export async function setBrandLogoDark(
 ): Promise<Record<string, unknown>> {
   const rows = (await db()`
     update tenants set
-      brand = case when ${url}::text is null then brand - 'logoDarkUrl'
-                   else brand || jsonb_build_object('logoDarkUrl', ${url}::text) end,
+      brand = (case when ${url}::text is null then brand - 'logoDarkUrl'
+                   else brand || jsonb_build_object('logoDarkUrl', ${url}::text) end)
+        || jsonb_build_object('logoRevision', ${randomUUID()}::text),
       updated_at = now()
     where id = ${tenantId}
     returning brand

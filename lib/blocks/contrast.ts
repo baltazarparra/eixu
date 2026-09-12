@@ -81,6 +81,47 @@ export function mixHex(hex: string, target: string, amount: number): string {
   return mix(hex, target, amount);
 }
 
+/**
+ * Mesma interpolação de color-mix(in oklab), resolvida em sRGB para medir o
+ * fundo sem mudar o CSS legado. Matrizes de Björn Ottosson (domínio público):
+ * https://bottosson.github.io/posts/oklab/#converting-from-linear-srgb-to-oklab
+ */
+export function mixOklabHex(
+  hex: string,
+  target: string,
+  amount: number,
+): string {
+  const cones = (color: string) => {
+    const [r, g, b] = toRgb(color).map(channel);
+    return [
+      Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b),
+      Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b),
+      Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b),
+    ];
+  };
+  const from = cones(hex);
+  const to = cones(target);
+  // A transformação seguinte para Lab é linear: pode-se interpolar antes
+  // dela e cancelar a matriz com sua inversa na volta para RGB.
+  const [l, m, s] = from.map(
+    (value, i) => (value + (to[i] - value) * amount) ** 3,
+  );
+  const linear = [
+    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+  ];
+  return toHex(
+    linear.map(
+      (value) =>
+        255 *
+        (value <= 0.0031308
+          ? 12.92 * value
+          : 1.055 * value ** (1 / 2.4) - 0.055),
+    ) as [number, number, number],
+  );
+}
+
 /** Preserva o destaque quando legível e o aproxima de preto/branco até AA. */
 export function readableHighlight(
   highlight: string,

@@ -376,27 +376,41 @@ moderno v3 no ar. O perfil v2 continua no bloco legado.
 O logo `transferir.png` de um cliente era um PNG sem alfa: sobre o papel escuro
 virava uma placa branca no cabeçalho, e nada media isso, porque `logoPrecheck`
 só corria em `generate_logo` e `update_image`. Agora aplicar um logo, por
-upload, pela biblioteca, pelo chat ou no cadastro, passa por
-`applyBrandLogo`: grava `logoUrl`, e depois da resposta mede o arquivo com
-`measureLogoFit` (alfa, luminância dos pixels pintados, placa) em
+upload, pela biblioteca ou pelo chat, passa por
+`applyBrandLogo`: grava `logoUrl` e a versão operacional `logoRevision`, e
+depois da resposta mede o arquivo com `measureLogoFit` (alfa, luminância dos
+pixels pintados, placa) em
 `brand.logoFit` e deriva uma versão branca por recorte de luminância
 (`deriveWhiteLogo`): pixel escuro ou colorido vira branco, pixel claro vira
 transparente, o que preserva o texto vazado de uma placa colorida e apaga a
 placa de um arquivo sem alfa. A versão entra na biblioteca com número e
 `reference_urls` do original, passa pelo crítico de logo em modo `derivar`,
 composta sobre papel escuro, e, aprovada, vira `brand.logoDarkUrl`.
+O cadastro persiste a mesma versão antes de agendar `deriveLogoAssets`.
 
 `NavBar` e `FooterCompact` escolhem o logo pelo papel real da seção
 (`logoFor` em `lib/blocks/theme.ts`): tom `ink`, `accent`, `secondary`, `soft`
-ou o papel da marca, com luminância abaixo de 0,4 contando como escuro. O site
-não tem modo escuro; tem papel. `lintSite` emite o aviso `logo-fundo-escuro`
+ou o papel da marca, com luminância abaixo de 0,4 contando como escuro.
+O tom `ink` moderno usa a mistura elevada de papel e tinta em Oklab emitida
+pelo CSS; `soft` usa a superfície resolvida do tema, incluindo a lavagem
+artística. Uma cor local prevalece sobre o tom; a navegação `contrast` tem
+papel próprio, resolvido pelo layout local ou pelo perfil. Renderer e
+pre-flight usam essas mesmas regras, respeitando o fallback das referências
+nos perfis antigos. O site não tem modo escuro; tem papel. `lintSite` emite o
+aviso `logo-fundo-escuro`
 quando o cabeçalho ou o rodapé da home é escuro, a medição acusa placa clara ou
 tinta escura sem pixels claros e não há versão escura; `logo-fundo-claro` cobre
 o caso inverso. Dados mostra o logo sobre o papel da marca e sobre um papel
 escuro, e a biblioteca oferece **Usar sobre fundo escuro** e a remoção. Trocar
-o logo apaga a medição e a versão escura do anterior; a medição não entra no
-snapshot publicado nem marca o rascunho como alterado. Ilustrações e logos de
-meio-tom não têm versão por recorte: o aviso permanece e a versão pode ser
+o logo apaga a medição e a versão escura do anterior. Cada aplicação ou escolha
+manual da versão escura, inclusive remoção, renova `logoRevision`: a derivação
+só grava se a URL e essa versão ainda coincidirem. Reaplicar a mesma URL
+preserva a medição e a variante existentes, invalidando trabalhos anteriores.
+O chat usa a marca devolvida pela aplicação; ajustes de cor e design mesclam
+somente seus campos no banco, preservando escolhas e derivados concorrentes.
+Medição e versão operacional ficam fora do snapshot publicado; renovar a
+versão não marca o rascunho como alterado nem invalida a evidência visual.
+Ilustrações e logos de meio-tom não têm versão por recorte: o aviso permanece e a versão pode ser
 pedida ao modelo pelo chat.
 
 ## Referências acima da vibe

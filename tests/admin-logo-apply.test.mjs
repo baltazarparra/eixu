@@ -26,16 +26,35 @@ async function plateWhite() {
 
 async function fixture({ approve = true, current } = {}) {
   const source = 'https://blob.test/tenants/fixture/logo/1-logo.png';
-  const calls = { scheduled: [], derived: [], blobs: [], inserted: [], critiques: [] };
+  const revision = 'application-1';
+  const calls = {
+    scheduled: [],
+    derived: [],
+    blobs: [],
+    inserted: [],
+    critiques: [],
+  };
   const png = await plateWhite();
   const { applyBrandLogo, deriveLogoAssets } = await loadModule(
     'lib/images/logo-apply.ts',
     {
       'next/server': { after: (callback) => calls.scheduled.push(callback) },
       '@/lib/tenant-queries': {
-        setBrandLogo: async (_id, url) => ({ logoUrl: url }),
-        setBrandLogoDerived: async (_id, measured, derived) => {
-          calls.derived.push({ source: measured, ...derived });
+        setBrandLogo: async (_id, url) => ({
+          logoUrl: url,
+          logoRevision: revision,
+        }),
+        setBrandLogoDerived: async (
+          _id,
+          measured,
+          derived,
+          appliedRevision,
+        ) => {
+          calls.derived.push({
+            source: measured,
+            revision: appliedRevision,
+            ...derived,
+          });
           return (current ?? source) === measured;
         },
       },
@@ -43,7 +62,10 @@ async function fixture({ approve = true, current } = {}) {
       '@/lib/blob/tenant-files': {
         putTenantBlob: async (_id, pathname, body) => {
           calls.blobs.push({ pathname, bytes: body.length });
-          return { url: `https://blob.test/tenants/fixture/${pathname}`, pathname };
+          return {
+            url: `https://blob.test/tenants/fixture/${pathname}`,
+            pathname,
+          };
         },
       },
       '@/lib/images/queries': {
@@ -55,7 +77,11 @@ async function fixture({ approve = true, current } = {}) {
       '@/lib/images/logo-critic': {
         critiqueLogo: async (input) => {
           calls.critiques.push(input);
-          return { aprovado: approve, nota: approve ? 8 : 3, variante: input.variant };
+          return {
+            aprovado: approve,
+            nota: approve ? 8 : 3,
+            variante: input.variant,
+          };
         },
       },
     },
@@ -64,15 +90,15 @@ async function fixture({ approve = true, current } = {}) {
     id: 'tenant-1',
     slug: 'fixture',
     name: 'Fixture',
-    brand: { paper: '#0b0e14', ink: '#f5f5f4' },
+    brand: { paper: '#0b0e14', ink: '#f5f5f4', logoRevision: revision },
   };
-  return { applyBrandLogo, deriveLogoAssets, calls, tenant, source };
+  return { applyBrandLogo, deriveLogoAssets, calls, tenant, source, revision };
 }
 
 await test('aplicar o logo grava a URL e agenda medição e versão escura depois da resposta', async () => {
   const f = await fixture();
   const brand = await f.applyBrandLogo(f.tenant, f.source);
-  assert.deepEqual(brand, { logoUrl: f.source });
+  assert.deepEqual(brand, { logoUrl: f.source, logoRevision: f.revision });
   assert.equal(f.calls.scheduled.length, 1);
   assert.equal(f.calls.derived.length, 0);
 
@@ -80,6 +106,7 @@ await test('aplicar o logo grava a URL e agenda medição e versão escura depoi
   // Primeiro a medição, depois a versão escura aprovada.
   assert.equal(f.calls.derived.length, 2);
   assert.equal(f.calls.derived[0].source, f.source);
+  assert.ok(f.calls.derived.every((call) => call.revision === f.revision));
   assert.equal(f.calls.derived[0].fit.plate, 'light');
   assert.equal(f.calls.derived[0].fit.hasAlpha, false);
   assert.match(f.calls.derived[1].darkUrl, /\/logo\/[0-9a-f-]+\/branca\.png$/);
@@ -107,7 +134,9 @@ await test('versão reprovada pelo crítico fica na biblioteca sem entrar na mar
 });
 
 await test('logo trocado durante a derivação não recebe a medição nem a versão do anterior', async () => {
-  const f = await fixture({ current: 'https://blob.test/tenants/fixture/logo/2-outro.png' });
+  const f = await fixture({
+    current: 'https://blob.test/tenants/fixture/logo/2-outro.png',
+  });
   await f.deriveLogoAssets(f.tenant, f.source);
   assert.equal(f.calls.derived.length, 1);
   assert.equal(f.calls.blobs.length, 0);
@@ -130,4 +159,45 @@ await test('logo já medido e com versão escura não é derivado de novo', asyn
   );
   assert.equal(f.calls.derived.length, 0);
   assert.equal(f.calls.blobs.length, 0);
+});
+
+await test('trocar e publicar pelo mesmo chat usa a marca devolvida pela aplicação', async () => {
+  const f = await fixture();
+  let published;
+  const { buildTools } = await loadModule('lib/ai/tools.ts', {
+    '@/lib/images/logo-apply': { applyBrandLogo: f.applyBrandLogo },
+    '@/lib/images/queries': {
+      getImageByNumber: async (tenantId, seq) => {
+        assert.equal(tenantId, f.tenant.id);
+        return { seq, kind: 'logo', status: 'disponivel', url: f.source };
+      },
+    },
+    '@/lib/sites/publish': {
+      publishSite: async (tenant) => {
+        published = tenant;
+        return { ok: true };
+      },
+    },
+  });
+  const tools = buildTools(
+    {
+      ...f.tenant,
+      brand: {
+        ...f.tenant.brand,
+        logoUrl: 'https://blob.test/anterior.png',
+        logoDarkUrl: 'https://blob.test/anterior-branca.png',
+        logoFit: { source: 'https://blob.test/anterior.png' },
+      },
+      brief: {},
+      dials: {},
+    },
+    { lastUserText: 'Use o logo #2 e publique o site' },
+  );
+  const applied = await tools.set_site_logo.execute({ image: '#2' });
+  assert.equal(applied.ok, true, JSON.stringify(applied));
+  await tools.publish_site.execute({});
+  assert.equal(published.brand.logoUrl, f.source);
+  assert.equal(published.brand.logoDarkUrl, undefined);
+  assert.equal(published.brand.logoFit, undefined);
+  assert.equal(published.brand.logoRevision, f.revision);
 });

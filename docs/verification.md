@@ -1,5 +1,40 @@
 # Validação e publicação
 
+## Correções da revisão do PR #33, 12/09/2026
+
+Corrigidos três problemas do fluxo de logo: estado antigo mantido no chat
+depois da troca, seleção da variante por uma superfície diferente do CSS e
+derivação atrasada sobrescrevendo a escolha manual. A versão operacional
+`brand.logoRevision` invalida gravações antigas, sem migração de schema e sem
+entrar no snapshot publicado ou no fingerprint visual. Ajustes de marca e
+design preservam campos de logo gravados por outra conexão.
+
+A `main` em `8ab02d1` foi incorporada ao branch do PR; o conflito em documentação foi
+resolvido preservando os registros de vibe moderna e edições pontuais.
+Verificação no worktree isolado:
+
+- `next typegen`, `tsc --noEmit`, lint global, formatação dos arquivos
+  alterados e `git diff --check` passaram.
+- `npm run test:sites`: 136 passaram; `npm run test:admin`: 165 passaram.
+  Sem pulos, com Chromium e PostgreSQL local descartável. Os casos de logo
+  usam duas conexões e SQL real: troca seguida de publicação no mesmo chat,
+  escolha/remoção manual antes do callback e durante a crítica, reaplicação
+  e troca A-B-A, ajustes de cor e design concorrentes, isolamento do tenant
+  e preservação do snapshot publicado.
+- Navegador: 18 testes de sites e dez de admin passaram, sem pulos. O novo
+  teste de logo confere 13 cenários em 1440 e 390 px com renderer e CSS do
+  build: tom `ink` moderno v2/v3/v4, referência legada e v4, `soft` com e sem
+  superfície explícita, lavagem artística, navegação `contrast`, override
+  local e fundo por seção. O papel resolvido pelo navegador e pelo selector
+  difere em no máximo um nível por canal sRGB. Capturas locais em
+  `outputs/review-33/logo-corrigido-{1440,390}.png`.
+- `npm run build:vercel` passou, incluindo os três checks dos artefatos de
+  captura serverless.
+
+Limites: Blob e crítico foram simulados nos testes de concorrência, com
+pixels sintéticos processados pelo Sharp real. Não houve chamada paga ao
+crítico nem escrita em banco remoto ou publicação de páginas de clientes.
+
 ## Recriação da vibe moderna e logo sobre fundo escuro, 12/09/2026
 
 O operador reprovou o fundo quadriculado que a vibe moderna pintava em toda

@@ -12,7 +12,9 @@ const { logoSurfaceIssue, logoFindings } = await j.import(
   '../lib/images/logo-fit.ts',
 );
 const { deriveWhiteLogo } = await j.import('../lib/images/logo-white.ts');
-const { logoFor, surfaceOf } = await j.import('../lib/blocks/theme.ts');
+const { logoFor, surfaceOf, themeVars } = await j.import(
+  '../lib/blocks/theme.ts',
+);
 
 const DARK = '#0b0e14';
 const LIGHT = '#ffffff';
@@ -94,7 +96,10 @@ async function allOpaquePixelsAreWhite(png) {
     .raw()
     .toBuffer({ resolveWithObject: true });
   for (let i = 0; i < data.length; i += info.channels)
-    if (data[i + 3] >= 16 && (data[i] < 250 || data[i + 1] < 250 || data[i + 2] < 250))
+    if (
+      data[i + 3] >= 16 &&
+      (data[i] < 250 || data[i + 1] < 250 || data[i + 2] < 250)
+    )
       return false;
   return true;
 }
@@ -104,8 +109,14 @@ await test('a medição reconhece placa, tinta escura e tinta clara', async () =
   assert.equal(plate.hasAlpha, false);
   assert.equal(plate.plate, 'light');
   assert.equal(plate.transparentFraction, 0);
-  assert.equal((await measureLogoFit(await fixtures.plateWhiteJpeg(), 'u')).plate, 'light');
-  assert.equal((await measureLogoFit(await fixtures.plateWhiteAlpha(), 'u')).plate, 'light');
+  assert.equal(
+    (await measureLogoFit(await fixtures.plateWhiteJpeg(), 'u')).plate,
+    'light',
+  );
+  assert.equal(
+    (await measureLogoFit(await fixtures.plateWhiteAlpha(), 'u')).plate,
+    'light',
+  );
 
   const colored = await measureLogoFit(await fixtures.plateColored(), 'u');
   assert.equal(colored.hasAlpha, true);
@@ -147,14 +158,20 @@ await test('o problema depende da superfície: placa e tinta escura no escuro, t
   assert.equal(logoSurfaceIssue(dark, LIGHT), null);
   assert.equal(logoSurfaceIssue(light, LIGHT), 'tinta-clara-em-fundo-claro');
   assert.equal(logoSurfaceIssue(light, DARK), null);
-  assert.equal(logoSurfaceIssue(darkPlate, LIGHT), 'placa-escura-em-fundo-claro');
+  assert.equal(
+    logoSurfaceIssue(darkPlate, LIGHT),
+    'placa-escura-em-fundo-claro',
+  );
 });
 
 await test('a versão branca recorta pela luminância e preserva o texto vazado', async () => {
   // Placa branca sem alfa: a placa some e o texto vira branco.
   const plate = await deriveWhiteLogo(await fixtures.plateWhite());
   assert.ok(plate);
-  assert.ok(plate.coverage > 0.15 && plate.coverage < 0.25, String(plate.coverage));
+  assert.ok(
+    plate.coverage > 0.15 && plate.coverage < 0.25,
+    String(plate.coverage),
+  );
   assert.deepEqual(await pixel(plate.png, 100, 60), [255, 255, 255, 255]);
   assert.equal((await pixel(plate.png, 5, 5))[3], 0);
   assert.ok(await allOpaquePixelsAreWhite(plate.png));
@@ -222,7 +239,11 @@ await test('o achado do logo usa o papel real do cabeçalho e some com a versão
   assert.match(inkNav[0].message, /^No cabeçalho escuro/);
   // Medição de outro logo não vale para o atual.
   assert.deepEqual(
-    logoFindings({ ...darkBrand, logoUrl: 'https://blob.test/outro.png' }, home(), []),
+    logoFindings(
+      { ...darkBrand, logoUrl: 'https://blob.test/outro.png' },
+      home(),
+      [],
+    ),
     [],
   );
 });
@@ -241,8 +262,65 @@ await test('nav e rodapé escolhem a versão do logo pelo papel da seção', () 
   assert.equal(logoFor(light), light.logoUrl);
   assert.equal(logoFor(light, { tone: 'ink' }), light.logoDarkUrl);
   assert.equal(logoFor(light, { tone: 'accent' }), light.logoDarkUrl);
-  assert.equal(logoFor({ ...light, logoDarkUrl: undefined }, { tone: 'ink' }), light.logoUrl);
-  assert.equal(surfaceOf(light, 'soft'), '#f6f6f6');
+  assert.equal(
+    logoFor({ ...light, logoDarkUrl: undefined }, { tone: 'ink' }),
+    light.logoUrl,
+  );
+  assert.equal(surfaceOf(light, 'soft'), themeVars(light)['--surface']);
   assert.equal(surfaceOf({ ...light, surface: '#eeeeee' }, 'soft'), '#eeeeee');
   assert.equal(logoFor({}), undefined);
+});
+
+await test('selector e pre-flight acompanham o fundo moderno, soft e a ilha de navegação', async () => {
+  const logoUrl = 'https://blob.test/logo.png';
+  const brand = {
+    logoUrl,
+    logoDarkUrl: 'https://blob.test/branca.png',
+    logoFit: await measureLogoFit(await fixtures.darkInk(), logoUrl),
+    paper: DARK,
+    ink: '#f5f5f4',
+    vibe: 'moderno',
+  };
+  const home = (presentation, layout) => [
+    {
+      slug: '',
+      blocks: [
+        { type: 'nav.bar', props: { presentation, layout } },
+        { type: 'footer.compact', props: { presentation } },
+      ],
+    },
+  ];
+  for (const version of [2, 3, 4]) {
+    const modern = { ...brand, design: { version } };
+    assert.equal(logoFor(modern, { tone: 'ink' }), brand.logoDarkUrl);
+    assert.equal(
+      logoFindings(
+        { ...modern, logoDarkUrl: undefined },
+        home({ tone: 'ink' }),
+        [],
+      )[0]?.rule,
+      'logo-fundo-escuro',
+    );
+  }
+  // A nav contrast tem papel próprio, inclusive sobre um fundo local.
+  assert.equal(logoFor(brand, { background: DARK }, 'contrast'), brand.logoUrl);
+  const light = { ...brand, vibe: 'comercial', paper: LIGHT, ink: '#14161a' };
+  const contrasting = {
+    ...light,
+    design: { navigation: 'contrast' },
+    logoDarkUrl: undefined,
+  };
+  assert.equal(
+    logoFor(light, { background: LIGHT }, 'contrast'),
+    brand.logoDarkUrl,
+  );
+  assert.match(
+    logoFindings(contrasting, home(), [])[0].message,
+    /^No cabeçalho escuro/,
+  );
+  assert.deepEqual(logoFindings(contrasting, home(undefined, 'bar'), []), []);
+  assert.equal(logoFor(light, { tone: 'soft' }), brand.logoDarkUrl);
+  const artistic = { ...light, vibe: 'artistico', accentAlt: '#315b48' };
+  assert.equal(surfaceOf(artistic, 'soft'), themeVars(artistic)['--surface']);
+  assert.equal(logoFor(artistic, { tone: 'soft' }), brand.logoUrl);
 });

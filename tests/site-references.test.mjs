@@ -84,7 +84,10 @@ await test('direção só sai da vibe depois de leitura visual e aplicações co
   assert.equal(result.structuralDistance, 0);
   assert.match(result.warning, /home idêntica/);
   const saved = f.queries.find((q) => q.sql.includes('brand ='));
-  const brand = JSON.parse(saved.values[1]);
+  // A escrita agora envia só a direção; a marca completa segue no contexto
+  // do chat. As integrações de logo verificam o merge com SQL real.
+  assert.match(saved.sql, /brand = brand \|\|/);
+  const brand = (await f.tools.set_brand.execute({})).brand;
   assert.equal(saved.values.at(-1), tenant.id);
   assert.equal(brand.vibe, 'moderno');
   assert.equal(brand.paper, '#ffffff');

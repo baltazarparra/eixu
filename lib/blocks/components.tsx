@@ -128,8 +128,8 @@ export function NavBar({
   presentation,
   ctx,
 }: NavBarProps & { ctx: RenderContext }) {
-  const logo = logoFor(ctx.tenant.brand, presentation);
   const resolvedLayout = layout ?? ctx.tenant.brand.design?.navigation ?? 'bar';
+  const logo = logoFor(ctx.tenant.brand, presentation, resolvedLayout);
   return (
     <NavigationFrame position={position}>
       <header
