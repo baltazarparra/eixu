@@ -60,6 +60,27 @@ própria e coerente. O aceite é média 2 sem nenhum critério em 0.
 8. **Jornada.** Descoberta, consideração e conversão se conectam por links
    reais, e cada página responde a uma intenção diferente.
 9. **Mobile.** Hierarquia e ação continuam legíveis em 390 px.
+10. **Linguagem simples.** A oferta, as explicações e as ações são entendidas
+    sem conhecer tecnologia ou inglês. Avalie também perguntas, formulários,
+    legendas, busca e rodapé. Termo necessário vem explicado; nome oficial é
+    preservado. Frase curta ou glossário limpo não provam compreensão.
+11. **Voz da vibe.** O texto segue o [perfil escolhido](copy.md) com coerência,
+    preservando clareza e fatos. Não exige repetir os exemplos do contrato.
+
+Clareza e voz precisam de nota pelo menos 2, além da regra geral de aceite.
+Uma média alta em aparência não compensa texto difícil.
+
+Para avaliar a escrita, use a mesma oferta confirmada nas quatro vibes. Inclua
+um negócio de serviço e um de produto; repita a geração e uma edição pontual.
+Registre textos automáticos antes de qualquer intervenção. Inclua nomes oficiais,
+um termo técnico necessário e explicado, e casos com inglês desnecessário,
+sigla sem explicação, metáfora confusa e botão que promete outra ação. A revisão
+deve separar esses casos sem apagar informação ou inventar oferta.
+
+Na avaliação com pessoas do público, peça que expliquem com suas palavras o que
+a empresa oferece e o que esperam que aconteça ao clicar no botão. Registre as
+dúvidas sem ensinar a resposta antes. Marque essa etapa como não executada se
+houver apenas revisão técnica ou crítica de IA.
 
 ## Registro obrigatório
 

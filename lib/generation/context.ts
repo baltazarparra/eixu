@@ -60,10 +60,11 @@ export function sourcesText(tenant: Tenant): string {
       motivo?: string;
       titulo?: string;
       texto?: string;
+      visual?: unknown;
     }[]
   )
     .map((source) =>
-      `- ${source.url} [${source.status}${source.motivo ? `: ${source.motivo}` : ''}] ${source.titulo ?? ''} ${source.texto ?? ''}`.trim(),
+      `- ${source.url} [${source.status}${source.motivo ? `: ${source.motivo}` : ''}] ${source.titulo ?? ''} ${source.texto ?? ''}${source.visual ? `\nLeitura visual: ${JSON.stringify(source.visual)}` : ''}`.trim(),
     )
     .join('\n');
 }

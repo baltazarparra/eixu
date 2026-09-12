@@ -1,4 +1,6 @@
 import { lookup } from 'node:dns/promises';
+import type { ReferenceVisual } from '@/lib/references/read';
+import { publicResource } from '@/lib/references/network';
 
 /** Redes que nunca devem ser alcançadas por uma URL vinda do chat. */
 export function isPrivateAddress(address: string, family: number): boolean {
@@ -33,6 +35,7 @@ export type Reference = {
   telefones?: string[];
   whatsapp?: string[];
   lidoEm: string;
+  visual?: ReferenceVisual;
 };
 
 const ENTITIES: Record<string, string> = {
@@ -228,11 +231,15 @@ export async function readReference(
     };
   }
   try {
-    const response = await request(parsed.toString(), {
-      redirect: 'follow',
-      signal: AbortSignal.timeout(8000),
-      headers: { 'user-agent': 'EIXU-SiteAgent/1.0 (+https://eixu.com.br)' },
-    });
+    const response = deps.fetch
+      ? await request(parsed.toString(), {
+          redirect: 'follow',
+          signal: AbortSignal.timeout(8000),
+          headers: {
+            'user-agent': 'EIXU-SiteAgent/1.0 (+https://eixu.com.br)',
+          },
+        })
+      : await readPublicHtml(parsed.toString());
     if (!response.ok)
       return {
         url,
@@ -261,4 +268,26 @@ export async function readReference(
       lidoEm,
     };
   }
+}
+
+/** A leitura textual usa a mesma fronteira pública da captura, inclusive redirects. */
+async function readPublicHtml(url: string): Promise<Response> {
+  let current = url;
+  for (let hop = 0; hop < 6; hop++) {
+    const resource = await publicResource(current);
+    if (
+      [301, 302, 303, 307, 308].includes(resource.status) &&
+      resource.headers.location
+    ) {
+      current = new URL(resource.headers.location, current).toString();
+      continue;
+    }
+    return new Response(
+      [204, 205, 304].includes(resource.status)
+        ? null
+        : new Uint8Array(resource.body),
+      { status: resource.status, headers: resource.headers },
+    );
+  }
+  throw new Error('Redirecionamentos demais');
 }

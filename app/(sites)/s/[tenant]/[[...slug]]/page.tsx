@@ -12,7 +12,8 @@ import {
 import { attributionScript } from '@/lib/tracking';
 import { isAuthenticated } from '@/lib/auth';
 import { structuredData } from '@/lib/sites/structured-data';
-import { vibeOf } from '@/lib/design/vibes';
+import { renderingVibeOf } from '@/lib/design/vibes';
+import { hasReferenceDirection } from '@/lib/design/references';
 import { publicPage, publicTenant } from '@/lib/sites/snapshot';
 
 type Params = { tenant: string; slug?: string[] };
@@ -90,6 +91,7 @@ export default async function TenantPage({ params, searchParams }: Props) {
   const { tenant, page } = resolved;
   const renderedTenant = isPreview ? tenant : publicTenant(tenant);
   const renderedPage = isPreview ? page : publicPage(page);
+  const referenceDirected = hasReferenceDirection(renderedTenant.brand);
 
   // O painel pede `?preview=1` para ver o rascunho; o público vê o publicado.
   const blocks = isPreview ? page.blocks : (page.publishedBlocks ?? []);
@@ -115,8 +117,11 @@ export default async function TenantPage({ params, searchParams }: Props) {
             : 'normal'
       }
       data-motion={renderedTenant.dials.motion <= 3 ? 'still' : 'gentle'}
-      data-vibe={vibeOf(renderedTenant.brand)}
-      data-design-version={renderedTenant.brand.design?.version}
+      data-vibe={renderingVibeOf(renderedTenant.brand)}
+      data-reference-direction={referenceDirected ? 'true' : undefined}
+      data-design-version={
+        referenceDirected ? 'reference' : renderedTenant.brand.design?.version
+      }
       data-hero={renderedTenant.brand.design?.heroComposition}
       data-navigation={renderedTenant.brand.design?.navigation}
       data-rhythm={renderedTenant.brand.design?.rhythm}

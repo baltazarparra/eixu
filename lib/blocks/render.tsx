@@ -5,7 +5,7 @@ import { SiteMotion } from '@/lib/blocks/motion';
 import { VisualExplorer, type ExplorerProps } from '@/lib/blocks/explorer';
 import { SiteLocation } from '@/lib/blocks/location';
 import { contactsOf } from '@/lib/tenant-contacts';
-import { vibeOf, VIBE_LOCATION_TONE } from '@/lib/design/vibes';
+import { renderingVibeOf, VIBE_LOCATION_TONE } from '@/lib/design/vibes';
 import { previewProps } from '@/lib/sites/preview';
 
 export type RenderContext = {
@@ -63,9 +63,12 @@ export function RenderBlocks({
             id="onde-estamos"
             className="site-block site-location-block"
             data-block="site.location"
-            data-tone={VIBE_LOCATION_TONE[vibeOf(ctx.tenant.brand)]}
+            data-tone={VIBE_LOCATION_TONE[renderingVibeOf(ctx.tenant.brand)]}
           >
-            <SiteLocation contacts={contacts} vibe={vibeOf(ctx.tenant.brand)} />
+            <SiteLocation
+              contacts={contacts}
+              vibe={renderingVibeOf(ctx.tenant.brand)}
+            />
           </div>
         ) : null}
       </main>
@@ -88,7 +91,7 @@ function renderList(
         if (!parsed.success) return null;
         const props = {
           ...(previewProps(parsed.data, ctx) as Record<string, unknown>),
-          vibe: vibeOf(ctx.tenant.brand),
+          vibe: renderingVibeOf(ctx.tenant.brand),
         } as never;
         const key = block.id;
 

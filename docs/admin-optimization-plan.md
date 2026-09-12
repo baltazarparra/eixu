@@ -9,9 +9,10 @@ O objetivo é tornar a criação mais simples de operar, diminuir retrabalho na 
 
 A implementação cobre o núcleo das entregas 1–5 e partes de baixo risco da 6: eventos
 correlacionados, revisão incremental, três etapas visíveis, cadastro compacto,
-plano de cenas unificado, quatro contratos visuais v3, troca de vibe em
-rascunho, snapshot completo, proteção de formulário, retorno após login e uso
-exato de imagens. Histórico/edição de gastos, contatos paginados e consolidação
+plano de cenas unificado, quatro contratos visuais v3 quando a vibe dirige o
+resultado, prioridade das referências verificadas, troca de vibe em rascunho,
+snapshot completo, proteção de formulário, retorno após login e uso exato de
+imagens. Histórico/edição de gastos, contatos paginados e consolidação
 durável de custos continuam como trabalho P2 porque ampliam contratos próprios
 de dados e não são necessários para corrigir criação e revisão. Comparação lado
 a lado com o site publicado e descarte integral de uma recomposição continuam
@@ -196,6 +197,12 @@ Fonte: [painel](<../app/(admin)/admin/[tenant]/generation-panel.tsx>), [feed](..
 
 A diferenciação precisa mudar a hierarquia, a relação entre texto e imagem e o ritmo de navegação. Fontes e ícones reforçam essas decisões. As referências [Frontend Design](https://github.com/anthropics/claude-code/blob/main/plugins/frontend-design/skills/frontend-design/SKILL.md) e [Taste v1](https://github.com/Leonxlnx/taste-skill/blob/main/skills/taste-skill-v1/SKILL.md) foram relidas: aplicar intenção, hierarquia e estados completos, respeitando o contrato EIXU sobre factualidade e movimento. Não importar receitas fixas de bento ou animações contínuas para todas as vibes.
 
+Esses contratos governam o fallback sem referência do cliente. Quando uma URL
+do cadastro é visualmente verificada, suas decisões de estrutura, tipografia,
+imagem e ritmo prevalecem; a vibe continua definindo a voz e completa lacunas.
+O renderer neutraliza os presets visuais da vibe nesse caso para não desfazer a
+direção persistida.
+
 A matriz abaixo propõe direções iniciais, não um template único por vibe. Cada uma deve ter pelo menos duas composições coerentes e validadas.
 
 <!-- prettier-ignore -->
@@ -300,7 +307,7 @@ Não entram nesta rodada: login de clientes, permissões por tenant, cobrança, 
 
 **Identidade visual**
 
-- Primeiro, montar fixtures com o mesmo briefing, texto e imagens nas quatro vibes, cobrindo home e página interna em desktop e celular.
+- Primeiro, montar fixtures sem referências do cliente, com o mesmo briefing, texto e imagens nas quatro vibes, cobrindo home e página interna em desktop e celular. Avaliar separadamente uma direção por referência contra vibes conflitantes.
 - Depois, avaliar geração real em uma matriz inicial de três briefings diferentes × quatro vibes, com repetição dos casos instáveis. Usar somente dados sintéticos e tenants descartáveis autorizados; não copiar acervo de clientes para simplificar o teste.
 - Na comparação sem rótulos, buscar pelo menos 80% de reconhecimento das vibes por avaliadores humanos, anotando tamanho da amostra e confusões. Diferenciação não compensa perda de clareza, adequação ao negócio ou conversão.
 - Confirmar diferenças de silhueta, hierarquia, imagem, ritmo e navegação, além das fontes/cores. Dentro da vibe, as duas composições não podem ser cópias com texto trocado.

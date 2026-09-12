@@ -1,12 +1,15 @@
 import { z } from 'zod';
 import { relativeLuminance } from '@/lib/blocks/contrast';
 import { DESIGN_AXES, type DesignProfileInput } from '@/lib/design/profile';
+import { hasReferenceDirection } from './references';
 
 /**
  * Vibe do site, escolhida pelo operador no cadastro. Ela não substitui a
  * direção de arte: continua sendo o agente que decide conceito, estrutura e
- * tipografia, mas dentro da faixa da vibe. Todos os contratos são delimitados:
- * comercial deixou de ser a soma permissiva das outras três direções.
+ * tipografia. Referências visuais verificadas prevalecem sobre essa faixa;
+ * sem elas, a direção permanece dentro da vibe. Todos os quatro contratos são
+ * delimitados. A voz em lib/copy/policy.ts continua valendo quando uma
+ * referência dirige o visual.
  *
  * Referências lidas em 10/09/2026: linear.app (moderno), 14islands.com
  * (ousado) e actionline.io (artistico). Elas orientam a linguagem visual; o
@@ -28,6 +31,13 @@ export function vibeOf(brand: { vibe?: string } | null | undefined): Vibe {
   return isVibe(brand?.vibe) ? brand.vibe : 'comercial';
 }
 
+/** Referência aplicada usa os tokens e as props escolhidos, sem overrides da vibe. */
+export function renderingVibeOf(
+  brand: { vibe?: string; design?: unknown } | null | undefined,
+): Vibe {
+  return hasReferenceDirection(brand) ? 'comercial' : vibeOf(brand);
+}
+
 export const VIBE_LABEL: Record<Vibe, string> = {
   comercial: 'Comercial',
   moderno: 'Moderno',
@@ -37,13 +47,13 @@ export const VIBE_LABEL: Record<Vibe, string> = {
 
 export const VIBE_HINT: Record<Vibe, string> = {
   comercial:
-    'Clareza acolhedora: benefício, prova e contato em um percurso direto.',
+    'Clareza acolhedora: benefício, prova e contato em um percurso direto e simples.',
   moderno:
-    'Sistema preciso: fundo escuro, grade, linhas finas e capítulos espaçados.',
+    'Sistema preciso: fundo escuro, grade e capítulos espaçados, com voz clara e tranquila.',
   ousado:
-    'Impacto gráfico: título como imagem, escala extrema e fotografia sem moldura.',
+    'Impacto gráfico: título como imagem, escala extrema e texto curto e firme.',
   artistico:
-    'Narrativa editorial: papel quente, serifas, assimetria e colagem controlada.',
+    'Narrativa editorial: papel quente, serifas, colagem e texto próximo e cuidadoso.',
 };
 
 /** Paletas de demonstração e ponto de partida; só viram marca quando editadas. */

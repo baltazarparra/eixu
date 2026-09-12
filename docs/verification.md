@@ -2,48 +2,89 @@
 
 ## Admin, criação e revisão incremental, 12/09/2026
 
-O fluxo administrativo foi revisto de entrada a Tráfego. A criação apresenta
+O fluxo administrativo foi revisto da entrada a Tráfego. A criação apresenta
 três etapas de produto, cadastro compacto e quatro direções visuais comparáveis;
 o servidor mantém checkpoints próprios para retomada. A revisão executa
 pre-flight antes dos pixels, reutiliza recibos atuais por página, captura duas
-páginas por vez com repetição local e preserva tanto capturas válidas quanto
-achados anteriores diante de uma falha técnica. A publicação passa a promover
-apresentação global e dados editoriais junto de blocos e SEO. O schema
-inicializa o snapshot de páginas e clientes que já estavam publicados.
+páginas por vez com repetição local e preserva capturas válidas e achados
+anteriores diante de falha técnica. Referências verificadas continuam com
+prioridade visual; na ausência delas, os perfis v3 aplicam contratos radicais
+das quatro vibes. A publicação promove apresentação global e dados editoriais
+junto de blocos e SEO. O schema inicializa o snapshot de páginas e clientes que
+já estavam publicados.
 
-Verificação final:
+Verificação final na base `main` integrada:
 
 - `npx next typegen && npx tsc --noEmit`, `npm run lint`, formatação dos
-  arquivos da entrega e `git diff --check`: sem erros.
-- `EIXU_CHROME_PATH=/usr/bin/google-chrome npm run test:admin`: 118 testes;
-  115 passaram e 3 integrações com PostgreSQL foram puladas porque
+  arquivos alterados e `git diff --check`: sem erros.
+- `EIXU_CHROME_PATH=/usr/bin/google-chrome npm run test:admin`: 119 testes;
+  116 passaram e 3 integrações com PostgreSQL foram puladas porque
   `EIXU_TEST_POSTGRES_URL` não está disponível nesta máquina. Os dois testes de
   captura real com Chrome passaram.
-- `npm run test:sites`: 86 testes passaram, sem pulos. Cobrem também uso exato
-  de imagens, contratos v3 das vibes e preservação do snapshot público.
+- `EIXU_CHROME_PATH=/usr/bin/google-chrome npm run test:sites`: 104 testes
+  passaram, sem pulos, incluindo captura externa em navegador real, voz por
+  vibe, prioridade das referências, uso exato de imagens, contratos v3 e
+  preservação do snapshot público.
 - `npm run build:vercel`: Next.js 16.3.3 compilou e os três checks dos artefatos
   serverless de captura passaram.
-- `npm run test:admin:browser`: 8 testes passaram. `npm run
-test:sites:browser`: 15 passaram, incluindo as quatro vibes, fontes reais,
-  teclado, movimento reduzido, JavaScript desligado e contraste mínimo medido
-  de 4,608:1 nos pares cobertos pela fixture.
+- Navegador: os 8 testes de `test:admin:browser` e os 16 de
+  `test:sites:browser` passaram, incluindo as quatro vibes, fontes reais,
+  teclado, movimento reduzido, JavaScript desligado, contraste mínimo medido de
+  4,608:1 e referência visual contra vibes conflitantes. O caso de referência
+  foi repetido após explicitar o contrato de renderização v3.
 - O cadastro foi inspecionado em 390 e 1440 px: quatro informações de negócio
   ficam visíveis, contexto/marca permanecem recolhidos, as quatro miniaturas
   têm silhuetas diferentes e não houve overflow. O painel mobile separa etapa,
   unidades e relógio, inclusive na segunda rodada da revisão. Capturas locais
   ficam em `outputs/admin-handoff/` e `outputs/generation/`, ignoradas pelo Git.
 
-Durante a validação, o navegador revelou duas incompatibilidades corrigidas: o
-workspace agora tolera uma resposta antiga sem o campo `review`, e a fixture
-abre as seções opcionais antes de editar seus controles. A suíte de captura
-também mostrou que o novo erro de lote escondia a causa principal; a mensagem
-agora conserva a primeira falha e os detalhes estruturados de cada viewport.
+A integração revelou e corrigiu uma incompatibilidade: perfis v3 com referência
+não eram reconhecidos pelo helper legado, e a mudança de `referenceDirection`
+não alterava o fingerprint quando ainda não havia páginas. O renderer agora
+aceita v2/v3, identifica a autoridade visual no DOM e impede que o CSS radical
+da vibe sobreponha a referência; qualquer mudança dessa direção invalida o
+recibo de revisão.
 
 Não houve migração ou escrita em banco remoto, geração paga, publicação de
 página de cliente nem deploy. A sintaxe nova do schema não foi exercitada em um
-PostgreSQL local porque esse serviço não está disponível. As fixtures comprovam
-diferença estrutural e comportamento responsivo, mas não substituem a matriz
-paga de três briefings por quatro vibes nem uma avaliação humana sem rótulos.
+PostgreSQL local porque esse serviço não está disponível. A implantação deve
+aplicar o schema antes do código. As fixtures comprovam contratos e
+comportamento responsivo, mas não substituem a matriz paga de três briefings por
+quatro vibes nem uma avaliação humana sem rótulos.
+
+## Escrita simples e voz por vibe, 11/09/2026
+
+O [contrato de escrita](copy.md) passou a orientar geração, edição e crítica.
+Os validadores de página também apontam vocabulário e frases longas e recusam
+rótulos de ação pouco claros da lista explícita. Os recibos anteriores são
+invalidados pela nova versão do harness.
+
+- `npx next typegen && npx tsc --noEmit` e `npm run lint`: sem erros.
+- `npm run test:sites`: 95 testes passaram. Os dez novos cobrem as quatro
+  vibes em todas as fases/edições, fallback legado, mudança de vibe invalidando
+  recibo, leitura dos campos de texto, limites de palavra, exceções de contexto,
+  publicação do site/página bloqueada antes da escrita e liberada após reparo,
+  e envio de voz/textos/sinais ao crítico junto dos pixels.
+- `npm run test:admin`: 106 testes passaram e cinco foram pulados por falta de
+  configuração de Chrome (dois) e PostgreSQL local (três). A nova regressão usa
+  a ferramenta real de revisão com captura e modelo simulados para conferir
+  que erro de linguagem impede a conclusão e fica no recibo.
+- `npm run build:vercel`: build de produção aprovado, incluindo os três testes
+  dos arquivos de captura no artefato serverless.
+
+Os testes de publicação usam o serviço e o validador de página reais, com banco,
+acervo e validação global substituídos para isolar a regra de escrita. Os testes
+do crítico substituem o modelo: comprovam o transporte e os controles, não a
+qualidade da geração de texto. Não houve avaliação paga, teste de compreensão
+com pessoas do público, escrita remota ou publicação neste ciclo. Conteúdos de
+clientes existentes permanecem como estavam.
+
+Para a entrega em produção, a branch incorporou a `main` em `1ec319e`, mantendo
+a correção que permite publicar com avisos e recusa erros. O conflito neste
+histórico foi resolvido preservando os dois registros. Na base integrada,
+tipos e lint passaram; sites teve 95 testes aprovados e admin, 113 aprovados
+com os mesmos cinco pulos de ambiente. O build Next.js de produção e os três
+checks dos artefatos serverless foram repetidos antes da integração final.
 
 ## Correção do resumo da revisão no PR #22, 12/09/2026
 
@@ -124,6 +165,42 @@ cada publicação de código invalida a revisão visual de todos os clientes, e 
 botão Continuar reabre uma rodada paga por cliente. A comparação de silhueta
 com outros clientes continua só no gate de publicação, fora do estado do
 painel.
+
+## Prioridade de referências no cadastro, 11/09/2026
+
+Referências do cadastro passaram a orientar estrutura, tipografia, imagens e
+ritmo acima da vibe, com leitura visual separada e aplicações persistidas para
+composição e crítica. O fallback de clientes sem leitura visual preserva a
+faixa, e a direção aplicada impede que o CSS da vibe volte a impor outro estilo.
+A implementação e seus limites estão em [Design](design.md#referências-acima-da-vibe).
+
+- Tipos, lint global e build Next.js de produção passaram, incluindo os três
+  checks dos artefatos de captura serverless.
+- Sites: 103 testes passaram, sem pulos. A regressão cobre leitura obrigatória,
+  fonte removida ou bloqueada, evidência só textual, prioridades contrárias à
+  vibe, paleta do operador, contraste e gravação no tenant correto. O plano
+  persiste em todas as fases e sua alteração invalida a revisão anterior.
+- Admin: 115 testes passaram; três integrações foram puladas por ausência de
+  PostgreSQL local. Os testes de captura com Chrome foram executados.
+- Navegador: 16 testes passaram, sem pulos. O caso novo mede as três vibes
+  restritivas com direção por referência em 390/1440 px, usando componentes e
+  CSS do build. Superfície, família tipográfica declarada e posição do hero
+  seguem a direção; não houve overflow. A suíte existente também verifica as
+  fontes reais, teclado, contraste e comportamento sem JavaScript.
+- O teste de captura externa executa CSS e JavaScript em navegador real,
+  verifica desktop/mobile, corte de altura, recusa de POST e rede privada,
+  inclusive após redirect. Uma página pesada no desktop não consome o
+  orçamento do mobile. Os testes de análise e crítica usam substitutos do
+  modelo e conferem bytes como partes de imagem, sem base64 no histórico.
+- Uma leitura pública do Linear confirmou extração textual e capturas nas duas
+  larguras. Recursos bloqueados/ausentes e corte de altura limitam essa leitura;
+  não a tratamos como observação integral da fonte. As capturas sintéticas e
+  desse ensaio ficam em `outputs/references/`, ignorado pelo Git.
+
+Sem migração, escrita remota, geração paga, publicação de código ou publicação
+de páginas de clientes. Os checks confirmam o contrato e a apresentação do
+renderer; a qualidade de uma geração completa com referências pelo Gemini
+continua sem avaliação real neste ciclo.
 
 ## Progresso da geração dentro da conversa, 11/09/2026
 

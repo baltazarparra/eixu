@@ -399,6 +399,7 @@ for (const mode of [
   'missing-view',
   'critic-error',
   'material-error',
+  'language-error',
 ])
   await test(`revisão real orquestra capturas e crítico: ${mode}`, async () => {
     const fixture = structuredClone(tenant);
@@ -487,19 +488,27 @@ for (const mode of [
           if (mode === 'critic-error') throw new Error('Falha sintética');
           return {
             strengths: ['Hierarquia coerente'],
-            findings:
-              mode === 'material-error'
-                ? [
-                    {
-                      page: '/',
-                      blockId: 'hero',
-                      level: 'error',
-                      criterion: 'factualidade',
-                      evidence: 'Promessa sem fonte',
-                      correction: 'Remover a promessa',
-                    },
-                  ]
-                : [],
+            findings: ['material-error', 'language-error'].includes(mode)
+              ? [
+                  {
+                    page: '/',
+                    blockId: 'hero',
+                    level: 'error',
+                    criterion:
+                      mode === 'language-error'
+                        ? 'linguagem-simples'
+                        : 'factualidade',
+                    evidence:
+                      mode === 'language-error'
+                        ? 'Ação em inglês sem explicação'
+                        : 'Promessa sem fonte',
+                    correction:
+                      mode === 'language-error'
+                        ? 'Escrever a ação em português simples'
+                        : 'Remover a promessa',
+                  },
+                ]
+              : [],
           };
         },
       },

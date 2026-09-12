@@ -1,5 +1,6 @@
 import type { BlockInstance, Page } from '../types';
 import type { DesignProfile } from '../design/profile';
+import { lintCopy } from '../copy/lint';
 import {
   blockMeta,
   blockSchemas,
@@ -74,10 +75,11 @@ export function headlineLines(text: string): number {
 }
 
 export function lintPage(
-  page: Pick<Page, 'blocks' | 'type' | 'title' | 'seo'>,
+  page: Pick<Page, 'blocks' | 'type' | 'title' | 'seo'> &
+    Partial<Pick<Page, 'meta'>>,
   design?: DesignProfile,
 ): Finding[] {
-  const findings: Finding[] = [];
+  const findings: Finding[] = lintCopy(page);
   const blocks = page.blocks ?? [];
   const push = (
     level: Finding['level'],
@@ -169,7 +171,7 @@ export function lintPage(
     );
   }
 
-  // 3b. O perfil v2 só é rico quando chega aos blocos. Sem escolhas locais,
+  // 3b. O perfil versionado só é rico quando chega aos blocos. Sem escolhas locais,
   // a página volta a ser a mesma sequência genérica pintada com outra paleta.
   if (
     (design?.version === 2 || design?.version === 3) &&

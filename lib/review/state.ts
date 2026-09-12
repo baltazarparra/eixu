@@ -92,14 +92,15 @@ export function reviewFingerprint(
   pages: Page[],
   images: TenantImage[],
 ): string {
-  return hash(
-    [...pages]
+  return hash({
+    context: reviewContext(tenant),
+    pages: [...pages]
       .sort((a, b) => a.slug.localeCompare(b.slug))
       .map((page) => ({
         page: `/${page.slug}`,
         fingerprint: pageReviewFingerprint(tenant, page, images),
       })),
-  );
+  });
 }
 
 /**

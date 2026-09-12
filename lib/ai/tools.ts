@@ -20,6 +20,13 @@ import {
 } from '@/lib/design/profile';
 import { hasDuplicateComposition } from '@/lib/design/uniqueness';
 import { VIBE_LABEL, laneIssues, vibeOf } from '@/lib/design/vibes';
+import {
+  normalizeReferenceUrl,
+  referenceUrls,
+  referenceSources,
+  referenceDirectionIssues,
+} from '@/lib/design/references';
+import { readReferenceVisual } from '@/lib/references/read';
 import { guideTool } from '@/lib/ai/guide-tool';
 import {
   getGuide,
@@ -277,7 +284,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
       };
       const blocks = toBlocks(input.blocks);
       const findings = lintPage(
-        { type: input.type, title: input.title, seo, blocks },
+        { type: input.type, title: input.title, seo, blocks, meta },
         activeBrand.design,
       );
       return { input, slug, seo, meta, blocks, findings };
@@ -710,7 +717,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
     read_reference: tool({
       description:
-        'Lê uma página de referência informada pelo operador e devolve título, descrição e texto real. Instagram e LinkedIn devolvem nome, bio e avatar quando a rede permite; bloqueado volta inacessível, e aí a lacuna vai para brief.gaps sem deduzir a empresa.',
+        'Lê conteúdo real da URL. Para referências do cadastro, captura desktop/mobile e analisa estrutura, tipografia, imagens, ritmo e superfícies. A leitura visual orienta a direção acima da vibe. Fonte ou captura inacessível vira lacuna. Redes sociais fornecem contexto factual, sem presumir estilo de site.',
       inputSchema: z.object({ url: z.url() }),
       execute: safe(async ({ url }) => {
         if (referencesRead >= 6)
@@ -733,16 +740,40 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         const reference = social
           ? referenceFromSocial(fresh ?? (await readSocialProfile(social)))
           : await readReference(url);
+        if (referenceUrls(activeBrief).includes(normalizeReferenceUrl(url))) {
+          reference.visual =
+            social || reference.status !== 'ok'
+              ? {
+                  status: 'inacessivel',
+                  motivo: social
+                    ? 'Perfil social não define composição de site.'
+                    : reference.motivo,
+                  capturedAt: new Date().toISOString(),
+                }
+              : await readReferenceVisual(url, tenant.id);
+        }
         const previous = Array.isArray(activeBrief.sources)
           ? (activeBrief.sources as { url?: string }[])
           : [];
         const sources = [
-          ...previous.filter((source) => source?.url !== reference.url),
+          ...previous.filter(
+            (source) =>
+              !source?.url ||
+              normalizeReferenceUrl(source.url) !==
+                normalizeReferenceUrl(reference.url),
+          ),
           reference,
         ];
         activeBrief = { ...activeBrief, sources };
+        // Leituras de URLs diferentes podem terminar em paralelo. Mescle a
+        // fonte no registro atual para não perder a leitura de outra chamada.
         await db()`
-          update tenants set brief = brief || ${JSON.stringify({ sources })}::jsonb, updated_at = now()
+          update tenants set brief = jsonb_set(brief, '{sources}',
+            coalesce((select jsonb_agg(source)
+              from jsonb_array_elements(case when jsonb_typeof(brief->'sources') = 'array'
+                then brief->'sources' else '[]'::jsonb end) source
+              where source->>'url' <> ${reference.url}), '[]'::jsonb)
+            || ${JSON.stringify([reference])}::jsonb), updated_at = now()
           where id = ${tenant.id}
         `;
         return reference;
@@ -1462,10 +1493,23 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           );
         }
 
-        // A vibe do cadastro delimita os eixos: ela é escolha do operador, e
-        // a direção decide dentro dela, não contra ela.
+        const referenceIssues = referenceDirectionIssues(
+          activeBrief,
+          input.referenceDirection,
+        );
+        if (referenceIssues.length)
+          throw new ToolError(referenceIssues.join(' '));
+        if (
+          referenceSources(activeBrief).some((source) => !source.reading) &&
+          !input.brief.gaps.length
+        )
+          throw new ToolError(
+            'Declare em brief.gaps as referências sem leitura visual; não trate texto ou URL como evidência de estilo.',
+          );
+        // Referências visuais verificadas prevalecem; sem elas preservamos a faixa.
         const vibe = vibeOf(activeBrand);
-        const outOfLane = laneIssues(vibe, input);
+        const referenceLed = !!input.referenceDirection;
+        const outOfLane = referenceLed ? [] : laneIssues(vibe, input);
         if (outOfLane.length) {
           throw new ToolError(
             `A direção não cabe na vibe ${VIBE_LABEL[vibe]} escolhida no cadastro. ${outOfLane.join(' ')}`,
@@ -1505,7 +1549,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           profile,
           rows.map((row) => row.design),
         );
-        if (nearest && nearest.distance < 3) {
+        if (!referenceLed && nearest && nearest.distance < 3) {
           throw new ToolError(
             `Direção estrutural muito parecida com outro site da vibe ${VIBE_LABEL[vibe]}: distância ${nearest.distance}/8. Mude pelo menos ${3 - nearest.distance} decisões entre heroComposition, navigation, rhythm, imageTreatment, surfaceStyle, motif e tipografia, sempre dentro da vibe.`,
           );
@@ -1550,6 +1594,13 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         return {
           ok: true,
           vibe,
+          visualAuthority: referenceLed ? 'references' : 'vibe',
+          ...(referenceLed && nearest && nearest.distance < 3
+            ? {
+                warning:
+                  'Perfil próximo de outro site. Diferencie conteúdo e composição preservando os traços das referências; a trava de home idêntica continua ativa.',
+              }
+            : {}),
           concept: profile.concept,
           signatureElement: profile.signatureElement,
           structuralDistance: nearest?.distance ?? null,

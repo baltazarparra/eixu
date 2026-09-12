@@ -61,13 +61,24 @@ segundos. Esgotar um limite não prova conclusão; o painel retoma pelo estado.
 
 ## Contexto e decisões
 
+A escrita tem um [contrato por vibe](copy.md), com linguagem simples em comum.
+`lib/copy/policy.ts` fornece a mesma base ao autor, em todas as fases e edições,
+e ao crítico. `lintPage` verifica rótulos de ação e aponta vocabulário/frases
+para revisão; o crítico julga compreensão e voz com textos completos, sinais e
+pixels. Erro material de linguagem impede a conclusão automática. A versão
+`gemini-3.8-quality-v2-copy` invalida recibos anteriores a esse critério.
+
 O prompt mantém fatos, restrições, vibe, marca, contatos, guia de imagens, fontes,
 plano editorial, plano semântico de cenas e biblioteca do tenant. Referências
-lidas acompanham também a composição e a revisão. `brief.pagePlan` guarda
-intenção, etapa de inbound, conteúdo e evidências de cada página;
-`brief.imageScenes` liga página, papel, bloco e proporção a cada foto planejada.
-Ambos são opcionais no schema para ler briefings legados e obrigatórios em uma
-nova direção validada.
+visuais verificadas do cadastro prevalecem sobre a vibe. As capturas são
+analisadas em uma chamada multimodal separada; as observações em
+`brief.sources[].visual` e as aplicações em `brand.design.referenceDirection`
+acompanham cenas, composição e revisão. O crítico final confronta os pixels do
+rascunho com essa leitura persistida; não recebe os pixels originais da fonte.
+`brief.pagePlan` guarda intenção, etapa de inbound, conteúdo e evidências de
+cada página; `brief.imageScenes` liga página, papel, bloco, proporção e pedido
+semântico a cada foto planejada. Ambos são opcionais no schema para ler
+briefings legados e obrigatórios em uma nova direção validada.
 
 O catálogo deriva do schema. Composição e revisão recebem os schemas JSON
 completos, com campos obrigatórios, limites e descrições. Edições livres recebem
@@ -211,7 +222,8 @@ novamente** abre uma execução com novas rodadas, preservando o rascunho.
 ## Compor, observar, corrigir, conferir
 
 O fluxo continua briefing → cenas → composição → revisão. O planejamento escolhe
-alternativas coerentes com a vibe; o plano editorial diferencia as intenções das
+alternativas coerentes com as referências visuais verificadas e o negócio,
+usando a vibe como apoio; o plano editorial diferencia as intenções das
 páginas. A composição grava o lote validado e usa `repair_site` para corrigir
 recusas sem reenviar tudo. Um lote salvo sem erros encerra o loop de composição
 por condição externa do SDK e segue para a revisão. Avisos de recorte são

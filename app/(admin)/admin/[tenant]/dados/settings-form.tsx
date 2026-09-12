@@ -263,6 +263,8 @@ export function SettingsForm({
               Nome, contatos, logo e direção alteram o rascunho. O site no ar
               continua no snapshot anterior até Publicar. Alterar o briefing
               orienta novas edições; não reescreve páginas automaticamente.
+              Referências visuais verificadas têm prioridade na geração; na
+              ausência delas, vale o contrato da vibe escolhida.
             </p>
           </fieldset>
         </form>

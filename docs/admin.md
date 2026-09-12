@@ -21,9 +21,12 @@ Em **Direção visual**, compare miniaturas com a mesma estrutura: **Comercial**
 prioriza percurso direto, prova e contato; **Moderno** usa superfície escura,
 grade e capítulos; **Ousado** usa tipografia condensada/expressiva, contraste e
 imagem de borda a borda; **Artístico** usa serifas editoriais, assimetria e
-colagem controlada. A vibe limita tipografia, abertura, navegação, ritmo,
-superfície, imagens, ícones e movimento. Ela pode ser trocada depois em Dados;
-isso abre uma nova direção no rascunho e exige recomposição antes de publicar.
+colagem controlada. Sem referência visual verificada, a vibe limita tipografia,
+abertura, navegação, ritmo, superfície, imagens, ícones e movimento. Uma
+referência verificada tem prioridade nesses aspectos; a vibe completa as
+lacunas e continua definindo a voz do texto. Ela pode ser trocada depois em
+Dados; isso abre uma nova direção no rascunho e exige recomposição antes de
+publicar.
 
 Em Marca, envie o logo, opcional, e confira três cores sugeridas pela vibe: a
 primária pinta seções e superfícies, a secundária alterna o ritmo e a de acento
@@ -56,6 +59,12 @@ pelo botão **+ prova** e remova um pelo seu ×. O upload do logo é imediato e
 fica fora dessa barra.
 
 Todos os campos do briefing são opcionais e cada um traz a legenda do que registrar. **Fatos confirmados** é o que a empresa faz e comprova; o site só afirma o que estiver ali ou numa referência lida, e sem isso o agente declara lacunas. **Restrições** é o que ele não pode prometer nem mostrar.
+
+As referências do cadastro orientam estrutura, tipografia, imagens e ritmo
+depois de uma leitura visual em desktop e celular. Um site de outro negócio é
+referência apenas de design: não confirma oferta, capacidade ou contato do
+cliente. Se a captura estiver bloqueada ou incompleta, o painel conserva a
+lacuna e o gerador usa a vibe.
 
 **Redes sociais** aceita `@perfil`, o link da rede ou a página de empresa no LinkedIn; o primeiro Instagram ou LinkedIn da lista é o perfil lido. Ao salvar, o painel lê nome, bio e foto de perfil públicos e descreve o avatar para orientar marca e imagens. A leitura é melhor esforço: perfil pessoal do LinkedIn e boa parte das contas do Instagram respondem a tela de login, e o card mostra o motivo. Nesse caso, cole a bio em Fatos confirmados e envie a imagem em Logo do site. **Ler perfil novamente** repete a tentativa.
 

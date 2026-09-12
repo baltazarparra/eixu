@@ -44,19 +44,24 @@ const VIEWPORTS = [
  * Chromium na função. Em produção vem do pacote serverless; em máquina de
  * desenvolvimento usa o Chrome instalado, apontado por EIXU_CHROME_PATH.
  */
-async function launch() {
+export async function launchBrowser(extraArgs: string[] = []) {
   const puppeteer = await import('puppeteer-core');
   const local = process.env.EIXU_CHROME_PATH;
   if (local)
     return puppeteer.launch({
       executablePath: local,
       headless: true,
-      args: ['--no-sandbox', '--disable-dev-shm-usage', '--hide-scrollbars'],
+      args: [
+        '--no-sandbox',
+        '--disable-dev-shm-usage',
+        '--hide-scrollbars',
+        ...extraArgs,
+      ],
     });
   const chromium = (await import('@sparticuz/chromium')).default;
   return puppeteer.launch({
     executablePath: await chromium.executablePath(),
-    args: chromium.args,
+    args: [...chromium.args, ...extraArgs],
     defaultViewport: null,
     headless: true,
   });
@@ -89,7 +94,7 @@ export async function capturePages(
     Math.min(options.concurrency ?? 2, targets.length || 1),
   );
   const retries = Math.max(0, Math.min(options.retries ?? 1, 2));
-  const browser = await launch();
+  const browser = await launchBrowser();
   const shots: Shot[] = [];
   const failures: CaptureFailure[] = [];
   let completed = 0;

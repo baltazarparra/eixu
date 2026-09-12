@@ -1134,6 +1134,18 @@ await test('ferramentas preservam o perfil e o intake atualizados durante o turn
         async (parts, ...values) => {
           const sql = parts.join('');
           if (!sql.includes('update tenants')) return [];
+          if (sql.includes("'{sources}'")) {
+            brief = {
+              ...brief,
+              sources: [
+                ...(brief.sources ?? []).filter(
+                  (source) => source.url !== values[0],
+                ),
+                ...JSON.parse(values[1]),
+              ],
+            };
+            return [];
+          }
           // A gravação do recibo mexe só na chave generation, com merge no
           // banco: reescrever o brief inteiro apagava campos alheios.
           if (sql.includes("'{generation}'")) {

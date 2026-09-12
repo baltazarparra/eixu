@@ -52,8 +52,9 @@ function EvidenceAndReferences({ intake }: { intake: Partial<Intake> }) {
           placeholder="Uma URL por linha, até 3"
         />
         <small>
-          Site atual, materiais ou inspirações. Instagram e LinkedIn ficam em
-          Contatos.
+          Sites que devem orientar estrutura, tipografia, imagens e ritmo têm
+          prioridade sobre a vibe, mantendo a marca e a coerência do site.
+          Instagram e LinkedIn ficam em Contatos.
         </small>
       </label>
       <EvidenceFields initial={intake.evidence} />

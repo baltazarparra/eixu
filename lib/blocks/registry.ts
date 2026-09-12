@@ -37,7 +37,13 @@ const anchor = z
   .optional();
 
 const link = z.object({
-  label: z.string().min(1).max(40),
+  label: z
+    .string()
+    .min(1)
+    .max(40)
+    .describe(
+      'Ação ou destino em português simples, como Ver serviços ou Falar pelo WhatsApp. Evite Clique aqui, Saiba mais e inglês. O texto deve corresponder ao href.',
+    ),
   href: z.string().min(1),
 });
 
@@ -337,7 +343,13 @@ export const blockSchemas = {
     title: z.string().min(4).max(90),
     body: z.string().max(200).optional(),
     fields: z.array(field).min(1).max(8),
-    submitLabel: z.string().max(40).default('Enviar'),
+    submitLabel: z
+      .string()
+      .max(40)
+      .default('Enviar')
+      .describe(
+        'Explique o envio em português simples, como Enviar mensagem. Não prometa agendamento ou compra que o formulário não realiza.',
+      ),
     consentText: z
       .string()
       .max(300)
