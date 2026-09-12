@@ -128,7 +128,8 @@ negro em 3D. As facetas se fecham conforme as etapas medidas e o anel em
 órbita repete as três trilhas do painel: feita, ativa e a fazer, com as mesmas
 unidades (cenas prontas, páginas gravadas, leituras da revisão). Nada ali é
 porcentagem estimada pelo tempo. Depois da primeira página, a versão compacta
-do mesmo indicador fica na barra da prévia até a geração terminar. Sem WebGL,
+do mesmo indicador fica na barra do editor, ao lado de **Publicar**, até a
+geração terminar. Sem WebGL,
 só o texto da etapa aparece; com movimento reduzido, o diamante fica parado e
 atualiza apenas quando o progresso muda.
 
@@ -152,7 +153,7 @@ problemas para orientar ajustes; nota baixa não abre uma fila de decisão.
 
 O chat recebe o histórico textual recente do cliente. Escreva mudanças específicas e indique a página quando necessário. Sugestões apenas preenchem a caixa; **Enviar** executa o pedido. Enter envia, Shift+Enter quebra a linha. Imagens podem ser anexadas, coladas ou arrastadas para a conversa.
 
-No computador, conversa e prévia ficam lado a lado. No celular, alterne **Conversa** e **Prévia**. Escolha a página no seletor e confira as larguras Desktop e Celular; **Ver prévia** abre outra aba. Os links internos mantêm o modo de rascunho. A prévia exige sessão, não envia formulários e não registra eventos de tráfego.
+No computador, conversa e prévia ficam lado a lado. No celular, alterne **Conversa** e **Prévia**. A barra do editor reúne identidade, áreas do cliente, prévia e publicação. O seletor mostra o caminho da página em edição e marca **rascunho** quando ela tem mudanças; ao lado ficam as larguras Desktop e Celular e o ícone que abre a página em foco em outra aba. Os links internos mantêm o modo de rascunho. A prévia exige sessão, não envia formulários e não registra eventos de tráfego.
 
 Os textos das 60 mensagens mais recentes são recuperados ao abrir a tela. Ferramentas, anexos e contagens de custo antigos não são restaurados. Registre decisões duráveis no briefing; não dependa de uma conversa extensa como única fonte do negócio.
 
@@ -170,7 +171,7 @@ rascunho de publicado. **Usar no site**, em uma foto, abre o chat com o número
 preenchido para você indicar página e posição; não altera conteúdo sozinho.
 **Usar como logo**, em um logo disponível, aplica no rascunho.
 
-As pendências para publicar aparecem no fim do fluxo, quando ainda sobra algo. Erros de página ou projeto bloqueiam a publicação; recomendações continuam disponíveis para revisão. Quando a revisão visual do rascunho atual ainda não terminou, o cabeçalho avisa **Revisão visual pendente**: publicar continua permitido, valendo o pre-flight determinístico, mas sem a conferência dos pixels. Mudanças de blocos ou SEO tornam a página pendente. **Publicar** valida o projeto no servidor e atualiza o snapshot de páginas atomicamente; um erro preserva a versão anterior.
+As pendências para publicar aparecem no fim do fluxo, quando ainda sobra algo. Erros de página ou projeto bloqueiam a publicação; recomendações continuam disponíveis para revisão. Quando a revisão visual do rascunho atual ainda não terminou, a barra avisa **Revisão pendente** ao lado de **Publicar**: publicar continua permitido, valendo o pre-flight determinístico, mas sem a conferência dos pixels. Mudanças de blocos ou SEO tornam a página pendente. **Publicar** valida o projeto no servidor e atualiza o snapshot de páginas atomicamente; um erro preserva a versão anterior.
 
 Nas outras abas, **Revisar e publicar** leva ao editor para conferir as pendências atuais.
 

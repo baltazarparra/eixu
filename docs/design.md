@@ -16,6 +16,20 @@ lista; sair fica no fim das ações. O editor reserva 42% (até 520 px) à conve
 com o andamento dentro dela, e devolve a altura inteira à prévia. No celular,
 conversa e prévia são alternáveis.
 
+O handoff `design_handoff_cabecalho_unico`, recebido em 12/09/2026, substituiu
+os três cabeçalhos do editor (página, conversa e prévia, 207 px somados) por
+uma barra de 64 px em `components/admin/navigation.tsx`: identidade com
+domínio, abas de altura inteira com sublinhado âmbar, o grupo PRÉVIA (caminho
+da página com pill de rascunho, larguras Desktop/Celular e abrir em outra aba)
+e, depois de um divisor, só o que condiciona a publicação: diamante compacto
+de 32 px, aviso **Revisão pendente** e **Publicar**. O editor injeta os dois
+grupos vivos por portais em dois slots da barra. A conversa começa no
+andamento e a contagem de turnos desceu para a dica do compositor. Abaixo de
+1520 px o rótulo PRÉVIA some; abaixo de 1280 px a barra fica em 52 px sem a
+linha do domínio e o grupo PRÉVIA volta para uma faixa no topo da coluna da
+prévia; abaixo de 1024 px as abas ocupam uma linha própria e, no celular, a
+decisão também.
+
 A prévia vazia durante a geração usa um diamante negro em WebGL
 (`components/admin/generation-diamond.tsx`): lapidação brilhante procedural com
 shader próprio, fresnel e refração com dispersão sobre um estúdio escuro, sem
@@ -25,8 +39,9 @@ do giro acelera; contra freia e pode inverter o sentido. O impulso se dissipa
 até a velocidade automática. Com movimento reduzido, só o gesto move a pedra,
 sem inércia; a rolagem vertical e o zoom por toque continuam disponíveis.
 Ele não estima porcentagem: fecha facetas só com unidades medidas em
-`creationProgress`, a mesma leitura do painel. A versão compacta mantém a área
-de 40 px na barra da prévia quando já existe página, com a pedra também menor.
+`creationProgress`, a mesma leitura do painel. A versão compacta tem 32 px no
+grupo de decisão da barra, ao lado de **Publicar**, quando já existe página,
+e mantém a escala cheia da pedra: a 70% ela sumia nesse tamanho.
 
 `app/(admin)/admin.css` concentra os tokens e componentes `admin-*`; os três
 grupos de rotas mantêm CSS e fontes separados. Textos funcionais pequenos usam

@@ -2,7 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft } from 'lucide-react';
 import { StatusPill } from './primitives';
@@ -10,27 +16,46 @@ import { useAdminSession } from './session';
 
 type TenantIdentity = { slug: string; name: string; status?: string };
 type Area = 'site' | 'imagens' | 'trafego' | 'dados';
-const HeaderSlot = createContext<{ node: HTMLDivElement | null } | null>(null);
+/** Dois pontos de montagem na barra: o grupo da prévia e o da decisão. */
+type HeaderSlots = {
+  preview: HTMLDivElement | null;
+  decision: HTMLDivElement | null;
+};
+const HeaderSlot = createContext<HeaderSlots | null>(null);
 const RefreshTenant = createContext<(() => void) | undefined>(undefined);
 
 export function useRefreshTenant() {
   return useContext(RefreshTenant);
 }
 
+const AREAS = [
+  ['site', '', 'Site'],
+  ['imagens', '/imagens', 'Imagens'],
+  ['trafego', '/trafego', 'Tráfego'],
+  ['dados', '/dados', 'Dados'],
+] as const;
+
+/**
+ * Barra única de 64 px: identidade, áreas do cliente, controles da prévia e a
+ * decisão de publicação na mesma régua. Três cabeçalhos empilhados somavam
+ * 207 px antes de qualquer conteúdo e abriam o mesmo rascunho por dois botões.
+ */
 function TenantHeader({
   tenant,
   active,
-  children,
+  preview,
+  decision,
 }: {
   tenant: TenantIdentity;
   active: Area;
-  children?: ReactNode;
+  preview?: ReactNode;
+  decision?: ReactNode;
 }) {
   const root = `/admin/${tenant.slug}`;
   const session = useAdminSession();
   return (
-    <header className="admin-tenant-header">
-      <div className="admin-tenant-top">
+    <header className="admin-bar">
+      <div className="admin-bar-identity">
         <Link
           href="/admin"
           className="admin-back"
@@ -39,9 +64,9 @@ function TenantHeader({
         >
           <ArrowLeft size={15} aria-hidden="true" />
         </Link>
-        <div className="admin-tenant-identity">
+        <div>
           <div>
-            <p>{tenant.name}</p>
+            <strong>{tenant.name}</strong>
             <StatusPill tone={tenant.status === 'published' ? 'ok' : 'warn'}>
               {tenant.status === 'published' ? 'Publicado' : 'Rascunho'}
             </StatusPill>
@@ -54,42 +79,31 @@ function TenantHeader({
             {tenant.slug}.eixu.com.br <span aria-hidden="true">↗</span>
           </a>
         </div>
-        <div className="admin-tenant-actions">
-          <a
-            className="admin-secondary"
-            href={`/s/${tenant.slug}?preview=1&__tenant=${tenant.slug}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Ver prévia <span aria-hidden="true">↗</span>
-          </a>
-          {children}
-          {session?.logout}
-        </div>
       </div>
-      <nav className="admin-tenant-tabs" aria-label="Área do cliente">
-        {(
-          [
-            ['site', '', 'Site'],
-            ['imagens', '/imagens', 'Imagens'],
-            ['trafego', '/trafego', 'Tráfego'],
-            ['dados', '/dados', 'Dados'],
-          ] as const
-        ).map(([key, suffix, label]) => (
+      <nav className="admin-bar-nav" aria-label="Área do cliente">
+        {AREAS.map(([key, suffix, label]) => (
           <Link
             key={key}
             href={`${root}${suffix}`}
             aria-current={active === key ? 'page' : undefined}
           >
-            <span>{label}</span>
+            {label}
           </Link>
         ))}
       </nav>
+      {preview}
+      <div className="admin-bar-decide">
+        {decision}
+        {session?.logout}
+      </div>
     </header>
   );
 }
 
-/** O cabeçalho pertence ao layout; o editor mantém a decisão de publicação ao vivo. */
+/**
+ * O cabeçalho pertence ao layout; o editor injeta pelos slots o que muda ao
+ * vivo (página em foco, largura, abrir em outra aba, andamento e Publicar).
+ */
 export function TenantFrame({
   tenant,
   children,
@@ -104,20 +118,30 @@ export function TenantFrame({
     suffix === 'imagens' || suffix === 'trafego' || suffix === 'dados'
       ? suffix
       : 'site';
-  const [node, setNode] = useState<HTMLDivElement | null>(null);
+  const [preview, setPreview] = useState<HTMLDivElement | null>(null);
+  const [decision, setDecision] = useState<HTMLDivElement | null>(null);
+  const slots = useMemo(() => ({ preview, decision }), [preview, decision]);
+  const editor = active === 'site';
   return (
     <RefreshTenant.Provider value={() => router.refresh()}>
-      <HeaderSlot.Provider value={{ node }}>
+      <HeaderSlot.Provider value={slots}>
         <div className="admin-tenant-frame">
-          <TenantHeader tenant={tenant} active={active}>
-            {active === 'site' ? (
-              <div ref={setNode} className="admin-publish-slot" />
-            ) : (
-              <Link className="admin-primary" href={`/admin/${tenant.slug}`}>
-                Revisar e publicar
-              </Link>
-            )}
-          </TenantHeader>
+          <TenantHeader
+            tenant={tenant}
+            active={active}
+            preview={
+              editor ? <div ref={setPreview} className="admin-bar-slot" /> : null
+            }
+            decision={
+              editor ? (
+                <div ref={setDecision} className="admin-bar-slot" />
+              ) : (
+                <Link className="admin-primary" href={`/admin/${tenant.slug}`}>
+                  Revisar e publicar
+                </Link>
+              )
+            }
+          />
           <div className="admin-tenant-content">{children}</div>
         </div>
       </HeaderSlot.Provider>
@@ -127,26 +151,32 @@ export function TenantFrame({
 
 export function WorkspaceHeader({
   tenant,
-  actions,
-  note,
+  preview,
+  decision,
 }: {
   tenant: TenantIdentity;
-  actions: ReactNode;
-  note?: string;
+  /** Grupo PRÉVIA: página em foco, largura e abrir em outra aba. */
+  preview: ReactNode;
+  /** O que condiciona a publicação: andamento, aviso de revisão e Publicar. */
+  decision: ReactNode;
 }) {
-  const slot = useContext(HeaderSlot);
-  const content = (
-    <>
-      {note ? <span className="admin-header-note">{note}</span> : null}
-      {actions}
-    </>
-  );
-  if (slot) return slot.node ? createPortal(content, slot.node) : null;
+  const slots = useContext(HeaderSlot);
+  if (slots) {
+    return (
+      <>
+        {slots.preview ? createPortal(preview, slots.preview) : null}
+        {slots.decision ? createPortal(decision, slots.decision) : null}
+      </>
+    );
+  }
   // O workspace também é exercitado isoladamente pelos testes de navegador.
   return (
-    <TenantHeader tenant={tenant} active="site">
-      {content}
-    </TenantHeader>
+    <TenantHeader
+      tenant={tenant}
+      active="site"
+      preview={preview}
+      decision={decision}
+    />
   );
 }
 

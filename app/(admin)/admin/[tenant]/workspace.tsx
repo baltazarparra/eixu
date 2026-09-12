@@ -7,7 +7,7 @@ import { ChatActivity, Message, chatErrorMessage } from './chat-parts';
 import { GenerationPanel } from './generation-panel';
 import { isRunning, useGeneration } from './use-generation';
 
-import { ImagePlus } from 'lucide-react';
+import { ExternalLink, ImagePlus } from 'lucide-react';
 import {
   WorkspaceHeader,
   MobileViews,
@@ -15,6 +15,8 @@ import {
 } from '@/components/admin/navigation';
 import { ChatUsageDetails } from '@/components/admin/chat-usage';
 import { GenerationDiamond } from '@/components/admin/generation-diamond';
+import { PagePicker } from '@/components/admin/page-picker';
+import { SegmentedControl, StatusDot } from '@/components/admin/primitives';
 import { adminFetch } from '@/lib/admin/http';
 import { mergeSavedMessages } from '@/lib/admin/chat-messages';
 import type { SiteState } from '@/lib/admin/state';
@@ -362,28 +364,78 @@ export function Workspace({
     setAttachments([]);
   }
 
+  // O mesmo grupo vive na barra em telas largas e no topo da coluna da prévia
+  // abaixo de 1280 px; o CSS mostra uma cópia por largura.
+  const previewControls = (
+    <div className="admin-bar-group">
+      <span className="admin-label">Prévia</span>
+      <PagePicker pages={site.pages} value={current} onChange={setCurrent} />
+      <SegmentedControl
+        label="Largura da prévia"
+        value={device}
+        options={
+          [
+            ['desktop', 'Desktop'],
+            ['mobile', 'Celular'],
+          ] as const
+        }
+        onChange={setDevice}
+      />
+      {page ? (
+        <a
+          href={previewUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="admin-icon-button admin-bar-open"
+          title={`Abrir /${page.slug} em outra aba`}
+          aria-label="Abrir a página em outra aba"
+        >
+          <ExternalLink size={14} aria-hidden="true" />
+        </a>
+      ) : null}
+    </div>
+  );
+
   return (
     <div className="admin-workspace" data-view={view}>
       <WorkspaceHeader
         tenant={site.tenant}
-        actions={
-          <button
-            type="button"
-            onClick={publishAll}
-            disabled={!publishable || publishing}
-            title={
-              totalErrors
-                ? `${totalErrors} pendências bloqueiam a publicação`
-                : reviewPending
-                  ? 'Revisão visual pendente: a publicação vale pelo pre-flight'
-                  : 'Publicar as alterações revisadas'
-            }
-            className="admin-primary"
-          >
-            {publishing ? 'Publicando…' : 'Publicar'}
-          </button>
+        preview={previewControls}
+        decision={
+          <>
+            {running && site.pages.length > 0 ? (
+              <GenerationDiamond
+                compact
+                progress={creation}
+                active={generating}
+              />
+            ) : null}
+            {reviewPending && !running ? (
+              <span
+                className="admin-bar-review"
+                title="A publicação vale pelo pre-flight, sem a conferência dos pixels"
+              >
+                <StatusDot tone="warn" />
+                Revisão pendente
+              </span>
+            ) : null}
+            <button
+              type="button"
+              onClick={publishAll}
+              disabled={!publishable || publishing}
+              title={
+                totalErrors
+                  ? `${totalErrors} pendências bloqueiam a publicação`
+                  : reviewPending
+                    ? 'Revisão visual pendente: a publicação vale pelo pre-flight'
+                    : 'Publicar as alterações revisadas'
+              }
+              className="admin-primary"
+            >
+              {publishing ? 'Publicando…' : 'Publicar'}
+            </button>
+          </>
         }
-        note={reviewPending && !running ? 'Revisão visual pendente' : undefined}
       />
       <MobileViews value={view} onChange={setView} />
       {notice ? (
@@ -404,10 +456,6 @@ export function Workspace({
       ) : null}
       <div className="admin-workspace-body">
         <section className="admin-conversation" aria-label="Conversa de edição">
-          <div className="admin-conversation-heading">
-            <span className="admin-label">Conversa com o agente</span>
-            <span>{messages.length} turnos</span>
-          </div>
           <GenerationPanel
             run={generation.run}
             events={generation.events}
@@ -551,6 +599,7 @@ export function Workspace({
                       : page
                         ? `Falando sobre /${page.slug}`
                         : 'Enter envia, Shift+Enter quebra linha'}
+                    {` · ${messages.length} ${messages.length === 1 ? 'turno' : 'turnos'}`}
                   </span>
                 </div>
                 {busy ? (
@@ -581,55 +630,7 @@ export function Workspace({
         </section>
 
         <section className="admin-content" aria-label="Prévia e revisão">
-          <div className="admin-preview-controls">
-            <label className="admin-page-selector">
-              Página
-              <select
-                aria-label="Página em edição"
-                value={current}
-                onChange={(event) => setCurrent(event.target.value)}
-                className="admin-input max-w-72"
-              >
-                {!site.pages.length ? (
-                  <option value="">Nenhuma página</option>
-                ) : null}
-                {site.pages.map((item) => (
-                  <option key={item.slug} value={item.slug}>
-                    {item.title} (/{item.slug}){item.dirty ? ' • rascunho' : ''}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <fieldset
-              className="admin-segmented"
-              aria-label="Dispositivo da prévia"
-            >
-              {(['desktop', 'mobile'] as const).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  aria-pressed={device === option}
-                  onClick={() => setDevice(option)}
-                  className={`rounded-md px-3 py-2 text-xs ${device === option ? 'bg-[var(--color-surface-2)]' : 'text-[var(--color-muted)]'}`}
-                >
-                  {option === 'desktop' ? 'Desktop' : 'Celular'}
-                </button>
-              ))}
-              {page ? (
-                <a
-                  href={previewUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="admin-secondary"
-                >
-                  Abrir prévia
-                </a>
-              ) : null}
-            </fieldset>
-            {running && site.pages.length > 0 ? (
-              <GenerationDiamond compact progress={creation} active={generating} />
-            ) : null}
-          </div>
+          {previewControls}
 
           {showReview ? (
             <details
