@@ -1,3 +1,4 @@
+import { savePageEdit } from '@/lib/sites/edits';
 import { createHash } from 'node:crypto';
 import { tool } from 'ai';
 import { z } from 'zod';
@@ -91,18 +92,11 @@ import {
   scopedUpdateError,
   type EditPolicy,
 } from '@/lib/ai/edit-policy';
-import type {
-  BlockInstance,
-  Brand,
-  Page,
-  Tenant,
-  TenantImage,
-} from '@/lib/types';
+import type { BlockInstance, Brand, Tenant, TenantImage } from '@/lib/types';
 import {
   applyPageEdit,
   PageEditError,
   pageEditSchema,
-  pageRevision,
   pageSnapshot,
   validateEditedBlock,
   literalEditClarification,
@@ -282,46 +276,6 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
   let referencesRead = 0;
   let reviewRounds = 0;
   let pendingDraft: SiteDraft | undefined;
-
-  async function savePageEdit(page: Page, blocks: BlockInstance[]) {
-    const before = lintPage(page, activeBrand.design);
-    const findings = lintPage({ ...page, blocks }, activeBrand.design);
-    const signature = (f: (typeof findings)[number]) =>
-      JSON.stringify([f.rule, f.blockId, f.message]);
-    const previous = new Set(
-      before.filter((f) => f.level === 'error').map(signature),
-    );
-    const introduced = findings.filter(
-      (f) => f.level === 'error' && !previous.has(signature(f)),
-    );
-    if (introduced.length)
-      throw new PageEditError(
-        `Nenhuma alteração salva. O pedido introduziria erros: ${formatFindings(introduced)}`,
-      );
-    const revision = pageRevision({ blocks });
-    const changed = revision !== pageRevision(page);
-    if (changed) {
-      const saved = await db()`
-        update pages set blocks = ${JSON.stringify(blocks)}::jsonb, updated_at = now()
-        where id = ${page.id} and tenant_id = ${tenant.id}
-          and blocks = ${JSON.stringify(page.blocks)}::jsonb
-        returning id
-      `;
-      if (!Array.isArray(saved) || !saved.length)
-        throw new PageEditError(
-          'A página mudou durante a edição. Nenhuma alteração salva por esta chamada. Releia com get_page e reaplique apenas o pedido atual.',
-        );
-    }
-    return {
-      ok: true,
-      changed,
-      page: `/${page.slug}`,
-      revision,
-      preflight: formatFindings(findings),
-      existingErrors: findings.filter((f) => f.level === 'error').length,
-      saved: 'draft',
-    };
-  }
 
   async function saveSiteDraft(input: SiteDraft) {
     const { pages } = input;
@@ -1426,7 +1380,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
     edit_page: tool({
       description:
-        'Aplica em uma única gravação todas as edições pedidas na página: replace_text literal, set/unset por caminho (inclusive items.0.title), insert/move antes ou depois de um ID e remove. Prefira para sites existentes. Exige a revisão do contexto atual/get_page; ambiguidade, conflito ou erro recusa o lote inteiro. Preserva os demais campos e o publicado. Para cor somente desta seção, use presentation.background em hex; foreground é opcional. O retorno já inclui o pre-flight: não revise ou leia novamente sem necessidade.',
+        'Aplica em uma única gravação todas as edições pedidas na página: replace_text literal, set/unset por caminho (inclusive items.0.title), insert/move antes ou depois de um ID e remove. Prefira para sites existentes. Exige a revisão do contexto atual/get_page; ambiguidade, conflito ou erro recusa o lote inteiro. Preserva os demais campos e o publicado. Para cor somente desta seção, use presentation.background em hex; foreground é opcional. Para tamanho e cor de um texto, use textStyles por caminho, com size de -2 a 2 e color hex com contraste mínimo de 4,5:1. O retorno já inclui o pre-flight: não revise ou leia novamente sem necessidade.',
       inputSchema: pageEditSchema,
       execute: safe(async (input) => {
         const page = await requirePage(tenant.id, input.page);
@@ -1437,7 +1391,12 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         if (clarification) throw new PageEditError(clarification);
         const edited = applyPageEdit(page, input, context.editPolicy);
         return {
-          ...(await savePageEdit(page, edited.blocks)),
+          ...(await savePageEdit({
+            tenant,
+            page,
+            blocks: edited.blocks,
+            brand: activeBrand,
+          })),
           changes: edited.changes,
         };
       }),
@@ -1867,7 +1826,12 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         const at = index ?? (footerAt >= 0 ? footerAt : next.length);
         next.splice(at, 0, created);
         return {
-          ...(await savePageEdit(page, next)),
+          ...(await savePageEdit({
+            tenant,
+            page,
+            blocks: next,
+            brand: activeBrand,
+          })),
           blockId: created.id,
           position: at,
           total: next.length,
@@ -1944,7 +1908,12 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             : block,
         );
         return {
-          ...(await savePageEdit(page, next)),
+          ...(await savePageEdit({
+            tenant,
+            page,
+            blocks: next,
+            brand: activeBrand,
+          })),
           blockId: target.id,
         };
       }),
@@ -1957,7 +1926,15 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         const page = await requirePage(tenant.id, slug);
         const target = findBlock(page.blocks, selector);
         const next = page.blocks.filter((block) => block.id !== target.id);
-        return { ...(await savePageEdit(page, next)), remaining: next.length };
+        return {
+          ...(await savePageEdit({
+            tenant,
+            page,
+            blocks: next,
+            brand: activeBrand,
+          })),
+          remaining: next.length,
+        };
       }),
     }),
 
@@ -1977,7 +1954,12 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         const [moved] = next.splice(from, 1);
         next.splice(Math.min(toIndex, next.length), 0, moved);
         return {
-          ...(await savePageEdit(page, next)),
+          ...(await savePageEdit({
+            tenant,
+            page,
+            blocks: next,
+            brand: activeBrand,
+          })),
           from,
           to: Math.min(toIndex, next.length - 1),
         };

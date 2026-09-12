@@ -4,6 +4,8 @@
 // oxlint-disable next/no-html-link-for-pages
 // oxlint-disable next/no-img-element
 import { z } from 'zod';
+import { textAttrs } from './text';
+import type { TextStyle } from './text-style-schema';
 import { SiteIcon } from '@/lib/blocks/icon';
 import { renderingVibeOf, type Vibe } from '@/lib/design/vibes';
 import {
@@ -27,7 +29,7 @@ import { previewHref } from '@/lib/sites/preview';
 
 type S<K extends keyof typeof blockSchemas> = z.infer<
   (typeof blockSchemas)[K]
-> & { vibe?: Vibe };
+> & { vibe?: Vibe; editing?: boolean };
 
 export type NavBarProps = S<'nav.bar'>;
 export type HeroSplitProps = S<'hero.split'>;
@@ -69,9 +71,16 @@ const eyebrowClass =
 const h2Class =
   'site-h2 text-balance text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.08] tracking-[-0.02em]';
 
-function Eyebrow({ children }: { children?: string }) {
+function Eyebrow({
+  children,
+  ...attrs
+}: React.HTMLAttributes<HTMLParagraphElement>) {
   if (!children) return null;
-  return <p className={eyebrowClass}>{children}</p>;
+  return (
+    <p className={eyebrowClass} {...attrs}>
+      {children}
+    </p>
+  );
 }
 
 /** Link de ação. Rota do WhatsApp passa pelo redirecionador rastreado. */
@@ -79,11 +88,15 @@ function Action({
   href,
   label,
   variant = 'solid',
+  field = 'cta.label',
+  editing,
   vibe,
 }: {
   href: string;
   label: string;
   variant?: 'solid' | 'ghost';
+  field?: string;
+  editing?: boolean;
   vibe?: Vibe;
 }) {
   const base =
@@ -101,7 +114,7 @@ function Action({
       {...(external ? { rel: 'noreferrer' } : {})}
       data-track={href.startsWith('/go/wa') ? 'whatsapp' : undefined}
     >
-      {label}
+      {textAttrs(undefined, editing).node(field, label)}
       <SiteIcon name="arrow-up-right" vibe={vibe} size={18} />
     </MotionLink>
   );
@@ -118,6 +131,8 @@ export function headlineScale(text: string): 'short' | 'medium' | 'long' {
 }
 
 export function NavBar({
+  textStyles,
+  editing,
   vibe = 'comercial',
   logoText,
   logoHeight,
@@ -129,17 +144,19 @@ export function NavBar({
   presentation,
   ctx,
 }: NavBarProps & { ctx: RenderContext }) {
+  const text = textAttrs(textStyles, editing);
   const resolvedLayout = layout ?? ctx.tenant.brand.design?.navigation ?? 'bar';
   const logo = logoFor(ctx.tenant.brand, presentation, resolvedLayout);
   const currentHref = previewHref(ctx.pagePath, ctx);
-  const navigationLinks = links.map((link) => (
+  const navigationLinks = links.map((link, index) => (
     <a
       key={link.href + link.label}
       href={link.href}
       aria-current={link.href === currentHref ? 'page' : undefined}
       className="site-nav-link"
+      {...text.mark(`links.${index}.label`)}
     >
-      {link.label}
+      {text.content(`links.${index}.label`, link.label)}
     </a>
   ));
   const action = cta ? (
@@ -148,7 +165,9 @@ export function NavBar({
       className="site-nav-cta rounded-[var(--radius)] bg-[var(--highlight)] px-5 py-2.5 text-[0.9rem] font-medium text-[var(--highlight-ink)]"
       data-track={cta.href.startsWith('/go/wa') ? 'whatsapp' : undefined}
     >
-      <span>{cta.label}</span>
+      <span {...text.mark('cta.label')}>
+        {text.content('cta.label', cta.label)}
+      </span>
       <SiteIcon name="arrow-up-right" vibe={vibe} size={18} />
     </a>
   ) : null;
@@ -186,7 +205,7 @@ export function NavBar({
                 decoding="async"
               />
             ) : (
-              logoText
+              text.node('logoText', logoText)
             )}
           </a>
           <div className="site-nav-desktop">
@@ -210,6 +229,8 @@ export function NavBar({
 }
 
 export function HeroSplit({
+  textStyles,
+  editing,
   vibe = 'comercial',
   eyebrow,
   headline,
@@ -229,6 +250,7 @@ export function HeroSplit({
   secondaryCaption,
   ctx,
 }: HeroSplitProps & { ctx: RenderContext }) {
+  const text = textAttrs(textStyles, editing);
   const hasImage = Boolean(image && /^https?:\/\//.test(image));
   const resolvedLayout =
     layout ?? ctx.tenant.brand.design?.heroComposition ?? 'split';
@@ -238,38 +260,51 @@ export function HeroSplit({
     >
       <div className={`${shell} site-hero-grid`}>
         <div className="site-hero-copy flex flex-col items-start gap-6">
-          <Eyebrow>{eyebrow}</Eyebrow>
+          <Eyebrow {...text.mark('eyebrow')}>
+            {text.content('eyebrow', eyebrow)}
+          </Eyebrow>
           <h1
             className="site-headline text-balance"
             data-length={headlineScale(headline)}
+            {...text.mark('headline')}
           >
-            {headline}
+            {text.content('headline', headline)}
           </h1>
           {subtext ? (
-            <p className="max-w-[44ch] text-[1.08rem] leading-relaxed text-[var(--muted)]">
-              {subtext}
+            <p
+              className="max-w-[44ch] text-[1.08rem] leading-relaxed text-[var(--muted)]"
+              {...text.mark('subtext')}
+            >
+              {text.content('subtext', subtext)}
             </p>
           ) : null}
           <div className="flex flex-wrap gap-3 pt-2">
-            <Action vibe={vibe} href={cta.href} label={cta.label} />
+            <Action
+              editing={editing}
+              vibe={vibe}
+              href={cta.href}
+              label={cta.label}
+            />
             {secondary ? (
               <Action
+                editing={editing}
                 vibe={vibe}
                 href={secondary.href}
                 label={secondary.label}
+                field="secondary.label"
                 variant="ghost"
               />
             ) : null}
           </div>
           {bullets?.length ? (
             <ul className="site-hero-bullets flex flex-wrap gap-x-6 gap-y-3 pt-4 text-sm text-[var(--muted)]">
-              {bullets.map((bullet) => (
+              {bullets.map((bullet, index) => (
                 <li
                   key={bullet}
                   className="border-l-2 border-[var(--line)] pl-3"
                 >
                   <SiteIcon name="check" vibe={vibe} size={16} />
-                  {bullet}
+                  {text.node(`bullets.${index}`, bullet)}
                 </li>
               ))}
             </ul>
@@ -289,8 +324,11 @@ export function HeroSplit({
                 decoding="async"
               />
               {imageCaption && (
-                <figcaption className="site-hero-caption">
-                  {imageCaption}
+                <figcaption
+                  className="site-hero-caption"
+                  {...text.mark('imageCaption')}
+                >
+                  {text.content('imageCaption', imageCaption)}
                 </figcaption>
               )}
             </figure>
@@ -304,7 +342,9 @@ export function HeroSplit({
                   decoding="async"
                 />
                 {secondaryCaption && (
-                  <figcaption>{secondaryCaption}</figcaption>
+                  <figcaption {...text.mark('secondaryCaption')}>
+                    {text.content('secondaryCaption', secondaryCaption)}
+                  </figcaption>
                 )}
               </figure>
             )}
@@ -316,6 +356,8 @@ export function HeroSplit({
 }
 
 export function HeroStatement({
+  textStyles,
+  editing,
   vibe = 'comercial',
   eyebrow,
   headline,
@@ -323,32 +365,49 @@ export function HeroStatement({
   cta,
   layout = 'left',
 }: HeroStatementProps & { ctx: RenderContext }) {
+  const text = textAttrs(textStyles, editing);
   return (
     <section className={`site-hero site-hero-text site-statement-${layout}`}>
       <div className={`${shell} site-hero-grid`}>
         <div className="site-hero-copy flex flex-col items-start gap-7">
-          <Eyebrow>{eyebrow}</Eyebrow>
+          <Eyebrow {...text.mark('eyebrow')}>
+            {text.content('eyebrow', eyebrow)}
+          </Eyebrow>
           <h1
             className="site-headline text-balance"
             data-length={headlineScale(headline)}
+            {...text.mark('headline')}
           >
-            {headline}
+            {text.content('headline', headline)}
           </h1>
           {subtext ? (
-            <p className="max-w-[48ch] text-[1.1rem] leading-relaxed text-[var(--muted)]">
-              {subtext}
+            <p
+              className="max-w-[48ch] text-[1.1rem] leading-relaxed text-[var(--muted)]"
+              {...text.mark('subtext')}
+            >
+              {text.content('subtext', subtext)}
             </p>
           ) : null}
-          <Action vibe={vibe} href={cta.href} label={cta.label} />
+          <Action
+            editing={editing}
+            vibe={vibe}
+            href={cta.href}
+            label={cta.label}
+          />
         </div>
       </div>
     </section>
   );
 }
 
-type SignatureItem = SignatureCompositionProps['items'][number];
+type SignatureItem = SignatureCompositionProps['items'][number] & {
+  sourceIndex: number;
+  textStyles?: TextStyle[];
+  editing?: boolean;
+};
 
 function SignatureMedia({ item }: { item: SignatureItem }) {
+  const text = textAttrs(item.textStyles, item.editing);
   if (!item.image) return null;
   return (
     <figure className="site-signature-media">
@@ -360,24 +419,43 @@ function SignatureMedia({ item }: { item: SignatureItem }) {
         loading="lazy"
         decoding="async"
       />
-      {item.caption ? <figcaption>{item.caption}</figcaption> : null}
+      {item.caption ? (
+        <figcaption {...text.mark(`items.${item.sourceIndex}.caption`)}>
+          {text.content(`items.${item.sourceIndex}.caption`, item.caption)}
+        </figcaption>
+      ) : null}
     </figure>
   );
 }
 
 function SignatureCopy({ item, vibe }: { item: SignatureItem; vibe: Vibe }) {
+  const editing = item.editing;
+  const text = textAttrs(item.textStyles, editing);
   return (
     <div className="site-signature-copy">
-      {item.label ? <p className="site-signature-label">{item.label}</p> : null}
+      {item.label ? (
+        <p
+          className="site-signature-label"
+          {...text.mark(`items.${item.sourceIndex}.label`)}
+        >
+          {text.content(`items.${item.sourceIndex}.label`, item.label)}
+        </p>
+      ) : null}
       {item.icon ? (
         <SiteIcon name={item.icon} vibe={vibe} size={24} badge />
       ) : null}
-      <h3>{item.title}</h3>
-      <p>{item.body}</p>
+      <h3 {...text.mark(`items.${item.sourceIndex}.title`)}>
+        {text.content(`items.${item.sourceIndex}.title`, item.title)}
+      </h3>
+      <p {...text.mark(`items.${item.sourceIndex}.body`)}>
+        {text.content(`items.${item.sourceIndex}.body`, item.body)}
+      </p>
       {item.cta ? (
         <Action
+          editing={editing}
           href={item.cta.href}
           label={item.cta.label}
+          field={`items.${item.sourceIndex}.cta.label`}
           variant="ghost"
           vibe={vibe}
         />
@@ -487,20 +565,33 @@ const LENS_SIGNATURES = new Set([
  * ensaio editorial sem permitir HTML ou código arbitrário gerado por tenant.
  */
 export function SignatureComposition({
+  textStyles,
+  editing,
   vibe = 'comercial',
   eyebrow,
   title,
   body,
-  items,
+  items: sourceItems,
   layout,
 }: SignatureCompositionProps) {
+  const text = textAttrs(textStyles, editing);
+  const items = sourceItems.map((item, sourceIndex) => ({
+    ...item,
+    sourceIndex,
+    textStyles,
+    editing,
+  }));
   return (
     <section className={`${section} site-signature site-signature-${layout}`}>
       <div className={shell}>
         <header className="site-signature-header">
-          <Eyebrow>{eyebrow}</Eyebrow>
-          <h2 className={h2Class}>{title}</h2>
-          <p>{body}</p>
+          <Eyebrow {...text.mark('eyebrow')}>
+            {text.content('eyebrow', eyebrow)}
+          </Eyebrow>
+          <h2 className={h2Class} {...text.mark('title')}>
+            {text.content('title', title)}
+          </h2>
+          <p {...text.mark('body')}>{text.content('body', body)}</p>
         </header>
         {PATH_SIGNATURES.has(layout) ? (
           <SignaturePath items={items} vibe={vibe} />
@@ -519,20 +610,32 @@ export function SignatureComposition({
   );
 }
 
-export function ProofLogos({ title, logos, layout = 'rail' }: ProofLogosProps) {
+export function ProofLogos({
+  textStyles,
+  editing,
+  title,
+  logos,
+  layout = 'rail',
+}: ProofLogosProps) {
+  const text = textAttrs(textStyles, editing);
   return (
     <section
       className={`site-proof-logos site-proof-logos-${layout} border-b border-[var(--line)] py-12`}
     >
       <div className={shell}>
-        {title ? <p className={`${eyebrowClass} mb-7`}>{title}</p> : null}
+        {title ? (
+          <p className={`${eyebrowClass} mb-7`} {...text.mark('title')}>
+            {text.content('title', title)}
+          </p>
+        ) : null}
         <ul className="flex flex-wrap items-center gap-x-10 gap-y-5">
-          {logos.map((logo) => (
+          {logos.map((logo, index) => (
             <li
               key={logo}
               className="text-[1.05rem] font-medium tracking-[-0.01em] text-[var(--muted)]"
+              {...text.mark(`logos.${index}`)}
             >
-              {logo}
+              {text.content(`logos.${index}`, logo)}
             </li>
           ))}
         </ul>
@@ -541,7 +644,13 @@ export function ProofLogos({ title, logos, layout = 'rail' }: ProofLogosProps) {
   );
 }
 
-export function ProofStats({ items, layout = 'strip' }: ProofStatsProps) {
+export function ProofStats({
+  textStyles,
+  editing,
+  items,
+  layout = 'strip',
+}: ProofStatsProps) {
+  const text = textAttrs(textStyles, editing);
   return (
     <section
       className={`${section} site-stats site-stats-${layout} border-b border-[var(--line)]`}
@@ -549,13 +658,19 @@ export function ProofStats({ items, layout = 'strip' }: ProofStatsProps) {
       <div
         className={`${shell} grid gap-10 sm:grid-cols-2 ${statCols[items.length] ?? 'lg:grid-cols-4'}`}
       >
-        {items.map((item) => (
+        {items.map((item, index) => (
           <div key={item.label} className="flex flex-col gap-2">
-            <p className="text-[clamp(2.4rem,5vw,3.6rem)] font-semibold leading-none tracking-[-0.03em] text-[var(--highlight-text)]">
-              {item.value}
+            <p
+              className="text-[clamp(2.4rem,5vw,3.6rem)] font-semibold leading-none tracking-[-0.03em] text-[var(--highlight-text)]"
+              {...text.mark(`items.${index}.value`)}
+            >
+              {text.content(`items.${index}.value`, item.value)}
             </p>
-            <p className="text-[0.95rem] leading-snug text-[var(--muted)]">
-              {item.label}
+            <p
+              className="text-[0.95rem] leading-snug text-[var(--muted)]"
+              {...text.mark(`items.${index}.label`)}
+            >
+              {text.content(`items.${index}.label`, item.label)}
             </p>
           </div>
         ))}
@@ -565,12 +680,15 @@ export function ProofStats({ items, layout = 'strip' }: ProofStatsProps) {
 }
 
 export function ProofTestimonial({
+  textStyles,
+  editing,
   vibe = 'comercial',
   quote,
   author,
   role,
   layout = 'quote',
 }: ProofTestimonialProps) {
+  const text = textAttrs(textStyles, editing);
   return (
     <section
       className={`${section} site-testimonial site-testimonial-${layout} border-b border-[var(--line)]`}
@@ -584,13 +702,28 @@ export function ProofTestimonial({
             badge
             className="site-icon-feature"
           />
-          <blockquote className="text-balance text-[clamp(1.4rem,3vw,2.1rem)] font-medium leading-[1.32] tracking-[-0.015em]">
-            {quote}
+          <blockquote
+            className="text-balance text-[clamp(1.4rem,3vw,2.1rem)] font-medium leading-[1.32] tracking-[-0.015em]"
+            {...text.mark('quote')}
+          >
+            {text.content('quote', quote)}
           </blockquote>
         </div>
         <figcaption className="mt-7 text-[0.95rem] text-[var(--muted)]">
-          <span className="font-medium text-[var(--ink)]">{author}</span>
-          {role ? `, ${role}` : ''}
+          <span
+            className="font-medium text-[var(--ink)]"
+            {...text.mark('author')}
+          >
+            {text.content('author', author)}
+          </span>
+          {role ? (
+            <>
+              {', '}
+              {text.node('role', role)}
+            </>
+          ) : (
+            ''
+          )}
         </figcaption>
       </figure>
     </section>
@@ -598,18 +731,25 @@ export function ProofTestimonial({
 }
 
 export function FeatureBento({
+  textStyles,
+  editing,
   vibe = 'comercial',
   eyebrow,
   title,
   items,
   layout = 'mosaic',
 }: FeatureBentoProps) {
+  const text = textAttrs(textStyles, editing);
   return (
     <section className={section}>
       <div className={shell}>
         <div className="flex flex-col gap-4">
-          <Eyebrow>{eyebrow}</Eyebrow>
-          <h2 className={`${h2Class} max-w-[22ch]`}>{title}</h2>
+          <Eyebrow {...text.mark('eyebrow')}>
+            {text.content('eyebrow', eyebrow)}
+          </Eyebrow>
+          <h2 className={`${h2Class} max-w-[22ch]`} {...text.mark('title')}>
+            {text.content('title', title)}
+          </h2>
         </div>
         <div className={`site-bento site-bento-${layout} mt-12 grid gap-5`}>
           {items.map((item, index) => (
@@ -633,10 +773,15 @@ export function FeatureBento({
                   {item.icon && !item.image ? (
                     <SiteIcon name={item.icon} vibe={vibe} />
                   ) : null}
-                  <span>{item.title}</span>
+                  <span {...text.mark(`items.${index}.title`)}>
+                    {text.content(`items.${index}.title`, item.title)}
+                  </span>
                 </h3>
-                <p className="max-w-[52ch] text-base leading-relaxed text-[var(--muted)]">
-                  {item.body}
+                <p
+                  className="max-w-[52ch] text-base leading-relaxed text-[var(--muted)]"
+                  {...text.mark(`items.${index}.body`)}
+                >
+                  {text.content(`items.${index}.body`, item.body)}
                 </p>
               </div>
             </article>
@@ -648,19 +793,26 @@ export function FeatureBento({
 }
 
 export function NarrativeSteps({
+  textStyles,
+  editing,
   eyebrow,
   title,
   steps,
   layout = 'timeline',
 }: NarrativeStepsProps) {
+  const text = textAttrs(textStyles, editing);
   return (
     <section
       className={`${section} site-steps site-steps-${layout} border-b border-[var(--line)]`}
     >
       <div className={`${shell} grid gap-14 md:grid-cols-12`}>
         <div className="flex flex-col gap-4 md:col-span-4">
-          <Eyebrow>{eyebrow}</Eyebrow>
-          <h2 className={h2Class}>{title}</h2>
+          <Eyebrow {...text.mark('eyebrow')}>
+            {text.content('eyebrow', eyebrow)}
+          </Eyebrow>
+          <h2 className={h2Class} {...text.mark('title')}>
+            {text.content('title', title)}
+          </h2>
         </div>
         <ol className="flex flex-col md:col-span-8">
           {steps.map((step, index) => (
@@ -672,11 +824,17 @@ export function NarrativeSteps({
                 {String(index + 1).padStart(2, '0')}
               </span>
               <div className="flex min-w-0 flex-col gap-2">
-                <h3 className="text-[1.15rem] font-semibold tracking-[-0.01em]">
-                  {step.title}
+                <h3
+                  className="text-[1.15rem] font-semibold tracking-[-0.01em]"
+                  {...text.mark(`steps.${index}.title`)}
+                >
+                  {text.content(`steps.${index}.title`, step.title)}
                 </h3>
-                <p className="max-w-[54ch] text-[0.97rem] leading-relaxed text-[var(--muted)]">
-                  {step.body}
+                <p
+                  className="max-w-[54ch] text-[0.97rem] leading-relaxed text-[var(--muted)]"
+                  {...text.mark(`steps.${index}.body`)}
+                >
+                  {text.content(`steps.${index}.body`, step.body)}
                 </p>
               </div>
             </li>
@@ -688,29 +846,37 @@ export function NarrativeSteps({
 }
 
 export function FaqAccordion({
+  textStyles,
+  editing,
   vibe = 'comercial',
   title,
   items,
   layout = 'split',
 }: FaqAccordionProps) {
+  const text = textAttrs(textStyles, editing);
   return (
     <section
       className={`${section} site-faq site-faq-${layout} border-b border-[var(--line)]`}
     >
       <div className={`${shell} grid gap-12 md:grid-cols-12`}>
-        <h2 className={`${h2Class} md:col-span-4`}>{title}</h2>
+        <h2 className={`${h2Class} md:col-span-4`} {...text.mark('title')}>
+          {text.content('title', title)}
+        </h2>
         <div className="md:col-span-8">
-          {items.map((item) => (
+          {items.map((item, index) => (
             <details
               key={item.q}
               className="group border-t border-[var(--line)] py-5 first:border-t-0 first:pt-0"
             >
               <summary className="site-faq-summary flex cursor-pointer list-none items-center justify-between gap-5 text-[1.05rem] font-medium marker:hidden">
-                {item.q}
+                {text.node(`items.${index}.q`, item.q)}
                 <SiteIcon name="plus" vibe={vibe} />
               </summary>
-              <p className="mt-3 max-w-[62ch] text-[0.97rem] leading-relaxed text-[var(--muted)]">
-                {item.a}
+              <p
+                className="mt-3 max-w-[62ch] text-[0.97rem] leading-relaxed text-[var(--muted)]"
+                {...text.mark(`items.${index}.a`)}
+              >
+                {text.content(`items.${index}.a`, item.a)}
               </p>
             </details>
           ))}
@@ -721,6 +887,8 @@ export function FaqAccordion({
 }
 
 export function CtaBand({
+  textStyles,
+  editing,
   vibe = 'comercial',
   title,
   body,
@@ -729,6 +897,7 @@ export function CtaBand({
   layout = 'band',
   ctx,
 }: CtaBandProps & { ctx: RenderContext }) {
+  const text = textAttrs(textStyles, editing);
   const href =
     whatsapp && ctx.tenant.whatsapp
       ? `/go/wa?from=${encodeURIComponent(ctx.pagePath)}`
@@ -741,9 +910,16 @@ export function CtaBand({
         className={`${shell} flex flex-col items-start gap-7 md:flex-row md:items-end md:justify-between`}
       >
         <div className="flex max-w-[34ch] flex-col gap-3">
-          <h2 className={h2Class}>{title}</h2>
+          <h2 className={h2Class} {...text.mark('title')}>
+            {text.content('title', title)}
+          </h2>
           {body ? (
-            <p className="text-[1.02rem] leading-relaxed opacity-75">{body}</p>
+            <p
+              className="text-[1.02rem] leading-relaxed opacity-75"
+              {...text.mark('body')}
+            >
+              {text.content('body', body)}
+            </p>
           ) : null}
         </div>
         <MotionLink
@@ -752,7 +928,7 @@ export function CtaBand({
           data-track={whatsapp ? 'whatsapp' : undefined}
           {...(whatsapp ? { rel: 'noreferrer' } : {})}
         >
-          {cta.label}
+          {text.node('cta.label', cta.label)}
           <SiteIcon name="arrow-up-right" vibe={vibe} size={18} />
         </MotionLink>
       </div>
@@ -761,6 +937,8 @@ export function CtaBand({
 }
 
 export function FormLead({
+  textStyles,
+  editing,
   vibe = 'comercial',
   title,
   body,
@@ -772,6 +950,7 @@ export function FormLead({
   layout = 'split',
   ctx,
 }: FormLeadProps & { ctx: RenderContext }) {
+  const text = textAttrs(textStyles, editing);
   const inputClass =
     'w-full rounded-[var(--radius)] border border-[var(--line)] bg-transparent px-4 py-3 text-[0.97rem] outline-none focus:border-[var(--highlight)]';
   return (
@@ -780,10 +959,15 @@ export function FormLead({
     >
       <div className={`${shell} grid gap-12 md:grid-cols-12`}>
         <div className="flex flex-col gap-3 md:col-span-5">
-          <h2 className={h2Class}>{title}</h2>
+          <h2 className={h2Class} {...text.mark('title')}>
+            {text.content('title', title)}
+          </h2>
           {body ? (
-            <p className="max-w-[40ch] text-[1rem] leading-relaxed text-[var(--muted)]">
-              {body}
+            <p
+              className="max-w-[40ch] text-[1rem] leading-relaxed text-[var(--muted)]"
+              {...text.mark('body')}
+            >
+              {text.content('body', body)}
             </p>
           ) : null}
         </div>
@@ -816,10 +1000,10 @@ export function FormLead({
               />
             </label>
           </p>
-          {fields.map((f) => (
+          {fields.map((f, index) => (
             <label key={f.name} className="flex flex-col gap-2">
               <span className="text-[0.88rem] font-medium">
-                {f.label}
+                {text.node(`fields.${index}.label`, f.label)}
                 {f.required ? (
                   <span className="text-[var(--highlight-text)]"> *</span>
                 ) : null}
@@ -831,6 +1015,20 @@ export function FormLead({
                   rows={4}
                   className={inputClass}
                 />
+              ) : f.type === 'select' && editing ? (
+                <div className={inputClass}>
+                  {(f.options ?? []).map((option, optionIndex) => (
+                    <p
+                      key={optionIndex}
+                      {...text.mark(`fields.${index}.options.${optionIndex}`)}
+                    >
+                      {text.content(
+                        `fields.${index}.options.${optionIndex}`,
+                        option,
+                      )}
+                    </p>
+                  ))}
+                </div>
               ) : f.type === 'select' ? (
                 <select
                   name={f.name}
@@ -838,9 +1036,16 @@ export function FormLead({
                   className={inputClass}
                 >
                   <option value="">Selecione</option>
-                  {(f.options ?? []).map((option) => (
-                    <option key={option} value={option}>
-                      {option}
+                  {(f.options ?? []).map((option, optionIndex) => (
+                    <option
+                      key={option}
+                      value={option}
+                      {...text.mark(`fields.${index}.options.${optionIndex}`)}
+                    >
+                      {text.content(
+                        `fields.${index}.options.${optionIndex}`,
+                        option,
+                      )}
                     </option>
                   ))}
                 </select>
@@ -861,7 +1066,9 @@ export function FormLead({
               required
               className="mt-1 size-4 accent-[var(--highlight)]"
             />
-            <span>{consentText}</span>
+            <span {...text.mark('consentText')}>
+              {text.content('consentText', consentText)}
+            </span>
           </label>
           {whatsappOptIn ? (
             <label className="flex items-start gap-3 text-[0.85rem] leading-relaxed text-[var(--muted)]">
@@ -875,10 +1082,10 @@ export function FormLead({
           ) : null}
           <button
             type="submit"
-            disabled={ctx.isPreview}
+            disabled={ctx.isPreview && !editing}
             className="site-submit inline-flex items-center gap-3 mt-1 self-start rounded-[var(--radius)] bg-[var(--highlight)] px-7 py-3.5 text-[0.98rem] font-medium text-[var(--highlight-ink)]"
           >
-            {submitLabel}
+            {text.node('submitLabel', submitLabel)}
             <SiteIcon name="arrow-right" vibe={vibe} />
           </button>
           {ctx.isPreview ? (
@@ -893,23 +1100,31 @@ export function FormLead({
 }
 
 export function EditorialText({
+  textStyles,
+  editing,
   title,
   body,
   layout = 'narrow',
 }: EditorialTextProps) {
+  const text = textAttrs(textStyles, editing);
   return (
     <section
       className={`${section} site-text site-text-${layout} border-b border-[var(--line)]`}
     >
       <div className={`${shell} max-w-[48rem]`}>
-        {title ? <h2 className={`${h2Class} mb-7`}>{title}</h2> : null}
+        {title ? (
+          <h2 className={`${h2Class} mb-7`} {...text.mark('title')}>
+            {text.content('title', title)}
+          </h2>
+        ) : null}
         <div className="flex flex-col gap-5">
-          {body.split('\n\n').map((paragraph) => (
+          {body.split('\n\n').map((paragraph, index) => (
             <p
-              key={paragraph.slice(0, 40)}
+              key={index}
               className="text-[1.05rem] leading-[1.75] text-[var(--muted)]"
+              {...text.mark('body', index)}
             >
-              {paragraph}
+              {text.content('body', paragraph)}
             </p>
           ))}
         </div>
@@ -919,21 +1134,26 @@ export function EditorialText({
 }
 
 export function EditorialResources({
+  textStyles,
+  editing,
   vibe = 'comercial',
   title,
   body,
   items,
   layout,
 }: EditorialResourcesProps) {
+  const text = textAttrs(textStyles, editing);
   return (
     <section className={`${section} site-resources site-resources-${layout}`}>
       <div className={shell}>
         <div className="site-resources-heading">
-          <h2 className={h2Class}>{title}</h2>
-          {body && <p>{body}</p>}
+          <h2 className={h2Class} {...text.mark('title')}>
+            {text.content('title', title)}
+          </h2>
+          {body && <p {...text.mark('body')}>{text.content('body', body)}</p>}
         </div>
         <div className="site-resources-grid">
-          {items.map((item) => (
+          {items.map((item, index) => (
             <article key={item.href} className="site-resource">
               <a href={item.href} className="site-resource-link">
                 {item.image ? (
@@ -953,11 +1173,18 @@ export function EditorialResources({
                   </div>
                 ) : null}
                 <div className="site-resource-copy">
-                  <span className="site-resource-category">
-                    {item.category}
+                  <span
+                    className="site-resource-category"
+                    {...text.mark(`items.${index}.category`)}
+                  >
+                    {text.content(`items.${index}.category`, item.category)}
                   </span>
-                  <h3>{item.title}</h3>
-                  <p>{item.body}</p>
+                  <h3 {...text.mark(`items.${index}.title`)}>
+                    {text.content(`items.${index}.title`, item.title)}
+                  </h3>
+                  <p {...text.mark(`items.${index}.body`)}>
+                    {text.content(`items.${index}.body`, item.body)}
+                  </p>
                   <span className="site-resource-read">
                     Explorar
                     <SiteIcon name="arrow-up-right" vibe={vibe} />
@@ -1086,16 +1313,23 @@ export function EditorialPostBody({ body }: EditorialPostBodyProps) {
 }
 
 export function MediaGallery({
+  textStyles,
+  editing,
   title,
   images,
   layout = 'grid',
 }: MediaGalleryProps) {
+  const text = textAttrs(textStyles, editing);
   return (
     <section
       className={`${section} site-gallery site-gallery-${layout} border-b border-[var(--line)]`}
     >
       <div className={shell}>
-        {title ? <h2 className={`${h2Class} mb-10`}>{title}</h2> : null}
+        {title ? (
+          <h2 className={`${h2Class} mb-10`} {...text.mark('title')}>
+            {text.content('title', title)}
+          </h2>
+        ) : null}
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {images.map((image) => (
             <li key={image.src}>
@@ -1117,21 +1351,31 @@ export function MediaGallery({
 }
 
 export function MediaMap({
+  textStyles,
+  editing,
   vibe = 'comercial',
   title,
   address,
   query,
   layout = 'split',
 }: MediaMapProps) {
+  const text = textAttrs(textStyles, editing);
   return (
     <section
       className={`${section} site-map site-map-${layout} border-b border-[var(--line)]`}
     >
       <div className={`${shell} grid gap-10 md:grid-cols-12`}>
         <div className="flex flex-col gap-3 md:col-span-4">
-          {title ? <h2 className={h2Class}>{title}</h2> : null}
-          <address className="text-[1rem] not-italic leading-relaxed text-[var(--muted)]">
-            {address}
+          {title ? (
+            <h2 className={h2Class} {...text.mark('title')}>
+              {text.content('title', title)}
+            </h2>
+          ) : null}
+          <address
+            className="text-[1rem] not-italic leading-relaxed text-[var(--muted)]"
+            {...text.mark('address')}
+          >
+            {text.content('address', address)}
           </address>
           <a
             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`}
@@ -1156,40 +1400,61 @@ export function MediaMap({
 }
 
 export function PricingTable({
+  textStyles,
+  editing,
   vibe = 'comercial',
   title,
   plans,
   layout = 'cards',
 }: PricingTableProps) {
+  const text = textAttrs(textStyles, editing);
   return (
     <section
       className={`${section} site-pricing site-pricing-${layout} border-b border-[var(--line)]`}
     >
       <div className={shell}>
-        <h2 className={`${h2Class} mb-12 max-w-[20ch]`}>{title}</h2>
+        <h2 className={`${h2Class} mb-12 max-w-[20ch]`} {...text.mark('title')}>
+          {text.content('title', title)}
+        </h2>
         <ul className="grid gap-px overflow-hidden rounded-[var(--radius)] border border-[var(--line)] bg-[var(--line)] md:grid-cols-2 lg:grid-cols-3">
-          {plans.map((plan) => (
+          {plans.map((plan, index) => (
             <li
               key={plan.name}
               className={`flex flex-col gap-6 p-8 ${plan.highlight ? 'site-plan-featured bg-[var(--ink)] text-[var(--paper)]' : 'bg-[var(--paper)]'}`}
             >
               <div className="flex flex-col gap-1">
-                <h3 className="text-[1.1rem] font-semibold">{plan.name}</h3>
-                <p className="text-[2rem] font-semibold tracking-[-0.03em]">
-                  {plan.price}
+                <h3
+                  className="text-[1.1rem] font-semibold"
+                  {...text.mark(`plans.${index}.name`)}
+                >
+                  {text.content(`plans.${index}.name`, plan.name)}
+                </h3>
+                <p
+                  className="text-[2rem] font-semibold tracking-[-0.03em]"
+                  {...text.mark(`plans.${index}.price`)}
+                >
+                  {text.content(`plans.${index}.price`, plan.price)}
                 </p>
                 {plan.note ? (
-                  <p className="text-[0.88rem] opacity-70">{plan.note}</p>
+                  <p
+                    className="text-[0.88rem] opacity-70"
+                    {...text.mark(`plans.${index}.note`)}
+                  >
+                    {text.content(`plans.${index}.note`, plan.note)}
+                  </p>
                 ) : null}
               </div>
               <ul className="flex flex-col gap-2.5">
-                {plan.features.map((feature) => (
+                {plan.features.map((feature, featureIndex) => (
                   <li
                     key={feature}
                     className="site-plan-feature text-[0.95rem] leading-snug opacity-80"
                   >
                     <SiteIcon name="check" vibe={vibe} size={17} />
-                    {feature}
+                    {text.node(
+                      `plans.${index}.features.${featureIndex}`,
+                      feature,
+                    )}
                   </li>
                 ))}
               </ul>
@@ -1201,7 +1466,7 @@ export function PricingTable({
                     : 'border border-[var(--line)] text-[var(--ink)]'
                 }`}
               >
-                {plan.cta.label}
+                {text.node(`plans.${index}.cta.label`, plan.cta.label)}
                 <SiteIcon name="arrow-up-right" vibe={vibe} size={18} />
               </a>
             </li>
@@ -1313,6 +1578,8 @@ function FooterContacts({ ctx }: { ctx: RenderContext }) {
 }
 
 export function FooterCompact({
+  textStyles,
+  editing,
   logoText,
   logoHeight,
   tagline,
@@ -1322,6 +1589,7 @@ export function FooterCompact({
   presentation,
   ctx,
 }: FooterCompactProps & { ctx: RenderContext }) {
+  const text = textAttrs(textStyles, editing);
   const logo = logoFor(ctx.tenant.brand, presentation);
   return (
     <footer className={`site-footer site-footer-${layout} py-14`}>
@@ -1346,13 +1614,19 @@ export function FooterCompact({
                 decoding="async"
               />
             ) : (
-              <p className="text-[1.05rem] font-semibold tracking-[-0.01em]">
-                {logoText}
+              <p
+                className="text-[1.05rem] font-semibold tracking-[-0.01em]"
+                {...text.mark('logoText')}
+              >
+                {text.content('logoText', logoText)}
               </p>
             )}
             {tagline ? (
-              <p className="max-w-[36ch] text-[0.95rem] text-[var(--muted)]">
-                {tagline}
+              <p
+                className="max-w-[36ch] text-[0.95rem] text-[var(--muted)]"
+                {...text.mark('tagline')}
+              >
+                {text.content('tagline', tagline)}
               </p>
             ) : null}
           </div>
@@ -1361,13 +1635,14 @@ export function FooterCompact({
               className="site-footer-nav flex flex-wrap gap-x-7 gap-y-3"
               aria-label="Rodapé"
             >
-              {links.map((link) => (
+              {links.map((link, index) => (
                 <a
                   key={link.href + link.label}
                   href={link.href}
                   className="text-[0.92rem] text-[var(--muted)] hover:text-[var(--ink)]"
+                  {...text.mark(`links.${index}.label`)}
                 >
-                  {link.label}
+                  {text.content(`links.${index}.label`, link.label)}
                 </a>
               ))}
             </nav>
@@ -1375,7 +1650,12 @@ export function FooterCompact({
           <FooterContacts ctx={ctx} />
         </div>
         {legal ? (
-          <p className="text-[0.82rem] text-[var(--muted)]">{legal}</p>
+          <p
+            className="text-[0.82rem] text-[var(--muted)]"
+            {...text.mark('legal')}
+          >
+            {text.content('legal', legal)}
+          </p>
         ) : null}
       </div>
     </footer>
@@ -1383,6 +1663,8 @@ export function FooterCompact({
 }
 
 export function FeatureNumbered({
+  textStyles,
+  editing,
   vibe = 'comercial',
   eyebrow,
   title,
@@ -1390,28 +1672,41 @@ export function FeatureNumbered({
   items,
   layout = 'ledger',
 }: FeatureNumberedProps) {
+  const text = textAttrs(textStyles, editing);
   return (
     <section className={`${section} site-services site-services-${layout}`}>
       <div className={`${shell} site-services-grid grid gap-12`}>
         <div className="flex max-w-[40rem] flex-col items-start gap-4">
-          <Eyebrow>{eyebrow}</Eyebrow>
-          <h2 className={h2Class}>{title}</h2>
+          <Eyebrow {...text.mark('eyebrow')}>
+            {text.content('eyebrow', eyebrow)}
+          </Eyebrow>
+          <h2 className={h2Class} {...text.mark('title')}>
+            {text.content('title', title)}
+          </h2>
           {lead ? (
-            <p className="text-[1.02rem] leading-relaxed text-[var(--muted)]">
-              {lead}
+            <p
+              className="text-[1.02rem] leading-relaxed text-[var(--muted)]"
+              {...text.mark('lead')}
+            >
+              {text.content('lead', lead)}
             </p>
           ) : null}
         </div>
         <ul className="grid gap-x-8 md:grid-cols-2">
-          {items.map((item) => {
+          {items.map((item, index) => {
             const inner = (
               <>
                 <h3 className="site-item-heading text-[1.15rem] font-semibold tracking-[-0.01em]">
                   {item.icon ? <SiteIcon name={item.icon} vibe={vibe} /> : null}
-                  <span>{item.title}</span>
+                  <span {...text.mark(`items.${index}.title`)}>
+                    {text.content(`items.${index}.title`, item.title)}
+                  </span>
                 </h3>
-                <p className="mt-3 text-[0.97rem] leading-relaxed text-[var(--muted)]">
-                  {item.body}
+                <p
+                  className="mt-3 text-[0.97rem] leading-relaxed text-[var(--muted)]"
+                  {...text.mark(`items.${index}.body`)}
+                >
+                  {text.content(`items.${index}.body`, item.body)}
                 </p>
               </>
             );
@@ -1440,6 +1735,8 @@ export function FeatureNumbered({
 }
 
 export function NarrativeSplit({
+  textStyles,
+  editing,
   vibe = 'comercial',
   eyebrow,
   title,
@@ -1448,6 +1745,7 @@ export function NarrativeSplit({
   imageAlt,
   layout = 'split',
 }: NarrativeSplitProps) {
+  const text = textAttrs(textStyles, editing);
   const hasImage = Boolean(image && /^https?:\/\//.test(image));
   return (
     <section
@@ -1470,10 +1768,17 @@ export function NarrativeSplit({
           </figure>
         ) : null}
         <div>
-          <Eyebrow>{eyebrow}</Eyebrow>
-          <h2 className={`${h2Class} mt-4 mb-8 max-w-[24ch]`}>{title}</h2>
+          <Eyebrow {...text.mark('eyebrow')}>
+            {text.content('eyebrow', eyebrow)}
+          </Eyebrow>
+          <h2
+            className={`${h2Class} mt-4 mb-8 max-w-[24ch]`}
+            {...text.mark('title')}
+          >
+            {text.content('title', title)}
+          </h2>
           <ul className={`grid gap-x-10 ${hasImage ? '' : 'md:grid-cols-2'}`}>
-            {items.map((item) => (
+            {items.map((item, index) => (
               <li
                 key={item.title}
                 className="border-t border-[var(--line)] py-6"
@@ -1484,15 +1789,21 @@ export function NarrativeSplit({
                     <a
                       href={item.href}
                       className="underline-offset-4 hover:underline"
+                      {...text.mark(`items.${index}.title`)}
                     >
-                      {item.title}
+                      {text.content(`items.${index}.title`, item.title)}
                     </a>
                   ) : (
-                    <span>{item.title}</span>
+                    <span {...text.mark(`items.${index}.title`)}>
+                      {text.content(`items.${index}.title`, item.title)}
+                    </span>
                   )}
                 </h3>
-                <p className="mt-2 max-w-[52ch] text-base leading-relaxed text-[var(--muted)]">
-                  {item.body}
+                <p
+                  className="mt-2 max-w-[52ch] text-base leading-relaxed text-[var(--muted)]"
+                  {...text.mark(`items.${index}.body`)}
+                >
+                  {text.content(`items.${index}.body`, item.body)}
                 </p>
               </li>
             ))}
@@ -1504,6 +1815,8 @@ export function NarrativeSplit({
 }
 
 export function EditorialFacts({
+  textStyles,
+  editing,
   eyebrow,
   title,
   body,
@@ -1511,6 +1824,7 @@ export function EditorialFacts({
   dark,
   layout = 'split',
 }: EditorialFactsProps) {
+  const text = textAttrs(textStyles, editing);
   return (
     <section
       className={`${section} site-facts site-facts-${layout} border-b border-[var(--line)] ${dark ? 'site-facts-dark bg-[var(--ink)] text-[var(--paper)]' : ''}`}
@@ -1520,32 +1834,40 @@ export function EditorialFacts({
           {eyebrow ? (
             <p
               className={`${eyebrowClass} ${dark ? 'text-[var(--paper)] opacity-60' : ''}`}
+              {...text.mark('eyebrow')}
             >
-              {eyebrow}
+              {text.content('eyebrow', eyebrow)}
             </p>
           ) : null}
-          <h2 className={h2Class}>{title}</h2>
+          <h2 className={h2Class} {...text.mark('title')}>
+            {text.content('title', title)}
+          </h2>
           {body ? (
             <p
               className={`max-w-[56ch] text-[1.02rem] leading-relaxed ${dark ? 'opacity-75' : 'text-[var(--muted)]'}`}
+              {...text.mark('body')}
             >
-              {body}
+              {text.content('body', body)}
             </p>
           ) : null}
         </div>
         <dl className="flex flex-col md:col-span-5">
-          {facts.map((fact) => (
+          {facts.map((fact, index) => (
             <div
               key={fact.label}
               className={`flex justify-between gap-6 border-t py-4 first:border-t-0 first:pt-0 ${dark ? 'border-[color-mix(in_oklab,var(--paper)_20%,transparent)]' : 'border-[var(--line)]'}`}
             >
               <dt
                 className={`text-[0.9rem] ${dark ? 'opacity-60' : 'text-[var(--muted)]'}`}
+                {...text.mark(`facts.${index}.label`)}
               >
-                {fact.label}
+                {text.content(`facts.${index}.label`, fact.label)}
               </dt>
-              <dd className="text-right text-[0.98rem] font-medium">
-                {fact.value}
+              <dd
+                className="text-right text-[0.98rem] font-medium"
+                {...text.mark(`facts.${index}.value`)}
+              >
+                {text.content(`facts.${index}.value`, fact.value)}
               </dd>
             </div>
           ))}
@@ -1556,11 +1878,14 @@ export function EditorialFacts({
 }
 
 export function MediaImage({
+  textStyles,
+  editing,
   src,
   alt,
   caption,
   layout = 'wide',
 }: MediaImageProps) {
+  const text = textAttrs(textStyles, editing);
   return (
     <section
       className={`${section} site-media-image site-media-${layout} border-b border-[var(--line)]`}
@@ -1576,8 +1901,11 @@ export function MediaImage({
           className="aspect-[16/9] w-full rounded-[var(--radius)] object-cover"
         />
         {caption ? (
-          <figcaption className="mt-3 text-[0.88rem] text-[var(--muted)]">
-            {caption}
+          <figcaption
+            className="mt-3 text-[0.88rem] text-[var(--muted)]"
+            {...text.mark('caption')}
+          >
+            {text.content('caption', caption)}
           </figcaption>
         ) : null}
       </figure>

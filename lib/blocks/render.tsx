@@ -19,6 +19,7 @@ export type RenderContext = {
   /** Só em preview: propaga o tenant porque não há subdomínio. */
   previewTenant?: string;
   isPreview?: boolean;
+  editing?: boolean;
 };
 
 /**
@@ -57,7 +58,7 @@ export function RenderBlocks({
   // mesmo nome perde o id em vez de duplicá-lo na página.
   if (showLocation) usedAnchors.add('onde-estamos');
   return (
-    <SiteMotion intensity={ctx.tenant.dials.motion}>
+    <SiteMotion intensity={ctx.editing ? 0 : ctx.tenant.dials.motion}>
       {renderList(leading, ctx, usedAnchors)}
       <main>
         {renderList(content, ctx, usedAnchors)}
@@ -76,7 +77,7 @@ export function RenderBlocks({
         ) : null}
       </main>
       {renderList(trailing, ctx, usedAnchors)}
-      <B.FloatingWhatsapp ctx={ctx} />
+      {!ctx.editing && <B.FloatingWhatsapp ctx={ctx} />}
     </SiteMotion>
   );
 }
@@ -95,6 +96,7 @@ function renderList(
         const props = {
           ...(previewProps(parsed.data, ctx) as Record<string, unknown>),
           vibe: renderingVibeOf(ctx.tenant.brand),
+          editing: ctx.editing,
         } as never;
         const key = block.id;
 

@@ -114,3 +114,29 @@
     font-size: 1rem;
   }
 }
+
+/* O passo multiplica a escala fluida já resolvida pelo papel e pela vibe. */
+.site-styled[data-scale='-2'] {
+  font-size: 80%;
+}
+.site-styled[data-scale='-1'] {
+  font-size: 90%;
+}
+.site-styled[data-scale='0'] {
+  font-size: 100%;
+}
+.site-styled[data-scale='1'] {
+  font-size: 115%;
+}
+.site-styled[data-scale='2'] {
+  font-size: 130%;
+}
+/* Uma cor escolhida é medida opaca; a opacidade decorativa não pode mudá-la. */
+.site-theme
+  :is(
+    [data-text-color],
+    p:has(.site-styled[data-color]),
+    li:has(.site-styled[data-color])
+  ) {
+  opacity: 1;
+}

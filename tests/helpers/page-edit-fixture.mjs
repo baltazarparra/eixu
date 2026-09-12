@@ -120,7 +120,7 @@ export async function pageEditFixture(
   const pages = editPages();
   const writes = [];
   const policy = editPolicyFor(text, pages);
-  const { buildTools } = await loadModule('lib/ai/tools.ts', {
+  const mocks = {
     '@/lib/db': {
       db:
         () =>
@@ -156,7 +156,9 @@ export async function pageEditFixture(
         structuredClone(pages.filter((p) => p.tenantId === tenantId)),
     },
     '@/lib/images/queries': { listImages: async () => [] },
-  });
+  };
+  mocks['@/lib/sites/edits'] = await loadModule('lib/sites/edits.ts', mocks);
+  const { buildTools } = await loadModule('lib/ai/tools.ts', mocks);
   const tools = buildTools(tenant, { lastUserText: text, editPolicy: policy });
   // Não deixe um modelo real executar I/O fora do ensaio autorizado.
   const allowed = new Set([
@@ -173,6 +175,7 @@ export async function pageEditFixture(
   return {
     tenant,
     pages,
+    mocks,
     tools,
     writes,
     instructions: systemPrompt(
