@@ -54,9 +54,9 @@ await test(
     await page.waitForFunction(
       () => location.pathname === '/admin/clinica-vertice',
     );
-    await page.waitForSelector('.admin-tenant-header');
+    await page.waitForSelector('.admin-bar');
     assert.match(
-      await page.$eval('.admin-tenant-identity', (node) => node.textContent),
+      await page.$eval('.admin-bar-identity', (node) => node.textContent),
       /Clínica Vértice/,
     );
     // Sem rail, o retorno à lista e a saída vivem no cabeçalho do cliente.
@@ -72,11 +72,58 @@ await test(
       1,
     );
     assert.equal(
-      await page.$$('.admin-tenant-header').then((rows) => rows.length),
+      await page.$$('.admin-bar').then((rows) => rows.length),
       1,
     );
     await clickText('Publicar');
     await page.waitForFunction(() => window.__refreshes === 1);
+    // Seletor de página na barra: abre pelo teclado com foco itinerante, a
+    // escolha troca a prévia e o alvo do ↗, e Esc devolve o foco ao gatilho.
+    fixture.data.site.pages.push({
+      slug: 'servicos',
+      title: 'Serviços',
+      type: 'page',
+      blocks: 4,
+      dirty: false,
+      published: true,
+      publishedAt: '2026-09-01T00:00:00Z',
+      errors: [],
+      warnings: [],
+    });
+    await open('/admin/marcenaria-horizonte');
+    const pickerText = () =>
+      page.$eval('.admin-bar-page', (node) => node.textContent);
+    const pickerFocused = () =>
+      page.evaluate(
+        () => document.activeElement === document.querySelector('.admin-bar-page'),
+      );
+    assert.equal(await pickerText(), '/rascunho');
+    await page.focus('.admin-bar-page');
+    await page.keyboard.press('ArrowDown');
+    await page.waitForSelector('.admin-bar-menu');
+    assert.equal(
+      await page.evaluate(() => document.activeElement.getAttribute('role')),
+      'menuitemradio',
+    );
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => !document.querySelector('.admin-bar-menu'));
+    assert.equal(await pickerText(), '/servicos');
+    assert.match(
+      await page.$eval('iframe', (node) => node.getAttribute('src')),
+      /^\/s\/marcenaria-horizonte\/servicos\?preview=1/,
+    );
+    assert.equal(
+      await page.$eval('.admin-bar-open', (node) => node.getAttribute('title')),
+      'Abrir /servicos em outra aba',
+    );
+    assert.equal(await pickerFocused(), true);
+    await page.click('.admin-bar-page');
+    await page.waitForSelector('.admin-bar-menu');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('.admin-bar-menu'));
+    assert.equal(await pickerFocused(), true);
+    fixture.data.site.pages.pop();
     await open('/admin/marcenaria-horizonte/imagens');
     assert.equal(
       await page.$$('.admin-image-card').then((rows) => rows.length),
@@ -252,21 +299,46 @@ await test(
           false,
         );
         if (name === 'editor') {
-          assert.equal(
-            await page.evaluate(() => {
-              const select = document
-                .querySelector('.admin-page-selector')
-                .getBoundingClientRect();
-              const devices = document
-                .querySelector('.admin-preview-controls fieldset')
-                .getBoundingClientRect();
-              return (
-                select.right <= devices.left || select.bottom <= devices.top
-              );
-            }),
-            true,
-            `Controles da prévia sem sobreposição em ${width}`,
-          );
+          // A barra única segura tudo dentro da própria largura: nada estoura
+          // nem se sobrepõe, em qualquer faixa.
+          const bar = await page.evaluate(() => {
+            const bar = document.querySelector('.admin-bar');
+            const box = bar.getBoundingClientRect();
+            // Folhas da barra: grupos diretos, o que o editor injeta nos
+            // slots e o botão de sair; o grupo de decisão entra pelos filhos.
+            const items = [
+              ...bar.querySelectorAll(
+                ':scope > *:not(.admin-bar-slot):not(.admin-bar-decide), .admin-bar-decide > *:not(.admin-bar-slot), .admin-bar-slot > *',
+              ),
+            ]
+              .filter((node) => node.getClientRects().length > 0)
+              .map((node) => node.getBoundingClientRect());
+            const inside = items.every(
+              (item) =>
+                item.left >= box.left - 0.5 && item.right <= box.right + 0.5,
+            );
+            const overlap = items.some((a, i) =>
+              items.some(
+                (b, j) =>
+                  i < j &&
+                  a.left < b.right - 0.5 &&
+                  b.left < a.right - 0.5 &&
+                  a.top < b.bottom - 0.5 &&
+                  b.top < a.bottom - 0.5,
+              ),
+            );
+            const pickers = [
+              ...document.querySelectorAll('.admin-bar-page'),
+            ].filter((node) => node.getClientRects().length > 0).length;
+            return { height: Math.round(box.height), inside, overlap, pickers };
+          });
+          assert.equal(bar.inside, true, `Barra sem estouro em ${width}`);
+          assert.equal(bar.overlap, false, `Barra sem sobreposição em ${width}`);
+          assert.equal(bar.pickers, 1, `Um seletor de página visível em ${width}`);
+          // 64 px com o grupo da prévia; 52 px sem a linha do domínio.
+          if (width >= 1520) assert.equal(bar.height, 64);
+          else if (width >= 1280) assert.equal(bar.height, 64);
+          else if (width >= 1024) assert.equal(bar.height, 52);
         }
         if (width === 390 || width === 1440)
           await page.screenshot({
@@ -285,7 +357,7 @@ await test(
       1,
     );
     await page.click('.admin-client-row .admin-client-name');
-    await page.waitForSelector('.admin-tenant-header');
+    await page.waitForSelector('.admin-bar');
     // O botão de voltar é o caminho de volta no celular: precisa estar à vista.
     assert.equal(
       await page.$eval('.admin-back', (node) => {

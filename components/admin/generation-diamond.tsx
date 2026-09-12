@@ -27,7 +27,7 @@ type Props = {
   progress: CreationProgress;
   /** Há execução viva: o diamante gira com mais intensidade. */
   active: boolean;
-  /** Versão de 40 px para a barra da prévia quando já existe página. */
+  /** Versão de 32 px para o grupo de decisão da barra quando já existe página. */
   compact?: boolean;
   /** Frase de apoio abaixo do diamante, só na versão grande. */
   message?: string;
@@ -362,7 +362,9 @@ export function GenerationDiamond({
     const gemGeometry = brilliantCut();
     const gem = new Mesh(gemGeometry, gemMaterial);
     gem.rotation.x = -0.34;
-    gem.scale.setScalar((compact ? 1.18 : 1) * 0.7);
+    // A versão grande usa 70% da escala; em 32 px a pedra reduzida vira um
+    // borrão ao lado de Publicar, então a compacta mantém a escala cheia.
+    gem.scale.setScalar(compact ? 1.18 : 0.7);
     scene.add(gem);
 
     // As mudanças de progresso chegam a cada leitura do servidor; a animação

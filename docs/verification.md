@@ -1,5 +1,55 @@
 # Validação e publicação
 
+## Cabeçalho único do editor, 12/09/2026
+
+O handoff `design_handoff_cabecalho_unico` trocou os três cabeçalhos do editor
+(página com 132 px, conversa com 46 px e prévia com 75 px) por uma barra de
+64 px em `components/admin/navigation.tsx`. `TenantFrame` monta dois slots
+(`.admin-bar-slot`, com `display: contents`) e `WorkspaceHeader` injeta por
+portal o grupo PRÉVIA e o grupo de decisão. O seletor de página é um menu com
+foco itinerante em `components/admin/page-picker.tsx`: mostra o caminho, marca
+o rascunho e devolve o foco ao gatilho ao fechar. `Ver prévia` e `Abrir prévia`
+viraram um único ícone que abre a página em foco. O diamante compacto passou a
+32 px, no grupo de decisão, e `.admin-conversation-heading`,
+`.admin-preview-controls` e `.admin-page-selector` saíram do CSS.
+
+Desvio do handoff, medido no navegador: com o grupo PRÉVIA na barra, a régua
+completa precisa de cerca de 1.520 px; sem o rótulo PRÉVIA, cabe até 1.280 px
+com o caminho da página encurtando. Abaixo de 1.280 px o grupo volta para uma
+faixa no topo da coluna da prévia e a barra fica em 52 px, sem a linha do
+domínio; o handoff previa essa faixa só abaixo de 1.024 px. Entre 768 e
+1.023 px as abas ocupam uma segunda linha (92 px); abaixo de 768 px a decisão
+também ganha linha própria (132 px), como o cabeçalho anterior no celular.
+
+Verificação na base `main`, com as alterações locais:
+
+- `npx next typegen && npx tsc --noEmit`, `npm run lint`,
+  `npm run format -- --check README.md AGENTS.md docs` e `git diff --check`:
+  sem erros. O lint recusou `role="listbox"` em `ul`/`li`; o menu usa
+  `role="menu"` com botões `menuitemradio`, sem desligar regra.
+- `npm run build:vercel`: Next.js 16.3.3 compilou e os três checks dos
+  artefatos serverless passaram. A fixture do handoff lê o CSS de
+  `.next/static/chunks`, por isso o build precede o teste de navegador.
+- `EIXU_CHROME_PATH=/usr/bin/google-chrome npm run test:admin:browser`: 8
+  passaram. O teste do handoff agora mede a barra em 320, 390, 1280, 1440 e
+  1920 px: nenhum item fora da largura nem sobreposto, um seletor visível por
+  largura e altura de 64 px a partir de 1280 px. Também abre o seletor pelo
+  teclado, escolhe `/servicos` com as setas, confere o `src` do iframe e o
+  `title` do ícone de abrir, e verifica que Esc devolve o foco ao gatilho.
+- `EIXU_CHROME_PATH=/usr/bin/google-chrome npm run test:admin`: 120 testes;
+  117 passaram e 3 integrações com PostgreSQL foram puladas por falta de
+  `EIXU_TEST_POSTGRES_URL`. `npm run test:sites`: 125 passaram. Tipos, lint,
+  build e os três conjuntos foram repetidos depois do rebase sobre o `main`
+  com a gramática por vibe e o diamante sem anel, num worktree limpo.
+- Medição própria com a fixture do handoff em 320, 390, 768, 1024, 1280,
+  1440, 1600 e 1920 px, com capturas: barra de 64 px de 1280 px para cima
+  (folga de 62 px em 1280 e de 627 px em 1920), 52 px em 1024, 92 px em 768 e
+  132 px em 320/390. Menu aberto em 1440 com três páginas (caminho em mono,
+  título em segunda linha, rascunho marcado) e caminho longo
+  `/servicos-planejados` inteiro em 1280. Captura da geração em execução em
+  `outputs/generation/painel-rodando.png`, com o diamante compacto ao lado de
+  Publicar.
+
 ## Correções da revisão do PR #26, 12/09/2026
 
 Os cinco achados foram corrigidos antes do merge. A unicidade preserva a
