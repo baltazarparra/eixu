@@ -9,6 +9,7 @@ import { isRunning, useGeneration } from './use-generation';
 
 import {
   ChevronLeft,
+  ChevronRight,
   ExternalLink,
   ImagePlus,
   PanelLeftClose,
@@ -72,9 +73,9 @@ export function Workspace({
     initial.pages.length && !imageRequest ? 'content' : 'chat',
   );
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
-  // Recolher a conversa devolve a largura inteira à prévia: entre 1024 e
-  // 1440 px a coluna de 42% deixava o desktop apertado. Abaixo de 1024 px as
-  // vistas já alternam pelos botões e este estado não se aplica.
+  // Recolher a conversa deixa só uma faixa estreita com o controle de reabertura:
+  // entre 1024 e 1440 px a coluna de 42% deixava o desktop apertado. Abaixo de
+  // 1024 px as vistas já alternam pelos botões e este estado não se aplica.
   const [collapsed, setCollapsed] = useState(false);
   const [nonce, setNonce] = useState(0);
   const [publishing, setPublishing] = useState(false);
@@ -653,19 +654,21 @@ export function Workspace({
           <ChatUsageDetails messages={messages} events={generation.events} />
         </section>
 
-        {!collapsed ? (
-          <button
-            type="button"
-            onClick={() => setCollapsed(true)}
-            className="admin-conversation-edge-toggle"
-            aria-controls="admin-conversation"
-            aria-expanded="true"
-            aria-label="Recolher a conversa"
-            title="Recolher a conversa"
-          >
+        <button
+          type="button"
+          onClick={() => setCollapsed((value) => !value)}
+          className="admin-conversation-edge-toggle"
+          aria-controls="admin-conversation"
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? 'Expandir a conversa' : 'Recolher a conversa'}
+          title={collapsed ? 'Expandir a conversa' : 'Recolher a conversa'}
+        >
+          {collapsed ? (
+            <ChevronRight size={16} aria-hidden="true" />
+          ) : (
             <ChevronLeft size={16} aria-hidden="true" />
-          </button>
-        ) : null}
+          )}
+        </button>
 
         <section className="admin-content" aria-label="Prévia e revisão">
           {previewControls}

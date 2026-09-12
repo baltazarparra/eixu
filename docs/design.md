@@ -14,10 +14,11 @@ O painel usa Geist e Geist Mono locais, acompanhadas da
 contextual pertence ao layout do cliente e abre com **Voltar** secundário e o
 controle primário da conversa; sair fica no fim das ações. O editor reserva 42% (até 520 px) à conversa,
 com o andamento dentro dela, e devolve a altura inteira à prévia. A partir de
-1024 px, esse botão recolhe a conversa e entrega a largura inteira à prévia;
-outro controle simples fica no centro da borda direita da conversa para a mesma
-ação: entre 1024 e 1440 px a coluna de 42% deixava o desktop apertado. No
-celular, conversa e prévia são alternáveis.
+1024 px, esse botão recolhe a conversa até uma faixa de 56 px — no máximo 5,5%
+da viewport — e entrega o restante à prévia. Outro controle simples fica no
+centro da borda direita da conversa e permanece na faixa: ele recolhe e expande
+o painel como um toggle. Entre 1024 e 1440 px a coluna de 42% deixava o desktop
+apertado. No celular, conversa e prévia são alternáveis.
 
 O handoff `design_handoff_cabecalho_unico`, recebido em 12/09/2026, substituiu
 os três cabeçalhos do editor (página, conversa e prévia, 207 px somados) por

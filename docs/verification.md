@@ -1,5 +1,26 @@
 # Validação e publicação
 
+## Toggle da conversa recolhida, 12/09/2026
+
+A conversa não desaparece mais por inteiro no desktop. Ao recolher, ela mantém
+uma faixa de 56 px — 5,5% da viewport em 1024 px e menos nas larguras maiores —
+com o controle lateral no centro. Esse mesmo controle alterna entre recolher e
+expandir; o botão do cabeçalho preserva a mesma ação. No celular, as vistas
+continuam alternando pelas abas Conversa e Prévia.
+
+Verificação local:
+
+- Tipos, lint global, `git diff --check` e `npm run build:vercel` passaram; o
+  build inclui os três checks dos artefatos de captura serverless.
+- O teste focal em Chromium passou em 1440 e 1100 px, medindo a faixa abaixo de
+  10%, o crescimento da prévia, os dois sentidos do toggle e a ausência de
+  overflow. Em 390 px, a conversa continuou acessível pela aba própria.
+- `npm run test:admin`: 138 casos passaram e sete integrações dependentes de
+  recursos locais ficaram sem execução. As capturas verificadas estão em
+  `outputs/generation/conversa-recolhida-{1440,1100}.png`.
+
+Os testes não executaram migração, escrita remota ou publicação.
+
 ## Navegação responsiva no harness, 12/09/2026
 
 A barra mobile anterior distribuía logo, CTA e Menu em várias linhas; abrir o
