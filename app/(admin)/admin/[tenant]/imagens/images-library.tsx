@@ -8,13 +8,32 @@ import {
   StatusPill,
 } from '@/components/admin/primitives';
 import { adminFetch } from '@/lib/admin/http';
+import type { ImageUsage } from '@/lib/images/usage';
 import type { ImageGuide, TenantImage } from '@/lib/types';
 
 type LibraryState = {
   guide: ImageGuide;
   images: TenantImage[];
   logoUrl?: string | null;
+  usage: Record<string, ImageUsage[]>;
 };
+
+function usageLabel(items: ImageUsage[]): string {
+  if (!items.length) return 'Fora das páginas';
+  const scope = (name: ImageUsage['scope']) => {
+    const matches = items.filter((item) => item.scope === name);
+    if (!matches.length) return null;
+    const labels = [
+      ...new Set(
+        matches.map((item) =>
+          item.kind === 'logo' ? 'logo' : (item.page ?? 'página'),
+        ),
+      ),
+    ];
+    return `${name === 'draft' ? 'Rascunho' : 'Publicado'}: ${labels.join(', ')}`;
+  };
+  return [scope('draft'), scope('published')].filter(Boolean).join(' · ');
+}
 
 function scoreTone(score: number | null) {
   return score === null
@@ -251,6 +270,18 @@ export function ImagesLibrary({
                             : `${image.score.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} / 10`}
                         </span>
                       </div>
+                      <p
+                        className="admin-image-usage"
+                        title={(library.usage[image.id] ?? [])
+                          .map((item) =>
+                            item.kind === 'logo'
+                              ? `${item.scope}: logo`
+                              : `${item.scope}: ${item.page} · bloco ${item.block}`,
+                          )
+                          .join('\n')}
+                      >
+                        {usageLabel(library.usage[image.id] ?? [])}
+                      </p>
                       <div className="admin-image-actions">
                         {image.status !== 'rejeitada' &&
                         image.kind === 'logo' &&
@@ -268,26 +299,14 @@ export function ImagesLibrary({
                         ) : null}
                         {image.status !== 'rejeitada' &&
                         image.kind !== 'logo' ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              void navigator.clipboard
-                                .writeText(`usa a imagem #${image.seq} no hero`)
-                                .then(
-                                  () =>
-                                    setNotice(
-                                      `Pedido copiado. Cole na conversa do site para aplicar a imagem #${image.seq}.`,
-                                    ),
-                                  () =>
-                                    setNotice(
-                                      `No chat do site, peça: use a imagem #${image.seq} no hero.`,
-                                    ),
-                                );
-                            }}
+                          <Link
+                            href={chatLink(
+                              `Quero usar a imagem #${image.seq} no site: `,
+                            )}
                             className="admin-secondary"
                           >
                             Usar no site
-                          </button>
+                          </Link>
                         ) : null}
                         <a
                           href={`/admin/${tenant.slug}?imagem=${image.seq}`}

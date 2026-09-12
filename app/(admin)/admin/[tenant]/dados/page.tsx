@@ -13,8 +13,12 @@ export default async function SettingsPage({
 }: {
   params: Promise<{ tenant: string }>;
 }) {
-  if (!(await isAuthenticated())) redirect('/admin/login');
-  const tenant = await adminTenant((await params).tenant);
+  const { tenant: slug } = await params;
+  if (!(await isAuthenticated()))
+    redirect(
+      `/admin/login?returnTo=${encodeURIComponent(`/admin/${slug}/dados`)}`,
+    );
+  const tenant = await adminTenant(slug);
   if (!tenant) notFound();
   const intake = intakeSchema.safeParse(tenant.brief.intake);
   const counts = await countTenantData(tenant.id);

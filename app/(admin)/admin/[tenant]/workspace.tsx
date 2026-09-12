@@ -240,19 +240,34 @@ export function Workspace({
     (sum, item) => sum + item.errors.length,
     site.errors.length,
   );
+  // Durante um deploy, o cliente novo pode receber por instantes o payload
+  // anterior do endpoint, que ainda não tinha o relatório detalhado.
+  const reviewState = site.review ?? {
+    current: false,
+    complete: false,
+    findings: [],
+  };
+  const reviewFindings = reviewState.findings.filter(
+    (finding) => finding.status !== 'resolved',
+  );
+  const reviewSuggestions = reviewFindings.filter(
+    (finding) => finding.level !== 'error',
+  ).length;
   // Pendência não significa execução ativa: pausas, falhas e edições manuais
   // precisam mostrar os motivos que ainda bloqueiam a publicação.
   const showReview =
     site.pages.length > 0 &&
     !running &&
     (totalErrors > 0 ||
+      reviewState.current ||
+      reviewFindings.length > 0 ||
       site.warnings.length > 0 ||
       (page?.warnings.length ?? 0) > 0);
   const publishable =
     site.pages.length > 0 &&
     totalErrors === 0 &&
     !locked &&
-    site.pages.some((item) => item.dirty);
+    (site.tenant.dirty || site.pages.some((item) => item.dirty));
   // Publicação manual vale pelo pre-flight; a revisão visual é outra garantia.
   const reviewPending =
     site.pages.length > 0 && !site.generation.reviewComplete;
@@ -614,17 +629,54 @@ export function Workspace({
               >
                 {totalErrors
                   ? `${totalErrors} pendências para publicar`
-                  : site.pages.length
-                    ? site.pages.some((item) => item.dirty)
-                      ? 'Rascunho pronto para sua revisão'
-                      : 'Páginas publicadas e atualizadas'
-                    : 'Crie as páginas para começar'}
+                  : reviewState.complete
+                    ? `Pronto para sua conferência${reviewSuggestions ? ` · ${reviewSuggestions} sugestão(ões)` : ''}`
+                    : !reviewState.current
+                      ? 'Revisão visual do rascunho atual pendente'
+                      : site.pages.length
+                        ? site.pages.some((item) => item.dirty)
+                          ? 'Rascunho pronto para sua revisão'
+                          : 'Páginas publicadas e atualizadas'
+                        : 'Crie as páginas para começar'}
               </summary>
               <p className="mt-2 text-[var(--color-muted)]">
-                Confira a prévia e as imagens antes de publicar. Os ajustes
-                feitos pelo chat são salvos no rascunho.
+                {reviewState.complete
+                  ? 'Desktop e celular têm evidência da versão atual. Sugestões estéticas não bloqueiam a publicação.'
+                  : 'Confira a prévia e as imagens antes de publicar. Os ajustes feitos pelo chat são salvos no rascunho.'}
               </p>
               <ul>
+                {reviewFindings.map((finding) => {
+                  const slug = finding.page.replace(/^\//, '');
+                  const canOpen = site.pages.some((item) => item.slug === slug);
+                  return (
+                    <li
+                      key={finding.id}
+                      className={
+                        finding.level === 'error'
+                          ? 'text-[var(--color-err)]'
+                          : 'text-[var(--color-muted)]'
+                      }
+                    >
+                      {canOpen ? (
+                        <button
+                          type="button"
+                          onClick={() => setCurrent(slug)}
+                          className="mr-2 underline"
+                        >
+                          {finding.page}
+                        </button>
+                      ) : (
+                        <strong className="mr-2">{finding.page}</strong>
+                      )}
+                      <span>{finding.correction}</span>
+                      {finding.evidence ? (
+                        <small className="mt-1 block">
+                          Evidência: {finding.evidence}
+                        </small>
+                      ) : null}
+                    </li>
+                  );
+                })}
                 {site.errors.map((message) => (
                   <li key={message} className="text-[var(--color-err)]">
                     {message}

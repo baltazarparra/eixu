@@ -41,6 +41,8 @@ function toTenant(row: Row): Tenant {
     ga4Id: (row.ga4_id as string) ?? null,
     metaPixelId: (row.meta_pixel_id as string) ?? null,
     locale: str(row.locale, 'pt-BR'),
+    publishedSnapshot:
+      (row.published_snapshot as Tenant['publishedSnapshot']) ?? null,
   };
 }
 
@@ -56,6 +58,13 @@ function toPage(row: Row): Page {
     blocks: (row.blocks ?? []) as BlockInstance[],
     publishedBlocks: (row.published_blocks ?? null) as BlockInstance[] | null,
     publishedSeo: (row.published_seo ?? null) as Seo | null,
+    publishedTitle: row.published_title ? str(row.published_title) : null,
+    publishedType: (row.published_type as PageType | null) ?? null,
+    publishedMeta: (row.published_meta ?? null) as Page['meta'] | null,
+    publishedNavOrder:
+      row.published_nav_order === null || row.published_nav_order === undefined
+        ? null
+        : Number(row.published_nav_order),
     publishedAt: row.published_at ? str(row.published_at) : null,
     navOrder: Number(row.nav_order ?? 0),
   };
@@ -144,10 +153,15 @@ export async function getPageById(id: string): Promise<Page | null> {
 /** Posts publicados, para a listagem do blog e para o sitemap. */
 export async function listPublishedPosts(tenantId: string) {
   const rows = (await db()`
-    select slug, title, meta, published_at
+    select slug,
+           coalesce(published_title, title) as title,
+           coalesce(published_meta, meta) as meta,
+           published_at
     from pages
-    where tenant_id = ${tenantId} and type = 'post' and published_blocks is not null
-    order by coalesce(meta->>'date', published_at::text) desc
+    where tenant_id = ${tenantId}
+      and coalesce(published_type, type) = 'post'
+      and published_blocks is not null
+    order by coalesce(coalesce(published_meta, meta)->>'date', published_at::text) desc
   `) as Row[];
   return rows.map((row) => ({
     slug: str(row.slug),
@@ -161,7 +175,7 @@ export async function listPublishedPosts(tenantId: string) {
 
 export async function listPublishedPages(tenantId: string) {
   const rows = (await db()`
-    select slug, type, published_at, published_seo
+    select slug, coalesce(published_type, type) as type, published_at, published_seo
     from pages
     where tenant_id = ${tenantId} and published_blocks is not null
   `) as Row[];

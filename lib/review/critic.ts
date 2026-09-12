@@ -82,13 +82,18 @@ export type ReviewFinding = z.infer<typeof reviewSchema>['findings'][number];
  * Confere o par página/bloco de cada achado. Uma referência errada não pode
  * derrubar a revisão inteira: com o schema sem enum de caminhos, isso deixava
  * o cliente preso na fase de revisão por uma citação imprecisa. Achado sem
- * página existente não é acionável e sai; id de bloco inexistente perde só a
- * âncora. As duas contagens voltam para o recibo e para o log.
+ * página existente permanece como pendência não localizada; id de bloco
+ * inexistente perde só a âncora. As duas contagens voltam para o recibo e o log.
  */
 export function resolveReviewReferences(
   pages: Page[],
   findings: ReviewFinding[],
-): { findings: ReviewFinding[]; unresolved: number; unlinked: number } {
+): {
+  findings: ReviewFinding[];
+  unresolvedFindings: ReviewFinding[];
+  unresolved: number;
+  unlinked: number;
+} {
   const paths = new Map(
     pages.map((page) => [
       `/${page.slug}`,
@@ -96,6 +101,7 @@ export function resolveReviewReferences(
     ]),
   );
   const resolved: ReviewFinding[] = [];
+  const unresolvedFindings: ReviewFinding[] = [];
   let unresolved = 0;
   let unlinked = 0;
   for (const finding of findings) {
@@ -103,6 +109,10 @@ export function resolveReviewReferences(
     const blocks = paths.get(page);
     if (!blocks) {
       unresolved += 1;
+      // O defeito material continua no relatório mesmo sem uma âncora válida.
+      // O agente pode conferir o conjunto ou pedir uma nova localização; antes
+      // ele simplesmente desaparecia da decisão final.
+      unresolvedFindings.push({ ...finding, page, blockId: null });
       continue;
     }
     const blockId =
@@ -110,7 +120,7 @@ export function resolveReviewReferences(
     if (finding.blockId && !blockId) unlinked += 1;
     resolved.push({ ...finding, page, blockId });
   }
-  return { findings: resolved, unresolved, unlinked };
+  return { findings: resolved, unresolvedFindings, unresolved, unlinked };
 }
 
 /** Pixels vão como FilePart; o loop principal recebe só o relatório validado. */
@@ -163,10 +173,8 @@ Verifique factualidade da oferta, identidade ligada ao negócio e à vibe, decis
 Cada achado precisa citar evidência observável, página e bloco existente quando identificável; use blockId null quando não conseguir localizá-lo. Error é defeito material: afirmação contradita/sem evidência, texto ilegível, conteúdo cortado, ação inacessível, imagem quebrada. Preferência estética é warn. Não invente defeitos para parecer rigoroso. Registre o que funciona para o editor preservar. Não autorize publicação e não afirme ter visto páginas ou viewports ausentes.`,
     messages: [{ role: 'user', content }],
   });
-  const { findings, unresolved, unlinked } = resolveReviewReferences(
-    pages,
-    result.output.findings,
-  );
+  const { findings, unresolvedFindings, unresolved, unlinked } =
+    resolveReviewReferences(pages, result.output.findings);
   if (unresolved || unlinked)
     console.warn('[review] referências da crítica', { unresolved, unlinked });
   const usage = {
@@ -182,5 +190,12 @@ Cada achado precisa citar evidência observável, página e bloco existente quan
     ),
   };
   console.info('[review] usage', usage);
-  return { ...result.output, findings, unresolved, unlinked, usage };
+  return {
+    ...result.output,
+    findings,
+    unresolvedFindings,
+    unresolved,
+    unlinked,
+    usage,
+  };
 }

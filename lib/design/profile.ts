@@ -5,6 +5,7 @@ import {
   DISPLAY_FONTS,
   DISPLAY_TYPE,
 } from './typography';
+import { plannedSceneInputSchema } from '@/lib/images/scene-plan';
 
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
@@ -31,6 +32,8 @@ export const creativeBriefSchema = z.object({
     .min(3)
     .max(12)
     .optional(),
+  /** Nasce junto do plano editorial; o estúdio executa sem novo turno de IA. */
+  imageScenes: z.array(plannedSceneInputSchema).min(5).max(6).optional(),
 });
 
 export const designProfileInputSchema = z.object({
@@ -99,7 +102,7 @@ export type DesignProfile = Omit<
   | 'motion'
   | 'density'
 > & {
-  version: 2;
+  version: 2 | 3;
   signature: string;
   definedAt: string;
 };
@@ -138,7 +141,7 @@ export function completeDesignProfile(
     motif: input.motif,
   };
   return {
-    version: 2,
+    version: 3,
     ...structural,
     signature: designSignature(structural),
     definedAt: now,
@@ -149,7 +152,7 @@ export function isDesignProfile(value: unknown): value is DesignProfile {
   if (!value || typeof value !== 'object') return false;
   const profile = value as Partial<DesignProfile>;
   return (
-    profile.version === 2 &&
+    (profile.version === 2 || profile.version === 3) &&
     typeof profile.concept === 'string' &&
     typeof profile.signatureElement === 'string' &&
     DESIGN_AXES.every((axis) => typeof profile[axis] === 'string')

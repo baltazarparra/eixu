@@ -1,72 +1,102 @@
 'use client';
 
 import { useState } from 'react';
-import { VIBES, VIBE_HINT, VIBE_LABEL } from '@/lib/design/vibes';
+import {
+  VIBES,
+  VIBE_HINT,
+  VIBE_LABEL,
+  VIBE_PALETTE,
+  type Vibe,
+} from '@/lib/design/vibes';
 
-/**
- * Marca do cliente no cadastro. Definir logo e cores aqui evita que o agente
- * invente uma paleta que depois precisa ser desfeita: a direção de arte
- * escolhe estrutura e tipografia, não a cor da marca.
- */
 const COLORS = [
-  [
-    'primary',
-    'Cor primária',
-    '#1f6feb',
-    'Seções e superfícies com a cor da marca.',
-  ],
-  [
-    'secondary',
-    'Cor secundária',
-    '#14532d',
-    'Tom complementar, para alternar o ritmo das seções.',
-  ],
-  ['highlight', 'Cor de acento', '#1f6feb', 'Botões, links e destaques.'],
+  ['primary', 'Cor primária', 'Seções e superfícies com a cor da marca.'],
+  ['secondary', 'Cor secundária', 'Tom complementar para o ritmo das seções.'],
+  ['highlight', 'Cor de acento', 'Botões, links e destaques.'],
 ] as const;
 
-export function BrandFields() {
-  const [values, setValues] = useState<Record<string, string>>(
-    Object.fromEntries(COLORS.map(([name, , initial]) => [name, initial])),
+/** A mesma microcomposição torna as quatro linguagens comparáveis. */
+export function VibePreview({ vibe }: { vibe: Vibe }) {
+  return (
+    <span className="admin-vibe-preview" data-vibe={vibe} aria-hidden="true">
+      <span className="admin-vibe-nav" />
+      <span className="admin-vibe-copy">
+        <span />
+        <span />
+        <span />
+      </span>
+      <span className="admin-vibe-image" />
+      <span className="admin-vibe-accent" />
+    </span>
   );
+}
+
+/**
+ * A paleta inicial é uma sugestão visual. Ela só vira decisão imutável do
+ * operador quando ele edita uma cor; assim o agente pode adaptar o ponto de
+ * partida ao negócio sem sobrescrever uma escolha consciente.
+ */
+export function BrandFields() {
+  const [vibe, setVibe] = useState<Vibe>('comercial');
+  const [values, setValues] = useState<Record<string, string>>(
+    VIBE_PALETTE.comercial,
+  );
+  const [paletteEdited, setPaletteEdited] = useState(false);
+
+  function chooseVibe(next: Vibe) {
+    setVibe(next);
+    if (!paletteEdited) setValues(VIBE_PALETTE[next]);
+  }
+
+  function changeColor(name: string, value: string) {
+    setPaletteEdited(true);
+    setValues((current) => ({ ...current, [name]: value }));
+  }
+
+  function resetPalette() {
+    setPaletteEdited(false);
+    setValues(VIBE_PALETTE[vibe]);
+  }
 
   return (
     <>
       <fieldset className="mt-7 border-t pt-6">
-        <legend className="text-base font-semibold">Vibe do site</legend>
+        <legend className="text-base font-semibold">Direção visual</legend>
         <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
-          Define a linguagem visual que o agente pode usar: tipografia, ritmo,
-          superfícies e tratamento de imagem. Vale para o site inteiro e é
-          escolhida só aqui; mudar depois exige reconstruir as páginas.
+          Compare a mesma estrutura nas quatro direções. A escolha coordena
+          tipografia, navegação, escala, ícones, imagens e ritmo do site
+          inteiro.
         </p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {VIBES.map((vibe, index) => (
-            <label
-              key={vibe}
-              className="flex cursor-pointer flex-col gap-1.5 rounded-lg border p-4 text-sm has-checked:border-[var(--color-accent)]"
-            >
-              <span className="flex items-center gap-3 font-medium">
+        <div className="admin-vibe-grid">
+          {VIBES.map((option) => (
+            <label key={option} className="admin-vibe-card">
+              <VibePreview vibe={option} />
+              <span className="admin-vibe-choice">
                 <input
                   type="radio"
                   name="vibe"
-                  value={vibe}
-                  defaultChecked={index === 0}
-                  className="shrink-0"
+                  value={option}
+                  checked={vibe === option}
+                  onChange={() => chooseVibe(option)}
                 />
-                {VIBE_LABEL[vibe]}
+                <strong>{VIBE_LABEL[option]}</strong>
               </span>
-              <small className="text-[12.5px] leading-relaxed text-[var(--color-muted)]">
-                {VIBE_HINT[vibe]}
-              </small>
+              <small>{VIBE_HINT[option]}</small>
             </label>
           ))}
         </div>
       </fieldset>
-      <div className="mt-7 border-t pt-6">
-        <h2 className="text-base font-semibold">Marca</h2>
-        <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
-          O logo e as cores valem para o site inteiro. O site escurece sozinho
-          uma cor que não alcança contraste mínimo no texto.
+      <details className="admin-optional-fields mt-7 border-t pt-6">
+        <summary>Marca, logo e cores</summary>
+        <p className="mt-2 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
+          A sugestão muda com a direção visual. Edite apenas quando houver uma
+          cor oficial; a partir daí o agente preserva sua escolha.
         </p>
+        <input
+          type="hidden"
+          name="paletteSource"
+          value={paletteEdited ? 'operador' : 'sugerida'}
+        />
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="admin-field">
             <span>Logo do cliente</span>
@@ -80,7 +110,24 @@ export function BrandFields() {
               Opcional, até 8 MB. Pode enviar depois em Dados.
             </small>
           </label>
-          {COLORS.map(([name, label, initial, hint]) => (
+          <div className="admin-field">
+            <span>Origem da paleta</span>
+            <strong>
+              {paletteEdited
+                ? 'Cores confirmadas por você'
+                : 'Sugestão da vibe'}
+            </strong>
+            {paletteEdited ? (
+              <button
+                type="button"
+                className="admin-inline-action"
+                onClick={resetPalette}
+              >
+                Voltar à sugestão
+              </button>
+            ) : null}
+          </div>
+          {COLORS.map(([name, label, hint]) => (
             <label key={name} className="admin-field">
               <span>{label}</span>
               <span className="flex items-center gap-3">
@@ -89,15 +136,10 @@ export function BrandFields() {
                   value={
                     /^#[0-9a-f]{6}$/i.test(values[name])
                       ? values[name]
-                      : initial
+                      : VIBE_PALETTE[vibe][name]
                   }
                   aria-label={label}
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      [name]: event.target.value,
-                    }))
-                  }
+                  onChange={(event) => changeColor(name, event.target.value)}
                   className="admin-color"
                   aria-describedby={`${name}-hint`}
                 />
@@ -109,12 +151,7 @@ export function BrandFields() {
                   pattern="#[0-9A-Fa-f]{6}"
                   maxLength={7}
                   required
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      [name]: event.target.value,
-                    }))
-                  }
+                  onChange={(event) => changeColor(name, event.target.value)}
                 />
               </span>
               <small id={`${name}-hint`} className="text-[var(--color-muted)]">
@@ -123,7 +160,7 @@ export function BrandFields() {
             </label>
           ))}
         </div>
-      </div>
+      </details>
     </>
   );
 }

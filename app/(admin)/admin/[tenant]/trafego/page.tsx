@@ -18,8 +18,12 @@ export default async function TrafficPage({
   params: Promise<{ tenant: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  if (!(await isAuthenticated())) redirect('/admin/login');
-  const tenant = await adminTenant((await params).tenant);
+  const { tenant: slug } = await params;
+  if (!(await isAuthenticated()))
+    redirect(
+      `/admin/login?returnTo=${encodeURIComponent(`/admin/${slug}/trafego`)}`,
+    );
+  const tenant = await adminTenant(slug);
   if (!tenant) notFound();
   const query = await searchParams;
   const parsed = periodSchema.safeParse({

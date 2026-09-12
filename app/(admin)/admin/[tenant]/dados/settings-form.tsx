@@ -1,19 +1,26 @@
 'use client';
 
-import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { text } from '@/lib/form-data';
 import { formSnapshot, changedFields } from '@/lib/admin/form-changes';
 import { StatusDot } from '@/components/admin/primitives';
 import { TenantFields } from '@/components/admin/tenant-fields';
+import { VibePreview } from '@/components/admin/brand-fields';
 import { DeleteTenantDialog } from '@/components/admin/delete-tenant-dialog';
 import { SocialProfileCard } from './social-card';
 import { adminFetch } from '@/lib/admin/http';
 import { contactsFromForm, intakeFromForm } from '@/lib/admin/tenant-input';
 import type { Intake } from '@/lib/tenant-intake';
 import type { Contacts } from '@/lib/tenant-contacts';
-import { VIBE_HINT, VIBE_LABEL, type Vibe } from '@/lib/design/vibes';
+import { VIBES, VIBE_HINT, VIBE_LABEL, type Vibe } from '@/lib/design/vibes';
 import type { SocialProfile } from '@/lib/social-profile';
 
 export function SettingsForm({
@@ -65,6 +72,29 @@ export function SettingsForm({
       form.removeEventListener('change', measure);
     };
   }, [version]);
+  useEffect(() => {
+    if (!dirty) return;
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    const followLink = (event: MouseEvent) => {
+      const link = (event.target as Element | null)?.closest('a[href]');
+      if (!link || event.defaultPrevented) return;
+      const url = new URL((link as HTMLAnchorElement).href, location.href);
+      if (url.pathname === location.pathname && url.search === location.search)
+        return;
+      if (
+        !window.confirm('Há alterações não salvas. Deseja sair e descartá-las?')
+      )
+        event.preventDefault();
+    };
+    window.addEventListener('beforeunload', beforeUnload);
+    document.addEventListener('click', followLink, true);
+    return () => {
+      window.removeEventListener('beforeunload', beforeUnload);
+      document.removeEventListener('click', followLink, true);
+    };
+  }, [dirty]);
   const [notice, setNotice] = useState('');
   const [saving, setSaving] = useState(false);
   const [logoUrl, setLogoUrl] = useState(tenant.logoUrl);
@@ -95,8 +125,9 @@ export function SettingsForm({
     setSaving(true);
     setNotice('');
     try {
-      const { social: next } = await adminFetch<{
+      const { social: next, regenerationRequired } = await adminFetch<{
         social: SocialProfile | null;
+        regenerationRequired: boolean;
       }>(`/api/admin/${tenant.slug}/settings`, {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
@@ -105,6 +136,7 @@ export function SettingsForm({
           contacts: nextContacts.data,
           contactEmail: form.get('contactEmail'),
           intake: parsed.data,
+          vibe: form.get('vibe'),
         }),
       });
       setSaved({
@@ -112,6 +144,7 @@ export function SettingsForm({
           ...tenant,
           name: text(form, 'name').trim(),
           contactEmail: text(form, 'contactEmail').trim(),
+          vibe: text(form, 'vibe') as Vibe,
         },
         intake: parsed.data,
         contacts: nextContacts.data,
@@ -121,7 +154,9 @@ export function SettingsForm({
       setProfile(next);
       setSocialUrl(parsed.data.socialUrl);
       setNotice(
-        'Dados salvos. O briefing será usado nas próximas edições do site.',
+        regenerationRequired
+          ? 'Direção salva no rascunho. Volte ao Site e use Continuar para recompor as páginas; a versão publicada foi preservada.'
+          : 'Dados salvos no rascunho. O briefing será usado nas próximas edições do site.',
       );
     } catch (error) {
       setNotice(
@@ -149,7 +184,9 @@ export function SettingsForm({
         body: JSON.stringify({ logoUrl: url }),
       });
       setLogoUrl(url);
-      setNotice('Logo enviado e aplicado no site.');
+      setNotice(
+        'Logo aplicado ao rascunho. O site no ar muda na próxima publicação.',
+      );
     } catch (error) {
       setNotice(
         error instanceof Error
@@ -167,7 +204,8 @@ export function SettingsForm({
           ['identificacao', 'Identificação'],
           ['contato', 'Contato'],
           ['briefing', 'Briefing'],
-          ['marca', 'Marca'],
+          ['direcao', 'Direção visual'],
+          ['marca', 'Logo'],
           ['risco', 'Zona de risco'],
         ].map(([id, label]) => (
           <a
@@ -196,15 +234,35 @@ export function SettingsForm({
               intake={saved.intake}
               contacts={saved.contacts}
             />
+            <section id="direcao" className="admin-form-section">
+              <h2 className="text-base font-semibold">Direção visual</h2>
+              <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
+                Uma troca abre uma nova direção no rascunho e preserva a versão
+                publicada. Depois de salvar, volte ao Site e use Continuar para
+                planejar, criar e conferir a recomposição.
+              </p>
+              <div className="admin-vibe-grid">
+                {VIBES.map((vibe) => (
+                  <label key={vibe} className="admin-vibe-card">
+                    <VibePreview vibe={vibe} />
+                    <span className="admin-vibe-choice">
+                      <input
+                        type="radio"
+                        name="vibe"
+                        value={vibe}
+                        defaultChecked={saved.tenant.vibe === vibe}
+                      />
+                      <strong>{VIBE_LABEL[vibe]}</strong>
+                    </span>
+                    <small>{VIBE_HINT[vibe]}</small>
+                  </label>
+                ))}
+              </div>
+            </section>
             <p className="mt-5 text-xs leading-relaxed text-[var(--color-muted)]">
-              Nome, contatos e logo são compartilhados com o site publicado.
-              Alterar o briefing orienta novas edições; não reescreve páginas
-              automaticamente.
-            </p>
-            <p className="mt-3 text-xs leading-relaxed text-[var(--color-muted)]">
-              Vibe do site: <strong>{VIBE_LABEL[tenant.vibe]}</strong>.{' '}
-              {VIBE_HINT[tenant.vibe]} Ela é definida no cadastro; mudar exige
-              reconstruir as páginas na conversa do site.
+              Nome, contatos, logo e direção alteram o rascunho. O site no ar
+              continua no snapshot anterior até Publicar. Alterar o briefing
+              orienta novas edições; não reescreve páginas automaticamente.
             </p>
           </fieldset>
         </form>

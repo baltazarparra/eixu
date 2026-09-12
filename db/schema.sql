@@ -117,6 +117,61 @@ alter table images        add column if not exists kind text not null default 'f
 -- reescrita inteira pelas ferramentas do agente e brief é briefing; estes são
 -- dados de produto renderizados no rodapé e na seção de localização.
 alter table tenants       add column if not exists contacts jsonb not null default '{}'::jsonb;
+-- Snapshot da apresentação global. Mantém marca, vibe e contatos do site no
+-- ar enquanto o rascunho recebe uma recomposição completa.
+alter table tenants       add column if not exists published_snapshot jsonb;
+alter table pages         add column if not exists published_title text;
+alter table pages         add column if not exists published_type text;
+alter table pages         add column if not exists published_meta jsonb;
+alter table pages         add column if not exists published_nav_order int;
+
+-- A primeira aplicação captura o que já está no ar. Sem este backfill, uma
+-- edição de marca ou metadado posterior à migração ainda vazaria para clientes
+-- publicados antes do snapshot. Telefones e rede social legados seguem a mesma
+-- recuperação tolerante de lib/tenant-contacts.ts.
+update tenants
+set published_snapshot = jsonb_build_object(
+  'name', name,
+  'brand', brand,
+  'dials', dials,
+  'contacts', coalesce(contacts, '{}'::jsonb) || jsonb_build_object(
+    'phones', case
+      when jsonb_typeof(contacts -> 'phones') = 'array'
+           and jsonb_array_length(contacts -> 'phones') > 0
+        then contacts -> 'phones'
+      when nullif(whatsapp, '') is not null
+        then jsonb_build_array(jsonb_build_object('number', whatsapp, 'whatsapp', true))
+      else '[]'::jsonb
+    end,
+    'addresses', case
+      when jsonb_typeof(contacts -> 'addresses') = 'array'
+        then contacts -> 'addresses'
+      else '[]'::jsonb
+    end,
+    'social', case
+      when jsonb_typeof(contacts -> 'social') = 'array'
+        then contacts -> 'social'
+      when nullif(brief #>> '{intake,socialUrl}', '') is not null
+        then jsonb_build_array(brief #>> '{intake,socialUrl}')
+      else '[]'::jsonb
+    end
+  ),
+  'whatsapp', whatsapp,
+  'contactEmail', contact_email,
+  'locale', locale
+)
+where status = 'published' and published_snapshot is null;
+
+update pages
+set published_title = title,
+    published_type = type,
+    published_meta = meta,
+    published_nav_order = nav_order
+where published_blocks is not null
+  and (published_title is null
+    or published_type is null
+    or published_meta is null
+    or published_nav_order is null);
 
 create index if not exists pages_tenant_idx        on pages (tenant_id);
 create index if not exists images_tenant_time_idx  on images (tenant_id, created_at desc);

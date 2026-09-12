@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { tool } from 'ai';
 import { z } from 'zod';
 import { db } from '@/lib/db';
@@ -35,8 +36,10 @@ import { replaceDraftImage } from '@/lib/images/replacement';
 import { withSceneGenerationLock } from '@/lib/images/generation-lock';
 import {
   SCENE_ROLES,
+  SCENE_TARGET_BLOCKS,
   sceneCoverage,
   scenePlan,
+  sceneRequestsMatchPlan,
   sceneText,
 } from '@/lib/images/scene-plan';
 import { RATIOS, expectedRatio } from '@/lib/images/ratios';
@@ -55,7 +58,12 @@ import { capturePages, type Shot } from '@/lib/review/capture';
 import { critiquePages } from '@/lib/review/critic';
 import {
   captureEnabled,
+  pageReviewFingerprint,
+  pendingReviewPages,
   reviewFingerprint,
+  savedReview,
+  type PageReviewReceipt,
+  type ReviewFindingReceipt,
   type ReviewReceipt,
 } from '@/lib/review/state';
 import {
@@ -151,7 +159,56 @@ export type ToolContext = {
   /** Última mensagem do operador, para as decisões que exigem pedido dele. */
   lastUserText?: string;
   editPolicy?: EditPolicy;
+  /** Subetapas persistidas pelo runner para o painel acompanhar a revisão. */
+  onReviewProgress?: (event: {
+    stage: 'preflight' | 'capture' | 'critic';
+    label: string;
+    completed?: number;
+    total?: number;
+    page?: string;
+    viewport?: 'desktop' | 'mobile';
+  }) => void | Promise<void>;
 };
+
+function reviewFindingId(
+  finding: Omit<ReviewFindingReceipt, 'id' | 'status'>,
+  occurrence = 0,
+): string {
+  return createHash('sha256')
+    .update(
+      [
+        finding.pagina,
+        finding.regra,
+        finding.bloco ?? '',
+        finding.viewport ?? '',
+        occurrence,
+      ].join('|'),
+    )
+    .digest('hex')
+    .slice(0, 16);
+}
+
+/** IDs estáveis permitem distinguir problema persistente de resolvido. */
+function identifyFindings(
+  findings: Omit<ReviewFindingReceipt, 'id' | 'status'>[],
+): ReviewFindingReceipt[] {
+  const occurrences = new Map<string, number>();
+  return findings.map((finding) => {
+    const key = [
+      finding.pagina,
+      finding.regra,
+      finding.bloco ?? '',
+      finding.viewport ?? '',
+    ].join('|');
+    const occurrence = occurrences.get(key) ?? 0;
+    occurrences.set(key, occurrence + 1);
+    return {
+      ...finding,
+      id: reviewFindingId(finding, occurrence),
+      status: 'open',
+    };
+  });
+}
 
 /**
  * Trocar o logo do site é decisão do operador. O prompt já dizia isso e mesmo
@@ -201,7 +258,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
     const { pages } = input;
     if (!isDesignProfile(activeBrand.design)) {
       throw new ToolError(
-        'build_site exige uma direção v2 persistida. Chame set_design antes de montar as páginas.',
+        'build_site exige uma direção de arte persistida. Chame set_design antes de montar as páginas.',
       );
     }
     const staged = pages.map((input) => {
@@ -310,7 +367,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
     prepare_site_images: tool({
       description:
-        'Gera cenas do site com o guia do cliente e crítica por imagem. Na etapa de cenas é uma cena por chamada, a próxima do plano. Retorna número e URL disponíveis para uso imediato, sem aprovação. Para alterar uma imagem existente pelo número, use update_image.',
+        'Executa em uma chamada todas as cenas que faltam no plano, em lotes concorrentes de três, com o guia do cliente e crítica informativa por imagem. Retorna número e URL disponíveis imediatamente, sem aprovação. Para alterar uma imagem existente pelo número, use update_image.',
       inputSchema: z.object({
         scenes: z
           .array(
@@ -327,20 +384,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
                 .describe(
                   'O papel da cena no site, conforme o plano de cenas.',
                 ),
-              targetBlock: z.enum([
-                'hero.split',
-                'hero.cover',
-                'hero.poster',
-                'hero.editorial',
-                'hero.offset',
-                'hero.atelier',
-                'narrative.split',
-                'feature.bento',
-                'feature.explorer',
-                'editorial.resources',
-                'media.image',
-                'media.gallery',
-              ]),
+              targetBlock: z.enum(SCENE_TARGET_BLOCKS),
               ratio: z
                 .enum(RATIOS)
                 .optional()
@@ -354,7 +398,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         const design = activeBrand.design;
         if (!isDesignProfile(design))
           throw new ToolError(
-            'prepare_site_images exige a direção v2. Chame set_design antes de gerar cenas.',
+            'prepare_site_images exige a direção de arte. Chame set_design antes de gerar cenas.',
           );
         // O estúdio gera em lotes paralelos. Uma cena por requisição fazia o
         // plano inteiro custar cinco idas ao modelo e cinco minutos de espera.
@@ -707,9 +751,17 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
     review_pages: tool({
       description:
-        'Revisa o rascunho inteiro e devolve o que ficou pobre, com página e bloco apontados: página sem foto, home sem seção protagonista, tom repetido, proporção incoerente com o layout, silhueta repetida e erros de pre-flight. Use na fase de revisão, antes de considerar o site pronto.',
-      inputSchema: z.object({}),
-      execute: safe(async () => {
+        'Valida primeiro a estrutura e revisa em pixels somente páginas sem recibo atual. Devolve achados estáveis com página, bloco e evidência. Informe pages apenas para limitar a próxima captura; a conclusão ainda exige cobertura atual de todo o site.',
+      inputSchema: z.object({
+        pages: z
+          .array(z.string().max(160))
+          .max(12)
+          .optional()
+          .describe(
+            'Caminhos afetados, como ["/servicos"]. Omita para revisar automaticamente tudo que estiver sem evidência atual.',
+          ),
+      }),
+      execute: safe(async ({ pages: requestedPages }) => {
         if (reviewRounds >= REVIEW_CALLS_PER_TURN)
           throw new ToolError(
             `${REVIEW_CALLS_PER_TURN} leituras neste turno. Informe as pendências e encerre o turno; uma nova rodada precisa partir do rascunho atual.`,
@@ -726,7 +778,30 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           throw new ToolError(
             'Não há páginas para revisar. Monte o projeto com build_site antes.',
           );
-        const apontamentos = [
+        const normalizePage = (value: string) => {
+          const clean = value.trim().replace(/^\/+|\/+$/g, '');
+          return `/${clean}`;
+        };
+        const pageByPath = new Map(
+          pages.map((page) => [`/${page.slug}`, page]),
+        );
+        const requested = requestedPages?.length
+          ? new Set(requestedPages.map(normalizePage))
+          : null;
+        const invalid = requested
+          ? [...requested].filter((path) => !pageByPath.has(path))
+          : [];
+        if (invalid.length)
+          throw new ToolError(
+            `Página(s) inexistente(s) na revisão: ${invalid.join(', ')}. Use list_state para ver os caminhos atuais.`,
+          );
+
+        const preflightStarted = Date.now();
+        await context.onReviewProgress?.({
+          stage: 'preflight',
+          label: 'Validando estrutura, conteúdo e publicação',
+        });
+        const deterministic = identifyFindings([
           ...lintSite(pages, images, 'publish').map((finding) => ({
             pagina: finding.page,
             nivel: finding.level,
@@ -755,84 +830,337 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
                 correcao: finding.message,
               })),
           ),
-        ];
+        ]);
+        const preflightMs = Date.now() - preflightStarted;
         const metrics = siteMetrics(pages, images);
+        const previous = savedReview(reviewedTenant);
+        const pageReceipts: Record<string, PageReviewReceipt> = {};
+        if (previous?.version === 2 && previous.pages) {
+          for (const page of pages) {
+            const path = `/${page.slug}`;
+            const saved = previous.pages[path];
+            if (
+              saved?.fingerprint ===
+              pageReviewFingerprint(reviewedTenant, page, images)
+            )
+              pageReceipts[path] = saved;
+          }
+        }
+
+        const stale = pendingReviewPages(
+          reviewedTenant,
+          pages,
+          images,
+          previous,
+        );
+        const targets = stale.filter(
+          (page) => !requested || requested.has(`/${page.slug}`),
+        );
+        const blockingPreflight = deterministic.filter(
+          (finding) => finding.nivel === 'error',
+        );
         let capturas: Shot[] = [];
-        let visual: ReviewReceipt['visual'] = captureEnabled()
-          ? 'unavailable'
-          : 'disabled';
+        let captureMs = 0;
+        let criticMs = 0;
+        const reviewedPaths = new Set<string>();
+        const technicalFindings: ReviewFindingReceipt[] = [];
         let critica: Awaited<ReturnType<typeof critiquePages>> | undefined;
-        if (captureEnabled()) {
+        let captureFailures: {
+          page: string;
+          viewport: 'desktop' | 'mobile';
+          message: string;
+        }[] = [];
+        let criticFailed = false;
+
+        // Erro determinístico já é acionável. Capturar o mesmo rascunho só
+        // acrescentaria custo e repetiria um problema que o agente pode reparar.
+        if (blockingPreflight.length) {
+          await context.onReviewProgress?.({
+            stage: 'preflight',
+            label: `${blockingPreflight.length} erro(s) estrutural(is) encontrado(s); pixels preservados`,
+          });
+        } else if (!captureEnabled()) {
+          for (const page of targets) {
+            const path = `/${page.slug}`;
+            pageReceipts[path] = {
+              fingerprint: pageReviewFingerprint(reviewedTenant, page, images),
+              visual: 'disabled',
+              viewports: { desktop: false, mobile: false },
+              errors: 1,
+              reviewedAt: new Date().toISOString(),
+              findings: identifyFindings([
+                {
+                  pagina: path,
+                  nivel: 'error',
+                  regra: 'revisao-desabilitada',
+                  correcao:
+                    'A captura visual está desabilitada. Ative-a e confira desktop e celular antes de concluir.',
+                },
+              ]),
+            };
+          }
+        } else if (targets.length) {
+          const captureStarted = Date.now();
+          await context.onReviewProgress?.({
+            stage: 'capture',
+            label: `Preparando ${targets.length * 2} capturas`,
+            completed: 0,
+            total: targets.length * 2,
+          });
           try {
             if (!context.origin) throw new Error('Origem da prévia ausente.');
             capturas = await capturePages(
               context.origin,
               tenant.slug,
-              pages.map((page) => page.slug),
-              { cookie: context.cookie },
-            );
-            if (capturas.length !== pages.length * 2)
-              throw new Error(
-                'Cobertura visual incompleta; revise todas as páginas em desktop e mobile.',
-              );
-            for (const shot of capturas) {
-              if (shot.overflow || shot.brokenImages)
-                apontamentos.push({
-                  pagina: shot.page,
-                  nivel: 'error',
-                  regra: 'render',
-                  bloco: undefined,
-                  correcao: `${shot.viewport}: ${shot.overflow ? 'overflow horizontal; ' : ''}${shot.brokenImages} imagem(ns) quebrada(s). Corrija e capture novamente.`,
-                });
-            }
-            critica = await critiquePages(reviewedTenant, pages, capturas);
-            visual = 'complete';
-            // Referência imprecisa do crítico não invalida a revisão, mas
-            // precisa aparecer: o editor decide se vale olhar de novo.
-            if (critica.unresolved || critica.unlinked)
-              apontamentos.push({
-                pagina: '/',
-                nivel: 'warn',
-                regra: 'critica-referencia',
-                bloco: undefined,
-                correcao: `${critica.unresolved} achado(s) citaram página inexistente e saíram do relatório; ${critica.unlinked} perderam o id do bloco. Confira a página apontada antes de concluir.`,
-              });
-            apontamentos.push(
-              ...critica.findings.map((finding) => ({
-                pagina: finding.page,
-                nivel: finding.level,
-                regra: finding.criterion,
-                bloco: finding.blockId ?? undefined,
-                correcao: `${finding.evidence} ${finding.correction}`,
-              })),
+              targets.map((page) => page.slug),
+              {
+                cookie: context.cookie,
+                concurrency: 2,
+                retries: 1,
+                onProgress: async (progress) =>
+                  context.onReviewProgress?.({
+                    stage: 'capture',
+                    label: `Conferindo ${progress.page || '/'} no ${progress.viewport === 'mobile' ? 'celular' : 'desktop'} · ${progress.completed} de ${progress.total}`,
+                    ...progress,
+                  }),
+              },
             );
           } catch (error) {
-            // Só nome e mensagem do erro: o diagnóstico da falha ficava
-            // impossível com o nome sozinho, e o corpo da resposta carrega
-            // conteúdo do cliente.
+            const partial = error as {
+              shots?: Shot[];
+              failures?: typeof captureFailures;
+            };
+            if (Array.isArray(partial.shots)) capturas = partial.shots;
+            if (Array.isArray(partial.failures))
+              captureFailures = partial.failures;
             console.error(
               '[review] indisponível:',
               error instanceof Error
                 ? `${error.name}: ${error.message.slice(0, 200)}`
                 : 'unknown',
             );
-            apontamentos.push({
-              pagina: '/',
-              nivel: 'error',
-              regra: 'revisao-indisponivel',
-              bloco: undefined,
-              correcao:
-                'A captura ou crítica visual não completou. Confira a prévia autenticada e retome; o rascunho ainda não está revisado.',
-            });
           }
+          captureMs = Date.now() - captureStarted;
+
+          // Um mock ou provedor antigo não informa a falha por viewport. A
+          // cobertura observada ainda permite localizar exatamente o que falta.
+          for (const page of targets) {
+            const path = `/${page.slug}`;
+            for (const viewport of ['desktop', 'mobile'] as const) {
+              if (
+                !capturas.some(
+                  (shot) => shot.page === path && shot.viewport === viewport,
+                ) &&
+                !captureFailures.some(
+                  (failure) =>
+                    failure.page === path && failure.viewport === viewport,
+                )
+              )
+                captureFailures.push({
+                  page: path,
+                  viewport,
+                  message: 'A captura não devolveu este viewport.',
+                });
+            }
+          }
+
+          const completeTargets = targets.filter((page) => {
+            const path = `/${page.slug}`;
+            return (['desktop', 'mobile'] as const).every((viewport) =>
+              capturas.some(
+                (shot) => shot.page === path && shot.viewport === viewport,
+              ),
+            );
+          });
+          if (completeTargets.length) {
+            const criticStarted = Date.now();
+            await context.onReviewProgress?.({
+              stage: 'critic',
+              label: `Avaliando ${completeTargets.length} página(s) com evidência visual`,
+              completed: 0,
+              total: completeTargets.length,
+            });
+            try {
+              const completePaths = new Set(
+                completeTargets.map((page) => `/${page.slug}`),
+              );
+              critica = await critiquePages(
+                reviewedTenant,
+                completeTargets,
+                capturas.filter((shot) => completePaths.has(shot.page)),
+              );
+              await context.onReviewProgress?.({
+                stage: 'critic',
+                label: `Crítica concluída em ${completeTargets.length} página(s)`,
+                completed: completeTargets.length,
+                total: completeTargets.length,
+              });
+            } catch (error) {
+              criticFailed = true;
+              console.error(
+                '[review] crítica indisponível:',
+                error instanceof Error
+                  ? `${error.name}: ${error.message.slice(0, 200)}`
+                  : 'unknown',
+              );
+            }
+            criticMs = Date.now() - criticStarted;
+          }
+
+          for (const page of targets) {
+            const path = `/${page.slug}`;
+            const pageShots = capturas.filter((shot) => shot.page === path);
+            const viewports = {
+              desktop: pageShots.some((shot) => shot.viewport === 'desktop'),
+              mobile: pageShots.some((shot) => shot.viewport === 'mobile'),
+            };
+            const raw: Omit<ReviewFindingReceipt, 'id' | 'status'>[] = [
+              ...deterministic
+                .filter((finding) => finding.pagina === path)
+                .map(({ id: _id, status: _status, ...finding }) => finding),
+              ...pageShots
+                .filter((shot) => shot.overflow || shot.brokenImages)
+                .map((shot) => ({
+                  pagina: path,
+                  nivel: 'error',
+                  regra: 'render',
+                  viewport: shot.viewport,
+                  correcao: `${shot.viewport}: ${shot.overflow ? 'overflow horizontal; ' : ''}${shot.brokenImages} imagem(ns) quebrada(s). Corrija e capture novamente.`,
+                })),
+              ...captureFailures
+                .filter((failure) => failure.page === path)
+                .map((failure) => ({
+                  pagina: path,
+                  nivel: 'error',
+                  regra: 'captura-indisponivel',
+                  viewport: failure.viewport,
+                  evidencia: failure.message,
+                  correcao: `A captura de ${failure.viewport} falhou após a repetição local. Retome somente esta página.`,
+                })),
+              ...(critica?.findings ?? [])
+                .filter((finding) => finding.page === path)
+                .map((finding) => ({
+                  pagina: path,
+                  nivel: finding.level,
+                  regra: finding.criterion,
+                  bloco: finding.blockId ?? undefined,
+                  evidencia: finding.evidence,
+                  correcao: finding.correction,
+                })),
+            ];
+            const hasBoth = viewports.desktop && viewports.mobile;
+            if (hasBoth && criticFailed)
+              raw.push({
+                pagina: path,
+                nivel: 'error',
+                regra: 'critica-indisponivel',
+                correcao:
+                  'Os pixels foram capturados, mas a crítica não completou. Retome esta página sem reescrever seu conteúdo.',
+              });
+            const findings = identifyFindings(raw);
+            const visual =
+              hasBoth && !criticFailed ? 'complete' : 'unavailable';
+            if (visual === 'complete') reviewedPaths.add(path);
+            pageReceipts[path] = {
+              fingerprint: pageReviewFingerprint(reviewedTenant, page, images),
+              visual,
+              viewports,
+              errors: findings.filter((finding) => finding.nivel === 'error')
+                .length,
+              reviewedAt: new Date().toISOString(),
+              findings,
+            };
+          }
+
+          for (const finding of critica?.unresolvedFindings ?? [])
+            technicalFindings.push(
+              ...identifyFindings([
+                {
+                  pagina: '/',
+                  nivel: finding.level,
+                  regra: 'critica-sem-ancora',
+                  evidencia: `${finding.evidence} Referência informada: ${finding.page}.`,
+                  correcao: `${finding.correction} Localize a página antes de encerrar a revisão.`,
+                },
+              ]),
+            );
+          if (critica?.unlinked)
+            technicalFindings.push(
+              ...identifyFindings([
+                {
+                  pagina: '/',
+                  nivel: 'warn',
+                  regra: 'critica-bloco-sem-ancora',
+                  correcao: `${critica.unlinked} achado(s) perderam o id do bloco, mas continuam ligados à página. Confira a evidência antes de editar.`,
+                },
+              ]),
+            );
         }
+
+        // Uma falha técnica não prova que um defeito visual anterior sumiu.
+        // Preserve achados abertos até uma nova crítica completar a página.
+        const carried = (previous?.findings ?? []).filter(
+          (finding) =>
+            finding.status !== 'resolved' &&
+            pageByPath.has(finding.pagina) &&
+            !reviewedPaths.has(finding.pagina),
+        );
+        const currentOpen = [
+          ...deterministic,
+          ...Object.values(pageReceipts).flatMap((item) => item.findings),
+          ...technicalFindings,
+          ...carried,
+        ];
+        const uniqueOpen = [
+          ...new Map(
+            currentOpen.map((finding) => [
+              finding.id ?? JSON.stringify(finding),
+              finding,
+            ]),
+          ).values(),
+        ];
+        const openIds = new Set(uniqueOpen.map((finding) => finding.id));
+        const resolved = (previous?.findings ?? []).filter(
+          (finding) =>
+            finding.id &&
+            finding.status !== 'resolved' &&
+            reviewedPaths.has(finding.pagina) &&
+            !openIds.has(finding.id),
+        );
+        const complete = pages.every((page) => {
+          const item = pageReceipts[`/${page.slug}`];
+          return (
+            item?.fingerprint ===
+              pageReviewFingerprint(reviewedTenant, page, images) &&
+            item.visual === 'complete' &&
+            item.viewports.desktop &&
+            item.viewports.mobile
+          );
+        });
+        const visual: ReviewReceipt['visual'] = complete
+          ? 'complete'
+          : captureEnabled()
+            ? 'unavailable'
+            : 'disabled';
+        const reviewedAt = new Date().toISOString();
         const receipt: ReviewReceipt = {
+          version: 2,
           fingerprint: reviewFingerprint(reviewedTenant, pages, images),
-          complete: visual === 'complete',
+          complete,
           visual,
-          errors: apontamentos.filter((item) => item.nivel === 'error').length,
-          reviewedAt: new Date().toISOString(),
-          findings: apontamentos,
+          errors: uniqueOpen.filter(
+            (item) => item.nivel === 'error' && item.status !== 'resolved',
+          ).length,
+          reviewedAt,
+          findings: [
+            ...uniqueOpen,
+            ...resolved.map((finding) => ({
+              ...finding,
+              status: 'resolved' as const,
+            })),
+          ],
+          pages: pageReceipts,
+          timings: { preflightMs, captureMs, criticMs },
         };
         const previousGeneration = reviewedTenant.brief.generation as
           | Record<string, unknown>
@@ -868,6 +1196,17 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           review: receipt,
           complete: receipt.complete && receipt.errors === 0,
           visual,
+          preflightOnly: blockingPreflight.length > 0,
+          reviewedPages: [...reviewedPaths],
+          reusedPages: Object.keys(pageReceipts).filter(
+            (path) => !reviewedPaths.has(path),
+          ),
+          pendingPages: pendingReviewPages(
+            reviewedTenant,
+            pages,
+            images,
+            receipt,
+          ).map((page) => `/${page.slug}`),
           pontosFortes: critica?.strengths ?? [],
           criticUsage: critica?.usage,
           medicoes: capturas.map((shot) => ({
@@ -897,8 +1236,8 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
               ),
             };
           }),
-          apontamentos,
-          erros: apontamentos.filter((item) => item.nivel === 'error').length,
+          apontamentos: receipt.findings,
+          erros: receipt.errors,
         };
       }),
     }),
@@ -1066,7 +1405,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
     set_design: tool({
       description:
-        'Define briefing e direção de arte v2 em uma chamada. Obrigatória antes de build_site. A direção é recusada quando repete a arquitetura visual de outro cliente.',
+        'Define briefing e direção de arte versionada em uma chamada. Obrigatória antes de build_site. A direção é recusada quando repete a arquitetura visual de outro cliente.',
       inputSchema: designProfileInputSchema,
       execute: safe(async (input) => {
         // Cor escolhida no cadastro é decisão do operador: a direção de arte
@@ -1134,6 +1473,25 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         }
 
         const profile = completeDesignProfile(input);
+        if (
+          context.phase === 'briefing' &&
+          (!input.brief.imageScenes ||
+            !sceneRequestsMatchPlan(
+              scenePlan(profile, 3),
+              input.brief.imageScenes,
+            ))
+        ) {
+          throw new ToolError(
+            `brief.imageScenes precisa preencher exatamente o plano estrutural: ${scenePlan(
+              profile,
+              3,
+            )
+              .map((scene) => `${scene.role} (${scene.targetBlock})`)
+              .join(
+                ', ',
+              )}. Escreva cada pedido com o assunto da página correspondente.`,
+          );
+        }
         // A comparação é dentro da mesma vibe: faixas diferentes se sobrepõem
         // em vários eixos e um site moderno não repete um ousado com os
         // mesmos enums.

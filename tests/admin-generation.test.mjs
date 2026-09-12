@@ -317,7 +317,28 @@ async function runnerFixture({
           };
         return tenant;
       },
-      listPages: async () => [],
+      listPages: async () => {
+        const state = states[Math.min(calls, states.length - 1)];
+        return state.draft
+          ? [
+              {
+                id: 'page-1',
+                slug: '',
+                title: 'Início',
+                type: 'page',
+                blocks: [
+                  {
+                    id: 'copy',
+                    type: 'editorial.text',
+                    props: { text: state.draft },
+                  },
+                ],
+                seo: {},
+                meta: {},
+              },
+            ]
+          : [];
+      },
     },
     '@/lib/images/queries': { listImages: async () => [] },
     '@/lib/sites/generation': {
@@ -361,11 +382,19 @@ async function runnerFixture({
         generate: async ({ onToolExecutionStart, onToolExecutionEnd }) => {
           calls += 1;
           await onGenerate();
-          onToolExecutionStart({
-            toolCall: { toolName: 'build_site', input: {} },
+          await onToolExecutionStart({
+            toolCall: {
+              toolName: 'build_site',
+              toolCallId: 'synthetic-build',
+              input: {},
+            },
           });
-          onToolExecutionEnd({
-            toolCall: { toolName: 'build_site', input: {} },
+          await onToolExecutionEnd({
+            toolCall: {
+              toolName: 'build_site',
+              toolCallId: 'synthetic-build',
+              input: {},
+            },
             toolOutput: {
               type: 'tool-result',
               output: { ok: true, pages: [1, 2, 3] },
@@ -426,7 +455,7 @@ await test('revisão sem texto do agente registra o resumo do turno antes do rec
   });
   const outcome = await f.executeStep(f.run);
   assert.equal(outcome.kind, 'done');
-  const reply = f.messages[1].text;
+  const reply = f.messages[0].text;
   assert.match(
     reply,
     /^A revisão fez 2 leituras do rascunho renderizado e aplicou 1 ajuste\./,
@@ -504,9 +533,9 @@ await test('edição recusada pela ferramenta real não vira ajuste no resumo do
     toolResults: result.steps.map((step) => step.toolResults),
   });
   assert.equal((await f.executeStep(f.run)).kind, 'failed');
-  assert.match(f.messages[1].text, /fez 0 leituras.*aplicou 0 ajustes/);
+  assert.match(f.messages[0].text, /fez 0 leituras.*aplicou 0 ajustes/);
   assert.match(
-    f.messages[1].text,
+    f.messages[0].text,
     /sem alterar o rascunho nem registrar leitura/,
   );
 });
@@ -563,8 +592,8 @@ await test('resumo conta leituras completas com achados e só edições confirma
     toolResults: [results],
   });
   assert.equal((await f.executeStep(f.run)).kind, 'done');
-  assert.match(f.messages[1].text, /fez 2 leituras.*aplicou 6 ajustes/);
-  assert.match(f.messages[1].text, /Progresso salvo: recibo sintético/);
+  assert.match(f.messages[0].text, /fez 2 leituras.*aplicou 6 ajustes/);
+  assert.match(f.messages[0].text, /Progresso salvo: recibo sintético/);
 });
 
 await test('a etapa grava linha do tempo, mensagens e aponta a próxima fase', async () => {
@@ -582,8 +611,8 @@ await test('a etapa grava linha do tempo, mensagens e aponta a próxima fase', a
   assert.equal(f.events[1].tool, 'build_site');
   assert.match(f.events[2].label, /Projeto salvo/);
   // O histórico do painel continua coerente mesmo sem navegador aberto.
-  assert.equal(f.messages.map((row) => row.role).join(','), 'user,assistant');
-  assert.equal(f.messages[1].text, 'Etapa concluída.');
+  assert.equal(f.messages.map((row) => row.role).join(','), 'assistant');
+  assert.equal(f.messages[0].text, 'Etapa concluída.');
   assert.equal(f.run.hops, 1);
   assert.equal(f.run.progress, 'composicao');
   // O painel perdeu a contagem quando a geração saiu do navegador: sem o
@@ -639,15 +668,15 @@ await test('revisão que esgota o turno abre uma rodada nova em vez de interromp
   assert.equal(first.phase, 'revisao');
   // O marcador é gravado no início do salto: rodada 1, nenhuma leitura ainda.
   assert.match(f.run.progress, /^revisao:1:0:/);
-  assert.match(f.messages[1].text, /limite de passos/);
-  assert.match(f.messages[1].text, /Continua\./);
-  assert.equal(f.events[0].label, 'Revisão · rodada 1 de 3');
+  assert.match(f.messages[0].text, /limite de passos/);
+  assert.match(f.messages[0].text, /Continua\./);
+  assert.equal(f.events[0].label, 'Conferir · rodada 1 de 3');
 
   const second = await f.executeStep(f.run);
   assert.equal(second.kind, 'continue');
   assert.match(f.run.progress, /^revisao:2:1:/);
   assert.ok(
-    f.events.some((event) => event.label === 'Revisão · rodada 2 de 3'),
+    f.events.some((event) => event.label === 'Conferir · rodada 2 de 3'),
     'a rodada precisa aparecer na linha do tempo',
   );
 
@@ -708,7 +737,7 @@ await test('tempo esgotado preserva o progresso salvo e decide pela evidência',
   });
   const outcome = await advanced.executeStep(advanced.run);
   assert.equal(outcome.kind, 'continue');
-  assert.match(advanced.messages[1].text, /excedeu o tempo limite/);
+  assert.match(advanced.messages[0].text, /excedeu o tempo limite/);
   assert.equal(advanced.events.at(-1).kind, 'phase_end');
   assert.equal(advanced.events.at(-1).payload.timeout, true);
 

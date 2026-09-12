@@ -66,7 +66,9 @@ await test(
     );
     assert.equal(await page.$('.admin-rail'), null);
     assert.equal(
-      await page.$$('[aria-label="Sair do painel"]').then((rows) => rows.length),
+      await page
+        .$$('[aria-label="Sair do painel"]')
+        .then((rows) => rows.length),
       1,
     );
     assert.equal(
@@ -172,7 +174,10 @@ await test(
     );
     for (const [route, title] of [
       ['/admin?empty', 'Nenhum cliente cadastrado'],
-      ['/admin/marcenaria-horizonte/imagens?empty', 'O acervo ainda está vazio'],
+      [
+        '/admin/marcenaria-horizonte/imagens?empty',
+        'O acervo ainda está vazio',
+      ],
       ['/admin/marcenaria-horizonte/trafego?empty', 'Nenhuma visita'],
     ]) {
       await open(route);
@@ -184,12 +189,32 @@ await test(
     await open('/admin?empty');
     await clickText('Cadastrar cliente');
     await page.waitForSelector('#new-client');
+    assert.equal(
+      await page.evaluate(() => {
+        const summary = [...document.querySelectorAll('summary')].find(
+          (node) => node.textContent.trim() === 'Mais contexto e contatos',
+        );
+        summary?.click();
+        return !!summary;
+      }),
+      true,
+    );
     await clickText('+ prova');
     await page.type('[aria-label="Novo fato confirmado"]', 'Oficina própria');
     await clickText('Adicionar');
     assert.equal(
       await page.$eval('[name="evidence"]', (node) => node.value),
       'Oficina própria',
+    );
+    assert.equal(
+      await page.evaluate(() => {
+        const summary = [...document.querySelectorAll('summary')].find(
+          (node) => node.textContent.trim() === 'Marca, logo e cores',
+        );
+        summary?.click();
+        return !!summary;
+      }),
+      true,
     );
     await page.$eval('[name="primary"]', (node) => {
       node.value = '#zzzzzz';
@@ -254,7 +279,9 @@ await test(
     await open('/admin');
     assert.equal(await page.$('.admin-mobile-top'), null);
     assert.equal(
-      await page.$$('[aria-label="Sair do painel"]').then((rows) => rows.length),
+      await page
+        .$$('[aria-label="Sair do painel"]')
+        .then((rows) => rows.length),
       1,
     );
     await page.click('.admin-client-row .admin-client-name');

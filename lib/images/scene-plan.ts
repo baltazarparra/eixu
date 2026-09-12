@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import {
   RATIOS,
   expectedRatio,
@@ -15,11 +16,44 @@ export const SCENE_ROLES = [
 ] as const;
 export type SceneRole = (typeof SCENE_ROLES)[number];
 
+export const SCENE_TARGET_BLOCKS = [
+  'hero.split',
+  'hero.cover',
+  'hero.poster',
+  'hero.editorial',
+  'hero.offset',
+  'hero.atelier',
+  'narrative.split',
+  'feature.bento',
+  'feature.explorer',
+  'editorial.resources',
+  'media.image',
+  'media.gallery',
+] as const;
+
+export const plannedSceneInputSchema = z.object({
+  request: z
+    .string()
+    .min(30)
+    .max(500)
+    .describe(
+      'Cena concreta ligada ao conteúdo da página: assunto, ação, ambiente e enquadramento.',
+    ),
+  role: z.enum(SCENE_ROLES),
+  targetBlock: z.enum(SCENE_TARGET_BLOCKS),
+  page: z.string().max(160).optional(),
+});
+
+export type PlannedSceneInput = z.infer<typeof plannedSceneInputSchema>;
+
 export type PlannedScene = {
   role: SceneRole;
   targetBlock: string;
   ratio: Ratio;
   hint: string;
+  /** Pedido semântico produzido junto do plano editorial. */
+  request?: string;
+  page?: string;
 };
 
 /**
@@ -69,9 +103,28 @@ export function scenePlan(
   return scenes;
 }
 
+/** O plano semântico precisa preencher exatamente as vagas estruturais. */
+export function sceneRequestsMatchPlan(
+  plan: PlannedScene[],
+  requests: PlannedSceneInput[],
+): boolean {
+  if (plan.length !== requests.length) return false;
+  const remaining = [...plan];
+  for (const request of requests) {
+    const index = remaining.findIndex(
+      (scene) =>
+        scene.role === request.role &&
+        scene.targetBlock === request.targetBlock,
+    );
+    if (index === -1) return false;
+    remaining.splice(index, 1);
+  }
+  return remaining.length === 0;
+}
+
 /** Uma cena legível para o prompt. */
 export function sceneText(scene: PlannedScene): string {
-  return `${scene.role} · targetBlock ${scene.targetBlock} · ${scene.ratio} · ${scene.hint}`;
+  return `${scene.role} · targetBlock ${scene.targetBlock} · ${scene.ratio} · ${scene.request ?? scene.hint}${scene.page ? ` · página ${scene.page}` : ''}`;
 }
 
 /** Plano legível para o prompt da fase de cenas. */

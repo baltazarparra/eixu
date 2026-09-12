@@ -47,7 +47,7 @@ um modelo que entende imagens não necessariamente as gera.
 | Tarefa                        | Máximo de saída por passo |    Passos por turno |
 | ----------------------------- | ------------------------: | ------------------: |
 | Briefing e plano editorial    |                    16.384 |                  12 |
-| Cena individual               |                     8.192 |                   2 |
+| Cena individual (fallback)    |                     8.192 |                   2 |
 | Composição e reparo           |                    49.152 |                  24 |
 | Revisão e correção            |                    24.576 |                  32 |
 | Edição livre                  |                    24.576 |                  32 |
@@ -62,10 +62,12 @@ segundos. Esgotar um limite não prova conclusão; o painel retoma pelo estado.
 ## Contexto e decisões
 
 O prompt mantém fatos, restrições, vibe, marca, contatos, guia de imagens, fontes,
-plano editorial e biblioteca do tenant. Referências lidas acompanham também a
-composição e a revisão. `brief.pagePlan` guarda intenção, etapa de inbound,
-conteúdo e evidências de cada página; é opcional no schema para ler briefings
-legados. O agente é instruído a preenchê-lo ao definir uma nova direção.
+plano editorial, plano semântico de cenas e biblioteca do tenant. Referências
+lidas acompanham também a composição e a revisão. `brief.pagePlan` guarda
+intenção, etapa de inbound, conteúdo e evidências de cada página;
+`brief.imageScenes` liga página, papel, bloco e proporção a cada foto planejada.
+Ambos são opcionais no schema para ler briefings legados e obrigatórios em uma
+nova direção validada.
 
 O catálogo deriva do schema. Composição e revisão recebem os schemas JSON
 completos, com campos obrigatórios, limites e descrições. Edições livres recebem
@@ -138,10 +140,13 @@ continua servindo à captura autenticada da prévia.
 
 `generation_events` guarda o que o painel mostra: início e fim de fase, começo e
 fim de cada ferramenta com o mesmo rótulo em pt-BR do chat, pausas e erros. São
-rótulos e contadores, sem conteúdo do cliente. O evento de fim de fase carrega
-também o recibo daquela fase — modelo, passos, duração, tokens e custo do
-Gateway —, porque a contagem do stream não existe fora do navegador e a parte
-cara do trabalho tinha deixado de aparecer no consumo do painel.
+rótulos e contadores, sem conteúdo do cliente. Cada chamada tem `callId` e
+duração; os eventos carregam versão do fluxo/harness, modelo, SHA, espera de
+fila e motivo de parada quando disponíveis. Captura e crítico publicam página,
+viewport e unidades concluídas durante a execução. O evento de fim de fase
+carrega também o recibo daquela fase — modelo, passos, duração, tokens e custo
+do Gateway —, porque a contagem do stream não existe fora do navegador e a
+parte cara do trabalho tinha deixado de aparecer no consumo do painel.
 `lib/admin/usage-summary.ts` soma esses recibos com os dos turnos livres;
 parcela sem custo deixa o total sem valor, em vez de contá-lo como zero. O painel lê por consulta
 periódica, reativa a leitura ao iniciar pelo botão ou pelo chat e reconstrói o
@@ -168,6 +173,12 @@ passo corrente termina e salva, em vez de abortar uma chamada paga no meio.
 Gravações em `brief.generation` passaram a ser merge no banco; reescrever o
 objeto inteiro a partir de um snapshot apagava o recibo de revisão gravado por
 outra execução.
+
+Quando o briefing persiste `brief.imageScenes`, o checkpoint de cenas não abre
+um turno do coordenador só para repetir o plano. O runner chama o executor de
+`prepare_site_images` diretamente, preservando os mesmos limites, eventos,
+isolamento do tenant e recibos do estúdio. O caminho com agente continua como
+fallback para briefings antigos sem plano válido.
 
 A revisão pode ocupar até três rodadas por execução, cada uma com turno e
 limite de leituras próprios. `lib/generation/marker.ts` compara a quantidade de
@@ -233,12 +244,14 @@ fossem alterações visuais aplicadas.
 
 A revisão tem três fontes de evidência:
 
-1. `lintPage`, `lintSite` e métricas de composição conferem o projeto inteiro.
-2. Chromium abre todas as páginas do lote, até 12, em 1440 e 390 px. Overflow e
-   imagem quebrada viram erros do relatório, mesmo se o crítico não os perceber.
-   As capturas usam movimento reduzido e rolagem instantânea, conferindo o retorno
-   ao topo; capturar durante o scroll suave deslocava barras fixas na imagem e
-   induzia falsas correções de layout.
+1. `lintPage`, `lintSite` e métricas de composição conferem o projeto inteiro
+   antes de abrir o navegador. Erro conhecido encerra a leitura sem gastar
+   captura ou crítico.
+2. Um Chromium abre as páginas sem recibo atual, até 12, em 1440 e 390 px, com
+   duas páginas em paralelo e repetição local por viewport. Overflow e imagem
+   quebrada viram erros do relatório, mesmo se o crítico não os perceber. As
+   capturas usam movimento reduzido e rolagem instantânea; alvos concluídos são
+   preservados quando outra página falha.
 3. `lib/review/critic.ts` envia as capturas como **imagens binárias** em uma chamada
    separada ao Gemini, junto do briefing e dos blocos. O retorno estruturado cita
    página, bloco, evidência e correção. Pixels/base64 não entram como texto no
@@ -250,29 +263,32 @@ ser recusado com os caminhos assim que a soma dos valores cresce: em 2026-09-11
 um cliente de cinco páginas derrubou a chamada inteira com HTTP 400 no Vertex e
 no fallback Google, e a revisão ficou indisponível em todas as rodadas. A
 conferência do par página/bloco acontece depois da resposta, em
-`resolveReviewReferences`: caminho normalizado, achado sem página existente sai
-do relatório e ID de bloco inexistente vira `null`. As duas contagens entram no
-relatório como aviso `critica-referencia`, porque uma citação imprecisa não pode
-invalidar a revisão inteira nem passar despercebida.
+`resolveReviewReferences`: caminho normalizado e ID de bloco inexistente vira
+`null`. Um achado com página inválida permanece em `unresolvedFindings`; se for
+material, continua pendente em vez de desaparecer da conclusão. As duas
+contagens entram no relatório como aviso `critica-referencia`.
 
 A captura é ligada por padrão. `EIXU_REVIEW_CAPTURE=0` permite diagnóstico
 estrutural, mas não concede conclusão visual. Origem ausente, falha de captura,
 cobertura incompleta ou crítica inválida deixam a revisão incompleta.
-`REVIEW_CALLS_PER_TURN` permite três chamadas a `review_pages` por turno,
-incluindo tentativas com falha de captura ou crítica, para observar, corrigir
-e conferir. A crítica é sugestão verificável, não autorização humana.
+`REVIEW_CALLS_PER_TURN` permite duas chamadas a `review_pages` por turno: uma
+avaliação e, quando houve reparo, uma conferência focal. A primeira avaliação
+com cobertura completa e sem erro material já encerra; avisos opcionais ficam
+no relatório. A crítica é sugestão verificável, não autorização humana.
 O loop força a conferência no último passo somente se ainda houver leitura
-disponível; uma quarta chamada seria recusada pela ferramenta. As correções
+disponível; uma terceira chamada seria recusada pela ferramenta. As correções
 da mesma página podem ser agrupadas antes da nova leitura. Depois do refinamento, uma nova
 revisão completa e sem erros encerra a fase por condição externa, mantendo os
 avisos no relatório. Isso impede editar novamente após a conferência e consumir
 o turno sem revisar a última versão. Falha ou erro material permanece pendente.
 
-O recibo em `brief.generation.review` guarda estado, apontamentos e fingerprint
-SHA-256 do conteúdo revisado. Inclui páginas, SEO, marca, contatos, briefing,
-imagens e versão do harness. Alteração posterior invalida o recibo, mesmo após
-recarregar. `nextPhase` exige revisão visual completa e sem erro material do
-rascunho atual: contar chamadas de revisão já não encerra a geração.
+O recibo v2 em `brief.generation.review` guarda cobertura, apontamentos e
+fingerprint SHA-256 por página. A dependência inclui conteúdo, SEO, marca,
+contatos, briefing, imagens efetivamente usadas, versão do harness e deployment.
+Uma página intacta reaproveita desktop e mobile; mudança global invalida o
+conjunto dependente, e foto solta no acervo não invalida nada. O certificado
+completo nasce dos recibos atuais de todas as páginas. `nextPhase` exige revisão
+visual completa e sem erro material: contar chamadas já não encerra a geração.
 
 A publicação manual mantém o pre-flight determinístico em ambos os caminhos.
 O recibo do crítico governa a conclusão automática, sem transformar uma opinião

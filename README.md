@@ -9,11 +9,11 @@ O modelo interno é **Gemini 3.8 Flash**, com raciocínio `high`. O harness prio
 ## O que já existe
 
 - Institucional com home, oferta de passagem de vibe coding para produção e cases de SaldoPix e NaiaCRM.
-- Painel com login de operador, busca e filtros de clientes, cadastro com logo, paleta, vibe e contatos, chat com histórico recente, prévia em desktop/mobile, dados e briefing editáveis e publicação.
+- Painel com login de operador, busca e filtros de clientes, cadastro compacto com quatro direções visuais comparáveis, geração em Preparar/Criar/Conferir, chat com histórico recente, prévia em desktop/mobile, dados e briefing editáveis e publicação.
 - Páginas orgânicas, landing pages pagas, posts e páginas de agradecimento compostas por blocos com schemas Zod. O agente edita conteúdo por ferramentas; o painel também permite ajustar dados do cliente e gerenciar imagens.
 - Imagens geradas na conversa do site, com guia por cliente e crítica, disponíveis sem aprovação. A biblioteca em `/admin/[tenant]/imagens` mantém números para pedir alterações, como “atualize a imagem #5 com outro carro”. A nova versão substitui a anterior nos rascunhos e ambas ficam salvas; aplicar um logo continua sendo uma ação do usuário.
 - Contatos do cadastro renderizados sozinhos no site: telefones, e-mail e redes sociais no rodapé, e uma seção de localização com mapa acima dele quando há endereço.
-- Quatro vibes de site escolhidas na criação do cliente, que delimitam a direção de arte, o CSS e a direção de imagem.
+- Quatro vibes de site com contratos próprios de tipografia, abertura, navegação, ritmo, superfície, iconografia e imagem.
 - Formulários, WhatsApp rastreado, atribuição de campanhas, exportação de contatos em CSV e painel de tráfego com gastos informados à mão.
 
 É um MVP de operação centralizada: há uma credencial administrativa compartilhada, sem contas ou permissões por cliente, cobrança ou integração automática com plataformas de anúncios. Os [limites atuais](docs/architecture.md#limites-atuais) fazem parte do contrato de desenvolvimento.
@@ -70,7 +70,11 @@ Na Vercel, as etapas da geração são entregues pela fila `eixu-generation-step
 | Agentes do produto    | `app/api/chat/`, `lib/ai/`, `lib/images/`                                                    |
 | Dados e atribuição    | `db/schema.sql`, `lib/db.ts`, `lib/tracking.ts`, `app/api/form/`, `app/api/e/`, `app/go/wa/` |
 
-Os três grupos de rotas têm layouts e CSS próprios. A publicação valida páginas e projeto por `lintPage` e `lintSite`, incluindo três páginas de inbound e duas fotos geradas na home, e copia blocos/SEO para o snapshot em uma transação; isso não versiona a marca inteira. Veja o [mapa de arquitetura](docs/architecture.md).
+Os três grupos de rotas têm layouts e CSS próprios. A publicação valida páginas
+e projeto por `lintPage` e `lintSite`, incluindo três páginas de inbound e duas
+fotos geradas na home, e promove conteúdo, SEO, dados editoriais e apresentação
+global para um snapshot coerente na mesma transação. Veja o
+[mapa de arquitetura](docs/architecture.md).
 
 ## Comandos e validação
 

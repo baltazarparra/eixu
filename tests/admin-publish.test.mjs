@@ -14,7 +14,22 @@ const design = {
   signatureElement: 'Assinatura',
   ...Object.fromEntries(DESIGN_AXES.map((axis) => [axis, 'x'])),
 };
-const tenant = { id: 'tenant-1', slug: 'fixture', brand: { design } };
+const tenant = {
+  id: 'tenant-1',
+  slug: 'fixture',
+  name: 'Fixture',
+  brand: { design, vibe: 'comercial' },
+  dials: { variance: 4, motion: 3, density: 5 },
+  contacts: { phones: [], addresses: [], social: [] },
+  brief: {},
+  imageGuide: {},
+  whatsapp: null,
+  contactEmail: null,
+  ga4Id: null,
+  metaPixelId: null,
+  locale: 'pt-BR',
+  status: 'draft',
+};
 // O módulo roda em outro realm do vm: arrays e objetos vindos dele não são
 // reference-equal aos daqui. A comparação estrutural passa por JSON.
 const plain = (value) => JSON.parse(JSON.stringify(value));
@@ -39,6 +54,11 @@ async function gate({
     blocks: [{ id: 'b', type: 'editorial.text', props: { body: 'x' } }],
     publishedBlocks: null,
     publishedSeo: null,
+    publishedTitle: null,
+    publishedType: null,
+    publishedMeta: null,
+    publishedNavOrder: null,
+    navOrder: index,
   }));
   const sql = Object.assign(
     (parts, ...values) => ({ sql: parts.join('?'), values }),
@@ -80,14 +100,70 @@ await test('avisos do contrato de projeto não recusam a publicação', async ()
   assert.equal(result.url, 'https://fixture.eixu.com.br');
   // Três páginas e o status do cliente, na mesma transação.
   assert.equal(writes.length, 4);
+  const tenantWrite = writes.at(-1);
+  assert.match(tenantWrite.sql, /published_snapshot/);
+  const snapshot = JSON.parse(tenantWrite.values[0]);
+  assert.equal(snapshot.name, tenant.name);
+  assert.equal(snapshot.brand.vibe, 'comercial');
+  assert.deepEqual(snapshot.dials, tenant.dials);
+});
+
+await test('render público conserva a apresentação publicada enquanto o rascunho muda', async () => {
+  const { publicPage, publicTenant, tenantDraftSnapshot } = await j.import(
+    '../lib/sites/snapshot.ts',
+  );
+  const publishedSnapshot = tenantDraftSnapshot(tenant);
+  const draftTenant = {
+    ...tenant,
+    name: 'Nome em teste',
+    brand: { ...tenant.brand, vibe: 'artistico' },
+    publishedSnapshot,
+  };
+  const renderedTenant = publicTenant(draftTenant);
+  assert.equal(renderedTenant.name, 'Fixture');
+  assert.equal(renderedTenant.brand.vibe, 'comercial');
+
+  const page = {
+    id: 'page',
+    tenantId: tenant.id,
+    slug: '',
+    type: 'post',
+    title: 'Título em teste',
+    meta: { excerpt: 'Rascunho' },
+    navOrder: 9,
+    blocks: [],
+    seo: {},
+    publishedBlocks: [],
+    publishedSeo: {},
+    publishedTitle: 'Título publicado',
+    publishedType: 'page',
+    publishedMeta: { excerpt: 'Publicado' },
+    publishedNavOrder: 1,
+    publishedAt: '2026-09-11T00:00:00Z',
+  };
+  const renderedPage = publicPage(page);
+  assert.equal(renderedPage.title, 'Título publicado');
+  assert.equal(renderedPage.type, 'page');
+  assert.equal(renderedPage.meta.excerpt, 'Publicado');
+  assert.equal(renderedPage.navOrder, 1);
 });
 
 await test('erros agrupam por página com todos os motivos e nada é gravado', async () => {
   const { publishSite, writes } = await gate({
     siteFindings: [
-      { page: '/', level: 'error', rule: 'home-protagonista', message: 'sem protagonista' },
+      {
+        page: '/',
+        level: 'error',
+        rule: 'home-protagonista',
+        message: 'sem protagonista',
+      },
       { page: '/', level: 'warn', rule: 'home-tons', message: 'ignorado' },
-      { page: '/guia', level: 'error', rule: 'pagina-sem-foto', message: 'sem foto' },
+      {
+        page: '/guia',
+        level: 'error',
+        rule: 'pagina-sem-foto',
+        message: 'sem foto',
+      },
     ],
     pageErrors: {
       '': [{ level: 'error', rule: 'props-invalidas', message: 'prop x' }],

@@ -1,6 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import { siteAgent } from '@/lib/ai/agent';
 import { savedProgressMessage } from '@/lib/ai/chat-progress';
-import { productModel } from '@/lib/ai/models';
+import { HARNESS_VERSION, productModel } from '@/lib/ai/models';
 import { buildTools } from '@/lib/ai/tools';
 import { sumGatewayCosts, usageRecord } from '@/lib/ai/usage';
 import { workspaceState } from '@/lib/admin/state';
@@ -28,7 +29,9 @@ import {
   reviewFingerprint,
   type ReviewReceipt,
 } from '@/lib/review/state';
-import { generationState } from '@/lib/sites/generation';
+import { sceneCoverage } from '@/lib/images/scene-plan';
+import { generationState, plannedScenes } from '@/lib/sites/generation';
+import { generatedPhotos } from '@/lib/taste/metrics';
 import {
   PHASE_LABEL,
   PHASE_MESSAGE,
@@ -40,6 +43,7 @@ import type { Tenant } from '@/lib/types';
 
 /** Teto de fases-passo encadeadas. Cenas e revisão repetem a mesma fase. */
 export const MAX_HOPS = 14;
+export const GENERATION_FLOW_VERSION = 'admin-v2';
 
 /** Quanto o runner espera entre consultas ao pedido de pausa. */
 const STOP_POLL_MS = 5_000;
@@ -62,6 +66,30 @@ const REVIEW_EDIT_TOOLS = new Set([
 
 const plural = (count: number, one: string, many: string): string =>
   `${count} ${count === 1 ? one : many}`;
+
+/**
+ * O planejamento novo já traz os pedidos semânticos. Quando todos existem, o
+ * runner pode abrir o estúdio diretamente e elimina um turno de coordenação.
+ * Perfis antigos continuam no agente até serem recompostos.
+ */
+function directSceneBatch(
+  tenant: Tenant,
+  images: Awaited<ReturnType<typeof listImages>>,
+) {
+  const { missing } = sceneCoverage(
+    plannedScenes(tenant),
+    generatedPhotos(images),
+  );
+  if (!missing.length || missing.some((scene) => !scene.request)) return null;
+  return {
+    scenes: missing.map((scene) => ({
+      request: scene.request!,
+      role: scene.role,
+      targetBlock: scene.targetBlock,
+      ratio: scene.ratio,
+    })),
+  };
+}
 
 type ReviewToolResult = { toolName: string; output: unknown };
 
@@ -306,6 +334,9 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
     };
 
   await saveProgress(run.id, phase, progress);
+  const model = productModel();
+  const sceneBatch =
+    phase === 'cenas' ? directSceneBatch(tenant, images) : null;
   await recordEvent({
     runId: run.id,
     tenantId: tenant.id,
@@ -314,11 +345,20 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
     label: round
       ? `${PHASE_LABEL[phase]} · rodada ${round} de ${REVIEW_ROUNDS}`
       : PHASE_LABEL[phase],
-    ...(round ? { payload: { round } } : {}),
+    payload: {
+      ...(round ? { round } : {}),
+      flowVersion: GENERATION_FLOW_VERSION,
+      harnessVersion: HARNESS_VERSION,
+      deployment: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
+      model: sceneBatch ? 'image-pipeline' : model,
+      queueMs:
+        run.hops === 1
+          ? Math.max(0, Date.now() - new Date(run.startedAt).getTime())
+          : 0,
+    },
   });
 
   await markPhase(tenant.id, phase);
-  await persistMessage(tenant.id, 'user', PHASE_MESSAGE[phase]);
 
   let ready = tenant;
   if (phase === 'briefing' && socialPending(tenant)) {
@@ -344,91 +384,164 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
       .catch(() => undefined);
   }, STOP_POLL_MS);
 
-  const model = productModel();
   const startedAt = Date.now();
   let steps = 0;
   let timedOut = false;
   let spoken = '';
   let toolResults: ReviewToolResult[] = [];
   let usage: Record<string, unknown> | undefined;
+  const toolStartedAt = new Map<string, number>();
   try {
     const tools = buildTools(ready, {
       origin: run.origin,
       cookie: `eixu_admin=${await createSessionToken()}`,
       phase,
+      onReviewProgress: async (event) => {
+        await recordEvent({
+          runId: run.id,
+          tenantId: tenant.id,
+          phase,
+          kind: 'note',
+          label: event.label,
+          payload: {
+            stage: event.stage,
+            ...(event.completed === undefined
+              ? {}
+              : { completed: event.completed }),
+            ...(event.total === undefined ? {} : { total: event.total }),
+            ...(event.page ? { page: event.page } : {}),
+            ...(event.viewport ? { viewport: event.viewport } : {}),
+          },
+        }).catch(() => undefined);
+      },
     });
-    const agent = siteAgent({
-      tenantId: tenant.id,
-      tools,
-      phase,
-      shouldStop: () => stopRequested,
-      instructions: phaseInstructions({
-        tenant: ready,
-        pages,
-        images,
+    const recordToolStart = async (
+      name: string,
+      input: unknown,
+      callId: string,
+    ) => {
+      toolStartedAt.set(callId, Date.now());
+      await recordEvent({
+        runId: run.id,
+        tenantId: tenant.id,
         phase,
-        round,
-      }),
-    });
-    const result = await agent.generate({
-      messages: [{ role: 'user', content: PHASE_MESSAGE[phase] }],
-      onToolExecutionStart: (event) => {
-        const name = event.toolCall.toolName;
-        void recordEvent({
-          runId: run.id,
-          tenantId: tenant.id,
-          phase,
-          kind: 'tool_start',
-          tool: name,
-          label: describeTool(name, event.toolCall.input, undefined, 'pending'),
-        }).catch(() => undefined);
-      },
-      onToolExecutionEnd: (event) => {
-        const name = event.toolCall.toolName;
-        const failed = event.toolOutput.type === 'tool-error';
-        const output = failed ? undefined : event.toolOutput.output;
-        void recordEvent({
-          runId: run.id,
-          tenantId: tenant.id,
-          phase,
-          kind: 'tool_end',
-          tool: name,
-          label: failed
-            ? 'Esta tentativa foi recusada. O agente pode corrigir e tentar novamente.'
-            : describeTool(
-                name,
-                event.toolCall.input,
-                output,
-                'output-available',
-              ),
-          payload: { ok: !failed },
-        }).catch(() => undefined);
-      },
-    });
-    steps = result.steps.length;
-    toolResults = result.steps.flatMap((step) => step.toolResults);
-    // O painel perdeu a contagem quando a geração saiu do navegador: o recibo
-    // do stream não existe aqui. Só números e nome do modelo entram no evento.
-    usage = {
-      ...usageRecord(result.usage, model, phase, steps, startedAt),
-      costUsd: sumGatewayCosts(
-        result.steps.map((step) => step.providerMetadata?.gateway?.cost),
-      ),
+        kind: 'tool_start',
+        tool: name,
+        label: describeTool(name, input, undefined, 'pending'),
+        payload: { callId },
+      }).catch(() => undefined);
     };
-    console.info('[generation] usage', {
-      tenantId: tenant.id,
-      runId: run.id,
-      ...usage,
-    });
-    // O texto do último passo não é o turno inteiro: uma etapa que explica e
-    // depois chama ferramenta perdia a explicação no histórico.
-    spoken = result.steps
-      .map((step) => step.text.trim())
-      .filter(Boolean)
-      .join('\n\n');
-    const last = result.text.trim();
-    if (last && !spoken.endsWith(last))
-      spoken = [spoken, last].filter(Boolean).join('\n\n');
+    const recordToolEnd = async (
+      name: string,
+      input: unknown,
+      output: unknown,
+      callId: string,
+      failed = false,
+    ) => {
+      const toolStarted = toolStartedAt.get(callId);
+      toolStartedAt.delete(callId);
+      await recordEvent({
+        runId: run.id,
+        tenantId: tenant.id,
+        phase,
+        kind: 'tool_end',
+        tool: name,
+        label: failed
+          ? 'Esta tentativa foi recusada. O agente pode corrigir e tentar novamente.'
+          : describeTool(name, input, output, 'output-available'),
+        payload: {
+          ok: !failed,
+          callId,
+          ...(toolStarted === undefined
+            ? {}
+            : { durationMs: Date.now() - toolStarted }),
+        },
+      }).catch(() => undefined);
+    };
+
+    if (sceneBatch) {
+      const callId = randomUUID();
+      await recordToolStart('prepare_site_images', sceneBatch, callId);
+      const sceneTool = tools.prepare_site_images as unknown as {
+        execute?: (
+          input: NonNullable<typeof sceneBatch>,
+          ...args: unknown[]
+        ) => Promise<unknown>;
+      };
+      if (!sceneTool.execute)
+        throw new Error('Ferramenta de imagens indisponível no runner.');
+      const output = await sceneTool.execute(sceneBatch);
+      await recordToolEnd('prepare_site_images', sceneBatch, output, callId);
+      toolResults = [{ toolName: 'prepare_site_images', output }];
+      steps = 1;
+      const generated = Array.isArray(
+        (output as { imagens?: unknown[] } | null)?.imagens,
+      )
+        ? (output as { imagens: unknown[] }).imagens.length
+        : 0;
+      spoken = generated
+        ? `${plural(generated, 'imagem foi criada', 'imagens foram criadas')} e já estão disponíveis na biblioteca.`
+        : 'O estúdio terminou sem preencher uma nova vaga; a pendência ficou registrada.';
+    } else {
+      const agent = siteAgent({
+        tenantId: tenant.id,
+        tools,
+        phase,
+        shouldStop: () => stopRequested,
+        instructions: phaseInstructions({
+          tenant: ready,
+          pages,
+          images,
+          phase,
+          round,
+        }),
+      });
+      const result = await agent.generate({
+        messages: [{ role: 'user', content: PHASE_MESSAGE[phase] }],
+        onToolExecutionStart: async (event) => {
+          const name = event.toolCall.toolName;
+          const callId = event.toolCall.toolCallId;
+          await recordToolStart(name, event.toolCall.input, callId);
+        },
+        onToolExecutionEnd: async (event) => {
+          const name = event.toolCall.toolName;
+          const callId = event.toolCall.toolCallId;
+          const failed = event.toolOutput.type === 'tool-error';
+          const output = failed ? undefined : event.toolOutput.output;
+          await recordToolEnd(
+            name,
+            event.toolCall.input,
+            output,
+            callId,
+            failed,
+          );
+        },
+      });
+      steps = result.steps.length;
+      toolResults = result.steps.flatMap((step) => step.toolResults);
+      // O painel perdeu a contagem quando a geração saiu do navegador: o recibo
+      // do stream não existe aqui. Só números e nome do modelo entram no evento.
+      usage = {
+        ...usageRecord(result.usage, model, phase, steps, startedAt),
+        costUsd: sumGatewayCosts(
+          result.steps.map((step) => step.providerMetadata?.gateway?.cost),
+        ),
+      };
+      console.info('[generation] usage', {
+        tenantId: tenant.id,
+        runId: run.id,
+        ...usage,
+      });
+      // O texto do último passo não é o turno inteiro: uma etapa que explica e
+      // depois chama ferramenta perdia a explicação no histórico.
+      spoken = result.steps
+        .map((step) => step.text.trim())
+        .filter(Boolean)
+        .join('\n\n');
+      const last = result.text.trim();
+      if (last && !spoken.endsWith(last))
+        spoken = [spoken, last].filter(Boolean).join('\n\n');
+    }
   } catch (error) {
     if (stopRequested) {
       await recordEvent({
@@ -522,6 +635,14 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
       next: after.next,
       ...(usage ? { usage } : {}),
       ...(timedOut ? { timeout: true } : {}),
+      flowVersion: GENERATION_FLOW_VERSION,
+      stopReason: outcome.kind,
+      ...(sceneBatch
+        ? {
+            costCoverage:
+              'Imagens e crítico de imagem são registrados pelos serviços, fora do total do coordenador.',
+          }
+        : {}),
     },
   });
   if (outcome.kind === 'failed')

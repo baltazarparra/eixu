@@ -31,6 +31,53 @@ const replacement = {
 };
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
+await test('acervo distingue uso no rascunho, no publicado e no logo sem casar texto parcial', async () => {
+  const { imageUsage } = await loadModule('lib/images/usage.ts');
+  const other = {
+    ...original,
+    id: '00000000-0000-4000-8000-000000000006',
+    seq: 6,
+    url: 'https://assets.test/outra.webp',
+  };
+  const client = {
+    ...tenant,
+    brand: { logoUrl: other.url },
+    publishedSnapshot: { brand: { logoUrl: original.url } },
+  };
+  const pages = [
+    {
+      id: 'home',
+      slug: '',
+      blocks: [
+        {
+          id: 'hero',
+          type: 'hero.split',
+          props: {
+            image: original.url,
+            body: `Referência textual: ${other.url}`,
+          },
+        },
+      ],
+      publishedBlocks: [
+        {
+          id: 'galeria',
+          type: 'media.gallery',
+          props: { items: [{ src: other.url }] },
+        },
+      ],
+    },
+  ];
+  const usage = plain(imageUsage(client, pages, [original, other]));
+  assert.deepEqual(usage[original.id], [
+    { scope: 'published', page: null, block: null, kind: 'logo' },
+    { scope: 'draft', page: '/', block: 'hero', kind: 'page' },
+  ]);
+  assert.deepEqual(usage[other.id], [
+    { scope: 'draft', page: null, block: null, kind: 'logo' },
+    { scope: 'published', page: '/', block: 'galeria', kind: 'page' },
+  ]);
+});
+
 await test('alteração usa os pixels da #5, mantém o recorte e continua disponível com crítica negativa', async () => {
   const calls = [];
   const bytes = Buffer.from('fixture');

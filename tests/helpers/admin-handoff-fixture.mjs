@@ -105,6 +105,15 @@ export function handoffData() {
     site: {
       tenant: { slug: tenant.slug, name: tenant.name, hasDesign: true },
       previewRevision: 'test-v1',
+      review: {
+        current: false,
+        complete: false,
+        visual: null,
+        reviewedAt: null,
+        errors: 0,
+        findings: [],
+        pages: [],
+      },
       pages: [
         {
           slug: '',
@@ -191,7 +200,7 @@ export async function handoffFixture({ port = 0 } = {}) {
         },
         load(id) {
           if (id === '\0handoff-navigation')
-            return `export function usePathname(){return location.pathname;} export function useRouter(){return {push:url=>location.assign(url),refresh:()=>{window.__refreshes=(window.__refreshes||0)+1}}}`;
+            return `export function usePathname(){return location.pathname;} export function useSearchParams(){return new URLSearchParams(location.search);} export function useRouter(){return {push:url=>location.assign(url),refresh:()=>{window.__refreshes=(window.__refreshes||0)+1}}}`;
         },
         transform(_source, id) {
           if (id.endsWith('/app/(admin)/admin/actions.ts'))

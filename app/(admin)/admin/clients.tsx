@@ -76,7 +76,7 @@ export function Clients({
       </div>
       {creating ? (
         <section id="new-client" className="admin-new-client">
-          <h2>Cadastrar cliente</h2>
+          <h2>Criar novo site</h2>
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -85,7 +85,7 @@ export function Clients({
             }}
           >
             <fieldset disabled={pending}>
-              <TenantFields withSlug />
+              <TenantFields withSlug compact />
               <BrandFields />
               {error ? (
                 <p role="alert" className="admin-form-error">
@@ -98,11 +98,11 @@ export function Clients({
                   className="admin-primary"
                   disabled={pending}
                 >
-                  {pending ? 'Criando…' : 'Criar cliente e abrir editor'}
+                  {pending ? 'Criando site…' : 'Criar site'}
                 </button>
                 <p>
-                  Ao abrir o editor, o agente inicia a geração. Publicar é uma
-                  ação separada.
+                  O agente começa por um plano e salva cada etapa. Você confere
+                  o rascunho antes de publicar.
                 </p>
               </div>
             </fieldset>

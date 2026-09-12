@@ -10,7 +10,8 @@ import {
   referenceReason,
   updateImageMetadata,
 } from '@/lib/images/queries';
-import { getTenantBySlug } from '@/lib/tenant-queries';
+import { imageUsage } from '@/lib/images/usage';
+import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,14 +38,16 @@ export async function GET(
   const status = statuses.safeParse(asked);
   if (asked && !status.success)
     return Response.json({ error: 'Estado inválido.' }, { status: 400 });
-  const [images, guide] = await Promise.all([
+  const [images, guide, pages] = await Promise.all([
     listImages(resolved.tenant.id, status.success ? status.data : undefined),
     getGuide(resolved.tenant.id),
+    listPages(resolved.tenant.id),
   ]);
   return Response.json({
     guide,
     images,
     logoUrl: resolved.tenant.brand.logoUrl ?? null,
+    usage: imageUsage(resolved.tenant, pages, images),
   });
 }
 

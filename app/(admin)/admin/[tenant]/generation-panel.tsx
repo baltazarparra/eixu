@@ -13,17 +13,25 @@ import {
   reviewProgress,
 } from '@/lib/generation/progress';
 import type { GenerationEvent, GenerationRun } from '@/lib/generation/runs';
-import { PHASE_LABEL, PHASES, type Phase } from '@/lib/taste/phases';
+import type { Phase } from '@/lib/taste/phases';
 import { StatusPill } from '@/components/admin/primitives';
 import { isRunning } from './use-generation';
 
-/** Medido nas gerações reais. Serve para calibrar a espera, não para prometer. */
-const ESTIMATE_S: Record<Phase, number> = {
-  briefing: 90,
-  cenas: 200,
-  composicao: 240,
-  revisao: 240,
-};
+const PRODUCT_STAGES = [
+  { id: 'preparar', label: 'Preparar', phases: ['briefing'] },
+  { id: 'criar', label: 'Criar', phases: ['cenas', 'composicao'] },
+  { id: 'conferir', label: 'Conferir', phases: ['revisao'] },
+] as const satisfies readonly {
+  id: string;
+  label: string;
+  phases: readonly Phase[];
+}[];
+
+function productStage(phase: Phase): (typeof PRODUCT_STAGES)[number] {
+  return PRODUCT_STAGES.find((stage) =>
+    (stage.phases as readonly Phase[]).includes(phase),
+  )!;
+}
 
 const plural = (count: number, one: string, many: string): string =>
   `${count} ${count === 1 ? one : many}`;
@@ -58,7 +66,9 @@ function phaseProgress(
       : 'montando as páginas';
   if (phase === 'revisao') {
     const review = reviewProgress(events);
-    const reads = `leitura ${Math.max(1, review.reads)} de ${review.total}`;
+    const reads = review.reads
+      ? `${review.reads} de ${review.total} leituras concluídas`
+      : 'preparando a primeira leitura';
     return review.round > 1 ? `rodada ${review.round} · ${reads}` : reads;
   }
   return null;
@@ -132,20 +142,25 @@ export function GenerationPanel({
     : runStarted;
   const phaseSeconds =
     running && phaseStarted ? (now - phaseStarted) / 1000 : 0;
-  const estimate = phase ? ESTIMATE_S[phase] : 0;
   const status = statusLine(run, state);
-  const reached = (item: Phase) =>
-    PHASES.indexOf(item) <
-    (done ? PHASES.length : PHASES.indexOf(next as Phase));
+  const activeStage = phase ? productStage(phase) : null;
+  const nextStage = done ? null : productStage(next as Phase);
+  const reached = (index: number) =>
+    index <
+    (done
+      ? PRODUCT_STAGES.length
+      : PRODUCT_STAGES.findIndex((item) => item.id === nextStage?.id));
   const usage = summarizeUsage({ messages: [], events });
 
-  const position = phase ? PHASES.indexOf(phase) + 1 : 0;
+  const position = activeStage
+    ? PRODUCT_STAGES.findIndex((item) => item.id === activeStage.id) + 1
+    : 0;
   const title = starting
     ? 'Iniciando a geração'
     : run?.status === 'stopping'
       ? 'Pausando a geração'
       : running
-        ? PHASE_LABEL[phase ?? (next as Phase)]
+        ? productStage(phase ?? (next as Phase)).label
         : finished
           ? 'Geração concluída'
           : run?.status === 'paused'
@@ -166,7 +181,7 @@ export function GenerationPanel({
     ? 'Abrindo a primeira etapa no servidor'
     : running && runStarted
       ? [
-          `Etapa ${position} de ${PHASES.length}`,
+          `Etapa ${position} de ${PRODUCT_STAGES.length}`,
           phaseProgress(state, phase, events),
         ]
           .filter(Boolean)
@@ -179,7 +194,7 @@ export function GenerationPanel({
           ]
             .filter(Boolean)
             .join(' · ')
-        : `Próxima etapa: ${PHASE_LABEL[next as Phase]}`;
+        : `Próxima etapa: ${nextStage?.label ?? 'Conferir'}`;
 
   const action = starting ? null : running ? (
     <button
@@ -265,30 +280,38 @@ export function GenerationPanel({
         )
       ) : (
         <ol className="admin-run-steps">
-          {PHASES.map((item) => {
-            const active = phase === item;
-            const complete = reached(item);
-            const record = records[item];
+          {PRODUCT_STAGES.map((item, index) => {
+            const active = activeStage?.id === item.id;
+            const complete = reached(index);
+            const stageRecords = item.phases
+              .map((serverPhase) => records[serverPhase])
+              .filter((record) => record !== undefined);
+            const seconds = stageRecords.reduce(
+              (sum, record) => sum + record.seconds,
+              0,
+            );
+            const lastOutcome = stageRecords.at(-1)?.outcome ?? null;
             const failed =
-              run?.status === 'failed' && (run.phase ?? next) === item;
+              run?.status === 'failed' &&
+              productStage((run.phase ?? next) as Phase).id === item.id;
             const outcome = [
-              record?.outcome,
-              record?.seconds ? `em ${clock(record.seconds)}` : null,
+              lastOutcome,
+              seconds ? `em ${clock(seconds)}` : null,
             ]
               .filter(Boolean)
               .join(' ');
             // O nome da fase e o que ela produziu saem da trilha e viram o
             // título dela; a linha do tempo continua trazendo o mesmo conteúdo.
             const hint = failed
-              ? `${PHASE_LABEL[item]} · interrompida`
+              ? `${item.label} · interrompida`
               : active
-                ? `${PHASE_LABEL[item]} · em execução`
+                ? `${item.label} · ${phaseProgress(state, phase, events) ?? 'em execução'}`
                 : complete
-                  ? `${PHASE_LABEL[item]}${outcome ? ` · ${outcome}` : ''}`
-                  : `${PHASE_LABEL[item]} · ~${Math.round(ESTIMATE_S[item] / 60)} min`;
+                  ? `${item.label}${outcome ? ` · ${outcome}` : ''}`
+                  : `${item.label} · ainda não iniciada`;
             return (
               <li
-                key={item}
+                key={item.id}
                 title={hint}
                 data-state={
                   failed
@@ -323,13 +346,10 @@ export function GenerationPanel({
             {run?.status === 'stopping'
               ? 'A etapa atual termina e a próxima não começa.'
               : (activity?.label ?? 'Preparando a etapa')}
-            {estimate ? (
-              <small>
-                {phaseSeconds > estimate
-                  ? 'Está levando mais que o normal; continua rodando.'
-                  : `Normalmente leva cerca de ${Math.round(estimate / 60)} min.`}
-              </small>
-            ) : null}
+            <small>
+              O tempo acima é o observado; o progresso usa páginas e capturas
+              concluídas.
+            </small>
           </span>
         </p>
       ) : null}

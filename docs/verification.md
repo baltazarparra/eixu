@@ -1,5 +1,50 @@
 # Validação e publicação
 
+## Admin, criação e revisão incremental, 12/09/2026
+
+O fluxo administrativo foi revisto de entrada a Tráfego. A criação apresenta
+três etapas de produto, cadastro compacto e quatro direções visuais comparáveis;
+o servidor mantém checkpoints próprios para retomada. A revisão executa
+pre-flight antes dos pixels, reutiliza recibos atuais por página, captura duas
+páginas por vez com repetição local e preserva tanto capturas válidas quanto
+achados anteriores diante de uma falha técnica. A publicação passa a promover
+apresentação global e dados editoriais junto de blocos e SEO. O schema
+inicializa o snapshot de páginas e clientes que já estavam publicados.
+
+Verificação final:
+
+- `npx next typegen && npx tsc --noEmit`, `npm run lint`, formatação dos
+  arquivos da entrega e `git diff --check`: sem erros.
+- `EIXU_CHROME_PATH=/usr/bin/google-chrome npm run test:admin`: 118 testes;
+  115 passaram e 3 integrações com PostgreSQL foram puladas porque
+  `EIXU_TEST_POSTGRES_URL` não está disponível nesta máquina. Os dois testes de
+  captura real com Chrome passaram.
+- `npm run test:sites`: 86 testes passaram, sem pulos. Cobrem também uso exato
+  de imagens, contratos v3 das vibes e preservação do snapshot público.
+- `npm run build:vercel`: Next.js 16.3.3 compilou e os três checks dos artefatos
+  serverless de captura passaram.
+- `npm run test:admin:browser`: 8 testes passaram. `npm run
+test:sites:browser`: 15 passaram, incluindo as quatro vibes, fontes reais,
+  teclado, movimento reduzido, JavaScript desligado e contraste mínimo medido
+  de 4,608:1 nos pares cobertos pela fixture.
+- O cadastro foi inspecionado em 390 e 1440 px: quatro informações de negócio
+  ficam visíveis, contexto/marca permanecem recolhidos, as quatro miniaturas
+  têm silhuetas diferentes e não houve overflow. O painel mobile separa etapa,
+  unidades e relógio, inclusive na segunda rodada da revisão. Capturas locais
+  ficam em `outputs/admin-handoff/` e `outputs/generation/`, ignoradas pelo Git.
+
+Durante a validação, o navegador revelou duas incompatibilidades corrigidas: o
+workspace agora tolera uma resposta antiga sem o campo `review`, e a fixture
+abre as seções opcionais antes de editar seus controles. A suíte de captura
+também mostrou que o novo erro de lote escondia a causa principal; a mensagem
+agora conserva a primeira falha e os detalhes estruturados de cada viewport.
+
+Não houve migração ou escrita em banco remoto, geração paga, publicação de
+página de cliente nem deploy. A sintaxe nova do schema não foi exercitada em um
+PostgreSQL local porque esse serviço não está disponível. As fixtures comprovam
+diferença estrutural e comportamento responsivo, mas não substituem a matriz
+paga de três briefings por quatro vibes nem uma avaliação humana sem rótulos.
+
 ## Correção do resumo da revisão no PR #22, 12/09/2026
 
 O resumo silencioso contava nomes de ferramentas, incluindo recusas devolvidas

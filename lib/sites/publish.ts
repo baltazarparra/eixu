@@ -5,6 +5,7 @@ import { listImages } from '@/lib/images/queries';
 import { formatFindings, lintPage } from '@/lib/taste/lint';
 import { lintSite, publicationState } from '@/lib/taste/site';
 import { listPages } from '@/lib/tenant-queries';
+import { tenantDraftSnapshot } from '@/lib/sites/snapshot';
 import type { Tenant } from '@/lib/types';
 
 export type PublishResult = {
@@ -66,13 +67,26 @@ export async function publishSite(
   }));
   if (blocked.length) return { published: [], blocked, url };
   const sql = db();
+  const updateTenant =
+    clean === undefined || !tenant.publishedSnapshot
+      ? sql`update tenants set status = 'published', published_snapshot = ${JSON.stringify(
+          tenantDraftSnapshot(tenant),
+        )}::jsonb, updated_at = now() where id = ${tenant.id}`
+      : sql`update tenants set status = 'published', updated_at = now() where id = ${tenant.id}`;
   // Publica exatamente os valores validados, mesmo se um rascunho mudar durante a consulta.
   await sql.transaction([
     ...targets.map(
       (page) =>
-        sql`update pages set published_blocks = ${JSON.stringify(page.blocks)}::jsonb, published_seo = ${JSON.stringify(page.seo)}::jsonb, published_at = now(), updated_at = now() where id = ${page.id} and tenant_id = ${tenant.id}`,
+        sql`update pages set published_blocks = ${JSON.stringify(page.blocks)}::jsonb,
+                             published_seo = ${JSON.stringify(page.seo)}::jsonb,
+                             published_title = ${page.title},
+                             published_type = ${page.type},
+                             published_meta = ${JSON.stringify(page.meta)}::jsonb,
+                             published_nav_order = ${page.navOrder},
+                             published_at = now(), updated_at = now()
+            where id = ${page.id} and tenant_id = ${tenant.id}`,
     ),
-    sql`update tenants set status = 'published' where id = ${tenant.id}`,
+    updateTenant,
   ]);
   return { published: targets.map((p) => `/${p.slug}`), blocked, url };
 }
