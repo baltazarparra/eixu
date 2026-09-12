@@ -237,6 +237,8 @@ async function runnerFixture({
   text = 'Etapa concluída.',
   /** Passos do turno; o limite da fase muda o recibo persistido. */
   stepCount = 1,
+  /** Resultados de ferramenta por passo, para o resumo do turno silencioso. */
+  toolResults = [],
   stopping = false,
   /** Perfil social ainda em leitura na primeira consulta ao cliente. */
   socialReading = false,
@@ -373,6 +375,7 @@ async function runnerFixture({
             text,
             steps: Array.from({ length: stepCount }, (_, index) => ({
               text: index === stepCount - 1 ? text : '',
+              toolResults: toolResults[index] ?? [],
               providerMetadata: {},
             })),
             usage: {},
@@ -391,6 +394,32 @@ async function runnerFixture({
     calls: () => calls,
   };
 }
+
+await test('revisão sem texto do agente registra o resumo do turno antes do recibo', async () => {
+  // A conferência limpa encerra o laço no passo da ferramenta: o histórico
+  // recebia só "Progresso salvo", sem dizer o que a revisão fez.
+  const f = await runnerFixture({
+    states: [
+      { next: 'revisao', reviewRounds: 4 },
+      { next: 'pronto', reviewRounds: 5, reviewComplete: true },
+    ],
+    text: '',
+    stepCount: 3,
+    toolResults: [
+      [{ toolName: 'review_pages' }],
+      [{ toolName: 'update_block' }, { toolName: 'lint_page' }],
+      [{ toolName: 'review_pages' }],
+    ],
+  });
+  const outcome = await f.executeStep(f.run);
+  assert.equal(outcome.kind, 'done');
+  const reply = f.messages[1].text;
+  assert.match(
+    reply,
+    /^A revisão fez 2 leituras do rascunho renderizado e aplicou 1 ajuste\./,
+  );
+  assert.match(reply, /Progresso salvo: recibo sintético\. Parado\./);
+});
 
 await test('a etapa grava linha do tempo, mensagens e aponta a próxima fase', async () => {
   const f = await runnerFixture({

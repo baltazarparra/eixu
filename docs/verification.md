@@ -1,5 +1,52 @@
 # Validação e publicação
 
+## Gate de publicação e mensagens da geração, 12/09/2026
+
+Caso real do cliente portopedras, entre 00:37 e 00:55 UTC de 12/09/2026, lido
+no banco de produção e nos logs da Vercel. A revisão em etapas terminou limpa:
+recibo sem erros, próxima etapa "pronto", run encerrado como concluído. O botão
+Publicar estava habilitado e a API respondeu "Bloqueado em /, /": o serviço de
+publicação recusava qualquer achado do `lintSite`, inclusive os dois avisos de
+proporção de imagem na home, enquanto o painel só conta erros. O aviso não
+trazia o motivo; colado no chat, abriu um turno livre de dez minutos que alterou
+a home e gerou uma foto, o que invalidou o recibo de revisão. O painel então
+dizia "A execução terminou com etapas pendentes", culpando uma execução que
+havia fechado sem pendência.
+
+- `lib/sites/publish.ts`: só achados de nível erro recusam o lote; avisos não
+  bloqueiam. A resposta agrupa os motivos por página, uma entrada por caminho.
+- Painel: o aviso de publicação mostra os caminhos e o primeiro motivo, sem o
+  prefixo da regra, e aponta para a lista de pendências ao lado da prévia.
+- Painel: run concluído com etapa pendente passa a dizer que o rascunho ou o
+  gerador mudaram depois e que a revisão precisa ser refeita com Continuar.
+- Recibo do chat: depois da composição, informa páginas e fotos em vez de
+  "3 de 6 cenas"; o caso pronto diz "concluída sem erros" e pede conferência
+  antes de publicar.
+- Runner: quando a revisão encerra na conferência limpa sem texto do agente, a
+  resposta resume leituras, ajustes e sugestões restantes antes do recibo.
+
+Verificação:
+
+- `npx next typegen && npx tsc --noEmit` e `npm run lint`: sem erros.
+- `npm run test:admin`: 110 testes passaram, 5 pulados por falta de PostgreSQL
+  local e Chrome nesta máquina. Casos novos em `tests/admin-publish.test.mjs`
+  cobrem avisos que publicam, erros agrupados por página sem gravação e slug
+  inexistente; a suíte da geração cobre o recibo por etapa e o resumo da
+  revisão silenciosa.
+- `npm run test:sites`: 85 testes passaram, sem pulos.
+- `npm run build:vercel`: build de produção e os três checks dos artefatos de
+  captura serverless passaram.
+- Com o código atual, o rascunho de portopedras não tem achado de lint nem
+  silhueta duplicada; a publicação passa a depender só da confirmação do
+  operador. A leitura do banco foi somente consulta: não houve publicação,
+  geração paga, escrita remota nem execução dos testes de navegador.
+
+Limite que permanece: a assinatura do recibo inclui o SHA do deploy, então
+cada publicação de código invalida a revisão visual de todos os clientes, e o
+botão Continuar reabre uma rodada paga por cliente. A comparação de silhueta
+com outros clientes continua só no gate de publicação, fora do estado do
+painel.
+
 ## Iconografia e tipografia das quatro vibes, 11/09/2026
 
 O gerador ganhou 14 famílias tipográficas e 26 símbolos semânticos, com

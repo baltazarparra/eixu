@@ -18,6 +18,7 @@ import { adminFetch } from '@/lib/admin/http';
 import { mergeSavedMessages } from '@/lib/admin/chat-messages';
 import type { SiteState } from '@/lib/admin/state';
 import type { ChatMessage } from '@/lib/ai/usage';
+import type { PublishResult } from '@/lib/sites/publish';
 
 type Props = {
   initial: SiteState;
@@ -26,6 +27,18 @@ type Props = {
   lastMessageId: number;
   imageRequest?: string;
 };
+
+/**
+ * Caminhos recusados e o primeiro motivo, sem o prefixo técnico da regra. O
+ * aviso dizia só "Bloqueado em /, /": uma entrada por regra e nenhum porquê.
+ */
+function publishBlockedNotice(blocked: PublishResult['blocked']): string {
+  const pages = blocked.map((item) => item.page).join(', ');
+  const reason = blocked[0].preflight
+    .split('\n')[0]
+    .replace(/^ERRO \[[^\]]+\] /, '');
+  return `Publicação bloqueada em ${pages}: ${reason} Confira as pendências ao lado da prévia ou peça ao agente para corrigir.`;
+}
 
 const SUGGESTIONS = [
   'Deixa o hero mais direto, com o benefício na primeira linha.',
@@ -248,21 +261,17 @@ export function Workspace({
     setPublishing(true);
     setNotice(null);
     try {
-      const result = await adminFetch<{
-        published: string[];
-        blocked: { page: string }[];
-        url: string;
-      }>(`/api/admin/${tenantSlug}/publish`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: '{}',
-      });
+      const result = await adminFetch<PublishResult>(
+        `/api/admin/${tenantSlug}/publish`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: '{}',
+        },
+      );
       setNotice(
         result.blocked.length
-          ? {
-              tone: 'warn',
-              text: `Bloqueado em ${result.blocked.map((item) => item.page).join(', ')}. Peça ao agente para corrigir.`,
-            }
+          ? { tone: 'warn', text: publishBlockedNotice(result.blocked) }
           : { tone: 'ok', text: `Publicado. ${result.url}` },
       );
       await refresh();
