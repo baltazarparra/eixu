@@ -75,7 +75,7 @@ export async function chatFixture({
           errors: [],
           warnings: [],
         }));
-        Object.assign(state.generation, { next: 'revisao', organicPages: 3 });
+        Object.assign(state.generation, { next: 'pronto', organicPages: 3 });
         return {
           ok: true,
           pages: state.pages.map((page) => ({ page: `/${page.slug}` })),

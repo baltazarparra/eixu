@@ -20,11 +20,7 @@ import { phaseBlocker, phaseInstructions } from '@/lib/generation/context';
 import { progressMarker, stalled } from '@/lib/generation/marker';
 import type { GenerationDelivery } from '@/lib/generation/delivery';
 import { listImages } from '@/lib/images/queries';
-import {
-  currentReview,
-  reviewFingerprint,
-  type ReviewReceipt,
-} from '@/lib/review/state';
+import { reviewFingerprint } from '@/lib/review/state';
 import { sceneCoverage } from '@/lib/images/scene-plan';
 import { generationState, plannedScenes } from '@/lib/sites/generation';
 import { generatedPhotos } from '@/lib/taste/metrics';
@@ -39,7 +35,7 @@ import type { Tenant } from '@/lib/types';
 
 /** Teto de fases-passo encadeadas. Cenas podem precisar de lotes adicionais. */
 export const MAX_HOPS = 14;
-export const GENERATION_FLOW_VERSION = 'admin-v3-single-review';
+export const GENERATION_FLOW_VERSION = 'admin-v4-human-review';
 
 /** Quanto o runner espera entre consultas ao pedido de pausa. */
 const STOP_POLL_MS = 5_000;
@@ -49,16 +45,6 @@ export type StepOutcome =
   | { kind: 'done' }
   | { kind: 'paused' }
   | { kind: 'failed'; error: string };
-
-/** Ferramentas que alteram o rascunho na revisão; leitura e conferência ficam de fora. */
-const REVIEW_EDIT_TOOLS = new Set([
-  'update_block',
-  'insert_block',
-  'move_block',
-  'remove_block',
-  'set_blocks',
-  'set_seo',
-]);
 
 const plural = (count: number, one: string, many: string): string =>
   `${count} ${count === 1 ? one : many}`;
@@ -85,46 +71,6 @@ function directSceneBatch(
       ratio: scene.ratio,
     })),
   };
-}
-
-type ReviewToolResult = { toolName: string; output: unknown };
-
-/**
- * A conferência limpa encerra o laço no passo da ferramenta, sem texto do
- * agente, e o histórico ficava só com o recibo genérico. Resume o turno.
- */
-function reviewTurnSummary(
-  toolResults: ReviewToolResult[],
-  review: ReviewReceipt | null,
-): string {
-  // safe() devolve recusas em toolResults. Só o payload confirma o trabalho.
-  const reads = toolResults.filter(({ toolName, output }) => {
-    const reading = output as {
-      visual?: string;
-      review?: { complete?: boolean };
-    } | null;
-    // Uma leitura com achados é válida; complete no topo exige zero erros.
-    return (
-      toolName === 'review_pages' &&
-      reading?.visual === 'complete' &&
-      reading.review?.complete === true
-    );
-  }).length;
-  const edits = toolResults.filter(
-    ({ toolName, output }) =>
-      REVIEW_EDIT_TOOLS.has(toolName) &&
-      (output as { ok?: boolean } | null)?.ok === true,
-  ).length;
-  const suggestions =
-    review?.findings?.filter((finding) => finding.nivel === 'warn').length ?? 0;
-  return [
-    `A revisão fez ${plural(reads, 'leitura', 'leituras')} do rascunho renderizado e aplicou ${plural(edits, 'ajuste', 'ajustes')}.`,
-    suggestions
-      ? `${plural(suggestions, 'sugestão ficou registrada', 'sugestões ficaram registradas')} no relatório, sem bloquear a publicação.`
-      : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
 }
 
 /** Uma etapa que repete a anterior sem produzir nada para de verdade. */
@@ -173,12 +119,8 @@ export async function markPhase(tenantId: string, phase: Phase): Promise<void> {
 }
 
 /** Guarda a entrega sem sobrescrever o recibo visual, a fase ou suas pendências. */
-async function markDelivered(
-  tenant: Tenant,
-  fingerprint: string,
-): Promise<Tenant> {
+async function markDelivered(tenant: Tenant): Promise<Tenant> {
   const delivery: GenerationDelivery = {
-    fingerprint,
     completedAt: new Date().toISOString(),
   };
   await db()`
@@ -235,26 +177,18 @@ function outcomeLabel(
   phase: Phase,
   tenant: Tenant,
   state: ReturnType<typeof generationState>,
-  review: ReviewReceipt | null,
 ): string {
   if (phase === 'cenas')
     return `${state.coveredScenes} de ${state.targetScenes} cenas disponíveis`;
   if (phase === 'composicao')
     return `${state.organicPages} páginas orgânicas montadas`;
-  if (phase === 'revisao') {
-    if (state.reviewComplete) return 'Revisão concluída sem erros';
-    if (!review) return 'Revisão do rascunho atual pendente';
-    if (!review.complete || review.visual !== 'complete')
-      return 'Captura ou crítica visual pendente';
-    return `Revisão com ${Math.max(state.blockingErrors, review.errors)} pendência(s)`;
-  }
   return tenant.brand.design ? 'Direção de arte definida' : 'Briefing revisado';
 }
 
 /**
  * Decide o fim do turno pelo estado gravado. Uma fase que repete a si mesma só
- * continua quando o marcador mostra trabalho novo. Conferir termina nesta
- * passagem, mantendo a revisão pendente quando não há certificado atual.
+ * continua quando o marcador mostra trabalho novo. Páginas geradas encerram
+ * a execução; a revisão humana começa na prévia.
  */
 function settleOutcome(input: {
   phase: Phase;
@@ -266,7 +200,6 @@ function settleOutcome(input: {
   const { phase, marker, state, fingerprint, stopRequested } = input;
   if (stopRequested) return { kind: 'paused' };
   if (state.next === 'pronto') return { kind: 'done' };
-  if (phase === 'revisao') return { kind: 'done' };
   if (state.next !== phase) return { kind: 'continue', phase: state.next };
   const next = progressMarker(phase, state, fingerprint, marker);
   if (stalled(marker, next))
@@ -300,17 +233,14 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
   if (blocker) return { kind: 'failed', error: blocker };
 
   // O marcador legado continua legível ao retomar execuções anteriores.
-  // Conferir tem uma passagem por execução, sem abrir novas rodadas.
+  // A próxima fase vem do conteúdo persistido, nunca do checkpoint antigo.
   const progress = progressMarker(
     phase,
     state,
     reviewFingerprint(tenant, pages, images),
     run.progress,
   );
-  const stop =
-    phase !== 'revisao' && stalled(run.progress, progress)
-      ? stallMessage(phase)
-      : null;
+  const stop = stalled(run.progress, progress) ? stallMessage(phase) : null;
   if (stop) {
     // Sem este registro, a parada aparecia só no cabeçalho do painel: a linha
     // do tempo terminava numa ferramenta concluída, sem dizer o que houve.
@@ -382,9 +312,8 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
   const startedAt = Date.now();
   let steps = 0;
   let timedOut = false;
-  let reviewFailed = false;
+  let phaseError: string | null = null;
   let spoken = '';
-  let toolResults: ReviewToolResult[] = [];
   let usage: Record<string, unknown> | undefined;
   const toolStartedAt = new Map<string, number>();
   try {
@@ -392,24 +321,6 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
       origin: run.origin,
       cookie: `eixu_admin=${await createSessionToken()}`,
       phase,
-      onReviewProgress: async (event) => {
-        await recordEvent({
-          runId: run.id,
-          tenantId: tenant.id,
-          phase,
-          kind: 'note',
-          label: event.label,
-          payload: {
-            stage: event.stage,
-            ...(event.completed === undefined
-              ? {}
-              : { completed: event.completed }),
-            ...(event.total === undefined ? {} : { total: event.total }),
-            ...(event.page ? { page: event.page } : {}),
-            ...(event.viewport ? { viewport: event.viewport } : {}),
-          },
-        }).catch(() => undefined);
-      },
     });
     const recordToolStart = async (
       name: string,
@@ -468,7 +379,6 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
         throw new Error('Ferramenta de imagens indisponível no runner.');
       const output = await sceneTool.execute(sceneBatch);
       await recordToolEnd('prepare_site_images', sceneBatch, output, callId);
-      toolResults = [{ toolName: 'prepare_site_images', output }];
       steps = 1;
       const generated = Array.isArray(
         (output as { imagens?: unknown[] } | null)?.imagens,
@@ -513,7 +423,6 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
         },
       });
       steps = result.steps.length;
-      toolResults = result.steps.flatMap((step) => step.toolResults);
       // O painel perdeu a contagem quando a geração saiu do navegador: o recibo
       // do stream não existe aqui. Só números e nome do modelo entram no evento.
       usage = {
@@ -560,27 +469,7 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
     });
     // Tempo esgotado não apaga o que as ferramentas já salvaram: o turno
     // termina como qualquer outro e o progresso decide a continuação.
-    if (phase === 'revisao') {
-      reviewFailed = true;
-      await recordEvent({
-        runId: run.id,
-        tenantId: tenant.id,
-        phase,
-        kind: 'note',
-        label:
-          'Conferência indisponível. O rascunho será entregue com revisão pendente.',
-      });
-    } else if (!isTimeout(error)) {
-      await recordEvent({
-        runId: run.id,
-        tenantId: tenant.id,
-        phase,
-        kind: 'error',
-        label: `A etapa ${PHASE_LABEL[phase]} falhou`,
-        payload: { error: message },
-      });
-      return { kind: 'failed', error: message };
-    }
+    if (!isTimeout(error)) phaseError = message;
     timedOut = isTimeout(error);
   } finally {
     clearInterval(watcher);
@@ -592,14 +481,23 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
   ]);
   let fresh = (await getTenantBySlug(slug)) ?? tenant;
   let after = generationState(fresh, freshPages, freshImages);
-  if (!stopRequested && phase === 'revisao') {
-    fresh = await markDelivered(
-      fresh,
-      reviewFingerprint(fresh, freshPages, freshImages),
-    );
+  if (!stopRequested && after.next === 'pronto' && phase === 'composicao') {
+    fresh = await markDelivered(fresh);
     after = generationState(fresh, freshPages, freshImages);
   }
-  const review = currentReview(fresh, freshPages, freshImages);
+  // A ferramenta pode ter gravado o projeto antes de o provedor falhar.
+  // A entrega persistida prevalece; sem páginas concluídas, o erro continua real.
+  if (phaseError && after.next !== 'pronto') {
+    await recordEvent({
+      runId: run.id,
+      tenantId: tenant.id,
+      phase,
+      kind: 'error',
+      label: `A etapa ${PHASE_LABEL[phase]} falhou`,
+      payload: { error: phaseError },
+    });
+    return { kind: 'failed', error: phaseError };
+  }
   // A próxima fase é decidida aqui, não no salto seguinte: assim o recibo do
   // chat e o motivo no painel contam a mesma história, e uma etapa que não
   // produziu nada para com o motivo em vez de parecer interrompida.
@@ -611,8 +509,6 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
     stopRequested,
   });
   const silent = !spoken;
-  if (silent && phase === 'revisao' && toolResults.length)
-    spoken = reviewTurnSummary(toolResults, review);
   const receipt = savedProgressMessage(
     workspaceState(fresh, freshPages, freshImages),
     outcome.kind === 'continue',
@@ -623,7 +519,7 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
       ? `Este turno atingiu o limite de passos. ${receipt}`
       : receipt;
   const needsReceipt =
-    phase === 'revisao' ||
+    outcome.kind === 'done' ||
     timedOut ||
     steps >= PHASE_STEPS[phase] ||
     outcome.kind === 'failed' ||
@@ -641,14 +537,12 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
     tenantId: tenant.id,
     phase,
     kind: 'phase_end',
-    label: outcomeLabel(phase, fresh, after, review),
+    label: outcomeLabel(phase, fresh, after),
     payload: {
       steps,
       next: after.next,
       ...(usage ? { usage } : {}),
       ...(timedOut ? { timeout: true } : {}),
-      ...(reviewFailed ? { reviewFailed: true } : {}),
-      ...(phase === 'revisao' ? { reviewComplete: after.reviewComplete } : {}),
       flowVersion: GENERATION_FLOW_VERSION,
       stopReason: outcome.kind,
       ...(sceneBatch
@@ -680,7 +574,7 @@ export async function settleRun(
     await recordEvent({
       runId: run.id,
       tenantId: run.tenantId,
-      phase: run.phase ?? 'revisao',
+      phase: run.phase ?? 'composicao',
       kind: 'note',
       label: 'Geração concluída',
     });

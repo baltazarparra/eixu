@@ -848,7 +848,7 @@ await test('a próxima etapa vem do estado persistido, não da conversa', () => 
     reviewComplete: true,
   };
   const novo = { ...base, organicPages: 0 };
-  assert.equal(nextPhase({ ...base, hasDesign: false }), 'briefing');
+  assert.equal(nextPhase({ ...novo, hasDesign: false }), 'briefing');
   assert.equal(nextPhase({ ...novo, coveredScenes: 1 }), 'cenas');
   // Sem atalho: uma vaga aberta mantém a etapa de cenas.
   assert.equal(nextPhase({ ...novo, coveredScenes: 5 }), 'cenas');
@@ -858,10 +858,10 @@ await test('a próxima etapa vem do estado persistido, não da conversa', () => 
   assert.equal(nextPhase({ ...base, coveredScenes: 1 }), 'pronto');
   assert.equal(
     nextPhase({ ...base, coveredScenes: 1, blockingErrors: 1 }),
-    'revisao',
+    'pronto',
   );
-  assert.equal(nextPhase({ ...base, reviewRounds: 0 }), 'revisao');
-  assert.equal(nextPhase({ ...base, blockingErrors: 2 }), 'revisao');
+  assert.equal(nextPhase({ ...base, reviewRounds: 0 }), 'pronto');
+  assert.equal(nextPhase({ ...base, blockingErrors: 2 }), 'pronto');
   assert.equal(nextPhase(base), 'pronto');
   // A composição não fica disponível antes da direção existir.
   assert.equal(PHASE_TOOLS.briefing.includes('build_site'), false);
@@ -943,7 +943,7 @@ for (const status of ['disponivel', 'candidata', 'aprovada'])
     assert.equal(rejected.next, 'cenas');
     const pages = paginasRicas();
     const complete = generationState(tenantComDirecao, pages, library);
-    assert.equal(complete.next, 'revisao');
+    assert.equal(complete.next, 'pronto');
     const semFoto = structuredClone(pages);
     semFoto[1].blocks = semFoto[1].blocks.filter(
       (block) => block.type !== 'hero.split',

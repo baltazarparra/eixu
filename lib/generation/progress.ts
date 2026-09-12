@@ -157,12 +157,11 @@ export function phaseRecords(
 
 /**
  * Etapas de produto que o painel e o diamante da prévia mostram. O servidor
- * tem quatro fases; o operador vê três: imagens e páginas são o mesmo "Criar".
+ * tem três fases; o operador vê duas: imagens e páginas são o mesmo "Criar".
  */
 export const PRODUCT_STAGES = [
   { id: 'preparar', label: 'Preparar', phases: ['briefing'] },
   { id: 'criar', label: 'Criar', phases: ['cenas', 'composicao'] },
-  { id: 'conferir', label: 'Conferir', phases: ['revisao'] },
 ] as const satisfies readonly {
   id: string;
   label: string;
@@ -172,6 +171,8 @@ export const PRODUCT_STAGES = [
 export type ProductStage = (typeof PRODUCT_STAGES)[number];
 
 export function productStage(phase: Phase): ProductStage {
+  // Execuções antigas podem trazer este checkpoint no histórico.
+  if (phase === 'revisao') return PRODUCT_STAGES[1];
   return PRODUCT_STAGES.find((stage) =>
     (stage.phases as readonly Phase[]).includes(phase),
   )!;
@@ -191,7 +192,7 @@ export type ProgressState = {
 export function phaseProgress(
   state: ProgressState,
   phase: Phase | null,
-  events: GenerationEvent[],
+  _events: GenerationEvent[],
 ): string | null {
   const generation = state.generation;
   if (phase === 'cenas')
@@ -200,13 +201,7 @@ export function phaseProgress(
     return state.pages.length
       ? `${state.pages.length} páginas gravadas`
       : 'montando as páginas';
-  if (phase === 'revisao') {
-    const review = reviewProgress(events);
-    const reads = review.reads
-      ? `${review.reads} de ${review.total} leituras concluídas`
-      : 'preparando a primeira leitura';
-    return review.round > 1 ? `rodada ${review.round} · ${reads}` : reads;
-  }
+
   return null;
 }
 
@@ -224,7 +219,7 @@ export type CreationProgress = {
   stages: StageProgress[];
   /** Etapa ativa ou, parada, a próxima a rodar. */
   stage: ProductStage;
-  /** Posição da etapa mostrada, de 1 a 3. */
+  /** Posição da etapa mostrada, de 1 a 2. */
   position: number;
   /** Unidades medidas da fase em execução; null quando não há total. */
   detail: string | null;
@@ -256,7 +251,7 @@ function phaseFill(
 }
 
 /**
- * Progresso da criação do site em três etapas, para o diamante da prévia. O
+ * Progresso da criação do site em duas etapas, para o diamante da prévia. O
  * mesmo estado que o painel lê; nada aqui usa tempo decorrido como estimativa.
  */
 export function creationProgress(
@@ -280,7 +275,8 @@ export function creationProgress(
       done: true,
     };
   }
-  const current: Phase = phase ?? (next as Phase);
+  const checkpoint = phase ?? (next as Phase);
+  const current: Phase = checkpoint === 'revisao' ? 'composicao' : checkpoint;
   const active = productStage(current);
   const activeIndex = PRODUCT_STAGES.findIndex(
     (stage) => stage.id === active.id,
@@ -306,7 +302,11 @@ export function creationProgress(
       id: stage.id,
       label: stage.label,
       state:
-        index < activeIndex ? 'done' : index === activeIndex ? 'active' : 'todo',
+        index < activeIndex
+          ? 'done'
+          : index === activeIndex
+            ? 'active'
+            : 'todo',
       fill: index < activeIndex ? 1 : index === activeIndex ? fill : 0,
     })),
     stage: active,

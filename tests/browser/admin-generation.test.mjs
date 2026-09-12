@@ -341,7 +341,7 @@ await test(
         assert.equal(await visible('Continuar'), true);
         await click('Continuar');
         await page.waitForFunction(
-          () => document.body.innerText.includes('Etapa 2 de 3'),
+          () => document.body.innerText.includes('Etapa 2 de 2'),
           { timeout: 10_000 },
         );
         assert.equal(await headline(), 'Criar');
@@ -367,7 +367,7 @@ await test(
             '.admin-preview-loader:not([data-compact])',
             (node) => node.textContent,
           ),
-          'Etapa 2 de 3 · Criar2 de 5 cenas prontasA prévia aparece quando a composição gravar a primeira página.',
+          'Etapa 2 de 2 · Criar2 de 5 cenas prontasA prévia aparece quando a composição gravar a primeira página.',
         );
         assert.ok(
           ['live', 'fallback'].includes(
@@ -470,7 +470,7 @@ await test(
         await page.reload({ waitUntil: 'networkidle0' });
         await page.waitForFunction(
           () =>
-            document.body.innerText.includes('Etapa 2 de 3') &&
+            document.body.innerText.includes('Etapa 2 de 2') &&
             document.body.innerText.includes('Gerando a cena'),
           { timeout: 10_000 },
         );
@@ -534,7 +534,7 @@ await test(
         backend.site.errors = [
           'A home precisa de uma seção protagonista com fotos.',
         ];
-        backend.site.generation.next = 'revisao';
+        backend.site.generation.next = 'pronto';
         backend.site.generation.reviewComplete = false;
         backend.site.generation.blockingErrors = 1;
         await page.reload({ waitUntil: 'networkidle0' });
@@ -561,53 +561,54 @@ await test(
 );
 
 await test(
-  'revisão reinicia leituras na segunda rodada e mantém o número após recarga',
+  'cliente legado com páginas geradas não oferece retomada de revisão após recarga',
   { skip: !process.env.EIXU_CHROME_PATH },
   async () => {
     const backend = generationServer({
-      generation: { next: 'revisao', reviewRounds: 7 },
+      generation: { next: 'pronto', reviewRounds: 7, reviewComplete: false },
+      pages: [
+        {
+          slug: '',
+          type: 'page',
+          title: 'Início',
+          blocks: 6,
+          published: false,
+          dirty: true,
+          errors: [],
+          warnings: [],
+        },
+      ],
     });
     backend.start();
-    backend.add('tool_end', 'Leitura concluída', 'review_pages');
-    backend.add('tool_end', 'Leitura concluída', 'review_pages');
+    backend.finish(false);
+    Object.assign(backend.run, {
+      status: 'failed',
+      phase: 'revisao',
+      error: 'A revisão não fechou em 3 rodadas.',
+    });
     await withWorkspace(
       { backend, chat: await chatFixture() },
-      async ({ page, errors }) => {
-        await page.waitForFunction(() =>
-          document.body.innerText.includes('2 de 2 leituras concluídas'),
-        );
-        assert.ok(
-          !(await page.evaluate(() => document.body.innerText)).includes(
-            'rodada 7 de 3',
-          ),
-        );
-        backend.add('phase_end', 'Revisão com pendências');
-        backend.add('phase_start', 'Revisão · rodada 2 de 3', null, {
-          round: 2,
-        });
-        backend.add('tool_end', 'Leitura concluída', 'review_pages');
-        await page.waitForFunction(() =>
-          document.body.innerText.includes(
-            'rodada 2 · 1 de 2 leituras concluídas',
-          ),
-        );
-        await page.reload({ waitUntil: 'networkidle0' });
-        await page.waitForFunction(() =>
-          document.body.innerText.includes(
-            'rodada 2 · 1 de 2 leituras concluídas',
-          ),
-        );
-        await page.setViewport({ width: 390, height: 844 });
-        await page.waitForFunction(() =>
-          document.body.innerText.includes(
-            'rodada 2 · 1 de 2 leituras concluídas',
-          ),
-        );
-        await mkdir('outputs/generation', { recursive: true });
-        await page.screenshot({
-          path: 'outputs/generation/revisao-rodada-2-mobile.png',
-          fullPage: true,
-        });
+      async ({ page, errors, click }) => {
+        for (const width of [1440, 390]) {
+          await page.setViewport({ width, height: 900 });
+          await page.reload({ waitUntil: 'networkidle0' });
+          if (width < 1024) await click('Conversa');
+          const text = await page.evaluate(() => document.body.innerText);
+          assert.doesNotMatch(
+            text,
+            /Revisão pendente|Revisão visual.*pendente|Próxima etapa: Conferir|3 rodadas/,
+          );
+          const buttons = await page.$$eval('button', (nodes) =>
+            nodes.map((n) => n.textContent.trim()),
+          );
+          for (const label of ['Continuar', 'Retomar', 'Tentar novamente'])
+            assert.equal(buttons.includes(label), false);
+          assert.equal(
+            await page.$eval('textarea', (node) => node.disabled),
+            false,
+          );
+          assert.ok(await page.$('iframe'));
+        }
         assert.equal(backend.starts(), 1);
         assert.deepEqual(errors, []);
       },
@@ -630,7 +631,7 @@ await test(
       async ({ page, errors, counters, visible, headline }) => {
         // Sem clique: chegar na tela do cliente recém-cadastrado já constrói.
         await page.waitForFunction(
-          () => document.body.innerText.includes('Etapa 1 de 3'),
+          () => document.body.innerText.includes('Etapa 1 de 2'),
           { timeout: 10_000 },
         );
         assert.equal(await headline(), 'Preparar');
@@ -652,7 +653,7 @@ await test(
         // Recarregar acompanha o run existente em vez de abrir outro pago.
         await page.reload({ waitUntil: 'networkidle0' });
         await page.waitForFunction(
-          () => document.body.innerText.includes('Etapa 1 de 3'),
+          () => document.body.innerText.includes('Etapa 1 de 2'),
           { timeout: 10_000 },
         );
         await new Promise((resolve) => setTimeout(resolve, 3400));
@@ -745,12 +746,12 @@ await test(
 );
 
 await test(
-  'consumo inteiro é acessível durante a revisão em desktop e celular',
+  'consumo inteiro é acessível durante a composição em desktop e celular',
   { skip: !process.env.EIXU_CHROME_PATH },
   async () => {
     const backend = generationServer({
       generation: {
-        next: 'revisao',
+        next: 'composicao',
         photos: 5,
         coveredScenes: 5,
         organicPages: 3,
@@ -864,11 +865,11 @@ await test(
 );
 
 await test(
-  'conferência indisponível entrega o site, libera o chat e não reinicia após recarga',
+  'composição entrega sem revisão automática, libera o chat e não reinicia após recarga',
   { skip: !process.env.EIXU_CHROME_PATH },
   async () => {
     const backend = generationServer({
-      generation: { next: 'revisao', organicPages: 3 },
+      generation: { next: 'composicao', organicPages: 3 },
       pages: ['', 'servicos', 'contato'].map((slug) => ({
         slug,
         type: 'page',
@@ -885,21 +886,19 @@ await test(
       { backend, chat: await chatFixture() },
       async ({ page, errors, click }) => {
         await page.waitForFunction(() =>
-          document.body.innerText.includes('Etapa 3 de 3'),
+          document.body.innerText.includes('Etapa 2 de 2'),
         );
-        backend.add('tool_end', 'Crítica visual indisponível', 'review_pages');
+        backend.add('tool_end', 'Projeto salvo', 'build_site');
         backend.finish(false);
         await page.waitForFunction(() =>
-          document.body.innerText.includes('Site gerado com revisão pendente'),
+          document.body.innerText.includes('Geração concluída'),
         );
         for (const width of [1440, 390]) {
           await page.setViewport({ width, height: 900 });
           await page.reload({ waitUntil: 'networkidle0' });
           if (width < 1024) await click('Conversa');
           await page.waitForFunction(() =>
-            document.body.innerText.includes(
-              'Site gerado com revisão pendente',
-            ),
+            document.body.innerText.includes('Geração concluída'),
           );
           const buttons = await page.$$eval('button', (nodes) =>
             nodes.map((node) => node.textContent.trim()),
@@ -912,9 +911,11 @@ await test(
           );
           assert.ok(await page.$('iframe[src*="/s/stream-fixture/"]'));
           assert.equal(await page.$('.admin-preview-loader'), null);
-          assert.equal(
-            await page.$eval('.admin-run-status', (node) => node.dataset.tone),
-            'warn',
+          assert.equal(await page.$('.admin-run-status'), null);
+          assert.equal(await page.$('.admin-bar-review'), null);
+          assert.doesNotMatch(
+            await page.evaluate(() => document.body.innerText),
+            /Revisão visual.*pendente|Próxima etapa: Conferir/,
           );
           assert.equal(
             await page.$eval('.admin-run-name', (node) => node.textContent),
@@ -922,7 +923,7 @@ await test(
           );
           await mkdir('outputs/generation', { recursive: true });
           await page.screenshot({
-            path: `outputs/generation/entrega-revisao-pendente-${width}.png`,
+            path: `outputs/generation/entrega-revisao-humana-${width}.png`,
             fullPage: true,
           });
         }

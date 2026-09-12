@@ -56,8 +56,8 @@ export const PHASE_STEPS: Record<Phase, number> = {
 /** Uma leitura inicial e, quando houve reparo, uma conferência focal. */
 export const REVIEW_CALLS_PER_TURN = 2;
 
-/** Lote salvo sem erro segue para a etapa que observa pixels e edita páginas. */
-export function compositionReadyForReview(
+/** Lote salvo sem erro encerra a composição; a revisão seguinte é humana. */
+export function compositionReadyToFinish(
   results: { toolName: string; output: unknown }[],
 ): boolean {
   const result = results.findLast((item) =>
@@ -160,13 +160,13 @@ Encerre o turno depois da chamada. As imagens ficam disponíveis com número e U
 Objetivo: montar o projeto completo em uma única chamada de build_site, cumprindo o briefing de composição, a voz da vibe em linguagem simples e, quando presente, as aplicações de referenceDirection em toda a jornada.
 O catálogo abaixo traz os schemas JSON completos, incluindo campos obrigatórios e limites. Use-os diretamente, sem consultar de novo o mesmo schema. Siga o pagePlan persistido e verifique factualidade, percurso, SEO distinto, ritmo e recortes antes de escrever. Escreva o projeto inteiro com URLs exatas e proporções coerentes com o layout. Use describe_block somente se ainda faltar informação para compor; não adivinhe props.
 Uma página com props inválidas recusa o lote inteiro sem gravar: corrija com repair_site apenas os campos apontados. Uma pendência de projeto não impede a gravação; erros em "pendencias" precisam ser corrigidos antes de encerrar.
-Pare quando build_site voltar ok=true sem erros. Leve os avisos para a revisão visual da próxima fase: ela tem os pixels e as ferramentas de edição para decidir e corrigir recortes. Não reenvie o projeto já gravado só para zerar avisos. Não publique.`,
+Pare quando build_site voltar ok=true sem erros. O site está gerado e a revisão é humana pela prévia. Informe os avisos sem criar etapa de conferência, pedir Continuar ou prometer revisão automática. Não reenvie o projeto já gravado só para zerar avisos. Não publique.`,
   revisao: `## Conferir: revisão
 Objetivo: olhar o resultado completo e corrigir o que ficou pobre, inclusive desvios materiais das referências registradas em referenceDirection. Avalie unidade entre páginas; não volte à receita da vibe quando a referência dirige o projeto.
 Chame review_pages e trate erros estruturais, editoriais e visuais observados: oferta sem evidência, linguagem difícil, inglês desnecessário, ação pouco clara, voz incoerente com a vibe, jornada repetida, seção sem foto, recorte ruim, tom repetido, headline ilegível, overflow, imagem quebrada ou referência visual descaracterizada. A crítica lê as capturas como imagens quando a captura está habilitada.
 Corrija com as ferramentas da página apontada, preservando o que está bom. Chame review_pages novamente depois da última correção, informando as páginas afetadas. Há até ${REVIEW_CALLS_PER_TURN} leituras por turno: uma avaliação e uma conferência focal. Uma primeira avaliação já completa e sem erro material encerra; avisos opcionais ficam no relatório. Falha de captura/crítica ou limite esgotado é pendência explícita, nunca aceite.
 Agrupe as correções da mesma página no mesmo passo; use set_blocks quando forem muitas. O último dos ${PHASE_STEPS.revisao} passos é reservado à conferência quando ainda houver leitura disponível. Uma conferência completa e sem erros após o refinamento encerra esta fase; sugestões restantes continuam no relatório, sem iniciar outra reconstrução.
-Esta é a única passagem de Conferir nesta geração. Se a captura ou a crítica estiver indisponível, encerre imediatamente, sem repetir a leitura nem editar o conteúdo por esse motivo. O rascunho será entregue com revisão pendente, sem afirmar aprovação visual. Se o limite de passos ou de leituras chegar antes da conferência limpa, encerre com um resumo curto do que falta; não prometa outra rodada automática.
+Esta análise só ocorre por pedido explícito do operador, fora da geração. Se a captura ou a crítica estiver indisponível, encerre imediatamente, sem repetir a leitura nem editar o conteúdo por esse motivo. Informe que a análise solicitada não completou, sem reabrir a geração nem afirmar aprovação visual. Se o limite de passos ou de leituras chegar antes da conferência limpa, encerre com um resumo curto do que falta; não prometa outra rodada automática.
 Avisos são pistas para julgamento: confira o defeito nos pixels e no briefing antes de alterar. Uma diferença nominal de proporção com o assunto íntegro não exige reconstruir a página; texto cortado, ilegível ou conteúdo sem evidência exige correção.
 Pare quando a revisão do rascunho atual estiver completa e sem erros materiais, ou encerre com a pendência explícita nos casos acima. Não publique: a publicação depende do pedido do operador.`,
 };
@@ -197,7 +197,7 @@ export type GenerationState = {
   blockingErrors: number;
   reviewRounds: number;
   reviewComplete: boolean;
-  /** Conferir já encerrou nesta versão; não equivale a aprovação visual. */
+  /** A composição já foi entregue; edições posteriores não reabrem a geração. */
   delivered?: boolean;
 };
 
@@ -206,22 +206,9 @@ export type GenerationState = {
  * ou retomar depois de uma falha não perde o progresso.
  */
 export function nextPhase(state: GenerationState): Phase | 'pronto' {
+  // Páginas já montadas encerram a geração, inclusive em clientes legados
+  // sem recibo visual. Pre-flight continua decidindo a publicação separadamente.
+  if (state.delivered || state.organicPages >= 3) return 'pronto';
   if (!state.hasDesign) return 'briefing';
-  // Um reparo da conferência pode deixar erro estrutural. Registre a pendência
-  // para o operador, sem reiniciar composição e voltar a Conferir no mesmo run.
-  if (state.delivered) return 'pronto';
-  // A cobertura do plano governa só antes da composição: o repertório existe
-  // para a montagem ter o que usar. Depois que as páginas existem, foto que
-  // falte vira erro de pre-flight e quem resolve é a revisão. Sem esse
-  // recorte, um cliente já publicado com biblioteca menor que o plano voltaria
-  // para a etapa de cenas e gastaria geração que ninguém pediu.
-  if (state.organicPages < 3)
-    return state.coveredScenes < state.targetScenes ? 'cenas' : 'composicao';
-  if (
-    state.blockingErrors > 0 ||
-    state.reviewRounds < 1 ||
-    !state.reviewComplete
-  )
-    return 'revisao';
-  return 'pronto';
+  return state.coveredScenes < state.targetScenes ? 'cenas' : 'composicao';
 }

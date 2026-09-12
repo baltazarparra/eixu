@@ -1,7 +1,7 @@
 import { generateId, type UIMessageChunk } from 'ai';
 
 export const CHAT_INTERRUPTED =
-  'A conexão terminou antes da conclusão. O progresso salvo pode ser consultado no painel; use Continuar para retomar.';
+  'A conexão terminou antes da conclusão. Consulte o resultado salvo no painel.';
 
 /**
  * Uma parada externa pode terminar em tool-calls, sem texto final do modelo.

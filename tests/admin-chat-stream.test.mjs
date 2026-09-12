@@ -61,7 +61,7 @@ await test('SDK recupera schema inválido, salva e entrega recibo antes do fim d
   );
   assert.equal(f.executions(), 1);
   assert.equal(f.modelCalls.length, 2);
-  assert.equal(f.state.generation.next, 'revisao');
+  assert.equal(f.state.generation.next, 'pronto');
   assert.ok(chunks.some((part) => part.type === 'tool-input-error'));
   assert.ok(chunks.some((part) => part.type === 'tool-output-available'));
   assert.ok(!chunks.some((part) => part.type === 'error'));
@@ -77,7 +77,7 @@ await test('SDK recupera schema inválido, salva e entrega recibo antes do fim d
     .map((part) => part.text)
     .join('');
   assert.match(text, /4 páginas/);
-  assert.match(text, /revisão visual.*pendente/);
+  assert.match(text, /Site gerado.*Confira a prévia/);
   assert.equal(f.writes.at(-1).text, text);
   assert.equal(chunks.at(-1).type, 'finish');
   const review = await readChunks(
@@ -85,7 +85,7 @@ await test('SDK recupera schema inválido, salva e entrega recibo antes do fim d
   );
   assert.ok(
     review.some(
-      (part) => part.type === 'text-delta' && /foi concluída/.test(part.delta),
+      (part) => part.type === 'text-delta' && /Site gerado/.test(part.delta),
     ),
   );
 });

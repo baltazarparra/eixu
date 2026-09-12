@@ -97,16 +97,15 @@ O andamento é atualizado automaticamente ao iniciar pelo botão ou ao digitar
 “continuar”, até a conclusão. Ele mostra atividade real, tempo decorrido e
 unidades concluídas quando há um total conhecido; não usa estimativa fixa como
 porcentagem. A prévia acompanha as alterações salvas. Quando a geração está
-parada, os motivos que bloqueiam a publicação continuam visíveis, mesmo com a
-revisão ainda pendente.
+parada, os motivos que bloqueiam a publicação continuam visíveis.
 
-O agente interno usa Gemini 3.8 Flash e dedica mais raciocínio à composição e à revisão. Ele planeja intenções distintas por página, confere o resultado em desktop e celular e corrige problemas materiais. A geração entrega o rascunho mesmo quando a revisão falha ou atinge o limite do turno. O painel distingue **Geração concluída** de **Revisão pendente**, sem repetir Conferir automaticamente; isso não equivale a aprovação visual. A revisão não publica por conta própria.
+O agente interno usa Gemini 3.8 Flash e dedica mais raciocínio à composição. Ele planeja intenções distintas por página e salva o projeto completo. Depois disso, a geração está concluída e a revisão é sua: confira a prévia em desktop e celular e peça ajustes pelo chat. Não há etapa automática Conferir nem aviso de revisão visual pendente.
 
 ## Gerar e editar o site
 
 Um cliente recém-cadastrado começa a construção sozinho: ao abrir Site, a primeira etapa já está rodando, sem botão para clicar. O início automático vale só para quem ainda não tem página, tentativa de geração nem conversa anterior no site. Rascunho antigo, execução pausada ou com falha espera o seu comando, inclusive tentativas anteriores à geração no servidor, para não gastar geração que ninguém pediu. Quando o cadastro informou uma rede social, o briefing aguarda até 20 segundos pela leitura do perfil antes de começar; se ela demorar mais, a etapa segue e o perfil vira lacuna declarada.
 
-**Continuar** percorre **Preparar**, **Criar** e **Conferir**. Internamente, Criar
+**Continuar**, em uma geração ainda incompleta, percorre **Preparar** e **Criar**. Internamente, Criar
 mantém checkpoints separados para imagens e páginas, permitindo retomar no
 ponto certo. **Retomar** aparece depois de uma pausa e **Tentar novamente**
 depois de uma falha. A sequência roda no servidor, não na aba: recarregar a
@@ -115,34 +114,25 @@ e o painel volta mostrando a etapa e a atividade em andamento. Digitar
 "continuar" no chat faz a mesma coisa que o botão.
 
 O andamento fica dentro da conversa, logo abaixo do título dela, e a prévia
-ocupa a altura inteira: etapa atual, três trilhas, resultado já produzido,
-atividade concreta, tempo decorrido e **Linha do tempo**. Durante a revisão, a
-atividade identifica página, desktop/celular e capturas concluídas. No celular,
+ocupa a altura inteira: etapa atual, duas trilhas, resultado já produzido,
+atividade concreta, tempo decorrido e **Linha do tempo**. No celular,
 o andamento acompanha a vista **Conversa**. **Pausar** encerra depois do passo
 atual — uma ferramenta já iniciada termina e salva; a pausa não desfaz
 escritas. Ao terminar, o painel mostra páginas, fotos, tempo e consumo até você
 fechar.
 
 Enquanto a composição não grava a primeira página, a prévia mostra um diamante
-negro em 3D. As facetas se fecham conforme as etapas medidas e o anel em
-órbita repete as três trilhas do painel: feita, ativa e a fazer, com as mesmas
-unidades (cenas prontas, páginas gravadas, leituras da revisão). Nada ali é
+negro em 3D. As facetas se fecham conforme as etapas medidas e o progresso acompanha as duas etapas do painel, com as mesmas
+unidades (cenas prontas e páginas gravadas). Nada ali é
 porcentagem estimada pelo tempo. Depois da primeira página, a versão compacta
 do mesmo indicador fica na barra do editor, ao lado de **Publicar**, até a
 geração terminar. Sem WebGL,
 só o texto da etapa aparece; com movimento reduzido, o diamante fica parado e
 atualiza apenas quando o progresso muda.
 
-Enquanto a geração roda, o chat fica em espera e diz por quê: os dois disputariam as mesmas páginas. Se uma etapa falhar ou não avançar, a execução para com o motivo no painel; leia a última resposta antes de retomar. Se aparecer que a próxima etapa não pôde ser iniciada, **Tentar novamente** retoma pelo progresso salvo. Cenas e páginas prontas continuam disponíveis. Falha na conferência visual entrega o rascunho com aviso de revisão pendente, sem interromper a geração.
+Enquanto a geração roda, o chat fica em espera e diz por quê: os dois disputariam as mesmas páginas. Se uma etapa falhar ou não avançar, a execução para com o motivo no painel; leia a última resposta antes de retomar. Se aparecer que a próxima etapa não pôde ser iniciada, **Tentar novamente** retoma pelo progresso salvo. Cenas e páginas prontas continuam disponíveis. Depois de salvar as páginas, a execução termina e o chat fica disponível para ajustes.
 
-Conferir roda uma única vez por geração, com uma avaliação e, se houver reparo,
-uma conferência das páginas afetadas no mesmo turno. Uma primeira leitura
-completa sem erro material termina a revisão; sugestões opcionais permanecem no
-relatório. Se a captura ou o crítico falhar, a tentativa termina sem novas
-leituras ou alterações motivadas pela indisponibilidade. O site fica disponível
-na prévia e no chat, com suas pendências explícitas. Para conferir outra vez,
-peça uma nova revisão pelo chat. Erros de página ou projeto continuam bloqueando
-**Publicar**; a geração não publica por conta própria.
+Sites já gerados também ficam concluídos, inclusive os que tinham uma conferência automática interrompida. Recarga, edição ou atualização do gerador não exigem retomar a revisão. Uma análise visual automática só ocorre se você pedir pelo chat. Erros de página ou projeto continuam bloqueando **Publicar**; a geração não publica por conta própria.
 
 Na etapa de cenas, o plano preparado já contém cada pedido de foto, página e
 proporção. O runner envia o lote direto ao estúdio, sem um turno do coordenador
@@ -170,7 +160,7 @@ rascunho de publicado. **Usar no site**, em uma foto, abre o chat com o número
 preenchido para você indicar página e posição; não altera conteúdo sozinho.
 **Usar como logo**, em um logo disponível, aplica no rascunho.
 
-As pendências para publicar aparecem no fim do fluxo, quando ainda sobra algo. Erros de página ou projeto bloqueiam a publicação; recomendações continuam disponíveis para revisão. Quando a revisão visual do rascunho atual ainda não terminou, a barra avisa **Revisão pendente** ao lado de **Publicar**: publicar continua permitido, valendo o pre-flight determinístico, mas sem a conferência dos pixels. Mudanças de blocos ou SEO tornam a página pendente. **Publicar** valida o projeto no servidor e atualiza o snapshot de páginas atomicamente; um erro preserva a versão anterior.
+As pendências para publicar aparecem no fim do fluxo, quando ainda sobra algo. Erros de página ou projeto bloqueiam a publicação; recomendações continuam disponíveis para revisão. Mudanças de blocos ou SEO tornam a página pendente. **Publicar** valida o projeto no servidor e atualiza o snapshot de páginas atomicamente; um erro preserva a versão anterior.
 
 Nas outras abas, **Revisar e publicar** leva ao editor para conferir as pendências atuais.
 

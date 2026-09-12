@@ -3,7 +3,7 @@ import type { buildTools } from './tools';
 import {
   PHASE_STEPS,
   PHASE_TOOLS,
-  compositionReadyForReview,
+  compositionReadyToFinish,
   reviewConferenceDue,
   reviewTurnFinished,
   type Phase,
@@ -44,7 +44,7 @@ export function siteAgent(input: {
       () => shouldStop?.() === true,
       ({ steps }) =>
         phase === 'composicao' &&
-        compositionReadyForReview(steps.at(-1)?.toolResults ?? []),
+        compositionReadyToFinish(steps.at(-1)?.toolResults ?? []),
       ({ steps }) => phase === 'revisao' && reviewTurnFinished(steps),
     ],
     prepareStep: ({ stepNumber, steps }) =>

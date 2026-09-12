@@ -1,5 +1,37 @@
 # Validação e publicação
 
+## Geração concluída com revisão humana, 12/09/2026
+
+Esta mudança substitui a conferência única descrita no registro anterior. O
+fluxo termina na composição: Preparar e Criar são as duas etapas visíveis.
+Sites montados, inclusive legados sem certificado visual, ficam concluídos.
+Edições e deploys não reabrem a geração; o recibo de entrega guarda sua data.
+O painel não mostra revisão visual pendente, Conferir ou retomada para um site
+já gerado. A revisão passa ao operador pela prévia e pelo chat. Pre-flight e
+snapshots de publicação continuam com seus contratos; não há migração de schema.
+
+Verificação local:
+
+- Tipos, lint global e `git diff --check` passaram. O build Next.js de produção
+  passou, incluindo três checks dos artefatos de captura serverless.
+- Admin: 114 casos passaram e três integrações PostgreSQL foram puladas por
+  ausência de `EIXU_TEST_POSTGRES_URL`. Depois, os seis casos de entrega passaram,
+  incluindo dois novos: o SDK real salva a composição em uma chamada sem expor
+  `review_pages`, e o estado real mantém sites legados concluídos após edição.
+- Sites: 125 casos passaram, incluindo publicação e preservação do snapshot.
+- Navegador: nove casos passaram em Chromium local. Cobrem as duas etapas,
+  início automático, recarga, pausa, consumo, entrega sem revisão automática,
+  legado com revisão falhada, chat liberado e erro de pre-flight ainda bloqueando
+  Publicar. Capturas de conclusão em 1440 e 390 px:
+  `outputs/generation/entrega-revisao-humana-{1440,390}.png`.
+- O runner também foi exercitado com timeout e falha do provedor após salvar as
+  páginas: confirma a entrega; falha antes de concluir mantém erro explícito.
+
+A geração foi exercitada com fixtures e modelos simulados no SDK real, sem
+chamadas pagas nem escrita em clientes. `fiskprivate`, excluído pelo operador,
+não foi recriado. A validação de release deve confirmar o SHA do merge, READY
+na Vercel e smoke das rotas públicas e da barreira de autenticação.
+
 ## Conferência única com entrega do rascunho, 12/09/2026
 
 Conferir passou a ter uma única passagem por geração. O SDK força a primeira

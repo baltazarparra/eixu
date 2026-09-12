@@ -1,5 +1,7 @@
 # Plano de otimização do admin e da criação de sites
 
+> Registro histórico: desde 12/09/2026, a jornada vigente é Preparar → Criar, com revisão humana após a composição. As propostas de Conferir abaixo foram substituídas; consulte [Harness](harness.md) e [Admin](admin.md).
+
 **Status: núcleo implementado e validado localmente; ensaio pago pendente.**
 Análise de 11/09/2026, com consulta ao banco em 12/09 às 01:06 UTC, equivalente
 a 11/09 às 22:06 em Fortaleza. Código de referência do diagnóstico:

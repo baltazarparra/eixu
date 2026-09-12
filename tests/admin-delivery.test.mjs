@@ -116,7 +116,7 @@ await test('erros conhecidos permitem reparo; segunda conferência termina mesmo
   }
 });
 
-await test('entrega persistida não aprova revisão, não apaga erros e invalida após edição', () => {
+await test('entrega persiste após edição sem aprovar revisão nem apagar erros', () => {
   const tenant = {
     id: 'fixture',
     slug: 'fixture',
@@ -178,7 +178,7 @@ await test('entrega persistida não aprova revisão, não apaga erros e invalida
     delivered: true,
   };
   assert.equal(phases.nextPhase(base), 'pronto');
-  assert.equal(phases.nextPhase({ ...base, delivered: false }), 'revisao');
+  assert.equal(phases.nextPhase({ ...base, delivered: false }), 'pronto');
   assert.equal(
     phases.nextPhase({
       ...base,
@@ -193,10 +193,10 @@ await test('entrega persistida não aprova revisão, não apaga erros e invalida
     ...state,
     generation: { ...state.generation, next: 'pronto' },
   });
-  assert.match(text, /Site gerado.*pendências/);
+  assert.match(text, /Site gerado.*Confira a prévia/);
   assert.doesNotMatch(text, /foi concluída sem erros|Use Continuar/);
   const edited = [{ ...pages[0], title: 'Alterado' }];
-  assert.equal(currentDelivery(tenant, edited, []), null);
+  assert.ok(currentDelivery(tenant, edited, []));
   assert.equal(
     workspaceState(tenant, edited, []).review.findings.length,
     0,
@@ -252,5 +252,131 @@ await test('estado real entrega rascunho inválido com pendências sem voltar à
   assert.equal(
     workspaceState({ ...tenant, brief: {} }, pages, []).generation.next,
     'cenas',
+  );
+});
+
+await test('composição no SDK real salva e termina sem chamar review_pages', async () => {
+  let calls = 0,
+    writes = 0,
+    reviews = 0;
+  const model = new MockLanguageModelV4({
+    doGenerate: async (options) => {
+      calls++;
+      assert.equal(
+        options.tools.some((tool) => tool.name === 'review_pages'),
+        false,
+      );
+      return {
+        content: [
+          {
+            type: 'tool-call',
+            toolCallId: 'build',
+            toolName: 'build_site',
+            input: '{}',
+          },
+        ],
+        finishReason: { unified: 'tool-calls', raw: 'tool-calls' },
+        usage: { inputTokens: { total: 10 }, outputTokens: { total: 10 } },
+        warnings: [],
+      };
+    },
+  });
+  const { siteAgent } = await loadModule('lib/ai/agent.ts', {
+    './models': {
+      productModel: () => model,
+      modelSettings: () => ({}),
+      TURN_TIMEOUT_MS: 1000,
+    },
+    './usage': { gatewayOptions: () => ({}) },
+    './serial-tools': serial,
+    '../taste/phases': phases,
+  });
+  const result = await siteAgent({
+    tenantId: 'fixture',
+    phase: 'composicao',
+    instructions: 'Monte o site.',
+    tools: {
+      build_site: tool({
+        inputSchema: z.object({}),
+        execute: async () => {
+          writes++;
+          return {
+            ok: true,
+            pages: ['', 'servicos', 'contato'],
+            pendencias: [{ level: 'warn' }],
+          };
+        },
+      }),
+      review_pages: tool({
+        inputSchema: z.object({}),
+        execute: async () => {
+          reviews++;
+          throw new Error('Crítico indisponível');
+        },
+      }),
+    },
+  }).generate({ prompt: 'Gere as páginas.' });
+  assert.equal(result.steps.length, 1);
+  assert.equal(calls, 1);
+  assert.equal(writes, 1);
+  assert.equal(reviews, 0);
+});
+
+await test('páginas legadas sem recibo visual permanecem concluídas após edição e recarga', () => {
+  const tenant = {
+    id: 'fixture',
+    slug: 'fixture',
+    name: 'Fixture',
+    brand: {},
+    dials: {},
+    imageGuide: {},
+    brief: { generation: { phase: 'revisao', reviewRounds: 3 } },
+  };
+  const pages = ['', 'servicos', 'contato'].map((slug) => ({
+    id: slug || 'home',
+    slug,
+    title: slug || 'Início',
+    type: 'page',
+    blocks: [
+      {
+        id: 'text',
+        type: 'editorial.text',
+        props: { title: 'Sobre', body: 'Conteúdo salvo.' },
+      },
+    ],
+    seo: {},
+    meta: {},
+    publishedBlocks: null,
+  }));
+  for (const currentPages of [
+    pages,
+    pages.map((page) => ({ ...page, title: 'Editado' })),
+  ]) {
+    const state = workspaceState(tenant, currentPages, []);
+    assert.equal(state.generation.next, 'pronto');
+    assert.equal(state.generation.reviewComplete, false);
+    assert.ok(
+      state.generation.blockingErrors > 0,
+      'publicação mantém suas validações',
+    );
+    assert.doesNotMatch(
+      savedProgressMessage(state),
+      /pendente|Continuar|Conferir/,
+    );
+  }
+  const delivered = {
+    ...tenant,
+    brief: {
+      generation: { delivery: { completedAt: new Date().toISOString() } },
+    },
+  };
+  assert.equal(
+    workspaceState(delivered, [pages[0]], []).generation.next,
+    'pronto',
+  );
+  assert.equal(
+    currentDelivery(delivered, []),
+    null,
+    'sem páginas, a entrega não mantém um site vazio concluído',
   );
 });

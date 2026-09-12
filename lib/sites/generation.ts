@@ -109,7 +109,7 @@ export function generationState(
       organicPages: organic.length,
       blockingErrors,
       reviewRounds,
-      delivered: Boolean(currentDelivery(tenant, pages, images)),
+      delivered: Boolean(currentDelivery(tenant, pages)),
       reviewComplete:
         review?.complete === true &&
         review.visual === 'complete' &&

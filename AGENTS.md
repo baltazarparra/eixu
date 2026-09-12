@@ -59,11 +59,12 @@ O modelo interno é Gemini 3.8 Flash; a política em `lib/ai/models.ts` usa raci
 reparo ou verificação. Não confunda esse modelo com o selecionado no editor.
 
 O chat e os runners compartilham `lib/ai/agent.ts`. Preserve metadados/assinaturas
-do histórico recente e o loop ativo do SDK. A revisão usa pixels como entrada
-multimodal do crítico, nunca base64 como texto de ferramenta. Conferir executa uma única passagem por geração. Falha de captura/crítica ou
-limite encerra a tentativa e entrega o rascunho com revisão pendente, sem repetir
-rodadas. A entrega não concede certificado visual: somente revisão completa do
-rascunho atual comprova essa conferência. Preserve erros e gates de publicação.
+do histórico recente e o loop ativo do SDK. A geração termina na composição das
+páginas; a revisão seguinte é humana pela prévia, com ajustes pelo chat. Não abra
+Conferir, não exiba revisão visual pendente nem ofereça Continuar para um site
+já gerado. Uma análise visual automática depende de pedido do operador e usa
+pixels como entrada multimodal do crítico, nunca base64 como texto de ferramenta.
+Somente evidência atual comprova essa análise. Preserve erros e gates de publicação.
 
 ## Invariantes do produto
 

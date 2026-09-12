@@ -155,7 +155,7 @@ export function SettingsForm({
       setSocialUrl(parsed.data.socialUrl);
       setNotice(
         regenerationRequired
-          ? 'Direção salva no rascunho. Volte ao Site e use Continuar para recompor as páginas; a versão publicada foi preservada.'
+          ? 'Direção salva no rascunho. Volte ao Site e peça "Refaça o site" pelo chat para aplicar a nova direção; a versão publicada foi preservada.'
           : 'Dados salvos no rascunho. O briefing será usado nas próximas edições do site.',
       );
     } catch (error) {
@@ -238,8 +238,8 @@ export function SettingsForm({
               <h2 className="text-base font-semibold">Direção visual</h2>
               <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
                 Uma troca abre uma nova direção no rascunho e preserva a versão
-                publicada. Depois de salvar, volte ao Site e use Continuar para
-                planejar, criar e conferir a recomposição.
+                publicada. Depois de salvar, volte ao Site e peça “Refaça o site”
+                pelo chat para aplicar a nova direção.
               </p>
               <div className="admin-vibe-grid">
                 {VIBES.map((vibe) => (

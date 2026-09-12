@@ -103,25 +103,24 @@ foi o defeito observado em produção.
 ## Geração em etapas
 
 Um único turno fazia briefing, direção, imagens e quatro páginas em 300
-segundos, sem nunca olhar o resultado. O painel agora apresenta três etapas de
-produto — **Preparar**, **Criar** e **Conferir** — enquanto
-`lib/taste/phases.ts` preserva quatro checkpoints internos para retomar sem
+segundos, sem nunca olhar o resultado. O painel agora apresenta duas etapas de
+produto — **Preparar** e **Criar** — enquanto
+`lib/taste/phases.ts` preserva três checkpoints internos para retomar sem
 refazer trabalho. Cada checkpoint recebe somente as ferramentas e o contexto
-de que precisa; o catálogo completo entra na composição e na revisão.
+de que precisa; o catálogo completo entra na composição. A revisão posterior é humana pela prévia.
 
 1. **Briefing e direção**: `read_reference`, `define_image_guide`, `set_design`.
 2. **Cenas**: o runner executa `prepare_site_images` diretamente com as vagas
    semânticas persistidas em `brief.imageScenes`.
 3. **Composição**: `build_site` e `repair_site`.
-4. **Revisão**: `review_pages` e as edições pontuais.
 
 A próxima etapa vem do estado persistido, não da conversa: `nextPhase` lê
-direção, cobertura do plano de cenas, páginas, erros e rodadas de revisão. A
+direção, cobertura do plano de cenas e páginas. Páginas montadas encerram a geração. A
 sequência roda no servidor, em invocações encadeadas: recarregar o painel,
 trocar de aparelho ou fechar a aba não perde o progresso nem interrompe a
 execução. A cobertura
 governa só antes da composição: depois que as páginas existem, foto faltando é
-erro de pre-flight e quem resolve é a revisão, senão um cliente já publicado
+erro de pre-flight que o operador pode ajustar pelo chat, senão um cliente já publicado
 com biblioteca menor que o plano voltaria a gerar cena sem ninguém pedir.
 
 A etapa de cenas recebe de uma vez todas as vagas que faltam; o estúdio gera em
@@ -433,7 +432,7 @@ A régua de avaliação está versionada: `evals/cases/` traz os briefings,
 `docs/eval-rubric.md` a rubrica e `npm run eval:site` roda o fluxo real num
 tenant descartável, gravando o relatório em `outputs/evals/`. Com `--generate`,
 o runner gera fotos já disponíveis e segue o mesmo fluxo sem aprovação, com
-limite de 14 chamadas para incluir as seis cenas do atelier e a revisão.
+limite de 14 chamadas para incluir as seis cenas do atelier e a composição.
 `report.flow` informa conclusão, próxima fase, motivo da parada e tentativas.
 Limite esgotado ou fase com erro resultam em
 execução incompleta e código de saída 1.
@@ -446,9 +445,8 @@ Sugestões preenchem o compositor e aguardam envio. A prévia oferece seletor de
 
 A coluna da conversa é o lugar do andamento, não só do texto: logo abaixo do
 cabeçalho dela, um bloco compacto traz estado, etapa atual e ação numa linha,
-três trilhas de produto, unidades realmente concluídas, tempo decorrido,
-ferramenta em execução e linha do tempo recolhida. Captura e crítico atualizam
-página, viewport e contagem durante a mesma ferramenta. A linha do tempo
+duas trilhas de produto, unidades realmente concluídas, tempo decorrido,
+ferramenta em execução e linha do tempo recolhida. A linha do tempo
 continua sendo a via acessível para o mesmo conteúdo. A escala tipográfica tem
 piso de 12 px, com 14 px no corpo das mensagens e a família monoespaçada nos
 tempos, contagens e custos, em `tabular-nums`. Movimento é pontual e respeita

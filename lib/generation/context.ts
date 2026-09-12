@@ -97,7 +97,7 @@ export function reviewContext(tenant: Tenant): string {
     (tenant.brief.generation as { review?: unknown } | undefined)?.review ??
       null,
   );
-  return `Conferência única nesta geração. Comece por review_pages no rascunho atual. Indisponibilidade visual encerra a tentativa com pendência, sem editar por esse motivo nem abrir outra rodada automática. Última leitura registrada:\n${receipt}`;
+  return `Análise solicitada pelo operador, fora da geração. Comece por review_pages no rascunho atual. Indisponibilidade visual encerra a tentativa, sem editar por esse motivo nem reabrir a geração. Última leitura registrada:\n${receipt}`;
 }
 
 /** Instruções completas de uma fase, prontas para o agente. */
