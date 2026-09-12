@@ -66,7 +66,7 @@ A escrita tem um [contrato por vibe](copy.md), com linguagem simples em comum.
 e ao crítico. `lintPage` verifica rótulos de ação e aponta vocabulário/frases
 para revisão; o crítico julga compreensão e voz com textos completos, sinais e
 pixels. Erro material de linguagem impede a aprovação visual automática. A versão
-`gemini-3.8-quality-v4-gramatica-validada` invalida recibos anteriores aos
+`gemini-3.8-quality-v4-edicoes-pontuais` identifica o contrato atual e invalida recibos anteriores aos
 contratos corrigidos de composição. A gramática da vibe entra apenas no perfil
 v4; retomadas e críticas de perfis v2/v3 preservam a direção e o plano de cenas
 existentes, mantendo as exigências de conteúdo, layout e apresentação.
@@ -248,7 +248,14 @@ os alvos à home; sem essa restrição, os cabeçalhos das páginas são os alvo
 Pedidos mistos com outros blocos seguem a edição geral, sem essa garantia de
 campos. O prompt instrui a relatar achados da crítica fora do pedido atual.
 
-`update_block` combina parcialmente `presentation`, preservando seus campos
+O [fluxo de edição pós-geração](chat-edits.md) usa `edit_page`, com snapshot e
+schemas da página em foco já presentes no turno. Texto literal, caminhos de
+props e posições relativas formam um lote por página, validado antes da escrita.
+A comparação de `blocks` em JSONB recusa conflito entre abas; o recibo inclui
+mudanças, revisão e pre-flight. A edição geral não expõe os quatro mutadores
+antigos. Geração e o escopo restrito de cabeçalho conservam compatibilidade.
+
+Nos consumidores legados, `update_block` combina parcialmente `presentation`, preservando seus campos
 omitidos, e valida o bloco completo com schema estrito antes de escrever.
 Propriedades desconhecidas ou inválidas são recusadas, não gravadas como se
 fossem alterações visuais aplicadas.

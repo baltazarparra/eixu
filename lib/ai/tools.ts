@@ -95,7 +95,16 @@ import {
   scopedUpdateError,
   type EditPolicy,
 } from '@/lib/ai/edit-policy';
-import type { BlockInstance, Tenant, TenantImage } from '@/lib/types';
+import type { BlockInstance, Page, Tenant, TenantImage } from '@/lib/types';
+import {
+  applyPageEdit,
+  PageEditError,
+  pageEditSchema,
+  pageRevision,
+  pageSnapshot,
+  validateEditedBlock,
+  literalEditClarification,
+} from '@/lib/ai/page-edits';
 
 function newId(): string {
   return Math.random().toString(36).slice(2, 10);
@@ -157,7 +166,8 @@ export function safe<I, O>(run: (input: I) => Promise<O>) {
     try {
       return await run(input);
     } catch (error) {
-      if (error instanceof ToolError) return { error: error.message };
+      if (error instanceof ToolError || error instanceof PageEditError)
+        return { error: error.message };
       console.error('[tool] falha inesperada:', error);
       return {
         error: error instanceof Error ? error.message : 'Falha inesperada.',
@@ -270,6 +280,46 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
   let referencesRead = 0;
   let reviewRounds = 0;
   let pendingDraft: SiteDraft | undefined;
+
+  async function savePageEdit(page: Page, blocks: BlockInstance[]) {
+    const before = lintPage(page, activeBrand.design);
+    const findings = lintPage({ ...page, blocks }, activeBrand.design);
+    const signature = (f: (typeof findings)[number]) =>
+      JSON.stringify([f.rule, f.blockId, f.message]);
+    const previous = new Set(
+      before.filter((f) => f.level === 'error').map(signature),
+    );
+    const introduced = findings.filter(
+      (f) => f.level === 'error' && !previous.has(signature(f)),
+    );
+    if (introduced.length)
+      throw new PageEditError(
+        `Nenhuma alteração salva. O pedido introduziria erros: ${formatFindings(introduced)}`,
+      );
+    const revision = pageRevision({ blocks });
+    const changed = revision !== pageRevision(page);
+    if (changed) {
+      const saved = await db()`
+        update pages set blocks = ${JSON.stringify(blocks)}::jsonb, updated_at = now()
+        where id = ${page.id} and tenant_id = ${tenant.id}
+          and blocks = ${JSON.stringify(page.blocks)}::jsonb
+        returning id
+      `;
+      if (!Array.isArray(saved) || !saved.length)
+        throw new PageEditError(
+          'A página mudou durante a edição. Nenhuma alteração salva por esta chamada. Releia com get_page e reaplique apenas o pedido atual.',
+        );
+    }
+    return {
+      ok: true,
+      changed,
+      page: `/${page.slug}`,
+      revision,
+      preflight: formatFindings(findings),
+      existingErrors: findings.filter((f) => f.level === 'error').length,
+      saved: 'draft',
+    };
+  }
 
   async function saveSiteDraft(input: SiteDraft) {
     const { pages } = input;
@@ -1348,23 +1398,31 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
     get_page: tool({
       description:
-        'Lê uma página com os blocos, seus ids, tipos e props completas. Chame antes de update_block, move_block ou remove_block para saber o que existe.',
+        'Lê blocos, props e revisão atual de uma página. Use quando a página não está no contexto deste turno ou após conflito; não repita a leitura já recebida.',
       inputSchema: z.object({
         page: z.string().describe('Slug. Vazio para a home.'),
       }),
       execute: safe(async ({ page: slug }) => {
         const page = await requirePage(tenant.id, slug);
+        return pageSnapshot(page);
+      }),
+    }),
+
+    edit_page: tool({
+      description:
+        'Aplica em uma única gravação todas as edições pedidas na página: replace_text literal, set/unset por caminho (inclusive items.0.title), insert/move antes ou depois de um ID e remove. Prefira para sites existentes. Exige a revisão do contexto atual/get_page; ambiguidade, conflito ou erro recusa o lote inteiro. Preserva os demais campos e o publicado. Para cor somente desta seção, use presentation.background em hex; foreground é opcional. O retorno já inclui o pre-flight: não revise ou leia novamente sem necessidade.',
+      inputSchema: pageEditSchema,
+      execute: safe(async (input) => {
+        const page = await requirePage(tenant.id, input.page);
+        const clarification = literalEditClarification(
+          context.lastUserText ?? '',
+          page,
+        );
+        if (clarification) throw new PageEditError(clarification);
+        const edited = applyPageEdit(page, input, context.editPolicy);
         return {
-          slug: `/${page.slug}`,
-          type: page.type,
-          title: page.title,
-          seo: page.seo,
-          blocks: page.blocks.map((block, index) => ({
-            index,
-            id: block.id,
-            type: block.type,
-            props: block.props,
-          })),
+          ...(await savePageEdit(page, edited.blocks)),
+          changes: edited.changes,
         };
       }),
     }),
@@ -1779,15 +1837,12 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         const page = await requirePage(tenant.id, slug);
         const next = [...page.blocks];
         const [created] = toBlocks([block]);
+        validateEditedBlock(created);
         const footerAt = next.findIndex((b) => b.type.startsWith('footer.'));
         const at = index ?? (footerAt >= 0 ? footerAt : next.length);
         next.splice(at, 0, created);
-        await db()`
-          update pages set blocks = ${JSON.stringify(next)}::jsonb, updated_at = now()
-          where id = ${page.id}
-        `;
         return {
-          ok: true,
+          ...(await savePageEdit(page, next)),
           blockId: created.id,
           position: at,
           total: next.length,
@@ -1863,16 +1918,9 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
               }
             : block,
         );
-        await db()`
-          update pages set blocks = ${JSON.stringify(next)}::jsonb, updated_at = now()
-          where id = ${page.id}
-        `;
         return {
-          ok: true,
+          ...(await savePageEdit(page, next)),
           blockId: target.id,
-          preflight: formatFindings(
-            lintPage({ ...page, blocks: next }, activeBrand.design),
-          ),
         };
       }),
     }),
@@ -1884,11 +1932,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         const page = await requirePage(tenant.id, slug);
         const target = findBlock(page.blocks, selector);
         const next = page.blocks.filter((block) => block.id !== target.id);
-        await db()`
-          update pages set blocks = ${JSON.stringify(next)}::jsonb, updated_at = now()
-          where id = ${page.id}
-        `;
-        return { ok: true, remaining: next.length };
+        return { ...(await savePageEdit(page, next)), remaining: next.length };
       }),
     }),
 
@@ -1907,11 +1951,11 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         const next = [...page.blocks];
         const [moved] = next.splice(from, 1);
         next.splice(Math.min(toIndex, next.length), 0, moved);
-        await db()`
-          update pages set blocks = ${JSON.stringify(next)}::jsonb, updated_at = now()
-          where id = ${page.id}
-        `;
-        return { ok: true, from, to: toIndex };
+        return {
+          ...(await savePageEdit(page, next)),
+          from,
+          to: Math.min(toIndex, next.length - 1),
+        };
       }),
     }),
 

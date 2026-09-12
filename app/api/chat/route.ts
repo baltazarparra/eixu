@@ -18,6 +18,10 @@ import {
 } from '@/lib/ai/chat-progress';
 import { workspaceState } from '@/lib/admin/state';
 import { editPolicyFor, editScopeText } from '@/lib/ai/edit-policy';
+import {
+  editingPageContext,
+  literalEditClarification,
+} from '@/lib/ai/page-edits';
 import { isAuthenticated } from '@/lib/auth';
 import { buildTools } from '@/lib/ai/tools';
 import { db } from '@/lib/db';
@@ -136,6 +140,17 @@ export async function POST(request: Request) {
 
   const hasFile = Boolean(lastUser?.parts.some((part) => part.type === 'file'));
   const state = workspaceState(tenant, pages, libraryImages);
+  const focusedPage = pages.find(
+    (page) => page.slug === (body.page ?? '').replace(/^\/+|\/+$/g, ''),
+  );
+  const clarification =
+    !phase && !hasFile
+      ? literalEditClarification(lastUserText, focusedPage)
+      : undefined;
+  if (clarification) {
+    await persistAssistant(clarification);
+    return textResponse(clarification);
+  }
 
   if (!phase && isProgressQuestion(lastUserText) && !hasFile) {
     const text = savedProgressMessage(state);
@@ -167,6 +182,7 @@ export async function POST(request: Request) {
   const editPolicy = phase ? undefined : editPolicyFor(lastUserText, pages);
   context.editing = Boolean(editPolicy);
   context.editScope = editPolicy ? editScopeText(editPolicy) : undefined;
+  if (editPolicy) context.editPage = editingPageContext(focusedPage);
   const tools = buildTools(tenant, {
     origin,
     cookie: request.headers.get('cookie') ?? undefined,
@@ -179,6 +195,7 @@ export async function POST(request: Request) {
   const model = productModel();
   const started = Date.now();
   let completedSteps = 0;
+  const editOutcomes = new Map<string, { ok: boolean; changed: boolean }>();
   const agent = siteAgent({
     tenantId: tenant.id,
     tools,
@@ -223,6 +240,29 @@ export async function POST(request: Request) {
             transform(part, controller) {
               if (part.type === 'finish-step') completedSteps += 1;
               if (
+                (part.type === 'tool-result' || part.type === 'tool-error') &&
+                part.toolName === 'edit_page'
+              ) {
+                const output = (
+                  part.type === 'tool-result' ? part.output : {}
+                ) as {
+                  ok?: boolean;
+                  changed?: boolean;
+                };
+                const inputPage = (part.input as { page?: unknown } | undefined)
+                  ?.page;
+                const page =
+                  typeof inputPage === 'string'
+                    ? `/${inputPage.replace(/^\/+|\/+$/g, '')}`
+                    : '(página não identificada)';
+                editOutcomes.set(page, {
+                  ok: output.ok === true,
+                  changed:
+                    output.changed === true ||
+                    editOutcomes.get(page)?.changed === true,
+                });
+              }
+              if (
                 part.type === 'error' ||
                 part.type === 'tool-error' ||
                 (part.type === 'tool-call' && part.invalid)
@@ -254,6 +294,29 @@ export async function POST(request: Request) {
       }),
       {
         summary: async () => {
+          if (editOutcomes.size) {
+            const saved = [...editOutcomes]
+              .filter(([, result]) => result.changed)
+              .map(([page]) => page);
+            const failed = [...editOutcomes.values()].some(
+              (result) => !result.ok,
+            );
+            return [
+              saved.length
+                ? `Alterações salvas no rascunho de ${saved.join(', ')}. Confira a prévia.`
+                : failed
+                  ? 'Este pedido não teve alterações salvas.'
+                  : 'A página já estava como solicitado.',
+              failed
+                ? 'Há alterações recusadas; confira o erro antes de tentar novamente.'
+                : '',
+              completedSteps >= 32
+                ? 'Este turno atingiu o limite de passos.'
+                : '',
+            ]
+              .filter(Boolean)
+              .join(' ');
+          }
           const current = await getTenantBySlug(body.tenant);
           if (!current) return 'O cliente não está mais disponível no painel.';
           const [currentPages, currentImages] = await Promise.all([

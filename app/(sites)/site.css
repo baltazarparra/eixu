@@ -297,6 +297,17 @@ details[open] > summary .site-disclosure {
   background: transparent;
   color: inherit;
 }
+/* A escolha local do operador prevalece sobre o fundo padrão de cada vibe.
+   Os pares de texto e fundo continuam calculados no servidor. */
+.site-theme .site-block[data-block][data-tone='custom'] > * {
+  --paper: inherit;
+  --ink: inherit;
+  --muted: inherit;
+  --line: inherit;
+  --highlight-text: inherit;
+  background: transparent;
+  color: inherit;
+}
 .site-block[data-width='narrow'] {
   --site-max: 58rem;
 }
@@ -909,8 +920,7 @@ details[open] > summary .site-disclosure {
 /* Colagem: uma lâmina de cor deslocada atrás da foto, sem rotação. A foto
    torta com sombra dura na cor da marca era o sinal mais forte de descuido. */
 .site-theme[data-imagery='collage'] .site-hero-media {
-  box-shadow: 1rem 1rem 0
-    color-mix(in oklab, var(--accent-2) 38%, var(--paper));
+  box-shadow: 1rem 1rem 0 color-mix(in oklab, var(--accent-2) 38%, var(--paper));
 }
 .site-theme[data-motif='grid'] .site-hero,
 .site-theme[data-motif='grid'] main > .site-block:nth-child(3n) {

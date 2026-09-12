@@ -72,6 +72,12 @@ Esconder essa informação fazia o agente ignorar `feature.explorer` e
 
 ## Piso de composição
 
+Edições pontuais aceitam `presentation.background` em hex e `foreground`
+opcional, com contraste validado. São cores locais da seção e prevalecem
+sobre o tom padrão da vibe sem mudar a marca. O renderer respeita a ordem
+salva inclusive para uma seção inserida depois do rodapé; a localização
+automática continua antes dele. Veja o [contrato de edição](chat-edits.md).
+
 O cabeçalho `nav.bar` aceita `position: fixed` sem trocar layout ou direção da
 marca. `backgroundOpacity` controla o fundo entre 70 e 100%; o tom escuro vem de
 `presentation.tone: ink`. A ilha `NavigationFrame` mede e reserva sua altura,
