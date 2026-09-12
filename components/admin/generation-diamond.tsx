@@ -3,17 +3,15 @@
 import { useEffect, useRef } from 'react';
 import {
   ACESFilmicToneMapping,
-  AdditiveBlending,
   BufferAttribute,
   BufferGeometry,
-  Color,
-  Group,
   Mesh,
   PerspectiveCamera,
+  Raycaster,
   Scene,
   ShaderMaterial,
   SRGBColorSpace,
-  TorusGeometry,
+  Vector2,
   Vector3,
   WebGLRenderer,
 } from 'three';
@@ -21,14 +19,13 @@ import type { CreationProgress } from '@/lib/generation/progress';
 
 /**
  * Diamante negro lapidado que ocupa a prévia enquanto a composição ainda não
- * gravou a primeira página. As facetas se fecham conforme as etapas medidas e
- * o anel em órbita repete as três trilhas do painel: feita, ativa, a fazer.
- * O movimento diz que há trabalho; o preenchimento só cresce com unidade real.
+ * gravou a primeira página. As facetas se fecham conforme as etapas medidas.
+ * Gestos horizontais dão impulso ao giro, sem alterar o progresso real.
  */
 
 type Props = {
   progress: CreationProgress;
-  /** Há execução viva: o diamante gira e o anel pulsa. */
+  /** Há execução viva: o diamante gira com mais intensidade. */
   active: boolean;
   /** Versão de 40 px para a barra da prévia quando já existe página. */
   compact?: boolean;
@@ -114,7 +111,12 @@ function brilliantCut(): BufferGeometry {
     const previous = (k + 7) % 8;
     // Pavilhão: pipa principal e duas facetas inferiores da cintura.
     facet(
-      [girdleMainBottom[k], pavilionBreaks[k], culetPoint, pavilionBreaks[previous]],
+      [
+        girdleMainBottom[k],
+        pavilionBreaks[k],
+        culetPoint,
+        pavilionBreaks[previous],
+      ],
       order(pavilionBreak, mains[k]),
     );
     facet(
@@ -127,11 +129,21 @@ function brilliantCut(): BufferGeometry {
     );
     // Cintura: dois quadriláteros por setor.
     facet(
-      [girdleMainTop[k], girdleBetweenTop[k], girdleBetweenBottom[k], girdleMainBottom[k]],
+      [
+        girdleMainTop[k],
+        girdleBetweenTop[k],
+        girdleBetweenBottom[k],
+        girdleMainBottom[k],
+      ],
       order(0, betweens[k] - half / 2),
     );
     facet(
-      [girdleBetweenTop[k], girdleMainTop[next], girdleMainBottom[next], girdleBetweenBottom[k]],
+      [
+        girdleBetweenTop[k],
+        girdleMainTop[next],
+        girdleMainBottom[next],
+        girdleBetweenBottom[k],
+      ],
       order(0, betweens[k] + half / 2),
     );
     // Coroa: duas facetas superiores da cintura, a pipa principal e a estrela.
@@ -267,47 +279,6 @@ const GEM_FRAGMENT = /* glsl */ `
   }
 `;
 
-const RING_VERTEX = /* glsl */ `
-  varying vec2 vUv;
-  void main() {
-    vUv = uv;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`;
-
-const RING_FRAGMENT = /* glsl */ `
-  precision highp float;
-  uniform vec3 uState;
-  uniform vec3 uFill;
-  uniform vec3 uAccent;
-  uniform vec3 uTrack;
-  uniform float uTime;
-  uniform float uActive;
-  varying vec2 vUv;
-  void main() {
-    // Três setores, cada um uma etapa; o preenchimento anda dentro do setor.
-    float t = fract(1.0 - vUv.x + 0.25);
-    float s = t * 3.0;
-    float index = floor(s);
-    float local = fract(s);
-    float state = index < 0.5 ? uState.x : (index < 1.5 ? uState.y : uState.z);
-    float fill = index < 0.5 ? uFill.x : (index < 1.5 ? uFill.y : uFill.z);
-    float gap = 0.05;
-    float inside = smoothstep(0.0, gap, local) * smoothstep(0.0, gap, 1.0 - local);
-    float done = step(1.5, state);
-    float live = step(0.5, state) * (1.0 - done);
-    float filled = max(done, live * (1.0 - smoothstep(fill - 0.005, fill + 0.02, local)));
-    float pulse = live * (0.3 + 0.18 * sin(uTime * 2.4)) * uActive;
-    float head = live * exp(-abs(local - fill) * 28.0) * step(0.001, fill);
-    vec3 color = uTrack * (1.0 - filled) + uAccent * (filled * 1.7 + pulse * 0.9 + head * 2.2);
-    float alpha = inside * (0.42 + filled * 0.58 + pulse * 0.45);
-    gl_FragColor = vec4(color * alpha, alpha);
-    #include <colorspace_fragment>
-  }
-`;
-
-const STATE_VALUE = { todo: 0, active: 1, done: 2 } as const;
-
 /** O que a etapa faz quando ela não tem unidade medida para mostrar. */
 const STAGE_HINT: Record<CreationProgress['stage']['id'], string> = {
   preparar: 'briefing e direção de arte',
@@ -325,44 +296,30 @@ export function GenerationDiamond({
   const hostRef = useRef<HTMLDivElement>(null);
   const targetRef = useRef<{
     fraction: number;
-    state: [number, number, number];
-    fill: [number, number, number];
     active: boolean;
   }>({
     fraction: progress.fraction,
-    state: [0, 0, 0],
-    fill: [0, 0, 0],
     active,
   });
   const requestFrameRef = useRef<(() => void) | null>(null);
 
-  const stagesKey = progress.stages
-    .map((stage) => `${stage.state}:${stage.fill.toFixed(3)}`)
-    .join('|');
-
   useEffect(() => {
-    const [first, second, third] = progress.stages;
     targetRef.current = {
       fraction: progress.fraction,
-      state: [
-        STATE_VALUE[first?.state ?? 'todo'],
-        STATE_VALUE[second?.state ?? 'todo'],
-        STATE_VALUE[third?.state ?? 'todo'],
-      ],
-      fill: [first?.fill ?? 0, second?.fill ?? 0, third?.fill ?? 0],
       active,
     };
     requestFrameRef.current?.();
-  }, [progress.fraction, progress.stages, stagesKey, active]);
+  }, [progress.fraction, active]);
 
   useEffect(() => {
     const root = rootRef.current;
     const host = hostRef.current;
     if (!root || !host) return;
 
-    const reducedMotion = window.matchMedia(
+    const motionPreference = window.matchMedia(
       '(prefers-reduced-motion: reduce)',
-    ).matches;
+    );
+    let reducedMotion = motionPreference.matches;
 
     let renderer: WebGLRenderer;
     try {
@@ -389,9 +346,6 @@ export function GenerationDiamond({
     camera.position.set(0, 1.3, compact ? 6.6 : 7.9);
     camera.lookAt(0, -0.08, 0);
 
-    const accent = new Color('#f0a868');
-    const track = new Color('#6d6659');
-
     const gemMaterial = new ShaderMaterial({
       vertexShader: GEM_VERTEX,
       fragmentShader: GEM_FRAGMENT,
@@ -408,47 +362,14 @@ export function GenerationDiamond({
     const gemGeometry = brilliantCut();
     const gem = new Mesh(gemGeometry, gemMaterial);
     gem.rotation.x = -0.34;
-    gem.scale.setScalar(compact ? 1.18 : 1);
+    gem.scale.setScalar((compact ? 1.18 : 1) * 0.7);
     scene.add(gem);
-
-    const ringMaterial = new ShaderMaterial({
-      vertexShader: RING_VERTEX,
-      fragmentShader: RING_FRAGMENT,
-      transparent: true,
-      depthWrite: false,
-      blending: AdditiveBlending,
-      uniforms: {
-        uState: { value: new Vector3() },
-        uFill: { value: new Vector3() },
-        uAccent: { value: accent },
-        uTrack: { value: track },
-        uTime: { value: 0 },
-        uActive: { value: targetRef.current.active ? 1 : 0 },
-      },
-    });
-    ringMaterial.customProgramCacheKey = () => 'eixu-generation-ring-v1';
-    const ringGeometry = new TorusGeometry(
-      compact ? 1.62 : 1.7,
-      compact ? 0.1 : 0.022,
-      6,
-      220,
-    );
-    const ring = new Mesh(ringGeometry, ringMaterial);
-    const orbit = new Group();
-    orbit.rotation.x = 1.25;
-    orbit.rotation.z = -0.18;
-    orbit.add(ring);
-    scene.add(orbit);
 
     // As mudanças de progresso chegam a cada leitura do servidor; a animação
     // as alcança em cerca de um segundo em vez de saltar.
     let shownFraction = targetRef.current.fraction;
-    const shownFill = new Vector3(...targetRef.current.fill);
-    // Reaproveitado a cada quadro: o laço roda a 60 fps enquanto a geração
-    // acontece e não precisa alocar vetores para comparar dois números.
-    const targetFill = new Vector3();
     let fire = 0;
-    let spin = 0.6;
+    let spin = 0.3;
     let animationFrame = 0;
     let running = false;
     let lastFrameAt = performance.now();
@@ -461,40 +382,34 @@ export function GenerationDiamond({
       const target = targetRef.current;
       const ease = 1 - Math.exp(-elapsed * 2.2);
       shownFraction += (target.fraction - shownFraction) * ease;
-      shownFill.lerp(targetFill.set(...target.fill), ease);
       fire += ((compact || target.active ? 1 : 0.35) - fire) * ease * 0.6;
-      ringMaterial.uniforms.uState.value.set(...target.state);
-      ringMaterial.uniforms.uFill.value.copy(shownFill);
-      ringMaterial.uniforms.uActive.value = target.active ? 1 : 0;
       gemMaterial.uniforms.uProgress.value = shownFraction;
       gemMaterial.uniforms.uFire.value = fire;
     };
 
     const draw = (now: number) => {
-      const elapsed = Math.min(0.05, Math.max(0.001, (now - lastFrameAt) / 1000));
+      const elapsed = Math.min(
+        0.05,
+        Math.max(0.001, (now - lastFrameAt) / 1000),
+      );
       lastFrameAt = now;
       applyTargets(elapsed);
       const seconds = now / 1000;
       if (!reducedMotion) {
-        const speed = targetRef.current.active ? 0.55 : 0.12;
+        const speed = targetRef.current.active ? 0.275 : 0.06;
         spin += (speed - spin) * (1 - Math.exp(-elapsed * 1.5));
         gem.rotation.y += spin * elapsed;
         gem.rotation.x = -0.34 + Math.sin(seconds * 0.7) * 0.06;
         gem.position.y = Math.sin(seconds * 1.1) * 0.035;
-        orbit.rotation.y += 0.22 * elapsed;
         gemMaterial.uniforms.uDrift.value = seconds * 0.05;
       }
       gemMaterial.uniforms.uTime.value = seconds;
-      ringMaterial.uniforms.uTime.value = seconds;
       renderer.render(scene, camera);
     };
 
     const settled = () => {
       const target = targetRef.current;
-      return (
-        Math.abs(target.fraction - shownFraction) < 0.002 &&
-        shownFill.distanceTo(targetFill.set(...target.fill)) < 0.002
-      );
+      return Math.abs(target.fraction - shownFraction) < 0.002;
     };
 
     const animate = (now: number) => {
@@ -503,7 +418,8 @@ export function GenerationDiamond({
       // Aba escondida não desenha; com movimento reduzido, o laço para assim
       // que o progresso novo termina de ser alcançado.
       const keepGoing =
-        document.visibilityState === 'visible' && (!reducedMotion || !settled());
+        document.visibilityState === 'visible' &&
+        (!reducedMotion || !settled());
       if (keepGoing) {
         animationFrame = window.requestAnimationFrame(animate);
       } else {
@@ -518,6 +434,92 @@ export function GenerationDiamond({
       animationFrame = window.requestAnimationFrame(animate);
     };
     requestFrameRef.current = start;
+
+    const raycaster = new Raycaster();
+    const pointerPosition = new Vector2();
+    let pointer: { id: number; x: number; y: number } | null = null;
+    let draggedPointer: number | null = null;
+
+    const touchesGem = (x: number, y: number, bounds: DOMRect) => {
+      pointerPosition.set(
+        ((x - bounds.left) / bounds.width) * 2 - 1,
+        -((y - bounds.top) / bounds.height) * 2 + 1,
+      );
+      raycaster.setFromCamera(pointerPosition, camera);
+      return raycaster.intersectObject(gem).length > 0;
+    };
+    const rememberPointer = (event: PointerEvent) => {
+      pointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      if (!event.isPrimary || event.button !== 0 || lost) return;
+      rememberPointer(event);
+      if (
+        !touchesGem(event.clientX, event.clientY, host.getBoundingClientRect())
+      )
+        return;
+      draggedPointer = event.pointerId;
+      host.setPointerCapture(event.pointerId);
+      host.dataset.dragging = '';
+    };
+    const onPointerMove = (event: PointerEvent) => {
+      if (!event.isPrimary || lost) return;
+      const previous = pointer;
+      rememberPointer(event);
+      if (!previous || previous.id !== event.pointerId) return;
+      const bounds = host.getBoundingClientRect();
+      const dragging = draggedPointer === event.pointerId;
+      // O mouse dá impulso ao passar pela pedra; toque/caneta arrastam a
+      // partir dela. Capturar o ponteiro mantém o gesto ao sair do canvas.
+      if (
+        !dragging &&
+        (event.pointerType !== 'mouse' ||
+          (!touchesGem(event.clientX, event.clientY, bounds) &&
+            !touchesGem(previous.x, previous.y, bounds)))
+      )
+        return;
+      const delta =
+        (event.clientX - previous.x) /
+        Math.max(1, Math.min(bounds.width, bounds.height));
+      if (reducedMotion) {
+        // Movimento reduzido permite manipulação direta, sem giro automático
+        // nem inércia depois que a pessoa termina o gesto.
+        gem.rotation.y += delta * TAU;
+      } else {
+        spin = Math.max(-2, Math.min(2, spin + delta * 5));
+      }
+      start();
+    };
+    const resetPointer = () => {
+      const captured = draggedPointer;
+      draggedPointer = null;
+      pointer = null;
+      delete host.dataset.dragging;
+      if (captured !== null && host.hasPointerCapture(captured)) {
+        host.releasePointerCapture(captured);
+      }
+    };
+    const onPointerEnd = (event: PointerEvent) => {
+      if (event.pointerId === pointer?.id || event.pointerId === draggedPointer)
+        resetPointer();
+    };
+    const onPointerLeave = () => {
+      if (draggedPointer === null) pointer = null;
+    };
+    const onMotionPreference = () => {
+      reducedMotion = motionPreference.matches;
+      spin = targetRef.current.active ? 0.275 : 0.06;
+      resetPointer();
+      start();
+    };
+    host.addEventListener('pointerdown', onPointerDown);
+    host.addEventListener('pointermove', onPointerMove);
+    host.addEventListener('pointerup', onPointerEnd);
+    host.addEventListener('pointercancel', onPointerEnd);
+    host.addEventListener('lostpointercapture', onPointerEnd);
+    host.addEventListener('pointerleave', onPointerLeave);
+    window.addEventListener('blur', resetPointer);
+    motionPreference.addEventListener('change', onMotionPreference);
 
     const resize = () => {
       const bounds = host.getBoundingClientRect();
@@ -534,6 +536,7 @@ export function GenerationDiamond({
       lost = true;
       running = false;
       window.cancelAnimationFrame(animationFrame);
+      resetPointer();
       root.dataset.state = 'fallback';
     };
     renderer.domElement.addEventListener('webglcontextlost', onContextLost);
@@ -541,6 +544,7 @@ export function GenerationDiamond({
     resizeObserver.observe(host);
     const onVisibility = () => {
       if (document.visibilityState === 'visible') start();
+      else resetPointer();
     };
     document.addEventListener('visibilitychange', onVisibility);
     resize();
@@ -551,12 +555,22 @@ export function GenerationDiamond({
       requestFrameRef.current = null;
       window.cancelAnimationFrame(animationFrame);
       resizeObserver.disconnect();
-      renderer.domElement.removeEventListener('webglcontextlost', onContextLost);
+      resetPointer();
+      host.removeEventListener('pointerdown', onPointerDown);
+      host.removeEventListener('pointermove', onPointerMove);
+      host.removeEventListener('pointerup', onPointerEnd);
+      host.removeEventListener('pointercancel', onPointerEnd);
+      host.removeEventListener('lostpointercapture', onPointerEnd);
+      host.removeEventListener('pointerleave', onPointerLeave);
+      window.removeEventListener('blur', resetPointer);
+      motionPreference.removeEventListener('change', onMotionPreference);
+      renderer.domElement.removeEventListener(
+        'webglcontextlost',
+        onContextLost,
+      );
       document.removeEventListener('visibilitychange', onVisibility);
       gemGeometry.dispose();
       gemMaterial.dispose();
-      ringGeometry.dispose();
-      ringMaterial.dispose();
       renderer.dispose();
       // dispose() libera caches e listeners, não o contexto. O painel é uma
       // aba que fica aberta o dia todo trocando de cliente: sem isto, cada

@@ -1604,6 +1604,12 @@ textarea.admin-input {
 .admin-preview-loader-stage {
   position: relative;
   min-height: 0;
+  touch-action: pan-y pinch-zoom;
+  user-select: none;
+  cursor: grab;
+}
+.admin-preview-loader-stage[data-dragging] {
+  cursor: grabbing;
 }
 .admin-preview-loader-stage canvas {
   position: absolute;
