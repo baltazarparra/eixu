@@ -46,6 +46,11 @@ import {
 } from '@/lib/taste/pendencias';
 import { systemPrompt, type PromptContext } from '@/lib/taste/prompt';
 import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
+import { publicationMessage, publishSite } from '@/lib/sites/publish';
+import {
+  isDirectPublicationRequest,
+  isPublicationRepairRequest,
+} from '@/lib/sites/publication-request';
 
 export const maxDuration = 800;
 
@@ -145,6 +150,13 @@ export async function POST(request: Request) {
   };
 
   const hasFile = Boolean(lastUser?.parts.some((part) => part.type === 'file'));
+  // A ordem explícita é executada pelo servidor: o modelo não veta a decisão
+  // editorial nem transforma autorização de publicação em confirmação de fatos.
+  if (!phase && !hasFile && isDirectPublicationRequest(lastUserText)) {
+    const text = publicationMessage(await publishSite(tenant));
+    await persistAssistant(text);
+    return textResponse(text);
+  }
   const state = workspaceState(tenant, pages, libraryImages);
   const focusedPage = pages.find(
     (page) => page.slug === (body.page ?? '').replace(/^\/+|\/+$/g, ''),
@@ -235,6 +247,7 @@ export async function POST(request: Request) {
     tenantId: tenant.id,
     tools,
     phase,
+    repairPublication: !phase && isPublicationRepairRequest(lastUserText),
     instructions: systemPrompt(
       tenant,
       summary,

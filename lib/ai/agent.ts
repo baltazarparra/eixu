@@ -21,6 +21,7 @@ export function siteAgent(input: {
   instructions: string;
   tools: SiteTools;
   phase?: Phase;
+  repairPublication?: boolean;
   /** Pausa pedida pelo operador: encerra depois do passo atual. */
   shouldStop?: () => boolean;
 }) {
@@ -49,19 +50,26 @@ export function siteAgent(input: {
       ({ steps }) => phase === 'revisao' && reviewTurnFinished(steps),
     ],
     prepareStep: ({ stepNumber, steps }) =>
-      phase === 'revisao' && reviewConferenceDue(steps, stepNumber)
+      input.repairPublication &&
+      stepNumber === 0 &&
+      'repair_publication' in tools
         ? {
-            activeTools: ['review_pages'],
-            toolChoice: { type: 'tool', toolName: 'review_pages' },
+            activeTools: ['repair_publication'],
+            toolChoice: { type: 'tool', toolName: 'repair_publication' },
           }
-        : phase === 'composicao' &&
-            'repair_site' in tools &&
-            compositionRepairDue(steps.at(-1)?.toolResults ?? [])
+        : phase === 'revisao' && reviewConferenceDue(steps, stepNumber)
           ? {
-              activeTools: ['repair_site'],
-              toolChoice: { type: 'tool', toolName: 'repair_site' },
+              activeTools: ['review_pages'],
+              toolChoice: { type: 'tool', toolName: 'review_pages' },
             }
-          : {},
+          : phase === 'composicao' &&
+              'repair_site' in tools &&
+              compositionRepairDue(steps.at(-1)?.toolResults ?? [])
+            ? {
+                activeTools: ['repair_site'],
+                toolChoice: { type: 'tool', toolName: 'repair_site' },
+              }
+            : {},
     // A função Pro/Fluid tem 800 s; reserve tempo para encerrar e persistir.
     timeout: { totalMs: TURN_TIMEOUT_MS },
     maxRetries: 1,

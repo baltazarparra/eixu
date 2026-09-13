@@ -6,7 +6,8 @@ import {
 } from '@/lib/design/uniqueness';
 import { listImages } from '@/lib/images/queries';
 import { formatFindings, lintPage } from '@/lib/taste/lint';
-import { lintSite, publicationState } from '@/lib/taste/site';
+import { lintSite, publicationState, type SiteFinding } from '@/lib/taste/site';
+import { publicationFinding } from '@/lib/sites/publication-policy';
 import { listPages } from '@/lib/tenant-queries';
 import { publicTenant, tenantDraftSnapshot } from '@/lib/sites/snapshot';
 import type { Tenant } from '@/lib/types';
@@ -15,6 +16,8 @@ export type PublishResult = {
   published: string[];
   /** Uma entrada por página recusada, com os motivos do pre-flight. */
   blocked: { page: string; preflight: string }[];
+  /** Recomendações preservadas; publicar não as transforma em fatos confirmados. */
+  warnings?: SiteFinding[];
   url: string;
 };
 
@@ -38,6 +41,7 @@ export async function publishSite(
   // Motivos agrupados por página: o painel repetia "/" para cada regra e não
   // dizia qual era o problema.
   const reasons = new Map<string, string[]>();
+  const warnings: SiteFinding[] = [];
   const block = (page: string, preflight: string) =>
     reasons.set(page, [...(reasons.get(page) ?? []), preflight]);
   if (!targets.length)
@@ -46,8 +50,14 @@ export async function publishSite(
   // Uma publicação pontual não pode contar rascunhos ainda fora do ar.
   const live = publicationState(pages, ids);
   for (const page of targets) {
-    const errors = lintPage(page, publishedBrand.design).filter(
-      (f) => f.level === 'error',
+    const findings = lintPage(page, publishedBrand.design).map(
+      publicationFinding,
+    );
+    const errors = findings.filter((f) => f.level === 'error');
+    warnings.push(
+      ...findings
+        .filter((f) => f.level === 'warn')
+        .map((f) => ({ ...f, page: `/${page.slug}` })),
     );
     if (errors.length) block(`/${page.slug}`, formatFindings(errors));
   }
@@ -61,9 +71,10 @@ export async function publishSite(
     'publish',
     publishedBrand,
     tenant.brief,
-  ))
+  ).map(publicationFinding))
     if (finding.level === 'error')
       block(finding.page, formatFindings([finding]));
+    else warnings.push(finding);
   const home = live.find((p) => p.slug === '');
   if (home && isDesignProfile(publishedBrand.design)) {
     const conflict = await compositionConflict(
@@ -72,17 +83,19 @@ export async function publishSite(
       publishedBrand.design,
     );
     if (conflict)
-      block(
-        '/',
-        `ERRO [composicao-duplicada] ${compositionConflictMessage(conflict)}`,
-      );
+      warnings.push({
+        page: '/',
+        level: 'warn',
+        rule: 'composicao-duplicada',
+        message: compositionConflictMessage(conflict),
+      });
   }
   const url = `https://${tenant.slug}.eixu.com.br`;
   const blocked = [...reasons].map(([page, lines]) => ({
     page,
     preflight: lines.join('\n'),
   }));
-  if (blocked.length) return { published: [], blocked, url };
+  if (blocked.length) return { published: [], blocked, warnings, url };
   const sql = db();
   const updateTenant = promotesTenant
     ? sql`update tenants set status = 'published', published_snapshot = ${JSON.stringify(
@@ -104,5 +117,17 @@ export async function publishSite(
     ),
     updateTenant,
   ]);
-  return { published: targets.map((p) => `/${p.slug}`), blocked, url };
+  return {
+    published: targets.map((p) => `/${p.slug}`),
+    blocked,
+    warnings,
+    url,
+  };
+}
+
+/** Recibo do comando direto no chat; independe da interpretação do modelo. */
+export function publicationMessage(result: PublishResult): string {
+  if (result.blocked.length)
+    return `Não foi possível publicar por um erro técnico: ${result.blocked.map((item) => `${item.page}: ${item.preflight}`).join(' ')}. O conteúdo publicado foi preservado.`;
+  return `Publicado: ${result.url}.${result.warnings?.length ? ' As recomendações continuam disponíveis no painel. A publicação não confirma alegações nem altera as evidências cadastradas.' : ''}`;
 }

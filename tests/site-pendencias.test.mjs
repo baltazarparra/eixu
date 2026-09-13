@@ -45,11 +45,11 @@ await test('prova sustentada por outra grafia vira alinhamento por caminho', () 
       valor: '12 acabamentos disponíveis',
     },
   ]);
-  assert.equal(hero.nivel, 'erro');
+  assert.equal(hero.nivel, 'recomendacao');
   assert.ok(!hero.confirmar);
 });
 
-await test('fato ausente vira pedido ao operador, e o canal segue a pontuação', () => {
+await test('fato ausente oferece reparo sem exigir repetição pelo operador', () => {
   const f = landingFixture();
   find(f, 'hero.landing').props.badges = [
     { label: 'Entrega em 5 dias', evidence: 'Entrega em 5 dias' },
@@ -64,7 +64,7 @@ await test('fato ausente vira pedido ao operador, e o canal segue a pontuação'
   };
   const semEscrita = plan(f);
   const hero = semEscrita.find((item) => item.bloco === 'hero');
-  assert.equal(hero.acao, 'confirmar');
+  assert.equal(hero.acao, 'reparar-prova');
   assert.deepEqual(hero.confirmar, [
     { frase: 'Entrega em 5 dias', escrita: false, canal: 'chat' },
   ]);
@@ -78,7 +78,7 @@ await test('fato ausente vira pedido ao operador, e o canal segue a pontuação'
   assert.equal(escrito.confirmar[0].escrita, true);
 });
 
-await test('evidência acima de 140 caracteres não cabe no bloco e vira nota', () => {
+await test('evidência do cadastro com até 160 caracteres cabe no alinhamento', () => {
   const f = landingFixture();
   const longa = `Recebemos o selo de qualidade ${'x'.repeat(120)}`;
   assert.ok(longa.length > 140);
@@ -91,9 +91,8 @@ await test('evidência acima de 140 caracteres não cabe no bloco e vira nota', 
     intake: { ...f.tenant.brief.intake, evidence: [] },
   };
   const hero = plan(f).find((item) => item.bloco === 'hero');
-  assert.equal(hero.acao, 'manual');
-  assert.match(hero.nota, /140 caracteres/);
-  assert.match(hero.nota, /Dados/);
+  assert.equal(hero.acao, 'alinhar');
+  assert.equal(hero.alinhar[0].valor, longa);
 });
 
 function ratioFixture(layout, ratio) {
@@ -184,8 +183,8 @@ await test('contexto do prompt lista erros antes de recomendações e corta o ex
   const items = plan(f);
   assert.ok(items.length > 1);
   const texto = pendenciasContext(items, 1);
-  assert.match(texto, /Erros bloqueiam a publicação/);
-  assert.match(texto.split('\n')[1], /^- ERRO/);
+  assert.match(texto, /Só erros técnicos bloqueiam/);
+  assert.match(texto.split('\n')[1], /^- Recomendação/);
   assert.match(texto, /e mais \d+ pendência/);
   assert.equal(pendenciasContext([]), undefined);
 
@@ -222,7 +221,10 @@ await test('as seções entram na edição e ficam fora das fases da geração',
   });
   assert.match(edicao, /## Pendências de publicação\nPENDENCIA-SINTETICA/);
   assert.match(edicao, /## Evidência confirmada\nEVIDENCIA-SINTETICA/);
-  assert.match(edicao, /Ação alinhar|Pendências de publicação: use a seção/);
+  assert.match(
+    edicao,
+    /Pedido de resolver pendências: execute repair_publication/,
+  );
   const composicao = systemPrompt(tenant, '', '/', '', { phase: 'composicao' });
   assert.ok(!composicao.includes('PENDENCIA-SINTETICA'));
 });

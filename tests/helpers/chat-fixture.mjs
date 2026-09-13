@@ -13,6 +13,11 @@ export async function chatFixture({
   sitePages,
   images = [],
   tenant: tenantOverride,
+  publicationResult = {
+    published: ['/'],
+    blocked: [],
+    url: 'https://stream-fixture.eixu.com.br',
+  },
 } = {}) {
   const starts = [];
   const prompts = [];
@@ -65,6 +70,8 @@ export async function chatFixture({
   const turns = [];
   const writes = [];
   const modelCalls = [];
+  const publicationCalls = [];
+  const { publicationMessage } = await loadModule('lib/sites/publish.ts');
   let executions = 0;
   const tools = {
     build_site: tool({
@@ -108,6 +115,13 @@ export async function chatFixture({
   };
   const { POST } = await loadModule('app/api/chat/route.ts', {
     '@/lib/auth': { isAuthenticated: async () => authenticated },
+    '@/lib/sites/publish': {
+      publicationMessage,
+      publishSite: async (target, page) => {
+        publicationCalls.push({ tenantId: target.id, page });
+        return publicationResult;
+      },
+    },
     '@/lib/db': {
       db:
         () =>
@@ -221,6 +235,7 @@ export async function chatFixture({
     writes,
     turns,
     modelCalls,
+    publicationCalls,
     starts,
     prompts,
     tenant,

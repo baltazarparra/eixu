@@ -82,6 +82,10 @@ Somente evidência atual comprova essa análise. Preserve erros e gates de publi
   outra mudança: mover não pode apagar. Isso é gate em código
   (`contentLossError`), não só instrução de prompt. Prova depende de fato
   confirmado pelo operador, no cadastro ou por `confirm_evidence`.
+  Publicação pedida pelo operador usa a política de `lib/sites/publication-policy.ts`:
+  recomendações editoriais não vetam a decisão nem viram fatos confirmados.
+  Erros técnicos e isolamento permanecem obrigatórios. Resolver pendências pode
+  ajustar ou retirar alegações sem prova pelo reparo restrito, preservando os demais blocos.
 - Responsividade é requisito de todas as vibes e versões. Preserve o contrato de
   `lib/design/responsive.ts` e valide navegação fechada/aberta, toque, teclado e
   telas estreitas/baixas com o CSS de produção; ausência de overflow não basta.

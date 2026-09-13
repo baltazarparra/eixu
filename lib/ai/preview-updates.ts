@@ -12,6 +12,7 @@ export function changesPreview(name: string, output: unknown): boolean {
     case 'set_blocks':
     case 'build_site':
     case 'repair_site':
+    case 'repair_publication':
     case 'delete_page':
     case 'set_design':
     case 'set_site_logo':

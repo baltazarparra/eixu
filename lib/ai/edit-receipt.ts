@@ -1,4 +1,5 @@
 import { changesPreview } from './preview-updates';
+import { publicationFinding } from '@/lib/sites/publication-policy';
 
 const record = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
@@ -8,6 +9,7 @@ const strings = (value: unknown): string[] =>
     : [];
 const receiptTools = new Set([
   'edit_page',
+  'repair_publication',
   'confirm_evidence',
   'lint_site',
   'list_state',
@@ -74,7 +76,14 @@ export function createEditReceipt() {
         }
         return;
       }
-      if (!['edit_page', 'confirm_evidence', 'lint_site'].includes(name))
+      if (
+        ![
+          'edit_page',
+          'repair_publication',
+          'confirm_evidence',
+          'lint_site',
+        ].includes(name)
+      )
         return;
       attempted = true;
       const page =
@@ -92,7 +101,10 @@ export function createEditReceipt() {
         return;
       }
       failures.delete(key);
-      if (name === 'edit_page' && out.ok === true) {
+      if (
+        ['edit_page', 'repair_publication'].includes(name) &&
+        out.ok === true
+      ) {
         if (out.changed === true) {
           const details = strings(out.summary);
           saved.set(page, [...(saved.get(page) ?? []), ...details]);
@@ -126,7 +138,16 @@ export function createEditReceipt() {
         );
       lines.push(...new Set(failures.values()));
       if (checked) {
-        const errors = checked.filter((finding) => finding.level === 'error');
+        const errors = checked.filter(
+          (finding) =>
+            publicationFinding({
+              ...finding,
+              level: finding.level === 'error' ? 'error' : 'warn',
+              rule: typeof finding.rule === 'string' ? finding.rule : '',
+              message:
+                typeof finding.message === 'string' ? finding.message : '',
+            }).level === 'error',
+        );
         const reasons = [
           ...new Set(
             errors
@@ -138,14 +159,19 @@ export function createEditReceipt() {
         ];
         lines.push(
           errors.length
-            ? `A publicação está bloqueada: ${reasons.slice(0, 3).join(' ')}${reasons.length > 3 ? ' Veja as demais pendências no painel.' : ''}`
-            : 'A verificação atual não encontrou bloqueios de publicação.',
+            ? `Há erros técnicos para corrigir: ${reasons.slice(0, 3).join(' ')}${reasons.length > 3 ? ' Veja os demais no painel.' : ''}`
+            : checked.length
+              ? 'As recomendações estão no painel e não impedem a publicação quando você pedir.'
+              : 'A verificação atual não encontrou bloqueios de publicação.',
         );
       }
-      // Um fato que o operador não escreveu não vira prova. O fechamento diz
-      // exatamente quais frases faltam, em vez de repetir a regra.
+      // Autorização não vira evidência. Falta de prova oferece reparo sem
+      // obrigar o operador a repetir frases criadas pelo modelo.
       const pending = (plan ?? [])
-        .filter((item) => item.nivel === 'erro')
+        .filter(
+          (item) =>
+            item.regra === 'landing-prova' || item.regra === 'landing-preco',
+        )
         .flatMap((item) =>
           Array.isArray(item.confirmar)
             ? (item.confirmar as Record<string, unknown>[])
@@ -155,9 +181,7 @@ export function createEditReceipt() {
       const select = (canal: string, written: boolean) => [
         ...new Set(
           pending
-            .filter(
-              (fact) => fact.canal === canal && fact.escrita === written,
-            )
+            .filter((fact) => fact.canal === canal && fact.escrita === written)
             .map((fact) => fact.frase as string),
         ),
       ];
@@ -166,11 +190,11 @@ export function createEditReceipt() {
       const written = [...select('chat', true), ...select('dados', true)];
       if (toWrite.length)
         lines.push(
-          `Para liberar a prova, o operador precisa escrever no chat, com estas palavras: ${phrases(toWrite)}.`,
+          'Há alegações sem confirmação. O reparo das pendências pode retirá-las usando as evidências disponíveis, sem exigir que você repita frases.',
         );
       if (toRegister.length)
         lines.push(
-          `Estas frases não cabem na confirmação pelo chat; registre em Dados › Evidências: ${phrases(toRegister)}.`,
+          'Há alegações sem evidência cadastrada; elas podem ser ajustadas pelo reparo das pendências.',
         );
       if (written.length)
         lines.push(

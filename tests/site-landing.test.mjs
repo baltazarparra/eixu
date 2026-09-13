@@ -281,7 +281,8 @@ await test('prova aceita evidência do cadastro e do chat, sem afrouxar o gate',
   f.tenant.brief = { ...f.tenant.brief, intake: { evidence: [] } };
   const missing = rules(f).filter((v) => v.rule === 'landing-prova');
   assert.ok(missing.length);
-  assert.match(missing[0].message, /confirm_evidence|Dados/);
+  assert.match(missing[0].message, /evidências do cliente/);
+  assert.doesNotMatch(missing[0].message, /confirm_evidence/);
 });
 
 await test('formulário com cinco campos avisa, acima de seis bloqueia; secundário e âncoras equivalentes permitidos', () => {
@@ -361,7 +362,7 @@ await test('prompts de preparação e composição descrevem página única sem 
     assert.match(prompt, /revisão é humana|Não gere fotos/);
   }
 });
-await test('publicação real valida prova, sem escrita ao falhar; snapshot promovido em lote', async () => {
+await test('publicação real aceita decisão editorial sem fabricar prova; snapshot promovido em lote', async () => {
   const f = landingFixture();
   const writes = [];
   const sql = Object.assign(
@@ -379,8 +380,14 @@ await test('publicação real valida prova, sem escrita ao falhar; snapshot prom
   });
   const original = f.tenant.brief.evidence;
   f.tenant.brief.evidence = [];
-  assert.equal((await publishSite(f.tenant)).published.length, 0);
-  assert.equal(writes.length, 0);
+  const authorized = await publishSite(f.tenant);
+  assert.equal(authorized.published.length, 2);
+  assert.ok(
+    authorized.warnings.some((finding) => finding.rule === 'landing-prova'),
+  );
+  assert.equal(writes.length, 3);
+  assert.deepEqual(f.tenant.brief.evidence, []);
+  writes.length = 0;
   f.tenant.brief.evidence = original;
   const result = await publishSite(f.tenant);
   assert.equal(result.blocked.length, 0, JSON.stringify(result));

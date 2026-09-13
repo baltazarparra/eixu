@@ -4,6 +4,7 @@ import {
   evidenceAdditions,
   factWritten,
   MAX_EVIDENCE,
+  MAX_EVIDENCE_LENGTH,
 } from '@/lib/ai/evidence';
 export { factWritten } from '@/lib/ai/evidence';
 import { createHash } from 'node:crypto';
@@ -36,6 +37,7 @@ import {
   laneIssues,
   structureGrammar,
   vibeOf,
+  siteShape,
 } from '@/lib/design/vibes';
 import {
   normalizeReferenceUrl,
@@ -72,6 +74,9 @@ import {
 } from '@/lib/images/scene-plan';
 import { RATIOS, expectedRatio } from '@/lib/images/ratios';
 import { publishSite } from '@/lib/sites/publish';
+import { publicationFinding } from '@/lib/sites/publication-policy';
+import { isPublicationRepairRequest } from '@/lib/sites/publication-request';
+import { repairPublicationProof } from '@/lib/sites/proof-repair';
 import { formatFindings, lintPage } from '@/lib/taste/lint';
 import { inboundSchema, lintSite, type SitePage } from '@/lib/taste/site';
 import { publicationPlan } from '@/lib/taste/pendencias';
@@ -486,13 +491,15 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
       listPages(tenant.id),
       listImages(tenant.id),
     ]);
-    const findings = lintSite(
-      pages,
-      images,
-      'publish',
-      activeBrand,
-      activeBrief,
-    );
+    const findings = [
+      ...pages.flatMap((page) =>
+        lintPage(page, activeBrand.design).map((finding) => ({
+          ...finding,
+          page: `/${page.slug}`,
+        })),
+      ),
+      ...lintSite(pages, images, 'publish', activeBrand, activeBrief),
+    ].map(publicationFinding);
     return {
       pages,
       images,
@@ -691,69 +698,78 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             'Proporção da nova versão, por exemplo a que o bloco exibe em uma pendência imagem-proporcao. Omitida, conserva a da original. Não vale para logo.',
           ),
       }),
-      execute: safe(async ({ image: ref, request, brandName, wordmark, ratio }) => {
-        if (scenesPrepared >= 8)
-          throw new ToolError(
-            'Orçamento de imagens deste turno esgotado. Encerre o turno.',
-          );
-        scenesPrepared += 1;
-        let generationStarted = false;
-        try {
-          const result = await withSceneGenerationLock(tenant.id, async () => {
-            const previous = await requireImage(tenant.id, ref);
-            generationStarted = true;
-            const image = await reviseImage(
-              {
-                ...tenant,
-                brand: activeBrand,
-                dials: activeDials,
-                brief: activeBrief,
-              },
-              previous,
-              request,
-              { brandName, wordmark, ratio },
-            );
-            const saved = {
-              anterior: `#${previous.seq}`,
-              numero: `#${image.seq}`,
-              url: image.url,
-              alt: image.alt,
-              nota: image.score,
-              problemas: image.critique.problemas ?? [],
-              ...(previous.ratio !== image.ratio
-                ? {
-                    aviso: `A nova versão usa proporção ${image.ratio}; a original ${previous.ratio} permanece no acervo.`,
-                  }
-                : {}),
-            };
-            try {
-              const pages = await replaceDraftImage(tenant.id, previous, image);
-              return {
-                ok: true,
-                ...saved,
-                paginasAtualizadas: pages,
-                orientacao:
-                  previous.url === activeBrand.logoUrl
-                    ? 'Nova versão salva na biblioteca. O logo da marca ainda é o anterior; use set_site_logo somente quando a aplicação foi solicitada.'
-                    : 'Nova versão salva na biblioteca. A anterior foi preservada; as páginas publicadas só mudam após nova publicação.',
-              };
-            } catch (error) {
-              return {
-                ok: false,
-                ...saved,
-                error: `A nova imagem foi salva, mas não foi aplicada aos rascunhos: ${error instanceof Error ? error.message : 'falha na gravação'}`,
-              };
-            }
-          });
-          if (result === null)
+      execute: safe(
+        async ({ image: ref, request, brandName, wordmark, ratio }) => {
+          if (scenesPrepared >= 8)
             throw new ToolError(
-              'Já há uma geração de imagens em andamento para este cliente. Aguarde a conclusão.',
+              'Orçamento de imagens deste turno esgotado. Encerre o turno.',
             );
-          return result;
-        } finally {
-          if (!generationStarted) scenesPrepared -= 1;
-        }
-      }),
+          scenesPrepared += 1;
+          let generationStarted = false;
+          try {
+            const result = await withSceneGenerationLock(
+              tenant.id,
+              async () => {
+                const previous = await requireImage(tenant.id, ref);
+                generationStarted = true;
+                const image = await reviseImage(
+                  {
+                    ...tenant,
+                    brand: activeBrand,
+                    dials: activeDials,
+                    brief: activeBrief,
+                  },
+                  previous,
+                  request,
+                  { brandName, wordmark, ratio },
+                );
+                const saved = {
+                  anterior: `#${previous.seq}`,
+                  numero: `#${image.seq}`,
+                  url: image.url,
+                  alt: image.alt,
+                  nota: image.score,
+                  problemas: image.critique.problemas ?? [],
+                  ...(previous.ratio !== image.ratio
+                    ? {
+                        aviso: `A nova versão usa proporção ${image.ratio}; a original ${previous.ratio} permanece no acervo.`,
+                      }
+                    : {}),
+                };
+                try {
+                  const pages = await replaceDraftImage(
+                    tenant.id,
+                    previous,
+                    image,
+                  );
+                  return {
+                    ok: true,
+                    ...saved,
+                    paginasAtualizadas: pages,
+                    orientacao:
+                      previous.url === activeBrand.logoUrl
+                        ? 'Nova versão salva na biblioteca. O logo da marca ainda é o anterior; use set_site_logo somente quando a aplicação foi solicitada.'
+                        : 'Nova versão salva na biblioteca. A anterior foi preservada; as páginas publicadas só mudam após nova publicação.',
+                  };
+                } catch (error) {
+                  return {
+                    ok: false,
+                    ...saved,
+                    error: `A nova imagem foi salva, mas não foi aplicada aos rascunhos: ${error instanceof Error ? error.message : 'falha na gravação'}`,
+                  };
+                }
+              },
+            );
+            if (result === null)
+              throw new ToolError(
+                'Já há uma geração de imagens em andamento para este cliente. Aguarde a conclusão.',
+              );
+            return result;
+          } finally {
+            if (!generationStarted) scenesPrepared -= 1;
+          }
+        },
+      ),
     }),
 
     generate_logo: tool({
@@ -1593,12 +1609,54 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         return { findings, plano };
       }),
     }),
+    repair_publication: tool({
+      description:
+        'Resolve as provas pendentes quando o operador pede resolver ou corrigir pendências. Alinha evidências existentes, retira alegações sem confirmação e fotos de depoimentos sem origem real; preserva os fatos confirmados, outros blocos e o publicado. Não registra fatos, não gera imagens e não publica. O resultado traz mudanças e o plano atualizado para continuar outros ajustes.',
+      inputSchema: z.object({}),
+      execute: safe(async () => {
+        if (!isPublicationRepairRequest(context.lastUserText ?? ''))
+          throw new ToolError(
+            'Este reparo exige um pedido atual para resolver as pendências. Uma edição visual ou uma publicação não autoriza retirar alegações.',
+          );
+        if (siteShape(activeBrand) !== 'landing')
+          return { ok: true, changed: false, ...(await publication()) };
+        const before = await publication();
+        const written = before.plano
+          .flatMap((item) => item.confirmar ?? [])
+          .filter((fact) => fact.escrita);
+        if (written.length)
+          return {
+            ok: true,
+            changed: false,
+            publicationPending: before.findings,
+            plano: before.plano,
+            nextAction:
+              'Registre primeiro os fatos já escritos com confirm_evidence; depois execute repair_publication para os demais. Não peça nova confirmação.',
+          };
+        const page = await requirePage(tenant.id, '');
+        const images = await listImages(tenant.id);
+        const repair = repairPublicationProof(page, images, activeBrief);
+        const saved = await savePageEdit({
+          tenant,
+          page,
+          blocks: repair.blocks,
+          brand: activeBrand,
+        });
+        const { findings, plano } = await publication();
+        return {
+          ...saved,
+          summary: repair.summary,
+          publicationPending: findings,
+          plano,
+        };
+      }),
+    }),
     confirm_evidence: tool({
       description:
-        'Registra frases completas escritas pelo operador, uma por item, em brief.evidence, com até 140 caracteres cada. Preserve redação, números, contexto e negações; não resuma nem extraia palavras. Anexo e pergunta não confirmam um fato. O retorno mostra o que foi gravado e a validação atual, feita nesta chamada; não existe sincronização posterior. Não apaga evidências existentes.',
+        'Registra frases completas escritas pelo operador, uma por item, em brief.evidence, com até 160 caracteres cada, como no cadastro. Preserve redação, números, contexto e negações; não resuma nem extraia palavras. Anexo e pergunta não confirmam um fato. O retorno mostra o que foi gravado e a validação atual, feita nesta chamada; não existe sincronização posterior. Não apaga evidências existentes.',
       inputSchema: z.object({
         facts: z
-          .array(z.string().min(3).max(140))
+          .array(z.string().min(3).max(MAX_EVIDENCE_LENGTH))
           .min(1)
           .max(6)
           .describe(
@@ -2371,10 +2429,9 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         // Prova, composição e jornada são regras de site que recusam esta
         // página na publicação. Aprovar só pelo lint de página escondia o gate.
         const { findings: site, plano } = await publication();
-        const findings = [
-          ...lintPage(page, activeBrand.design),
-          ...site.filter((finding) => finding.page === `/${page.slug}`),
-        ];
+        const findings = site.filter(
+          (finding) => finding.page === `/${page.slug}`,
+        );
         return {
           aprovado: !findings.some((f) => f.level === 'error'),
           relatorio: formatFindings(findings),
@@ -2385,17 +2442,32 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
     publish_page: tool({
       description:
-        'Publica uma página. Só use quando o operador pedir. Bloqueia se o pre-flight tiver erro.',
+        'Publica uma página quando o operador pedir. Recomendações de prova, copy e composição não vetam a decisão; somente erros técnicos recusam. A autorização não registra evidência nem altera o rascunho.',
       inputSchema: z.object({ page: z.string() }),
       execute: safe(async ({ page: slug }) => {
-        return publishSite({ ...tenant, brand: activeBrand }, slug);
+        return publishSite(
+          {
+            ...tenant,
+            brand: activeBrand,
+            brief: activeBrief,
+            dials: activeDials,
+          },
+          slug,
+        );
       }),
     }),
     publish_site: tool({
       description:
-        'Publica todas as páginas em uma transação após validar jornada, imagens e pre-flight. Use somente quando o operador pedir publicação.',
+        'Publica todas as páginas em uma transação quando o operador pedir publicação. Execute mesmo com recomendações de prova, copy, imagens ou composição. Somente erros técnicos recusam; publicar não registra evidências nem altera o conteúdo.',
       inputSchema: z.object({}),
-      execute: safe(async () => publishSite({ ...tenant, brand: activeBrand })),
+      execute: safe(async () =>
+        publishSite({
+          ...tenant,
+          brand: activeBrand,
+          brief: activeBrief,
+          dials: activeDials,
+        }),
+      ),
     }),
   };
   return editTools(tools, context.editPolicy);

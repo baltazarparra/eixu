@@ -337,7 +337,17 @@ rascunho de publicado. **Usar no site**, em uma foto, abre o chat com o número
 preenchido para você indicar página e posição; não altera conteúdo sozinho.
 **Usar como logo**, em um logo disponível, aplica no rascunho.
 
-As pendências para publicar aparecem no fim do fluxo, quando ainda sobra algo. Erros de página ou projeto bloqueiam a publicação; recomendações continuam disponíveis para revisão. Mudanças de blocos ou SEO tornam a página pendente. **Publicar** valida o projeto no servidor e atualiza o snapshot de páginas atomicamente; um erro preserva a versão anterior.
+O painel separa erros técnicos de recomendações. **Resolver pelo chat** prepara
+o pedido para corrigir as pendências usando os dados e as imagens disponíveis;
+alegações sem confirmação podem ser ajustadas ou retiradas, sem exigir que você
+repita frases. Confira as mudanças na prévia.
+
+**Publicar** e **“publicar, eu autorizo”** publicam o conteúdo atual mesmo com
+recomendações de prova, texto ou composição. Publicar não registra fatos como
+confirmados. O servidor valida os dados e atualiza os snapshots atomicamente;
+erros técnicos, como um bloco inválido ou um link sem destino, preservam a
+versão anterior e aparecem com o motivo da recusa. Os avisos editoriais continuam
+disponíveis no painel após a publicação.
 
 Nas outras abas, **Revisar e publicar** leva ao editor para conferir as pendências atuais.
 

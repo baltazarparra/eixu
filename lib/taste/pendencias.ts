@@ -3,12 +3,11 @@ import {
   confirmedEvidence,
   factWritten,
   phraseSupported,
+  MAX_EVIDENCE_LENGTH,
 } from '@/lib/ai/evidence';
-import {
-  expectedRatio,
-  ratioFits,
-  type Ratio,
-} from '@/lib/images/ratios';
+import { publicationFinding } from '@/lib/sites/publication-policy';
+import { lintPage } from './lint';
+import { expectedRatio, ratioFits, type Ratio } from '@/lib/images/ratios';
 import type { TenantImage } from '@/lib/types';
 import { claimSupported, landingClaims, type LandingClaim } from './landing';
 import {
@@ -19,9 +18,8 @@ import {
 } from './metrics';
 import { lintSite, type LintBrand, type SiteFinding } from './site';
 
-/** `evidenceRef` e `confirm_evidence` aceitam 140 caracteres; o cadastro aceita
- * 160. Uma frase mais longa não cabe no bloco e precisa ser encurtada em Dados. */
-const REF_LIMIT = 140;
+/** Referências, confirmação e cadastro compartilham o mesmo limite. */
+const REF_LIMIT = MAX_EVIDENCE_LENGTH;
 
 export type PendenciaAlinhar = {
   bloco: string;
@@ -54,7 +52,7 @@ export type Pendencia = {
   pagina: string;
   bloco?: string;
   mensagem: string;
-  acao: 'alinhar' | 'confirmar' | 'imagem' | 'manual';
+  acao: 'alinhar' | 'confirmar' | 'imagem' | 'reparar-prova' | 'editar';
   alinhar?: PendenciaAlinhar[];
   confirmar?: PendenciaConfirmar[];
   imagem?: PendenciaImagem;
@@ -82,14 +80,14 @@ function proofResolution(
     (claim) =>
       claim.block.id === finding.blockId && !claimSupported(claim, evidence),
   );
-  if (!failing.length) return { acao: 'manual' };
+  if (!failing.length) return { acao: 'editar' };
   const alinhar: PendenciaAlinhar[] = [];
   const confirmar: PendenciaConfirmar[] = [];
   const notas: string[] = [];
   for (const claim of failing) {
     if (claim.photoInvalid) {
       notas.push(
-        `${claim.path}: o depoimento usa uma foto que não é envio do cliente. Troque pela foto enviada ou remova a imagem a pedido do operador.`,
+        `${claim.path}: o depoimento usa uma foto que não é envio do cliente. O reparo retira essa foto e preserva o texto se estiver confirmado.`,
       );
       continue;
     }
@@ -100,7 +98,7 @@ function proofResolution(
       : undefined;
     if (full && full.length > REF_LIMIT) {
       notas.push(
-        `${claim.path}: a evidência confirmada tem mais de ${REF_LIMIT} caracteres e não cabe no campo. Encurte em Dados › Evidências.`,
+        `${claim.path}: a evidência excede ${REF_LIMIT} caracteres. O reparo usa somente os fatos confirmados que cabem no componente.`,
       );
       continue;
     }
@@ -129,11 +127,14 @@ function proofResolution(
     });
   }
   return {
-    acao: alinhar.length
-      ? 'alinhar'
-      : confirmar.length
-        ? 'confirmar'
-        : 'manual',
+    acao:
+      confirmar.some((item) => !item.escrita) || notas.length
+        ? 'reparar-prova'
+        : alinhar.length
+          ? 'alinhar'
+          : confirmar.length
+            ? 'confirmar'
+            : 'editar',
     ...(alinhar.length ? { alinhar } : {}),
     ...(confirmar.length ? { confirmar } : {}),
     ...(notas.length ? { nota: notas.join(' ') } : {}),
@@ -147,7 +148,7 @@ function imageResolution(
 ): Partial<Pendencia> {
   const page = pages.find((item) => `/${item.slug}` === finding.page);
   const block = page?.blocks.find((item) => item.id === finding.blockId);
-  if (!block) return { acao: 'manual' };
+  if (!block) return { acao: 'editar' };
   const layout = layoutOf(block);
   const esperada = expectedRatio(block.type, layout);
   const byUrl = new Map(
@@ -160,7 +161,7 @@ function imageResolution(
   const image =
     used.find((item) => item.seq === seq) ??
     used.find((item) => !ratioFits(item.ratio, esperada));
-  if (!image) return { acao: 'manual' };
+  if (!image) return { acao: 'editar' };
   return {
     acao: 'imagem',
     imagem: {
@@ -213,9 +214,14 @@ export function publicationPlan(input: {
   findings?: SiteFinding[];
 }): Pendencia[] {
   const brief = input.brief ?? {};
-  const findings =
-    input.findings ??
-    lintSite(input.pages, input.images, 'publish', input.brand, brief);
+  const findings = input.findings ?? [
+    ...input.pages.flatMap((page) =>
+      lintPage(page, input.brand?.design as Parameters<typeof lintPage>[1]).map(
+        (finding) => ({ ...finding, page: `/${page.slug}` }),
+      ),
+    ),
+    ...lintSite(input.pages, input.images, 'publish', input.brand, brief),
+  ];
   if (!findings.length) return [];
   const evidence = confirmedEvidence(brief);
   const home = input.pages.find(
@@ -230,22 +236,18 @@ export function publicationPlan(input: {
     seen.add(key);
     const resolution =
       finding.rule === 'landing-prova' || finding.rule === 'landing-preco'
-        ? proofResolution(
-            finding,
-            claims,
-            evidence,
-            input.operatorText ?? '',
-          )
+        ? proofResolution(finding, claims, evidence, input.operatorText ?? '')
         : finding.rule === 'imagem-proporcao'
           ? imageResolution(finding, input.pages, input.images)
-          : { acao: 'manual' as const };
+          : { acao: 'editar' as const };
     plan.push({
       regra: finding.rule,
-      nivel: finding.level === 'error' ? 'erro' : 'recomendacao',
+      nivel:
+        publicationFinding(finding).level === 'error' ? 'erro' : 'recomendacao',
       pagina: finding.page,
       ...(finding.blockId ? { bloco: finding.blockId } : {}),
       mensagem: finding.message,
-      acao: 'manual',
+      acao: 'editar',
       ...resolution,
     });
   }
@@ -287,13 +289,15 @@ function pendenciaLine(item: Pendencia): string {
         .map((fact) => quote(fact.frase))
         .join(
           '; ',
-        )}. Peça que ele escreva essas frases ou registre em Dados › Evidências. Não invente nem deduza o fato.`,
+        )}. Se o pedido é resolver pendências, use repair_publication para retirar a alegação sem confirmação. Não peça repetição de frases, não invente nem registre a autorização como fato.`,
     );
   if (noCadastro.length)
     parts.push(
-      `Ação confirmar por Dados › Evidências, porque a frase não cabe no chat: ${noCadastro
+      `Alegações sem confirmação textual: ${noCadastro
         .map((fact) => quote(fact.frase))
-        .join('; ')}.`,
+        .join(
+          '; ',
+        )}. No pedido de resolver pendências, use repair_publication.`,
     );
   if (item.imagem) {
     const image = item.imagem;
@@ -314,8 +318,14 @@ function pendenciaLine(item: Pendencia): string {
     );
   }
   if (item.nota) parts.push(item.nota);
-  if (item.acao === 'manual' && !parts.length)
-    parts.push('Ação manual: explique ao operador o que falta.');
+  if (item.acao === 'reparar-prova')
+    parts.push(
+      'Reparo disponível: repair_publication. Só executa mediante pedido atual para resolver pendências e preserva evidências e conteúdo confirmado.',
+    );
+  if (item.acao === 'editar' && !parts.length)
+    parts.push(
+      'Corrija com as ferramentas de edição: consulte o bloco e o schema, aplique a menor alteração e valide. Use o cadastro e o acervo existentes. Não encerre apenas repetindo a pendência; só peça dado externo se não houver correção possível com o contexto disponível.',
+    );
   return `${head} ${parts.join(' ')}`.trim();
 }
 
@@ -331,7 +341,7 @@ export function pendenciasContext(
   const lines = ordered.slice(0, limit).map(pendenciaLine);
   const rest = ordered.length - lines.length;
   if (rest > 0) lines.push(`- e mais ${rest} pendência(s) no painel.`);
-  return `Validação atual do servidor, a mesma do painel. Erros bloqueiam a publicação; recomendações não. A ação de cada linha foi decidida em código.\n${lines.join('\n')}`;
+  return `Validação atual do servidor, a mesma do painel. Só erros técnicos bloqueiam; recomendações editoriais não impedem a publicação autorizada. No pedido de publicar, publique sem exigir confirmação de fatos; no pedido de resolver, execute os reparos e valide.\n${lines.join('\n')}`;
 }
 
 /** Seção do prompt com as frases que a validação aceita como prova. */

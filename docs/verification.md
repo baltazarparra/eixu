@@ -1,5 +1,52 @@
 # Validação e publicação
 
+## Autonomia para resolver pendências e publicar, 13/09/2026
+
+O plano anterior encerrava o turno quando a prova exigia uma frase ausente do
+chat. Mesmo com autorização explícita, o serviço recusava qualquer erro editorial.
+Havia ainda uma divergência: confirmar evidência atualizava o estado do turno,
+mas a publicação usava o briefing carregado antes dessa confirmação.
+
+A correção separa o trabalho de geração, o reparo e a decisão de publicação:
+
+- O lint da geração conserva os critérios de conteúdo e composição. A política
+  de publicação classifica explicitamente recomendações editoriais; erros
+  técnicos e regras novas sem classificação continuam bloqueantes.
+- “Publicar, eu autorizo” executa no servidor sem chamada ao modelo. Botão,
+  API e ferramentas compartilham a transação e a política; publicar não cria
+  evidência nem altera rascunhos.
+- `repair_publication` só executa mediante pedido atual para resolver pendências.
+  Alinha referências existentes, retira alegações sem confirmação e fotos de
+  depoimentos sem origem de envio, conservando conteúdo confirmado, âncoras e
+  outros blocos. O armazenamento compara a revisão e preserva snapshots.
+- As recomendações aparecem no painel e nos recibos com a mesma classificação.
+  O limite de evidência passa a ser o mesmo do cadastro: 160 caracteres.
+
+Validação inclui os casos relatados, autorização negada ou interrogativa,
+restrições de remoção em outra linha, erro técnico no hero, referência antiga,
+foto de depoimento sem origem real, preservação de evidência/snapshot, idempotência
+do reparo e publicação usando fatos registrados no mesmo turno. O navegador
+exercita o botão em 1440 × 1000 e 390 × 844 com a API e o serviço reais, usando
+somente adaptadores de dados em memória. Uma prop desconhecida recusa a escrita.
+
+O ensaio `scripts/eval-publication.mjs --live` passou com Gemini 3.8 Flash em
+dois casos: ausência de evidência e referência antiga. Cada caso executou um
+reparo, gravou uma vez e encerrou no segundo passo, em cerca de 16 s e 11 s.
+O relatório ficou em `outputs/publication/1789320276272/report.json`; capturas
+do painel estão em `outputs/publication/browser/`. O ensaio nega I/O externo
+das ferramentas; não escreveu em Neon/Blob nem gerou novas imagens.
+
+Checks locais: tipos, lint global, `build:vercel` e quatro verificações do artefato
+passaram. Foram 286 testes de site, 219 de admin e 92 de navegador (17 do admin
+e 75 de site), todos aprovados. Cinco integrações opcionais de PostgreSQL local
+não rodaram por falta de configuração desse banco. Captura com Chromium e as
+simulações em memória foram executadas; não representam publicação de um cliente
+real. O recorte de autorização recebeu também regressões para pedidos limitados
+a uma imagem ou página, que não podem acionar a limpeza geral de provas.
+
+Deploy de código não publica automaticamente rascunhos de clientes. Não há
+migração de banco nesta entrega.
+
 ## Gerador no celular, 13/09/2026
 
 O painel usa cabeçalho compacto, menu do cliente e alternância Conversa/Prévia
