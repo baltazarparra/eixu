@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { headlineAttributes } from './headline';
 import { editorContrast } from './inline-contrast';
 import { fieldTextError, normalizeFieldText, type FieldError } from './fields';
 import {
@@ -216,6 +217,12 @@ export function InlineEditor({
       }
       if (style?.color) node.dataset.textColor = 'true';
       else delete node.dataset.textColor;
+      if (node.hasAttribute('data-length')) {
+        const attributes = headlineAttributes(value);
+        node.dataset.length = attributes['data-length'];
+        if (attributes['data-long-word']) node.dataset.longWord = 'true';
+        else delete node.dataset.longWord;
+      }
       if (offset !== null && replaced) placeCaret(node, offset);
     };
     const sync = () => {

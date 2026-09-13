@@ -100,6 +100,7 @@ export function phaseInstructions(input: {
   const { tenant, pages, images, phase } = input;
   const context: PromptContext = {
     phase,
+    availablePhotoCount: availablePhotos(images).length,
     sources: sourcesText(tenant),
     review: phase === 'revisao' ? reviewContext(tenant) : undefined,
     ...(phase === 'cenas' ? scenesContext(tenant, images) : {}),

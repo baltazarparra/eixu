@@ -38,7 +38,7 @@ export function plannedScenes(tenant: Tenant): PlannedScene[] {
   const design = isDesignProfile(tenant.brand.design)
     ? tenant.brand.design
     : undefined;
-  const structural = scenePlan(design, 3, vibeOf(tenant.brand));
+  const structural = scenePlan(design, 3, vibeOf(tenant.brand), tenant.brief);
   const parsed = plannedSceneInputSchema
     .array()
     .safeParse(tenant.brief.imageScenes);

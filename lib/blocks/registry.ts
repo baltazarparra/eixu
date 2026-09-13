@@ -1085,6 +1085,7 @@ function grammarRole(
   type: BlockType,
   vibe: Vibe,
   design?: { version?: number; structure?: StructureKey },
+  expansions: readonly string[] = [],
 ): string {
   const grammar = structureGrammar(vibe, design);
   const belongs = (list: readonly string[]) =>
@@ -1101,6 +1102,9 @@ function grammarRole(
   if (closing.length) roles.push(`fechamento em ${closing.join('/')}`);
   const avoid = belongs(grammar.avoid);
   if (avoid.length) roles.push(`evite ${avoid.join('/')}`);
+  const expansion = belongs(expansions);
+  if (expansion.length)
+    roles.push(`aprofundamento da home em ${expansion.join('/')}`);
   return roles.length ? ` [vibe: ${roles.join('; ')}]` : '';
 }
 
@@ -1110,9 +1114,10 @@ export function catalogForPrompt(
     fullSchema?: boolean;
     vibe?: Vibe;
     design?: { version?: number; structure?: StructureKey };
+    expansions?: readonly string[];
   } = {},
 ): string {
-  const { vibe, design } = options;
+  const { vibe, design, expansions = [] } = options;
   return (
     `Comum a todos: anchor?; textStyles? [{field, size?: -2|-1|0|1|2, color?: #RRGGBB}] (até 40, por campo de texto; contraste ≥4,5:1); presentation? { ${summarize(z.toJSONSchema(presentation.unwrap()) as Record<string, unknown>, 1)} }. ? = opcional; ≤ = máximo de caracteres.\n` +
     [...BLOCK_TYPES]
@@ -1145,7 +1150,7 @@ export function catalogForPrompt(
         >;
         // O uso vem junto: sem ele o agente ignora explorer e resources, que são
         // justamente as seções que sustentam uma home com fotos.
-        return `${type} · ${blockMeta[type].use}${ratioHint(type)}${vibe ? grammarRole(type, vibe, design) : ''}\n  ${options.fullSchema ? JSON.stringify(json) : summarize(json)}`;
+        return `${type} · ${blockMeta[type].use}${ratioHint(type)}${vibe ? grammarRole(type, vibe, design, expansions) : ''}\n  ${options.fullSchema ? JSON.stringify(json) : summarize(json)}`;
       })
       .join('\n')
   );

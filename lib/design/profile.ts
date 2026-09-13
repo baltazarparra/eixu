@@ -106,7 +106,9 @@ export const designProfileInputSchema = z.object({
   rhythm: z.enum(['alternating', 'chapters', 'continuous', 'compact']),
   imageTreatment: z.enum(['full-bleed', 'framed', 'collage', 'cutout']),
   surfaceStyle: z.enum(['flat', 'layered', 'outlined', 'contrast']),
-  motif: z.enum(['none', 'grid', 'rings', 'stripes', 'corners']),
+  // `grid` permanece legível para perfis publicados antigos. O schema
+  // contextual abaixo impede que uma nova direção volte a gravá-lo.
+  motif: z.enum(['none', 'wash', 'grid', 'rings', 'stripes', 'corners']),
   variance: z.number().int().min(1).max(10),
   motion: z.number().int().min(1).max(10),
   density: z.number().int().min(1).max(10),
@@ -119,6 +121,11 @@ export function designSchemaFor(vibe: string) {
     const pages = input.brief.pagePlan;
     const issue = (path: (string | number)[], message: string) =>
       ctx.addIssue({ code: 'custom', path, message });
+    if (input.motif === 'grid')
+      issue(
+        ['motif'],
+        'grid é legado e não pode ser gravado em sites novos. Use wash ou none.',
+      );
     if (landing) {
       if (!['stage', 'form'].includes(input.heroComposition))
         issue(['heroComposition'], 'Landing Page abre em stage ou form.');

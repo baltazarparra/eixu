@@ -353,12 +353,12 @@ moderno foi recriado sobre Linear, [Resend](https://resend.com/) e
 [Untold](https://untold.site/pt). Elas orientam a linguagem visual; o
 conteúdo continua vindo do briefing do cliente.
 
-| Vibe        | O que a faixa exige                                                                                                                      |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `comercial` | Display humanista/slab, hero split/cover, navegação em barra, ritmo direto, fotos emolduradas, superfície plana e cantos discretos.      |
-| `moderno`   | Papel quase preto e liso, display geométrica/grotesca, hero editorial/offset, navegação mínima, capítulos com fio de 1px, rótulos mono.  |
-| `ousado`    | Display condensada/expressiva, hero cover/poster, navegação de contraste, fluxo contínuo, fotografia full-bleed, faixas e cantos retos.  |
-| `artistico` | Display editorial/clássica, hero offset/atelier, navegação flutuante, alternância, colagem/cutout, camadas e motivos de anéis ou cantos. |
+| Vibe        | O que a faixa exige                                                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `comercial` | Display humanista/slab, hero split/cover, navegação em barra, ritmo direto, fotos emolduradas, lavagem cromática suave e cantos discretos. |
+| `moderno`   | Papel quase preto e liso, display geométrica/grotesca, hero editorial/offset, navegação mínima, capítulos com fio de 1px, rótulos mono.    |
+| `ousado`    | Display condensada/expressiva, hero cover/poster, navegação de contraste, fluxo contínuo, fotografia full-bleed, faixas e cantos retos.    |
+| `artistico` | Display editorial/clássica, hero offset/atelier, navegação flutuante, alternância, colagem/cutout, camadas e motivos de anéis ou cantos.   |
 
 `lib/design/vibes.ts` guarda essas faixas, o texto de direção que entra no
 prompt e a direção de imagem por vibe. Sem referência, `set_design` recusa a
@@ -401,6 +401,19 @@ No celular, as etapas da campanha reservam espaço para a numeração sem cobrir
 texto, foto ou ação.
 O bloco recebe duas fotos disponíveis do assunto do cliente. Não aceita HTML,
 JavaScript ou CSS gerado por tenant.
+
+As três estruturas comerciais também ordenam camadas opcionais de aprofundamento.
+O catálogo só as oferece quando o briefing sustenta o conteúdo: números exigem
+evidência numérica, depoimentos exigem citações literais, narrativa exige história
+e `feature.showcase` exige três fotos que sobrem depois das cinco ou seis cenas do
+plano estrutural. `briefDepth` começa no piso estrutural de cinco
+seções, acrescenta uma camada com quatro evidências e outra com seis evidências
+mais dois números ou história acima de 1.500 caracteres, limitado a oito. O piso
+editorial acompanha a forma: 180 palavras com seis seções e 220 com sete ou mais.
+Em comercial v5/v6, `home-rasa` recusa composição abaixo do piso ou sem as camadas
+disponíveis na ordem da estrutura. Na publicação solicitada, esse achado editorial
+vira recomendação; prova sem fonte e demais erros de integridade continuam
+bloqueantes.
 
 O pre-flight v5/v6 recusa home sem uma única composição autoral, sequência fora de
 ordem ou protagonista sem duas fotos disponíveis. A comparação entre tenants usa
@@ -493,6 +506,39 @@ essa superfície depois do cálculo. O cartão sobreposto do hero offset usa o
 papel do tom da própria seção, conservando o par texto/fundo também em `ink`,
 `accent` e `secondary`.
 
+## Refinamento da vibe comercial
+
+Medido em 13/09/2026 numa fixture de energia com headline de 56 caracteres,
+palavra de 16 letras, assinatura `service-lens` e quatro layouts de CTA. A mesma
+composição foi renderizada em 320, 390, 768, 1024 e 1440 px. Não houve overflow,
+palavra partida, faixa de 1 px nem falha de contraste.
+
+- **Lavagem em vez de grade.** `grid` é legado apenas no perfil v2. Em perfis
+  v3 ou superiores, `renderedMotif` traduz um valor persistido para `wash`; toda
+  gravação nova recusa a grade mesmo com referência completa. A faixa comercial
+  e a landing aceitam `none` ou `wash`.
+- **Cor mensurada.** `themeVars` mistura papel com acento em 7% e com o acento
+  alternativo em 9% para produzir `--wash` e `--wash-2`. Cada mistura volta ao
+  papel se não conservar contraste 4,5:1. `--muted-wash` e `--muted-wash-2`
+  resolvem texto de apoio em cada superfície; `--accent-deep` só é emitida quando
+  a ação continua legível nos dois extremos.
+  O CSS usa gradiente sem repetição nem `background-size` no hero e em apoios.
+- **Palavras inteiras.** A raiz usa `overflow-wrap: break-word`; títulos, ações,
+  navegação larga e declarações usam `overflow-wrap: normal` e hifenização
+  manual. Somente endereços, contatos e o menu compacto podem quebrar em qualquer
+  ponto. O contrato compartilhado em `lib/blocks/headline.ts` registra o
+  comprimento do título e marca palavras com 12 caracteres ou mais para reduzir
+  um degrau adicional na escala, inclusive enquanto o texto é editado na prévia.
+- **Medição por palavra.** A captura percorre texto visível com `Intl.Segmenter`
+  e mede cada palavra com `Range`. Se uma palavra ocupar mais de uma linha, o
+  recibo visual e a crítica recebem página, viewport, seletor e termo; uma análise
+  visual solicitada não pode concluir enquanto houver esse defeito.
+
+O hero comercial usa a lavagem como campo de profundidade; CTA em tom de acento
+mistura acento e acento profundo, o explorer usa `--wash-2` e faixas de prova
+ganham hierarquia tipográfica. O renderer muda a apresentação, não o rascunho nem
+o snapshot gravado de um cliente.
+
 ## Refinamento da vibe artística
 
 Medido em 12/09/2026 no cliente `grupofisk` (artístico, perfil v4, hero
@@ -508,7 +554,7 @@ hero, e as seções pares deslocadas 2vw à esquerda pareciam desalinhadas.
 
 - **Escala pelo comprimento.** `HeroSplit` e `HeroStatement` emitem
   `data-length` (`short` até 24 caracteres, `medium` até 40, `long` acima)
-  por `headlineScale`, em `lib/blocks/components.tsx`. No artístico v3/v4 a
+  por `headlineScale`, em `lib/blocks/headline.ts`. No artístico v3/v4 a
   display cai de 8vw/11ch para 5,6vw/14ch e 3,9vw/18ch; a declaração
   centralizada ganha 17ch e 22ch. O hero atelier tem os mesmos degraus para
   perfis v2. Medido a 1440 px: os 48 caracteres passaram de 115 px em seis

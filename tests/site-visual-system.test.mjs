@@ -17,6 +17,9 @@ const { designProfileInputSchema, completeDesignProfile } = await jiti.import(
 );
 const { laneIssues, VIBE_LANE } = await jiti.import('../lib/design/vibes.ts');
 const { themeVars } = await jiti.import('../lib/blocks/theme.ts');
+const { contrastRatio, mixHex } = await jiti.import(
+  '../lib/blocks/contrast.ts',
+);
 const { blockSchemas } = await jiti.import('../lib/blocks/registry.ts');
 const { lintPage } = await jiti.import('../lib/taste/lint.ts');
 const { VisualSystemFixture, visualBlocks, visualTenant } = await jiti.import(
@@ -53,6 +56,33 @@ await test('todas as famílias atravessam schema, persistência e tokens, inclui
     designProfileInputSchema.shape.bodyFont.safeParse('condensed').success,
     false,
   );
+});
+
+await test('lavagens e gradiente comercial saem resolvidos e mantêm contraste AA', () => {
+  const brand = {
+    ink: '#171717',
+    paper: '#ffffff',
+    accent: '#1f6feb',
+    accentAlt: '#b45309',
+  };
+  const vars = themeVars(brand);
+  assert.equal(vars['--wash'], mixHex(brand.paper, brand.accent, 0.07));
+  assert.equal(vars['--wash-2'], mixHex(brand.paper, brand.accentAlt, 0.09));
+  assert.ok(contrastRatio(brand.ink, vars['--wash']) >= 4.5);
+  assert.ok(contrastRatio(brand.ink, vars['--wash-2']) >= 4.5);
+  assert.ok(contrastRatio(vars['--accent-ink'], vars['--accent']) >= 4.5);
+  assert.ok(contrastRatio(vars['--accent-ink'], vars['--accent-deep']) >= 4.5);
+  assert.ok(contrastRatio(vars['--muted-wash'], vars['--wash']) >= 4.5);
+  assert.ok(contrastRatio(vars['--muted-wash-2'], vars['--wash-2']) >= 4.5);
+
+  const fallback = themeVars({
+    ink: '#808080',
+    paper: '#ffffff',
+    accent: '#f2f2f2',
+    accentAlt: '#eeeeee',
+  });
+  assert.equal(fallback['--wash'], '#ffffff');
+  assert.equal(fallback['--wash-2'], '#ffffff');
 });
 
 await test('novos pares pertencem às vibes sem liberar serifas no moderno ou display no corpo', () => {

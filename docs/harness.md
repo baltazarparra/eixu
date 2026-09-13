@@ -348,10 +348,16 @@ O fluxo automático é briefing → cenas → composição, seguido de revisão 
 O planejamento escolhe
 alternativas coerentes com as referências visuais verificadas e o negócio,
 usando a vibe como apoio; o plano editorial diferencia as intenções das
-páginas. A composição grava o lote validado e usa `repair_site` para corrigir
+páginas. Em comercial v5/v6, o prompt e o catálogo recebem a profundidade
+mensurada do briefing, o piso da home e as camadas que história, evidências,
+números e acervo realmente sustentam; conteúdo sem fonte não é criado para
+preencher estrutura. A composição grava o lote validado e usa `repair_site` para corrigir
 recusas sem reenviar tudo. Um lote salvo sem erros encerra o loop de composição
 por condição externa do SDK e entrega a prévia ao operador. Avisos de recorte são
-julgados nos pixels; não provocam reenvios do projeto para zerar contagens.
+julgados nos pixels; não provocam reenvios do projeto para zerar contagens. A
+captura também segmenta e mede cada palavra visível com `Range`; termo partido no
+meio entra no recibo e impede concluir uma revisão visual solicitada. Overflow e
+palavra partida são sinais distintos.
 Erros continuam bloqueando a transição. Imagens ficam disponíveis por número, conforme o fluxo
 atual do produto; aplicar logo pelo chat e publicar continuam dependendo do pedido.
 

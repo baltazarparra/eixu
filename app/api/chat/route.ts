@@ -39,6 +39,7 @@ import { activeRun, expireStaleRun } from '@/lib/generation/runs';
 import { startGeneration } from '@/lib/generation/start';
 import { listImages } from '@/lib/images/queries';
 import { isPhase, PHASE_STEPS } from '@/lib/taste/phases';
+import { availablePhotos } from '@/lib/taste/metrics';
 import {
   evidenceContext,
   pendenciasContext,
@@ -118,6 +119,7 @@ export async function POST(request: Request) {
 
   const context: PromptContext = {
     phase,
+    availablePhotoCount: availablePhotos(libraryImages).length,
     sources,
     review: reviewContext(tenant),
     ...(phase === 'cenas' ? scenesContext(tenant, libraryImages) : {}),

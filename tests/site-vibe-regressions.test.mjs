@@ -515,14 +515,23 @@ await test('o renderer marca o comprimento do headline para a escala da display'
     jsx: { runtime: 'automatic' },
     fsCache: false,
   });
-  const { HeroSplit, HeroStatement, headlineScale } = await jsx.import(
-    '../lib/blocks/components.tsx',
-  );
-  assert.equal(headlineScale('A natureza desenha.'), 'short');
-  assert.equal(headlineScale('Franquia de escolas em Curitiba'), 'medium');
+  const { CtaBand, HeroLanding, HeroSplit, HeroStatement, headlineScale } =
+    await jsx.import('../lib/blocks/components.tsx');
+  assert.deepEqual(plain(headlineScale('A natureza desenha.')), {
+    length: 'short',
+    longestWord: 'natureza',
+  });
   assert.equal(
-    headlineScale('Franquia de escolas para empresários em Curitiba'),
+    headlineScale('Franquia de escolas em Curitiba').length,
+    'medium',
+  );
+  assert.equal(
+    headlineScale('Franquia de escolas para empresários em Curitiba').length,
     'long',
+  );
+  assert.equal(
+    headlineScale('Sustentabilidade para sua empresa').longestWord,
+    'Sustentabilidade',
   );
   const ctx = {
     tenant: fixture().tenant,
@@ -552,6 +561,31 @@ await test('o renderer marca o comprimento do headline para a escala da display'
     }),
   );
   assert.match(statement, /<h1[^>]*data-length="short"/);
+  const landing = renderToString(
+    createElement(HeroLanding, {
+      layout: 'stage',
+      headline: 'Sustentabilidade para sua empresa',
+      subtext: 'Uma decisão clara.',
+      cta,
+      badges: [],
+      image: photo(1),
+      imageAlt: 'Cena de energia renovável',
+      ctx,
+    }),
+  );
+  assert.match(
+    landing,
+    /<h1[^>]*data-length="medium"[^>]*data-long-word="true"/,
+  );
+  const band = renderToString(
+    createElement(CtaBand, {
+      layout: 'split',
+      title: 'Sustentabilidade começa por uma conversa clara',
+      cta,
+      ctx,
+    }),
+  );
+  assert.match(band, /<h2[^>]*data-length="long"[^>]*data-long-word="true"/);
 });
 
 await test('a vibe moderno recusa a grade e a direção fala em fio, mono e pílula', async () => {
@@ -587,6 +621,73 @@ await test('a vibe moderno recusa a grade e a direção fala em fio, mono e píl
   assert.match(VIBE_DIRECTION.moderno, /pílula clara/);
   assert.match(VIBE_DIRECTION.moderno, /position "fixed"/);
   assert.match(grammarDirection('moderno'), /Abertura da home/);
+});
+
+await test('wash substitui o grid em toda direção nova sem alterar o perfil v2', async () => {
+  const { MOTIFS_VETADOS, VIBE_LANE, laneIssues, renderedMotif } =
+    await j.import('../lib/design/vibes.ts');
+  assert.deepEqual(MOTIFS_VETADOS, ['grid']);
+  assert.deepEqual(VIBE_LANE.comercial.axes.motif, ['none', 'wash']);
+  assert.deepEqual(VIBE_LANE.landing.axes.motif, ['none', 'wash']);
+  assert.equal(
+    renderedMotif({ design: { version: 2, motif: 'grid' } }),
+    'grid',
+  );
+  for (const version of [3, 4, 5, 6, 7])
+    assert.equal(
+      renderedMotif({ design: { version, motif: 'grid' } }),
+      'wash',
+      `v${version}`,
+    );
+  assert.equal(
+    renderedMotif({ design: { version: 6, motif: 'none' } }),
+    'none',
+  );
+
+  const input = {
+    brief: {
+      audience: 'Empresas que precisam decidir com clareza',
+      offer: 'Atendimento consultivo para uma escolha fundamentada',
+      goal: 'Começar uma conversa com o contexto necessário',
+      personality: ['clara', 'acolhedora'],
+    },
+    structure: 'comercial-atendimento',
+    structureRationale:
+      'A jornada guiada organiza a necessidade antes do contato comercial.',
+    concept: 'Uma conversa que organiza cada etapa da decisão',
+    signatureElement: 'Caminho visual que conecta contexto e próximo passo',
+    displayFont: 'humanist',
+    bodyFont: 'humanist',
+    heroComposition: 'split',
+    navigation: 'bar',
+    rhythm: 'alternating',
+    imageTreatment: 'framed',
+    surfaceStyle: 'flat',
+    motif: 'grid',
+    radius: 'sm',
+    ink: '#171717',
+    paper: '#ffffff',
+    surface: '#f5f3ef',
+    variance: 3,
+    motion: 3,
+    density: 5,
+  };
+  const schema = profile.designSchemaFor('comercial').safeParse(input);
+  assert.equal(schema.success, false);
+  assert.match(
+    schema.error.issues.map((issue) => issue.message).join(' '),
+    /grid é legado.*wash ou none/,
+  );
+  const issues = laneIssues('comercial', input, [
+    'layout',
+    'typography',
+    'imagery',
+    'rhythm',
+    'surface',
+    'mobile',
+  ]);
+  assert.equal(issues.length, 1);
+  assert.match(issues[0], /grid.*legado/);
 });
 
 await test('o pre-flight avisa logo de placa clara sobre papel escuro e some com a versão escura', () => {

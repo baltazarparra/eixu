@@ -5,6 +5,7 @@
 // oxlint-disable next/no-img-element
 import { z } from 'zod';
 import { ShowcaseTabs } from './landing-interactions';
+import { headlineAttributes } from './headline';
 import { textAttrs } from './text';
 import type { TextStyle } from './text-style-schema';
 import { SiteIcon } from '@/lib/blocks/icon';
@@ -127,15 +128,7 @@ function Action({
   );
 }
 
-/**
- * Escala do headline pelo comprimento. A display serifada da vibe artística
- * cresce até 8vw e uma frase de 48 caracteres virava uma palavra por linha.
- * O CSS lê `data-length` e reduz a escala para o título caber em três linhas.
- */
-export function headlineScale(text: string): 'short' | 'medium' | 'long' {
-  const length = text.trim().length;
-  return length <= 24 ? 'short' : length <= 40 ? 'medium' : 'long';
-}
+export { headlineScale } from './headline';
 
 export function NavBar({
   textStyles,
@@ -293,7 +286,7 @@ export function HeroSplit({
           </Eyebrow>
           <h1
             className="site-headline text-balance"
-            data-length={headlineScale(headline)}
+            {...headlineAttributes(headline)}
             {...text.mark('headline')}
           >
             {text.content('headline', headline)}
@@ -392,7 +385,7 @@ export function HeroStatement({
           </Eyebrow>
           <h1
             className="site-headline text-balance"
-            data-length={headlineScale(headline)}
+            {...headlineAttributes(headline)}
             {...text.mark('headline')}
           >
             {text.content('headline', headline)}
@@ -970,13 +963,17 @@ export function CtaBand({
       <div
         className={`${shell} flex flex-col items-start gap-7 md:flex-row md:items-end md:justify-between`}
       >
-        <div className="flex max-w-[34ch] flex-col gap-3">
-          <h2 className={h2Class} {...text.mark('title')}>
+        <div className="site-cta-copy flex flex-col gap-3">
+          <h2
+            className={`${h2Class} max-w-[20ch]`}
+            {...headlineAttributes(title)}
+            {...text.mark('title')}
+          >
             {text.content('title', title)}
           </h2>
           {body ? (
             <p
-              className="text-[1.02rem] leading-relaxed opacity-75"
+              className="max-w-[44ch] text-[1.02rem] leading-relaxed opacity-75"
               {...text.mark('body')}
             >
               {text.content('body', body)}
@@ -2044,7 +2041,7 @@ export function HeroLanding({
       <div className={`${shell} site-landing-hero-grid`}>
         <div className="site-landing-hero-copy">
           <Eyebrow {...text('eyebrow', eyebrow)} />
-          <h1 {...text.mark('headline')}>
+          <h1 {...headlineAttributes(headline)} {...text.mark('headline')}>
             {text.content('headline', headline)}
           </h1>
           {badgesPlacement === 'headline' ? badgeList : null}
@@ -2170,12 +2167,13 @@ export function NarrativeStatement({
 export function FeatureShowcase({
   textStyles,
   editing,
-  vibe = 'landing',
   layout,
   title,
   body,
   items,
-}: FeatureShowcaseProps) {
+  ctx,
+}: FeatureShowcaseProps & { ctx: RenderContext }) {
+  const vibe = renderingVibeOf(ctx.tenant.brand);
   const text = textAttrs(textStyles, editing);
   const panels = items.map((item, index) => ({
     label: text.node(`items.${index}.title`, item.title),

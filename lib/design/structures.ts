@@ -43,6 +43,29 @@ export const SIGNATURE_LAYOUTS = [
 
 export type SignatureLayout = (typeof SIGNATURE_LAYOUTS)[number];
 
+export type HomeExpansionCondition =
+  | 'numeric-evidence'
+  | 'benefit-evidence'
+  | 'context-evidence'
+  | 'testimonial-evidence'
+  | 'support-steps'
+  | 'brand-evidence'
+  | 'photo-library'
+  | 'coverage-evidence';
+
+export type HomeExpansion = {
+  signature: string;
+  condition: HomeExpansionCondition;
+  placement:
+    | 'after-hero'
+    | 'before-protagonist'
+    | 'after-protagonist'
+    | 'before-explorer'
+    | 'after-resources'
+    | 'before-closing';
+  description: string;
+};
+
 export const SIGNATURE_MAP_LAYOUTS: readonly SignatureLayout[] = [
   'proof-route',
   'system-map',
@@ -81,6 +104,8 @@ export type SiteStructure = {
   support: readonly string[];
   signatureLayout: SignatureLayout;
   signatureRatio: '4:3' | '16:9' | '4:5';
+  /** Camadas opcionais, liberadas somente por sinais verificáveis do briefing. */
+  expansions?: readonly HomeExpansion[];
 };
 
 export const SITE_STRUCTURES: Record<StructureKey, SiteStructure> = {
@@ -104,6 +129,27 @@ export const SITE_STRUCTURES: Record<StructureKey, SiteStructure> = {
     support: ['narrative.split', 'media.image'],
     signatureLayout: 'decision-path',
     signatureRatio: '4:3',
+    expansions: [
+      {
+        signature: 'narrative.steps:horizontal',
+        condition: 'support-steps',
+        placement: 'before-protagonist',
+        description:
+          'etapas reais de atendimento ou suporte entre o percurso e a composição autoral',
+      },
+      {
+        signature: 'proof.strip:numbers',
+        condition: 'numeric-evidence',
+        placement: 'after-protagonist',
+        description: 'dois ou mais números confirmados antes das dúvidas',
+      },
+      {
+        signature: 'proof.testimonial:spotlight',
+        condition: 'testimonial-evidence',
+        placement: 'before-closing',
+        description: 'depoimento literal confirmado antes do contato',
+      },
+    ],
   },
   'comercial-vitrine': {
     key: 'comercial-vitrine',
@@ -125,6 +171,35 @@ export const SITE_STRUCTURES: Record<StructureKey, SiteStructure> = {
     support: ['media.image', 'narrative.split'],
     signatureLayout: 'service-lens',
     signatureRatio: '4:3',
+    expansions: [
+      {
+        signature: 'proof.strip:numbers',
+        condition: 'numeric-evidence',
+        placement: 'after-hero',
+        description: 'dois ou mais números confirmados logo após o hero',
+      },
+      {
+        signature: 'narrative.statement:split',
+        condition: 'benefit-evidence',
+        placement: 'before-explorer',
+        description:
+          'benefício ou resultado confirmado entre a protagonista e o explorer',
+      },
+      {
+        signature: 'editorial.facts:ledger',
+        condition: 'context-evidence',
+        placement: 'after-resources',
+        description:
+          'locais, unidades ou marcas confirmados depois dos recursos',
+      },
+      {
+        signature: 'proof.testimonials:grid',
+        condition: 'testimonial-evidence',
+        placement: 'after-resources',
+        description:
+          'dois ou mais depoimentos literais confirmados depois dos recursos',
+      },
+    ],
   },
   'comercial-confianca': {
     key: 'comercial-confianca',
@@ -146,6 +221,28 @@ export const SITE_STRUCTURES: Record<StructureKey, SiteStructure> = {
     support: ['narrative.split', 'media.image'],
     signatureLayout: 'proof-route',
     signatureRatio: '16:9',
+    expansions: [
+      {
+        signature: 'proof.strip:logos',
+        condition: 'brand-evidence',
+        placement: 'after-hero',
+        description: 'três ou mais marcas ou clientes confirmados sob o hero',
+      },
+      {
+        signature: 'feature.showcase:tabs',
+        condition: 'photo-library',
+        placement: 'before-protagonist',
+        description:
+          'três fotos adicionais disponíveis antes da composição autoral',
+      },
+      {
+        signature: 'editorial.facts:ledger',
+        condition: 'coverage-evidence',
+        placement: 'before-protagonist',
+        description:
+          'estrutura, cobertura ou horários confirmados antes da composição autoral',
+      },
+    ],
   },
   'moderno-editorial': {
     key: 'moderno-editorial',

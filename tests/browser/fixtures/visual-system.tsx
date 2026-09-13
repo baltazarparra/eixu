@@ -5,7 +5,7 @@ import {
   completeDesignProfile,
   type DesignProfileInput,
 } from '@/lib/design/profile';
-import type { Vibe } from '@/lib/design/vibes';
+import { renderedMotif, type Vibe } from '@/lib/design/vibes';
 import type { BlockInstance, Tenant } from '@/lib/types';
 
 export const VISUAL_PAIRS = {
@@ -88,7 +88,7 @@ export const visualBlocks: BlockInstance[] = [
     props: {
       layout: 'left',
       eyebrow: 'Matéria, ofício e imaginação',
-      headline: 'Forma para novas ideias.',
+      headline: 'Sustentabilidade orienta decisões.',
       subtext:
         'Uma experiência começa nas escolhas: o traço, a palavra e o espaço entre eles.',
       cta: { label: 'Explorar possibilidades', href: '#servicos' },
@@ -344,10 +344,15 @@ export function VisualSystemFixture({
   blocks?: BlockInstance[];
 }) {
   const tenant = visualTenant(vibe, display, body);
+  const version = tenant.brand.design?.version;
   return (
     <div
       className="site-theme"
       data-vibe={vibe}
+      data-design-version={version === 5 || version === 6 ? 4 : version}
+      data-profile-version={version}
+      data-structure={tenant.brand.design?.structure}
+      data-motif={renderedMotif(tenant.brand)}
       data-motion="gentle"
       style={themeVars(tenant.brand)}
     >

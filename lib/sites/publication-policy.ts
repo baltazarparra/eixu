@@ -32,6 +32,7 @@ const EDITORIAL_RULES = new Set([
   'pagina-sem-foto',
   'home-imagens-geradas',
   'home-protagonista',
+  'home-rasa',
   'home-paleta',
   'composicao-duplicada',
   'landing-prova',

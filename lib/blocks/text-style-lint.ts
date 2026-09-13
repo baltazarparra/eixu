@@ -23,6 +23,7 @@ export function fieldBackgrounds(
   };
   const section = sectionBackgrounds(presentation, brand);
   const modern = renderingVibeOf(brand) === 'moderno';
+  const commercial = renderingVibeOf(brand) === 'comercial';
   const version = brand.design?.version ?? 1;
   const paper = sectionBackgrounds(presentation, brand)[0];
   const cardInk = presentation?.background
@@ -61,11 +62,21 @@ export function fieldBackgrounds(
     if (layout === 'poster' && !presentation?.background)
       return [tokens['--accent']];
   }
+  if (
+    commercial &&
+    version >= 3 &&
+    block.type === 'proof.strip' &&
+    p.layout === 'numbers' &&
+    !presentation?.background
+  )
+    return [tokens['--wash']];
   if (block.type === 'feature.explorer' && field.startsWith('items.'))
     return [
       field.endsWith('.caption')
         ? tokens['--brand-paper']
-        : tokens['--surface'],
+        : commercial && version >= 3
+          ? tokens['--wash-2']
+          : tokens['--surface'],
     ];
   if (block.type === 'editorial.resources' && field.startsWith('items.'))
     return [
@@ -105,6 +116,14 @@ export function fieldBackgrounds(
     !presentation?.background
   )
     return [tokens['--accent-2']];
+  if (
+    commercial &&
+    version >= 3 &&
+    block.type === 'editorial.facts' &&
+    p.layout === 'ledger' &&
+    field.startsWith('facts.')
+  )
+    return [tokens['--wash-2']];
   if (
     block.type === 'proof.stats' &&
     p.layout === 'cards' &&

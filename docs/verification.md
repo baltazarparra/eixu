@@ -74,6 +74,13 @@ Sem Chrome, os casos dependentes são pulados; informe isso no resultado.
 1440 px e paisagem: confira menu fechado/aberto, toque, foco, Escape, rolagem,
 âncoras, redimensionamento e HTML sem JavaScript. Ausência de overflow não basta.
 
+`site-word-breaks.test.mjs` monta uma home comercial sintética com headline de 56
+caracteres, palavra de 16 letras, `service-lens` e quatro variantes de CTA. Em
+320, 390, 768, 1024 e 1440 px, mede cada palavra visível com o mesmo inspetor da
+captura, além de overflow, contraste, gradiente sem repetição e ausência de faixa
+de 1 px. As capturas ficam em `outputs/word-breaks/` para inspeção manual e não
+devem ser tratadas como evidência de conteúdo gerado pelo modelo.
+
 `build:vercel` executa [tests/build-runtime.test.mjs](../tests/build-runtime.test.mjs)
 após compilar. Três checks exigem `SOUL.md` e os binários do Chromium nos manifestos serverless de `/api/chat`, `/api/admin/[tenant]/generation/step` e `/api/queues/generation`; o quarto confere os controles de apresentação no CSS compilado. O pacote instalado sozinho não comprova empacotamento.
 

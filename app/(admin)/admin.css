@@ -1060,6 +1060,9 @@ textarea.admin-input {
 .admin-vibe-preview[data-vibe='comercial'] .admin-vibe-copy {
   inset: 29px 48% auto 11px;
 }
+.admin-vibe-preview[data-vibe='comercial'] {
+  background: linear-gradient(160deg, #e8f0fd, #f6f4ef 62%);
+}
 .admin-vibe-preview[data-vibe='comercial'] .admin-vibe-image {
   inset: 23px 9px 10px 58%;
   border-radius: 4px;

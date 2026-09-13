@@ -1,6 +1,6 @@
 # Documentação da EIXU
 
-Guias reconciliados em 13/09/2026 com `main` até `c1548be` (PR #58). Descrevem
+Guias reconciliados em 13/09/2026 com `main` até `143d313` (PR #59). Descrevem
 os contratos do código; a confirmação de um release exige o deployment do mesmo
 SHA e as verificações do fluxo afetado. Comece pelo [README](../README.md) para
 produto, ambiente e comandos.
@@ -40,17 +40,18 @@ migrar, excluir dados ou publicar.
 
 ## Histórico
 
-| Registro                                                         | Contexto                                                                      |
-| ---------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| [Verificações até 13/09](archive/verification-2026-09-13.md)     | Ensaios, limitações e releases anteriores, preservados como evidência datada. |
-| [Revisão do admin](archive/admin-review-2026-09-10.md)           | Diagnóstico inicial; não representa a lista atual de problemas.               |
-| [Otimização do admin](archive/admin-optimization-2026-09-11.md)  | Plano e medições anteriores às entregas posteriores.                          |
-| [Evolução criativa](archive/creative-upgrade-2026-09-10.md)      | Proposta original de melhoria do gerador.                                     |
-| [Vibes próprias](archive/vibes-plan-2026-09-12.md)               | Diagnóstico e fases originais, antes dos contratos v5–v7.                     |
-| [Edição na prévia](archive/inline-edit-plan-2026-09-12.md)       | Proposta que antecedeu a edição por campo hoje disponível.                    |
-| [Landing Page](archive/landing-plan-2026-09-12.md)               | Proposta da quinta vibe, implementada no perfil v7.                           |
-| [História e referência](archive/client-story-plan-2026-09-12.md) | Proposta original; contrato entregue e ampliado com Site atual.               |
-| [Upload de imagens](archive/image-upload-plan-2026-09-12.md)     | Alternativas originais; o upload entregue tem limites documentados no manual. |
+| Registro                                                         | Contexto                                                                           |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| [Verificações até 13/09](archive/verification-2026-09-13.md)     | Ensaios, limitações e releases anteriores, preservados como evidência datada.      |
+| [Revisão do admin](archive/admin-review-2026-09-10.md)           | Diagnóstico inicial; não representa a lista atual de problemas.                    |
+| [Otimização do admin](archive/admin-optimization-2026-09-11.md)  | Plano e medições anteriores às entregas posteriores.                               |
+| [Evolução criativa](archive/creative-upgrade-2026-09-10.md)      | Proposta original de melhoria do gerador.                                          |
+| [Vibes próprias](archive/vibes-plan-2026-09-12.md)               | Diagnóstico e fases originais, antes dos contratos v5–v7.                          |
+| [Edição na prévia](archive/inline-edit-plan-2026-09-12.md)       | Proposta que antecedeu a edição por campo hoje disponível.                         |
+| [Landing Page](archive/landing-plan-2026-09-12.md)               | Proposta da quinta vibe, implementada no perfil v7.                                |
+| [História e referência](archive/client-story-plan-2026-09-12.md) | Proposta original; contrato entregue e ampliado com Site atual.                    |
+| [Upload de imagens](archive/image-upload-plan-2026-09-12.md)     | Alternativas originais; o upload entregue tem limites documentados no manual.      |
+| [Vibe comercial](archive/commercial-vibe-plan-2026-09-13.md)     | Diagnóstico e plano executado para lavagem, palavras inteiras e home proporcional. |
 
 Os registros preservam o estado da época, inclusive hipóteses e resultados
 superados. Arquivos em `outputs/` podem existir apenas no ambiente do ensaio.

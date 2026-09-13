@@ -12,7 +12,7 @@ import {
 import { attributionScript } from '@/lib/tracking';
 import { isAuthenticated } from '@/lib/auth';
 import { structuredData } from '@/lib/sites/structured-data';
-import { renderingVibeOf } from '@/lib/design/vibes';
+import { renderedMotif, renderingVibeOf } from '@/lib/design/vibes';
 import {
   hasReferenceDirection,
   referenceAspects,
@@ -221,7 +221,7 @@ export default async function TenantPage({ params, searchParams }: Props) {
       data-rhythm={renderedTenant.brand.design?.rhythm}
       data-imagery={renderedTenant.brand.design?.imageTreatment}
       data-surface={renderedTenant.brand.design?.surfaceStyle}
-      data-motif={renderedTenant.brand.design?.motif}
+      data-motif={renderedMotif(renderedTenant.brand)}
     >
       <script
         type="application/ld+json"

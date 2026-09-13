@@ -17,6 +17,7 @@ export async function landingBrowserFixture() {
     fsCache: false,
   });
   const { LandingFixture } = await j.import('../browser/fixtures/landing.tsx');
+  const { inspectText } = await j.import('../../lib/review/text.ts');
   const { landingFixture } = await j.import('./landing-data.ts');
   const f = landingFixture();
   const writes = [];
@@ -152,5 +153,5 @@ export async function landingBrowserFixture() {
   });
   await server.listen();
   const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
-  return { server, origin, writes };
+  return { server, origin, writes, inspectText };
 }

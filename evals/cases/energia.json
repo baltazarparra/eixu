@@ -1,0 +1,33 @@
+{
+  "name": "Nexo Energia",
+  "slug": "eval-energia",
+  "vibe": "comercial",
+  "whatsapp": null,
+  "intake": {
+    "segment": "gestão de energia para operações empresariais",
+    "region": "Brasil",
+    "audience": "Gestores de operações, finanças e sustentabilidade que precisam entender consumo, custo e oportunidades antes de decidir um projeto de energia",
+    "offer": "Diagnóstico do consumo, plano de eficiência e acompanhamento dos indicadores energéticos da operação",
+    "goal": "Iniciar uma conversa técnica com dados suficientes para avaliar o contexto da empresa",
+    "story": "Caso sintético para avaliar uma home comercial proporcional à quantidade de informação disponível. A Nexo Energia começa pelo histórico de consumo e pelas condições de cada unidade. A primeira etapa organiza faturas, horários de operação, equipamentos relevantes e metas já definidas pelo cliente. Em seguida, a equipe apresenta um diagnóstico com os pontos que merecem investigação, separando observação, hipótese e dado confirmado. O plano de eficiência prioriza medidas de acordo com impacto estimado, dependências operacionais e capacidade de execução. A decisão continua sendo do cliente; o site não deve prometer economia, prazo de retorno ou resultado futuro.\n\nO acompanhamento reúne os indicadores confirmados em ciclos mensais. A empresa registra a linha de base, compara o realizado com o plano aprovado e documenta mudanças de operação que possam explicar variações. A atuação informada cobre unidades comerciais e industriais no Brasil, mas não há autorização para afirmar presença física, geração própria, comercialização de energia ou certificações. As fotografias da fixture são ilustrações editoriais de infraestrutura e processo; não registram equipe, instalações nem clientes reais.\n\nA jornada editorial deve ter 5 páginas orgânicas conectadas: home para benefício, método e próximo passo; diagnóstico para quem está identificando o problema; eficiência para comparar a abordagem; acompanhamento para entender a rotina de indicadores; e contato para preparar a conversa. A home precisa usar os números confirmados como faixa de prova, explicar o benefício operacional em uma declaração e registrar cobertura e rotina em fatos editoriais. Nenhum número pode virar promessa. O formulário pede apenas nome, e-mail, empresa e uma breve descrição do contexto. Não há depoimentos autorizados, marcas de clientes divulgáveis, preço fechado, garantia, prazo padrão ou proposta de contratação automática.",
+    "evidence": [
+      "O diagnóstico considera dados de 12 meses de consumo quando esse histórico está disponível.",
+      "O levantamento inicial organiza informações de até 8 categorias de equipamentos relevantes.",
+      "O plano prioriza no máximo 5 frentes por ciclo para manter responsáveis e dependências legíveis.",
+      "O acompanhamento informado ocorre em ciclos mensais de 30 dias.",
+      "A operação consolidada pode reunir dados de 20 unidades no mesmo acompanhamento.",
+      "A revisão de indicadores registra 3 referências: linha de base, meta aprovada e valor realizado.",
+      "A jornada editorial solicitada possui 5 páginas orgânicas conectadas.",
+      "O formulário de contato contém 4 campos: nome, e-mail, empresa e contexto."
+    ],
+    "constraints": [
+      "Caso sintético, não publicar como cliente real",
+      "Não prometer percentual de economia, retorno financeiro, prazo de implantação ou resultado futuro",
+      "Não afirmar clientes, certificações, comercialização de energia, geração própria ou presença física",
+      "As fotos são ilustrações de infraestrutura e processo, não prova de obra, equipe ou instalação",
+      "Criar exatamente 5 páginas orgânicas: home, diagnóstico, eficiência, acompanhamento e contato"
+    ],
+    "references": []
+  },
+  "photos": "reuse:eixu"
+}

@@ -125,7 +125,10 @@ function renderList(
               );
             case 'feature.showcase':
               return (
-                <B.FeatureShowcase {...(props as B.FeatureShowcaseProps)} />
+                <B.FeatureShowcase
+                  {...(props as B.FeatureShowcaseProps)}
+                  ctx={ctx}
+                />
               );
             case 'narrative.statement':
               return (
