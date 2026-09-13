@@ -45,8 +45,9 @@ Validação local, sem chamada paga e sem escrita remota:
 
 - `npm run lint`, `npx next typegen && npx tsc --noEmit` e `npm run build:vercel`
   passam, incluindo os três checks dos artefatos de captura serverless.
-- `npm run test:sites` (277 aprovados, 1 pulado) e `npm run test:admin`
-  (207 aprovados, 7 pulados por dependerem de PostgreSQL local e Chrome) passam. Os casos novos
+- `npm run test:sites` (278 aprovados, 1 pulado) e `npm run test:admin`
+  (211 aprovados, 7 pulados por dependerem de PostgreSQL local e Chrome) passam,
+  depois de incorporar a remoção de moldura da abertura vinda de `main`. Os casos novos
   cobrem a equivalência de grafia e seu limite (um número não se sustenta em
   outro número da mesma frase), o plano sobre a fixture de landing, a proporção
   com biblioteca e layouts alternativos, o corte do contexto, as seções do
