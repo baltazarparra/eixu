@@ -817,7 +817,16 @@ await test(
               );
             },
             { timeout: 2000 },
-          );
+          ).catch(async (error) => {
+            console.error('consumo-geometry', await page.evaluate(() => Object.fromEntries(
+              ['.admin-workspace', '.admin-conversation', '.admin-run', '.admin-thread-wrap', '.admin-thread', '.admin-usage', '.admin-usage-body', '.admin-composer'].map((selector) => {
+                const node = document.querySelector(selector); const box = node.getBoundingClientRect();
+                return [selector, { top: box.top, bottom: box.bottom, height: box.height, scrollTop: node.scrollTop, scrollHeight: node.scrollHeight, open: node.open, maxHeight: getComputedStyle(node).maxHeight }];
+              }),
+            )));
+            await page.screenshot({ path: `outputs/generation/consumo-failure-${width}.png` });
+            throw error;
+          });
 
           const region = await page.$('[aria-label="Detalhamento do consumo"]');
           assert.ok(region);
