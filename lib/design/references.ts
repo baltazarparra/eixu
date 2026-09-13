@@ -155,7 +155,7 @@ export function referenceDirectionOf(
   const design = brand?.design as
     | { version?: number; referenceDirection?: unknown }
     | undefined;
-  if (!design || ![2, 3, 4, 5, 6].includes(design.version ?? 0)) return null;
+  if (!design || ![2, 3, 4, 5, 6, 7].includes(design.version ?? 0)) return null;
   const parsed = referenceDirectionSchema.safeParse(design.referenceDirection);
   if (!parsed.success) return null;
   if (

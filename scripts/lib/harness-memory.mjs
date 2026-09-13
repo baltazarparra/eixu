@@ -48,7 +48,7 @@ export async function memoryHarness(tenant, images, review = {}) {
       ) {
         Object.assign(tenant.brief, JSON.parse(values[0]));
         if (query.includes('brand =')) {
-          tenant.brand = JSON.parse(values[1]);
+          tenant.brand = { ...tenant.brand, ...JSON.parse(values[1]) };
           tenant.dials = JSON.parse(values[2]);
         }
         return [];
@@ -88,7 +88,10 @@ export async function memoryHarness(tenant, images, review = {}) {
     },
     '@/lib/images/queries': imageQueries,
     '@/lib/ai/guide-tool': { guideTool },
-    '@/lib/design/uniqueness': { hasDuplicateComposition: async () => false },
+    '@/lib/design/uniqueness': {
+      compositionConflict: async () => null,
+      compositionConflictMessage: () => '',
+    },
     '@/lib/ai/reference': {
       readReference: async (url) => ({
         url,

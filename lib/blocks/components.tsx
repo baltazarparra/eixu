@@ -4,6 +4,7 @@
 // oxlint-disable next/no-html-link-for-pages
 // oxlint-disable next/no-img-element
 import { z } from 'zod';
+import { ShowcaseTabs } from './landing-interactions';
 import { textAttrs } from './text';
 import type { TextStyle } from './text-style-schema';
 import { SiteIcon } from '@/lib/blocks/icon';
@@ -30,6 +31,12 @@ import { previewHref } from '@/lib/sites/preview';
 type S<K extends keyof typeof blockSchemas> = z.infer<
   (typeof blockSchemas)[K]
 > & { vibe?: Vibe; editing?: boolean };
+
+export type HeroLandingProps = S<'hero.landing'>;
+export type ProofStripProps = S<'proof.strip'>;
+export type NarrativeStatementProps = S<'narrative.statement'>;
+export type FeatureShowcaseProps = S<'feature.showcase'>;
+export type ProofTestimonialsProps = S<'proof.testimonials'>;
 
 export type NavBarProps = S<'nav.bar'>;
 export type HeroSplitProps = S<'hero.split'>;
@@ -867,7 +874,7 @@ export function FaqAccordion({
         <h2 className={`${h2Class} md:col-span-4`} {...text.mark('title')}>
           {text.content('title', title)}
         </h2>
-        <div className="md:col-span-8">
+        <div className="site-faq-list md:col-span-8">
           {items.map((item, index) => (
             <details
               key={item.q}
@@ -899,6 +906,8 @@ export function CtaBand({
   body,
   cta,
   whatsapp,
+  image,
+  imageAlt,
   layout = 'band',
   ctx,
 }: CtaBandProps & { ctx: RenderContext }) {
@@ -911,6 +920,17 @@ export function CtaBand({
     <section
       className={`${section} site-cta site-cta-${layout} bg-[var(--ink)] text-[var(--paper)]`}
     >
+      {image && (
+        <img
+          className="site-cta-image"
+          src={image}
+          alt={imageAlt ?? ''}
+          width={1600}
+          height={900}
+          loading="lazy"
+          decoding="async"
+        />
+      )}
       <div
         className={`${shell} flex flex-col items-start gap-7 md:flex-row md:items-end md:justify-between`}
       >
@@ -953,9 +973,10 @@ export function FormLead({
   whatsappOptIn,
   redirectTo,
   layout = 'split',
+  fieldPrefix = '',
   ctx,
-}: FormLeadProps & { ctx: RenderContext }) {
-  const text = textAttrs(textStyles, editing);
+}: FormLeadProps & { ctx: RenderContext; fieldPrefix?: string }) {
+  const text = textAttrs(textStyles, editing, fieldPrefix);
   const inputClass =
     'w-full rounded-[var(--radius)] border border-[var(--line)] bg-transparent px-4 py-3 text-[0.97rem] outline-none focus:border-[var(--highlight)]';
   return (
@@ -1946,5 +1967,278 @@ export function FloatingWhatsapp({ ctx }: { ctx: RenderContext }) {
         </svg>
       </span>
     </a>
+  );
+}
+
+export function HeroLanding({
+  textStyles,
+  editing,
+  vibe = 'landing',
+  layout,
+  eyebrow,
+  headline,
+  subtext,
+  cta,
+  secondary,
+  badges,
+  image,
+  imageAlt,
+  form,
+  formAnchor,
+  ctx,
+}: HeroLandingProps & { ctx: RenderContext }) {
+  const text = textAttrs(textStyles, editing);
+  return (
+    <section
+      className={`site-section site-landing-hero site-landing-hero-${layout}`}
+    >
+      <div className={`${shell} site-landing-hero-grid`}>
+        <div className="site-landing-hero-copy">
+          <Eyebrow {...text('eyebrow', eyebrow)} />
+          <h1 {...text.mark('headline')}>
+            {text.content('headline', headline)}
+          </h1>
+          {subtext && (
+            <p className="site-landing-subtext" {...text.mark('subtext')}>
+              {text.content('subtext', subtext)}
+            </p>
+          )}
+          <div className="site-landing-actions">
+            <Action {...cta} editing={editing} vibe={vibe} />
+            {secondary && (
+              <Action
+                {...secondary}
+                variant="ghost"
+                field="secondary.label"
+                editing={editing}
+                vibe={vibe}
+              />
+            )}
+          </div>
+          {badges.length > 0 && (
+            <ul className="site-landing-badges">
+              {badges.map((badge, index) => (
+                <li key={index}>
+                  {text.node(`badges.${index}.label`, badge.label)}
+                </li>
+              ))}
+            </ul>
+          )}
+          {layout === 'form' && image && (
+            <img
+              className="site-landing-form-image"
+              src={image}
+              alt={imageAlt ?? ''}
+              width={800}
+              height={1000}
+              fetchPriority="high"
+              decoding="async"
+            />
+          )}
+        </div>
+        {layout === 'form' && form ? (
+          <div className="site-landing-form-panel" id={formAnchor}>
+            <FormLead
+              {...form}
+              layout="stack"
+              ctx={ctx}
+              editing={editing}
+              vibe={vibe}
+              textStyles={textStyles}
+              fieldPrefix="form."
+            />
+          </div>
+        ) : image ? (
+          <figure className="site-landing-product">
+            <img
+              src={image}
+              alt={imageAlt ?? ''}
+              width={1600}
+              height={900}
+              fetchPriority="high"
+              decoding="async"
+            />
+          </figure>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+export function ProofStrip({
+  textStyles,
+  editing,
+  layout,
+  title,
+  items,
+}: ProofStripProps) {
+  const text = textAttrs(textStyles, editing);
+  return (
+    <section
+      className={`site-section site-proof-strip site-proof-strip-${layout}`}
+    >
+      <div className={shell}>
+        {title && (
+          <h2 {...text.mark('title')}>{text.content('title', title)}</h2>
+        )}
+        <ul>
+          {items.map((item, index) => (
+            <li key={index}>
+              <strong {...text.mark(`items.${index}.value`)}>
+                {text.content(`items.${index}.value`, item.value)}
+              </strong>
+              {item.label && (
+                <span {...text.mark(`items.${index}.label`)}>
+                  {text.content(`items.${index}.label`, item.label)}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+export function NarrativeStatement({
+  textStyles,
+  editing,
+  layout,
+  eyebrow,
+  title,
+}: NarrativeStatementProps) {
+  const text = textAttrs(textStyles, editing);
+  return (
+    <section
+      className={`site-section site-narrative-statement site-narrative-statement-${layout}`}
+    >
+      <div className={shell}>
+        <Eyebrow {...text('eyebrow', eyebrow)} />
+        <h2 {...text.mark('title')}>{text.content('title', title)}</h2>
+      </div>
+    </section>
+  );
+}
+
+export function FeatureShowcase({
+  textStyles,
+  editing,
+  vibe = 'landing',
+  layout,
+  title,
+  body,
+  items,
+}: FeatureShowcaseProps) {
+  const text = textAttrs(textStyles, editing);
+  const panels = items.map((item, index) => ({
+    label: text.node(`items.${index}.title`, item.title),
+    content: (
+      <article className="site-showcase-item">
+        <div className="site-showcase-copy">
+          {item.icon && (
+            <SiteIcon name={item.icon} vibe={vibe} badge size={24} />
+          )}
+          <h3 {...text.mark(`items.${index}.title`)}>
+            {text.content(`items.${index}.title`, item.title)}
+          </h3>
+          <p {...text.mark(`items.${index}.body`)}>
+            {text.content(`items.${index}.body`, item.body)}
+          </p>
+          {item.cta && (
+            <Action
+              {...item.cta}
+              editing={editing}
+              vibe={vibe}
+              field={`items.${index}.cta.label`}
+            />
+          )}
+        </div>
+        <img
+          src={item.image}
+          alt={item.imageAlt}
+          width={1200}
+          height={900}
+          loading="lazy"
+          decoding="async"
+        />
+      </article>
+    ),
+  }));
+  return (
+    <section className={`site-section site-showcase site-showcase-${layout}`}>
+      <div className={shell}>
+        <div className="site-showcase-heading">
+          <h2 className={h2Class} {...text.mark('title')}>
+            {text.content('title', title)}
+          </h2>
+          {body && <p {...text.mark('body')}>{text.content('body', body)}</p>}
+        </div>
+        {layout === 'tabs' ? (
+          <ShowcaseTabs items={panels} editing={editing} />
+        ) : (
+          panels.map((panel, index) => <div key={index}>{panel.content}</div>)
+        )}
+      </div>
+    </section>
+  );
+}
+
+export function ProofTestimonials({
+  textStyles,
+  editing,
+  layout,
+  title,
+  items,
+}: ProofTestimonialsProps) {
+  const text = textAttrs(textStyles, editing);
+  return (
+    <section
+      className={`site-section site-testimonials site-testimonials-${layout}`}
+    >
+      <div className={shell}>
+        {title && (
+          <h2 className={h2Class} {...text.mark('title')}>
+            {text.content('title', title)}
+          </h2>
+        )}
+        <div className="site-testimonials-items">
+          {items.map((item, index) => (
+            <figure key={index}>
+              <blockquote>
+                <p {...text.mark(`items.${index}.quote`)}>
+                  {text.content(`items.${index}.quote`, item.quote)}
+                </p>
+              </blockquote>
+              <figcaption>
+                {item.image && (
+                  <img
+                    src={item.image}
+                    alt={item.imageAlt ?? ''}
+                    width={64}
+                    height={64}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                )}
+                <div>
+                  <strong {...text.mark(`items.${index}.author`)}>
+                    {text.content(`items.${index}.author`, item.author)}
+                  </strong>
+                  <span {...text.mark(`items.${index}.role`)}>
+                    {text.content(`items.${index}.role`, item.role)}
+                  </span>
+                </div>
+              </figcaption>
+              <p
+                className="site-testimonial-result"
+                {...text.mark(`items.${index}.result`)}
+              >
+                {text.content(`items.${index}.result`, item.result)}
+              </p>
+            </figure>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }

@@ -273,7 +273,10 @@ export function SettingsForm({
               <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
                 Uma troca abre uma nova direção no rascunho e preserva a versão
                 publicada. Depois de salvar, volte ao Site e peça “Refaça o
-                site” pelo chat para aplicar a nova direção.
+                site” pelo chat para aplicar a nova direção. Landing Page usa
+                uma única página. Ao trocar de um site com páginas internas,
+                elas continuam salvas e impedem a publicação da landing até você
+                pedir a remoção ou voltar à direção anterior.
               </p>
               <div className="admin-vibe-grid">
                 {VIBES.map((vibe) => (

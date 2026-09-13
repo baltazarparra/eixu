@@ -28,8 +28,28 @@ import {
  * de 1px, rótulos em mono e nenhuma grade decorativa. Elas orientam a
  * linguagem visual; o conteúdo continua vindo do briefing do cliente.
  */
-export const VIBES = ['comercial', 'moderno', 'ousado', 'artistico'] as const;
+export const VIBES = [
+  'comercial',
+  'moderno',
+  'ousado',
+  'artistico',
+  'landing',
+] as const;
 export type Vibe = (typeof VIBES)[number];
+
+export type SiteShape = 'multi' | 'landing';
+export const SITE_SHAPE: Record<Vibe, SiteShape> = {
+  comercial: 'multi',
+  moderno: 'multi',
+  ousado: 'multi',
+  artistico: 'multi',
+  landing: 'landing',
+};
+export function siteShape(
+  brand: { vibe?: string } | null | undefined,
+): SiteShape {
+  return SITE_SHAPE[vibeOf(brand)];
+}
 
 export const vibeSchema = z.enum(VIBES);
 
@@ -66,6 +86,7 @@ export function renderingVibeOf(
 }
 
 export const VIBE_LABEL: Record<Vibe, string> = {
+  landing: 'Landing Page',
   comercial: 'Comercial',
   moderno: 'Moderno',
   ousado: 'Ousado',
@@ -73,6 +94,8 @@ export const VIBE_LABEL: Record<Vibe, string> = {
 };
 
 export const VIBE_HINT: Record<Vibe, string> = {
+  landing:
+    'Uma página, uma ação: benefício, prova e formulário curto, com botão fixo no celular.',
   comercial:
     'Clareza acolhedora: benefício, prova e contato em um percurso direto e simples.',
   moderno:
@@ -88,6 +111,7 @@ export const VIBE_PALETTE: Record<
   Vibe,
   { primary: string; secondary: string; highlight: string }
 > = {
+  landing: { primary: '#16a34a', secondary: '#ecfdf5', highlight: '#f59e0b' },
   comercial: {
     primary: '#1f6feb',
     secondary: '#dbeafe',
@@ -127,6 +151,21 @@ type Lane = {
 };
 
 export const VIBE_LANE: Record<Vibe, Lane> = {
+  landing: {
+    axes: {
+      displayFont: ['grotesk', 'geometric'],
+      bodyFont: ['sans', 'geometric'],
+      heroComposition: ['stage', 'form'],
+      navigation: ['minimal'],
+      rhythm: ['alternating', 'compact'],
+      imageTreatment: ['framed'],
+      surfaceStyle: ['outlined', 'layered'],
+      motif: ['none', 'grid'],
+    },
+    radius: ['md', 'lg'],
+    paper: [0.85, 1],
+    dials: { variance: [3, 6], motion: [3, 6], density: [5, 8] },
+  },
   comercial: {
     axes: {
       displayFont: ['humanist', 'slab'],
@@ -223,13 +262,23 @@ export type VibeGrammar = {
   summary: string;
 };
 
-type GrammarProfile = { version?: number; structure?: unknown } | undefined;
+type GrammarProfile =
+  | { version?: number; structure?: unknown; heroComposition?: string }
+  | undefined;
 
 /** V5 usa a família da vibe; v6 pode usar qualquer família guiada pela fonte. */
 export function structureGrammar(
   vibe: Vibe,
   design?: GrammarProfile,
 ): VibeGrammar & { structure?: SiteStructure } {
+  if (vibe === 'landing')
+    return {
+      ...VIBE_GRAMMAR.landing,
+      ...(design?.version === 7 &&
+      ['stage', 'form'].includes(design.heroComposition ?? '')
+        ? { openings: [`hero.landing:${design.heroComposition}`] }
+        : {}),
+    };
   const selected =
     design?.version === 6
       ? structureByKey(design.structure)
@@ -260,6 +309,29 @@ const openingsOf = (vibe: Vibe): string[] =>
   );
 
 export const VIBE_GRAMMAR: Record<Vibe, VibeGrammar> = {
+  landing: {
+    openings: ['hero.landing:stage', 'hero.landing:form'],
+    protagonists: [
+      'feature.bento:showcase',
+      'feature.showcase:steps',
+      'feature.showcase:tabs',
+    ],
+    innerOpenings: [],
+    closings: ['cta.band:band', 'form.lead:panel', 'form.lead:stack'],
+    support: ['media.image'],
+    avoid: [
+      'hero.split:split',
+      'hero.split:cover',
+      'hero.statement:oversize',
+      'feature.explorer:showroom',
+      'media.gallery:collage',
+      'media.gallery:masonry',
+      'editorial.resources:feature',
+    ],
+    headline: 60,
+    summary:
+      'conduz uma única home indexável do benefício à prova e à mesma ação, com obrigado separado.',
+  },
   comercial: {
     openings: openingsOf('comercial'),
     protagonists: ['feature.explorer:showroom', 'feature.bento:gallery'],
@@ -351,6 +423,11 @@ export function grammarDirection(
   referenceLed = design?.version === 6,
 ): string {
   const grammar = structureGrammar(vibe, design);
+  if (vibe === 'landing')
+    return `${VIBE_DIRECTION.landing}
+Abertura da home: ${grammar.openings.join(' ou ')}. Protagonista: ${grammar.protagonists.join(' ou ')}.
+Fechamento: ${grammar.closings.join(' ou ')}. Headline até 60 caracteres.
+Perfil v7 sem structure nem structureRationale. pagePlan: apenas slug vazio, stage conversion. Cinco imageScenes, todas na home. Referência verificada preserva stage/form e navigation minimal; nunca escolha estrutura multipágina.`;
   if (referenceLed && !grammar.structure)
     return `Autoridade visual da referência. Compare as doze estruturas disponíveis e escolha a que mais se aproxima da composição observada; a vibe ${VIBE_LABEL[vibe]} serve apenas para voz e lacunas que a fonte não resolver.
 Estruturas disponíveis para sites novos com referência:
@@ -446,6 +523,17 @@ export function laneIssues(
     relaxed.luminance = true;
   }
   const issues: string[] = [];
+  const landingHero = ['stage', 'form'].includes(input.heroComposition);
+  if ((vibe === 'landing') !== landingHero)
+    issues.push(
+      'heroComposition precisa corresponder à forma: stage/form somente em Landing Page.',
+    );
+  if (vibe === 'landing' && input.structure !== undefined)
+    issues.push(
+      'Landing Page usa a gramática de conversão, sem estrutura multipágina. Omita structure.',
+    );
+  if (vibe === 'landing' && input.navigation !== 'minimal')
+    issues.push('Landing Page mantém navigation minimal mesmo com referência.');
   // O schema de set_design exige estrutura em v5/v6. A ausência segue aceita
   // aqui porque esta função também audita perfis v2-v4 publicados.
   if (input.structure !== undefined) {
@@ -521,6 +609,7 @@ export function laneIssues(
  * catálogo sozinho não comunica.
  */
 export const VIBE_DIRECTION: Record<Vibe, string> = {
+  landing: `Vibe Landing Page: uma página, uma ação. Menu minimal em pílulas e âncoras; hero.landing stage com produto em moldura ou form com formulário curto. Benefício concreto, prova real, protagonista com duas fotos, passos, FAQ e fechamento sobre acento. De 6 a 11 seções de conteúdo. Repita o destino primário na abertura, no meio e no fechamento. nav.bar com stickyCta true e position fixed. A referência modula os eixos visuais, mas nunca a forma de página única.`,
   comercial: `Vibe comercial: percurso direto, acolhedor e orientado à decisão.
 - Display humanist ou slab com corpo humanist/source. Navegação bar, imagem framed e superfície flat.
 - A home abre com benefício, foto documental e CTA visível, e o miolo alterna oferta, aplicações reais, dúvidas e contato. Não transforme tudo em cartões.
@@ -548,6 +637,8 @@ export const VIBE_DIRECTION: Record<Vibe, string> = {
 
 /** Direção de imagem por vibe, usada no briefing e na etapa de cenas. */
 export const VIBE_IMAGE_DIRECTION: Record<Vibe, string> = {
+  landing:
+    'Produto ou resultado em primeiro plano, fundo limpo e luz uniforme. Sem pessoa posando. Upload de produto ou tela fornecido pelo cliente prevalece no hero; não invente interface nem use foto gerada como depoimento.',
   comercial:
     'Fotografia documental do negócio real, luz natural, sem cara de banco de imagens.',
   moderno:
@@ -560,6 +651,7 @@ export const VIBE_IMAGE_DIRECTION: Record<Vibe, string> = {
 
 /** Tom da seção automática de localização, por vibe. */
 export const VIBE_LOCATION_TONE: Record<Vibe, 'paper' | 'soft' | 'ink'> = {
+  landing: 'paper',
   comercial: 'soft',
   moderno: 'soft',
   ousado: 'ink',

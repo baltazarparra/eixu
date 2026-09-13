@@ -63,10 +63,11 @@ export function BrandFields() {
       <fieldset className="mt-7 border-t pt-6">
         <legend className="text-base font-semibold">Direção visual</legend>
         <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
-          Compare as quatro direções. A escolha coordena tipografia, navegação,
+          Compare as cinco direções. A escolha coordena tipografia, navegação,
           escala, ícones, imagens e ritmo quando não houver referência. Com um
           link visual verificado, a referência comanda o layout e a vibe passa a
-          definir a voz e completar apenas o que a fonte não resolver.
+          definir a voz e completar apenas o que a fonte não resolver. Landing
+          Page mantém uma única página, mesmo com referência.
         </p>
         <div className="admin-vibe-grid">
           {VIBES.map((option) => (

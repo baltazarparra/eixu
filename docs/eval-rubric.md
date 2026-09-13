@@ -26,8 +26,8 @@ revisão humana.
 
 | Medida                                      | Mínimo                                     |
 | ------------------------------------------- | ------------------------------------------ |
-| Páginas orgânicas conectadas                | 3                                          |
-| Palavras úteis por página orgânica          | 100                                        |
+| Páginas orgânicas conectadas                | 3 em multi; 1 home + obrigado em landing   |
+| Palavras úteis por página orgânica          | 100; 250 na home landing                   |
 | Fotos geradas distintas na home             | 2                                          |
 | Páginas orgânicas com pelo menos uma imagem | todas                                      |
 | Seção protagonista na home                  | 1                                          |
@@ -37,6 +37,16 @@ revisão humana.
 | Momentos de motion                          | 1 a 3 sem referência; ritmo da fonte no v6 |
 | Erros de `lintPage` e `lintSite`            | 0                                          |
 | Overflow horizontal em 1440 e 390           | nenhum                                     |
+
+Para `landing` (perfil v7), estrutura v5/v6 e composição autoral não se aplicam.
+A home tem 6–11 seções, protagonista com duas fotos, prova confirmada e uma ação
+repetida no hero, meio e fim. Verifique formulário de 2–4 campos, destino de
+obrigado, menu por âncoras, alvo de 48 px, botão fixo sem encobrir formulário/menu
+e leitura em 320 px e em tela baixa. O caso `landing.json` é sintético.
+
+A validação em memória e no navegador não prova qualidade editorial do modelo,
+fidelidade a uma referência ou conversão comercial. Geração real e medições de
+latência/custo precisam de autorização para o recurso e tenant usados.
 
 ## Rubrica, 0 a 3
 

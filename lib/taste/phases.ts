@@ -1,3 +1,7 @@
+import {
+  LANDING_COMPOSITION,
+  LANDING_DESIGN,
+} from '@/lib/taste/landing-prompt';
 /**
  * Geração em etapas. Um turno só fazia direção, imagens e quatro páginas em
  * um turno curto, sem nunca olhar o resultado. Cada fase agora é uma requisição
@@ -191,6 +195,7 @@ export const PHASE_LABEL: Record<Phase, string> = {
 };
 
 export type GenerationState = {
+  shape?: 'multi' | 'landing';
   hasDesign: boolean;
   /** Vagas do plano preenchidas por foto disponível, inclusive candidatas legadas. */
   coveredScenes: number;
@@ -210,7 +215,26 @@ export type GenerationState = {
 export function nextPhase(state: GenerationState): Phase | 'pronto' {
   // Páginas já montadas encerram a geração, inclusive em clientes legados
   // sem recibo visual. Pre-flight continua decidindo a publicação separadamente.
-  if (state.delivered || state.organicPages >= 3) return 'pronto';
+  if (
+    state.delivered ||
+    state.organicPages >= (state.shape === 'landing' ? 1 : 3)
+  )
+    return 'pronto';
   if (!state.hasDesign) return 'briefing';
   return state.coveredScenes < state.targetScenes ? 'cenas' : 'composicao';
+}
+
+export function phaseBrief(
+  phase: Phase,
+  shape: 'multi' | 'landing' = 'multi',
+): string {
+  if (shape !== 'landing') return PHASE_BRIEF[phase];
+  if (phase === 'briefing')
+    return `## Preparar: Landing Page
+Leia as referências e fontes do intake com read_reference. Fonte inacessível vira lacuna; não invente evidência. Defina o guia de imagens com define_image_guide e conclua com set_design. Não gere fotos nem componha páginas nesta fase.
+${LANDING_DESIGN}`;
+  if (phase === 'composicao')
+    return `${PHASE_BRIEF.composicao}
+${LANDING_COMPOSITION}`;
+  return PHASE_BRIEF[phase];
 }

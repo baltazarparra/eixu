@@ -7,7 +7,12 @@ import {
   uniquenessSilhouette,
 } from '../taste/metrics';
 import type { BlockInstance } from '../types';
-import { compositionSignature, type DesignProfile } from './profile';
+import {
+  compositionSignature,
+  designDistance,
+  isDesignProfile,
+  type DesignProfile,
+} from './profile';
 
 type Row = { blocks?: BlockInstance[]; design?: unknown };
 
@@ -94,6 +99,14 @@ export async function compositionConflict(
   let worst: CompositionConflict | null = null;
   for (const row of rows) {
     if (!Array.isArray(row.blocks)) continue;
+    if (
+      design?.version === 7 &&
+      (!isDesignProfile(row.design) ||
+        row.design.version !== 7 ||
+        !isDesignProfile(design) ||
+        designDistance(design, row.design) >= 2)
+    )
+      continue;
     // v2/v3 conservam a trava exata, inclusive ordem, tom e borda. Só uma
     // recomposição em v4/v5 adota o limite novo de similaridade.
     if (legacy) {
@@ -107,7 +120,7 @@ export async function compositionConflict(
         ? uniquenessSilhouette(row.blocks, otherDesign)
         : silhouette(row.blocks, otherDesign);
     const similarity =
-      (design?.version ?? 0) >= 5
+      (design?.version ?? 0) >= 5 && design?.version !== 7
         ? orderedSilhouetteSimilarity(own, other)
         : silhouetteSimilarity(own, other);
     if (similarity < SILHOUETTE_LIMIT) continue;

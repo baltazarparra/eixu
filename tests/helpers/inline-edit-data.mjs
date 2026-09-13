@@ -57,6 +57,8 @@ export function inlineBlocks() {
       props.items.forEach((item, i) => {
         item.role = i === 0 ? 'focus' : 'support';
       });
+    if (type === 'hero.landing') delete props.form;
+    if (type === 'proof.strip') props.items = props.items.slice(0, 4);
     if (type === 'hero.split') props.layout = 'atelier';
     if (type === 'editorial.text')
       props.body += '\n\nOutro parágrafo com conteúdo diferente.';

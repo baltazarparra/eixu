@@ -58,7 +58,13 @@ export function workspaceState(
   pages: Page[],
   images: TenantImage[],
 ) {
-  const findings = lintSite(pages, images, 'publish', tenant.brand);
+  const findings = lintSite(
+    pages,
+    images,
+    'publish',
+    tenant.brand,
+    tenant.brief,
+  );
   const design = isDesignProfile(tenant.brand.design)
     ? tenant.brand.design
     : undefined;

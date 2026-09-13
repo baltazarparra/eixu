@@ -41,6 +41,58 @@ fluxo foi exercitado com sites sintéticos e Chromium real; a leitura de um site
 de cliente e a importação contra Blob/Neon reais permanecem para um ensaio
 controlado quando houver um URL escolhido.
 
+## Landing Page v7, 12/09/2026
+
+Implementação local das fases 0–3 do [plano](plano-vibe-landing-page.md), no
+branch `codex/vibe-landing-page`, a partir de `339e8fb`. O perfil v7 separa a
+home de conversão com obrigado dos contratos multipágina v5/v6. Os cinco novos
+blocos estão no schema, catálogo, renderer, edição direta, pre-flight, prompts,
+crítico e painel. Páginas existentes são preservadas na troca de vibe.
+
+Gates no estado final:
+
+- `npx next typegen && npx tsc --noEmit`, lint global, oxfmt nos arquivos
+  alterados e `git diff --check` passaram.
+- `npm run test:sites`: 233 aprovados, sem skips, com Chrome local.
+- `npm run test:admin`: 176 aprovados; cinco integrações com PostgreSQL local
+  ficaram sem executar por falta de banco configurado. São os ensaios de
+  concorrência, reservas/feed, analytics, logo e edição atômica com SQL real.
+- `npm run build:vercel`: aprovado, incluindo os três checks dos artefatos
+  de identidade e Chromium para runtime serverless.
+- `npm run test:sites:browser`: 72 aprovados com Chrome e CSS/fontes emitidos
+  pelo build Next.js. `npm run test:admin:browser`: 13 aprovados.
+- A rodada focal final da landing passou nos 12 casos e aguardou a animação
+  do menu antes das capturas; imagens sob demanda foram carregadas antes dos
+  registros de página inteira.
+
+Os contratos exercitam ambos os heroes, cinco cenas só na home, conclusão em
+uma página, preservação das outras vibes, bloqueio de página extra/paid_lp,
+ação divergente, âncora ausente, prova não confirmada, preço inventado, limite
+de campos e publicação pontual dependente do obrigado já publicado. A prova
+numérica não aceita trecho de outro número. Formulário embutido, campos de
+edição e limite de 60 caracteres têm cobertura específica.
+
+O navegador percorreu `stage` e `form` em 1440×1000, 390×844, 320×568 e 667×375:
+menu aberto/fechado, teclado, alvos de 48 px, botão fixo, formulário visível,
+abas, ausência de JS, edição, movimento reduzido e contraste AA nos textos e
+controles medidos em papel escuro. A captura revelou uma coluna vazia com dois
+preços; a grade específica da landing passou a ocupar a largura disponível.
+O formulário nativo executou o POST real, registrou lead, consentimento e
+atribuição em persistência simulada e chegou ao obrigado. A prévia recusou o
+POST sem escrita. Um erro da fixture que descartava a porta no redirecionamento
+foi corrigido antes da rodada final.
+
+Capturas inspecionadas: `outputs/landing/stage-1440.png`,
+`outputs/landing/form-390.png` e `outputs/landing/form-menu-390.png`; os demais
+estados ficam na mesma pasta. Conteúdo, preços, depoimentos e ilustrações são
+sintéticos e exclusivos dos testes. A fixture usa renderer, hidratação e rota
+reais, com banco e imagens locais. Não comprova persistência em Neon/Blob,
+qualidade editorial de uma saída do Gemini nem desempenho de rede em produção.
+
+Nenhuma migração, geração paga, escrita remota ou publicação foi executada.
+O caso `evals/cases/landing.json` está preparado para um ensaio posterior
+autorizado; o aceite desta entrega é implementação e validação local.
+
 ## Andamento das edições e atualização da prévia, 12/09/2026
 
 O chat mantém atividade e tempo junto do compositor e acima da prévia. A

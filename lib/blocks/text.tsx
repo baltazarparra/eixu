@@ -1,15 +1,15 @@
 import type { TextStyle } from './text-style-schema';
 
 /** Sem edição ou estilo, preserva os elementos e o texto público originais. */
-export function textAttrs(styles?: TextStyle[], editing = false) {
+export function textAttrs(styles?: TextStyle[], editing = false, prefix = '') {
   const mark = (field: string, part?: number) => ({
-    ...(editing ? { 'data-field': field, 'data-part': part } : {}),
-    ...(styles?.some((entry) => entry.field === field && entry.color)
+    ...(editing ? { 'data-field': prefix + field, 'data-part': part } : {}),
+    ...(styles?.some((entry) => entry.field === prefix + field && entry.color)
       ? { 'data-text-color': true }
       : {}),
   });
   const content = (field: string, value: string | undefined) => {
-    const style = styles?.find((entry) => entry.field === field);
+    const style = styles?.find((entry) => entry.field === prefix + field);
     return style ? (
       <span
         className="site-styled"

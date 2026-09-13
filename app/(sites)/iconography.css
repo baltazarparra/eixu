@@ -133,3 +133,15 @@
     transform: rotate(45deg);
   }
 }
+
+.site-theme [data-icon-vibe='landing'] {
+  --icon-gesture: scale(1.12);
+}
+.site-theme [data-icon-vibe='landing'].site-icon-badge {
+  background: var(
+    --icon-secondary,
+    color-mix(in srgb, currentColor 8%, transparent)
+  );
+  border-color: transparent;
+  border-radius: var(--radius);
+}

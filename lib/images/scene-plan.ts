@@ -96,6 +96,25 @@ export function scenePlan(
         expectedRatio(protagonist, protagonistLayout),
       hint: `Uma aplicação concreta do serviço ou produto, para a seção protagonista da home em ${grammar?.protagonists[0] ?? 'feature.explorer:showroom'}.`,
     });
+  if (vibe === 'landing') {
+    scenes.push(
+      {
+        role: 'apoio',
+        targetBlock: 'media.image',
+        ratio: '16:9',
+        page: '',
+        hint: 'Detalhe real do produto ou resultado para a home; nunca um retrato de depoimento inventado.',
+      },
+      {
+        role: 'apoio',
+        targetBlock: 'cta.band',
+        ratio: '16:9',
+        page: '',
+        hint: 'Foto de apoio ao fechamento, com texto sobre painel sólido separado.',
+      },
+    );
+    return scenes.map((scene) => ({ ...scene, page: '' }));
+  }
   const inner = Math.max(0, Math.min(3, organicPages - 1));
   for (let i = 0; i < inner; i++) {
     const support = grammar?.support ?? ['narrative.split', 'media.image'];

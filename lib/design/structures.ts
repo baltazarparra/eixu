@@ -338,7 +338,10 @@ export const SITE_STRUCTURES: Record<StructureKey, SiteStructure> = {
   },
 };
 
-export const STRUCTURES_BY_VIBE: Record<Vibe, readonly SiteStructure[]> = {
+export const STRUCTURES_BY_VIBE: Record<
+  Exclude<Vibe, 'landing'>,
+  readonly SiteStructure[]
+> = {
   comercial: STRUCTURE_KEYS.filter((key) => key.startsWith('comercial-')).map(
     (key) => SITE_STRUCTURES[key],
   ),
@@ -371,6 +374,8 @@ export function structureByKey(key: unknown): SiteStructure | null {
 }
 
 export function structuresDirection(vibe: Vibe): string {
+  if (vibe === 'landing')
+    return 'Landing Page usa hero.landing stage ou form, sem estrutura multipágina.';
   return STRUCTURES_BY_VIBE[vibe]
     .map(
       (structure) =>

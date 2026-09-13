@@ -1,0 +1,22 @@
+{
+  "name": "Linha Clara",
+  "slug": "eval-landing",
+  "vibe": "landing",
+  "whatsapp": null,
+  "intake": {
+    "story": "Caso fictício para avaliação local. Linha Clara fabrica mesas de madeira sob medida para escritórios domésticos. O visitante envia nome e e-mail para pedir orçamento pelo formulário da home. Há duas opções, Essencial por R$ 890 e Completa por R$ 1.290; a proposta final depende das medidas escolhidas. Não há depoimentos nem clientes autorizados para divulgação.",
+    "evidence": [
+      "12 acabamentos disponíveis",
+      "3 medidas de tampo",
+      "Essencial R$ 890",
+      "Completa R$ 1.290"
+    ],
+    "constraints": [
+      "Caso sintético, não publicar",
+      "Não inventar prazo, garantia, nome de cliente ou depoimento",
+      "Fotos da fixture ilustram o produto; não são trabalhos de um cliente real"
+    ],
+    "references": []
+  },
+  "photos": "fixture:landing"
+}

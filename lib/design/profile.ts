@@ -35,7 +35,7 @@ export const creativeBriefSchema = z.object({
         evidence: z.array(z.string().min(3).max(180)).max(8),
       }),
     )
-    .min(3)
+    .min(1)
     .max(12)
     .optional(),
   /** Nasce junto do plano editorial; o estúdio executa sem novo turno de IA. */
@@ -44,16 +44,19 @@ export const creativeBriefSchema = z.object({
 
 export const designProfileInputSchema = z.object({
   brief: creativeBriefSchema,
-  structure: structureKeySchema.describe(
-    'Sem referência, uma das três estruturas da vibe. Com referência visual verificada, a mais próxima entre as doze estruturas disponíveis.',
-  ),
+  structure: structureKeySchema
+    .optional()
+    .describe(
+      'Sem referência, uma das três estruturas da vibe. Com referência visual verificada, a mais próxima entre as doze estruturas disponíveis.',
+    ),
   structureRationale: z
     .string()
     .min(20)
     .max(220)
     .describe(
       'Por que esta estrutura atende a oferta, o público e a jornada deste cliente.',
-    ),
+    )
+    .optional(),
   referenceDirection: referenceDirectionSchema
     .optional()
     .describe(
@@ -96,6 +99,8 @@ export const designProfileInputSchema = z.object({
     'editorial',
     'offset',
     'atelier',
+    'stage',
+    'form',
   ]),
   navigation: z.enum(['bar', 'floating', 'minimal', 'contrast']),
   rhythm: z.enum(['alternating', 'chapters', 'continuous', 'compact']),
@@ -107,6 +112,56 @@ export const designProfileInputSchema = z.object({
   density: z.number().int().min(1).max(10),
 });
 
+/** O schema enviado ao modelo e a execução usam o mesmo contexto de forma. */
+export function designSchemaFor(vibe: string) {
+  return designProfileInputSchema.superRefine((input, ctx) => {
+    const landing = vibe === 'landing';
+    const pages = input.brief.pagePlan;
+    const issue = (path: (string | number)[], message: string) =>
+      ctx.addIssue({ code: 'custom', path, message });
+    if (landing) {
+      if (!['stage', 'form'].includes(input.heroComposition))
+        issue(['heroComposition'], 'Landing Page abre em stage ou form.');
+      if (input.navigation !== 'minimal')
+        issue(
+          ['navigation'],
+          'Landing Page usa navegação minimal com âncoras.',
+        );
+      if (
+        !pages ||
+        pages.length !== 1 ||
+        pages[0].slug !== '' ||
+        pages[0].stage !== 'conversion'
+      )
+        issue(
+          ['brief', 'pagePlan'],
+          'Landing Page exige somente a home, slug vazio e stage conversion.',
+        );
+      if (
+        input.structure !== undefined ||
+        input.structureRationale !== undefined
+      )
+        issue(
+          ['structure'],
+          'Landing Page não usa structure nem structureRationale.',
+        );
+    } else {
+      if (['stage', 'form'].includes(input.heroComposition))
+        issue(['heroComposition'], 'stage e form pertencem à Landing Page.');
+      if (!input.structure || !input.structureRationale)
+        issue(
+          ['structure'],
+          'Escolha a estrutura multipágina e explique o motivo.',
+        );
+      if (pages && pages.length < 3)
+        issue(
+          ['brief', 'pagePlan'],
+          'Site multipágina exige no mínimo três páginas orgânicas.',
+        );
+    }
+  });
+}
+
 export type CreativeBrief = z.infer<typeof creativeBriefSchema>;
 export type DesignProfileInput = z.infer<typeof designProfileInputSchema>;
 
@@ -116,7 +171,8 @@ export type DesignProfileInput = z.infer<typeof designProfileInputSchema>;
  * vibe, a referência modulando aspectos e a vibe preservada no renderer. A 5
  * fixa uma das três estruturas da vibe e sua composição autoral. A 6 dá à
  * referência verificada autoridade sobre a estrutura e toda a direção visual;
- * a vibe permanece como voz e fallback.
+ * a vibe permanece como voz e fallback. A 7 é a landing de página única,
+ * sem estrutura multipágina, com ou sem direção por referência.
  */
 export const DESIGN_PROFILE_VERSION = 6;
 
@@ -135,7 +191,7 @@ export type DesignProfile = Omit<
   | 'motion'
   | 'density'
 > & {
-  version: 2 | 3 | 4 | 5 | 6;
+  version: 2 | 3 | 4 | 5 | 6 | 7;
   structure?: StructureKey;
   structureRationale?: string;
   signature: string;
@@ -185,7 +241,11 @@ export function completeDesignProfile(
       : {}),
   };
   return {
-    version: input.referenceDirection ? DESIGN_PROFILE_VERSION : 5,
+    version: ['stage', 'form'].includes(input.heroComposition)
+      ? 7
+      : input.referenceDirection
+        ? DESIGN_PROFILE_VERSION
+        : 5,
     ...structural,
     signature: designSignature(structural),
     definedAt: now,
@@ -199,13 +259,20 @@ export function isDesignProfile(value: unknown): value is DesignProfile {
     profile.referenceDirection,
   );
   return (
-    [2, 3, 4, 5, 6].includes(profile.version ?? 0) &&
+    [2, 3, 4, 5, 6, 7].includes(profile.version ?? 0) &&
     typeof profile.concept === 'string' &&
     typeof profile.signatureElement === 'string' &&
-    ((profile.version ?? 0) < 5 ||
-      (isStructureKey(profile.structure) &&
+    ((profile.version === 7 &&
+      ['stage', 'form'].includes(profile.heroComposition ?? '') &&
+      !profile.structure) ||
+      (profile.version ?? 0) < 5 ||
+      ([5, 6].includes(profile.version ?? 0) &&
+        isStructureKey(profile.structure) &&
         typeof profile.structureRationale === 'string')) &&
-    (profile.version !== 6 ||
+    (!(
+      profile.version === 6 ||
+      (profile.version === 7 && profile.referenceDirection)
+    ) ||
       (reference.success &&
         REFERENCE_ASPECTS.every((aspect) =>
           reference.data.decisions.some(

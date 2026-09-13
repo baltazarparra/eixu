@@ -4,6 +4,11 @@
  * paisagem para imagem solta e galeria.
  */
 export const RATIO_BY_BLOCK: Record<string, Ratio> = {
+  'hero.stage': '16:9',
+  'hero.form': '4:5',
+  'feature.showcase': '4:3',
+  'proof.testimonials': '1:1',
+  'cta.band': '16:9',
   'hero.split': '4:5',
   'hero.cover': '16:9',
   'hero.poster': '4:5',
@@ -133,6 +138,8 @@ export function ratioForBlock(block: string | undefined): Ratio {
  */
 export function expectedRatio(type: string, layout?: string): Ratio {
   switch (type) {
+    case 'hero.landing':
+      return layout === 'form' ? '4:5' : '16:9';
     case 'hero.split':
       // O layout do bloco é a composição: cover e editorial são panorâmicos.
       return layout === 'cover' || layout === 'editorial' ? '16:9' : '4:5';

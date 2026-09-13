@@ -15,6 +15,7 @@ export type TextField = {
   stylable: boolean;
   minStep: -2 | -1;
   style?: TextStyle;
+  headlineLimit?: number;
 };
 export type FieldError = { block: string; path: string; message: string };
 
@@ -41,6 +42,7 @@ const labels: Record<string, string> = {
   name: 'Nome',
   label: 'Rótulo',
   value: 'Valor',
+  result: 'Resultado',
   logoText: 'Nome da marca',
   submitLabel: 'Botão de envio',
   consentText: 'Consentimento',
@@ -106,6 +108,9 @@ export function blockFields(block: BlockInstance, brand?: Brand): TextField[] {
           path,
           label: `${labels[name]}${indices.length ? ` ${indices.join('.')}` : ''}`,
           value,
+          ...(path === 'headline'
+            ? { headlineLimit: block.type === 'hero.landing' ? 60 : 56 }
+            : {}),
           min: Math.max(1, schema.minLength ?? 0),
           max: schema.maxLength ?? null,
           multiline: block.type === 'editorial.text' && path === 'body',
@@ -152,8 +157,11 @@ export function fieldTextError(
     return `Use pelo menos ${field.min} caracteres.`;
   if (field.max !== null && value.length > field.max)
     return `Use até ${field.max} caracteres.`;
-  if (field.path === 'headline' && Math.ceil(value.trim().length / 28) > 2)
-    return 'O título principal deve caber em até duas linhas (56 caracteres).';
+  if (
+    field.path === 'headline' &&
+    value.trim().length > (field.headlineLimit ?? 56)
+  )
+    return `O título principal deve ter até ${field.headlineLimit ?? 56} caracteres.`;
   if (field.path === 'subtext' && value.trim().split(/\s+/).length > 20)
     return 'Use até 20 palavras no texto de apoio.';
   if (value.includes('—'))

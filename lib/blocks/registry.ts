@@ -112,8 +112,188 @@ const field = z.object({
   options: z.array(z.string()).optional(),
 });
 
+const leadFormSchema = z.object({
+  anchor,
+  presentation,
+  textStyles: textStylesSchema.optional(),
+  layout: z.enum(['split', 'panel', 'stack']).optional(),
+  title: z.string().min(4).max(90),
+  body: z.string().max(200).optional(),
+  fields: z.array(field).min(1).max(8),
+  submitLabel: z
+    .string()
+    .max(40)
+    .default('Enviar')
+    .describe(
+      'Explique o envio em português simples, como Enviar mensagem. Não prometa agendamento ou compra que o formulário não realiza.',
+    ),
+  consentText: z
+    .string()
+    .max(300)
+    .default(
+      'Concordo em ser contatado e com o uso dos meus dados conforme a política de privacidade.',
+    ),
+  whatsappOptIn: z.boolean().default(false),
+  redirectTo: z.string().default('/obrigado'),
+});
+
+const evidenceRef = z
+  .string()
+  .min(3)
+  .max(140)
+  .describe(
+    'Copie exatamente uma evidência confirmada de brief.evidence que contém este fato.',
+  );
+
 export const blockSchemas = {
+  'hero.landing': z
+    .object({
+      anchor,
+      presentation,
+      textStyles: textStylesSchema.optional(),
+      layout: z.enum(['stage', 'form']).default('stage'),
+      formAnchor: anchor.default('contato'),
+      eyebrow: z.string().max(48).optional(),
+      headline: z.string().min(4).max(90),
+      subtext: z.string().max(160).optional(),
+      cta: link,
+      secondary: link.optional(),
+      badges: z
+        .array(
+          z.object({ label: z.string().min(3).max(60), evidence: evidenceRef }),
+        )
+        .max(3)
+        .default([]),
+      image: z.url().startsWith('http').optional(),
+      imageAlt: z.string().min(5).max(140).optional(),
+      form: leadFormSchema
+        .omit({
+          anchor: true,
+          presentation: true,
+          textStyles: true,
+          layout: true,
+        })
+        .extend({ fields: z.array(field).min(2).max(4) })
+        .optional(),
+    })
+    .superRefine((value, ctx) => {
+      if (value.image && !value.imageAlt)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['imageAlt'],
+          message: 'Descreva a imagem da oferta.',
+        });
+      if (value.layout === 'stage' && (!value.image || !value.imageAlt))
+        ctx.addIssue({
+          code: 'custom',
+          path: ['image'],
+          message: 'stage exige imagem e descrição.',
+        });
+      if (value.layout === 'form' && !value.form)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['form'],
+          message: 'form exige formulário curto.',
+        });
+      if (value.layout === 'stage' && value.form)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['form'],
+          message: 'O formulário embutido pertence somente ao layout form.',
+        });
+    }),
+  'proof.strip': z
+    .object({
+      anchor,
+      presentation,
+      textStyles: textStylesSchema.optional(),
+      layout: z.enum(['logos', 'numbers']).default('numbers'),
+      title: z.string().max(80).optional(),
+      items: z
+        .array(
+          z.object({
+            value: z.string().min(1).max(40),
+            label: z.string().max(60).optional(),
+            evidence: evidenceRef,
+          }),
+        )
+        .min(2)
+        .max(6),
+    })
+    .superRefine((value, ctx) => {
+      if (
+        (value.layout === 'logos' && value.items.length < 3) ||
+        (value.layout === 'numbers' && value.items.length > 4)
+      )
+        ctx.addIssue({
+          code: 'custom',
+          path: ['items'],
+          message: 'Use 3 a 6 marcas ou 2 a 4 números.',
+        });
+    }),
+  'narrative.statement': z.object({
+    anchor,
+    presentation,
+    textStyles: textStylesSchema.optional(),
+    layout: z.enum(['center', 'split']).default('center'),
+    eyebrow: z.string().max(48).optional(),
+    title: z.string().min(8).max(160),
+  }),
+  'feature.showcase': z.object({
+    anchor,
+    presentation,
+    textStyles: textStylesSchema.optional(),
+    layout: z.enum(['steps', 'tabs']).default('steps'),
+    title: z.string().min(4).max(90),
+    body: z.string().max(260).optional(),
+    items: z
+      .array(
+        z.object({
+          icon,
+          title: z.string().min(2).max(48),
+          body: z.string().min(20).max(420),
+          image: z.url().startsWith('http'),
+          imageAlt: z.string().min(5).max(140),
+          cta: link.optional(),
+        }),
+      )
+      .min(2)
+      .max(4),
+  }),
+  'proof.testimonials': z
+    .object({
+      anchor,
+      presentation,
+      textStyles: textStylesSchema.optional(),
+      layout: z.enum(['grid', 'spotlight']).default('grid'),
+      title: z.string().max(90).optional(),
+      items: z
+        .array(
+          z.object({
+            quote: z.string().min(12).max(240),
+            author: z.string().min(2).max(60),
+            role: z.string().min(2).max(60),
+            result: z.string().min(3).max(100),
+            image: z.url().startsWith('http').optional(),
+            imageAlt: z.string().min(5).max(140).optional(),
+            evidence: evidenceRef,
+          }),
+        )
+        .min(2)
+        .max(3),
+    })
+    .superRefine((value, ctx) => {
+      value.items.forEach((item, index) => {
+        if (item.image && !item.imageAlt)
+          ctx.addIssue({
+            code: 'custom',
+            path: ['items', index, 'imageAlt'],
+            message: 'Descreva a foto real da pessoa.',
+          });
+      });
+    }),
   'nav.bar': z.object({
+    stickyCta: z.boolean().optional(),
     anchor,
     presentation,
     textStyles: textStylesSchema.optional(),
@@ -425,6 +605,8 @@ export const blockSchemas = {
   }),
 
   'cta.band': z.object({
+    image: z.url().startsWith('http').optional(),
+    imageAlt: z.string().min(5).max(140).optional(),
     anchor,
     presentation,
     textStyles: textStylesSchema.optional(),
@@ -435,30 +617,7 @@ export const blockSchemas = {
     whatsapp: z.boolean().default(false),
   }),
 
-  'form.lead': z.object({
-    anchor,
-    presentation,
-    textStyles: textStylesSchema.optional(),
-    layout: z.enum(['split', 'panel', 'stack']).optional(),
-    title: z.string().min(4).max(90),
-    body: z.string().max(200).optional(),
-    fields: z.array(field).min(1).max(8),
-    submitLabel: z
-      .string()
-      .max(40)
-      .default('Enviar')
-      .describe(
-        'Explique o envio em português simples, como Enviar mensagem. Não prometa agendamento ou compra que o formulário não realiza.',
-      ),
-    consentText: z
-      .string()
-      .max(300)
-      .default(
-        'Concordo em ser contatado e com o uso dos meus dados conforme a política de privacidade.',
-      ),
-    whatsappOptIn: z.boolean().default(false),
-    redirectTo: z.string().default('/obrigado'),
-  }),
+  'form.lead': leadFormSchema,
 
   'editorial.text': z.object({
     anchor,
@@ -566,6 +725,32 @@ type Meta = {
 };
 
 export const blockMeta: Record<BlockType, Meta> = {
+  'proof.testimonials': {
+    family: 'proof',
+    label: 'Depoimentos confirmados',
+    use: 'Duas a três citações literais, com pessoa, cargo e resultado presentes na mesma evidence. Foto somente enviada e confirmada; nunca gere um cliente.',
+  },
+  'feature.showcase': {
+    family: 'feature',
+    label: 'Produto em uso',
+    use: 'Duas a quatro aplicações ilustradas; steps alterna texto e foto, tabs permite seleção por teclado. CTAs seguem a ação única.',
+  },
+  'narrative.statement': {
+    family: 'narrative',
+    label: 'Problema ou promessa',
+    use: 'Uma frase grande explica o problema ou benefício real, sem inventar promessa.',
+  },
+  'proof.strip': {
+    family: 'proof',
+    label: 'Faixa de prova',
+    use: 'Marcas ou números confirmados. Cada item copia evidence do briefing, incluindo valor e rótulo. Sem evidência, omita.',
+  },
+  'hero.landing': {
+    family: 'hero',
+    label: 'Abertura de conversão',
+    use: 'Benefício e ação única; stage mostra produto em moldura, form embute o formulário. Selos somente com evidence do briefing.',
+    singleton: true,
+  },
   'feature.explorer': {
     family: 'feature',
     label: 'Explorador visual',
@@ -709,6 +894,11 @@ export const blockMeta: Record<BlockType, Meta> = {
  * navegação caem na composição do perfil e são resolvidos em lib/taste/metrics.
  */
 export const DEFAULT_LAYOUT: Record<BlockType, string> = {
+  'proof.testimonials': 'grid',
+  'feature.showcase': 'steps',
+  'narrative.statement': 'center',
+  'proof.strip': 'numbers',
+  'hero.landing': 'stage',
   'nav.bar': 'bar',
   'hero.split': 'split',
   'hero.statement': 'left',
@@ -796,6 +986,10 @@ function summarize(schema: Record<string, unknown>, depth = 0): string {
 
 /** Layouts que mudam a proporção exibida. O recorte é object-cover. */
 const IMAGE_LAYOUTS: Partial<Record<BlockType, string[]>> = {
+  'hero.landing': ['stage', 'form'],
+  'feature.showcase': [],
+  'proof.testimonials': [],
+  'cta.band': [],
   'hero.split': ['split', 'cover', 'poster', 'editorial', 'offset', 'atelier'],
   'narrative.split': ['split', 'reverse', 'overlap', 'editorial'],
   'media.image': ['wide', 'bleed', 'portrait', 'offset'],
@@ -860,14 +1054,38 @@ export function catalogForPrompt(
   const { vibe, design } = options;
   return (
     `Comum a todos: anchor?; textStyles? [{field, size?: -2|-1|0|1|2, color?: #RRGGBB}] (até 40, por campo de texto; contraste ≥4,5:1); presentation? { ${summarize(z.toJSONSchema(presentation.unwrap()) as Record<string, unknown>, 1)} }. ? = opcional; ≤ = máximo de caracteres.\n` +
-    BLOCK_TYPES.map((type) => {
-      const json = z.toJSONSchema(blockSchemas[type]) as Record<
-        string,
-        unknown
-      >;
-      // O uso vem junto: sem ele o agente ignora explorer e resources, que são
-      // justamente as seções que sustentam uma home com fotos.
-      return `${type} · ${blockMeta[type].use}${ratioHint(type)}${vibe ? grammarRole(type, vibe, design) : ''}\n  ${options.fullSchema ? JSON.stringify(json) : summarize(json)}`;
-    }).join('\n')
+    [...BLOCK_TYPES]
+      .sort((a, b) => {
+        if (vibe !== 'landing') return 0;
+        const first = [
+          'nav.bar',
+          'hero.landing',
+          'proof.strip',
+          'narrative.statement',
+          'feature.showcase',
+          'feature.bento',
+          'narrative.steps',
+          'proof.testimonials',
+          'pricing.table',
+          'faq.accordion',
+          'form.lead',
+          'cta.band',
+          'footer.compact',
+        ];
+        return (
+          (first.indexOf(a) < 0 ? 99 : first.indexOf(a)) -
+          (first.indexOf(b) < 0 ? 99 : first.indexOf(b))
+        );
+      })
+      .map((type) => {
+        const json = z.toJSONSchema(blockSchemas[type]) as Record<
+          string,
+          unknown
+        >;
+        // O uso vem junto: sem ele o agente ignora explorer e resources, que são
+        // justamente as seções que sustentam uma home com fotos.
+        return `${type} · ${blockMeta[type].use}${ratioHint(type)}${vibe ? grammarRole(type, vibe, design) : ''}\n  ${options.fullSchema ? JSON.stringify(json) : summarize(json)}`;
+      })
+      .join('\n')
   );
 }

@@ -1,3 +1,4 @@
+import { LANDING_COMPOSITION, LANDING_DESIGN } from './landing-prompt';
 import { catalogForPrompt } from '../blocks/registry';
 import { soul } from '../ai/soul';
 import { copyDirection } from '../copy/policy';
@@ -20,7 +21,7 @@ import { contactsOf, contactsSummary } from '../tenant-contacts';
 import { intakeSocialUrl, intakeSummary } from '../tenant-intake';
 import { currentSitePrompt } from '@/lib/current-site/schema';
 import { socialSummary } from '../social-profile';
-import { PHASE_BRIEF, type Phase } from './phases';
+import { phaseBrief, type Phase } from './phases';
 import type { Tenant } from '../types';
 
 export type PromptContext = {
@@ -199,16 +200,23 @@ export function systemPrompt(
     tenant.contactEmail,
   );
 
+  const landing = vibe === 'landing';
   const sections = [
     `## Identidade EIXU\n${soul}`,
     FACTS,
     copyDirection(vibe),
     !editing && (visualSources.length || persistedReferenceStillConfigured)
-      ? referencesDirection(legacy, referenceAuthority)
+      ? landing
+        ? 'Referência visual verificada orienta os eixos da landing; preserve página única, hero stage/form e navegação minimal. Registre as seis aplicações em referenceDirection; fonte sem pixels é lacuna.'
+        : referencesDirection(legacy, referenceAuthority)
       : '',
-    phase ? PHASE_BRIEF[phase] : editing ? EDIT : FREE,
+    phase
+      ? phaseBrief(phase, landing ? 'landing' : 'multi')
+      : editing
+        ? EDIT
+        : FREE,
     editScope ? `## Escopo da edição atual\n${editScope}` : '',
-    wantsComposition ? COMPOSITION : '',
+    wantsComposition ? (landing ? LANDING_COMPOSITION : COMPOSITION) : '',
     !legacy && (wantsComposition || wantsDirection)
       ? `${referenceAuthority ? '## Estrutura guiada pela referência' : `## Gramática da vibe ${VIBE_LABEL[vibe]}`}\n${grammarDirection(
           vibe,
@@ -220,11 +228,13 @@ export function systemPrompt(
       ? `## Continuidade do perfil v${tenant.brand.design?.version}\nPreserve a composição e o plano de cenas existentes durante edição e retomada. O perfil v6 só entra numa reconstrução solicitada pelo operador; set_design cria essa nova versão.`
       : '',
     wantsDirection
-      ? referenceLed
-        ? legacy
-          ? `## Direção visual por referências\nVibe de apoio: ${VIBE_LABEL[vibe]}. Preserve as decisões verificadas do perfil existente, inclusive sua composição.`
-          : `## Direção visual por referência\nVibe do cadastro: ${VIBE_LABEL[vibe]}. A referência decide a estrutura e todos os eixos visuais. Use a vibe somente para a voz e para lacunas que a leitura não resolver.`
-        : `## Vibe do site: ${VIBE_LABEL[vibe]}\n${VIBE_DIRECTION[vibe]}`
+      ? landing
+        ? LANDING_DESIGN
+        : referenceLed
+          ? legacy
+            ? `## Direção visual por referências\nVibe de apoio: ${VIBE_LABEL[vibe]}. Preserve as decisões verificadas do perfil existente, inclusive sua composição.`
+            : `## Direção visual por referência\nVibe do cadastro: ${VIBE_LABEL[vibe]}. A referência decide a estrutura e todos os eixos visuais. Use a vibe somente para a voz e para lacunas que a leitura não resolver.`
+          : `## Vibe do site: ${VIBE_LABEL[vibe]}\n${VIBE_DIRECTION[vibe]}`
       : '',
     wantsImageDirection
       ? referenceLed
@@ -232,15 +242,23 @@ export function systemPrompt(
         : `## Direção de imagem da vibe\n${VIBE_IMAGE_DIRECTION[vibe]}`
       : '',
     wantsDirection || phase === 'revisao'
-      ? designDirection(referenceAuthority)
+      ? landing
+        ? wantsDirection
+          ? ''
+          : LANDING_DESIGN
+        : designDirection(referenceAuthority)
       : '',
     RESPONSIVE_CONTRACT,
-    wantsCatalog ? LIMITS : '',
+    wantsCatalog && !landing ? LIMITS : '',
     `- prepare_site_images, update_image e generate_logo salvam imagens com número e URL para uso imediato, sem aprovação. Elas continuam visíveis em Imagens; o usuário pede mudanças pelo número no chat. Orientações de aprovação em conversas antigas estão obsoletas. A aplicação de logo e a publicação seguem o pedido do operador.`,
     wantsCatalog
       ? `## Catálogo\n${catalogForPrompt({
           fullSchema: phase === 'composicao' || phase === 'revisao',
-          vibe: legacy || referenceAuthority ? undefined : vibe,
+          vibe: landing
+            ? vibe
+            : legacy || referenceAuthority
+              ? undefined
+              : vibe,
           design: tenant.brand.design,
         })}`
       : '',

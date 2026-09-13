@@ -73,7 +73,11 @@ for (const block of blocks)
     ].sort();
     assert.deepEqual(paths, fields.map((f) => f.path).sort());
     assert.equal(
-      fields.some((f) => /imageAlt|href|\.role$/.test(f.path)),
+      fields.some(
+        (f) =>
+          /imageAlt|href/.test(f.path) ||
+          (block.type === 'signature.composition' && f.path.endsWith('.role')),
+      ),
       false,
     );
     const publicHtml = render(block, false);

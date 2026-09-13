@@ -8,7 +8,7 @@ import {
   sceneRequestsMatchPlan,
   type PlannedScene,
 } from '@/lib/images/scene-plan';
-import { vibeOf } from '@/lib/design/vibes';
+import { siteShape, vibeOf } from '@/lib/design/vibes';
 import { lintPage } from '@/lib/taste/lint';
 import { availablePhotos } from '@/lib/taste/metrics';
 import { nextPhase, type Phase } from '@/lib/taste/phases';
@@ -30,7 +30,7 @@ export type GenerationState = {
 };
 
 /**
- * Plano de cenas do cliente, sempre medido em três páginas orgânicas. Deixar o
+ * Plano fixo de cenas: home da landing ou três páginas nas outras vibes. Deixar o
  * plano crescer com as páginas gravadas devolveria a geração para a etapa de
  * cenas logo depois da composição; página extra recebe foto pelo chat livre.
  */
@@ -74,6 +74,7 @@ export function generationState(
     images,
     'publish',
     tenant.brand,
+    tenant.brief,
   ),
 ): GenerationState {
   const design = isDesignProfile(tenant.brand.design)
@@ -81,7 +82,9 @@ export function generationState(
     : undefined;
   const organic = pages.filter(
     (page) =>
-      ['page', 'post'].includes(page.type) &&
+      (siteShape(tenant.brand) === 'landing'
+        ? page.type === 'page' && page.slug === ''
+        : ['page', 'post'].includes(page.type)) &&
       !page.seo.noindex &&
       page.blocks.length > 0,
   );
@@ -103,6 +106,7 @@ export function generationState(
 
   return {
     next: nextPhase({
+      shape: siteShape(tenant.brand),
       hasDesign: Boolean(design),
       coveredScenes: covered.length,
       targetScenes: plan.length,
