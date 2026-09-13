@@ -391,6 +391,15 @@ Site novo, fases explícitas e um pedido direto de reconstrução mantêm seu fl
 O reconhecimento desse pedido é restrito às expressões de `lib/ai/edit-policy.ts`;
 não é uma interpretação universal de linguagem natural.
 
+Um pedido que o schema não atende não vira outra mudança. `contentLossError`
+recusa, na edição geral, a operação que apague texto sem que a mensagem atual
+peça remoção; `asksRemoval` reconhece esse pedido. Os selos do hero passaram a
+ter posição própria (`bulletsPlacement`, `badgesPlacement`), então mover deixou
+de exigir remover. `confirm_evidence` grava em `brief.evidence` o fato que o
+operador escreveu no chat, conferido em código contra o texto dele, para que a
+prova deixe de depender de uma nova geração. Veja o
+[contrato de edição](chat-edits.md).
+
 Pedidos de posição/fundo do cabeçalho recebem uma proteção adicional: IDs dos
 `nav.bar` e caminhos de propriedades permitidos, verificados no executor antes
 da escrita. O pedido de fixação permite `position`; fundo e transparência

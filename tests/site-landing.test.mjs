@@ -243,6 +243,27 @@ for (const [rule, mutate] of cases)
       JSON.stringify(rules(f)),
     );
   });
+await test('prova aceita evidência do cadastro e do chat, sem afrouxar o gate', () => {
+  const f = landingFixture();
+  // O operador confirma pelo cadastro: brief.evidence some, intake mantém.
+  const confirmed = f.tenant.brief.evidence;
+  f.tenant.brief = {
+    ...f.tenant.brief,
+    evidence: [],
+    intake: { ...f.tenant.brief.intake, evidence: confirmed },
+  };
+  assert.deepEqual(
+    rules(f).filter((v) => v.rule === 'landing-prova'),
+    [],
+    JSON.stringify(rules(f)),
+  );
+  // Sem nenhuma das duas origens, a pendência volta e explica o caminho.
+  f.tenant.brief = { ...f.tenant.brief, intake: { evidence: [] } };
+  const missing = rules(f).filter((v) => v.rule === 'landing-prova');
+  assert.ok(missing.length);
+  assert.match(missing[0].message, /confirm_evidence|Dados/);
+});
+
 await test('formulário com cinco campos avisa, acima de seis bloqueia; secundário e âncoras equivalentes permitidos', () => {
   const f = landingFixture();
   const form = find(f, 'form.lead');

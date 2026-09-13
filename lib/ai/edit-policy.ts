@@ -5,7 +5,22 @@ export type EditPolicy = {
   kind: 'edit' | 'navigation-style';
   targets?: { page: string; block: string }[];
   paths?: string[];
+  /** O pedido atual menciona tirar conteúdo. Sem isso, apagar texto é recusado. */
+  removal?: boolean;
 };
+
+/** Reconhece um pedido de remoção na mensagem atual. Generoso de propósito:
+ * um falso positivo apenas devolve o comportamento anterior, enquanto um falso
+ * negativo recusaria uma remoção legítima. */
+export function asksRemoval(text: string): boolean {
+  const request = text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  return /\b(remov\w*|retir\w*|tir[ae]\w*|apag\w*|exclu\w*|delet\w*|ocult\w*|escond\w*|limp[ae]\w*|sum[ia]\w*|reduz\w*|diminu\w*|encurt\w*|cort[ae]\w*|menos|apenas|somente|so\s+(?:o|a|os|as)|sem\s+(?:o|a|os|as)|deixe?\s+(?:so|apenas|somente))\b/.test(
+    request,
+  );
+}
 
 /** Política do turno atual: uma edição não herda autorização de reconstruções antigas. */
 export function editPolicyFor(
@@ -36,12 +51,13 @@ export function editPolicyFor(
       !/\b(nao|apenas|somente|so)\b/.test(request)
     )
       return undefined;
-    return { kind: 'edit' };
+    return { kind: 'edit', removal: asksRemoval(text) };
   }
   const homeOnly = /\b(home|pagina inicial|inicio)\b/.test(request);
   const selected = pages.filter((page) => !homeOnly || page.slug === '');
   return {
     kind: 'navigation-style',
+    removal: asksRemoval(text),
     targets: selected.flatMap((page) =>
       page.blocks
         .filter((block) => block.type === 'nav.bar')

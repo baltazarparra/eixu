@@ -164,6 +164,12 @@ export const blockSchemas = {
         )
         .max(3)
         .default([]),
+      badgesPlacement: z
+        .enum(['cta', 'headline'])
+        .default('cta')
+        .describe(
+          'Onde os selos aparecem: cta sob os botões (padrão) ou headline logo abaixo do título, antes do texto de apoio.',
+        ),
       image: z.url().startsWith('http').optional(),
       imageAlt: z.string().min(5).max(140).optional(),
       form: leadFormSchema
@@ -346,7 +352,13 @@ export const blockSchemas = {
       .array(z.string().max(48))
       .max(3)
       .optional()
-      .describe('Até 3 selos curtos de confiança sob os botões.'),
+      .describe('Até 3 selos curtos de confiança. bulletsPlacement decide onde.'),
+    bulletsPlacement: z
+      .enum(['cta', 'headline'])
+      .default('cta')
+      .describe(
+        'Onde os selos aparecem: cta sob os botões (padrão) ou headline logo abaixo do título, antes do texto de apoio.',
+      ),
     image: z
       .url()
       .startsWith('http')
@@ -748,7 +760,7 @@ export const blockMeta: Record<BlockType, Meta> = {
   'hero.landing': {
     family: 'hero',
     label: 'Abertura de conversão',
-    use: 'Benefício e ação única; stage mostra produto em moldura, form embute o formulário. Selos somente com evidence do briefing.',
+    use: 'Benefício e ação única; stage mostra produto em moldura, form embute o formulário. Selos somente com evidence do briefing, sob os botões ou sob o título por badgesPlacement.',
     singleton: true,
   },
   'feature.explorer': {
@@ -770,7 +782,7 @@ export const blockMeta: Record<BlockType, Meta> = {
   'hero.split': {
     family: 'hero',
     label: 'Hero dividido',
-    use: 'Abertura assimétrica com imagem ao lado. Padrão para site com identidade visual.',
+    use: 'Abertura assimétrica com imagem ao lado. Padrão para site com identidade visual. Selos sob os botões ou sob o título, por bulletsPlacement.',
     variance: [5, 10],
     singleton: true,
   },

@@ -27,7 +27,9 @@ export const editTenant = {
   imageGuide: {},
   whatsapp: null,
 };
-export function editPages() {
+/** `hero: 'bullets'` troca a abertura por um hero.split com selos, o caso que
+ * motivou a guarda de remoção e o campo de posição. */
+export function editPages({ hero } = {}) {
   const page = {
     id: 'edit-page',
     tenantId: editTenant.id,
@@ -100,6 +102,22 @@ export function editPages() {
       },
     ],
   };
+  if (hero === 'bullets')
+    page.blocks[1] = {
+      id: 'hero',
+      type: 'hero.split',
+      props: {
+        headline: 'Materiais para cada ambiente',
+        subtext:
+          'Considere o uso e as referências do projeto antes da escolha.',
+        cta: { label: 'Conferir opções', href: '/materiais' },
+        bullets: [
+          'Amostras enviadas em 48 horas',
+          'Orientação por ambiente',
+          'Acabamentos comparados lado a lado',
+        ],
+      },
+    };
   page.publishedBlocks = structuredClone(page.blocks);
   page.publishedSeo = structuredClone(page.seo);
   const second = structuredClone(page);
@@ -114,10 +132,10 @@ export function editPages() {
 /** Executores e schemas reais; somente o I/O é substituído. Nunca acessa Neon/Blob. */
 export async function pageEditFixture(
   text = 'Ajuste a página em foco.',
-  { race } = {},
+  { race, hero } = {},
 ) {
   const tenant = structuredClone(editTenant);
-  const pages = editPages();
+  const pages = editPages({ hero });
   const writes = [];
   const policy = editPolicyFor(text, pages);
   const mocks = {

@@ -1,5 +1,57 @@
 # Validação e publicação
 
+## Obediência na edição e evidência pelo chat, 13/09/2026
+
+Origem: dois pedidos reais no painel. Em "coloque esses labels embaixo do
+title" o agente removeu os selos do hero, restaurou e só depois explicou que a
+posição era fixa. Em outro turno, a pendência "Falta prova confirmada em
+brief.evidence" continuou após o operador informar o fato pelo chat, porque
+`set_design` não existe na edição e nenhuma ferramenta gravava evidência.
+
+O diagnóstico confirmou as duas causas no código: `bullets` de `hero.split`
+não tinha campo de posição e `edit_page` só move blocos inteiros; o pre-flight
+lia apenas `brief.evidence`. Nenhum gate detectava perda de conteúdo, porque o
+schema estrito e a comparação de achados do lint não veem um opcional
+esvaziado nem uma lista menor.
+
+Entregue nesta rodada:
+
+- `bulletsPlacement` (`hero.split`) e `badgesPlacement` (`hero.landing`) com
+  `cta` e `headline`, no schema, catálogo, renderizador e CSS. Padrão `cta`:
+  páginas existentes não mudam.
+- `contentLossError` recusa, na edição geral, a operação que apague texto sem
+  pedido de remoção na mensagem atual. Recusa o lote inteiro e não grava.
+- `confirm_evidence` grava em `brief.evidence` o fato que o operador escreveu
+  na conversa, conferido em código contra o texto dele. As regras de prova
+  passaram a ler também `brief.intake.evidence`.
+
+Validação local, sem chamada paga e sem escrita remota:
+
+- `npm run lint`, `npx next typegen && npx tsc --noEmit` e `npm run build:vercel`
+  passam.
+- `npm run test:sites` (269) e `npm run test:admin` (194) passam, incluindo
+  `tests/admin-edit-guard.test.mjs` com oito casos: recusa de `unset`, lista
+  menor, `remove` e texto vazio; cinco formas de pedido de remoção aceitas;
+  apresentação, posição e geração fora da guarda; troca de tipo que não migra
+  texto; recusa pelo executor real sem gravar nem tocar o publicado; ordem dos
+  selos no DOM nas duas aberturas; `factWritten`; e `confirm_evidence` gravando,
+  recusando, sem duplicar e ausente no escopo de cabeçalho.
+- `EIXU_CHROME_PATH=... npm run test:sites:browser` (73) passa, com
+  `tests/browser/site-hero-placement.test.mjs` medindo as duas posições em
+  1440 e 390 px no CSS de produção: sob os botões a lista vem depois das ações;
+  sob o título ela fica na coluna do título no layout `editorial` e acima das
+  ações no celular, sem overflow nem erro de console. Capturas em
+  `outputs/hero-placement/`.
+- `tests/site-landing.test.mjs` ganhou o caso da evidência vinda só do cadastro
+  e da mensagem que orienta o operador quando não há fato algum.
+
+Limites desta entrega: `asksRemoval` e a guarda são recortes textuais por
+pedido, não interpretação geral de linguagem natural; um falso positivo de
+intenção apenas devolve o comportamento anterior. `factWritten` confere que o
+operador escreveu os termos, não a veracidade externa do fato. Os casos
+`move-within` e `impossible-move` entraram em `npm run eval:edits`, que exige
+`--live` e chamada paga; não foram executados nesta entrega.
+
 ## Fontes opcionais e coerência da criação, 13/09/2026
 
 A revisão foi feita em worktree isolada de `origin/main` `3d09ff7`, preservando

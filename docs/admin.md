@@ -235,6 +235,17 @@ mesma página é preservada, inclusive quando você estiver conferindo o rodapé
 
 No computador, conversa e prévia ficam lado a lado; o botão primário ao lado de **Voltar** recolhe a conversa até uma faixa de 56 px e entrega o restante à prévia, útil para conferir a versão desktop em telas menores. O controle no centro da borda direita permanece visível nessa faixa e funciona como toggle para recolher e expandir o painel. O botão do cabeçalho faz a mesma alternância, e um ponto de atividade nele avisa quando o agente ainda está trabalhando. No celular, alterne **Conversa** e **Prévia**. A barra do editor reúne identidade, áreas do cliente, prévia e publicação. O seletor mostra o caminho da página em edição e marca **rascunho** quando ela tem mudanças; ao lado ficam as larguras Desktop e Celular e o ícone que abre a página em foco em outra aba. Os links internos mantêm o modo de rascunho. A prévia exige sessão, não envia formulários e não registra eventos de tráfego.
 
+Quando o pedido não couber no bloco, o agente explica o limite em vez de
+inventar outra mudança: ele não apaga conteúdo que você não mandou tirar. Os
+selos do hero, por exemplo, aceitam ficar sob os botões ou logo abaixo do
+título; peça a posição e ele muda só isso. Para remover algo, diga com todas as
+letras.
+
+Se a pendência **Falta prova confirmada** aparecer, escreva o fato no chat
+(prêmio, número, marca) e peça para registrar, ou informe em **Dados ›
+Evidências**. O agente só registra o que você escreveu; a página montada não
+comprova o fato sozinha.
+
 Os textos das 60 mensagens mais recentes são recuperados ao abrir a tela. Ferramentas, anexos e contagens de custo antigos não são restaurados. Registre decisões duráveis no briefing; não dependa de uma conversa extensa como única fonte do negócio.
 
 ### Editar na prévia

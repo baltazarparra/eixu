@@ -274,6 +274,61 @@ function blockTextFields(block: BlockInstance) {
   return parsed.success ? textFields(parsed.data) : [];
 }
 
+/** Texto visível por bloco, para comparar antes e depois de um lote. */
+function textMap(blocks: BlockInstance[]) {
+  return new Map(
+    blocks.map((block) => [
+      block.id,
+      {
+        type: block.type,
+        fields: new Map(
+          blockTextFields(block)
+            .filter((field) => field.value.trim())
+            .map((field) => [field.path, field.value]),
+        ),
+      },
+    ]),
+  );
+}
+
+/** Recusa uma edição que apague texto sem que o pedido atual mencione remoção.
+ * O schema estrito e o lint não veem um opcional esvaziado nem uma lista menor;
+ * um pedido de mover não autoriza apagar. O recorte é textual e por pedido:
+ * não é uma interpretação geral de linguagem natural. */
+export function contentLossError(
+  policy: EditPolicy | undefined,
+  before: BlockInstance[],
+  after: BlockInstance[],
+): string | null {
+  if (policy?.kind !== 'edit' || policy.removal) return null;
+  const previous = textMap(before);
+  const current = textMap(after);
+  const lost: string[] = [];
+  for (const [id, block] of previous) {
+    const now = current.get(id);
+    if (!now) {
+      if (block.fields.size)
+        lost.push(`${block.type} (${block.fields.size} texto(s), bloco inteiro)`);
+      continue;
+    }
+    // Outro tipo renomeia os caminhos; compare o volume de texto preservado.
+    if (now.type !== block.type) {
+      if (now.fields.size < block.fields.size)
+        lost.push(
+          `${block.type} → ${now.type} (${block.fields.size - now.fields.size} texto(s) não migrado(s))`,
+        );
+      continue;
+    }
+    const paths = [...block.fields.keys()].filter(
+      (path) => !now.fields.has(path),
+    );
+    if (paths.length)
+      lost.push(`${block.type} ${id}: ${paths.slice(0, 6).join(', ')}`);
+  }
+  if (!lost.length) return null;
+  return `O pedido atual não menciona remoção, e a operação apagaria conteúdo: ${lost.join('; ')}. Nenhuma alteração salva. Para mover um elemento dentro de um bloco, use o campo de posição do schema quando existir; se não existir, explique o limite ao operador. Se a intenção for mesmo apagar, peça que ele confirme a remoção.`;
+}
+
 /** Só reconhece uma troca literal curta e completa, sem alvo nem outros pedidos.
  * A interpretação geral continua com o agente; aqui uma ambiguidade comprovada
  * precisa de decisão humana, mesmo se o modelo tentar escolher IDs sozinho. */
@@ -470,6 +525,8 @@ export function applyPageEdit(
     throw new PageEditError(
       'A página aceita até 20 blocos. Reorganize o pedido sem remover conteúdo por conta própria.',
     );
+  const loss = contentLossError(policy, page.blocks, blocks);
+  if (loss) throw new PageEditError(loss);
   for (const block of blocks.filter((b) => touched.has(b.id))) {
     validateEditedBlock(block);
     const before = page.blocks.find((b) => b.id === block.id);

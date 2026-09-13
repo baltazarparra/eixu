@@ -183,11 +183,22 @@ export async function POST(request: Request) {
   context.editing = Boolean(editPolicy);
   context.editScope = editPolicy ? editScopeText(editPolicy) : undefined;
   if (editPolicy) context.editPage = editingPageContext(focusedPage);
+  // Tudo que o operador escreveu nesta conversa; confirm_evidence só aceita
+  // fatos que ele mesmo digitou, não os que o modelo deduziu da página.
+  const operatorText = body.messages
+    .filter((message) => message.role === 'user')
+    .flatMap((message) =>
+      (message.parts ?? [])
+        .filter((part) => part.type === 'text')
+        .map((part) => (part as { text: string }).text),
+    )
+    .join('\n');
   const tools = buildTools(tenant, {
     origin,
     cookie: request.headers.get('cookie') ?? undefined,
     phase,
     lastUserText,
+    operatorText,
     editPolicy,
   });
   if (phase) await markPhase(tenant.id, phase);

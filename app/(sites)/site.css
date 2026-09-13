@@ -192,6 +192,10 @@ details[open] > summary .site-disclosure {
   .site-hero-editorial .site-hero-copy > :not(h1) {
     grid-column: 2;
   }
+  /* Os selos pedidos sob o título acompanham a coluna dele. */
+  .site-hero-editorial .site-hero-bullets[data-placement='headline'] {
+    grid-column: 1;
+  }
   .site-hero-editorial .site-hero-media {
     aspect-ratio: 21 / 9;
   }

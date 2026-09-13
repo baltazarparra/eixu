@@ -197,9 +197,14 @@ export function landingFindings(
       'warn',
     );
 
-  const evidence = (Array.isArray(brief.evidence) ? brief.evidence : []).filter(
-    (v): v is string => typeof v === 'string',
-  );
+  // O operador confirma um fato no cadastro (intake) ou pelo chat, que grava em
+  // brief.evidence. As duas origens valem; do contrário a prova fica travada
+  // até uma nova geração.
+  const intakeEvidence = record(brief.intake).evidence;
+  const evidence = [
+    ...(Array.isArray(brief.evidence) ? brief.evidence : []),
+    ...(Array.isArray(intakeEvidence) ? intakeEvidence : []),
+  ].filter((v): v is string => typeof v === 'string');
   const supports = (parts: unknown[], ref?: unknown) => {
     const candidates =
       ref === undefined ? evidence : evidence.filter((e) => e === ref);
@@ -229,7 +234,7 @@ export function landingFindings(
   if (!proofs.length)
     add(
       'landing-prova',
-      'Falta prova confirmada em brief.evidence. Registre a lacuna; nunca invente número, marca ou depoimento.',
+      'A prova precisa de um fato confirmado pelo operador. Escreva o fato no chat (prêmio, número, marca) para o agente registrar com confirm_evidence, ou informe em Dados › Evidências. Sem fato, a seção de prova não entra e a lacuna fica registrada; nunca invente número, marca ou depoimento.',
     );
   for (const block of proofs) {
     const p = block.props;
@@ -276,7 +281,7 @@ export function landingFindings(
     if (!valid)
       add(
         'landing-prova',
-        'Cada fato, nome e citação precisa estar na evidência do briefing. Use a redação confirmada; fotos de depoimentos precisam ser reais e enviadas.',
+        'Cada fato, nome e citação precisa estar na evidência confirmada, vinda do cadastro ou registrada pelo chat com confirm_evidence. Use a redação confirmada; fotos de depoimentos precisam ser reais e enviadas.',
         'error',
         block,
       );

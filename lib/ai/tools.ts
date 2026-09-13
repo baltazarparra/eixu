@@ -138,6 +138,32 @@ function toBlocks(
 
 export class ToolError extends Error {}
 
+const FACT_STOPWORDS = new Set([
+  'a', 'as', 'ao', 'aos', 'da', 'das', 'de', 'do', 'dos', 'e', 'em', 'na',
+  'nas', 'no', 'nos', 'o', 'os', 'um', 'uma', 'por', 'para', 'com', 'que',
+  'pelo', 'pela', 'nosso', 'nossa', 'the', 'of',
+]);
+
+function factTokens(text: string): string[] {
+  return (
+    text
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .match(/[\p{L}\p{N}]+/gu) ?? []
+  );
+}
+
+/** Um fato só vira evidência quando o operador escreveu os termos dele nesta
+ * conversa. Aceita a redação encurtada, recusa o termo que ninguém digitou. */
+export function factWritten(fact: string, operatorText: string): boolean {
+  const written = new Set(factTokens(operatorText));
+  const tokens = factTokens(fact).filter(
+    (token) => !FACT_STOPWORDS.has(token),
+  );
+  return tokens.length > 0 && tokens.every((token) => written.has(token));
+}
+
 async function requirePage(tenantId: string, slug: string) {
   const clean = slug.replace(/^\/+|\/+$/g, '');
   const page = await getPage(tenantId, clean);
@@ -200,6 +226,8 @@ export type ToolContext = {
   phase?: Phase;
   /** Última mensagem do operador, para as decisões que exigem pedido dele. */
   lastUserText?: string;
+  /** Todo o texto escrito pelo operador nesta conversa, para confirmar fatos. */
+  operatorText?: string;
   editPolicy?: EditPolicy;
   onCurrentSiteProgress?: (event: CurrentSiteProgress) => Promise<void>;
   onReferenceProgress?: (event: ReferenceProgress) => Promise<void>;
@@ -1558,6 +1586,61 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         };
       }),
     }),
+    confirm_evidence: tool({
+      description:
+        'Registra em brief.evidence os fatos que o operador escreveu nesta conversa, para que prova, selo e preço passem no pre-flight. Copie a redação do operador; fato que ele não escreveu é recusado. Não substitui o cadastro nem apaga evidências existentes.',
+      inputSchema: z.object({
+        facts: z
+          .array(z.string().min(3).max(140))
+          .min(1)
+          .max(6)
+          .describe(
+            'Os fatos exatamente como o operador os escreveu, um por item.',
+          ),
+      }),
+      execute: safe(async ({ facts }) => {
+        // O consentimento fica no código: um fato que o operador não escreveu
+        // não vira prova porque o modelo achou que a página comprova.
+        const operator = context.operatorText ?? '';
+        const unconfirmed = facts.filter((fact) => !factWritten(fact, operator));
+        if (unconfirmed.length)
+          throw new ToolError(
+            `Não encontrei estes fatos escritos pelo operador nesta conversa: ${unconfirmed.join('; ')}. Peça que ele confirme por escrito ou registre em Dados › Evidências. Nada foi gravado.`,
+          );
+        const intake = intakeSchema.safeParse(activeBrief.intake).data;
+        const current = Array.isArray(activeBrief.evidence)
+          ? activeBrief.evidence.filter(
+              (value): value is string => typeof value === 'string',
+            )
+          : [];
+        const key = (value: string) => factTokens(value).join(' ');
+        const known = new Set(
+          [...current, ...(intake?.evidence ?? [])].map(key),
+        );
+        const added = facts.filter((fact) => !known.has(key(fact)));
+        const evidence = [...current, ...added].slice(0, 12);
+        if (added.length) {
+          await db()`
+            update tenants
+            set brief = jsonb_set(brief, '{evidence}', ${JSON.stringify(evidence)}::jsonb, true),
+                updated_at = now()
+            where id = ${tenant.id}
+          `;
+          activeBrief = { ...activeBrief, evidence };
+        }
+        const [pages, images] = await Promise.all([
+          listPages(tenant.id),
+          listImages(tenant.id),
+        ]);
+        return {
+          ok: true,
+          added,
+          evidence,
+          findings: lintSite(pages, images, 'publish', activeBrand, activeBrief),
+        };
+      }),
+    }),
+
     list_images: tool({
       description:
         'Lista as imagens geradas, enviadas e importadas disponíveis do cliente com número, descrição e URL exata para os blocos. Não há aprovação. Use update_image para pedidos de alteração pelo número.',
@@ -1621,7 +1704,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
     edit_page: tool({
       description:
-        'Aplica em uma única gravação todas as edições pedidas na página: replace_text literal, set/unset por caminho (inclusive items.0.title), insert/move antes ou depois de um ID e remove. Prefira para sites existentes. Exige a revisão do contexto atual/get_page; ambiguidade, conflito ou erro recusa o lote inteiro. Preserva os demais campos e o publicado. Para cor somente desta seção, use presentation.background em hex; foreground é opcional. Para tamanho e cor de um texto, use textStyles por caminho, com size de -2 a 2 e color hex com contraste mínimo de 4,5:1. O retorno já inclui o pre-flight: não revise ou leia novamente sem necessidade.',
+        'Aplica em uma única gravação todas as edições pedidas na página: replace_text literal, set/unset por caminho (inclusive items.0.title), insert/move antes ou depois de um ID e remove. Prefira para sites existentes. Exige a revisão do contexto atual/get_page; ambiguidade, conflito ou erro recusa o lote inteiro. Preserva os demais campos e o publicado. Para cor somente desta seção, use presentation.background em hex; foreground é opcional. Para tamanho e cor de um texto, use textStyles por caminho, com size de -2 a 2 e color hex com contraste mínimo de 4,5:1. Recusa operações que apaguem texto que o pedido atual não mandou remover. O retorno já inclui o pre-flight: não revise ou leia novamente sem necessidade.',
       inputSchema: pageEditSchema,
       execute: safe(async (input) => {
         const page = await requirePage(tenant.id, input.page);

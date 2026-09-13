@@ -35,6 +35,10 @@ com formulário visível, campo em foco, menu aberto, sem JS ou em edição.
 A FAQ usa duas colunas a partir de 1024 px; movimento reduzido preserva o
 conteúdo e desliga animações.
 
+A evidência confirmada vem do cadastro (`brief.intake.evidence`) ou do chat,
+por `confirm_evidence`, que grava em `brief.evidence` o fato escrito pelo
+operador. As duas origens valem no gate; nenhuma delas aceita fato deduzido.
+
 `landingFindings` bloqueia ação divergente, menu fora da home, prova sem
 correspondência literal, preço não confirmado, páginas extras e formulário
 sem obrigado. Repetição da ação é aviso. `form.lead` com 5–6 campos avisa;
