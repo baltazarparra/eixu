@@ -122,12 +122,43 @@ aceita diferenças de acento, caixa e pontuação terminal. Não autoriza resumo
 recombinação de termos, perguntas ou fatos extraídos de anexos. A página
 montada não comprova nada sozinha. A correspondência não verifica a verdade
 externa da declaração do operador.
+A comparação ignora acento, caixa e ponto final: o fato digitado sem acento em
+Dados sustenta o selo acentuado da página, e a grafia deixa de ser o fato. Uma
+frase com pontuação no meio, ou acima de 140 caracteres, não passa por
+`confirm_evidence` e só entra em Dados › Evidências. Salvar Dados com outro
+nome, história, Site atual ou referência refaz o briefing derivado e conserva
+`brief.evidence`.
+
 A ferramenta não apaga evidência existente, deduplica o próprio lote e recusa
 toda a chamada quando ultrapassaria 12 registros. A escrita compara o cadastro
 anterior para evitar perda entre abas. `added` contém somente o que foi gravado;
 o retorno inclui a validação feita nessa chamada. Não existe espera de
 sincronização do validador. A ferramenta não entra nos escopos restritos de
 cabeçalho ou de apresentação de um bloco.
+
+## Pendências de publicação pelo chat
+
+`lib/taste/pendencias.ts` transforma os achados do pre-flight no que resolve
+cada um, em código. Para prova, compara a alegação exibida com as frases
+confirmadas: quando alguma sustenta o texto, devolve `alinhar` com bloco,
+caminho e valor exatos para um `set`; quando nenhuma sustenta, devolve
+`confirmar` com a frase que falta, se o operador já a escreveu nesta conversa e
+se ela cabe no chat ou só em Dados. Para `imagem-proporcao`, devolve o número da
+imagem, a proporção atual e a exibida, as fotos da biblioteca que cabem, os
+layouts do mesmo bloco que exibem a proporção atual e a geração por
+`update_image` com `ratio`. As demais regras ficam como `manual`.
+
+O plano entra no prompt do turno de edição, junto das frases confirmadas, e no
+retorno de `lint_site`, `lint_page`, `edit_page` e `confirm_evidence`. O agente
+deixa de depender de o operador colar a lista e de adivinhar a causa do
+bloqueio. `lint_page` passou a somar as regras de site daquela página: uma home
+aprovada no lint de página não é mais anunciada como pronta enquanto a prova
+bloqueia a publicação. O painel oferece **Resolver pelo chat**, que preenche o
+pedido sem enviar.
+
+O fechamento do turno nomeia a imagem gerada e lista, sem reescrever, as frases
+que o operador ainda precisa escrever ou registrar. Confirmar um fato continua
+exigindo o texto dele: o plano indica a frase, nunca a inventa.
 
 ## Integridade da edição
 

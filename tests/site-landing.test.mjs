@@ -431,3 +431,53 @@ await test('depende da evidência atual também na publicação pontual e não u
     ).some((v) => v.rule === 'landing-obrigado'),
   );
 });
+
+await test('prova ignora acento e caixa na evidência, sem aceitar outro fato', () => {
+  // Caso villa-piva: o operador digitou o fato sem acentos em Dados e a página
+  // exibe o selo acentuado. A grafia não é o fato.
+  const f = landingFixture();
+  const hero = find(f, 'hero.landing');
+  hero.props.badges = [
+    {
+      label: 'Eleita melhor água de coco',
+      evidence: 'Eleita melhor água de coco do estado de São Paulo',
+    },
+  ];
+  f.tenant.brief = {
+    ...f.tenant.brief,
+    evidence: [
+      ...f.tenant.brief.evidence,
+      'eleita melhor agua de coco do estado de sao paulo.',
+    ],
+  };
+  assert.deepEqual(
+    rules(f).filter((v) => v.rule === 'landing-prova'),
+    [],
+    JSON.stringify(rules(f)),
+  );
+
+  // Uma palavra a mais na alegação continua sem sustentação.
+  hero.props.badges[0].label = 'Eleita melhor água de coco do Brasil';
+  assert.ok(rules(f).some((v) => v.rule === 'landing-prova'));
+});
+
+await test('número isolado não se sustenta em outro número da mesma frase', () => {
+  const f = landingFixture();
+  const strip = find(f, 'proof.strip');
+  strip.props.items[0] = {
+    value: '3',
+    label: 'cocos por litro',
+    evidence: '13 cocos por litro engarrafados',
+  };
+  f.tenant.brief = {
+    ...f.tenant.brief,
+    evidence: [...f.tenant.brief.evidence, '13 cocos por litro engarrafados'],
+  };
+  assert.ok(rules(f).some((v) => v.rule === 'landing-prova'));
+  strip.props.items[0].value = '13';
+  assert.deepEqual(
+    rules(f).filter((v) => v.rule === 'landing-prova'),
+    [],
+    JSON.stringify(rules(f)),
+  );
+});

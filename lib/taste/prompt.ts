@@ -45,6 +45,10 @@ export type PromptContext = {
   sources?: string;
   /** Apontamentos da última revisão, quando houver. */
   review?: string;
+  /** Pendências de publicação e a resolução de cada uma, decididas em código. */
+  pendencias?: string;
+  /** Frases que a validação aceita como prova. */
+  evidencia?: string;
 };
 
 /** Piso de composição. Sem isto o resultado passa nos validadores como lista de texto. */
@@ -137,7 +141,8 @@ const EDIT = `## Edição de um site já gerado
 - Se o pedido combinar várias páginas, leia e edite cada alvo; a gravação é atômica por página. Se uma delas falhar, informe o que já foi salvo e o que falta. Nunca diga que o pedido inteiro foi salvo quando houve recusa.
 - A ferramenta retorna mudanças, nova revisão e pre-flight. Use o recibo para concluir; não repita lint/get_page nem abra review_pages depois de uma edição bem-sucedida. Erros anteriores fora do pedido são pendências, não autorização para outras mudanças. Falha recusa o lote inteiro: corrija a entrada ou releia após conflito, sem repetir cegamente uma mutação.
 - O logo já é recortado e define a altura padrão. Ajuste logoHeight somente a pedido; fixação e fundo usam position/backgroundOpacity. Imagem por número usa update_image; logo e publicação exigem pedido explícito. Não há aprovação de imagens. Revisão visual automática somente por pedido explícito, independente da edição.
-- Um fato dito pelo operador no chat só entra em confirm_evidence como frase completa escrita por ele, preservando números, contexto e negações. Não combine palavras de frases distintas, resuma, transforme perguntas em fatos ou use anexos como confirmação textual. Respeite o limite retornado; só o campo added confirma novos registros. O cadastro e brief.evidence são lidos pela validação atual, sem sincronização posterior. Pendência de prova não autoriza mudar o cadastro durante um ajuste visual. Não suponha que a página montada comprova o fato nem invente uma causa para um bloqueio.
+- Um fato dito pelo operador no chat só entra em confirm_evidence como frase completa escrita por ele, com até 140 caracteres, preservando números, contexto e negações. Não combine palavras de frases distintas, resuma, transforme perguntas em fatos ou use anexos como confirmação textual. Respeite o limite retornado; só o campo added confirma novos registros. O cadastro e brief.evidence são lidos pela validação atual, sem sincronização posterior. Pendência de prova não autoriza mudar o cadastro durante um ajuste visual. Não suponha que a página montada comprova o fato nem invente uma causa para um bloqueio.
+- Pendências de publicação: use a seção deste turno, que já traz a ação de cada uma; não peça a lista ao operador nem deduza a causa. Nesta ordem: alinhar, com edit_page set no caminho e no valor informados, sem apagar nem encurtar conteúdo; confirmar já escrita, com confirm_evidence no texto exato; confirmar que falta, encerrando o turno com o pedido para o operador escrever as frases listadas ou registrá-las em Dados › Evidências; imagem-proporcao, com update_image usando image e ratio indicados quando a foto foi escolhida pelo operador, ou set no campo image com uma foto da biblioteca na proporção certa; manual, explicando em uma frase o que falta. edit_page, confirm_evidence e lint_page já devolvem a validação atualizada; depois de update_image, um lint_site basta. Recomendação não bloqueia publicação. Nunca publique por causa de uma pendência.
 - Responda brevemente com a alteração realmente salva no rascunho e eventual pendência. A prévia é a revisão humana; não alegue que viu pixels ou publicou. Em dúvida material de alvo ou intenção, faça uma pergunta curta sem alterar nada.`;
 
 /** Direção das duas skills; contratos completos continuam no schema e no pre-flight. */
@@ -158,6 +163,8 @@ export function systemPrompt(
     missingScenes,
     sources,
     review,
+    pendencias,
+    evidencia,
   } = context;
   const currentSite = configuredCurrentSite(tenant.brief);
   const intake = [
@@ -225,6 +232,8 @@ export function systemPrompt(
         ? EDIT
         : FREE,
     editScope ? `## Escopo da edição atual\n${editScope}` : '',
+    evidencia ? `## Evidência confirmada\n${evidencia}` : '',
+    pendencias ? `## Pendências de publicação\n${pendencias}` : '',
     wantsComposition ? (landing ? LANDING_COMPOSITION : COMPOSITION) : '',
     !legacy && (wantsComposition || wantsDirection)
       ? `${referenceAuthority ? '## Estrutura guiada pela referência' : `## Gramática da vibe ${VIBE_LABEL[vibe]}`}\n${grammarDirection(

@@ -74,6 +74,7 @@ import { RATIOS, expectedRatio } from '@/lib/images/ratios';
 import { publishSite } from '@/lib/sites/publish';
 import { formatFindings, lintPage } from '@/lib/taste/lint';
 import { inboundSchema, lintSite, type SitePage } from '@/lib/taste/site';
+import { publicationPlan } from '@/lib/taste/pendencias';
 import {
   availablePhotos,
   siteMetrics,
@@ -476,6 +477,37 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
     };
   }
 
+  /**
+   * Validação de publicação e o que resolve cada pendência. Vai junto do
+   * retorno das ferramentas: sem o plano, o agente só sabe que está bloqueado.
+   */
+  async function publication() {
+    const [pages, images] = await Promise.all([
+      listPages(tenant.id),
+      listImages(tenant.id),
+    ]);
+    const findings = lintSite(
+      pages,
+      images,
+      'publish',
+      activeBrand,
+      activeBrief,
+    );
+    return {
+      pages,
+      images,
+      findings,
+      plano: publicationPlan({
+        pages,
+        images,
+        brand: activeBrand,
+        brief: activeBrief,
+        operatorText: context.operatorText ?? '',
+        findings,
+      }),
+    };
+  }
+
   const tools = {
     define_image_guide: guideTool(tenant, safe),
 
@@ -628,7 +660,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
     update_image: tool({
       description:
-        'Altera uma imagem existente pelo número, por exemplo "quero atualizar a imagem #5, quero outro carro". Usa a imagem original como referência, mantém a proporção quando suportada pelo gerador (uploads usam o recorte suportado mais próximo) e salva uma nova versão numerada na biblioteca, sem aprovação. Informe se o recorte mudou. Troca as ocorrências nos rascunhos deste cliente e preserva os snapshots publicados. Para logo, a aplicação na marca continua em set_site_logo por pedido do usuário.',
+        'Altera uma imagem existente pelo número, por exemplo "quero atualizar a imagem #5, quero outro carro". Usa a imagem original como referência, mantém a proporção quando suportada pelo gerador (uploads usam o recorte suportado mais próximo) e salva uma nova versão numerada na biblioteca, sem aprovação. Informe ratio para gerar a cena na proporção que o bloco exibe. Informe se o recorte mudou. Troca as ocorrências nos rascunhos deste cliente e preserva os snapshots publicados. Para logo, a aplicação na marca continua em set_site_logo por pedido do usuário.',
       inputSchema: z.object({
         image: z
           .string()
@@ -652,8 +684,14 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           .describe(
             'Só para logo: false para remover texto; omita para preservar.',
           ),
+        ratio: z
+          .enum(RATIOS)
+          .optional()
+          .describe(
+            'Proporção da nova versão, por exemplo a que o bloco exibe em uma pendência imagem-proporcao. Omitida, conserva a da original. Não vale para logo.',
+          ),
       }),
-      execute: safe(async ({ image: ref, request, brandName, wordmark }) => {
+      execute: safe(async ({ image: ref, request, brandName, wordmark, ratio }) => {
         if (scenesPrepared >= 8)
           throw new ToolError(
             'Orçamento de imagens deste turno esgotado. Encerre o turno.',
@@ -673,7 +711,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
               },
               previous,
               request,
-              { brandName, wordmark },
+              { brandName, wordmark, ratio },
             );
             const saved = {
               anterior: `#${previous.seq}`,
@@ -1551,24 +1589,13 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         'Valida a forma do projeto: site multipágina com jornada de inbound ou Landing Page com uma home e obrigado, ação única e prova. Confere links e fotos do cliente geradas, enviadas ou importadas.',
       inputSchema: z.object({}),
       execute: safe(async () => {
-        const [pages, images] = await Promise.all([
-          listPages(tenant.id),
-          listImages(tenant.id),
-        ]);
-        return {
-          findings: lintSite(
-            pages,
-            images,
-            'publish',
-            activeBrand,
-            activeBrief,
-          ),
-        };
+        const { findings, plano } = await publication();
+        return { findings, plano };
       }),
     }),
     confirm_evidence: tool({
       description:
-        'Registra frases completas escritas pelo operador, uma por item, em brief.evidence. Preserve redação, números, contexto e negações; não resuma nem extraia palavras. Anexo e pergunta não confirmam um fato. O retorno mostra o que foi gravado e a validação atual, feita nesta chamada; não existe sincronização posterior. Não apaga evidências existentes.',
+        'Registra frases completas escritas pelo operador, uma por item, em brief.evidence, com até 140 caracteres cada. Preserve redação, números, contexto e negações; não resuma nem extraia palavras. Anexo e pergunta não confirmam um fato. O retorno mostra o que foi gravado e a validação atual, feita nesta chamada; não existe sincronização posterior. Não apaga evidências existentes.',
       inputSchema: z.object({
         facts: z
           .array(z.string().min(3).max(140))
@@ -1616,23 +1643,15 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             );
           activeBrief = { ...activeBrief, evidence };
         }
-        const [pages, images] = await Promise.all([
-          listPages(tenant.id),
-          listImages(tenant.id),
-        ]);
+        const { findings, plano } = await publication();
         return {
           ok: true,
           changed: added.length > 0,
           added,
           evidence,
           validation: 'current',
-          findings: lintSite(
-            pages,
-            images,
-            'publish',
-            activeBrand,
-            activeBrief,
-          ),
+          findings,
+          plano,
         };
       }),
     }),
@@ -1710,15 +1729,21 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         );
         if (clarification) throw new PageEditError(clarification);
         const edited = applyPageEdit(page, input, context.editPolicy);
+        const saved = await savePageEdit({
+          tenant,
+          page,
+          blocks: edited.blocks,
+          brand: activeBrand,
+        });
+        // O recibo da edição já traz a validação de publicação atualizada:
+        // evita um lint_site extra e mostra o que a edição resolveu.
+        const { findings, plano } = await publication();
         return {
-          ...(await savePageEdit({
-            tenant,
-            page,
-            blocks: edited.blocks,
-            brand: activeBrand,
-          })),
+          ...saved,
           changes: edited.changes,
           summary: edited.summary,
+          publicationPending: findings,
+          plano,
         };
       }),
     }),
@@ -2343,10 +2368,17 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
       inputSchema: z.object({ page: z.string() }),
       execute: safe(async ({ page: slug }) => {
         const page = await requirePage(tenant.id, slug);
-        const findings = lintPage(page, activeBrand.design);
+        // Prova, composição e jornada são regras de site que recusam esta
+        // página na publicação. Aprovar só pelo lint de página escondia o gate.
+        const { findings: site, plano } = await publication();
+        const findings = [
+          ...lintPage(page, activeBrand.design),
+          ...site.filter((finding) => finding.page === `/${page.slug}`),
+        ];
         return {
           aprovado: !findings.some((f) => f.level === 'error'),
           relatorio: formatFindings(findings),
+          plano: plano.filter((item) => item.pagina === `/${page.slug}`),
         };
       }),
     }),

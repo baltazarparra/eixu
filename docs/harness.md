@@ -407,8 +407,16 @@ ou itens. O schema oferece controles locais de imagem em
 a seção. O recorte textual e os pedidos que seguem o fluxo geral estão no
 contrato de edição.
 
+O turno de edição recebe duas seções próprias: as pendências de publicação com
+a resolução decidida em código (`lib/taste/pendencias.ts`) e as frases que a
+validação aceita como prova. As fases da geração não recebem nenhuma das duas.
+As mesmas informações voltam no campo `plano` das ferramentas de validação e
+edição, preservado na compactação do histórico.
+
 Nos turnos limitados às ferramentas de edição, evidência e validação, o texto
-final exibido e persistido usa os recibos reais. O loop do SDK e seus metadados
+final exibido e persistido usa os recibos reais. `update_image` entra nesse
+conjunto: o recibo nomeia a nova versão e onde ela foi aplicada, e lista as
+frases que ainda faltam ser escritas pelo operador ou registradas em Dados. O loop do SDK e seus metadados
 permanecem intactos. Perguntas sem operação e pedidos mistos com outras
 ferramentas conservam a resposta do modelo. `confirm_evidence` exige frases
 completas do operador, recusa lote acima do limite e verifica concorrência;

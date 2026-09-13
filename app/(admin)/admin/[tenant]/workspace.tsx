@@ -112,6 +112,7 @@ export function Workspace({
   >([]);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const previewUpdatePending = useRef(false);
   const refreshSeq = useRef(0);
@@ -913,6 +914,7 @@ export function Workspace({
                 </ul>
               ) : null}
               <textarea
+                ref={composerRef}
                 aria-label="Mensagem para editar o site"
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
@@ -1046,6 +1048,21 @@ export function Workspace({
                 Confira a prévia e as imagens antes de publicar. Os ajustes
                 feitos pelo chat são salvos no rascunho.
               </p>
+              {/* O agente recebe a mesma validação do servidor neste turno.
+                  Colar a lista não é mais necessário; a frase abre o pedido. */}
+              <button
+                type="button"
+                className="admin-review-action"
+                disabled={locked}
+                onClick={() => {
+                  setInput('Resolva as pendências de publicação.');
+                  setCollapsed(false);
+                  setView('chat');
+                  requestAnimationFrame(() => composerRef.current?.focus());
+                }}
+              >
+                Resolver pelo chat
+              </button>
               <ul>
                 {reviewFindings.map((finding) => {
                   const slug = finding.page.replace(/^\//, '');

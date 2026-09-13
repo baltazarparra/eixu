@@ -101,6 +101,10 @@ export async function PATCH(
       { status: 409 },
     );
 
+  // brief.evidence sobrevive à troca de direção: são fatos confirmados pelo
+  // operador, no cadastro ou pelo chat, e apagá-los transformava um salvamento
+  // em Dados em bloqueio de publicação por prova ausente. O resto do briefing
+  // derivado continua sendo refeito.
   // whatsapp continua sendo coluna própria, derivada da lista de contatos:
   // /go/wa, botão flutuante e JSON-LD seguem lendo um número só.
   const contacts = input.contacts;
@@ -112,7 +116,7 @@ export async function PATCH(
       contact_email = case when ${input.contactEmail !== undefined} then ${input.contactEmail ?? null} else contact_email end,
       brief = (case when ${nameChanged || storyChanged || referenceChanged || currentSiteChanged}
                     then (case when ${nameChanged || currentSiteChanged || storyChanged} then brief - 'currentSite' else brief end)
-                      - 'audience' - 'offer' - 'goal' - 'personality' - 'evidence' - 'constraints' - 'gaps' - 'pagePlan' - 'imageScenes'
+                      - 'audience' - 'offer' - 'goal' - 'personality' - 'constraints' - 'gaps' - 'pagePlan' - 'imageScenes'
                     else brief end)
               || (case when ${input.intake !== undefined}
                        then jsonb_build_object('intake', ${JSON.stringify(input.intake ?? {})}::jsonb)

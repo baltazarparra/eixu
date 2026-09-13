@@ -1,5 +1,10 @@
 import { contentBlocks, type SitePage } from './metrics';
 import type { SiteFinding } from './site';
+import {
+  confirmedEvidence,
+  phraseSupported,
+  sameEvidence,
+} from '@/lib/ai/evidence';
 import type { BlockInstance, TenantImage } from '@/lib/types';
 
 const record = (value: unknown): Record<string, unknown> =>
@@ -10,11 +15,6 @@ const anchorText = (value: unknown) =>
   typeof value === 'string' ? value : 'contato';
 const list = (value: unknown): Record<string, unknown>[] =>
   Array.isArray(value) ? value.map(record) : [];
-const words = (value: unknown) =>
-  typeof value === 'string'
-    ? value.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim()
-    : '';
-
 /** Mesmo destino com /#contato ou #contato; atribuição não cria outra ação de WhatsApp. */
 export function landingDestination(href: unknown): string | null {
   if (typeof href !== 'string' || !href.trim()) return null;
@@ -200,85 +200,26 @@ export function landingFindings(
   // O operador confirma um fato no cadastro (intake) ou pelo chat, que grava em
   // brief.evidence. As duas origens valem; do contrário a prova fica travada
   // até uma nova geração.
-  const intakeEvidence = record(brief.intake).evidence;
-  const evidence = [
-    ...(Array.isArray(brief.evidence) ? brief.evidence : []),
-    ...(Array.isArray(intakeEvidence) ? intakeEvidence : []),
-  ].filter((v): v is string => typeof v === 'string');
-  const supports = (parts: unknown[], ref?: unknown) => {
-    const candidates =
-      ref === undefined ? evidence : evidence.filter((e) => e === ref);
-    const claims = parts.map(words).filter(Boolean);
-    return (
-      claims.length > 0 &&
-      candidates.some((source) =>
-        claims.every((part) => {
-          const escaped = part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          return new RegExp(
-            `(^|[^\\p{L}\\p{N}])${escaped}($|[^\\p{L}\\p{N}])`,
-            'u',
-          ).test(words(source));
-        }),
-      )
+  const evidence = confirmedEvidence(brief);
+  const claims = landingClaims(home, images);
+  const failing = (block: BlockInstance, rule: LandingClaim['rule']) =>
+    claims.filter(
+      (claim) =>
+        claim.rule === rule &&
+        claim.block.id === block.id &&
+        !claimSupported(claim, evidence),
     );
-  };
-  const proofs = content.filter((b) =>
-    [
-      'proof.strip',
-      'proof.testimonials',
-      'proof.stats',
-      'proof.logos',
-      'proof.testimonial',
-    ].includes(b.type),
-  );
+  const proofs = content.filter((b) => PROOF_TYPES.includes(b.type));
   if (!proofs.length)
     add(
       'landing-prova',
       'A prova precisa de um fato confirmado pelo operador. Escreva o fato no chat (prêmio, número, marca) para o agente registrar com confirm_evidence, ou informe em Dados › Evidências. Sem fato, a seção de prova não entra e a lacuna fica registrada; nunca invente número, marca ou depoimento.',
     );
   for (const block of proofs) {
-    const p = block.props;
-    let valid = true;
-    if (block.type === 'proof.logos')
-      valid =
-        Array.isArray(p.logos) &&
-        p.logos.length > 0 &&
-        p.logos.every((logo) => supports([logo]));
-    else if (block.type === 'proof.testimonial')
-      valid = supports([p.quote, p.author, p.role]);
-    else {
-      const items = list(p.items);
-      valid =
-        items.length > 0 &&
-        items.every((item) => {
-          if (block.type === 'proof.testimonials') {
-            if (
-              item.image &&
-              !images.some(
-                (image) =>
-                  image.url === item.image &&
-                  image.kind === 'foto' &&
-                  image.model === 'upload' &&
-                  !image.blobPath.includes('/gerado/'),
-              )
-            )
-              return false;
-            return (
-              typeof item.evidence === 'string' &&
-              supports(
-                [item.quote, item.author, item.role, item.result],
-                item.evidence,
-              )
-            );
-          }
-          return (
-            (block.type !== 'proof.strip' ||
-              typeof item.evidence === 'string') &&
-            supports([item.value, item.label], item.evidence)
-          );
-        });
-    }
-    if (!valid)
+    const own = claims.filter(
+      (claim) => claim.rule === 'landing-prova' && claim.block.id === block.id,
+    );
+    if (!own.length || own.some((claim) => !claimSupported(claim, evidence)))
       add(
         'landing-prova',
         'Cada fato, nome e citação precisa estar na evidência confirmada, vinda do cadastro ou registrada pelo chat com confirm_evidence. Use a redação confirmada; fotos de depoimentos precisam ser reais e enviadas.',
@@ -286,8 +227,8 @@ export function landingFindings(
         block,
       );
   }
-  for (const badge of list(hero?.props.badges))
-    if (!supports([badge.label], badge.evidence))
+  if (hero)
+    for (const _claim of failing(hero, 'landing-prova'))
       add(
         'landing-prova',
         'O selo do hero não está sustentado pela evidência informada.',
@@ -295,11 +236,7 @@ export function landingFindings(
         hero,
       );
   for (const block of content.filter((b) => b.type === 'pricing.table'))
-    if (
-      !list(block.props.plans).every((plan) =>
-        supports([plan.name, plan.price]),
-      )
-    )
+    if (failing(block, 'landing-preco').length)
       add(
         'landing-preco',
         'Nome e preço de cada plano devem constar juntos em brief.evidence.',
@@ -307,4 +244,146 @@ export function landingFindings(
         block,
       );
   return findings;
+}
+
+const PROOF_TYPES = [
+  'proof.strip',
+  'proof.testimonials',
+  'proof.stats',
+  'proof.logos',
+  'proof.testimonial',
+];
+
+/** Uma alegação exibida na página e a evidência que ela diz copiar. */
+export type LandingClaim = {
+  rule: 'landing-prova' | 'landing-preco';
+  block: BlockInstance;
+  /** Caminho do item no bloco: badges.0, items.2, plans.1, logos.0. */
+  path: string;
+  /** Textos exibidos que precisam aparecer na evidência. */
+  parts: string[];
+  /** Valor atual do campo evidence, quando o item tem um. */
+  ref?: unknown;
+  /** Caminho gravável desse campo, para uma correção por edit_page. */
+  refPath?: string;
+  /** O schema exige a referência; sem ela a alegação não passa. */
+  refRequired: boolean;
+  /** Depoimento com foto que não é upload real do cliente. */
+  photoInvalid?: boolean;
+};
+
+const texts = (values: unknown[]): string[] =>
+  values.filter(
+    (value): value is string =>
+      typeof value === 'string' && value.trim().length > 0,
+  );
+
+/** Todas as alegações da home, na ordem da página. A regra e o plano de
+ * pendências leem a mesma lista: o que bloqueia e o que corrige não divergem. */
+export function landingClaims(
+  home: SitePage,
+  images: TenantImage[],
+): LandingClaim[] {
+  const claims: LandingClaim[] = [];
+  const content = contentBlocks(home.blocks);
+  const hero = content.find((block) => block.type === 'hero.landing');
+  if (hero)
+    list(hero.props.badges).forEach((badge, index) =>
+      claims.push({
+        rule: 'landing-prova',
+        block: hero,
+        path: `badges.${index}`,
+        parts: texts([badge.label]),
+        ref: badge.evidence,
+        refPath: `badges.${index}.evidence`,
+        refRequired: false,
+      }),
+    );
+  for (const block of content) {
+    const props = block.props;
+    if (block.type === 'proof.logos')
+      (Array.isArray(props.logos) ? props.logos : []).forEach((logo, index) =>
+        claims.push({
+          rule: 'landing-prova',
+          block,
+          path: `logos.${index}`,
+          parts: texts([logo]),
+          refRequired: false,
+        }),
+      );
+    else if (block.type === 'proof.testimonial')
+      claims.push({
+        rule: 'landing-prova',
+        block,
+        path: '',
+        parts: texts([props.quote, props.author, props.role]),
+        refRequired: false,
+      });
+    else if (block.type === 'proof.testimonials')
+      list(props.items).forEach((item, index) =>
+        claims.push({
+          rule: 'landing-prova',
+          block,
+          path: `items.${index}`,
+          parts: texts([item.quote, item.author, item.role, item.result]),
+          ref: item.evidence,
+          refPath: `items.${index}.evidence`,
+          refRequired: true,
+          photoInvalid:
+            Boolean(item.image) &&
+            !images.some(
+              (image) =>
+                image.url === item.image &&
+                image.kind === 'foto' &&
+                image.model === 'upload' &&
+                !image.blobPath.includes('/gerado/'),
+            ),
+        }),
+      );
+    else if (block.type === 'proof.strip' || block.type === 'proof.stats')
+      list(props.items).forEach((item, index) =>
+        claims.push({
+          rule: 'landing-prova',
+          block,
+          path: `items.${index}`,
+          parts: texts([item.value, item.label]),
+          ref: item.evidence,
+          refPath: `items.${index}.evidence`,
+          refRequired: block.type === 'proof.strip',
+        }),
+      );
+    else if (block.type === 'pricing.table')
+      list(props.plans).forEach((plan, index) =>
+        claims.push({
+          rule: 'landing-preco',
+          block,
+          path: `plans.${index}`,
+          parts: texts([plan.name, plan.price]),
+          refRequired: false,
+        }),
+      );
+  }
+  return claims;
+}
+
+/** A evidência sustenta a alegação: a referência é a mesma frase confirmada e
+ * cada texto exibido aparece inteiro dentro dela. */
+export function claimSupported(
+  claim: LandingClaim,
+  evidence: string[],
+): boolean {
+  if (claim.photoInvalid) return false;
+  if (claim.refRequired && typeof claim.ref !== 'string') return false;
+  const candidates =
+    claim.ref === undefined
+      ? evidence
+      : typeof claim.ref === 'string'
+        ? evidence.filter((entry) => sameEvidence(entry, claim.ref as string))
+        : [];
+  return (
+    claim.parts.length > 0 &&
+    candidates.some((source) =>
+      claim.parts.every((part) => phraseSupported(source, part)),
+    )
+  );
 }

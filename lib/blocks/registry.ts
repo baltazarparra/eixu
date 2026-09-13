@@ -1050,6 +1050,16 @@ const IMAGE_LAYOUTS: Partial<Record<BlockType, string[]>> = {
   'signature.composition': [...SIGNATURE_LAYOUTS],
 };
 
+/**
+ * Variantes que o operador pode escolher para a mesma foto. O plano de
+ * pendências oferece só as que existem no schema; hero e assinatura ficam
+ * presas à estrutura escolhida e não entram como alternativa.
+ */
+export function imageLayouts(type: string): string[] {
+  if (type.startsWith('hero.') || type === 'signature.composition') return [];
+  return [...(IMAGE_LAYOUTS[type as BlockType] ?? [])];
+}
+
 /** Diz em que proporção a foto será exibida, por variante de layout. */
 function ratioHint(type: BlockType): string {
   const layouts = IMAGE_LAYOUTS[type];
