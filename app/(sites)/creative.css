@@ -301,9 +301,10 @@
 }
 /* A escolha por imagem prevalece sobre a moldura global, sem atingir as outras
    fotos. A proporção natural não altera o layout nem troca os itens da seção. */
-.site-theme .site-signature [data-image-frame='none'] {
+.site-theme :is(.site-signature, .site-landing-hero) [data-image-frame='none'] {
   background: transparent;
   border: 0;
+  border-radius: 0;
   box-shadow: none;
   padding: 0;
 }
@@ -311,8 +312,7 @@
   margin: 0;
 }
 .site-theme
-  .site-signature
-  .site-signature-media
+  :is(.site-signature .site-signature-media, .site-landing-hero)
   img[data-image-fit='natural'] {
   width: 100%;
   height: auto;
@@ -321,23 +321,25 @@
   aspect-ratio: auto;
   object-fit: contain;
 }
-.site-theme .site-signature .site-signature-media img[data-image-fit='cover'] {
+.site-theme
+  :is(.site-signature .site-signature-media, .site-landing-hero)
+  img[data-image-fit='cover'] {
   object-fit: cover;
 }
 .site-theme
-  .site-signature
-  .site-signature-media
+  :is(.site-signature .site-signature-media, .site-landing-hero)
   img[data-image-fit='contain'] {
   object-fit: contain;
 }
 .site-theme
-  .site-signature
-  .site-signature-media
+  :is(.site-signature .site-signature-media, .site-landing-hero)
   img[data-image-width='container'] {
   width: 100%;
   max-width: 100%;
 }
-.site-theme .site-signature [data-image-spacing-top='none'] {
+.site-theme
+  :is(.site-signature, .site-landing-hero)
+  [data-image-spacing-top='none'] {
   margin-top: 0;
   padding-top: 0;
 }

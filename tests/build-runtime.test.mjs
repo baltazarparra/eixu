@@ -9,6 +9,42 @@ const ROUTES = [
   '.next/server/app/api/queues/generation/route.js.nft.json',
 ];
 
+await test('CSS compilado inclui os controles locais de imagem e seção', async () => {
+  // A Vercel usa static/immutable/chunks; o build local usa static/chunks.
+  const directory = '.next/static';
+  const css = (
+    await Promise.all(
+      (
+        await readdir(directory, { recursive: true })
+      )
+        .filter((file) => file.endsWith('.css'))
+        .map((file) => readFile(path.join(directory, file), 'utf8')),
+    )
+  ).join('\n');
+  // O build já chegou a READY reaproveitando CSS sem as regras do commit.
+  // Confira o artefato gerado, não a existência das regras no arquivo-fonte.
+  const frameRule = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(
+    ([, selector, declarations]) =>
+      selector.includes('site-landing-hero') &&
+      selector.includes('data-image-frame') &&
+      declarations.includes('border-radius:0'),
+  );
+  assert.ok(
+    frameRule,
+    'CSS antigo: falta o controle de moldura da abertura. Reconstrua sem cache.',
+  );
+  for (const attribute of [
+    'data-image-fit',
+    'data-image-width',
+    'data-image-spacing-top',
+    'data-spacing-top',
+  ])
+    assert.ok(
+      css.includes(attribute),
+      `CSS compilado não contém ${attribute}.`,
+    );
+});
+
 for (const route of ROUTES)
   await test(`o artefato de ${route.split('/app/')[1]} inclui identidade e todos os binários de captura`, async () => {
     const root = process.cwd();

@@ -45,6 +45,30 @@ export function layoutOf(block: BlockInstance): string | undefined {
     : undefined;
 }
 
+/** Só os controles implementados pelo renderer dispensam o aviso de recorte. */
+function showsWholeImage(block: BlockInstance, url: string): boolean {
+  const whole = (value: unknown) => {
+    if (!value || typeof value !== 'object') return false;
+    const fit = (value as Record<string, unknown>).fit;
+    return fit === 'natural' || fit === 'contain';
+  };
+  if (block.type === 'hero.landing' && block.props.image === url)
+    return whole(block.props.imagePresentation);
+  if (
+    block.type === 'signature.composition' &&
+    Array.isArray(block.props.items)
+  ) {
+    const matching = block.props.items.filter(
+      (item) => item && typeof item === 'object' && item.image === url,
+    );
+    return (
+      matching.length > 0 &&
+      matching.every((item) => whole(item.imagePresentation))
+    );
+  }
+  return false;
+}
+
 /**
  * Layout que o visitante realmente vê. Sem `layout` nas props, hero e
  * navegação caem na composição do perfil e os demais no padrão do componente.
@@ -494,6 +518,7 @@ export function structuralFindings(
     content.forEach((block, index) => {
       const expected = expectedRatio(block.type, layoutOf(block));
       for (const url of blockImageUrls(block)) {
+        if (showsWholeImage(block, url)) continue;
         const image = libraryByUrl.get(url);
         if (!image || ratioFits(image.ratio, expected)) continue;
         findings.push({

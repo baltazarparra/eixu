@@ -403,9 +403,15 @@ prova deixe de depender de uma nova geração. Veja o
 Pedidos visuais com bloco nomeado entre aspas recebem uma guarda de alvo e
 campos: só apresentação e imagem na página em foco, sem trocar layout, textos
 ou itens. O schema oferece controles locais de imagem em
-`signature.composition`; o executor recusa contornar um limite reconstruindo
+`signature.composition` e `hero.landing`; o executor recusa contornar um limite reconstruindo
 a seção. O recorte textual e os pedidos que seguem o fluxo geral estão no
 contrato de edição.
+
+Remover o container decorativo de uma foto do hero usa `imagePresentation`
+no bloco existente. O prompt e o catálogo informam essa capacidade; o pedido
+de preservar a imagem enquanto se retira a caixa não libera apagar conteúdo.
+O ensaio `eval:edits -- --live --case=landing-frame --attachment=fixture.png`
+testa a interpretação multimodal com o agente configurado e gravação em memória.
 
 O turno de edição recebe duas seções próprias: as pendências de publicação com
 a resolução decidida em código (`lib/taste/pendencias.ts`) e as frases que a
