@@ -20,6 +20,12 @@ centro da borda direita da conversa e permanece na faixa: ele recolhe e expande
 o painel como um toggle. Entre 1024 e 1440 px a coluna de 42% deixava o desktop
 apertado. No celular, conversa e prévia são alternáveis.
 
+Em edições pelo chat, a atividade e o tempo ficam junto do compositor, fora
+da rolagem do histórico, e se repetem acima da prévia para quem recolheu a
+conversa ou usa a aba Prévia no celular. O iframe tem uma linha discreta de
+carregamento, confirmação ou falha com nova tentativa. A atualização acontece
+ao confirmar a escrita, preservando a rolagem da mesma página.
+
 O handoff `design_handoff_cabecalho_unico`, recebido em 12/09/2026, substituiu
 os três cabeçalhos do editor (página, conversa e prévia, 207 px somados) por
 uma barra de 64 px em `components/admin/navigation.tsx`: identidade com

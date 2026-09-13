@@ -1,4 +1,5 @@
 import { generateId, type UIMessageChunk } from 'ai';
+import { changesPreview } from './preview-updates';
 
 export const CHAT_INTERRUPTED =
   'A conexão terminou antes da conclusão. Consulte o resultado salvo no painel.';
@@ -18,9 +19,13 @@ export function completeChatStream(
   let finalText = '';
   let ended = false;
   let failed = false;
+  const tools = new Map<string, string>();
+  const notified = new Set<string>();
   return stream.pipeThrough(
     new TransformStream<UIMessageChunk, UIMessageChunk>({
       async transform(chunk, controller) {
+        if (chunk.type === 'tool-input-available')
+          tools.set(chunk.toolCallId, chunk.toolName);
         if (chunk.type === 'start-step') finalText = '';
         if (
           chunk.type === 'tool-input-available' ||
@@ -62,6 +67,21 @@ export function completeChatStream(
           if (text.trim()) await options.persist(text.trim());
         }
         controller.enqueue(chunk);
+        if (
+          chunk.type === 'tool-output-available' &&
+          !chunk.preliminary &&
+          !notified.has(chunk.toolCallId) &&
+          changesPreview(tools.get(chunk.toolCallId) ?? '', chunk.output)
+        ) {
+          notified.add(chunk.toolCallId);
+          // Entrega antes da próxima resposta do modelo e sem uma consulta
+          // adicional ao banco. Não entra no histórico nem no contexto do agente.
+          controller.enqueue({
+            type: 'data-preview-update',
+            transient: true,
+            data: { toolCallId: chunk.toolCallId },
+          });
+        }
       },
       flush(controller) {
         if (!ended && !failed)

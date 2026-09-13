@@ -1,5 +1,46 @@
 # Validação e publicação
 
+## Andamento das edições e atualização da prévia, 12/09/2026
+
+O chat mantém atividade e tempo junto do compositor e acima da prévia. A
+confirmação de uma escrita dispara a recarga pelo stream antes da resposta
+final e da consulta de estado. O iframe informa carregamento, conclusão ou
+falha com nova tentativa e preserva a posição da mesma página. O contrato
+está em [Edição pelo chat](chat-edits.md#andamento-e-atualização-da-prévia).
+
+Verificação inicial, antes da integração à `main` atual:
+
+- Tipos, lint global, `git diff --check` e `build:vercel` passaram, incluindo
+  os três checks dos artefatos de captura serverless.
+- `test:admin`: 135 casos passaram; quatro integrações com PostgreSQL local
+  ficaram sem execução por ausência desse recurso. `test:sites`: 130 casos
+  passaram; um teste de captura ficou sem execução nessa chamada sem Chrome.
+- Os 11 testes de navegador do admin passaram com Chromium e CSS emitido
+  pelo Next.js, incluindo os contratos anteriores de geração e navegação.
+  O caso novo usa POST, SDK, stream, ferramentas e editor reais, com modelo
+  determinístico e banco em memória. A prévia serve HTML sintético; esse
+  ensaio não mede a latência do Gemini, da Vercel ou do Neon em produção.
+- Atrasos controlados confirmaram atualização antes da resposta final e da
+  consulta de estado, confirmação apenas após o iframe carregar, preservação
+  da rolagem no rodapé, ausência de recarga duplicada, edição recusada,
+  operação sem mudança, interrupção e recuperação de 404/redirecionamento.
+  Desktop em 1440 px e celular em 390 px mantiveram progresso visível e
+  ausência de overflow; snapshots publicados permaneceram intactos.
+- Capturas inspecionadas em `outputs/chat-edits/footer-desktop.png` e
+  `outputs/chat-edits/header-mobile.png`. Smoke adicional com agent-browser
+  abriu o editor sintético, conferiu controles e registrou `editor-smoke.png`.
+
+Sem geração paga, migração, escrita remota ou publicação nessa etapa.
+
+Preparação para produção sobre `origin/main` `faecec0`: a integração conserva
+o iframe e o protocolo da edição direta de textos da PR #40. Alterações externas
+durante essa sessão avisam sobre o novo estado sem recarregar textos não salvos.
+Tipos, lint global, `git diff --check` e build Vercel passaram; sites teve 192
+casos aprovados e admin teve 161 aprovados, com cinco integrações locais puladas.
+Os 12 casos de navegador do admin passaram, incluindo chat, geração e edição
+direta em desktop/celular. O teste de interrupção aguarda a resposta real de
+estado, sem depender do contador de rede ociosa de uma conexão SSE cancelada.
+
 ## Proporção da assinatura na etapa de cenas, 12/09/2026
 
 A etapa "Criar · imagens" parava em zero cena quando a composição autoral da

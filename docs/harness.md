@@ -133,6 +133,13 @@ antigas. Não atribua a esse histórico as garantias do loop ativo.
 
 O chat mantém um indicador de atividade e tempo durante toda a requisição,
 inclusive quando só chegam partes de raciocínio, que não são exibidas.
+Na edição, o indicador fica junto do compositor e também acima da prévia,
+fora da rolagem do histórico. Recibos de escrita confirmada disparam um evento
+transitório do SDK para recarregar a prévia antes da resposta final e da
+consulta de estado; leituras, falhas e operações sem mudança não recarregam.
+O carregamento do iframe tem estado próprio, preserva a rolagem da mesma
+página e permite tentar novamente em caso de falha. Veja o
+[contrato de edição](chat-edits.md#andamento-e-atualização-da-prévia).
 Consultas curtas como “travou?” recebem o estado salvo diretamente, sem chamar
 o modelo; “continuar” e equivalentes abrem a execução em etapas em vez de um
 turno de edição; pedidos combinados seguem para o agente. Esse recorte é

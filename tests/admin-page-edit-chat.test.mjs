@@ -154,6 +154,11 @@ for (const mode of ['model', 'receipt', 'ambiguous'])
       return;
     }
     assert.match(stream, /tool-output-available/);
+    assert.match(stream, /data-preview-update/);
+    assert.ok(
+      stream.indexOf('data-preview-update') >
+        stream.indexOf('tool-output-available'),
+    );
     assert.match(
       stream,
       withFinal
