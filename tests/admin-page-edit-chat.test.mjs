@@ -159,12 +159,8 @@ for (const mode of ['model', 'receipt', 'ambiguous'])
       stream.indexOf('data-preview-update') >
         stream.indexOf('tool-output-available'),
     );
-    assert.match(
-      stream,
-      withFinal
-        ? /Troquei o título no rascunho/
-        : /Alterações salvas no rascunho de/,
-    );
+    assert.match(stream, /Alterações salvas no rascunho de/);
+    assert.match(stream, /texto atualizado/);
     assert.match(stream, /"saved":"draft"/);
     assert.equal(f.writes.length, 1);
     assert.equal(calls, withFinal ? 2 : 1);

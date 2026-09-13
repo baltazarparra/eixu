@@ -135,6 +135,7 @@ export function surfaceOf(
   const paper = brand.paper || '#ffffff';
   // .site-nav-contrast redefine o papel dentro da ilha de navegação.
   if (navigation === 'contrast') return ink;
+  if (background === 'transparent') return paper;
   if (background && /^#[0-9a-f]{6}$/i.test(background)) return background;
   switch (tone) {
     case 'ink':

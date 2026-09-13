@@ -11,6 +11,7 @@ import { annotateAttachments } from '@/lib/ai/attachments';
 import { chatRequestSchema, contextMessages } from '@/lib/ai/context';
 import { usageRecord, usageMetadata, sumGatewayCosts } from '@/lib/ai/usage';
 import { completeChatStream, CHAT_INTERRUPTED } from '@/lib/ai/chat-stream';
+import { createEditReceipt } from '@/lib/ai/edit-receipt';
 import {
   isProgressQuestion,
   isResumeRequest,
@@ -179,7 +180,9 @@ export async function POST(request: Request) {
 
   // A revisão renderiza o rascunho pela própria origem da requisição.
   const origin = new URL(request.url).origin;
-  const editPolicy = phase ? undefined : editPolicyFor(lastUserText, pages);
+  const editPolicy = phase
+    ? undefined
+    : editPolicyFor(lastUserText, pages, body.page ?? '');
   context.editing = Boolean(editPolicy);
   context.editScope = editPolicy ? editScopeText(editPolicy) : undefined;
   if (editPolicy) context.editPage = editingPageContext(focusedPage);
@@ -206,6 +209,7 @@ export async function POST(request: Request) {
   const model = productModel();
   const started = Date.now();
   let completedSteps = 0;
+  const editReceipt = editPolicy ? createEditReceipt() : undefined;
   const editOutcomes = new Map<string, { ok: boolean; changed: boolean }>();
   const agent = siteAgent({
     tenantId: tenant.id,
@@ -250,6 +254,14 @@ export async function POST(request: Request) {
           new TransformStream({
             transform(part, controller) {
               if (part.type === 'finish-step') completedSteps += 1;
+              if (part.type === 'tool-result' || part.type === 'tool-error')
+                editReceipt?.observe(
+                  part.toolName,
+                  part.input,
+                  part.type === 'tool-result'
+                    ? part.output
+                    : { error: 'A tentativa foi recusada pelo servidor.' },
+                );
               if (
                 (part.type === 'tool-result' || part.type === 'tool-error') &&
                 part.toolName === 'edit_page'
@@ -304,6 +316,7 @@ export async function POST(request: Request) {
         messageMetadata: usageMetadata(model, phase ?? 'livre', started),
       }),
       {
+        receipt: editReceipt ? () => editReceipt.text() : undefined,
         summary: async () => {
           if (editOutcomes.size) {
             const saved = [...editOutcomes]

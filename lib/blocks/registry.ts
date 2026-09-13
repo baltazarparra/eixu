@@ -70,22 +70,27 @@ const presentation = z
   .object({
     tone: z.enum(['paper', 'soft', 'ink', 'accent', 'secondary']).optional(),
     background: z
-      .string()
-      .regex(/^#[0-9a-fA-F]{6}$/)
+      .union([z.string().regex(/^#[0-9a-fA-F]{6}$/), z.literal('transparent')])
       .optional()
       .describe(
-        'Cor de fundo exclusiva desta seção. Prevalece sobre tone sem mudar a marca; texto com contraste automático.',
+        'Cor hex exclusiva desta seção, ou transparent para remover seu fundo. Prevalece sobre tone sem mudar a marca; texto com contraste automático.',
       ),
     foreground: z
       .string()
       .regex(/^#[0-9a-fA-F]{6}$/)
       .optional()
       .describe(
-        'Cor do texto desta seção; exige background explícito e contraste mínimo de 4,5:1. Omita para contraste automático.',
+        'Cor do texto desta seção; exige background hex explícito e contraste mínimo de 4,5:1. Omita para contraste automático, inclusive com fundo transparente.',
       ),
     motion: z.enum(['none', 'reveal', 'stagger', 'image']).optional(),
     width: z.enum(['narrow', 'normal', 'wide', 'full']).optional(),
     spacing: z.enum(['tight', 'normal', 'airy']).optional(),
+    spacingTop: z
+      .literal('none')
+      .optional()
+      .describe(
+        'Remove somente o espaço acima da seção, sem reordenar conteúdo nem mudar o respiro inferior.',
+      ),
     align: z.enum(['left', 'center', 'offset']).optional(),
     edge: z.enum(['none', 'line', 'panel', 'bleed']).optional(),
   })
@@ -93,6 +98,7 @@ const presentation = z
     if (
       value.foreground &&
       (!value.background ||
+        value.background === 'transparent' ||
         contrastRatio(value.foreground, value.background) < 4.5)
     )
       ctx.addIssue({
@@ -101,6 +107,35 @@ const presentation = z
         message:
           'Informe background e foreground com contraste mínimo de 4,5:1; ou omita foreground para usar contraste automático.',
       });
+  })
+  .optional();
+
+const imagePresentation = z
+  .object({
+    frame: z
+      .enum(['none', 'default'])
+      .optional()
+      .describe(
+        'none remove fundo, borda, sombra e padding da imagem e de seu box, inclusive a moldura herdada da direção do site.',
+      ),
+    fit: z
+      .enum(['natural', 'cover', 'contain'])
+      .optional()
+      .describe(
+        'natural mostra a imagem inteira na proporção original, sem altura mínima ou máxima que a corte.',
+      ),
+    width: z
+      .literal('container')
+      .optional()
+      .describe(
+        'A imagem ocupa 100% da largura do box atual. Não muda a grade nem o layout da seção.',
+      ),
+    spacingTop: z
+      .literal('none')
+      .optional()
+      .describe(
+        'Remove margem e padding superiores da imagem e de seu box; preserva título, texto e demais itens.',
+      ),
   })
   .optional();
 
@@ -352,7 +387,9 @@ export const blockSchemas = {
       .array(z.string().max(48))
       .max(3)
       .optional()
-      .describe('Até 3 selos curtos de confiança. bulletsPlacement decide onde.'),
+      .describe(
+        'Até 3 selos curtos de confiança. bulletsPlacement decide onde.',
+      ),
     bulletsPlacement: z
       .enum(['cta', 'headline'])
       .default('cta')
@@ -557,6 +594,7 @@ export const blockSchemas = {
             image: z.url().startsWith('http').optional(),
             imageAlt: z.string().min(5).max(140).optional(),
             caption: z.string().max(120).optional(),
+            imagePresentation,
             cta: link.optional(),
           }),
         )

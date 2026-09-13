@@ -299,6 +299,48 @@
 .site-signature-media figcaption {
   margin-top: 0.65rem;
 }
+/* A escolha por imagem prevalece sobre a moldura global, sem atingir as outras
+   fotos. A proporção natural não altera o layout nem troca os itens da seção. */
+.site-theme .site-signature [data-image-frame='none'] {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+.site-theme .site-signature .site-signature-media[data-image-frame='none'] {
+  margin: 0;
+}
+.site-theme
+  .site-signature
+  .site-signature-media
+  img[data-image-fit='natural'] {
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  aspect-ratio: auto;
+  object-fit: contain;
+}
+.site-theme .site-signature .site-signature-media img[data-image-fit='cover'] {
+  object-fit: cover;
+}
+.site-theme
+  .site-signature
+  .site-signature-media
+  img[data-image-fit='contain'] {
+  object-fit: contain;
+}
+.site-theme
+  .site-signature
+  .site-signature-media
+  img[data-image-width='container'] {
+  width: 100%;
+  max-width: 100%;
+}
+.site-theme .site-signature [data-image-spacing-top='none'] {
+  margin-top: 0;
+  padding-top: 0;
+}
 
 /* Percurso: etapas encadeadas, com mídia alternada e ordem explícita. */
 .site-signature-path {

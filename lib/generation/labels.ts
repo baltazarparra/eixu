@@ -69,6 +69,14 @@ export function describeTool(
         : Array.isArray(out.findings) && out.findings.length
           ? 'O projeto tem ajustes pendentes'
           : 'Verificação do projeto concluída';
+    case 'confirm_evidence':
+      return pending
+        ? 'Registrando os fatos informados'
+        : out.ok !== true
+          ? 'Os fatos não foram registrados'
+          : Array.isArray(out.added) && out.added.length
+            ? `${out.added.length} fato(s) registrado(s)`
+            : 'Os fatos já estavam registrados';
     case 'publish_site':
       return pending
         ? 'Publicando o projeto'

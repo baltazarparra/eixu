@@ -12,6 +12,8 @@ export function sectionBackgrounds(
   presentation: { background?: string; tone?: string } | undefined,
   brand: Brand,
 ): string[] {
+  if (presentation?.background === 'transparent')
+    return [themeVars(brand)['--paper']];
   if (presentation?.background || presentation?.tone)
     return [surfaceOf(brand, presentation.tone, presentation.background)];
   return [
@@ -25,6 +27,10 @@ export function sectionColorVars(
   brand: Brand,
 ): Record<string, string> | undefined {
   if (!presentation?.background) return undefined;
+  if (presentation.background === 'transparent') {
+    const vars = themeVars(brand);
+    return { ...vars, backgroundColor: 'transparent', color: vars['--ink'] };
+  }
   const paper = presentation.background;
   const best = bestInk(paper);
   const automatic = best.passesAA
@@ -51,7 +57,7 @@ export function sectionColorVars(
       brand.highlight || brand.accent || '#1f6feb',
       paper,
     ),
-    backgroundColor: paper,
+    backgroundColor: presentation.background,
     color: ink,
   };
 }

@@ -6,6 +6,10 @@ import {
   editPages,
   pageEditFixture,
 } from '../tests/helpers/page-edit-fixture.mjs';
+import {
+  recognitionPages,
+  recognitionRequest,
+} from '../tests/helpers/recognition-fixture.mjs';
 const j = createJiti(import.meta.url, {
   alias: { '@': process.cwd() },
   fsCache: false,
@@ -15,11 +19,33 @@ const { productModel } = await j.import('../lib/ai/models.ts');
 const { usageRecord, sumGatewayCosts } = await j.import('../lib/ai/usage.ts');
 if (!process.argv.includes('--live')) {
   console.log(
-    'Use npm run eval:edits -- --live [--case=text|nested|color|insert|move|move-within|impossible-move|ambiguous]. Modelo configurado, fixture sintética, executores reais; nenhuma gravação remota.',
+    'Use npm run eval:edits -- --live [--case=text|nested|color|insert|move|move-within|impossible-move|ambiguous|recognition-image]. Modelo configurado, fixture sintética, executores reais; nenhuma gravação remota.',
   );
   process.exit(0);
 }
 const cases = [
+  {
+    id: 'recognition-image',
+    text: recognitionRequest,
+    initialPages: recognitionPages(),
+    check: (pages) => {
+      const expected = recognitionPages();
+      const block = pages[0].blocks.find((block) => block.id === 'recognition');
+      assert.equal(block.props.presentation.background, 'transparent');
+      assert.equal(block.props.presentation.edge, 'none');
+      assert.equal(block.props.presentation.spacingTop, 'none');
+      assert.deepEqual(block.props.items[0].imagePresentation, {
+        frame: 'none',
+        fit: 'natural',
+        width: 'container',
+        spacingTop: 'none',
+      });
+      expected[0].blocks[2].props.presentation = block.props.presentation;
+      expected[0].blocks[2].props.items[0].imagePresentation =
+        block.props.items[0].imagePresentation;
+      assert.deepEqual(pages, expected);
+    },
+  },
   {
     id: 'text',
     text: 'Troque o texto "Escolha com calma." por "Compare os acabamentos.".',
@@ -122,7 +148,10 @@ const report = {
   runs: [],
 };
 for (const scenario of cases.filter((c) => !selected || c.id === selected)) {
-  const f = await pageEditFixture(scenario.text, { hero: scenario.hero });
+  const f = await pageEditFixture(scenario.text, {
+    hero: scenario.hero,
+    initialPages: scenario.initialPages,
+  });
   const trace = [];
   const started = Date.now();
   const agent = siteAgent({
