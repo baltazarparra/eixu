@@ -230,7 +230,7 @@ async function withWorkspace({ backend, chat, readFeed }, body) {
                 response.setHeader('Content-Type', 'text/html');
                 counters.preview += 1;
                 response.end(
-                  `<html lang="pt-BR"><body>Prévia ${backend.site.previewRevision}</body></html>`,
+                  `<html lang="pt-BR"><body class="site-theme">Prévia ${backend.site.previewRevision}</body></html>`,
                 );
                 return;
               }

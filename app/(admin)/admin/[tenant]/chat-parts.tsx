@@ -144,7 +144,13 @@ export function Message({ message }: { message: UIMessage }) {
 }
 
 /** Mantém o andamento visível também durante raciocínio e ferramentas longas. */
-export function ChatActivity({ messages }: { messages: UIMessage[] }) {
+export function ChatActivity({
+  messages,
+  compact = false,
+}: {
+  messages: UIMessage[];
+  compact?: boolean;
+}) {
   const [started] = useState(() => Date.now());
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
@@ -174,23 +180,33 @@ export function ChatActivity({ messages }: { messages: UIMessage[] }) {
           undefined,
           pending.state,
         )
-      : 'O agente está trabalhando';
+      : last?.role === 'assistant' && last.parts.some(isToolUIPart)
+        ? 'Preparando a resposta'
+        : last?.role === 'assistant' &&
+            last.parts.some((part) => part.type === 'text' && part.text.trim())
+          ? 'Respondendo ao seu pedido'
+          : 'Entendendo seu pedido';
   const duration = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`;
   return (
-    <output className="admin-activity" data-chat-activity>
+    <div
+      className="admin-activity"
+      data-chat-activity
+      data-compact={compact || undefined}
+    >
       <span className="admin-activity-line">
         <Loader2 size={13} strokeWidth={2.5} aria-hidden="true" />
-        <span>{activity}</span>
+        <output>{activity}</output>
         <span className="admin-activity-time" aria-hidden="true">
           {duration}
         </span>
       </span>
-      {elapsed >= 60 ? (
+      {elapsed >= 60 && !compact ? (
         <span className="admin-activity-note">
-          Esta etapa pode levar alguns minutos. O trabalho continua no servidor.
+          Aguardando a conclusão desta etapa. As alterações salvas aparecem
+          automaticamente na prévia.
         </span>
       ) : null}
-    </output>
+    </div>
   );
 }
 

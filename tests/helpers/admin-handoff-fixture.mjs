@@ -386,7 +386,7 @@ export async function handoffFixture({ port = 0, imageUpload } = {}) {
                 return;
               }
               res.end(
-                '<html lang="pt-BR"><body style="font:18px system-ui;background:#f0ece4;color:#2b251f;padding:30px"><h1>Marcenaria Horizonte</h1><p>Prévia sintética para verificar a moldura do editor.</p></body></html>',
+                '<html lang="pt-BR"><body class="site-theme" style="font:18px system-ui;background:#f0ece4;color:#2b251f;padding:30px"><h1>Marcenaria Horizonte</h1><p>Prévia sintética para verificar a moldura do editor.</p></body></html>',
               );
               return;
             }

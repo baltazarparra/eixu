@@ -167,6 +167,15 @@ mesmo texto aparecer em mais de um lugar, indique qual deles ou peça todas as
 ocorrências. Uma edição em outra aba pode exigir releitura antes de salvar. As
 alterações aparecem no rascunho; a publicação continua sendo uma ação separada.
 
+Ao pedir uma alteração, como **“o footer quero em darkmode”** ou **“quero o
+header em darkmode”**, acompanhe a atividade e o tempo junto da caixa de
+mensagem ou acima da prévia. O andamento permanece visível ao recolher a
+conversa e na aba Prévia do celular. Assim que a alteração é salva, a prévia
+atualiza automaticamente, sem esperar a resposta final do agente. **Atualizando
+prévia** indica o carregamento; **Prévia atualizada** confirma que ela abriu.
+Se o carregamento falhar, use **Tentar novamente**. A posição de rolagem da
+mesma página é preservada, inclusive quando você estiver conferindo o rodapé.
+
 No computador, conversa e prévia ficam lado a lado; o botão primário ao lado de **Voltar** recolhe a conversa até uma faixa de 56 px e entrega o restante à prévia, útil para conferir a versão desktop em telas menores. O controle no centro da borda direita permanece visível nessa faixa e funciona como toggle para recolher e expandir o painel. O botão do cabeçalho faz a mesma alternância, e um ponto de atividade nele avisa quando o agente ainda está trabalhando. No celular, alterne **Conversa** e **Prévia**. A barra do editor reúne identidade, áreas do cliente, prévia e publicação. O seletor mostra o caminho da página em edição e marca **rascunho** quando ela tem mudanças; ao lado ficam as larguras Desktop e Celular e o ícone que abre a página em foco em outra aba. Os links internos mantêm o modo de rascunho. A prévia exige sessão, não envia formulários e não registra eventos de tráfego.
 
 Os textos das 60 mensagens mais recentes são recuperados ao abrir a tela. Ferramentas, anexos e contagens de custo antigos não são restaurados. Registre decisões duráveis no briefing; não dependa de uma conversa extensa como única fonte do negócio.

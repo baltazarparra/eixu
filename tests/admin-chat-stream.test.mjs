@@ -15,6 +15,66 @@ const jiti = createJiti(import.meta.url, {
 const { completeChatStream } = await jiti.import('../lib/ai/chat-stream.ts');
 const { isProgressQuestion } = await jiti.import('../lib/ai/chat-progress.ts');
 
+await test('prévia recebe sinal de escrita antes do fim, sem reagir a leituras, recusas ou resultados preliminares', async () => {
+  const parts = [{ type: 'start' }];
+  const cases = [
+    ['read', 'get_page', { ok: true }],
+    ['failed', 'edit_page', { ok: false, changed: false }],
+    ['same', 'edit_page', { ok: true, changed: false }],
+    ['error', 'update_block', { error: 'Conflito' }],
+    ['footer', 'edit_page', { ok: true, changed: true }],
+    ['header', 'update_block', { ok: true, changed: true }],
+    ['review', 'review_pages', { complete: true }],
+  ];
+  for (const [toolCallId, toolName, output] of cases) {
+    parts.push({
+      type: 'tool-input-available',
+      toolCallId,
+      toolName,
+      input: {},
+    });
+    parts.push({
+      type: 'tool-output-available',
+      toolCallId,
+      output,
+      preliminary: true,
+    });
+    parts.push({ type: 'tool-output-available', toolCallId, output });
+  }
+  // Entrega duplicada não pode recarregar o iframe duas vezes.
+  parts.push({
+    type: 'tool-output-available',
+    toolCallId: 'header',
+    output: { ok: true },
+  });
+  parts.push({ type: 'finish', finishReason: 'tool-calls' });
+  const output = [];
+  for await (const chunk of completeChatStream(ReadableStream.from(parts), {
+    summary: async () => 'Recibo final.',
+    persist: async () => {},
+  }))
+    output.push(chunk);
+  assert.deepEqual(
+    output
+      .filter((p) => p.type === 'data-preview-update')
+      .map((p) => p.data.toolCallId),
+    ['footer', 'header'],
+  );
+  assert.ok(
+    output.findIndex((p) => p.type === 'data-preview-update') <
+      output.findIndex((p) => p.type === 'text-delta'),
+  );
+  const messages = [];
+  for await (const message of readUIMessageStream({
+    stream: ReadableStream.from(output),
+  }))
+    messages.push(message);
+  assert.ok(
+    messages.at(-1).parts.every((p) => p.type !== 'data-preview-update'),
+    'Sinal transitório não contamina o histórico.',
+  );
+});
+
 await test('pergunta de andamento lê estado e persiste resposta sem executar o agente', async () => {
   const f = await chatFixture();
   const chunks = await readChunks(await f.POST(chatRequest('travou?')));

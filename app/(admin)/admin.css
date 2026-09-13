@@ -1444,7 +1444,7 @@ textarea.admin-input {
   color: var(--color-accent);
   animation: eixuPulse 1.6s ease-in-out infinite;
 }
-.admin-activity-line > span:first-of-type {
+.admin-activity-line > output {
   flex: 1;
   min-width: 0;
 }
@@ -1459,6 +1459,49 @@ textarea.admin-input {
   color: var(--color-muted);
   font-size: 11.5px;
   line-height: 1.5;
+}
+.admin-conversation > .admin-activity {
+  flex: none;
+  margin: 8px 22px 0;
+}
+.admin-content > .admin-activity {
+  flex: none;
+  margin: 8px 24px 0;
+}
+.admin-preview-surface {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+.admin-preview-surface[data-device='mobile'] {
+  max-width: 390px;
+}
+.admin-preview-status {
+  display: flex;
+  align-items: center;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 8px;
+  color: var(--color-support);
+  font-size: 11.5px;
+}
+.admin-preview-status[data-preview-state='loaded'] > svg {
+  color: var(--color-ok);
+}
+.admin-preview-status[data-preview-state='loading'] > svg {
+  color: var(--color-accent);
+  animation: eixuPulse 1.6s ease-in-out infinite;
+}
+.admin-preview-status button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 8px;
+  text-decoration: underline;
 }
 .admin-suggestions {
   display: flex;

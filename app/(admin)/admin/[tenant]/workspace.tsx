@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
-import { DefaultChatTransport, getToolName, isToolUIPart } from 'ai';
+import { DefaultChatTransport } from 'ai';
 import { ChatActivity, Message, chatErrorMessage } from './chat-parts';
+import { PreviewFrame } from './preview-frame';
 import { GenerationPanel } from './generation-panel';
 import { isRunning, useGeneration } from './use-generation';
 
@@ -112,13 +113,24 @@ export function Workspace({
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const toolCountRef = useRef(0);
+  const previewUpdatePending = useRef(false);
   const refreshSeq = useRef(0);
   const previewRevision = useRef(initial.previewRevision);
 
   const { messages, setMessages, sendMessage, status, error, stop } =
     useChat<ChatMessage>({
       messages: history,
+      onData: (part) => {
+        if (part.type !== 'data-preview-update') return;
+        // A escrita já terminou: a prévia pode buscar o rascunho enquanto o
+        // painel consulta validação e o agente prepara a resposta final.
+        if (editSession.current.active) setPreviewChanged(true);
+        else {
+          previewUpdatePending.current = true;
+          setNonce((value) => value + 1);
+        }
+        void refresh().catch((failure: Error) => fail(failure.message));
+      },
       onFinish: () => {
         void refresh().catch((failure: Error) => fail(failure.message));
       },
@@ -142,20 +154,31 @@ export function Workspace({
     if (previewRevision.current !== next.previewRevision) {
       previewRevision.current = next.previewRevision;
       if (editSession.current.active) setPreviewChanged(true);
-      else setNonce((value) => value + 1);
+      else if (!previewUpdatePending.current) setNonce((value) => value + 1);
     }
+    previewUpdatePending.current = false;
   }, []);
 
   const refresh = useCallback(async () => {
     const ticket = ++refreshSeq.current;
-    const next = await adminFetch<SiteState>(`/api/admin/${tenantSlug}/state`, {
-      signal: AbortSignal.timeout(20_000),
-    });
-    // A ferramenta concluída e o laço da geração atualizam em paralelo: uma
-    // resposta atrasada não pode sobrescrever a leitura mais nova.
-    if (ticket !== refreshSeq.current) return next;
-    applySite(next);
-    return next;
+    try {
+      const next = await adminFetch<SiteState>(
+        `/api/admin/${tenantSlug}/state`,
+        {
+          signal: AbortSignal.timeout(20_000),
+        },
+      );
+      // A ferramenta concluída e o laço da geração atualizam em paralelo: uma
+      // resposta atrasada não pode sobrescrever a leitura mais nova.
+      if (ticket !== refreshSeq.current) return next;
+      applySite(next);
+      return next;
+    } catch (error) {
+      // Sem reconciliação, a próxima leitura deve poder recarregar a prévia.
+      // Uma falha antiga não interfere numa edição mais recente.
+      if (ticket === refreshSeq.current) previewUpdatePending.current = false;
+      throw error;
+    }
   }, [tenantSlug, applySite]);
 
   const fail = useCallback(
@@ -245,36 +268,6 @@ export function Workspace({
       fail(failure instanceof Error ? failure.message : 'Falha ao pausar.');
     }
   }
-
-  // Cada ferramenta concluída pelo agente muda o site no banco: atualiza o preview na hora.
-  const completedTools = useMemo(
-    () =>
-      messages.reduce(
-        (count, message) =>
-          count +
-          message.parts.filter(
-            (part) =>
-              isToolUIPart(part) &&
-              ![
-                'get_page',
-                'list_state',
-                'list_images',
-                'describe_block',
-                'lint_page',
-                'lint_site',
-              ].includes(getToolName(part)) &&
-              part.state === 'output-available',
-          ).length,
-        0,
-      ),
-    [messages],
-  );
-  useEffect(() => {
-    if (completedTools !== toolCountRef.current) {
-      toolCountRef.current = completedTools;
-      void refresh().catch((error: Error) => fail(error.message));
-    }
-  }, [completedTools, refresh, fail]);
 
   // Reabrir a conversa também rola ao fim: o painel recolhido perde a rolagem.
   useEffect(() => {
@@ -859,7 +852,6 @@ export function Workspace({
               {messages.map((message) => (
                 <Message key={message.id} message={message} />
               ))}
-              {busy ? <ChatActivity messages={messages} /> : null}
               {error ? (
                 <p className="admin-thread-error">
                   {chatErrorMessage(error.message)}
@@ -882,6 +874,7 @@ export function Workspace({
             ) : null}
           </div>
 
+          {busy ? <ChatActivity messages={messages} /> : null}
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -1031,6 +1024,7 @@ export function Workspace({
 
         <section className="admin-content" aria-label="Prévia e revisão">
           {previewControls}
+          {busy ? <ChatActivity messages={messages} compact /> : null}
 
           {showReview ? (
             <details
@@ -1121,13 +1115,11 @@ export function Workspace({
           ) : null}
           <div className="admin-preview-canvas">
             {site.pages.length > 0 ? (
-              <iframe
-                ref={frameRef}
-                key={`${current}-${nonce}-${editing === 'off' ? 'preview' : 'edit'}`}
+              <PreviewFrame
+                frameRef={frameRef}
+                key={`${current}-${editing === 'off' ? 'preview' : 'edit'}`}
                 src={`${previewUrl}${editing !== 'off' ? '&edit=1' : ''}`}
-                title="Preview do site"
-                className="admin-preview-frame"
-                data-device={device}
+                device={device}
               />
             ) : locked || generating ? (
               <GenerationDiamond

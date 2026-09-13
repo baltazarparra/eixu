@@ -111,7 +111,7 @@ await test(
                 if (pathname.startsWith('/s/')) {
                   response.setHeader('Content-Type', 'text/html');
                   response.end(
-                    '<html lang="pt-BR"><body>Prévia sintética</body></html>',
+                    '<html lang="pt-BR"><body class="site-theme">Prévia sintética</body></html>',
                   );
                   return;
                 }
@@ -175,7 +175,7 @@ await test(
       await page.waitForSelector('[data-chat-activity]');
       assert.equal(
         await page.$eval('[data-chat-activity]', (node) =>
-          node.textContent.includes('O agente está trabalhando'),
+          node.textContent.includes('Entendendo seu pedido'),
         ),
         true,
       );
