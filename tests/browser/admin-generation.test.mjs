@@ -799,6 +799,14 @@ await test(
         ]) {
           await page.setViewport({ width, height });
           if (width < 1024) await click('Conversa');
+          // Media queries, a viewport visual e os limites em cqh precisam
+          // estar aplicados antes de abrir e medir o painel.
+          await page.evaluate(
+            () =>
+              new Promise((resolve) =>
+                requestAnimationFrame(() => requestAnimationFrame(resolve)),
+              ),
+          );
           await page.click('.admin-usage summary');
           await page.waitForFunction(
             () => {
@@ -965,7 +973,11 @@ await test(
           assert.fail('Botão de recolher a conversa ausente ou invisível.');
         };
         const layout = () =>
-          page.evaluate(() => {
+          page.evaluate(async () => {
+            // A escala do iframe acompanha o ResizeObserver após o layout.
+            await new Promise((resolve) =>
+              requestAnimationFrame(() => requestAnimationFrame(resolve)),
+            );
             const width = (selector) =>
               Math.round(
                 document.querySelector(selector)?.getBoundingClientRect()

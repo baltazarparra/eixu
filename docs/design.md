@@ -56,6 +56,29 @@ Referências lidas em 10/09/2026: [Frontend Design, Anthropic](https://github.co
 
 ## Painel administrativo
 
+### Operação pelo celular
+
+Abaixo de 1024 px, o cabeçalho tem 57 px: retorno, nome do cliente,
+publicação e menu. O menu nativo reúne Site, Imagens, Tráfego, Dados e saída,
+com foco contido, Escape e fechamento pelo fundo. Conversa e Prévia ficam no
+rodapé, respeitando a área segura. `AdminShell` acompanha a viewport visual
+quando o teclado abre, sem desabilitar o zoom. Campos têm pelo menos 16 px
+e os controles principais oferecem alvos de 44 px.
+
+A prévia abre em Celular, com até 390 px de largura real; em telas menores,
+usa toda a largura disponível. Desktop renderiza em 1280 px e reduz a escala
+para caber, preservando o layout de desktop. Ampliar recolhe o cabeçalho sem
+recarregar o iframe; Restaurar, Escape ou Conversa devolvem o contexto.
+Editar fica junto da prévia no celular; a edição mantém Salvar/Cancelar no
+cabeçalho e suspende a ampliação para conservar essas ações acessíveis.
+
+O compositor cresce até um limite com o texto. No teclado de toque, Enter
+quebra a linha; Enviar manda a mensagem. Ctrl/Cmd+Enter também envia, e o
+atalho Enter do desktop permanece. A atualização do histórico acompanha o
+fim somente enquanto a pessoa está nele; Mensagens recentes permite voltar.
+As ideias de ajustes e o consumo ficam dentro da conversa rolável. O acervo
+precede o guia de imagem no celular, e Dados mantém a ação de salvar visível.
+
 O handoff `design_handoff_painel_admin`, recebido em 11/09/2026, orienta
 entrada, clientes, editor, imagens, tráfego e dados. A prancha de estados é
 referência para os componentes, sem rota de demonstração no produto.
@@ -89,8 +112,8 @@ grupos vivos por portais em dois slots da barra. A conversa começa no
 andamento e a contagem de turnos desceu para a dica do compositor. Abaixo de
 1520 px o rótulo PRÉVIA some; abaixo de 1280 px a barra fica em 52 px sem a
 linha do domínio e o grupo PRÉVIA volta para uma faixa no topo da coluna da
-prévia; abaixo de 1024 px as abas ocupam uma linha própria e, no celular, a
-decisão também.
+prévia. A operação abaixo de 1024 px foi substituída pela navegação compacta
+descrita acima.
 
 A prévia vazia durante a geração usa um diamante negro em WebGL
 (`components/admin/generation-diamond.tsx`): lapidação brilhante procedural com

@@ -1,5 +1,61 @@
 # Validação e publicação
 
+## Gerador no celular, 13/09/2026
+
+O painel usa cabeçalho compacto, menu do cliente e alternância Conversa/Prévia
+no rodapé. O chat acompanha o teclado, conserva texto e posição ao trocar de
+vista e permite ler mensagens antigas durante uma resposta. A prévia começa
+em Celular, mantém a largura de desktop quando selecionada e pode ser ampliada.
+O [manual](admin.md#usar-pelo-celular) e o [contrato visual](design.md#operação-pelo-celular)
+descrevem os controles e atalhos.
+
+Medições em Chromium com toque e CSS do build Next.js:
+
+| Viewport  | Cabeçalho | Altura útil da prévia | Largura interna mobile |
+| --------- | --------- | --------------------- | ---------------------- |
+| 320 × 568 | 57 px     | 366 px                | 320 px                 |
+| 390 × 844 | 57 px     | 642 px                | 390 px                 |
+| 430 × 932 | 57 px     | 730 px                | 390 px                 |
+| 844 × 390 | 57 px     | 196 px                | 390 px                 |
+
+Em 390 × 844, a versão anterior tinha cabeçalho de 135 px e prévia de
+358 × 550 px, mesmo com Desktop selecionado. Agora Desktop tem viewport de
+1280 px, reduzida por escala; Celular usa até 390 px. Ampliar, trocar a
+largura e alternar a conversa preservam o iframe. A troca de página conserva
+o escopo do cliente. A navegação, teclado e os controles não dependem de
+ausência de overflow como única evidência.
+
+Verificação local:
+
+- Tipos (`next typegen` e `tsc --noEmit`), lint global, formatação e
+  `git diff --check` passaram. `build:vercel` passou, incluindo os quatro
+  checks de CSS e artefatos serverless.
+- `test:sites`: 271 passaram, sem pulos. `test:admin`: 205 passaram;
+  cinco integrações com PostgreSQL local ficaram sem execução por falta
+  da configuração desse recurso. Os adaptadores de banco e modelo usados
+  no navegador são isolados; não houve geração paga ou escrita em clientes.
+- Os 16 casos de navegador do admin foram aprovados entre a rodada geral e
+  a reexecução das oito regressões de geração. As medições de consumo e
+  tamanho do iframe passaram a aguardar a aplicação de media queries e
+  ResizeObserver antes de medir. Os contratos de rolagem e consumo continuam
+  sendo verificados, sem aumento de tolerância geométrica.
+- Cobertura inclui geração e pausa/retomada, recarga, chat e atualização da
+  prévia, erros e nova tentativa, upload múltiplo com falha parcial, publicação
+  permitida/bloqueada, edição direta com respostas 200/409/422, menu modal,
+  ciclo de foco, Escape, toque no fundo, Dados, Tráfego, login e cadastro.
+  O teclado reduzido e o deslocamento da viewport visual foram simulados;
+  texto longo, Enviar, anexos e alternância permanecem alcançáveis.
+- WebKit 26.5 com perfil de iPhone: 16 combinações de tamanho/área sem
+  overflow, edição e salvamento na prévia, rascunho do chat preservado,
+  publicação sintética, foco do menu e ampliação/restauração passaram.
+  Agent-browser também percorreu conversa e prévia com perfil de iPhone 15.
+- Capturas inspecionadas e medições estão em `outputs/mobile-admin/`.
+  A evidência é de emulação em Chromium e WebKit, não de um aparelho físico
+  nem da execução paga do Gemini.
+
+As alterações se limitam ao painel e à moldura da prévia. Os gates de
+publicação, autorização, rascunhos e snapshots publicados foram preservados.
+
 ## Remoção de moldura na abertura da landing, 13/09/2026
 
 O pedido do `villa-piva` era retirar o container branco com borda dupla,

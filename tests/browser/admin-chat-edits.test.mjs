@@ -70,11 +70,18 @@ await test(
             ),
         );
       };
-      await page.$eval('iframe', (frame) =>
-        frame.contentWindow.scrollTo(0, 1500),
-      );
+      const previewScroll = await page.$eval('iframe', (frame) => {
+        const top =
+          frame.contentDocument.scrollingElement.scrollHeight -
+          frame.contentWindow.innerHeight;
+        frame.contentWindow.scrollTo(0, top);
+        return top;
+      });
+      assert.ok(previewScroll > 0);
       await page.waitForFunction(
-        () => document.querySelector('iframe').contentWindow.scrollY === 1500,
+        (top) => document.querySelector('iframe').contentWindow.scrollY === top,
+        {},
+        previewScroll,
       );
       const initialReads = fixture.reads().preview;
       const footer = fixture.nextTurn('footer');
@@ -111,7 +118,7 @@ await test(
       );
       assert.equal(
         await page.$eval('iframe', (frame) => frame.contentWindow.scrollY),
-        1500,
+        previewScroll,
         'Edição do footer preserva posição da prévia.',
       );
       assert.equal(

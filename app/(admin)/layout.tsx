@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import localFont from 'next/font/local';
 import { LogOut } from 'lucide-react';
@@ -24,6 +24,14 @@ export const metadata: Metadata = {
   title: 'EIXU Sites',
   // O painel nunca deve aparecer em busca.
   robots: { index: false, follow: false, nocache: true },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  interactiveWidget: 'resizes-content',
+  themeColor: '#0c0b0a',
 };
 
 export default async function AdminRootLayout({

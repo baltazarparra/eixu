@@ -261,6 +261,24 @@ comprova o fato sozinha.
 
 Os textos das 60 mensagens mais recentes são recuperados ao abrir a tela. Ferramentas, anexos e contagens de custo antigos não são restaurados. Registre decisões duráveis no briefing; não dependa de uma conversa extensa como única fonte do negócio.
 
+### Usar pelo celular
+
+No celular, **Conversa** e **Prévia** ficam sempre no rodapé do editor. Você
+pode conferir o site durante uma geração ou resposta e voltar sem perder a
+mensagem que está escrevendo nem a posição da prévia. O menu ao lado de
+**Publicar** abre Imagens, Tráfego, Dados e a saída do painel.
+
+A prévia começa em **Celular**. Os ícones de computador e telefone alternam
+a largura; Desktop mostra o layout de 1280 px reduzido para caber na tela.
+Use **Ampliar prévia** para ganhar espaço e **Restaurar prévia** para voltar.
+O lápis abre a edição direta, com Salvar e Cancelar no cabeçalho. O seletor
+de páginas e a abertura em outra aba continuam disponíveis.
+
+O campo de mensagem acompanha o teclado e cresce com o texto. Enter quebra
+a linha no teclado de toque; toque em **Enviar** para mandar. Você pode ler
+mensagens antigas durante uma resposta e voltar pelo botão **Mensagens
+recentes**. As ideias de ajustes e o consumo podem ser abertos na conversa.
+
 ### Editar na prévia
 
 Em um cliente publicado, selecione a página e clique em **Editar**, ao lado de
