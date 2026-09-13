@@ -225,6 +225,26 @@ await test(
       await page.$eval('.admin-review', (node) => node.textContent),
       /contato válido/,
     );
+    await tap(page, '.admin-content [aria-label="Ampliar prévia"]');
+    await tap(page, '.admin-review-action');
+    assert.equal(
+      await page.$eval('textarea', (field) => field.value),
+      'Resolva as pendências de publicação.',
+    );
+    assert.equal(
+      await page.$eval(
+        '.admin-bar',
+        (bar) => bar.getBoundingClientRect().height,
+      ),
+      57,
+    );
+    assert.equal(
+      await page.$eval(
+        'textarea',
+        (field) => field.getClientRects().length > 0,
+      ),
+      true,
+    );
     fixture.data.site.errors = [];
     await open();
     await tap(page, '[aria-label="Abrir menu do cliente"]');
@@ -253,6 +273,25 @@ await test(
     await tap(page, '[aria-label="Abrir menu do cliente"]');
     await page.touchscreen.tap(8, 8);
     assert.equal(await page.$eval('dialog', (d) => d.open), false);
+
+    // O App Router conserva o layout: fechar não pode depender de desmontagem.
+    await tap(page, '[aria-label="Abrir menu do cliente"]');
+    await page.evaluate(() => {
+      window.mobileMenuBeforeNavigation = document.querySelector('dialog');
+      document.addEventListener('click', (event) => event.preventDefault(), {
+        once: true,
+      });
+    });
+    await (await page.$('.admin-mobile-menu nav a')).tap();
+    await page.waitForFunction(() => !document.querySelector('dialog').open);
+    assert.equal(
+      await page.evaluate(
+        () =>
+          document.querySelector('dialog') ===
+          window.mobileMenuBeforeNavigation,
+      ),
+      true,
+    );
 
     for (const area of ['imagens', 'trafego', 'dados', '']) {
       await tap(page, '[aria-label="Abrir menu do cliente"]');

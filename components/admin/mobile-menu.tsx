@@ -29,10 +29,20 @@ export function MobileMenu({
     };
     const backdrop = (event: MouseEvent) => {
       if (!dialog || event.defaultPrevented) return;
-      const link = event.target instanceof Element ? event.target.closest('a[href]') : null;
+      const link =
+        event.target instanceof Element
+          ? event.target.closest('a[href]')
+          : null;
       // O layout do cliente persiste nas transições do App Router.
       // A captura de saída com edição não salva ainda pode impedir este clique.
-      if (link && dialog.contains(link) && !event.metaKey && !event.ctrlKey && !event.shiftKey && event.button === 0) {
+      if (
+        link &&
+        dialog.contains(link) &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.shiftKey &&
+        event.button === 0
+      ) {
         dialog.close();
         return;
       }

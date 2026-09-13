@@ -30,15 +30,15 @@ Verificação local:
 - Tipos (`next typegen` e `tsc --noEmit`), lint global, formatação e
   `git diff --check` passaram. `build:vercel` passou, incluindo os quatro
   checks de CSS e artefatos serverless.
-- `test:sites`: 271 passaram, sem pulos. `test:admin`: 205 passaram;
+- `test:sites`: 279 passaram, sem pulos. `test:admin`: 213 passaram;
   cinco integrações com PostgreSQL local ficaram sem execução por falta
   da configuração desse recurso. Os adaptadores de banco e modelo usados
   no navegador são isolados; não houve geração paga ou escrita em clientes.
-- Os 16 casos de navegador do admin foram aprovados entre a rodada geral e
-  a reexecução das oito regressões de geração. As medições de consumo e
-  tamanho do iframe passaram a aguardar a aplicação de media queries e
-  ResizeObserver antes de medir. Os contratos de rolagem e consumo continuam
-  sendo verificados, sem aumento de tolerância geométrica.
+- Os 16 casos de navegador do admin passaram juntos após integrar a entrega
+  de pendências de publicação. As medições aguardam a aplicação das media
+  queries e do ResizeObserver antes de conferir o iframe. O consumo passou
+  também em cinco reexecuções isoladas após uma falha intermitente anterior;
+  os contratos de rolagem e a tolerância geométrica foram preservados.
 - Cobertura inclui geração e pausa/retomada, recarga, chat e atualização da
   prévia, erros e nova tentativa, upload múltiplo com falha parcial, publicação
   permitida/bloqueada, edição direta com respostas 200/409/422, menu modal,
