@@ -113,14 +113,39 @@ export async function readCurrentSite(input: {
   await progress('import', 'Importando os ativos selecionados do site atual', {
     images: selections.length,
   });
-  const imported = analysis
-    ? await importCurrentSiteImages(input.tenantId, scanId, selections)
-    : { importedImages: [], failures: [] };
+  // Falha na biblioteca não descarta páginas e síntese já coletadas.
+  let imported: Awaited<ReturnType<typeof importCurrentSiteImages>> = {
+    importedImages: [],
+    failures: [],
+  };
+  if (selections.length) {
+    try {
+      imported = await importCurrentSiteImages(
+        input.tenantId,
+        scanId,
+        selections,
+      );
+    } catch {
+      imported.failures.push(
+        'A importação de imagens ficou indisponível; o conteúdo coletado foi preservado.',
+      );
+    }
+  }
 
-  await progress('complete', 'Leitura do site atual concluída', {
-    pages: crawl.pages.length,
-    images: imported.importedImages.length,
-  });
+  await progress(
+    'complete',
+    !analysis
+      ? 'Site atual coletado; síntese indisponível, seguindo com a história'
+      : !analysis.analysis.identity.matches
+        ? 'Site atual não corresponde ao cliente; seguindo com a história'
+        : imported.failures.length
+          ? 'Conteúdo lido; algumas imagens não puderam ser importadas'
+          : 'Leitura do site atual concluída',
+    {
+      pages: crawl.pages.length,
+      images: imported.importedImages.length,
+    },
+  );
 
   return currentSiteReceiptSchema.parse({
     version: CURRENT_SITE_VERSION,

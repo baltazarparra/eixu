@@ -1,3 +1,4 @@
+import { briefForAgent } from '@/lib/ai/source-context';
 import { generateText, Output, type FilePart, type TextPart } from 'ai';
 import { z } from 'zod';
 import {
@@ -168,7 +169,7 @@ export async function critiquePages(
           tenant.brand.design,
         ),
         aspectosDaReferencia: [...referenceAspects(tenant.brand)],
-        brief,
+        brief: briefForAgent(brief),
         pages: pages.map(({ slug, title, blocks, seo, meta }) => ({
           page: `/${slug}`,
           title,

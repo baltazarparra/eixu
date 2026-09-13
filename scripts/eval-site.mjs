@@ -23,6 +23,7 @@ const { productModel, TURN_TIMEOUT_MS } = await jiti.import(
 const { createSessionToken } = await jiti.import('../lib/auth.ts');
 const { db } = await jiti.import('../lib/db.ts');
 const { buildTools } = await jiti.import('../lib/ai/tools.ts');
+const { sourceContextText } = await jiti.import('../lib/ai/source-context.ts');
 const { systemPrompt } = await jiti.import('../lib/taste/prompt.ts');
 const { PHASE_MESSAGE, nextPhase } = await jiti.import(
   '../lib/taste/phases.ts',
@@ -135,9 +136,7 @@ async function runPhase(tenant, phase, images) {
     .join('\n');
   const context = {
     phase,
-    sources: Array.isArray(tenant.brief.sources)
-      ? JSON.stringify(tenant.brief.sources)
-      : '',
+    sources: sourceContextText(tenant.brief),
     review: JSON.stringify(tenant.brief.generation?.review ?? null),
   };
   if (phase === 'cenas') {

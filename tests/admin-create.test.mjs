@@ -206,7 +206,7 @@ await test('cadastro exibe história obrigatória e uma única referência fora 
     markup.indexOf('name="currentSiteUrl"') <
       markup.indexOf('name="reference"'),
   );
-  assert.match(markup, /navega pelas páginas públicas desse domínio/);
+  assert.match(markup, /site que já pertence ao cliente/);
   assert.equal(markup.includes('O que o site precisa fazer'), false);
   assert.equal(markup.includes('Segmento</span>'), false);
   assert.equal(markup.includes('Região atendida'), false);

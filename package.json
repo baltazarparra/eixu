@@ -20,6 +20,7 @@
     "db:migrate": "node --env-file=.env.local scripts/migrate.mjs",
     "db:seed-demo": "node --env-file=.env.local scripts/seed-demo.mjs",
     "db:requantize-logos": "node --env-file=.env.local scripts/requantize-logos.mjs",
+    "eval:site-sources": "node --env-file-if-exists=.env.local scripts/eval-site-sources.mjs",
     "eval:site": "node --env-file=.env.local scripts/eval-site.mjs",
     "eval:admin-cost": "node --env-file-if-exists=.env.local scripts/eval-admin-cost.mjs",
     "eval:edits": "node --env-file-if-exists=.env.local scripts/eval-page-edits.mjs",

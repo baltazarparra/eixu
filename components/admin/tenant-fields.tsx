@@ -41,9 +41,11 @@ function ReferenceField({ intake }: { intake: Partial<Intake> }) {
         placeholder="https://exemplo.com"
       />
       <small>
-        Use um único site. Quando o link puder ser lido, sua composição,
-        tipografia, imagens, ritmo e acabamento terão prioridade sobre a vibe e
-        os padrões do gerador, dentro dos recursos disponíveis.
+        Use um site cuja aparência sirva de inspiração. Ele não fornece fatos
+        nem contatos do cliente. Quando a captura puder ser analisada, sua
+        composição, tipografia, imagens, ritmo e acabamento terão prioridade
+        sobre a vibe e os padrões do gerador, dentro dos recursos disponíveis.
+        Sem referência, seguimos a vibe escolhida.
         {(intake.references?.length ?? 0) > 1
           ? ` Este cadastro antigo tem ${intake.references?.length} referências; ao salvar, confirme acima qual será a única.`
           : ''}
@@ -68,9 +70,10 @@ function CurrentSiteField({ intake }: { intake: Partial<Intake> }) {
         placeholder="https://site-atual.com.br"
       />
       <small>
-        O agente navega pelas páginas públicas desse domínio, reúne conteúdo,
-        links, contatos e dados estruturados e importa fotos úteis para a
-        biblioteca. A história informada acima prevalece quando houver conflito.
+        Informe o site que já pertence ao cliente. Vamos reunir conteúdo e fotos
+        úteis; esse link não define a aparência do novo site. A história acima
+        prevalece em conflitos. Sem site atual, a criação segue com o que você
+        contou.
       </small>
     </label>
   );

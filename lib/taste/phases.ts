@@ -82,6 +82,27 @@ export function compositionReadyToFinish(
   return !findings.some((finding) => finding.level === 'error');
 }
 
+/** Um lote recusado ainda existe no turno e precisa de reparo antes da resposta. */
+export function compositionRepairDue(
+  results: { toolName: string; output: unknown }[],
+): boolean {
+  const result = results.findLast((item) =>
+    ['build_site', 'repair_site'].includes(item.toolName),
+  );
+  if (!result?.output || typeof result.output !== 'object') return false;
+  const output = result.output as Record<string, unknown>;
+  return (
+    output.ok === false &&
+    Array.isArray(output.pages) &&
+    output.pages.some(
+      (page) =>
+        page &&
+        typeof page.preflight === 'string' &&
+        Array.isArray(page.blocks),
+    )
+  );
+}
+
 /**
  * Avaliação obrigatória no primeiro passo e conferência reservada no último.
  * Forçar a chamada depois de esgotar
@@ -149,13 +170,16 @@ export function reviewTurnFinished(
   );
 }
 
+/** A coleta é a mesma para sites completos e Landing Pages. */
+const SOURCE_READING_BRIEF = `1. Quando o intake trouxer Site atual, chame read_current_site antes de consolidar o briefing. A ferramenta navega no domínio, sintetiza fatos e importa imagens úteis; falha ou contradição vira lacuna, nunca conteúdo inventado. A história e as confirmações do operador prevalecem sobre conteúdo antigo.
+2. Leia cada referência visual informada com read_reference. O perfil de rede social do intake também é lido por ela; fonte inacessível ou perfil bloqueado vira lacuna declarada em brief.gaps, nunca conteúdo inventado. O Site atual não dá autoridade visual e não substitui essa leitura.
+3. Chame define_image_guide com estilo, luz, paleta da marca, ambientes, sujeitos e o que nunca pode aparecer. Derive a linguagem da referência visualmente lida, adaptada ao negócio; sem referência, use a vibe; se um link informado falhar, declare a lacuna. Imagens importadas do Site atual podem compor as cenas quando forem factualmente adequadas.`;
+
 /** Objetivo e condição de parada. Entra no prompt no lugar do roteiro geral. */
 export const PHASE_BRIEF: Record<Phase, string> = {
   briefing: `## Preparar: briefing, plano e direção
 Objetivo: transformar o intake do operador em briefing verificado e direção de arte própria.
-1. Quando o intake trouxer Site atual, chame read_current_site antes de consolidar o briefing. A ferramenta navega no domínio, sintetiza fatos e importa imagens úteis; falha ou contradição vira lacuna, nunca conteúdo inventado. A história e as confirmações do operador prevalecem sobre conteúdo antigo.
-2. Leia cada referência visual informada com read_reference. O perfil de rede social do intake também é lido por ela; fonte inacessível ou perfil bloqueado vira lacuna declarada em brief.gaps, nunca conteúdo inventado. O Site atual não dá autoridade visual e não substitui essa leitura.
-3. Chame define_image_guide com estilo, luz, paleta da marca, ambientes, sujeitos e o que nunca pode aparecer. Derive a linguagem da referência visualmente lida, adaptada ao negócio; sem leitura visual, use a vibe e declare a lacuna. Imagens importadas do Site atual podem compor as cenas quando forem factualmente adequadas.
+${SOURCE_READING_BRIEF}
 4. Com referência visual verificada, compare as doze estruturas e escolha a mais próxima da fonte; sem referência, compare as três estruturas da vibe. Grave a escolha em structure, justifique em structureRationale e faça heroComposition corresponder à abertura. Com referência, preencha referenceDirection com aplicações concretas em layout, typography, imagery, rhythm, surface e mobile; ela comanda a direção visual e a vibe fica como voz e fallback. Chame set_design com briefing, conceito, elemento-assinatura, paleta e eixos. Inclua brief.pagePlan: slug, etapa de inbound, intenção, conteúdo útil e evidências de cada página. Inclua também brief.imageScenes, preenchendo exatamente as vagas da composição com pedido concreto e página associada. A seção signature.composition será a protagonista autoral da home; as duas cenas dela precisam nascer do assunto deste cliente. Cada página responde a uma pergunta diferente, sem inventar oferta para preencher o mínimo.
 Pare depois de set_design validado. Não monte páginas nem gere imagens nesta fase.`,
   cenas: `## Criar: imagens
@@ -231,7 +255,8 @@ export function phaseBrief(
   if (shape !== 'landing') return PHASE_BRIEF[phase];
   if (phase === 'briefing')
     return `## Preparar: Landing Page
-Leia as referências e fontes do intake com read_reference. Fonte inacessível vira lacuna; não invente evidência. Defina o guia de imagens com define_image_guide e conclua com set_design. Não gere fotos nem componha páginas nesta fase.
+${SOURCE_READING_BRIEF}
+Conclua com set_design depois das leituras configuradas e do guia de imagens. Não gere fotos nem componha páginas nesta fase.
 ${LANDING_DESIGN}`;
   if (phase === 'composicao')
     return `${PHASE_BRIEF.composicao}

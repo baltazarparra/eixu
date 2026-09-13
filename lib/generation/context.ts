@@ -9,6 +9,7 @@ import { availablePhotos } from '@/lib/taste/metrics';
 import type { Phase } from '@/lib/taste/phases';
 import { systemPrompt, type PromptContext } from '@/lib/taste/prompt';
 import type { Page, Tenant, TenantImage } from '@/lib/types';
+import { sourceContextText } from '@/lib/ai/source-context';
 import { CURRENT_SITE_IMAGE_MODEL } from '@/lib/current-site/constants';
 
 /**
@@ -52,21 +53,7 @@ export function imagesSummary(images: TenantImage[]): string {
 }
 
 export function sourcesText(tenant: Tenant): string {
-  if (!Array.isArray(tenant.brief.sources)) return '';
-  return (
-    tenant.brief.sources as {
-      url?: string;
-      status?: string;
-      motivo?: string;
-      titulo?: string;
-      texto?: string;
-      visual?: unknown;
-    }[]
-  )
-    .map((source) =>
-      `- ${source.url} [${source.status}${source.motivo ? `: ${source.motivo}` : ''}] ${source.titulo ?? ''} ${source.texto ?? ''}${source.visual ? `\nLeitura visual: ${JSON.stringify(source.visual)}` : ''}`.trim(),
-    )
-    .join('\n');
+  return sourceContextText(tenant.brief);
 }
 
 /**

@@ -121,6 +121,14 @@ tem teto próprio de 55 s e mata o Chromium quando abertura, navegação, screen
 ou fechamento ignoram o cancelamento. Ao esgotar o prazo, o briefing segue com a
 referência marcada como lacuna.
 
+A captura visual independe do leitor de texto: sites que dependem de JavaScript
+podem fornecer uma referência utilizável mesmo sem HTML textual. O recibo salvo
+contém observações visuais e não alimenta a base factual com texto de outro
+negócio. A gravação exige que as referências do cadastro ainda sejam as mesmas;
+leituras duplicadas compartilham a promessa e recibos recentes evitam nova
+captura. O leitor textual usado em fontes adicionais tem um prazo total de
+20 segundos, inclusive DNS, redirects e corpo da resposta.
+
 O Site atual usa outra fronteira. `lib/current-site/crawl.ts` adota a origem final
 da home e só segue links HTML dessa origem, com profundidade dois, deduplicação
 de fragmentos e parâmetros de rastreamento, bloqueio de áreas administrativas e
