@@ -88,6 +88,60 @@ async function tap(page, selector) {
 }
 
 await test(
+  'prévia desktop preenche a coluna ao redimensionar e recolher a conversa',
+  enabled,
+  async (t) => {
+    const { page, errors, open } = await setup(t);
+    await page.setViewport({ width: 1920, height: 1000 });
+    await open();
+    await page.waitForSelector('[data-preview-state="loaded"]');
+    const src = await page.$eval('iframe', (frame) => frame.src);
+    for (const width of [1920, 1600, 1440, 1100, 1920]) {
+      await page.setViewport({ width, height: 1000 });
+      for (const collapsed of [false, true]) {
+        const current = await page.$eval(
+          '.admin-workspace',
+          (node) => node.dataset.conversation === 'collapsed',
+        );
+        if (current !== collapsed)
+          await page.click('.admin-conversation-edge-toggle');
+        await frames(page);
+        const measure = await page.evaluate(() => {
+          const frame = document.querySelector('iframe');
+          const stage = document.querySelector('.admin-preview-stage');
+          const canvas = document.querySelector('.admin-preview-canvas');
+          const bounds = frame.getBoundingClientRect();
+          const available = canvas.getBoundingClientRect();
+          return {
+            viewport: frame.contentWindow.innerWidth,
+            stageWidth: stage.clientWidth,
+            leftGap: bounds.left - available.left,
+            rightGap: available.right - bounds.right,
+            bottomGap: available.bottom - bounds.bottom,
+            overflow: document.documentElement.scrollWidth > innerWidth,
+            outerScroll: canvas.scrollHeight - canvas.clientHeight,
+          };
+        });
+        assert.equal(measure.viewport, Math.max(1280, measure.stageWidth));
+        for (const gap of [
+          measure.leftGap,
+          measure.rightGap,
+          measure.bottomGap,
+        ])
+          assert.ok(Math.abs(gap) <= 1, JSON.stringify(measure));
+        assert.equal(measure.overflow, false);
+        assert.ok(measure.outerScroll <= 1);
+        assert.equal(await page.$eval('iframe', (frame) => frame.src), src);
+      }
+    }
+    await page.screenshot({
+      path: 'outputs/mobile-admin/preview-desktop-wide.png',
+    });
+    assert.deepEqual(errors, []);
+  },
+);
+
+await test(
   'mobile: prévia fiel, ampliável e preservada ao alternar conversa, página e orientação',
   enabled,
   async (t) => {

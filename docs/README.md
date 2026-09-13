@@ -1,6 +1,6 @@
 # Documentação da EIXU
 
-Guias reconciliados em 13/09/2026 com `main` até `cf911cc` (PR #57). Descrevem
+Guias reconciliados em 13/09/2026 com `main` até `c1548be` (PR #58). Descrevem
 os contratos do código; a confirmação de um release exige o deployment do mesmo
 SHA e as verificações do fluxo afetado. Comece pelo [README](../README.md) para
 produto, ambiente e comandos.

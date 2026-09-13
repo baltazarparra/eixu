@@ -1,6 +1,6 @@
 # Evolução das vibes
 
-Reconciliado em 13/09/2026 com `main` até o PR #57. O diagnóstico e o plano
+Reconciliado em 13/09/2026 com `main` até o PR #58. O diagnóstico e o plano
 originais estão no [arquivo histórico](archive/vibes-plan-2026-09-12.md).
 Este documento mantém apenas a direção das próximas evoluções; o contrato
 implementado está em [Design](design.md).

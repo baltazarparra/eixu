@@ -2,6 +2,26 @@
 
 > Histórico: diagnóstico, proposta ou ensaio daquela versão. Não é contrato vigente nem confirmação de produção. Consulte o [índice](../README.md) e a [verificação atual](../verification.md). Artefatos de `outputs/` são locais e podem não acompanhar o checkout.
 
+## Prévia ocupa toda a coluna, 13/09/2026
+
+O iframe de desktop permanecia em 1280 px quando a área disponível era maior,
+deixando uma faixa branca à direita. A viewport agora acompanha áreas maiores
+e mantém o piso de 1280 px com escala em áreas menores. A moldura e as margens
+externas foram removidas; o modo Celular conserva até 390 px.
+
+A regressão em Chromium falhou antes da correção: a área tinha 1350 px e o
+iframe, 1280 px. O teste mede as bordas da prévia, sua viewport interna,
+ausência de rolagem externa e preservação da URL ao redimensionar entre
+1100 e 1920 px e recolher/expandir a conversa. Os casos mobile exercitam
+troca de largura, orientação, ampliação e preservação do iframe.
+
+Tipos, lint global, build Next.js e quatro checks dos artefatos passaram.
+Contratos: 286 casos de site e 219 de admin aprovados; cinco integrações
+opcionais de PostgreSQL local não executadas por ausência da configuração.
+Os 18 testes de navegador do admin passaram, incluindo a regressão e os
+fluxos mobile, edição e publicação com dados em memória. Capturas desktop e
+celular foram inspecionadas. Sem geração paga ou escrita em clientes.
+
 ## Autonomia para resolver pendências e publicar, 13/09/2026
 
 O plano anterior encerrava o turno quando a prova exigia uma frase ausente do

@@ -26,7 +26,7 @@ flutuante não é acrescentado à landing. Mudar a vibe preserva os rascunhos e
 snapshots existentes; páginas incompatíveis ficam apontadas até remoção
 explícita ou escolha de outra vibe.
 
-Mapa do admin e da geração revisado em 13/09/2026 contra `main` até o PR #57. Descreve o comportamento implementado; os limites no fim deste arquivo não são funcionalidades entregues.
+Mapa do admin e da geração revisado em 13/09/2026 contra `main` até o PR #58. Descreve o comportamento implementado; os limites no fim deste arquivo não são funcionalidades entregues.
 
 ## Superfícies e dependências
 

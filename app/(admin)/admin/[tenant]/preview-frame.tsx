@@ -24,7 +24,10 @@ export function PreviewFrame({
   const detach = useRef<() => void>(() => {});
   const url = attempt ? `${src}&reload=${attempt}` : src;
   const state = settled?.url === url ? settled.state : 'loading';
-  const width = device === 'desktop' ? 1280 : Math.min(390, size.width);
+  const width =
+    device === 'desktop'
+      ? Math.max(1280, size.width)
+      : Math.min(390, size.width);
   const scale = size.width ? Math.min(1, size.width / width) : 1;
 
   useEffect(() => {
