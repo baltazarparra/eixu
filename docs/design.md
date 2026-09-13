@@ -51,10 +51,13 @@ apresenta as avaliações editoriais como recomendações, sem vetar a decisão.
 A unicidade compara somente landings v7: exige dois eixos diferentes e mede
 semelhança de silhueta entre direções próximas. Navegação, catálogo, plano de
 cenas, prompt, crítico e publicação compartilham essa decisão.
-Veja o [plano implementado](plano-vibe-landing-page.md) e os
-[registros de validação local](verification.md).
+Veja o [plano implementado](archive/landing-plan-2026-09-12.md) e os
+[registros de validação local](archive/verification-2026-09-13.md).
 
 Referências lidas em 10/09/2026: [Frontend Design, Anthropic](https://github.com/anthropics/claude-code/blob/main/plugins/frontend-design/skills/frontend-design/SKILL.md) e [Taste Skill v1](https://github.com/Leonxlnx/taste-skill/blob/main/skills/taste-skill-v1/SKILL.md). Para mudanças de frontend, use ambas como direção, respeitando o negócio, o contrato do repositório e o código disponível. Este documento registra a adaptação ao gerador, não substitui a leitura das referências ao mudar a direção visual.
+
+Contrato conferido no checkout em 13/09/2026. Registros de ensaios e de publicação
+ficam no [histórico](archive/verification-2026-09-13.md); não certificam o estado remoto atual.
 
 ## Painel administrativo
 
@@ -107,13 +110,19 @@ conversa ou usa a aba Prévia no celular. O iframe tem uma linha discreta de
 carregamento, confirmação ou falha com nova tentativa. A atualização acontece
 ao confirmar a escrita, preservando a rolagem da mesma página.
 
+A prévia desktop ocupa toda a largura e a altura restante da coluna, sem
+moldura, cantos arredondados ou margens externas. Só a linha de status tem
+espaçamento próprio. A rolagem pertence ao site dentro do iframe; o painel não
+cria outra área de rolagem ao redor. No modo Celular, a largura fica limitada
+a 390 px e encolhe com a tela.
+
 O handoff `design_handoff_cabecalho_unico`, recebido em 12/09/2026, substituiu
 os três cabeçalhos do editor (página, conversa e prévia, 207 px somados) por
 uma barra de 64 px em `components/admin/navigation.tsx`: identidade com
 domínio, abas de altura inteira com sublinhado âmbar, o grupo PRÉVIA (caminho
 da página com pill de rascunho, larguras Desktop/Celular e abrir em outra aba)
 e, depois de um divisor, só o que condiciona a publicação: diamante compacto
-de 32 px, aviso **Revisão pendente** e **Publicar**. O editor injeta os dois
+de 32 px durante a geração e **Publicar**, habilitado conforme as pendências determinísticas. O editor injeta os dois
 grupos vivos por portais em dois slots da barra. A conversa começa no
 andamento e a contagem de turnos desceu para a dica do compositor. Abaixo de
 1520 px o rótulo PRÉVIA some; abaixo de 1280 px a barra fica em 52 px sem a
@@ -302,14 +311,14 @@ painel parado. Cada imagem fica disponível com número e URL imediatamente, sem
 aprovação. `sceneCoverage` mede o progresso
 pelas fotos disponíveis, inclusive candidatas legadas, casando bloco e
 proporção. O laço distingue uma nova cena de uma etapa sem progresso e admite
-até 14 chamadas, incluindo todas as cenas do atelier e a revisão.
+até 14 saltos entre briefing, cenas e composição; não despacha revisão automática.
 
 A biblioteca mantém o acervo numerado de imagens geradas e fotos enviadas. **Enviar imagens** abre seleção múltipla, com andamento e falhas por arquivo. As fotos enviadas têm os mesmos atalhos de uso e alteração, entram na composição e mantêm sua proporção real. `update_image` usa a imagem indicada
 como referência, gera uma nova versão e troca a URL e o texto alternativo nos
 rascunhos do mesmo tenant. O original e os snapshots publicados são preservados.
 A crítica continua informativa; não é uma fila de aprovação.
 
-`review_pages` reúne pre-flight, métricas e crítica visual do rascunho. O
+Quando solicitado pelo operador, `review_pages` reúne pre-flight, métricas e crítica visual do rascunho. O
 pre-flight roda primeiro; erros conhecidos não consomem captura nem crítico. Um
 Chromium atende o lote, com duas páginas em paralelo, repetição por viewport e
 preservação das capturas boas quando um alvo falha. Cada página mantém seu
@@ -317,7 +326,7 @@ próprio recibo e só volta à fila quando seus pixels ou uma dependência globa
 mudam; imagem fora das páginas não invalida a revisão. Os pixels seguem como
 imagens binárias a uma chamada separada do Gemini, e o chat recebe somente o
 relatório estruturado. Overflow, imagem quebrada, falha de captura e cobertura
-incompleta impedem a conclusão automática. Uma avaliação completa sem erro
+incompleta impedem a conclusão da análise visual solicitada, sem reabrir a geração. Uma avaliação completa sem erro
 material encerra; quando houve reparo, a segunda leitura confere apenas as
 páginas afetadas. A captura é padrão; `EIXU_REVIEW_CAPTURE=0` deixa explícita a
 ausência de conclusão visual.
@@ -390,11 +399,11 @@ lente, mapa e ensaio editorial têm árvores semânticas distintas; as doze
 variantes mudam a composição em CSS e colapsam para uma coluna em tela estreita.
 No celular, as etapas da campanha reservam espaço para a numeração sem cobrir
 texto, foto ou ação.
-O bloco recebe duas cenas geradas do assunto do cliente. Não aceita HTML,
+O bloco recebe duas fotos disponíveis do assunto do cliente. Não aceita HTML,
 JavaScript ou CSS gerado por tenant.
 
 O pre-flight v5/v6 recusa home sem uma única composição autoral, sequência fora de
-ordem ou protagonista sem duas fotos geradas. A comparação entre tenants usa
+ordem ou protagonista sem duas fotos disponíveis. A comparação entre tenants usa
 tipo, layout, ordem, papéis, presença de mídia e ação da assinatura. Texto,
 nome, imagem e URL do outro cliente não entram na assinatura nem na mensagem.
 Isso permite partir da mesma estrutura quando a composição interna muda de
@@ -452,14 +461,13 @@ v2 e v3 continuam com a composição que já têm; recompor exige uma nova dire�
 e uma nova publicação. Na retomada, o plano de cenas conserva os alvos,
 proporções, pedidos semânticos e cobertura do perfil antigo; o prompt e o
 crítico também preservam essa composição. A seção protagonista precisa conter,
-ela própria, duas URLs distintas de fotos geradas disponíveis do cliente. Fotos
+ela própria, duas URLs distintas de fotos disponíveis do cliente. Fotos
 em outro bloco não completam essa exigência.
 
 A unicidade passou a medir proporção em vez de igualdade. `silhouette` reduz a
 página à sequência `tipo:layout`, sem texto, imagem nem tom;
 `silhouetteSimilarity` conta as seções em comum sobre a página maior; acima de
-`SILHOUETTE_LIMIT`, 0,75, a home é recusada em `build_site`, `set_blocks` e na
-publicação de perfis v4. V5 usa a maior subsequência comum e expande a marca da
+`SILHOUETTE_LIMIT`, 0,75, a home é recusada em `build_site` e `set_blocks` de perfis v4. Na publicação solicitada, essa duplicidade é recomendação. V5 usa a maior subsequência comum e expande a marca da
 assinatura com papéis, mídia e ação. As duas homes medidas em produção dão 0,80.
 Perfis v2/v3 conservam a trava de igualdade exata, incluindo ordem, tom e borda.
 A comparação atravessa todas as vibes e não devolve texto, nome ou imagem do
@@ -783,8 +791,8 @@ apresentação atual até uma recomposição explícita e nova publicação.
 | Composição global    | Três estruturas por vibe combinam abertura, ordem mínima, assinatura e fechamento. V5 escolhe dentro da vibe; v6 escolhe a mais próxima da referência entre as doze. Seis heroes, quatro navegações, quatro ritmos, quatro tratamentos de imagem, quatro superfícies e cinco motivos modulam o resultado.                                                      |
 | Apresentação local   | Todo bloco aceita `presentation`: tom (incluindo a cor secundária), largura, respiro, alinhamento, borda e motion (`none`, `reveal`, `stagger`, `image`). Use um a três momentos de movimento coerentes com a narrativa.                                                                                                                                       |
 | Exploração e inbound | `feature.explorer` oferece seleção de aplicações com imagem, texto, fatos e CTA por aba; suporta teclado. `editorial.resources` conecta páginas com hierarquia editorial e imagem ou símbolo. Ambos oferecem layouts próprios.                                                                                                                                 |
-| Imagens              | Hero aceita posição, `cover`/`contain`, ponto focal e legendas; atelier aceita imagem secundária. A home exige duas fotos geradas distintas da biblioteca do tenant. Imagens geradas chegam ao agente com número e URL para uso imediato, sem aprovação.                                                                                                       |
-| Navegação e FAQ      | Menu mobile e perguntas usam `details`/`summary` nativos, foco visível e interação por teclado.                                                                                                                                                                                                                                                                |
+| Imagens              | Hero aceita posição, `cover`/`contain`, ponto focal e legendas; atelier aceita imagem secundária. A home exige duas fotos disponíveis distintas da biblioteca do tenant. Imagens geradas chegam ao agente com número e URL para uso imediato, sem aprovação.                                                                                                   |
+| Navegação e FAQ      | Menu mobile usa diálogo modal com foco, Escape e restauração da rolagem; há fallback sem JavaScript. FAQ usa `details`/`summary` nativos.                                                                                                                                                                                                                      |
 | Âncoras              | Todo bloco aceita `anchor` opcional, começando com letra minúscula, seguido de letras/números/hífens, até 64 caracteres. Link usa `#anchor`. Duplicação bloqueia publicação. Formulário sem âncora mantém `contato`.                                                                                                                                           |
 
 ## Unicidade e coerência
@@ -803,9 +811,7 @@ imagem e tom são ignorados. Mapas usam a ordem efetivamente renderizada: o
 `focus` vem primeiro, seguido dos demais itens na ordem salva. Essa ordenação
 é compartilhada com o renderer; mover apenas o `focus` no JSON não diferencia
 duas composições idênticas. Trocar a ordem dos itens de apoio continua contando.
-Acima de 0,75, `build_site`, `set_blocks`, as
-ferramentas de publicação e a API administrativa recusam a home, listando as
-marcas repetidas sem revelar o outro cliente. Perfis v2/v3 continuam na régua
+Acima de 0,75, `build_site` e `set_blocks` recusam a home, listando as marcas repetidas sem revelar o outro cliente. Na publicação solicitada, `composicao-duplicada` é recomendação editorial. Perfis v2/v3 continuam na régua
 de igualdade exata da sequência inteira, incluindo tom e borda; essa
 compatibilidade evita bloquear republicações anteriores ao v4. Páginas com
 menos de quatro marcas ficam fora da trava.
@@ -821,11 +827,11 @@ O pre-flight exige decisões locais de layout e presentation em páginas
 comerciais dos perfis v2-v7; somente escolher motion não conta como decisão de
 composição. `build_site` valida páginas e projeto antes de gravar o lote em uma
 transação. Um erro não substitui páginas válidas. Edições incrementais podem
-produzir rascunho inválido, mas a publicação continua bloqueada.
+produzir pendências no rascunho. Na publicação solicitada, `lib/sites/publication-policy.ts` converte achados editoriais em recomendações; dados inválidos, destinos quebrados e regras não classificadas continuam bloqueando a transação.
 
 Na forma `multi`, `lintSite` exige três páginas orgânicas com pelo menos 100 palavras de conteúdo,
 intenções e SEO distintos, etapas de inbound, links e âncoras válidos e alcance
-a partir da home. Também exige duas fotos geradas distintas, uma seção
+a partir da home. Também exige duas fotos disponíveis distintas, uma seção
 protagonista e imagem em toda página orgânica. Sem referência, exige cor de
 marca em uma seção; v6 preserva o ritmo tonal observado na fonte. A contagem de
 palavras impede páginas vazias, mas não prova utilidade editorial.
@@ -840,16 +846,11 @@ A mudança atua nos componentes compartilhados de `(sites)`, nos agentes de
 site/imagem e no pre-flight. Institucional e painel mantêm seus próprios
 layouts/CSS. Sites já publicados sem `brand.design` continuam no contrato
 legado; o deploy não inventa uma direção nem reescreve seus blocos. Ao
-reconstruir um cliente antigo, o agente cria o perfil v3 e recompõe as páginas
-antes da nova publicação.
+reconstruir um cliente antigo, o agente cria o perfil atual compatível: v5 sem referência, v6 com referência verificada ou v7 para Landing Page. As páginas são recompostas antes da nova publicação.
 
-A prévia local de comparação usa três clientes sintéticos, sem gravar no tenant. Ela comprovou que o mesmo catálogo forma silhuetas distintas em desktop e mobile, mas não substitui uma avaliação de geração do modelo. Essa avaliação exige briefing controlado, tenant descartável e registro de qualidade, chamadas, latência e tokens.
-
-Registro histórico, anterior ao harness de qualidade: medido em 10/09/2026 com tenant sintético, o prompt de edição livre tem 11.951
-caracteres, contra 12.536 antes da divisão por fases, mesmo com o catálogo
-maior. Por fase: briefing 3.859, cenas 2.758, composição 11.076 e revisão
-9.269. É tamanho de texto, não tokens faturados; o evento `[chat] usage`, agora
-com o campo `phase`, continua sendo a medida operacional.
+As fixtures em `tests/browser/` verificam componentes com dados sintéticos e
+CSS do build Next.js. Elas não substituem uma avaliação de geração do modelo.
+A [verificação](verification.md) descreve os recursos e limites de cada suíte.
 
 A régua de avaliação está versionada: `evals/cases/` traz os briefings,
 `docs/eval-rubric.md` a rubrica e `npm run eval:site` roda o fluxo real num
@@ -860,23 +861,16 @@ limite de 14 chamadas para incluir as seis cenas do atelier e a composição.
 Limite esgotado ou fase com erro resultam em
 execução incompleta e código de saída 1.
 
-## Interface de operação do admin
+## Acessibilidade da operação
 
-O painel usa Geist, superfícies escuras, texto claro e acento areia, com CSS isolado em `(admin)`. A hierarquia privilegia a tarefa: encontrar cliente; abrir Site, Imagens, Tráfego ou Dados; revisar antes de publicar. Cadastro novo fica recolhido até ser solicitado. Em desktop, conversa e prévia/biblioteca ficam lado a lado e ocupam a altura da tela, sem faixa de navegação lateral: voltar para a lista é um botão no cabeçalho do cliente. Abaixo de 1024 px, conversa e prévia alternam por botões, mantendo cabeçalho, publicação e avisos acessíveis.
+Sugestões preenchem o compositor e aguardam envio. A escala funcional do painel
+usa piso de 12 px, corpo das mensagens em 14 px e números tabulares para tempos
+e custos. Movimento respeita `prefers-reduced-motion`.
 
-Sugestões preenchem o compositor e aguardam envio. A prévia oferece seletor de página, largura desktop/celular e pendências de projeto e página. Erros HTTP aparecem como avisos, exclusão de imagem pede confirmação local e ações em andamento ficam desabilitadas. Dados simples e briefing têm formulário direto, sem chamada ao modelo. Tokens e custo ficam em detalhes recolhidos, com seu escopo declarado.
+O detalhe de consumo tem altura limitada, rolagem própria e região nomeada.
+Ao abrir, entra na área visível. Em telas baixas, a conversa permite alcançar
+os controles sem deslocar automaticamente o andamento durante a leitura do
+histórico. A atividade das edições também aparece acima da prévia.
 
-A coluna da conversa é o lugar do andamento, não só do texto: logo abaixo do
-cabeçalho dela, um bloco compacto traz estado, etapa atual e ação numa linha,
-duas trilhas de produto, unidades realmente concluídas, tempo decorrido,
-ferramenta em execução e linha do tempo recolhida. A linha do tempo
-continua sendo a via acessível para o mesmo conteúdo. A escala tipográfica tem
-piso de 12 px, com 14 px no corpo das mensagens e a família monoespaçada nos
-tempos, contagens e custos, em `tabular-nums`. Movimento é pontual e respeita
-`prefers-reduced-motion`.
-
-Cliente sem tentativa ou conversa anterior começa sozinho ao abrir a tela, sem botão e sem pergunta de abertura: ele chegou ali pelo cadastro. A condição inclui o histórico anterior à geração no servidor, nenhuma página e a primeira etapa pendente, porque retomar sozinho um rascunho antigo gastaria geração paga sem pedido. O consumo soma as fases gravadas no servidor e os turnos livres do stream.
-
-O detalhamento de consumo tem altura limitada à tela, rolagem própria e região nomeada para navegação assistiva. Abrir o detalhe o traz à área visível. Em telas baixas, a coluna da conversa permite rolagem manual para alcançar todos os controles; a rolagem automática das mensagens continua restrita à lista, preservando o andamento acima dela.
-
-A aplicação das duas referências prioriza hierarquia, contraste e feedback. O painel não precisa das animações expressivas dos sites de clientes para operar bem. O [manual](admin.md) descreve a jornada e a [revisão](admin-review.md) registra a verificação em 320, 390 e 1440 px.
+A composição visual do painel está no início deste guia; a jornada e as
+condições de início automático estão no [manual do operador](admin.md).

@@ -1,6 +1,8 @@
 # Revisão do admin, 10/09/2026
 
-Registro histórico de 10/09/2026. As medidas de custo e a compactação descritas abaixo documentam aquela entrega. A política vigente, orientada à qualidade com Gemini 3.8 Flash, está em [Harness](harness.md); a jornada atual está no [manual](admin.md). Os números históricos não são uma avaliação do harness atual.
+> Histórico: diagnóstico, proposta ou ensaio daquela versão. Não é contrato vigente nem confirmação de produção. Consulte o [índice](../README.md) e a [verificação atual](../verification.md). Artefatos de `outputs/` são locais e podem não acompanhar o checkout.
+
+Registro histórico de 10/09/2026. As medidas de custo e a compactação descritas abaixo documentam aquela entrega. A política vigente, orientada à qualidade com Gemini 3.8 Flash, está em [Harness](../harness.md); a jornada atual está no [manual](../admin.md). Os números históricos não são uma avaliação do harness atual.
 
 A entrega reorganiza a operação de clientes, reduz o reenvio de contexto nos chats, mede o consumo informado pelo Gateway e corrige inconsistências de publicação, prévia, formulários administrativos e tráfego. Base revisada: `1cad6cd`, árvore inicialmente limpa. Modelo, limites de composição e pre-flight foram preservados.
 
@@ -17,7 +19,7 @@ A entrega reorganiza a operação de clientes, reduz o reenvio de contexto nos c
 | Dados e briefing                    | Formulário direto para nome, contatos e intake; upload/aplicação de logo final. Alterações simples dispensam uma chamada ao modelo. A interface explica os campos compartilhados com o site ao vivo.                                                                                                                      |
 | Prévia e renderizador               | Rascunho exige sessão e recebe `noindex`. SEO e FAQ do JSON-LD usam o snapshot correspondente. Links preservam cliente/modo; formulários e tracking ficam desativados. A captura usa cookie restrito ao host, sem repassá-lo a recursos externos; página recusada não vira revisão bem-sucedida.                          |
 | Tráfego, gastos e CSV               | Datas inclusivas em Brasília, IDs distintos no total, soma de canais, campanhas sem visita e totais independentes das 50 linhas exibidas. Gastos parcialmente sobrepostos são avisados e excluídos. WhatsApp usa apenas o redirecionador para o clique rastreado. CSV neutraliza fórmulas e explicita seu período/limite. |
-| Documentação e release              | README, arquitetura, design, harness e verificação atualizados; plano criativo identificado como histórico. Novo [manual do operador](admin.md). Rubrica de qualidade completa preservada.                                                                                                                                |
+| Documentação e release              | README, arquitetura, design, harness e verificação atualizados; plano criativo identificado como histórico. Novo [manual do operador](../admin.md). Rubrica de qualidade completa preservada.                                                                                                                             |
 
 Não houve migração, seed, troca de modelo, alteração de variáveis remotas, geração de imagens, aprovação de candidatas nem publicação de páginas de clientes nesta entrega. As escritas de interface foram simuladas; as chamadas reais de modelo usaram executores em memória.
 
@@ -60,8 +62,8 @@ As capturas e os scripts locais ficam em `outputs/admin-review/`, ignorado pelo 
 
 ## Limites e próximos critérios
 
-O snapshot continua restrito a blocos/SEO; marca, contatos e metadados compartilhados podem mudar o site ao vivo. A autorização de publicação pelo chat livre continua baseada no prompt, e a de aprovação de imagens usa interpretação por regex. A interface direta e o pre-flight não transformam esses mecanismos em autorização estruturada. O [contrato de arquitetura](architecture.md#limites-atuais) registra os limites.
+O snapshot continua restrito a blocos/SEO; marca, contatos e metadados compartilhados podem mudar o site ao vivo. A autorização de publicação pelo chat livre continua baseada no prompt, e a de aprovação de imagens usa interpretação por regex. A interface direta e o pre-flight não transformam esses mecanismos em autorização estruturada. O [contrato de arquitetura](../architecture.md#limites-atuais) registra os limites.
 
-Os eventos antigos de WhatsApp não foram deduplicados e os gastos não foram reescritos. Não houve teste de envio real de contato, nova geração completa com imagens ou repetição estatística da rubrica estética nesta revisão. A geração completa deve ser avaliada separadamente com `eval:site`, recurso descartável e a [rubrica](eval-rubric.md).
+Os eventos antigos de WhatsApp não foram deduplicados e os gastos não foram reescritos. Não houve teste de envio real de contato, nova geração completa com imagens ou repetição estatística da rubrica estética nesta revisão. A geração completa deve ser avaliada separadamente com `eval:site`, recurso descartável e a [rubrica](../eval-rubric.md).
 
 A publicação desta entrega é de **código** via `main`/Vercel. O aceite do release exige o deployment do mesmo SHA em `READY`, aliases atribuídos e smoke de rotas públicas, autenticação e rascunho; um deployment anterior não serve de evidência.

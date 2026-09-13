@@ -6,7 +6,7 @@
 quatro vibes anteriores mantêm no mínimo três páginas orgânicas. Landing Page
 exige uma home `page` indexável e uma `thank_you`; posts são opcionais e não
 substituem a home na conclusão da geração. Páginas `page` internas e `paid_lp`
-são recusadas pela criação, pelo lote de composição e pela publicação.
+são recusadas pela criação e pelo lote de composição. Na publicação solicitada, `landing-pagina-extra` é recomendação editorial; regras técnicas continuam bloqueantes.
 
 O perfil v7 usa `hero.landing` em `stage` ou `form`, navegação mínima e nenhum
 `structure`/`structureRationale`. Referência verificada modula os eixos visuais,
@@ -26,7 +26,7 @@ flutuante não é acrescentado à landing. Mudar a vibe preserva os rascunhos e
 snapshots existentes; páginas incompatíveis ficam apontadas até remoção
 explícita ou escolha de outra vibe.
 
-Mapa do admin e da geração atualizado em 11/09/2026. Descreve o comportamento implementado; os limites no fim deste arquivo não são funcionalidades entregues.
+Mapa do admin e da geração revisado em 13/09/2026 contra `main` até o PR #58. Descreve o comportamento implementado; os limites no fim deste arquivo não são funcionalidades entregues.
 
 ## Superfícies e dependências
 
@@ -63,7 +63,7 @@ global. A série de tráfego usa o ID do tenant, datas inclusivas de Brasília,
 dias sem evento preenchidos com zero e deduplicação por navegador/dia. Contatos
 na série exigem visita e ação no mesmo dia; cartões continuam mostrando ações
 brutas e visitantes distintos do período. O limite de 366 dias restringe a
-série. O relatório de tráfego não mudou nesta entrega.
+série. As métricas descrevem o cálculo atual, sem certificar os dados de produção.
 
 O parâmetro `pedido` do editor preenche até 2.000 caracteres da conversa; não
 envia mensagem sozinho. A imagem numerada em `imagem` tem precedência. O
@@ -180,7 +180,7 @@ operador pode cancelar ou corrigir recusas sem perder a tentativa local.
 
 A geração acontece no estúdio compartilhado com o chat. `prepare_site_images` recebe todas as vagas ausentes numa chamada e executa lotes concorrentes de até três cenas: uma imagem GPT Image 2 por cena, crítica estruturada e falhas parciais reportadas. Fora da geração aceita até seis cenas por chamada e oito por turno. Recusa proporção incoerente, reserva o orçamento antes do primeiro `await` e devolve apenas o que não chegou a tentar. O advisory lock por tenant impede lotes concorrentes; dentro dele a cobertura é relida antes de gerar. O número da imagem é reservado no próprio insert.
 
-`lib/images/scene-plan.ts` traduz a direção num plano de vagas, sempre medido em três páginas orgânicas. V2/v3 preservam os alvos antigos, v4 usa a gramática ampla da vibe, v5 usa a estrutura da vibe e v6 usa a estrutura escolhida pela referência, inclusive quando ela pertence a outra família. O hero, as duas cenas da composição autoral e suas proporções saem dessa mesma estrutura. O briefing anexa assunto e página a cada vaga; `sceneCoverage` casa a biblioteca disponível primeiro pelo bloco e depois pelo recorte. `nextPhase` só fecha a etapa quando o plano inteiro tem foto disponível.
+`lib/images/scene-plan.ts` traduz a direção num plano de vagas: três páginas orgânicas em multipágina, ou cinco cenas na home em Landing Page v7. V2/v3 preservam os alvos antigos, v4 usa a gramática ampla da vibe, v5 usa a estrutura da vibe e v6 usa a estrutura escolhida pela referência, inclusive quando ela pertence a outra família. O hero, as duas cenas da composição autoral e suas proporções saem dessa mesma estrutura. O briefing anexa assunto e página a cada vaga; `sceneCoverage` casa a biblioteca disponível primeiro pelo bloco e depois pelo recorte. `nextPhase` só fecha a etapa quando o plano inteiro tem foto disponível.
 
 Logos podem ser criados ou modernizados por `generate_logo`; sem anexo, a modernização usa o master da marca atual. Wordmarks/combinados usam tela 1536 × 1024 no GPT Image 2; símbolos usam 1024². O PNG é limpo antes de entrar na biblioteca e no crítico, cuja miniatura representa 48 px de altura da arte recortada. Fotos e logos retornam número e URL sem aprovação; a crítica registra problemas sem bloquear disponibilidade. Aplicação pelo chat continua exigindo pedido.
 
@@ -205,9 +205,9 @@ Nav, rodapé e pre-flight compartilham a superfície real do CSS e preferem a re
 
 A rota do chat tem duração máxima de 800 segundos, com 760 no SDK, e limite de 32 passos na edição livre; os checkpoints usam 12/4/24/32 passos. A revisão admite uma avaliação e uma conferência focal por turno. A primeira avaliação completa sem erro material já encerra; sugestões opcionais permanecem no relatório. Modelo, raciocínio `high` e saída por tarefa vêm de `lib/ai/models.ts`; `lib/ai/agent.ts` é compartilhado com os runners.
 
-No servidor, a composição encerra a geração quando as páginas estão gravadas. `nextPhase` reconhece sites montados mesmo sem recibo visual e registra a entrega em `brief.generation.delivery` com data. Essa entrega permanece após edições; o fingerprint dos recibos antigos não reabre geração. Nenhuma fase automática de revisão é despachada. A revisão é humana pela prévia, com ajustes pelo chat. Erros determinísticos continuam bloqueando publicação. Uma análise visual automática pode ser solicitada pelo operador, sem alterar a conclusão da geração. `review_pages` executa pre-flight antes de pixels, reaproveita recibos por página e recaptura somente páginas sem cobertura atual. Um Chromium atende o lote, duas páginas por vez; cada viewport espera fontes/imagens, tem repetição local e preserva capturas boas quando outro alvo falha. Achados mantêm ID, página, bloco, viewport, evidência, correção e estado. Erro material cuja âncora veio inválida continua como pendência técnica. O certificado só é atual quando todas as páginas têm desktop e mobile da versão vigente.
+No servidor, a composição encerra a geração quando as páginas estão gravadas. `nextPhase` reconhece sites montados mesmo sem recibo visual; o runner registra a entrega em `brief.generation.delivery` com data. Essa entrega permanece após edições; o fingerprint dos recibos antigos não reabre geração. Nenhuma fase automática de revisão é despachada. A revisão é humana pela prévia, com ajustes pelo chat. Erros técnicos continuam bloqueando publicação; a política converte avaliações editoriais em recomendações. Uma análise visual automática pode ser solicitada pelo operador, sem alterar a conclusão da geração. `review_pages` executa pre-flight antes de pixels, reaproveita recibos por página e recaptura somente páginas sem cobertura atual. Um Chromium atende o lote, duas páginas por vez; cada viewport espera fontes/imagens, tem repetição local e preserva capturas boas quando outro alvo falha. Achados mantêm ID, página, bloco, viewport, evidência, correção e estado. Erro material cuja âncora veio inválida continua como pendência técnica. O certificado só é atual quando todas as páginas têm desktop e mobile da versão vigente.
 
-O chat preserva quatro turnos recentes completos até 120.000 caracteres, com metadados do provedor. Material anterior vira recibo com erros e pendências, preservando instruções e respostas textuais. O loop ativo não é compactado. `lib/ai/usage.ts` registra modelo, versão do harness, tokens de raciocínio, cache, passos, tempo, motivo de término e custo retornado. A interface soma apenas respostas recebidas desde a abertura; críticos e imagens têm medições separadas. Não há faturamento consolidado por cliente.
+O chat preserva quatro turnos recentes completos até 120.000 caracteres, com metadados do provedor. Material anterior vira recibo com erros e pendências, preservando instruções e respostas textuais. O loop ativo não é compactado. `lib/ai/usage.ts` registra modelo, versão do harness, tokens de raciocínio, cache, passos, tempo, motivo de término e custo retornado. A interface soma recibos das fases retornados nos eventos da geração e recibos dos turnos de chat desta abertura. Críticos e imagens têm medições separadas; valor ausente não é contado como zero. Não há faturamento consolidado por cliente.
 
 Imagens novas são inseridas explicitamente com estado `disponivel`, inclusive
 em bancos cujo default antigo continua sendo `candidata`; não é necessária
@@ -240,10 +240,12 @@ um pedido detectado na última mensagem e uma imagem de tipo logo disponível;
 por `/settings`, exige logo da biblioteca do tenant ou upload manual no
 caminho de logo daquele cliente, e o mesmo portão vale para `logoDarkUrl`,
 que a biblioteca aplica por **Usar sobre fundo escuro** e Dados remove. A
-home continua exigindo duas fotos distintas da biblioteca do tenant, geradas ou enviadas.
+home tem piso de geração de duas fotos distintas da biblioteca do tenant, geradas, enviadas ou importadas.
 Fontes: `lib/ai/tools.ts`, `lib/images/queries.ts`, `lib/images/revise.ts`,
 `lib/images/replacement.ts`, `lib/images/logo-apply.ts`,
 `lib/sites/generation.ts` e `lib/taste/site.ts`.
+
+Uploads manuais em `/api/admin/[tenant]/upload` aceitam PNG, JPEG, WebP, GIF e SVG até 8 MB na aplicação. Atendem anexos do chat e logos em cadastro/Dados; o transporte pode impor um teto menor. Esses arquivos não entram na tabela `images`, não recebem número nem aparecem no acervo. O upload de fotos numeradas usa o POST de `/images`, descrito acima; o estúdio de logo pode registrar o original manual durante o briefing.
 
 ## Dados, conversão e tráfego
 
@@ -272,15 +274,15 @@ Gastos de todos os canais da mesma campanha são somados, incluindo campanhas se
 - **Exclusão:** definitiva, sem lixeira. O CDN pode servir um arquivo apagado por cerca de um minuto, e uma exclusão durante geração ativa derruba as ferramentas daquele turno por chave estrangeira.
 - **Leitura de rede social:** depende do que a rede entrega a robôs e do IP de saída; o Instagram falha com frequência a partir de datacenter. Nome, bio e avatar lidos são material público, não verificação de identidade do cliente.
 - **Acesso:** admin global, sem vínculo usuário–tenant ou RLS no schema versionado. Rotas administrativas, chats e rascunhos exigem sessão. Em produção, ausência de segredo e senha impede emissão/validação de sessão. `__tenant` continua disponível para resolver o conteúdo publicado; não autentica. Arquivos no Blob continuam públicos.
-- **Domínios e SEO:** o host só resolve tenant em um subdomínio de `eixu.com.br` ou `.localhost`; nomes reservados e hosts numéricos não viram clientes. `lib/site.ts` ainda aponta para o endereço legado `chatgpt.site`, usado no sitemap/robots institucional. Esse endereço institucional não foi alterado pela revisão do admin.
+- **Domínios e SEO:** o host só resolve tenant em um subdomínio de `eixu.com.br` ou `.localhost`; nomes reservados e hosts numéricos não viram clientes. `lib/site.ts` ainda aponta para o endereço legado `chatgpt.site`, usado no sitemap/robots institucional. O tenant tem handler próprio de `robots.txt`; o endereço institucional legado permanece uma limitação a corrigir em trabalho de código.
 - **Snapshot:** publicações novas versionam apresentação global, título, tipo, metadados e ordem junto de blocos/SEO. O schema cria um snapshot inicial para clientes e páginas que já estavam publicados; a aplicação da migração precisa anteceder o código. GA4 e Meta Pixel continuam cadastro operacional fora do snapshot visual.
 - **Autorização do agente:** pedido para publicar é uma regra de prompt/tool description; o executor de `publish_page` não valida confirmação estruturada. Não há aprovação de imagens; a troca de logo por `set_site_logo` ainda usa regex sobre a última mensagem, sem garantia de interpretação de negação. As fases de geração não expõem ferramentas de publicação. Não confundir esses mecanismos com autorização formal.
-- **Revisão visual:** Chromium captura até 12 páginas, em desktop e mobile, com cookie restrito à origem. O crítico recebe imagens binárias e retorna evidências por página/bloco. Medições de overflow e imagens quebradas entram no relatório. Falha ou cobertura parcial não encerra a geração; `EIXU_REVIEW_CAPTURE=0` só permite diagnóstico estrutural. O recibo v2 é incremental e precisa cobrir cada página e imagem usada da versão atual. Um parecer do crítico não autoriza publicação.
+- **Revisão visual:** Chromium captura até 12 páginas, em desktop e mobile, com cookie restrito à origem. O crítico recebe imagens binárias e retorna evidências por página/bloco. Medições de overflow e imagens quebradas entram no relatório. Falha ou cobertura parcial deixa a análise solicitada incompleta, sem reabrir a geração; `EIXU_REVIEW_CAPTURE=0` só permite diagnóstico estrutural. O recibo v2 é incremental e precisa cobrir cada página e imagem usada da versão atual. Um parecer do crítico não autoriza publicação.
 - **Histórico e custos:** persistência textual dos últimos 60 itens por canal, sem trace completo, anexos ou recibos antigos. A compactação não resume decisões do operador. Conversas muito extensas são recusadas; recarregar retoma o histórico recente. Cache depende de provedor, prefixo e janela. O custo mostrado exclui imagens e críticas internas, falhas sem recibo e outras abas; não é uma conta consolidada.
 - **Imagens antigas:** candidatas e aprovadas anteriores a esta entrega ficam disponíveis, inclusive as já usadas em página. Rejeitadas antigas permanecem no banco/Blob e no filtro Rejeitadas, fora dos prompts; não há limpeza automática. A listagem mostra as 200 imagens mais recentes; consulta por número não tem esse limite.
 - **Assets de logo:** hashes antigos e lotes parcialmente enviados ficam no Blob até excluir o cliente, pois snapshots podem referenciá-los. Traçado reprovado mantém PNG sem SVG. Fundo não uniforme fica opaco; branco interno grande é preservado e contadores pequenos podem ser removidos. Favicon de wordmark sem símbolo usa a marca inteira. Ícones/OG refletem o papel da preparação; mudar só a paleta não os regenera. `db:prepare-logo-assets` é dry-run por padrão, exige `--slug` ou `--all` e só escreve com `--apply`; prepara rascunhos, sem publicar ou apagar. Não foi executado em clientes existentes.
 - **Medição:** eventos são atribuição de navegador e ações, não pessoas únicas, conversas confirmadas ou receita. Dados anteriores ao release podem conter cliques duplicados; não foram apagados. Gasto é lançamento manual sem conciliação ou integração com anúncios.
 
-A [revisão do admin](admin-review.md) registra a validação desta entrega. Testes de contrato e ensaio controlado não constituem pentest, benchmark universal de qualidade ou geração completa em todos os modelos.
+O [guia de verificação](verification.md) define os checks atuais; a [revisão do admin de 10/09](archive/admin-review-2026-09-10.md) conserva apenas a evidência daquela entrega. Testes de contrato e ensaio controlado não constituem pentest, benchmark universal de qualidade ou geração completa em todos os modelos.
 
 A política atual de identidade, raciocínio, contexto e revisão está em [Harness](harness.md). O recibo continua no JSONB existente; o snapshot completo exige reaplicar `db/schema.sql` antes do código que lê as novas colunas.

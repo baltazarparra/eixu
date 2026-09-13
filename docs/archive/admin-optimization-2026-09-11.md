@@ -1,6 +1,8 @@
 # Plano de otimização do admin e da criação de sites
 
-> Registro histórico: desde 12/09/2026, a jornada vigente é Preparar → Criar, com revisão humana após a composição. As propostas de Conferir abaixo foram substituídas; consulte [Harness](harness.md) e [Admin](admin.md).
+> Histórico: diagnóstico, proposta ou ensaio daquela versão. Não é contrato vigente nem confirmação de produção. Consulte o [índice](../README.md) e a [verificação atual](../verification.md). Artefatos de `outputs/` são locais e podem não acompanhar o checkout.
+
+> Registro histórico: desde 12/09/2026, a jornada vigente é Preparar → Criar, com revisão humana após a composição. As propostas de Conferir abaixo foram substituídas; consulte [Harness](../harness.md) e [Admin](../admin.md).
 
 **Status: núcleo implementado e validado localmente; ensaio pago pendente.**
 Análise de 11/09/2026, com consulta ao banco em 12/09 às 01:06 UTC, equivalente
@@ -30,7 +32,7 @@ A primeira fixture utilizava CSS de um build antigo e foi descartada como evidê
 
 As consultas ao projeto Neon eixu-sites, branch main, banco neondb, foram SELECTs agregados. Não foram exportados nomes, contatos, briefings, conversas ou conteúdo de clientes.
 
-Evidências locais: [métricas e perfis agregados](../outputs/admin-plan-2026-09-11/metrics.json), [observações do navegador](../outputs/admin-plan-2026-09-11/browser-observations.json), [editor desktop](../outputs/admin-plan-2026-09-11/editor-1440.png), [cadastro desktop](../outputs/admin-plan-2026-09-11/cadastro-1440.png) e [Dados mobile](../outputs/admin-plan-2026-09-11/dados-390.png).
+Evidências locais: métricas e perfis agregados (`outputs/admin-plan-2026-09-11/metrics.json`, artefato local do ensaio), observações do navegador (`outputs/admin-plan-2026-09-11/browser-observations.json`, artefato local do ensaio), editor desktop (`outputs/admin-plan-2026-09-11/editor-1440.png`, artefato local do ensaio), cadastro desktop (`outputs/admin-plan-2026-09-11/cadastro-1440.png`, artefato local do ensaio) e Dados mobile (`outputs/admin-plan-2026-09-11/dados-390.png`, artefato local do ensaio).
 
 ### O tempo observado
 
@@ -80,7 +82,7 @@ Isso não demonstra que o modelo atual ignora o novo catálogo: os perfis são e
 | Exclusão e falhas | Confirmação, lock de uploads e erro recuperável | Explicar execução ativa antes de excluir e coordenar sua interrupção. Manter exclusão definitiva explícita; não introduzir lixeira nesta entrega. |
 | Mobile e acessibilidade | Navegação adaptada, alternância conversa/prévia, foco e movimento reduzido | Andamento e ação necessária acessíveis nas duas vistas; testar teclado virtual, áreas fixas, rolagem, foco e retorno à prévia. |
 
-O cadastro sintético inicial apresenta 26 controles, contando os quatro rádios de vibe e os pares de campos de cor. Sua seção ocupa aproximadamente 2240 px em desktop e 3691 px no celular. Não são 26 informações obrigatórias, mas a apresentação transmite um esforço de preparação maior do que o necessário. Fontes: [cadastro](<../app/(admin)/admin/clients.tsx>), [campos](../components/admin/tenant-fields.tsx) e [marca](../components/admin/brand-fields.tsx).
+O cadastro sintético inicial apresenta 26 controles, contando os quatro rádios de vibe e os pares de campos de cor. Sua seção ocupa aproximadamente 2240 px em desktop e 3691 px no celular. Não são 26 informações obrigatórias, mas a apresentação transmite um esforço de preparação maior do que o necessário. Fontes: [cadastro](<../../app/(admin)/admin/clients.tsx>), [campos](../../components/admin/tenant-fields.tsx) e [marca](../../components/admin/brand-fields.tsx).
 
 ## 3. Jornada implementada: Preparar → Criar → Conferir
 
@@ -110,7 +112,7 @@ Montar as páginas com referências de imagens válidas e manter a gravação at
 
 Reusar fotos somente quando forem adequadas ao assunto, ao papel e ao recorte. Hoje a cobertura mede sobretudo bloco/proporção; caber na vaga não garante servir ao conteúdo.
 
-Fontes: [fases](../lib/taste/phases.ts), [plano de cenas](../lib/images/scene-plan.ts), [estúdio](../lib/images/site-assets.ts) e [ferramenta de imagens](../lib/ai/tools.ts). A descrição de `prepare_site_images` foi alinhada ao lote aceito pelo executor.
+Fontes: [fases](../../lib/taste/phases.ts), [plano de cenas](../../lib/images/scene-plan.ts), [estúdio](../../lib/images/site-assets.ts) e [ferramenta de imagens](../../lib/ai/tools.ts). A descrição de `prepare_site_images` foi alinhada ao lote aceito pelo executor.
 
 ### Conferir
 
@@ -133,7 +135,7 @@ A organização entre execução sequencial, trabalho independente e avaliação
 7. O relatório visual detalhado existe no recibo, mas workspaceState entrega principalmente listas derivadas do lint e um indicador agregado de revisão. Evidência, bloco, antes/depois e causa da falha não chegam como uma lista operacional ao painel.
 8. Achados que citam uma página inexistente são descartados e viram aviso de referência. Um erro material não deve sumir só porque o crítico errou sua âncora.
 
-Fontes: [captura](../lib/review/capture.ts), [crítico](../lib/review/critic.ts), [recibo](../lib/review/state.ts), [review_pages](../lib/ai/tools.ts), [controle do agente](../lib/ai/agent.ts), [marcador](../lib/generation/marker.ts) e [estado do painel](../lib/admin/state.ts).
+Fontes: [captura](../../lib/review/capture.ts), [crítico](../../lib/review/critic.ts), [recibo](../../lib/review/state.ts), [review_pages](../../lib/ai/tools.ts), [controle do agente](../../lib/ai/agent.ts), [marcador](../../lib/generation/marker.ts) e [estado do painel](../../lib/admin/state.ts).
 
 ### Ciclo recomendado
 
@@ -193,7 +195,7 @@ No relatório, permitir abrir página e problema diretamente, ver evidência e c
 
 Preservar o histórico e custo do run após a janela de 30 minutos do feed atual. Consolidar chamadas internas de crítico e imagem quando houver recibos, com parcelas não disponíveis explicitadas. Não apresentar gasto incompleto como custo total do site.
 
-Fonte: [painel](<../app/(admin)/admin/[tenant]/generation-panel.tsx>), [feed](../app/api/admin/[tenant]/generation/route.ts), [runner](../lib/generation/runner.ts) e [progresso](../lib/generation/progress.ts).
+Fonte: [painel](<../../app/(admin)/admin/[tenant]/generation-panel.tsx>), [feed](../../app/api/admin/[tenant]/generation/route.ts), [runner](../../lib/generation/runner.ts) e [progresso](../../lib/generation/progress.ts).
 
 ## 6. Quatro vibes com composições distintas
 
@@ -230,7 +232,7 @@ A matriz abaixo propõe direções iniciais, não um template único por vibe. C
 - Medir semelhança pela composição renderizada. Distância entre enums e assinatura idêntica continuam sinais úteis, mas não comprovam identidade. Alterar fonte e motivo apenas para passar em três eixos pode manter a mesma silhueta.
 - Não modificar automaticamente os 13 perfis existentes. Oferecer recomposição em rascunho e comparação com o atual. A migração visual depende do versionamento descrito abaixo.
 
-Fontes: [vibes](../lib/design/vibes.ts), [tipografia](../lib/design/typography.ts), [iconografia](../lib/design/iconography.ts), [perfil e distância](../lib/design/profile.ts), [CSS das vibes](<../app/(sites)/vibes.css>) e [renderer](../lib/blocks/render.tsx).
+Fontes: [vibes](../../lib/design/vibes.ts), [tipografia](../../lib/design/typography.ts), [iconografia](../../lib/design/iconography.ts), [perfil e distância](../../lib/design/profile.ts), [CSS das vibes](<../../app/(sites)/vibes.css>) e [renderer](../../lib/blocks/render.tsx).
 
 ## 7. Coerência de edição e publicação
 
@@ -251,7 +253,7 @@ Recomendação:
 7. Conservar a possibilidade atual de publicação manual com pre-flight limpo e revisão visual pendente, deixando essa condição explícita. Isso jamais marca a geração como revisada. Caso se queira tornar a revisão visual obrigatória para toda publicação, tratar como mudança de política própria.
 8. Fazer a publicação pelo agente depender de intenção explícita verificável, e não apenas de uma descrição de ferramenta.
 
-Fontes: [publicação](../lib/sites/publish.ts), [workspace](<../app/(admin)/admin/[tenant]/workspace.tsx>) e [limites de arquitetura](architecture.md#limites-atuais).
+Fontes: [publicação](../../lib/sites/publish.ts), [workspace](<../../app/(admin)/admin/[tenant]/workspace.tsx>) e [limites de arquitetura](../architecture.md#limites-atuais).
 
 ## 8. Ajustes nas áreas complementares
 
@@ -319,7 +321,7 @@ Não entram nesta rodada: login de clientes, permissões por tenant, cobrança, 
 
 - Snapshot, isolamento de tenant, aplicação explícita de logo, exclusão em uso, autoria factual e ausência de tracking no preview são obrigatórios.
 - Preservar o piso de páginas e composição; não afrouxar schema ou revisão para tornar o resultado verde.
-- Executar tipos, lint, contratos de sites/admin e build:vercel conforme [Verificação](verification.md), além do fluxo afetado em navegador.
+- Executar tipos, lint, contratos de sites/admin e build:vercel conforme [Verificação](../verification.md), além do fluxo afetado em navegador.
 - Rodar avaliação paga apenas em escopo aprovado e comparar com a rubrica existente. O presente plano não executou esse ensaio.
 - Quando a implantação for autorizada, verificar o SHA exato do deployment,
   estado e smoke. Deploy de código e publicação de rascunhos continuam

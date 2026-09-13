@@ -72,8 +72,8 @@ em memória, sem alegação de qualidade de uma geração paga.
 
 A prioridade do produto é qualidade: entender o negócio, compor conteúdo útil,
 observar o resultado e corrigir defeitos. Tokens, tempo e custo são medidas de
-operação; reduzir essas medidas não é o objetivo de aceitação. Política revisada
-em 11/09/2026 para **Gemini 3.8 Flash**.
+operação; reduzir essas medidas não é o objetivo de aceitação. Contrato conferido
+no checkout em 13/09/2026; fallback **Gemini 3.8 Flash**, sem leitura das variáveis remotas.
 
 ## Identidade, contrato e execução
 
@@ -102,17 +102,13 @@ foto, a descrição de avatar, a crítica do site renderizado e os runners usam
 padrão. Antes de publicar, confira os valores do ambiente de destino.
 
 O fallback de leitura/crítica de logo é `anthropic/claude-sonnet-5`, escolhido
-pela sonda sintética de 12/09/2026 registrada em [Verificação](verification.md).
+pela sonda sintética de 12/09/2026 registrada no [histórico de verificação](archive/verification-2026-09-13.md).
 Overrides explícitos continuam prevalecendo; o restante do produto mantém Gemini.
 Em um ambiente que já define `EIXU_MODEL` ou `EIXU_CRITIC_MODEL`, configure
 `EIXU_LOGO_CRITIC_MODEL=anthropic/claude-sonnet-5` para usar Sonnet somente no
 logo. Alterar o fallback no código não substitui essas variáveis existentes.
 
-O ID foi conferido no [catálogo do Gateway](https://vercel.com/ai-gateway/models/gemini-3.8-flash)
-e na [documentação do Google](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash).
-A janela aceita cerca de 1 milhão de tokens e a saída até 65.536, incluindo
-raciocínio. O modelo aceita imagens, ferramentas e saídas estruturadas; os níveis
-suportados são `low`, `medium` e `high`, sem `minimal`.
+Os modelos e limites desta seção descrevem a política no código; não certificam os overrides nem a disponibilidade do provedor em produção.
 
 A política usa **`reasoning: 'high'`**, pela API comum documentada no AI SDK 7
 instalado (`node_modules/ai/docs/03-ai-sdk-core/26-reasoning.mdx`). A temperatura
@@ -124,7 +120,7 @@ um modelo que entende imagens não necessariamente as gera.
 | Tarefa                        | Máximo de saída por passo |              Passos por turno |
 | ----------------------------- | ------------------------: | ----------------------------: |
 | Briefing e plano editorial    |                    16.384 |                            12 |
-| Cena individual (fallback)    |                     8.192 |                             2 |
+| Cenas (fallback com agente)   |                     8.192 |                             4 |
 | Composição e reparo           |                    49.152 |                            24 |
 | Revisão e correção            |                    24.576 |                            32 |
 | Edição livre                  |                    24.576 |                            32 |
@@ -191,7 +187,7 @@ as doze quando há leitura visual válida. Precisa compará-las contra história
 conteúdo disponível, jornada e, no v6, a composição observada. Após
 `set_design`, prompt, catálogo, plano de cenas, composição, pre-flight e crítico
 recebem somente a gramática selecionada. O bloco `signature.composition` usa o
-layout dessa estrutura, papéis distintos e duas fotos geradas; HTML e código
+layout dessa estrutura, papéis distintos e duas fotos disponíveis do tenant; HTML e código
 livre por tenant ficam fora do schema. A trava entre tenants mede a ordem e o
 arranjo da assinatura sem ler conteúdo comercial. Essa trava vale até v5; no
 v6, fidelidade à referência prevalece sobre diferenciação estrutural.
@@ -233,8 +229,7 @@ classificador geral de intenção.
 
 Uma parada em ferramentas pode terminar sem resposta textual. Nesse caso,
 `lib/ai/chat-stream.ts` acrescenta um recibo do estado atual ao stream e ao
-histórico, antes de encerrar. O recibo distingue etapa pendente de revisão
-concluída; atingir o limite de passos é informado. Erros recuperáveis de entrada
+histórico, antes de encerrar. O recibo distingue geração incompleta, site entregue e análise visual solicitada; atingir o limite de passos é informado. Erros recuperáveis de entrada
 ou execução de ferramenta são tentativas recusadas, não falhas do turno inteiro.
 Logs identificam fase, ferramenta e tenant por ID, sem argumentos ou credenciais.
 Fim de stream sem evento terminal vira erro explícito no cliente. O painel relê
@@ -242,12 +237,8 @@ o estado também ao encerrar ou interromper um turno.
 
 ## Execução em etapas no servidor
 
-O laço das quatro fases vivia no navegador. Em 11/09/2026 uma recarga durante a
-etapa de cenas matou a sequência sem deixar rastro: a cena em curso terminou no
-servidor, a seguinte nunca foi pedida, e o painel voltou oferecendo “Continuar”
-como se nada estivesse rodando. O operador então digitou “continuar”, que o
-chat tratava como edição: 16 passos e 339 segundos no caminho errado, com dois
-turnos concorrentes no mesmo cliente.
+A geração roda no servidor para sobreviver a recarga, troca de aparelho ou
+fechamento da aba. Ela mantém três checkpoints e duas etapas visíveis.
 
 A execução é um registro em `generation_runs`, com um único run ativo por
 cliente garantido por índice parcial. Na Vercel, `dispatchStep` envia cada
@@ -351,7 +342,7 @@ cliente. Os eventos legados de rodadas continuam legíveis. **Tentar novamente**
 retoma uma execução antiga que falhou; uma geração já entregue não reinicia pelo
 mesmo comando. O chat permite solicitar outra revisão explicitamente.
 
-## Compor, observar, corrigir, conferir
+## Composição e revisão solicitada
 
 O fluxo automático é briefing → cenas → composição, seguido de revisão humana.
 O planejamento escolhe
@@ -450,7 +441,7 @@ omitidos, e valida o bloco completo com schema estrito antes de escrever.
 Propriedades desconhecidas ou inválidas são recusadas, não gravadas como se
 fossem alterações visuais aplicadas.
 
-A revisão tem três fontes de evidência:
+Quando solicitada, a revisão tem três fontes de evidência:
 
 1. `lintPage`, `lintSite` e métricas de composição conferem o projeto inteiro
    antes de abrir o navegador. Erro conhecido encerra a leitura sem gastar
@@ -483,7 +474,7 @@ cobertura incompleta ou crítica inválida deixam a revisão incompleta.
 avaliação e, quando houve reparo, uma conferência focal. A primeira avaliação
 com cobertura completa e sem erro material já encerra; avisos opcionais ficam
 no relatório. A crítica é sugestão verificável, não autorização humana.
-O loop força a primeira avaliação e reserva o último passo para a conferência se ainda houver leitura
+No modo explícito `revisao`, o loop força a primeira avaliação e reserva o último passo para a conferência se ainda houver leitura
 disponível; uma terceira chamada seria recusada pela ferramenta. As correções
 da mesma página podem ser agrupadas antes da nova leitura. Depois do refinamento, uma nova
 revisão completa e sem erros encerra a fase por condição externa, mantendo os
@@ -495,8 +486,9 @@ fingerprint SHA-256 por página. A dependência inclui conteúdo, SEO, marca,
 contatos, briefing, imagens efetivamente usadas, versão do harness e deployment.
 Uma página intacta reaproveita desktop e mobile; mudança global invalida o
 conjunto dependente, e foto solta no acervo não invalida nada. O certificado
-completo nasce dos recibos atuais de todas as páginas. `nextPhase` encerra com certificado visual completo e sem erro material ou com
-entrega explícita do rascunho atual. Contar chamadas não comprova aprovação.
+completo nasce dos recibos atuais de todas as páginas. Ele qualifica a análise
+solicitada; `nextPhase` encerra pela entrega salva ou pelas páginas esperadas para a forma do site: três orgânicas em multipágina ou uma home orgânica em Landing Page. A página de obrigado é exigida pelo lint da composição, mas não pela contagem de `nextPhase`. Esse encerramento independe do certificado visual. Contar chamadas não comprova
+aprovação visual.
 
 A publicação manual mantém o pre-flight determinístico em ambos os caminhos.
 `lib/sites/publication-policy.ts` converte avaliações editoriais em recomendações
@@ -518,7 +510,9 @@ usa `EIXU_CHROME_PATH`. Esses testes não chamam modelos pagos.
 
 `npm run eval:harness` explica o ensaio. Com `--live`, usa o modelo, os schemas,
 os executores e o renderer reais; substitui I/O editorial por memória, com fotos
-de uma fixture local. Não acessa Neon, não grava Blob e não publica. Exemplo:
+de uma fixture local. Não acessa Neon, não grava Blob e não publica. O ensaio executa briefing,
+composição e revisão visual explicitamente; essa revisão é critério do
+experimento, não uma etapa automática da geração do produto. Exemplo:
 
 ```bash
 EIXU_MODEL=google/gemini-3.8-flash EIXU_CHROME_PATH=/caminho/chrome \
@@ -555,9 +549,10 @@ comparáveis aos números antigos. Custo é diagnóstico, não critério de qual
 As notas humanas de [eval-rubric.md](eval-rubric.md) continuam separadas do aceite
 automático. Compare os mesmos casos, fotos e renderer, repita saídas variáveis e
 registre limitações. Um smoke multimodal ou uma nota do próprio modelo não prova
-superioridade geral. Evidências desta entrega ficam em [Verificação](verification.md).
+superioridade geral. O [guia de verificação](verification.md) reúne os checks; resultados datados ficam
+no [histórico](archive/verification-2026-09-13.md).
 
-O projeto Vercel foi conferido com plano Pro e Fluid Compute ativo. O teto de 800 segundos usa o limite estável documentado em [Duration](https://vercel.com/docs/functions/configuring-functions/duration). Ferramentas de um mesmo passo executam em sequência para evitar perda de edições; leituras independentes dentro dos executores continuam agrupadas. Isso não substitui locks entre abas ou instâncias.
+As rotas declaram `maxDuration = 800`; o limite efetivo depende da configuração e do plano na Vercel. Confira o ambiente no release, conforme [Verificação](verification.md#publicação). Ferramentas de um mesmo passo executam em sequência para evitar perda de edições; leituras independentes dentro dos executores continuam agrupadas. Isso não substitui locks entre abas ou instâncias.
 
 ## Limites da leitura do site atual
 

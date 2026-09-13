@@ -205,7 +205,7 @@ atualiza apenas quando o progresso muda.
 
 Enquanto a geração roda, o chat fica em espera e diz por quê: os dois disputariam as mesmas páginas. Se uma etapa falhar ou não avançar, a execução para com o motivo no painel; leia a última resposta antes de retomar. Se aparecer que a próxima etapa não pôde ser iniciada, **Tentar novamente** retoma pelo progresso salvo. Cenas e páginas prontas continuam disponíveis. Depois de salvar as páginas, a execução termina e o chat fica disponível para ajustes.
 
-Sites já gerados também ficam concluídos, inclusive os que tinham uma conferência automática interrompida. Recarga, edição ou atualização do gerador não exigem retomar a revisão. Uma análise visual automática só ocorre se você pedir pelo chat. Erros de página ou projeto continuam bloqueando **Publicar**; a geração não publica por conta própria.
+Sites já gerados também ficam concluídos, inclusive os que tinham uma conferência automática interrompida. Recarga, edição ou atualização do gerador não exigem retomar a revisão. Uma análise visual automática só ocorre se você pedir pelo chat. Erros técnicos de página ou projeto continuam bloqueando **Publicar**; recomendações editoriais ficam visíveis e a geração não publica por conta própria.
 
 Na etapa de cenas, o plano preparado já contém cada pedido de foto, página e
 proporção. O runner envia o lote direto ao estúdio, sem um turno do coordenador
@@ -234,8 +234,7 @@ explicar o limite.
 O fechamento de uma edição informa o que foi salvo ou recusado conforme o
 retorno do servidor. A comprovação de um prêmio exige um fato escrito por você
 ou cadastrado em Dados; uma imagem na prévia não registra essa confirmação.
-Quando a validação aponta uma pendência, ela precisa ser resolvida — não há
-uma sincronização posterior que libere a publicação sozinha.
+Pendências técnicas precisam ser resolvidas para publicar; recomendações editoriais podem ser revisadas na prévia e não impedem a publicação solicitada.
 
 Ao pedir uma alteração, como **“o footer quero em darkmode”** ou **“quero o
 header em darkmode”**, acompanhe a atividade e o tempo junto da caixa de
@@ -254,20 +253,9 @@ selos do hero, por exemplo, aceitam ficar sob os botões ou logo abaixo do
 título; peça a posição e ele muda só isso. Para remover algo, diga com todas as
 letras.
 
-Se a pendência **Falta prova confirmada** aparecer, escreva o fato no chat
-(prêmio, número, marca) e peça para registrar, ou informe em **Dados ›
-Evidências**. O agente só registra o que você escreveu; a página montada não
-comprova o fato sozinha. Acento, maiúsculas e ponto final não separam o fato da
-página: o que muda é o conteúdo da frase. Uma frase com ponto no meio ou muito
-longa só é aceita em Dados › Evidências.
+Se aparecer **Falta prova confirmada**, você pode registrar o fato real no chat ou em **Dados › Evidências**. O agente não usa a própria página como comprovação. A comparação preserva números e negações; ignora acento, caixa e pontuação terminal. Frases com ponto no meio ou muito longas devem ser registradas em Dados.
 
-**Resolver pelo chat**, ao lado da lista de pendências, abre o pedido já
-escrito; revise e envie. O agente recebe as mesmas pendências do painel e
-resolve sozinho o que não depende de você: aponta os blocos para a frase
-confirmada certa e gera a imagem na proporção que o bloco exibe, mantendo a
-original no acervo. Quando falta um fato, ele encerra pedindo as frases exatas
-em vez de inventar uma prova. Alterar nome, história, Site atual ou referência
-em Dados não apaga mais os fatos confirmados.
+**Resolver pelo chat** prepara o pedido com as pendências atuais; revise e envie. O agente pode alinhar referências a fatos já confirmados e ajustar ou retirar alegações sem confirmação, sem exigir que você repita frases. Outros ajustes, como proporção de imagem, seguem pelas ferramentas correspondentes. Confira as alterações na prévia. Alterar nome, história, Site atual ou referência em Dados preserva os fatos confirmados. Publicar não transforma uma alegação em fato confirmado.
 
 Os textos das 60 mensagens mais recentes são recuperados ao abrir a tela. Ferramentas, anexos e contagens de custo antigos não são restaurados. Registre decisões duráveis no briefing; não dependa de uma conversa extensa como única fonte do negócio.
 
@@ -322,6 +310,8 @@ por campo inteiro; não há formatação de palavras isoladas nem histórico de
 desfazer além de **Restaurar**.
 
 ## Biblioteca e publicação
+
+Anexar uma referência ao chat não a aplica no site sozinho. Para adicionar fotos ao acervo numerado, use **Enviar imagens** na biblioteca. Logos em cadastro/Dados e anexos da conversa têm um fluxo próprio, separado do envio de fotos.
 
 Imagens (`/admin/[tenant]/imagens`) reúne o guia visual e o acervo numerado, com filtros Todas, Fotos, Logos e Rejeitadas. Todas inclui as rejeitadas. Os cartões mostram proporção, descrição e nota quando existe; sem nota, mostram **sem crítica**. As candidatas antigas estão disponíveis sem aprovação. **Editar guia** e **Gerar imagens** abrem um pedido na conversa; revise e envie para executar.
 
@@ -385,4 +375,4 @@ O custo por ação divide os gastos por formulários mais cliques no WhatsApp. O
 
 ## Quando algo falhar
 
-Aviso de sessão expirada exige entrar novamente pelo painel. Erros de rede não comprovam que uma escrita falhou: recarregue o estado antes de repetir uma operação que possa duplicar gasto ou geração. Um erro de carregamento oferece nova tentativa; cliente inexistente tem retorno à lista. A revisão técnica e seus limites estão em [Revisão do admin](admin-review.md).
+Aviso de sessão expirada exige entrar novamente pelo painel. Erros de rede não comprovam que uma escrita falhou: recarregue o estado antes de repetir uma operação que possa duplicar gasto ou geração. Um erro de carregamento oferece nova tentativa; cliente inexistente tem retorno à lista. A revisão técnica e seus limites estão em [Revisão do admin](archive/admin-review-2026-09-10.md).

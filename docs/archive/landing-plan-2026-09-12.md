@@ -1,15 +1,17 @@
 # Plano: vibe Landing Page
 
+> Histórico: diagnóstico, proposta ou ensaio daquela versão. Não é contrato vigente nem confirmação de produção. Consulte o [índice](../README.md) e a [verificação atual](../verification.md). Artefatos de `outputs/` são locais e podem não acompanhar o checkout.
+
 Análise feita em 12/09/2026 sobre o código em `main`, sobre as duas guias de
 boas práticas indicadas pelo operador e sobre seis referências visuais
 capturadas em 1440 px e 390 px com Chrome headless. O documento registra o
 que a vibe precisa ser, onde o produto hoje impede uma landing page e o plano
 de implementação em fases, no mesmo formato de
-[plano-vibes-unicas.md](plano-vibes-unicas.md).
+[plano-vibes-unicas.md](../plano-vibes-unicas.md).
 
 **Estado:** implementação local das fases 0–3. O escopo confirmado pelo operador
 é implementar e validar localmente; publicação e geração paga ficam fora desta
-entrega. Evidências e limites estão em [Verificação](verification.md).
+entrega. Evidências e limites estão em [Verificação](../verification.md).
 
 A implementação acompanha a base atual: Landing Page usa perfil **v7**, sem
 `structure`/`structureRationale`; as quatro vibes multipágina mantêm v5/v6 e
@@ -149,7 +151,7 @@ atual em `'multi'`.
   primeiro plano, fundo limpo e neutro, luz uniforme, enquadramento
   central que aceite moldura. Sem pessoa posando. Quando o cliente tem
   tela ou foto de produto, o upload de
-  [fluxo do acervo](admin.md) prevalece sobre a
+  [fluxo do acervo](../admin.md) prevalece sobre a
   cena gerada no hero.
 - **Localização:** `VIBE_LOCATION_TONE.landing = 'paper'`; a seção
   automática de contato fica compacta, antes do rodapé.
