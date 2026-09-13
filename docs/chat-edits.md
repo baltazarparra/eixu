@@ -105,12 +105,23 @@ Marca global, geração de imagens e confirmação de fatos não ficam disponív
 nesse turno. Alvo ausente impede a escrita. Pedidos mistos seguem o escopo geral.
 
 Em `signature.composition`, cada item aceita `imagePresentation`: `frame: none`
-retira fundo, borda, sombra e padding do box e da imagem, inclusive a moldura
+retira fundo, borda, arredondamento, sombra e padding do box e da imagem, inclusive a moldura
 global; `fit: natural` mostra a proporção original; `width: container` ocupa
 100% do box atual; `spacingTop: none` retira margem/padding superiores. Esses
 campos não trocam a grade da seção. Para o contêiner da seção, use
 `presentation.background: transparent`, `edge: none` e `spacingTop: none`.
 Sem as novas props, os padrões continuam iguais.
+
+`hero.landing` oferece os mesmos controles em `imagePresentation`, tanto na
+foto do `stage` quanto na foto opcional do `form`. Para retirar o container
+decorativo e deixar só a imagem, `frame: none` e `fit: natural` removem as duas
+molduras e a área vazia da proporção fixa. A imagem permanece no mesmo lugar,
+com o mesmo arquivo; headline, selos, ações e formulário são preservados.
+Isso não exige trocar a abertura por `hero.split`. No `form`, o painel dos
+campos continua independente da moldura da foto.
+O pedido de remover um container **deixando apenas a imagem** não autoriza
+apagar o conteúdo do bloco. Esse recorte é conservador e não substitui a
+interpretação do alvo pelo agente e pelo anexo do operador.
 
 ## Fato confirmado pelo operador
 
@@ -166,13 +177,19 @@ O chat não muda de modelo, raciocínio ou fluxo por causa dessa prop.
   o pedido de reconhecimento, recusas, fechamento do chat e integridade dos
   fatos. `tests/browser/site-recognition-edit.test.mjs` mede quatro famílias
   com a moldura global e CSS de produção em desktop e celular.
+- `tests/admin-landing-frame.test.mjs` e
+  `tests/browser/site-landing-frame.test.mjs` cobrem remoção da moldura do hero,
+  preservação dos campos e snapshots, restauração dos padrões e as duas
+  variantes com CSS de produção em 1440, 390 e 320 px.
 - `EIXU_TEST_POSTGRES_URL=... node --test tests/admin-page-edits-db.test.mjs`
   aceita apenas PostgreSQL local descartável `eixu_pr2_test`; força duas
   leituras da mesma versão e verifica o conflito no SQL real.
 - `npm run eval:edits -- --live` usa Gemini configurado, prompt e executores
   reais sobre páginas sintéticas em memória. Registra exatidão, chamadas,
   passos, duração, consumo e saída em `outputs/page-edits/`. Não acessa Neon,
-  Blob nem publicação. `--case=text|nested|color|insert|move|move-within|impossible-move|ambiguous|recognition-image` filtra.
+  Blob nem publicação. `--case=text|nested|color|insert|move|move-within|impossible-move|ambiguous|recognition-image|landing-frame` filtra.
+  `--attachment=fixture.png` envia os pixels de uma captura sintética ao modelo;
+  o caso `landing-frame` usa o pedido real de remover o container e deixar a imagem.
 
 Os resultados medidos e as limitações da entrega ficam em
 [Verificação](verification.md). Testes determinísticos não provam que toda

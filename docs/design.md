@@ -15,13 +15,13 @@ A sequência reúne hero, prova, problema/promessa, demonstração, passos,
 depoimentos, preço quando confirmado, FAQ e fechamento. São 6–11 seções e no
 mínimo 250 palavras úteis na home, sem contar navegação e rodapé.
 
-| Bloco                 | Layouts             | Contrato                                                                                                           |
-| --------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `hero.landing`        | `stage`, `form`     | Até 60 caracteres; imagem em moldura ou formulário nativo com 2–4 campos. `form` permite foto 4:5 junto da oferta. |
-| `proof.strip`         | `logos`, `numbers`  | 3–6 marcas ou 2–4 números; cada item aponta uma evidência literal do briefing.                                     |
-| `narrative.statement` | `center`, `split`   | Problema ou promessa em uma frase, até 160 caracteres.                                                             |
-| `feature.showcase`    | `steps`, `tabs`     | 2–4 itens com imagem; abas com setas e Home/End, todos os painéis legíveis sem JS ou na edição.                    |
-| `proof.testimonials`  | `grid`, `spotlight` | 2–3 citações, autor, cargo e resultado sustentados pela mesma evidência; foto opcional somente do acervo enviado.  |
+| Bloco                 | Layouts             | Contrato                                                                                                                     |
+| --------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `hero.landing`        | `stage`, `form`     | Até 60 caracteres; imagem com moldura opcional ou formulário nativo com 2–4 campos. `form` permite foto 4:5 junto da oferta. |
+| `proof.strip`         | `logos`, `numbers`  | 3–6 marcas ou 2–4 números; cada item aponta uma evidência literal do briefing.                                               |
+| `narrative.statement` | `center`, `split`   | Problema ou promessa em uma frase, até 160 caracteres.                                                                       |
+| `feature.showcase`    | `steps`, `tabs`     | 2–4 itens com imagem; abas com setas e Home/End, todos os painéis legíveis sem JS ou na edição.                              |
+| `proof.testimonials`  | `grid`, `spotlight` | 2–3 citações, autor, cargo e resultado sustentados pela mesma evidência; foto opcional somente do acervo enviado.            |
 
 A protagonista é `feature.showcase` ou `feature.bento:showcase` com duas fotos.
 O plano mantém cinco cenas na home: hero, duas da protagonista, apoio em
@@ -179,6 +179,13 @@ Em `signature.composition`, `items.N.imagePresentation` controla a moldura,
 a proporção natural, a largura do box e o respiro superior de uma única imagem.
 As quatro famílias usam os mesmos controles, com precedência sobre a moldura
 global `imagery: framed`. A grade, os textos e os demais itens são preservados.
+
+Em `hero.landing`, os mesmos campos ficam em `imagePresentation`. `frame: none`
+retira também o arredondamento e as duas bordas (box e imagem); `fit: natural`
+elimina a proporção fixa sem trocar `stage`/`form`. O painel de formulário
+continua preservado. O pre-flight reconhece `natural`/`contain` nos controles
+implementados e não recomenda trocar layout ou gerar outra foto por um recorte
+que já não acontece; fotos ainda recortadas continuam sendo avaliadas.
 
 O cabeçalho `nav.bar` aceita `position: fixed` sem trocar layout ou direção da
 marca. `backgroundOpacity` controla o fundo entre 70 e 100%; o tom escuro vem de

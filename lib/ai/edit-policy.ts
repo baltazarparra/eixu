@@ -31,13 +31,23 @@ export function asksRemoval(text: string): boolean {
       ).test(clause)
     )
       return false;
-    const contentRequest = clause.replace(
-      new RegExp(
-        `\\b${verb}\\s+(?:(?:o|a|os|as)\\s+)?(?:bg|background|fundo|bordas?|padding|margin|margens?|espacamento|espaco|sombra)\\b`,
-        'g',
-      ),
-      '',
-    );
+    const contentRequest = clause
+      .replace(
+        new RegExp(
+          `\\b${verb}\\s+(?:(?:o|a|os|as|esse|essa|esses|essas|este|esta|estes|estas)\\s+)?(?:bg|background|fundo|bordas?|molduras?|padding|margin|margens?|espacamento|espaco|sombra)\\b`,
+          'g',
+        ),
+        '',
+      )
+      .replace(
+        // "Remover esse container e deixar apenas a imagem" tira decoração;
+        // não é permissão para apagar o texto ou substituir a abertura.
+        new RegExp(
+          `\\b${verb}\\s+(?:(?:o|a|esse|essa|este|esta)\\s+)?(?:container|conteiner|contêiner|box|caixa)\\b(?=\\s+e\\s+(?:deixar|deixe|manter|mantenha)\\s+(?:so|apenas|somente)\\s+(?:a\\s+)?(?:imagem|foto)\\b)`,
+          'g',
+        ),
+        '',
+      );
     return (
       new RegExp(`\\b${verb}\\b`).test(contentRequest) ||
       /\bsem\s+(?:o|a|os|as)\s+(?:selos?|etiquetas?|textos?|blocos?|secoes?|imagens?|fotos?|botoes?|links?)\b/.test(

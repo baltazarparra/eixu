@@ -1,6 +1,6 @@
 /** Chamadas reais, executores reais e páginas sintéticas em memória. Sem Neon/Blob/publicação. */
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createJiti } from 'jiti';
 import {
   editPages,
@@ -10,6 +10,10 @@ import {
   recognitionPages,
   recognitionRequest,
 } from '../tests/helpers/recognition-fixture.mjs';
+import {
+  landingFrameData,
+  landingFrameRequest,
+} from '../tests/helpers/landing-frame-fixture.mjs';
 const j = createJiti(import.meta.url, {
   alias: { '@': process.cwd() },
   fsCache: false,
@@ -19,11 +23,27 @@ const { productModel } = await j.import('../lib/ai/models.ts');
 const { usageRecord, sumGatewayCosts } = await j.import('../lib/ai/usage.ts');
 if (!process.argv.includes('--live')) {
   console.log(
-    'Use npm run eval:edits -- --live [--case=text|nested|color|insert|move|move-within|impossible-move|ambiguous|recognition-image]. Modelo configurado, fixture sintética, executores reais; nenhuma gravação remota.',
+    'Use npm run eval:edits -- --live [--case=text|nested|color|insert|move|move-within|impossible-move|ambiguous|recognition-image|landing-frame] [--attachment=fixture.png]. Modelo configurado, fixture sintética, executores reais; nenhuma gravação remota.',
   );
   process.exit(0);
 }
 const cases = [
+  {
+    id: 'landing-frame',
+    text: landingFrameRequest,
+    initialPages: landingFrameData().pages,
+    initialTenant: landingFrameData().tenant,
+    check: (pages) => {
+      const expected = landingFrameData().pages;
+      const hero = pages[0].blocks.find((block) => block.id === 'hero');
+      assert.equal(hero.props.imagePresentation?.frame, 'none');
+      assert.equal(hero.props.imagePresentation?.fit, 'natural');
+      expected[0].blocks.find(
+        (block) => block.id === 'hero',
+      ).props.imagePresentation = hero.props.imagePresentation;
+      assert.deepEqual(pages, expected);
+    },
+  },
   {
     id: 'recognition-image',
     text: recognitionRequest,
@@ -141,16 +161,22 @@ const selected = process.argv
 if (selected && !cases.some((c) => c.id === selected))
   throw new Error('Caso desconhecido.');
 const directory = `outputs/page-edits/${Date.now()}`;
+const attachment = process.argv
+  .find((arg) => arg.startsWith('--attachment='))
+  ?.slice(13);
+const attachmentImage = attachment ? await readFile(attachment) : undefined;
 await mkdir(directory, { recursive: true });
 const report = {
   model: productModel(),
   scope: 'Páginas sintéticas em memória; sem autenticação/Neon/Blob reais.',
+  attachment: attachment ?? null,
   runs: [],
 };
 for (const scenario of cases.filter((c) => !selected || c.id === selected)) {
   const f = await pageEditFixture(scenario.text, {
     hero: scenario.hero,
     initialPages: scenario.initialPages,
+    initialTenant: scenario.initialTenant,
   });
   const trace = [];
   const started = Date.now();
@@ -161,7 +187,17 @@ for (const scenario of cases.filter((c) => !selected || c.id === selected)) {
   });
   try {
     const result = await agent.generate({
-      prompt: scenario.text,
+      prompt: attachmentImage
+        ? [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: scenario.text },
+                { type: 'file', data: attachmentImage, mediaType: 'image/png' },
+              ],
+            },
+          ]
+        : scenario.text,
       onStepEnd: (step) => {
         trace.push({
           calls: step.toolCalls,

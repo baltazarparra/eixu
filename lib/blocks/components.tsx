@@ -423,13 +423,17 @@ type SignatureItem = SignatureCompositionProps['items'][number] & {
   editing?: boolean;
 };
 
-function signatureImageAttrs(item: SignatureItem) {
+function imagePresentationAttrs(value: HeroLandingProps['imagePresentation']) {
   return {
-    'data-image-frame': item.imagePresentation?.frame,
-    'data-image-fit': item.imagePresentation?.fit,
-    'data-image-width': item.imagePresentation?.width,
-    'data-image-spacing-top': item.imagePresentation?.spacingTop,
+    'data-image-frame': value?.frame,
+    'data-image-fit': value?.fit,
+    'data-image-width': value?.width,
+    'data-image-spacing-top': value?.spacingTop,
   };
+}
+
+function signatureImageAttrs(item: SignatureItem) {
+  return imagePresentationAttrs(item.imagePresentation);
 }
 
 function SignatureMedia({ item }: { item: SignatureItem }) {
@@ -2016,6 +2020,7 @@ export function HeroLanding({
   badgesPlacement,
   image,
   imageAlt,
+  imagePresentation,
   form,
   formAnchor,
   ctx,
@@ -2070,6 +2075,7 @@ export function HeroLanding({
               height={1000}
               fetchPriority="high"
               decoding="async"
+              {...imagePresentationAttrs(imagePresentation)}
             />
           )}
         </div>
@@ -2086,7 +2092,10 @@ export function HeroLanding({
             />
           </div>
         ) : image ? (
-          <figure className="site-landing-product">
+          <figure
+            className="site-landing-product"
+            {...imagePresentationAttrs(imagePresentation)}
+          >
             <img
               src={image}
               alt={imageAlt ?? ''}
@@ -2094,6 +2103,7 @@ export function HeroLanding({
               height={900}
               fetchPriority="high"
               decoding="async"
+              {...imagePresentationAttrs(imagePresentation)}
             />
           </figure>
         ) : null}
