@@ -116,7 +116,7 @@ const imagePresentation = z
       .enum(['none', 'default'])
       .optional()
       .describe(
-        'none remove fundo, borda, sombra e padding da imagem e de seu box, inclusive a moldura herdada da direção do site.',
+        'none remove fundo, borda, arredondamento, sombra e padding da imagem e de seu box, inclusive a moldura herdada da direção do site. Preserva a posição e o conteúdo.',
       ),
     fit: z
       .enum(['natural', 'cover', 'contain'])
@@ -207,6 +207,7 @@ export const blockSchemas = {
         ),
       image: z.url().startsWith('http').optional(),
       imageAlt: z.string().min(5).max(140).optional(),
+      imagePresentation,
       form: leadFormSchema
         .omit({
           anchor: true,
@@ -798,7 +799,7 @@ export const blockMeta: Record<BlockType, Meta> = {
   'hero.landing': {
     family: 'hero',
     label: 'Abertura de conversão',
-    use: 'Benefício e ação única; stage mostra produto em moldura, form embute o formulário. Selos somente com evidence do briefing, sob os botões ou sob o título por badgesPlacement.',
+    use: 'Benefício e ação única; stage mostra a imagem abaixo da oferta, form embute o formulário. imagePresentation.frame none remove o box decorativo e a moldura da imagem sem trocar o layout; fit natural elimina o espaço reservado pela proporção fixa. Selos somente com evidence do briefing, sob os botões ou sob o título por badgesPlacement.',
     singleton: true,
   },
   'feature.explorer': {

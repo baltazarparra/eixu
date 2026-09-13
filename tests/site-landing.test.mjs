@@ -30,6 +30,26 @@ const rules = (f) =>
   lintSite(f.pages, f.images, 'publish', f.tenant.brand, f.tenant.brief);
 const find = (f, type) => f.pages[0].blocks.find((b) => b.type === type);
 
+await test('imagem natural no hero não recomenda outra foto ou outro layout por recorte inexistente', () => {
+  const f = landingFixture();
+  const hero = find(f, 'hero.landing');
+  f.images.find((image) => image.url === hero.props.image).ratio = '12:5';
+  const cropWarnings = () =>
+    rules(f).filter(
+      (finding) =>
+        finding.rule === 'imagem-proporcao' && finding.blockId === hero.id,
+    );
+  assert.equal(cropWarnings().length, 1);
+  hero.props.imagePresentation = { frame: 'none', fit: 'natural' };
+  assert.equal(cropWarnings().length, 0);
+  assert.equal(
+    rules(f).filter((finding) => finding.level === 'error').length,
+    0,
+  );
+  hero.props.imagePresentation.fit = 'cover';
+  assert.equal(cropWarnings().length, 1);
+});
+
 for (const layout of ['stage', 'form'])
   await test(`landing ${layout}: schema, conteúdo, SSR, cenas e conclusão em uma página`, () => {
     const f = landingFixture(layout);

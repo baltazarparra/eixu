@@ -1,5 +1,58 @@
 # Validação e publicação
 
+## Remoção de moldura na abertura da landing, 13/09/2026
+
+O pedido do `villa-piva` era retirar o container branco com borda dupla,
+preservando a imagem. A consulta restrita à home confirmou `hero.landing`
+com layout `stage`. Os controles da entrega anterior existiam somente em
+`signature.composition`; a moldura do hero e a moldura global eram cumulativas.
+O catálogo não oferecia essa edição ao agente. Nenhum dado do cliente foi
+alterado durante a investigação.
+
+`hero.landing.imagePresentation` agora compartilha os controles de imagem,
+com `frame: none` e `fit: natural` para esse pedido. Remove fundo, bordas,
+arredondamento, sombra, padding e proporção fixa sem substituir o hero, a foto,
+seus textos ou ações. No layout `form`, o painel do formulário permanece.
+O pre-flight considera os controles de imagem inteira já implementados.
+Remover um container deixando a imagem não libera apagar o conteúdo do bloco.
+
+O teste com **Gemini 3.8 Flash**, raciocínio `high`, recebeu o pedido exato e
+uma captura sintética da mesma dupla moldura como entrada multimodal. Usou
+`siteAgent`, schemas e executores reais, com banco e páginas em memória. O
+modelo omitiu o ID do bloco na primeira chamada; o SDK a recusou, o modelo
+corrigiu o formato e houve uma única gravação válida de `frame: none` e
+`fit: natural`. Nenhum texto, imagem, link, layout ou snapshot publicado foi alterado.
+Foram 3 passos, 24,98 segundos, 70.590 tokens totais e custo informado pelo
+Gateway de US$ 0,045830175. Relatório local:
+`outputs/page-edits/1789312179060/report.json`. A primeira tentativa, antes
+de renovar a autenticação local, falhou sem executar o modelo. Um ensaio
+positivo não garante todas as formulações em linguagem natural.
+
+Validação:
+
+- Tipos, lint global e build Next.js passaram; quatro verificações do artefato,
+  incluindo a presença das regras de imagem e seção no CSS compilado.
+- 270 casos de sites aprovados, incluindo a captura isolada executada à parte
+  com Chromium; 205 casos de admin aprovados. Cinco integrações PostgreSQL
+  permaneceram puladas por dependerem de um banco local descartável.
+- 75 testes de navegador aprovados. O novo caso mede `stage` e `form` em
+  1440, 390 e 320 px, com as duas molduras presentes antes e removidas depois,
+  proporção original, imagem na largura do box, demais imagens e formulário
+  preservados. A regressão da composição autoral continua aprovada.
+- Capturas e medições em `outputs/landing-frame/`; o anexo sintético foi
+  inspecionado antes de ser enviado ao modelo. Não houve geração de imagem.
+
+O cache persistido de build do Turbopack foi desativado pela opção suportada
+do Next 16.3.3. Ele já havia servido CSS anterior ao commit no release `f020497`,
+resolvido por reconstrução sem cache. O novo gate lê os arquivos compilados,
+impedindo que a ausência desses controles passe apenas pela checagem do fonte.
+O cache de desenvolvimento continua ativo.
+
+A checagem de CSS percorre `.next/static` recursivamente: a Vercel emite
+`immutable/chunks`, enquanto o build local usa `chunks`. O primeiro preview
+recusou a busca limitada à pasta local; o gate corrigido foi verificado nos
+dois formatos antes de promover o código.
+
 ## Ajuste visual fiel e recibo verificável, 13/09/2026
 
 Correção sobre o PR #51 (`8af082d`), na branch local
