@@ -11,6 +11,7 @@ function sample(schema, path = '') {
   if (schema.default !== undefined && !['facts', 'links'].includes(key))
     return schema.default;
   if (schema.enum) return schema.enum[0];
+  if (schema.const !== undefined) return schema.const;
   if (schema.type === 'object')
     return Object.fromEntries(
       Object.entries(schema.properties ?? {})

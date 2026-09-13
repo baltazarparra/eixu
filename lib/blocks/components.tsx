@@ -423,11 +423,20 @@ type SignatureItem = SignatureCompositionProps['items'][number] & {
   editing?: boolean;
 };
 
+function signatureImageAttrs(item: SignatureItem) {
+  return {
+    'data-image-frame': item.imagePresentation?.frame,
+    'data-image-fit': item.imagePresentation?.fit,
+    'data-image-width': item.imagePresentation?.width,
+    'data-image-spacing-top': item.imagePresentation?.spacingTop,
+  };
+}
+
 function SignatureMedia({ item }: { item: SignatureItem }) {
   const text = textAttrs(item.textStyles, item.editing);
   if (!item.image) return null;
   return (
-    <figure className="site-signature-media">
+    <figure className="site-signature-media" {...signatureImageAttrs(item)}>
       <img
         src={item.image}
         alt={item.imageAlt ?? ''}
@@ -435,6 +444,7 @@ function SignatureMedia({ item }: { item: SignatureItem }) {
         height={720}
         loading="lazy"
         decoding="async"
+        {...signatureImageAttrs(item)}
       />
       {item.caption ? (
         <figcaption {...text.mark(`items.${item.sourceIndex}.caption`)}>
@@ -491,7 +501,11 @@ function SignaturePath({
   return (
     <ol className="site-signature-path">
       {items.map((item, index) => (
-        <li key={`${item.title}-${index}`} data-role={item.role}>
+        <li
+          key={`${item.title}-${index}`}
+          data-role={item.role}
+          {...signatureImageAttrs(item)}
+        >
           <span className="site-signature-step" aria-hidden="true">
             {String(index + 1).padStart(2, '0')}
           </span>
@@ -513,7 +527,11 @@ function SignatureLens({
   return (
     <div className="site-signature-lens">
       {items.map((item, index) => (
-        <article key={`${item.title}-${index}`} data-role={item.role}>
+        <article
+          key={`${item.title}-${index}`}
+          data-role={item.role}
+          {...signatureImageAttrs(item)}
+        >
           <SignatureMedia item={item} />
           <SignatureCopy item={item} vibe={vibe} />
         </article>
@@ -526,13 +544,21 @@ function SignatureMap({ items, vibe }: { items: SignatureItem[]; vibe: Vibe }) {
   const [focus, ...support] = items;
   return (
     <div className="site-signature-map">
-      <article className="site-signature-map-focus" data-role={focus.role}>
+      <article
+        className="site-signature-map-focus"
+        data-role={focus.role}
+        {...signatureImageAttrs(focus)}
+      >
         <SignatureMedia item={focus} />
         <SignatureCopy item={focus} vibe={vibe} />
       </article>
       <ul className="site-signature-map-support">
         {support.map((item, index) => (
-          <li key={`${item.title}-${index}`} data-role={item.role}>
+          <li
+            key={`${item.title}-${index}`}
+            data-role={item.role}
+            {...signatureImageAttrs(item)}
+          >
             <SignatureMedia item={item} />
             <SignatureCopy item={item} vibe={vibe} />
           </li>
@@ -556,6 +582,7 @@ function SignatureEditorial({
           key={`${item.title}-${index}`}
           data-role={item.role}
           data-index={index + 1}
+          {...signatureImageAttrs(item)}
         >
           <SignatureCopy item={item} vibe={vibe} />
           <SignatureMedia item={item} />
@@ -1996,7 +2023,10 @@ export function HeroLanding({
   const text = textAttrs(textStyles, editing);
   // A ordem no DOM segue a leitura; o CSS não reordena.
   const badgeList = badges.length ? (
-    <ul className="site-landing-badges" data-placement={badgesPlacement ?? 'cta'}>
+    <ul
+      className="site-landing-badges"
+      data-placement={badgesPlacement ?? 'cta'}
+    >
       {badges.map((badge, index) => (
         <li key={index}>{text.node(`badges.${index}.label`, badge.label)}</li>
       ))}

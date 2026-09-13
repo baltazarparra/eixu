@@ -38,8 +38,14 @@ por página e conclui usando o recibo; uma pergunta necessária de alvo continua
 sendo preferível a alterar o lugar errado. A edição geral deixa de expor os
 quatro mutadores antigos. Geração/revisão e o escopo específico de cabeçalho
 conservam seus consumidores compatíveis.
-Se o loop terminar após ferramentas sem resposta textual, o stream produz
-um recibo das edições salvas e recusadas, preservado no histórico.
+Nos turnos que usam edição, confirmação de evidência e validação, o fechamento
+exibido e salvo no histórico vem dos recibos reais, mesmo se o modelo escrever
+outra conclusão. As ferramentas e o loop do SDK continuam ativos; somente o
+texto aguarda o término. Perguntas sem operação preservam a resposta do modelo.
+Pedidos mistos com outras ferramentas, como publicação ou geração de imagens,
+conservam seu fechamento próprio. Erro fatal descarta texto ainda não exibido.
+Se o loop terminar após ferramentas sem resposta textual, o stream produz um
+resumo do estado salvo.
 
 ## Andamento e atualização da prévia
 
@@ -84,21 +90,44 @@ alternativa real. `contentLossError` garante isso em código, não só no prompt
 Quando o pedido atual não menciona remoção, uma operação que apague texto é
 recusada com o lote inteiro: campo de copy que some ou fica vazio, lista que
 encolhe, bloco com texto removido e troca de tipo que não migra o texto.
-`asksRemoval` reconhece o pedido de remoção na mensagem atual e é generoso de
-propósito: um falso positivo devolve o comportamento anterior, um falso
-negativo recusaria uma remoção legítima. Apresentação, layout, links, imagens
+`asksRemoval` reconhece expressões de remoção na mensagem atual. Restrições
+como "apenas mova", "sem apagar" e remoção de bordas não autorizam apagar
+conteúdo. O reconhecimento é conservador e não cobre toda linguagem natural.
+Apresentação, layout, links, imagens
 e `textStyles` não contam como conteúdo. A guarda vale na edição geral; a
 composição e o reparo continuam livres para recompor a página.
+
+Pedidos visuais com alvo como `no bloco "Reconhecimento comprovado"` têm uma
+guarda adicional quando não incluem alteração de conteúdo. O executor limita
+o lote à apresentação e imagem desse bloco na página em foco. Recusa troca de
+tipo/layout, reordenação, perda de textos/itens e mudanças em outras seções.
+Marca global, geração de imagens e confirmação de fatos não ficam disponíveis
+nesse turno. Alvo ausente impede a escrita. Pedidos mistos seguem o escopo geral.
+
+Em `signature.composition`, cada item aceita `imagePresentation`: `frame: none`
+retira fundo, borda, sombra e padding do box e da imagem, inclusive a moldura
+global; `fit: natural` mostra a proporção original; `width: container` ocupa
+100% do box atual; `spacingTop: none` retira margem/padding superiores. Esses
+campos não trocam a grade da seção. Para o contêiner da seção, use
+`presentation.background: transparent`, `edge: none` e `spacingTop: none`.
+Sem as novas props, os padrões continuam iguais.
 
 ## Fato confirmado pelo operador
 
 `landing-prova` e as demais regras de prova leem a evidência confirmada. Ela
 vem do cadastro, em Dados › Evidências, ou do chat: `confirm_evidence` grava
 em `brief.evidence` os fatos que o operador escreveu na conversa. O executor
-compara os termos do fato com o texto dele, ignorando palavras vazias, e
-recusa o que ninguém digitou; a página montada não comprova nada sozinha.
-A ferramenta não apaga evidência existente, não duplica e não entra no escopo
-restrito de cabeçalho.
+compara frases completas, preservando números, ordem, contexto e negações;
+aceita diferenças de acento, caixa e pontuação terminal. Não autoriza resumo,
+recombinação de termos, perguntas ou fatos extraídos de anexos. A página
+montada não comprova nada sozinha. A correspondência não verifica a verdade
+externa da declaração do operador.
+A ferramenta não apaga evidência existente, deduplica o próprio lote e recusa
+toda a chamada quando ultrapassaria 12 registros. A escrita compara o cadastro
+anterior para evitar perda entre abas. `added` contém somente o que foi gravado;
+o retorno inclui a validação feita nessa chamada. Não existe espera de
+sincronização do validador. A ferramenta não entra nos escopos restritos de
+cabeçalho ou de apresentação de um bloco.
 
 ## Integridade da edição
 
@@ -110,9 +139,9 @@ Nenhum snapshot publicado é alterado. A atomicidade vale por página, não por
 um pedido com várias páginas. Uma repetição com revisão antiga é recusada; não
 é um mecanismo de desfazer ou histórico de versões.
 
-`presentation.background` aceita hex de seis dígitos e preserva a cor pedida.
+`presentation.background` aceita hex de seis dígitos ou `transparent`.
 O renderer calcula texto, apoio e links legíveis localmente.
-`presentation.foreground` é opcional e exige fundo explícito e contraste de
+`presentation.foreground` é opcional e exige fundo hex explícito e contraste de
 4,5:1. Sem essas props o comportamento anterior permanece. A ordem salva é
 respeitada após o footer, com um único `main` e localização automática antes do
 rodapé. A seção extra posterior fica fora de `main`.
@@ -133,13 +162,17 @@ O chat não muda de modelo, raciocínio ou fluxo por causa dessa prop.
   interrupção, recusas, ausência de mudança e recuperação em desktop/celular.
 - `node --test tests/admin-page-edits.test.mjs tests/admin-edit-scope.test.mjs`
   confere operações reais, recusas, preservação e os scopes.
+- `tests/admin-visual-edit.test.mjs` e `tests/admin-evidence.test.mjs` cobrem
+  o pedido de reconhecimento, recusas, fechamento do chat e integridade dos
+  fatos. `tests/browser/site-recognition-edit.test.mjs` mede quatro famílias
+  com a moldura global e CSS de produção em desktop e celular.
 - `EIXU_TEST_POSTGRES_URL=... node --test tests/admin-page-edits-db.test.mjs`
   aceita apenas PostgreSQL local descartável `eixu_pr2_test`; força duas
   leituras da mesma versão e verifica o conflito no SQL real.
 - `npm run eval:edits -- --live` usa Gemini configurado, prompt e executores
   reais sobre páginas sintéticas em memória. Registra exatidão, chamadas,
   passos, duração, consumo e saída em `outputs/page-edits/`. Não acessa Neon,
-  Blob nem publicação. `--case=text|nested|color|insert|move|ambiguous` filtra.
+  Blob nem publicação. `--case=text|nested|color|insert|move|move-within|impossible-move|ambiguous|recognition-image` filtra.
 
 Os resultados medidos e as limitações da entrega ficam em
 [Verificação](verification.md). Testes determinísticos não provam que toda

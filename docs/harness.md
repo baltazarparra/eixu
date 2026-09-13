@@ -400,6 +400,20 @@ operador escreveu no chat, conferido em código contra o texto dele, para que a
 prova deixe de depender de uma nova geração. Veja o
 [contrato de edição](chat-edits.md).
 
+Pedidos visuais com bloco nomeado entre aspas recebem uma guarda de alvo e
+campos: só apresentação e imagem na página em foco, sem trocar layout, textos
+ou itens. O schema oferece controles locais de imagem em
+`signature.composition`; o executor recusa contornar um limite reconstruindo
+a seção. O recorte textual e os pedidos que seguem o fluxo geral estão no
+contrato de edição.
+
+Nos turnos limitados às ferramentas de edição, evidência e validação, o texto
+final exibido e persistido usa os recibos reais. O loop do SDK e seus metadados
+permanecem intactos. Perguntas sem operação e pedidos mistos com outras
+ferramentas conservam a resposta do modelo. `confirm_evidence` exige frases
+completas do operador, recusa lote acima do limite e verifica concorrência;
+seu retorno contém a validação atual, sem etapa posterior de sincronização.
+
 Pedidos de posição/fundo do cabeçalho recebem uma proteção adicional: IDs dos
 `nav.bar` e caminhos de propriedades permitidos, verificados no executor antes
 da escrita. O pedido de fixação permite `position`; fundo e transparência

@@ -305,6 +305,7 @@ function renderList(
             style={sectionColorVars(presentation, ctx.tenant.brand)}
             data-width={presentation?.width}
             data-spacing={presentation?.spacing}
+            data-spacing-top={presentation?.spacingTop}
             data-align={presentation?.align}
             data-edge={presentation?.edge}
             data-animation={presentation?.motion}

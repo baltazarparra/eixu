@@ -268,6 +268,41 @@ await test('paleta local preserva o hex pedido e fornece texto e apoio legíveis
   }
 });
 
+await test('fundo transparente mantém superfícies internas e exige contraste automático', async () => {
+  const { blockSchemas } = await j.import('../lib/blocks/registry.ts');
+  const { themeVars, surfaceOf, logoFor } = await j.import(
+    '../lib/blocks/theme.ts',
+  );
+  const brand = { ink: '#14161a', paper: '#ffffff', surface: '#ebebe9' };
+  const vars = sectionColorVars({ background: 'transparent' }, brand);
+  assert.equal(vars.backgroundColor, 'transparent');
+  assert.equal(vars['--surface'], themeVars(brand)['--surface']);
+  assert.ok(contrastRatio(vars['--ink'], brand.paper) >= 4.5);
+  assert.equal(surfaceOf(brand, 'ink', 'transparent'), brand.paper);
+  assert.equal(
+    logoFor(
+      { ...brand, logoUrl: '/normal.png', logoDarkUrl: '/dark.png' },
+      { tone: 'ink', background: 'transparent' },
+    ),
+    '/normal.png',
+  );
+  const props = editPages()[0].blocks[2].props;
+  assert.equal(
+    blockSchemas['editorial.text'].safeParse({
+      ...props,
+      presentation: { background: 'transparent' },
+    }).success,
+    true,
+  );
+  assert.equal(
+    blockSchemas['editorial.text'].safeParse({
+      ...props,
+      presentation: { background: 'transparent', foreground: '#ffffff' },
+    }).success,
+    false,
+  );
+});
+
 await test('schema e contexto oferecem revisão atual sem uma leitura redundante', async () => {
   const f = await pageEditFixture();
   assert.match(f.instructions, new RegExp(pageRevision(f.pages[0])));

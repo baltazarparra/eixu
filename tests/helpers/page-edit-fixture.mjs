@@ -132,10 +132,12 @@ export function editPages({ hero } = {}) {
 /** Executores e schemas reais; somente o I/O é substituído. Nunca acessa Neon/Blob. */
 export async function pageEditFixture(
   text = 'Ajuste a página em foco.',
-  { race, hero } = {},
+  { race, hero, initialPages } = {},
 ) {
   const tenant = structuredClone(editTenant);
-  const pages = editPages({ hero });
+  const pages = initialPages
+    ? structuredClone(initialPages)
+    : editPages({ hero });
   const writes = [];
   const policy = editPolicyFor(text, pages);
   const mocks = {

@@ -1,5 +1,56 @@
 # Validação e publicação
 
+## Ajuste visual fiel e recibo verificável, 13/09/2026
+
+Correção sobre o PR #51 (`8af082d`), na branch local
+`codex/pr51-edicao-fiel`. O checkout principal e o rascunho do cliente não
+foram alterados. As capturas enviadas são compatíveis com a composição autoral, mas sem
+identificar o tenant não foi possível reconstruir o histórico exato da edição.
+
+O caso reproduzível usa o pedido de ampliar a imagem em
+"Reconhecimento comprovado", sem fundo, borda, padding ou margem superiores.
+A moldura global `imagery: framed` não tinha exceção por imagem, e `edge: none`
+já existia no schema sem regra de CSS correspondente. Foram adicionados
+controles locais e uma guarda que recusa recompor um bloco nomeado durante
+um pedido visual. O lote inteiro é recusado se mudar layout, conteúdo,
+ordem ou outras seções.
+
+O fechamento de turnos com edição/evidência/validação agora usa o retorno
+real das ferramentas. Um teste injeta a resposta inventada sobre sincronização
+e confirma que ela não aparece no stream nem no histórico. Perguntas sem
+operação preservam o texto e os metadados; pedidos mistos com outras ferramentas
+conservam seu fechamento. Erros fatais não exibem texto de sucesso em espera.
+
+`confirm_evidence` passou de termos soltos para frases completas do operador.
+Os testes recusam associação trocada entre número e atributo, extração sem
+negação e perguntas. Cobrem limite de 12, duplicação no mesmo lote e conflito
+entre duas confirmações concorrentes. Os executores e validadores são reais;
+o I/O de banco e o modelo dessas regressões são simulados.
+
+Validação local:
+
+- Tipos, lint global e `build:vercel` passaram, incluindo os três checks de
+  artefatos serverless.
+- `test:sites`: 269 aprovados; `test:admin`: 199 aprovados. Os dois testes de
+  `admin-capture.test.mjs` passaram à parte com Chromium configurado. Restam
+  cinco integrações não executadas por dependerem de PostgreSQL local.
+- `test:sites:browser`: 74 aprovados com Chromium e CSS de produção;
+  `admin-chat-edits.test.mjs`: aprovado com rota, stream, SDK, executores e
+  editor reais sobre I/O simulado.
+- O novo teste de reconhecimento cobre quatro famílias em 1440, 390 e
+  320 px: imagem inteira na proporção original e largura do box, moldura e
+  padding/margem superiores removidos, outra imagem preservada, mesmos textos,
+  ordem e layout, sem overflow. Antes de medir, carrega ambas as imagens para
+  não comparar a proporção provisória do lazy loading com a imagem decodificada.
+- Capturas desktop/mobile inspecionadas também com `agent-browser` em uma
+  fixture local. Arquivos em `outputs/faithful-edits/`, sem dados de cliente.
+
+O reconhecimento de intenção continua sendo um recorte textual, não uma
+garantia para toda formulação em linguagem natural. A confirmação não verifica
+a verdade externa do fato. O caso `recognition-image` foi preparado em
+`eval:edits`, mas não executado com `--live`: não houve geração paga, escrita
+remota, publicação ou avaliação do modelo real nesta rodada.
+
 ## Obediência na edição e evidência pelo chat, 13/09/2026
 
 Origem: dois pedidos reais no painel. Em "coloque esses labels embaixo do

@@ -13,6 +13,9 @@ export function completeChatStream(
   options: {
     summary: () => Promise<string>;
     persist: (text: string) => Promise<void>;
+    /** O loop do SDK preserva seus passos; somente o fechamento exibido pode
+     * ser substituído por um recibo verificável. Sem recibo, conserva o texto. */
+    receipt?: () => string | undefined;
   },
 ): ReadableStream<UIMessageChunk> {
   let text = '';
@@ -21,6 +24,7 @@ export function completeChatStream(
   let failed = false;
   const tools = new Map<string, string>();
   const notified = new Set<string>();
+  const bufferedText: UIMessageChunk[] = [];
   return stream.pipeThrough(
     new TransformStream<UIMessageChunk, UIMessageChunk>({
       async transform(chunk, controller) {
@@ -39,6 +43,13 @@ export function completeChatStream(
           text += chunk.delta;
           finalText += chunk.delta;
         }
+        if (
+          options.receipt &&
+          ['text-start', 'text-delta', 'text-end'].includes(chunk.type)
+        ) {
+          bufferedText.push(chunk);
+          return;
+        }
         if (chunk.type === 'error') failed = true;
         if (chunk.type === 'abort') ended = true;
         if (
@@ -55,6 +66,22 @@ export function completeChatStream(
         }
         if (chunk.type === 'finish') {
           ended = true;
+          const receipt = !failed ? options.receipt?.() : undefined;
+          if (receipt) {
+            text = receipt;
+            finalText = receipt;
+            const id = generateId();
+            controller.enqueue({ type: 'text-start', id });
+            controller.enqueue({ type: 'text-delta', id, delta: receipt });
+            controller.enqueue({ type: 'text-end', id });
+          } else if (!failed) {
+            bufferedText.forEach((part) => controller.enqueue(part));
+          } else if (options.receipt) {
+            // Texto ainda não exibido não pode sobreviver a uma falha fatal
+            // como se fosse uma confirmação de sucesso.
+            text = '';
+            finalText = '';
+          }
           if (!failed && !finalText.trim()) {
             const summary = await options.summary();
             const id = generateId();
