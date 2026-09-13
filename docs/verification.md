@@ -1,5 +1,39 @@
 # Validação e publicação
 
+## Prazo da referência visual na Arya, 13/09/2026
+
+A segunda execução da Arya, `425d39dc-5a42-4096-97d9-7c76583d1ce6`, foi
+reservada às 03:42:51 UTC ainda pelo SHA `30fb18c5e89f03d833f2055b82a72f5722b95f4b`,
+dez segundos antes de a primeira correção ficar pronta em produção. A leitura
+do Site atual terminou em 12,9 s. Duas chamadas `read_reference` começaram, mas
+nenhuma registrou conclusão; a Vercel encerrou a função aos 800 s. O cadastro
+tinha uma única referência visual, da Vivara. Como os eventos deliberadamente
+não persistem argumentos, eles não comprovam se a segunda chamada repetiu essa
+URL ou tentou outro endereço. Após o pedido de pausa do operador, a expiração
+existente encerrou o run como falha recuperável às 04:01:55 UTC. Páginas,
+briefing e os logos #1–#3 foram preservados; nenhum novo run foi iniciado.
+
+O caminho visual ainda tinha o temporizador antigo: depois de 55 s ele apenas
+chamava `browser.close()` sem limitar essa promessa nem matar o processo. A
+captura, análise e o conjunto da leitura também não tinham uma barreira externa
+contra dependências que ignorassem `AbortSignal`. A correção aplica o prazo em
+todas as esperas do Chromium, mata o processo no cancelamento, limita fechamento
+a dois segundos e encerra captura mais análise em 120 s. Chamadas simultâneas da
+mesma URL normalizada compartilham leitura, pixels e gravação. A linha do tempo
+passa a distinguir captura, análise, conclusão e lacuna.
+
+Validação na cópia isolada de `origin/main`:
+
+- A captura real e sem chamada de modelo da referência cadastrada completou
+  desktop e mobile em 26,1 s, com páginas de 5.064 px e 7.734 px.
+- Tipos, lint global e build Next.js/Turbopack passaram. Os três testes do
+  artefato serverless confirmaram os binários de captura nas rotas relevantes.
+- `test:sites` passou em 247 casos, com um skip dependente de ambiente;
+  `test:admin` passou em 178, com sete integrações de PostgreSQL local sem
+  execução. Os novos contratos exercitam abertura tardia do Chromium, chamada
+  duplicada e captura que ignora cancelamento.
+- Nenhuma crítica paga, geração nova ou alteração em páginas e imagens foi
+  executada durante a validação.
 
 ## Recuperação da geração Arya, 13/09/2026
 
@@ -37,8 +71,10 @@ Validação na cópia isolada da versão em produção:
 Às 03:37:55 UTC, a recuperação validada foi aplicada somente ao run acima,
 reconfirmando tenant, fase, salto e início. Ele passou de `stopping` a `failed`
 com a causa e a opção Tentar novamente. Nenhum novo run foi iniciado por essa
-recuperação. A correção permanente de código ainda não foi publicada; não houve
-nova geração paga nem validação da latência completa depois dela.
+recuperação. A correção foi publicada pelo merge `88b06c67bb4d66ffc85beacb3f426786d5a64201`
+e deployment `dpl_EUUUiwEKz1b8gijdKQ3ireSXo7JL`, pronto às 03:43:01 UTC. A
+segunda tentativa já estava em execução no artefato anterior e não incorporou
+esse código. Não houve validação paga da latência completa depois dele.
 
 ## Site atual como fonte factual e de ativos, 12/09/2026
 

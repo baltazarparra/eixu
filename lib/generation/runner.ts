@@ -343,6 +343,17 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
           payload: { ...progress },
         });
       },
+      onReferenceProgress: async (progress) => {
+        await recordEvent({
+          runId: run.id,
+          tenantId: tenant.id,
+          phase,
+          kind: 'note',
+          tool: 'read_reference',
+          label: progress.label,
+          payload: { ...progress },
+        });
+      },
     });
     const recordToolStart = async (
       name: string,

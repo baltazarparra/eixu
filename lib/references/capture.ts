@@ -1,5 +1,6 @@
 import { launchBrowser } from '@/lib/review/capture';
 import { publicResource } from './network';
+import { abortable } from '@/lib/async/abort';
 
 export type ReferenceShot = {
   viewport: string;
@@ -13,19 +14,36 @@ export type ReferenceShot = {
   jpeg: Buffer;
 };
 
+export const REFERENCE_CAPTURE_TIMEOUT_MS = 55_000;
+
+type CaptureOptions = {
+  signal?: AbortSignal;
+  timeoutMs?: number;
+  launch?: typeof launchBrowser;
+};
+
 /** Navegador isolado: toda rede direta falha; só GETs públicos validados são atendidos. */
 export async function captureReference(
   url: string,
   request = publicResource,
+  options: CaptureOptions = {},
 ): Promise<ReferenceShot[]> {
-  const browser = await launchBrowser([
+  const deadline = AbortSignal.any([
+    AbortSignal.timeout(options.timeoutMs ?? REFERENCE_CAPTURE_TIMEOUT_MS),
+    ...(options.signal ? [options.signal] : []),
+  ]);
+  const launch = (options.launch ?? launchBrowser)([
     '--proxy-server=http://127.0.0.1:9',
     '--proxy-bypass-list=<-loopback>',
     '--disable-quic',
-  ]);
-  const deadline = setTimeout(() => {
-    void browser.close();
-  }, 55_000);
+  ]).then((browser) => {
+    // A extração/abertura do binário pode terminar depois do prazo.
+    if (deadline.aborted) browser.process()?.kill('SIGKILL');
+    return browser;
+  });
+  const browser = await abortable(launch, deadline);
+  const kill = () => browser.process()?.kill('SIGKILL');
+  deadline.addEventListener('abort', kill, { once: true });
   const shots: ReferenceShot[] = [];
   try {
     for (const viewport of [
@@ -36,15 +54,19 @@ export async function captureReference(
       let count = 0;
       let bytes = 0;
       let unavailableResources = 0;
-      const page = await browser.newPage();
+      deadline.throwIfAborted();
+      const page = await abortable(browser.newPage(), deadline);
       try {
-        await page.setViewport({
-          width: viewport.width,
-          height: viewport.height,
-          deviceScaleFactor: 1,
-        });
-        await page.setBypassServiceWorker(true);
-        await page.setRequestInterception(true);
+        await abortable(
+          page.setViewport({
+            width: viewport.width,
+            height: viewport.height,
+            deviceScaleFactor: 1,
+          }),
+          deadline,
+        );
+        await abortable(page.setBypassServiceWorker(true), deadline);
+        await abortable(page.setRequestInterception(true), deadline);
         page.on('request', (incoming) => {
           void (async () => {
             try {
@@ -64,7 +86,10 @@ export async function captureReference(
                 await incoming.abort();
                 return;
               }
-              const resource = await request(incoming.url());
+              const resource = await abortable(
+                request(incoming.url(), deadline),
+                deadline,
+              );
               bytes += resource.body.length;
               if (bytes > 50_000_000) {
                 unavailableResources++;
@@ -79,61 +104,73 @@ export async function captureReference(
             }
           })();
         });
-        const response = await page.goto(url, {
-          waitUntil: 'networkidle2',
-          timeout: 20_000,
-        });
+        const response = await abortable(
+          page.goto(url, {
+            waitUntil: 'networkidle2',
+            timeout: 20_000,
+          }),
+          deadline,
+        );
         if (!response?.ok()) throw new Error('Referência não acessível');
         // Limite explícito: páginas infinitas não podem prender o briefing.
-        await page.evaluate(async () => {
-          await Promise.race([
-            document.fonts.ready,
-            new Promise((resolve) => setTimeout(resolve, 2500)),
-          ]);
-          for (
-            let y = 0;
-            y < Math.min(document.documentElement.scrollHeight, 9000);
-            y += window.innerHeight
-          ) {
-            window.scrollTo({ top: y, behavior: 'instant' });
-            await new Promise((resolve) => setTimeout(resolve, 100));
-          }
-          window.scrollTo({ top: 0, behavior: 'instant' });
-          await new Promise((resolve) => setTimeout(resolve, 300));
-        });
-        const metrics = await page.evaluate(() => ({
-          pageHeight: document.documentElement.scrollHeight,
-          styles: [
-            ...document.querySelectorAll(
-              'body, nav, h1, h2, main > section, main > article',
-            ),
-          ]
-            .slice(0, 18)
-            .map((el) => {
-              const css = getComputedStyle(el);
-              const rect = el.getBoundingClientRect();
-              return {
-                tag: el.tagName,
-                text: (el.textContent ?? '').trim().slice(0, 140),
-                font: css.fontFamily,
-                size: css.fontSize,
-                weight: css.fontWeight,
-                color: css.color,
-                background: css.backgroundColor,
-                display: css.display,
-                width: Math.round(rect.width),
-                height: Math.round(rect.height),
-              };
-            }),
-        }));
+        await abortable(
+          page.evaluate(async () => {
+            await Promise.race([
+              document.fonts.ready,
+              new Promise((resolve) => setTimeout(resolve, 2500)),
+            ]);
+            for (
+              let y = 0;
+              y < Math.min(document.documentElement.scrollHeight, 9000);
+              y += window.innerHeight
+            ) {
+              window.scrollTo({ top: y, behavior: 'instant' });
+              await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+            window.scrollTo({ top: 0, behavior: 'instant' });
+            await new Promise((resolve) => setTimeout(resolve, 300));
+          }),
+          deadline,
+        );
+        const metrics = await abortable(
+          page.evaluate(() => ({
+            pageHeight: document.documentElement.scrollHeight,
+            styles: [
+              ...document.querySelectorAll(
+                'body, nav, h1, h2, main > section, main > article',
+              ),
+            ]
+              .slice(0, 18)
+              .map((el) => {
+                const css = getComputedStyle(el);
+                const rect = el.getBoundingClientRect();
+                return {
+                  tag: el.tagName,
+                  text: (el.textContent ?? '').trim().slice(0, 140),
+                  font: css.fontFamily,
+                  size: css.fontSize,
+                  weight: css.fontWeight,
+                  color: css.color,
+                  background: css.backgroundColor,
+                  display: css.display,
+                  width: Math.round(rect.width),
+                  height: Math.round(rect.height),
+                };
+              }),
+          })),
+          deadline,
+        );
         const height = Math.min(metrics.pageHeight, 9000);
         const jpeg = Buffer.from(
-          await page.screenshot({
-            type: 'jpeg',
-            quality: 80,
-            clip: { x: 0, y: 0, width: viewport.width, height },
-            captureBeyondViewport: true,
-          }),
+          await abortable(
+            page.screenshot({
+              type: 'jpeg',
+              quality: 80,
+              clip: { x: 0, y: 0, width: viewport.width, height },
+              captureBeyondViewport: true,
+            }),
+            deadline,
+          ),
         );
         shots.push({
           viewport: viewport.name,
@@ -147,12 +184,12 @@ export async function captureReference(
           jpeg,
         });
       } finally {
-        await page.close().catch(() => {});
+        await abortable(page.close(), AbortSignal.timeout(2000)).catch(kill);
       }
     }
     return shots;
   } finally {
-    clearTimeout(deadline);
-    await browser.close();
+    deadline.removeEventListener('abort', kill);
+    await abortable(browser.close(), AbortSignal.timeout(2000)).catch(kill);
   }
 }

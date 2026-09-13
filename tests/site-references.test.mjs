@@ -28,6 +28,7 @@ const { isPublicAddress, publicResource } = await j.import(
 async function toolFixture(tenant, nearest = []) {
   const queries = [];
   let visualCalls = 0;
+  let referenceCalls = 0;
   const { buildTools } = await loadModule('lib/ai/tools.ts', {
     '@/lib/db': {
       db:
@@ -39,11 +40,15 @@ async function toolFixture(tenant, nearest = []) {
         },
     },
     '@/lib/ai/reference': {
-      readReference: async (sourceUrl) => ({
-        url: sourceUrl,
-        status: 'ok',
-        titulo: 'Fonte de estilo',
-      }),
+      readReference: async (sourceUrl) => {
+        referenceCalls++;
+        await new Promise((resolve) => setImmediate(resolve));
+        return {
+          url: sourceUrl,
+          status: 'ok',
+          titulo: 'Fonte de estilo',
+        };
+      },
     },
     '@/lib/references/read': {
       readReferenceVisual: async (_url, tenantId) => {
@@ -53,8 +58,31 @@ async function toolFixture(tenant, nearest = []) {
       },
     },
   });
-  return { tools: buildTools(tenant), queries, visualCalls: () => visualCalls };
+  return {
+    tools: buildTools(tenant),
+    queries,
+    visualCalls: () => visualCalls,
+    referenceCalls: () => referenceCalls,
+  };
 }
+
+await test('duas chamadas simultâneas da mesma referência compartilham leitura, captura e gravação', async () => {
+  const tenant = referenceTenant();
+  tenant.brief.sources = [];
+  const f = await toolFixture(tenant);
+  const [first, duplicate] = await Promise.all([
+    f.tools.read_reference.execute({ url }),
+    f.tools.read_reference.execute({ url: `${url}#hero` }),
+  ]);
+  assert.equal(first.status, 'ok');
+  assert.deepEqual(duplicate, first);
+  assert.equal(f.referenceCalls(), 1);
+  assert.equal(f.visualCalls(), 1);
+  assert.equal(
+    f.queries.filter((query) => query.sql.includes("'{sources}'")).length,
+    1,
+  );
+});
 
 await test('direção só sai da vibe depois de leitura visual e aplicações concretas; marca e tenant preservados', async () => {
   const tenant = referenceTenant();
@@ -276,6 +304,7 @@ await test('leitura visual usa pixels multimodais, devolve relatório e declara 
         }));
       },
     },
+    './network': { publicResource: async () => undefined },
     ai: {
       Output,
       generateText: async (input) => {
@@ -315,6 +344,30 @@ await test('leitura visual usa pixels multimodais, devolve relatório e declara 
   assert.equal(failure.status, 'inacessivel');
   assert.equal(failure.reading, undefined);
   assert.equal(calls, 2);
+});
+
+await test('leitura visual encerra captura que ignora cancelamento e registra a lacuna', async () => {
+  const progress = [];
+  const started = Date.now();
+  // AbortSignal.timeout não mantém o processo vivo sozinho; esta referência
+  // reproduz uma dependência pendente sem deixar o runner encerrar o teste.
+  const keepAlive = setTimeout(() => {}, 1000);
+  const { readReferenceVisual } = await loadModule('lib/references/read.ts', {
+    './capture': { captureReference: async () => [] },
+    './network': { publicResource: async () => undefined },
+  });
+  try {
+    const result = await readReferenceVisual(url, 'fixture', {
+      timeoutMs: 10,
+      capture: async () => new Promise(() => {}),
+      onProgress: (event) => progress.push(event.stage),
+    });
+    assert.equal(result.status, 'inacessivel');
+    assert.ok(Date.now() - started < 500);
+    assert.deepEqual(progress, ['capture', 'complete']);
+  } finally {
+    clearTimeout(keepAlive);
+  }
 });
 
 await test('crítica recebe plano de referências, leitura persistida e pixels atuais; desvio material continua erro', async () => {

@@ -115,6 +115,11 @@ linha do tempo. Coleta limita tempo (90 s) e tentativas (24), além das 12 pági
 a síntese tem cancelamento de 150 s e os downloads do lote têm 90 s. Material
 parcial e ativos já gravados são preservados com lacunas explícitas. O prazo de
 rede inclui DNS; a renderização também limita abertura e fechamento do Chromium.
+A leitura visual de referência compartilha chamadas simultâneas da mesma URL,
+limita captura e análise juntas a 120 s e registra as duas subetapas. A captura
+tem teto próprio de 55 s e mata o Chromium quando abertura, navegação, screenshot
+ou fechamento ignoram o cancelamento. Ao esgotar o prazo, o briefing segue com a
+referência marcada como lacuna.
 
 O Site atual usa outra fronteira. `lib/current-site/crawl.ts` adota a origem final
 da home e só segue links HTML dessa origem, com profundidade dois, deduplicação
