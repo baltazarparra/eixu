@@ -38,7 +38,10 @@ import {
   referenceAspects,
   referenceDirectionIssues,
 } from '@/lib/design/references';
-import { readReferenceVisual } from '@/lib/references/read';
+import {
+  readReferenceVisual,
+  type ReferenceProgress,
+} from '@/lib/references/read';
 import { guideTool } from '@/lib/ai/guide-tool';
 import {
   getGuide,
@@ -70,7 +73,7 @@ import {
   siteMetrics,
   structuralFindings,
 } from '@/lib/taste/metrics';
-import { readReference } from '@/lib/ai/reference';
+import { readReference, type Reference } from '@/lib/ai/reference';
 import { referenceFromSocial, readSocialProfile } from '@/lib/ai/social';
 import { normalizeSocialUrl, parseSocialRecord } from '@/lib/social-profile';
 import { intakeCurrentSiteUrl } from '@/lib/tenant-intake';
@@ -192,6 +195,7 @@ export type ToolContext = {
   lastUserText?: string;
   editPolicy?: EditPolicy;
   onCurrentSiteProgress?: (event: CurrentSiteProgress) => Promise<void>;
+  onReferenceProgress?: (event: ReferenceProgress) => Promise<void>;
   /** Subetapas persistidas pelo runner para o painel acompanhar a revisão. */
   onReviewProgress?: (event: {
     stage: 'preflight' | 'capture' | 'critic';
@@ -296,6 +300,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
   let activeBrief = { ...tenant.brief };
   let scenesPrepared = 0;
   let referencesRead = 0;
+  const referenceReads = new Map<string, Promise<Reference>>();
   let currentSiteReads = 0;
   let reviewRounds = 0;
   let pendingDraft: SiteDraft | undefined;
@@ -889,54 +894,60 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         'Lê conteúdo real da URL. Para referências do cadastro, captura desktop/mobile e analisa estrutura, tipografia, imagens, ritmo e superfícies. A leitura visual orienta a direção acima da vibe. Fonte ou captura inacessível vira lacuna. Redes sociais fornecem contexto factual, sem presumir estilo de site.',
       inputSchema: z.object({ url: z.url() }),
       execute: safe(async ({ url }) => {
+        const key = normalizeReferenceUrl(url);
+        const inFlight = referenceReads.get(key);
+        if (inFlight) return inFlight;
         if (referencesRead >= 6)
           throw new ToolError(
             'Limite de seis referências por turno. Preserve as demais como lacunas e retome a leitura se forem necessárias.',
           );
         referencesRead += 1;
-        // O perfil do briefing já foi lido no cadastro; reler a cada geração
-        // gastaria rede e chamaria a rede social de novo sem necessidade.
-        const social = normalizeSocialUrl(url);
-        const saved = parseSocialRecord(activeBrief.social);
-        const fresh =
-          saved &&
-          social &&
-          saved.url === social.url &&
-          saved.status === 'ok' &&
-          Date.now() - new Date(saved.lidoEm).getTime() < 24 * 60 * 60 * 1000
-            ? saved
-            : null;
-        const reference = social
-          ? referenceFromSocial(fresh ?? (await readSocialProfile(social)))
-          : await readReference(url);
-        if (referenceUrls(activeBrief).includes(normalizeReferenceUrl(url))) {
-          reference.visual =
-            social || reference.status !== 'ok'
-              ? {
-                  status: 'inacessivel',
-                  motivo: social
-                    ? 'Perfil social não define composição de site.'
-                    : reference.motivo,
-                  capturedAt: new Date().toISOString(),
-                }
-              : await readReferenceVisual(url, tenant.id);
-        }
-        const previous = Array.isArray(activeBrief.sources)
-          ? (activeBrief.sources as { url?: string }[])
-          : [];
-        const sources = [
-          ...previous.filter(
-            (source) =>
-              !source?.url ||
-              normalizeReferenceUrl(source.url) !==
-                normalizeReferenceUrl(reference.url),
-          ),
-          reference,
-        ];
-        activeBrief = { ...activeBrief, sources };
-        // Leituras de URLs diferentes podem terminar em paralelo. Mescle a
-        // fonte no registro atual para não perder a leitura de outra chamada.
-        await db()`
+        const pending = (async () => {
+          // O perfil do briefing já foi lido no cadastro; reler a cada geração
+          // gastaria rede e chamaria a rede social de novo sem necessidade.
+          const social = normalizeSocialUrl(url);
+          const saved = parseSocialRecord(activeBrief.social);
+          const fresh =
+            saved &&
+            social &&
+            saved.url === social.url &&
+            saved.status === 'ok' &&
+            Date.now() - new Date(saved.lidoEm).getTime() < 24 * 60 * 60 * 1000
+              ? saved
+              : null;
+          const reference = social
+            ? referenceFromSocial(fresh ?? (await readSocialProfile(social)))
+            : await readReference(url);
+          if (referenceUrls(activeBrief).includes(normalizeReferenceUrl(url))) {
+            reference.visual =
+              social || reference.status !== 'ok'
+                ? {
+                    status: 'inacessivel',
+                    motivo: social
+                      ? 'Perfil social não define composição de site.'
+                      : reference.motivo,
+                    capturedAt: new Date().toISOString(),
+                  }
+                : await readReferenceVisual(url, tenant.id, {
+                    onProgress: context.onReferenceProgress,
+                  });
+          }
+          const previous = Array.isArray(activeBrief.sources)
+            ? (activeBrief.sources as { url?: string }[])
+            : [];
+          const sources = [
+            ...previous.filter(
+              (source) =>
+                !source?.url ||
+                normalizeReferenceUrl(source.url) !==
+                  normalizeReferenceUrl(reference.url),
+            ),
+            reference,
+          ];
+          activeBrief = { ...activeBrief, sources };
+          // Leituras de URLs diferentes podem terminar em paralelo. Mescle a
+          // fonte no registro atual para não perder a leitura de outra chamada.
+          await db()`
           update tenants set brief = jsonb_set(brief, '{sources}',
             coalesce((select jsonb_agg(source)
               from jsonb_array_elements(case when jsonb_typeof(brief->'sources') = 'array'
@@ -945,7 +956,15 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             || ${JSON.stringify([reference])}::jsonb), updated_at = now()
           where id = ${tenant.id}
         `;
-        return reference;
+          return reference;
+        })();
+        referenceReads.set(key, pending);
+        try {
+          return await pending;
+        } catch (error) {
+          referenceReads.delete(key);
+          throw error;
+        }
       }),
     }),
 

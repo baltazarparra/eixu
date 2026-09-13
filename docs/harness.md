@@ -250,6 +250,12 @@ antiga não encerra uma reserva nova. Pedir pausa e registrar a ação do operad
 não renovam o heartbeat do worker. A retomada aceita o estado recém-expirado
 na mesma requisição, preservando o conteúdo salvo.
 
+Na leitura visual, chamadas simultâneas da mesma URL compartilham a mesma
+captura, análise e gravação. Captura e análise aparecem como subetapas na linha
+do tempo. O conjunto termina em até 120 segundos; a captura tem teto de 55
+segundos e encerra à força um Chromium que ignore cancelamento ou fechamento.
+Falha ou prazo esgotado vira lacuna explícita para o agente continuar o briefing.
+
 A primeira etapa começa sozinha em cliente sem tentativa ou conversa anterior,
 sem página e com o briefing pendente. O `GET` informa `everRan` considerando
 execuções, o marcador legado em `brief.generation` e a existência de mensagens

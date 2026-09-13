@@ -7,6 +7,29 @@ const j = createJiti(import.meta.url, { alias: { '@': process.cwd() } });
 const { captureReference } = await j.import('../lib/references/capture.ts');
 const { publicResource } = await j.import('../lib/references/network.ts');
 
+await test('prazo inclui a abertura do Chromium e mata um processo que chega atrasado', async () => {
+  let release;
+  let killed = 0;
+  const lateBrowser = new Promise((resolve) => {
+    release = resolve;
+  });
+  await assert.rejects(
+    captureReference('https://reference.test/', publicResource, {
+      timeoutMs: 10,
+      launch: async () => lateBrowser,
+    }),
+  );
+  release({
+    process: () => ({
+      kill: () => {
+        killed++;
+      },
+    }),
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(killed, 1);
+});
+
 await test(
   'captura referência com CSS e JavaScript em desktop/mobile, restringe rede e explicita corte',
   { skip: !process.env.EIXU_CHROME_PATH },
