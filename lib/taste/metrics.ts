@@ -15,6 +15,7 @@ import {
 } from '../design/vibes';
 import type { DesignProfile } from '../design/profile';
 import type { BlockInstance, Page, TenantImage } from '../types';
+import { CURRENT_SITE_IMAGE_MODEL } from '../current-site/constants';
 
 export type SitePage = Pick<
   Page,
@@ -237,7 +238,11 @@ export function availablePhotos(images: TenantImage[]): TenantImage[] {
       image.status !== 'rejeitada' &&
       (generated.has(image.id) ||
         (image.model === 'upload' &&
-          /^tenants\/[^/]+\/uploads\/[^/]+$/.test(image.blobPath))),
+          /^tenants\/[^/]+\/uploads\/[^/]+$/.test(image.blobPath)) ||
+        (image.model === CURRENT_SITE_IMAGE_MODEL &&
+          /^tenants\/[^/]+\/current-site\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\/[0-9a-f]{64}\.webp$/.test(
+            image.blobPath,
+          ))),
   );
 }
 

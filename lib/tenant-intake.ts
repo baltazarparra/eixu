@@ -15,6 +15,19 @@ export const intakeSchema = z.object({
   goal: z.string().max(240).default(''),
   evidence: z.array(z.string().min(3).max(160)).max(8).default([]),
   constraints: z.array(z.string().min(3).max(160)).max(8).default([]),
+  currentSiteUrl: z
+    .string()
+    .trim()
+    .max(2000)
+    .default('')
+    .refine(
+      (value) => !value || z.url().safeParse(value).success,
+      'Informe um link válido para o site atual.',
+    )
+    .refine(
+      (value) => !value || /^https?:\/\//i.test(value),
+      'Use um link do site atual iniciado por http:// ou https://.',
+    ),
   references: z.array(z.url()).max(3).default([]),
   socialUrl: z
     .string()
@@ -40,6 +53,19 @@ export const intakeWriteSchema = intakeSchema
       .trim()
       .min(1, 'Conte a história do cliente.')
       .max(12000, 'A história do cliente pode ter até 12.000 caracteres.'),
+    currentSiteUrl: z
+      .string()
+      .trim()
+      .max(2000, 'O link do site atual pode ter até 2.000 caracteres.')
+      .refine(
+        (value) => !value || z.url().safeParse(value).success,
+        'Informe um link válido para o site atual.',
+      )
+      .refine(
+        (value) => !value || /^https?:\/\//i.test(value),
+        'Use um link do site atual iniciado por http:// ou https://.',
+      )
+      .default(''),
     references: z
       .array(
         z
@@ -82,6 +108,7 @@ export function intakeIsEmpty(intake: Intake): boolean {
     !intake.goal &&
     !intake.evidence.length &&
     !intake.constraints.length &&
+    !intake.currentSiteUrl &&
     !intake.references.length &&
     !intake.socialUrl
   );
@@ -119,6 +146,12 @@ export function intakeSocialUrl(value: unknown): string {
   return parsed.success ? parsed.data.socialUrl : '';
 }
 
+/** Site anterior que alimenta a leitura factual e o acervo, sem autoridade visual. */
+export function intakeCurrentSiteUrl(value: unknown): string {
+  const parsed = intakeSchema.safeParse(value);
+  return parsed.success ? parsed.data.currentSiteUrl : '';
+}
+
 /** Resumo legível do intake para o prompt. */
 export function intakeSummary(value: unknown): string {
   const parsed = intakeSchema.safeParse(value);
@@ -139,6 +172,7 @@ export function intakeSummary(value: unknown): string {
   }
   add('Confirmado pelo operador', intake.evidence.join('; '));
   add('Restrições', intake.constraints.join('; '));
+  add('Site atual para importar conteúdo e imagens', intake.currentSiteUrl);
   add('Referência visual', intake.references.join(' '));
   return rows.join('\n');
 }

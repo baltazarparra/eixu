@@ -52,6 +52,30 @@ function ReferenceField({ intake }: { intake: Partial<Intake> }) {
   );
 }
 
+function CurrentSiteField({ intake }: { intake: Partial<Intake> }) {
+  return (
+    <label className="admin-field sm:col-span-2">
+      <span>
+        Site atual <em>opcional</em>
+      </span>
+      <input
+        name="currentSiteUrl"
+        className="admin-input"
+        type="url"
+        inputMode="url"
+        maxLength={2000}
+        defaultValue={intake.currentSiteUrl ?? ''}
+        placeholder="https://site-atual.com.br"
+      />
+      <small>
+        O agente navega pelas páginas públicas desse domínio, reúne conteúdo,
+        links, contatos e dados estruturados e importa fotos úteis para a
+        biblioteca. A história informada acima prevalece quando houver conflito.
+      </small>
+    </label>
+  );
+}
+
 function EvidenceAndConstraints({ intake }: { intake: Partial<Intake> }) {
   return (
     <>
@@ -164,6 +188,16 @@ export function TenantFields({
               <StoryField intake={intake} />
             </div>
           </section>
+          <section id="site-atual" className="admin-form-section">
+            <h2 className="text-base font-semibold">Site atual</h2>
+            <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
+              Reaproveite o conhecimento e os ativos públicos que o cliente já
+              tem.
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <CurrentSiteField intake={intake} />
+            </div>
+          </section>
           <section id="referencia" className="admin-form-section">
             <h2 className="text-base font-semibold">Referência para o site</h2>
             <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
@@ -195,13 +229,14 @@ export function TenantFields({
         <>
           <ContactFields contacts={contacts} />
           <section id="briefing" className="admin-form-section">
-            <h2 className="text-base font-semibold">História e referência</h2>
+            <h2 className="text-base font-semibold">História e fontes</h2>
             <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
-              A história sustenta o conteúdo. Uma referência visual verificada
-              comanda a composição; sem ela, a vibe define a direção.
+              A história sustenta o conteúdo. O site atual traz fatos e ativos.
+              Uma referência visual verificada comanda a composição.
             </p>
             <div className="grid gap-4 sm:grid-cols-2">
               <StoryField intake={intake} />
+              <CurrentSiteField intake={intake} />
               <ReferenceField intake={intake} />
               <EvidenceAndConstraints intake={intake} />
             </div>

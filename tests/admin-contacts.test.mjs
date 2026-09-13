@@ -123,7 +123,7 @@ await test('Dados conserva o perfil e o avatar de cliente anterior à coluna de 
   assert.deepEqual(f.cleared, []);
   assert.equal(f.written.length, 1);
   assert.ok(f.written[0].includes(JSON.stringify(result.intake)));
-  assert.match(f.sqls[0], /brief - 'audience'.*'imageScenes'/s);
+  assert.match(f.sqls[0], /brief - 'currentSite'.*'audience'.*'imageScenes'/s);
 });
 
 await test('API exige história, limita referência e protege uma geração ativa', async () => {
@@ -140,17 +140,58 @@ await test('API exige história, limita referência e protege uma geração ativ
     ).status,
     400,
   );
+  assert.equal(
+    (
+      await f.request({
+        intake: {
+          story: 'História suficiente para o novo cadastro.',
+          currentSiteUrl: 'ftp://cliente.test/',
+          references: [],
+        },
+      })
+    ).status,
+    400,
+  );
   const active = await legacyFixture({ runActive: true });
   const response = await active.request({
     intake: {
       story:
         'História nova do cliente, com público, região, oferta e trajetória reunidos.',
+      currentSiteUrl: 'https://cliente.test/',
       references: ['https://one.test/'],
     },
   });
   assert.equal(response.status, 409);
   assert.match((await response.json()).error, /Pause a geração/);
   assert.equal(active.written.length, 0);
+});
+
+await test('trocar o site atual invalida a coleta e o briefing derivado', async () => {
+  const f = await legacyFixture();
+  const response = await f.request({
+    intake: {
+      story: 'A empresa atende Bauru com serviços técnicos para residências.',
+      currentSiteUrl: 'https://cliente.test/',
+      references: [],
+    },
+  });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).regenerationRequired, true);
+  assert.match(f.sqls[0], /brief - 'currentSite'/);
+  assert.ok(
+    f.written[0].some(
+      (value) =>
+        typeof value === 'string' && value.includes('https://cliente.test/'),
+    ),
+  );
+});
+
+await test('trocar o nome invalida a identidade coletada mesmo sem reenviar o intake', async () => {
+  const f = await legacyFixture();
+  const response = await f.request({ name: 'Novo nome do cliente' });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).regenerationRequired, true);
+  assert.match(f.sqls[0], /brief - 'currentSite'/);
 });
 
 await test('remoção explícita da rede antiga continua limpando o perfil e não o ressuscita', async () => {

@@ -7,8 +7,9 @@ endereço; os filtros separam rascunhos e clientes com site publicado. Abra
 **Novo cliente** e informe nome, endereço, **História do cliente** e vibe. A
 história é obrigatória e deve reunir o que a empresa faz, para quem vende, onde
 atende, sua trajetória, diferenciais, provas e o próximo passo esperado. Um
-único link de referência visual fica à vista e é opcional; fatos confirmados,
-restrições, contatos, logo e cores ficam nas seções complementares. O endereço
+**Site atual** e um único link de referência visual ficam à vista e são
+opcionais; fatos confirmados, restrições, contatos, logo e cores ficam nas
+seções complementares. O endereço
 aceita letras minúsculas, números e hífens; nomes reservados e duplicados são
 recusados.
 
@@ -51,7 +52,8 @@ O botão de sair fica no fim das ações do cabeçalho, na lista e no cliente.
 
 Dentro do cliente, a navegação reúne **Site**, **Imagens**, **Tráfego** e
 **Dados**. Em Dados, atualize diretamente contatos e briefing: a **História do
-cliente**, uma referência visual opcional, fatos confirmados, restrições,
+cliente**, um Site atual, uma referência visual opcional, fatos confirmados,
+restrições,
 telefones, e-mail, endereços e redes sociais. A história reúne origem, oferta,
 segmento, região atendida, público, diferenciais, provas e a ação esperada. A
 direção visual também pode ser trocada ali. A edição dos campos não usa o chat;
@@ -69,12 +71,25 @@ o que o site não pode prometer nem mostrar. Cadastros antigos continuam
 legíveis: ao abrir Dados, os campos anteriores são reunidos na história e só
 são convertidos quando o operador salva.
 
+**Site atual** é uma fonte do próprio cliente. Durante Preparar, o agente
+navega em até 12 páginas públicas do mesmo domínio, lê sitemap e conteúdo
+carregado por JavaScript, reúne oferta, público, região, provas, páginas, links,
+contatos e dados estruturados e importa até 10 imagens úteis para a biblioteca.
+O painel não envia cookie, não preenche formulário e não entra em login, conta,
+carrinho ou área administrativa. Sites bloqueados, muito grandes ou com pouco
+conteúdo deixam limites explícitos no briefing. A história e os fatos
+confirmados pelo operador vencem qualquer informação antiga ou contraditória.
+Contatos encontrados servem para conferência e não substituem silenciosamente o
+cadastro.
+
 O cadastro aceita um único link de referência. Depois de uma leitura visual em
 desktop e celular, ele comanda estrutura, abertura, tipografia, imagens, ritmo,
 superfícies, comportamento e responsividade do perfil v6. A vibe permanece como
 voz e fallback. Um site de outro negócio é referência apenas de design: não
 confirma oferta, capacidade ou contato do cliente. Se a captura estiver
 bloqueada ou incompleta, o painel conserva a lacuna e o gerador usa a vibe.
+O mesmo endereço pode aparecer nos dois campos quando o site atual também for a
+referência de design; cada leitura mantém sua função e seu recibo separados.
 
 **Redes sociais** aceita `@perfil`, o link da rede ou a página de empresa no LinkedIn; o primeiro Instagram ou LinkedIn da lista é o perfil lido. Ao salvar, o painel lê nome, bio e foto de perfil públicos e descreve o avatar para orientar marca e imagens. A leitura é melhor esforço: perfil pessoal do LinkedIn e boa parte das contas do Instagram respondem a tela de login, e o card mostra o motivo. Nesse caso, cole a bio em Fatos confirmados e envie a imagem em Logo do site. **Ler perfil novamente** repete a tentativa.
 
@@ -86,9 +101,9 @@ essa linha explicitamente continua removendo o perfil.
 
 Nome, contatos, logo e direção alteram o rascunho. O site no ar conserva o
 snapshot completo até a próxima publicação. Alterar o briefing orienta as
-próximas edições; não reescreve páginas automaticamente. Alterar história,
-referência ou vibe durante uma geração ativa é recusado. Ao salvar uma dessas
-mudanças, o briefing derivado é invalidado e o painel pede uma reconstrução;
+próximas edições; não reescreve páginas automaticamente. Alterar nome, história,
+Site atual, referência ou vibe durante uma geração ativa é recusado. Ao salvar
+uma dessas mudanças, o briefing derivado é invalidado e o painel pede uma reconstrução;
 as páginas e o snapshot publicado são preservados. Para trocar o endereço
 de um cliente existente, é necessária uma operação técnica; o formulário não
 altera o slug.

@@ -81,6 +81,12 @@ export function describeTool(
         : out.status === 'ok'
           ? `Referência lida: ${str(out.titulo) || str(inp.url)}`
           : `Referência inacessível: ${str(out.motivo) || 'sem acesso'}`;
+    case 'read_current_site': {
+      if (pending) return 'Navegando no site atual';
+      if (out.status !== 'ok')
+        return `Site atual inacessível: ${str(out.motivo) || 'sem acesso'}`;
+      return `Site atual lido: ${num(out.paginas)} página(s) e ${num(out.imagensImportadas)} imagem(ns) importada(s)`;
+    }
     case 'define_image_guide':
       return pending ? 'Definindo o guia de imagem' : 'Guia de imagem definido';
     case 'review_pages': {

@@ -14,6 +14,7 @@ async function fixture({
   insert = 'ok',
   socialFails = false,
   vibe = 'ousado',
+  currentSiteUrl = '',
 } = {}) {
   const deleted = [],
     inserted = [],
@@ -88,6 +89,7 @@ async function fixture({
     vibe,
   }))
     form.set(key, value);
+  if (currentSiteUrl) form.set('currentSiteUrl', currentSiteUrl);
   // Duas linhas de contato: a primeira é telefone comum, então o WhatsApp
   // gravado precisa ser o segundo número.
   for (const [number, kind] of [
@@ -153,8 +155,19 @@ await test('cadastro grava contatos, vibe e o WhatsApp derivado da lista', async
   ]);
   assert.deepEqual(row.contacts.social, ['https://www.instagram.com/fixture/']);
   assert.match(row.brief.intake.story, /pedras naturais/);
+  assert.equal(row.brief.intake.currentSiteUrl, '');
   assert.equal(row.brief.intake.offer, '');
   assert.equal(row.brief.intake.references.length, 0);
+});
+
+await test('cadastro preserva o site atual separado da referência visual', async () => {
+  const f = await fixture({ currentSiteUrl: 'https://fixture.com.br/' });
+  await assert.rejects(f.run, /redirect:\/admin\/fixture/);
+  assert.equal(
+    f.inserted[0].brief.intake.currentSiteUrl,
+    'https://fixture.com.br/',
+  );
+  assert.deepEqual(f.inserted[0].brief.intake.references, []);
 });
 
 await test('vibe desconhecida recusa o cadastro antes de enviar o logo', async () => {
@@ -188,6 +201,12 @@ await test('cadastro exibe história obrigatória e uma única referência fora 
   assert.match(markup, /name="story"[^>]*required/);
   assert.match(markup, /<input[^>]*type="url"[^>]*name="reference"/);
   assert.match(markup, /Referência para o site/);
+  assert.match(markup, /name="currentSiteUrl"/);
+  assert.ok(
+    markup.indexOf('name="currentSiteUrl"') <
+      markup.indexOf('name="reference"'),
+  );
+  assert.match(markup, /navega pelas páginas públicas desse domínio/);
   assert.equal(markup.includes('O que o site precisa fazer'), false);
   assert.equal(markup.includes('Segmento</span>'), false);
   assert.equal(markup.includes('Região atendida'), false);

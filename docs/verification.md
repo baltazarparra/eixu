@@ -1,5 +1,46 @@
 # Validação e publicação
 
+## Site atual como fonte factual e de ativos, 12/09/2026
+
+O cadastro ganhou o campo opcional **Site atual**, separado da Referência visual.
+Na etapa Preparar, uma ferramenta navega somente nas páginas públicas da origem
+final, consulta sitemap, complementa páginas com JavaScript e reúne conteúdo,
+links, contatos, dados estruturados e candidatos de imagem. Um agente focado,
+sem ferramentas, sintetiza fatos rastreáveis e compara a identidade e possíveis
+conflitos com a História do cliente. A história e as confirmações do operador
+continuam sendo a autoridade factual; essa leitura não libera decisões visuais
+fora da vibe.
+
+Fotos e logos selecionados são baixados pela fronteira pública, validados pelos
+pixels, normalizados em WebP e registrados com origem no acervo numerado. Fotos
+úteis podem preencher as cenas; logos ficam disponíveis sem aplicação
+automática. A coleta tem recibo, cache de 24 horas e compare-and-set pelo URL do
+intake. Trocar o nome, o Site atual ou a história invalida o recibo derivado.
+Não houve migração de schema.
+
+Validação local no branch `codex/current-site-import`, a partir de `origin/main`
+`339e8fb`:
+
+- Tipos (`next typegen` e `tsc --noEmit`), lint global, formatação e
+  `git diff --check` passaram.
+- `test:sites`: 203 casos passaram com Chrome local, incluindo DOM
+  pós-JavaScript, bloqueio de POST, rede privada e navegação para outra origem,
+  sitemap, profundidade, identidade, prompt injection, URLs inventadas,
+  importação, deduplicação e cobertura de cenas.
+- `test:admin`: 179 casos passaram; cinco integrações ficaram sem execução por
+  dependerem de PostgreSQL local. Cadastro, edição, invalidação e bloqueio
+  durante geração ativa estão cobertos.
+- `test:admin:browser`: 13 casos passaram. `test:sites:browser`: 59 casos
+  passaram, com CSS de produção, desktop, celular, todas as vibes e as doze
+  composições.
+- `build:vercel` passou, incluindo os três checks de artefatos serverless que
+  carregam as dependências de captura.
+
+Nenhuma chamada paga, escrita remota, migração ou publicação foi executada. O
+fluxo foi exercitado com sites sintéticos e Chromium real; a leitura de um site
+de cliente e a importação contra Blob/Neon reais permanecem para um ensaio
+controlado quando houver um URL escolhido.
+
 ## Andamento das edições e atualização da prévia, 12/09/2026
 
 O chat mantém atividade e tempo junto do compositor e acima da prévia. A

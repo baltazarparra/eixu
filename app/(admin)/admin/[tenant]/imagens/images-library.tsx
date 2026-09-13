@@ -10,6 +10,7 @@ import {
 import { adminFetch } from '@/lib/admin/http';
 import type { ImageUsage } from '@/lib/images/usage';
 import type { ImageGuide, TenantImage } from '@/lib/types';
+import { CURRENT_SITE_IMAGE_MODEL } from '@/lib/current-site/constants';
 import {
   IMAGE_UPLOAD_ACCEPT,
   IMAGE_UPLOAD_HINT,
@@ -387,6 +388,9 @@ export function ImagesLibrary({
                         <span>
                           {image.kind}
                           {image.model === 'upload' ? ' · enviada' : ''}
+                          {image.model === CURRENT_SITE_IMAGE_MODEL
+                            ? ' · importada do site atual'
+                            : ''}
                           {image.url === library.logoUrl
                             ? ' · logo do site'
                             : image.url === library.logoDarkUrl
