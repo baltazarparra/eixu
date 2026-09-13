@@ -313,6 +313,8 @@ async function runnerFixture({
   /** Perfil social ainda em leitura na primeira consulta ao cliente. */
   socialReading = false,
   logoStudio,
+  /** Resposta do estúdio quando a etapa de cenas chama o lote direto. */
+  sceneTool,
 } = {}) {
   const events = [];
   const messages = [];
@@ -426,6 +428,15 @@ async function runnerFixture({
     },
     '@/lib/images/queries': { listImages: async () => [] },
     '@/lib/sites/generation': {
+      plannedScenes: () => [
+        {
+          role: 'hero',
+          targetBlock: 'hero.cover',
+          ratio: '16:9',
+          hint: 'Abertura.',
+          request: 'Abertura do cliente, com assunto concreto no enquadramento.',
+        },
+      ],
       generationState: () => {
         const state = states[Math.min(calls, states.length - 1)];
         return {
@@ -465,7 +476,10 @@ async function runnerFixture({
         `Progresso salvo: recibo sintético. ${state.generation.next === 'pronto' ? 'Site gerado.' : running ? 'Continua.' : 'Parado.'}`,
     },
     '@/lib/auth': { createSessionToken: async () => 'token' },
-    '@/lib/ai/tools': { buildTools: () => ({}) },
+    '@/lib/ai/tools': {
+      buildTools: () =>
+        sceneTool ? { prepare_site_images: { execute: sceneTool } } : {},
+    },
     '@/lib/ai/agent': {
       siteAgent: () => ({
         generate: async ({ onToolExecutionStart, onToolExecutionEnd }) => {
@@ -947,3 +961,25 @@ await test(
     assert.equal(f.events.at(-1).payload.logoStudio, 'failed');
   },
 );
+
+await test('recusa do estúdio no lote direto chega ao chat e à linha do tempo', async () => {
+  const refusal =
+    'signature.composition exibe 4:3. A proporção 16:9 seria recortada; envie 4:3 ou omita o campo.';
+  const f = await runnerFixture({
+    states: [{ next: 'cenas', coveredScenes: 0, targetScenes: 5, photos: 0 }],
+    sceneTool: async () => ({ error: refusal }),
+  });
+  const outcome = await f.executeStep(f.run);
+
+  assert.equal(outcome.kind, 'failed');
+  const end = f.events.find((event) => event.kind === 'tool_end');
+  assert.equal(end.payload.ok, false, 'a recusa não pode ficar como sucesso');
+  assert.ok(
+    f.events.some(
+      (event) => event.kind === 'note' && event.label === refusal,
+    ),
+    'a linha do tempo precisa do motivo real',
+  );
+  // Sem isso o operador lia só que nada foi preenchido, sem o que corrigir.
+  assert.match(f.messages[0].text, /signature\.composition exibe 4:3/);
+});

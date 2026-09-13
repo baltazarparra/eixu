@@ -389,7 +389,25 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
       if (!sceneTool.execute)
         throw new Error('Ferramenta de imagens indisponível no runner.');
       const output = await sceneTool.execute(sceneBatch);
-      await recordToolEnd('prepare_site_images', sceneBatch, output, callId);
+      // `safe` devolve a recusa como resultado. Sem ler esse campo, o painel
+      // dizia só que nada foi preenchido e o motivo real não chegava a lugar
+      // nenhum: a etapa parava sem o operador saber o que corrigir.
+      const refusal = (output as { error?: string } | null)?.error;
+      await recordToolEnd(
+        'prepare_site_images',
+        sceneBatch,
+        output,
+        callId,
+        Boolean(refusal),
+      );
+      if (refusal)
+        await recordEvent({
+          runId: run.id,
+          tenantId: tenant.id,
+          phase,
+          kind: 'note',
+          label: refusal,
+        }).catch(() => undefined);
       steps = 1;
       const generated = Array.isArray(
         (output as { imagens?: unknown[] } | null)?.imagens,
@@ -398,7 +416,9 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
         : 0;
       spoken = generated
         ? `${plural(generated, 'imagem foi criada', 'imagens foram criadas')} e já estão disponíveis na biblioteca.`
-        : 'O estúdio terminou sem preencher uma nova vaga; a pendência ficou registrada.';
+        : refusal
+          ? `O estúdio recusou o lote de cenas: ${refusal}`
+          : 'O estúdio terminou sem preencher uma nova vaga; a pendência ficou registrada.';
     } else {
       if (
         phase === 'briefing' &&

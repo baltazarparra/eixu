@@ -436,6 +436,15 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             `Orçamento de cenas deste turno esgotado: ${scenesPrepared} de ${budget} já ${scenesPrepared === 1 ? 'foi pedida' : 'foram pedidas'}. Encerre o turno.`,
           );
 
+        // A proporção sai do plano, que resolve o layout da seção protagonista
+        // pela estrutura escolhida. `expectedRatio` só pelo tipo devolvia 4:3
+        // para signature.composition e recusava o lote inteiro nas estruturas
+        // de assinatura 16:9 e 4:5. Visto no cliente wanderb em 12/09/2026.
+        const plan = scenePlan(design, 3, vibeOf(activeBrand));
+        const plannedRatio = (targetBlock: string) =>
+          plan.find((slot) => slot.targetBlock === targetBlock)?.ratio ??
+          expectedRatio(targetBlock);
+
         const prepared = scenes.map((scene) => {
           // A proporção nasce da composição decidida, não de um palpite: foto
           // 4:3 num hero editorial 16:9 perde o assunto no recorte.
@@ -453,7 +462,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             throw new ToolError(
               'O papel hero-detail existe só na composição atelier, que mostra ambiente e detalhe juntos.',
             );
-          const ratio = expectedRatio(scene.targetBlock);
+          const ratio = plannedRatio(scene.targetBlock);
           if (scene.ratio && scene.ratio !== ratio)
             throw new ToolError(
               `${scene.targetBlock} exibe ${ratio}. A proporção ${scene.ratio} seria recortada; envie ${ratio} ou omita o campo.`,
@@ -474,7 +483,6 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             // Relê a cobertura dentro do lock, pois outra requisição pode ter
             // gerado a mesma vaga depois do snapshot da rota.
             const library = await listImages(tenant.id);
-            const plan = scenePlan(design, 3, vibeOf(activeBrand));
             const { missing } = sceneCoverage(plan, generatedPhotos(library));
             if (inPhase) {
               if (!missing.length)
