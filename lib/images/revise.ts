@@ -9,6 +9,7 @@ import {
   type Ratio,
 } from '@/lib/images/ratios';
 import type { Critique, Tenant, TenantImage } from '@/lib/types';
+import { CURRENT_SITE_IMAGE_MODEL } from '@/lib/current-site/constants';
 
 /** Mantém a imagem anterior no acervo e gera uma versão usando seus pixels. */
 export async function reviseImage(
@@ -19,7 +20,7 @@ export async function reviseImage(
 ): Promise<TenantImage> {
   const ratio = (RATIOS as readonly string[]).includes(previous.ratio)
     ? (previous.ratio as Ratio)
-    : previous.model === 'upload'
+    : previous.model === 'upload' || previous.model === CURRENT_SITE_IMAGE_MODEL
       ? closestGenerationRatio(previous.ratio)
       : null;
   if (!ratio)

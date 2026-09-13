@@ -51,6 +51,7 @@ export async function PATCH(
       { status: 400 },
     );
   const input = parsed.data;
+  const nameChanged = input.name !== undefined && input.name !== tenant.name;
 
   // O mesmo portão vale para o logo principal e para a versão de fundo
   // escuro: logo da biblioteca deste cliente ou upload no caminho dele.
@@ -82,12 +83,20 @@ export async function PATCH(
     input.intake !== undefined &&
     JSON.stringify(input.intake.references) !==
       JSON.stringify(previousIntake?.references ?? []);
-  const directionChanged = vibeChanged || storyChanged || referenceChanged;
+  const currentSiteChanged =
+    input.intake !== undefined &&
+    input.intake.currentSiteUrl !== (previousIntake?.currentSiteUrl ?? '');
+  const directionChanged =
+    nameChanged ||
+    vibeChanged ||
+    storyChanged ||
+    referenceChanged ||
+    currentSiteChanged;
   if (directionChanged && (await activeRun(tenant.id)))
     return Response.json(
       {
         error:
-          'Pause a geração em andamento antes de alterar a história, a referência ou a direção visual.',
+          'Pause a geração em andamento antes de alterar o nome, a história, o site atual, a referência ou a direção visual.',
       },
       { status: 409 },
     );
@@ -101,12 +110,13 @@ export async function PATCH(
       contacts = case when ${contacts !== undefined} then ${JSON.stringify(contacts ?? {})}::jsonb else contacts end,
       whatsapp = case when ${contacts !== undefined} then ${contacts ? primaryWhatsapp(contacts) : null} else whatsapp end,
       contact_email = case when ${input.contactEmail !== undefined} then ${input.contactEmail ?? null} else contact_email end,
-      brief = case when ${input.intake !== undefined}
-                   then (case when ${storyChanged || referenceChanged}
-                         then brief - 'audience' - 'offer' - 'goal' - 'personality' - 'evidence' - 'constraints' - 'gaps' - 'pagePlan' - 'imageScenes'
-                         else brief end)
-                        || jsonb_build_object('intake', ${JSON.stringify(input.intake ?? {})}::jsonb)
-                   else brief end,
+      brief = (case when ${nameChanged || storyChanged || referenceChanged || currentSiteChanged}
+                    then (case when ${nameChanged || currentSiteChanged || storyChanged} then brief - 'currentSite' else brief end)
+                      - 'audience' - 'offer' - 'goal' - 'personality' - 'evidence' - 'constraints' - 'gaps' - 'pagePlan' - 'imageScenes'
+                    else brief end)
+              || (case when ${input.intake !== undefined}
+                       then jsonb_build_object('intake', ${JSON.stringify(input.intake ?? {})}::jsonb)
+                       else '{}'::jsonb end),
       brand = case when ${vibeChanged}
                    then (brand - 'design') || jsonb_build_object('vibe', ${input.vibe ?? null}::text)
                    else brand end,

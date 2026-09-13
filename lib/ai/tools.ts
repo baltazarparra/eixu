@@ -73,6 +73,13 @@ import {
 import { readReference } from '@/lib/ai/reference';
 import { referenceFromSocial, readSocialProfile } from '@/lib/ai/social';
 import { normalizeSocialUrl, parseSocialRecord } from '@/lib/social-profile';
+import { intakeCurrentSiteUrl } from '@/lib/tenant-intake';
+import { readCurrentSite } from '@/lib/current-site/read';
+import {
+  currentSiteMatches,
+  currentSiteRecord,
+  CURRENT_SITE_IMAGE_MODEL,
+} from '@/lib/current-site/schema';
 import { capturePages, type Shot } from '@/lib/review/capture';
 import { critiquePages } from '@/lib/review/critic';
 import {
@@ -194,6 +201,18 @@ export type ToolContext = {
   }) => void | Promise<void>;
 };
 
+function currentSiteAnalysisForAgent(value: unknown) {
+  const analysis = currentSiteRecord(value)?.analysis;
+  if (!analysis || analysis.identity.matches) return analysis;
+  return {
+    identity: analysis.identity,
+    gaps: [
+      `O endereço informado parece pertencer a outro negócio: ${analysis.identity.reason}`,
+      ...analysis.gaps,
+    ],
+  };
+}
+
 function reviewFindingId(
   finding: Omit<ReviewFindingReceipt, 'id' | 'status'>,
   occurrence = 0,
@@ -275,6 +294,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
   let activeBrief = { ...tenant.brief };
   let scenesPrepared = 0;
   let referencesRead = 0;
+  let currentSiteReads = 0;
   let reviewRounds = 0;
   let pendingDraft: SiteDraft | undefined;
 
@@ -755,6 +775,90 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           image.url,
         );
         return { ok: true, numero: `#${image.seq}` };
+      }),
+    }),
+
+    read_current_site: tool({
+      description:
+        'Navega no Site atual configurado no cadastro, somente dentro do domínio público; extrai páginas, fatos, contatos, links e dados estruturados, usa um agente focado sem ferramentas para sintetizar o material e importa ativos úteis para a biblioteca. Não recebe URL livre e não dá autoridade visual. A história do operador prevalece em conflitos.',
+      inputSchema: z.object({
+        refresh: z
+          .boolean()
+          .optional()
+          .describe(
+            'Use true somente quando o operador pedir uma nova leitura.',
+          ),
+      }),
+      execute: safe(async ({ refresh }) => {
+        const url = intakeCurrentSiteUrl(activeBrief.intake);
+        if (!url)
+          throw new ToolError(
+            'Este cliente não tem Site atual configurado. Continue com a história e as outras fontes.',
+          );
+        const cached = currentSiteRecord(activeBrief.currentSite);
+        const fresh =
+          cached &&
+          currentSiteMatches(cached, url) &&
+          Date.now() - new Date(cached.crawledAt).getTime() <
+            24 * 60 * 60 * 1000;
+        if (!refresh && fresh)
+          return {
+            status: cached.status,
+            motivo: cached.motivo,
+            paginas: cached.pages.length,
+            links: cached.links.length,
+            imagensEncontradas: cached.imagesDiscovered,
+            imagensImportadas: cached.importedImages.length,
+            analise: currentSiteAnalysisForAgent(cached),
+            limites: cached.limits,
+            cache: true,
+          };
+        if (currentSiteReads >= 1)
+          throw new ToolError(
+            'O site atual já foi navegado neste turno. Use o recibo salvo e registre as lacunas encontradas.',
+          );
+        currentSiteReads++;
+        const intake = activeBrief.intake as { story?: unknown } | undefined;
+        const operatorStory =
+          typeof intake?.story === 'string' ? intake.story : '';
+        const receipt = await readCurrentSite({
+          tenantId: tenant.id,
+          tenantName: tenant.name,
+          url,
+          operatorStory,
+        });
+        // Compare-and-set: uma leitura que terminou depois da troca da
+        // identidade, história ou URL não pode reaparecer no briefing.
+        const saved = (await db()`
+          update tenants
+          set brief = jsonb_set(brief, '{currentSite}', ${JSON.stringify(receipt)}::jsonb, true),
+              updated_at = now()
+          where id = ${tenant.id}
+            and name = ${tenant.name}
+            and coalesce(brief #>> '{intake,currentSiteUrl}', '') = ${url}
+            and coalesce(brief #>> '{intake,story}', '') = ${operatorStory}
+          returning id
+        `) as { id: string }[];
+        if (!saved.length)
+          throw new ToolError(
+            'O nome, a história ou o Site atual mudou durante a leitura. O recibo antigo não foi aplicado; leia novamente os dados atualizados.',
+          );
+        activeBrief = { ...activeBrief, currentSite: receipt };
+        return {
+          status: receipt.status,
+          motivo: receipt.motivo,
+          paginas: receipt.pages.length,
+          links: receipt.links.length,
+          imagensEncontradas: receipt.imagesDiscovered,
+          imagensImportadas: receipt.importedImages.length,
+          analise: currentSiteAnalysisForAgent(receipt),
+          conflitos: receipt.analysis?.identity.matches
+            ? receipt.analysis.conflicts
+            : undefined,
+          falhasDeImagem: receipt.imageFailures,
+          limites: receipt.limits,
+          cache: false,
+        };
       }),
     }),
 
@@ -1334,7 +1438,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
     lint_site: tool({
       description:
-        'Valida o projeto completo: 3 páginas orgânicas, jornada de inbound, links internos e 2 fotos da biblioteca na home, geradas ou enviadas.',
+        'Valida o projeto completo: 3 páginas orgânicas, jornada de inbound, links internos e 2 fotos da biblioteca na home, geradas, enviadas ou importadas.',
       inputSchema: z.object({}),
       execute: safe(async () => {
         const [pages, images] = await Promise.all([
@@ -1346,7 +1450,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
     }),
     list_images: tool({
       description:
-        'Lista as imagens geradas e enviadas disponíveis do cliente com número, descrição e URL exata para os blocos. Não há aprovação. Use update_image para pedidos de alteração pelo número.',
+        'Lista as imagens geradas, enviadas e importadas disponíveis do cliente com número, descrição e URL exata para os blocos. Não há aprovação. Use update_image para pedidos de alteração pelo número.',
       inputSchema: z.object({}),
       execute: safe(async () => {
         const library = await listImages(tenant.id);
@@ -1357,7 +1461,11 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
               numero: `#${image.seq}`,
               kind: image.kind,
               origem:
-                image.model === 'upload' ? 'enviada pelo operador' : 'gerada',
+                image.model === 'upload'
+                  ? 'enviada pelo operador'
+                  : image.model === CURRENT_SITE_IMAGE_MODEL
+                    ? 'importada do site atual'
+                    : 'gerada',
               url: image.url,
               alt: image.alt,
               ratio: image.ratio,
@@ -1558,10 +1666,27 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           ? (activeBrief.sources as { status?: string }[])
           : [];
         const readable = sources.filter((source) => source?.status === 'ok');
-        const blocked = sources.length - readable.length;
+        const configuredCurrentSite = intakeCurrentSiteUrl(activeBrief.intake);
+        const currentSite = currentSiteRecord(activeBrief.currentSite);
+        if (
+          configuredCurrentSite &&
+          !currentSiteMatches(currentSite, configuredCurrentSite)
+        )
+          throw new ToolError(
+            'Leia o Site atual configurado com read_current_site antes de definir o briefing e a direção.',
+          );
+        const currentSiteReadable =
+          currentSite?.status === 'ok' &&
+          currentSite.analysisStatus === 'ok' &&
+          currentSite.analysis?.identity.matches === true;
+        const blocked =
+          sources.length -
+          readable.length +
+          (configuredCurrentSite && !currentSiteReadable ? 1 : 0);
+        const readableCount = readable.length + (currentSiteReadable ? 1 : 0);
         if (
           !input.brief.gaps.length &&
-          (blocked > 0 || (!input.brief.evidence.length && !readable.length))
+          (blocked > 0 || (!input.brief.evidence.length && !readableCount))
         ) {
           throw new ToolError(
             'Nenhuma fonte confirmada sustenta os fatos deste cliente. Liste em brief.gaps o que ainda precisa ser confirmado (serviços, estrutura, região, prazos) antes de definir a direção.',

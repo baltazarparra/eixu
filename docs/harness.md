@@ -51,16 +51,17 @@ thinking em `providerOptions` nem reduza saída a poucas centenas de tokens: o
 raciocínio também precisa caber. Os geradores de imagens mantêm seu modelo próprio;
 um modelo que entende imagens não necessariamente as gera.
 
-| Tarefa                        | Máximo de saída por passo |             Passos por turno |
-| ----------------------------- | ------------------------: | ---------------------------: |
-| Briefing e plano editorial    |                    16.384 |                           12 |
-| Cena individual (fallback)    |                     8.192 |                            2 |
-| Composição e reparo           |                    49.152 |                           24 |
-| Revisão e correção            |                    24.576 |                           32 |
-| Edição livre                  |                    24.576 |                           32 |
-| Crítica de foto, logo ou site |                    16.384 |          chamada estruturada |
-| Descrição de avatar           |                     4.096 |              chamada textual |
-| Leitura de logo               |                     2.048 | estruturada, 12 s, sem retry |
+| Tarefa                        | Máximo de saída por passo |              Passos por turno |
+| ----------------------------- | ------------------------: | ----------------------------: |
+| Briefing e plano editorial    |                    16.384 |                            12 |
+| Cena individual (fallback)    |                     8.192 |                             2 |
+| Composição e reparo           |                    49.152 |                            24 |
+| Revisão e correção            |                    24.576 |                            32 |
+| Edição livre                  |                    24.576 |                            32 |
+| Crítica de foto, logo ou site |                    16.384 |           chamada estruturada |
+| Descrição de avatar           |                     4.096 |               chamada textual |
+| Leitura de logo               |                     2.048 |  estruturada, 12 s, sem retry |
+| Leitura focada do site atual  |                    12.288 | chamada estruturada sem tools |
 
 São tetos operacionais, não metas de verbosidade. `lib/ai/agent.ts` instancia o
 `ToolLoopAgent` compartilhado entre chat e avaliação. O turno tem 760 segundos no
@@ -74,7 +75,7 @@ A escrita tem um [contrato por vibe](copy.md), com linguagem simples em comum.
 e ao crítico. `lintPage` verifica rótulos de ação e aponta vocabulário/frases
 para revisão; o crítico julga compreensão e voz com textos completos, sinais e
 pixels. Erro material de linguagem impede a aprovação visual automática. A versão
-`gemini-3.8-quality-v6-reference-story` identifica o contrato atual e invalida
+`gemini-3.8-quality-v7-current-site` identifica o contrato atual e invalida
 recibos anteriores. A gramática ampla da vibe entra no perfil v4; o perfil v5
 compara três estruturas da vibe, enquanto o v6 compara as doze pela referência
 e exige aplicações de layout, tipografia, imagens, ritmo, superfície e mobile.
@@ -92,7 +93,7 @@ não houver overflow na página. Os pixels do menu aberto seguem como imagem
 binária adicional para o crítico, e o chat recebe apenas medições e achados.
 
 O prompt mantém fatos, restrições, vibe, marca, contatos, guia de imagens, fontes,
-plano editorial, plano semântico de cenas e biblioteca do tenant. Referências
+leitura estruturada do Site atual, plano editorial, plano semântico de cenas e biblioteca do tenant. Referências
 visuais verificadas do cadastro prevalecem sobre a vibe. As capturas são
 analisadas em uma chamada multimodal separada; as observações em
 `brief.sources[].visual` e as aplicações em `brand.design.referenceDirection`
@@ -104,6 +105,16 @@ semântico a cada foto planejada. `brand.design.structure` e
 `structureRationale` registram a jornada selecionada. Ambos os planos são
 opcionais no schema para ler briefings legados e obrigatórios em uma nova
 direção validada.
+
+Quando `brief.intake.currentSiteUrl` existe, `read_current_site` precisa produzir
+uma tentativa correspondente antes de `set_design`. A navegação e a extração
+são determinísticas, restritas à mesma origem e limitadas. Depois delas, uma
+chamada estruturada ao modelo recebe somente páginas, links, dados e candidatos
+de imagem já normalizados, sem qualquer ferramenta. O modelo resume fatos com
+URL de origem, compara conflitos com a história e seleciona os ativos que o
+código volta a baixar e validar. Conteúdo da página permanece dado não
+confiável. O recibo fica em `brief.currentSite`, separado de `brief.sources`, e
+não cria autoridade visual.
 
 Na fase de briefing, o modelo recebe três estruturas da vibe sem referência ou
 as doze quando há leitura visual válida. Precisa compará-las contra história,
@@ -286,7 +297,7 @@ O schema usa array homogêneo de quatro números para a caixa do símbolo, pois
 o provedor Gemini rejeita `items` em formato de tupla. A crítica vê o master
 recortado e a miniatura de altura real. `EIXU_LOGO_IMAGE_MODEL` mantém GPT Image 2
 como padrão; `input_fidelity` não é habilitado sem evidência da sonda.
-`HARNESS_VERSION` é `gemini-3.8-quality-v6-reference-story`. Perfis v2-v5
+`HARNESS_VERSION` é `gemini-3.8-quality-v7-current-site`. Perfis v2-v5
 continuam legíveis; somente uma nova direção com referência grava v6.
 
 Na edição de um site existente, a rota deriva uma política da **mensagem atual**,

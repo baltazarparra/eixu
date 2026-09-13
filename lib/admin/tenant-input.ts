@@ -84,6 +84,7 @@ export function intakeFromForm(form: FormData) {
     story: field('story'),
     evidence: lines(field('evidence')),
     constraints: lines(field('constraints')),
+    currentSiteUrl: field('currentSiteUrl'),
     references,
     socialUrl: contacts.success ? derivedSocialUrl(contacts.data) : '',
   });

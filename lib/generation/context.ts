@@ -9,6 +9,7 @@ import { availablePhotos } from '@/lib/taste/metrics';
 import type { Phase } from '@/lib/taste/phases';
 import { systemPrompt, type PromptContext } from '@/lib/taste/prompt';
 import type { Page, Tenant, TenantImage } from '@/lib/types';
+import { CURRENT_SITE_IMAGE_MODEL } from '@/lib/current-site/constants';
 
 /**
  * O prompt de uma fase é o mesmo no chat e no runner do servidor. Estava só
@@ -45,7 +46,7 @@ export function imagesSummary(images: TenantImage[]): string {
     .slice(0, 12)
     .map(
       (image) =>
-        `- #${image.seq} (${image.kind}${image.model === 'upload' ? ', enviada pelo operador' : ''}), ${image.ratio}, ${image.targetBlock ?? 'livre'}: ${image.url} | ${image.alt ?? image.description ?? image.requestText}`,
+        `- #${image.seq} (${image.kind}${image.model === 'upload' ? ', enviada pelo operador' : image.model === CURRENT_SITE_IMAGE_MODEL ? ', importada do site atual' : ''}), ${image.ratio}, ${image.targetBlock ?? 'livre'}: ${image.url} | ${image.alt ?? image.description ?? image.requestText}`,
     )
     .join('\n');
 }

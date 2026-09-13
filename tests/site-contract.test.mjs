@@ -795,12 +795,25 @@ await test('história é obrigatória na escrita, incorpora o legado e aceita um
   const current = intakeWriteSchema.parse({
     story:
       'A oficina nasceu em São Paulo e atende motoristas com diagnóstico e revisão antes de iniciar uma conversa.',
+    currentSiteUrl: 'https://oficina.test/',
     references: ['https://one.test/'],
   });
   const summary = intakeSummary(current);
   assert.match(summary, /História do cliente: A oficina nasceu/);
   assert.equal(summary.includes('Segmento:'), false);
+  assert.match(
+    summary,
+    /Site atual para importar conteúdo e imagens: https:\/\/oficina\.test\//,
+  );
   assert.match(summary, /Referência visual: https:\/\/one\.test\//);
+  assert.equal(
+    intakeWriteSchema.safeParse({
+      story: editable.story,
+      currentSiteUrl: 'mailto:oficina@example.test',
+      references: [],
+    }).success,
+    false,
+  );
   assert.deepEqual(
     [
       current.segment,

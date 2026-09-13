@@ -541,6 +541,12 @@ sem texto; a placa de contraste aparece somente quando a tinta sumiria.
 
 ## Referências acima da vibe
 
+O campo **Site atual** não participa da autoridade visual. Sua coleta vive em
+`brief.currentSite`, serve a fatos, páginas, links e ativos do próprio cliente e
+mantém a História do cliente como autoridade em conflitos. Mesmo quando o Site
+atual e a Referência visual têm o mesmo URL, somente a captura registrada em
+`brief.sources[].visual` pode liberar decisões fora da vibe.
+
 `read_reference` continua extraindo texto e, para URLs presentes em
 `brief.intake.references`, também captura desktop (1440 px) e mobile (390 px).
 Uma chamada multimodal separada lê composição, tipografia, imagens, ritmo,
