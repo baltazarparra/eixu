@@ -1,6 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { ChatActivity, Message, chatErrorMessage } from './chat-parts';
@@ -13,6 +20,12 @@ import {
   ChevronRight,
   ExternalLink,
   ImagePlus,
+  ArrowDown,
+  Maximize2,
+  Minimize2,
+  Monitor,
+  Smartphone,
+  Pencil,
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react';
@@ -22,9 +35,10 @@ import {
   useRefreshTenant,
 } from '@/components/admin/navigation';
 import { ChatUsageDetails } from '@/components/admin/chat-usage';
+import { useCompactLayout } from '@/components/admin/use-compact-layout';
 import { GenerationDiamond } from '@/components/admin/generation-diamond';
 import { PagePicker } from '@/components/admin/page-picker';
-import { SegmentedControl, StatusDot } from '@/components/admin/primitives';
+import { StatusDot } from '@/components/admin/primitives';
 import { adminFetch } from '@/lib/admin/http';
 import { mergeSavedMessages } from '@/lib/admin/chat-messages';
 import type { SiteState } from '@/lib/admin/state';
@@ -79,7 +93,12 @@ export function Workspace({
   const [view, setView] = useState<'chat' | 'content'>(
     initial.pages.length && !imageRequest ? 'content' : 'chat',
   );
-  const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
+  const compact = useCompactLayout();
+  const [deviceChoice, setDevice] = useState<'desktop' | 'mobile' | null>(null);
+  const device = deviceChoice ?? (compact ? 'mobile' : 'desktop');
+  const [expanded, setExpanded] = useState(false);
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const expandTrigger = useRef<HTMLButtonElement | null>(null);
   // Recolher a conversa deixa só uma faixa estreita com o controle de reabertura:
   // entre 1024 e 1440 px a coluna de 42% deixava o desktop apertado. Abaixo de
   // 1024 px as vistas já alternam pelos botões e este estado não se aplica.
@@ -112,8 +131,10 @@ export function Workspace({
   >([]);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const composerRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const followMessages = useRef(true);
+  const [awayFromLatest, setAwayFromLatest] = useState(false);
   const previewUpdatePending = useRef(false);
   const refreshSeq = useRef(0);
   const previewRevision = useRef(initial.previewRevision);
@@ -270,13 +291,41 @@ export function Workspace({
     }
   }
 
-  // Reabrir a conversa também rola ao fim: o painel recolhido perde a rolagem.
+  // Novos tokens não tiram a pessoa da mensagem que ela está lendo.
   useEffect(() => {
+    if (!followMessages.current) return;
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
-      behavior: 'smooth',
+      behavior: 'instant',
     });
-  }, [messages, status, collapsed]);
+  }, [messages, status, collapsed, view]);
+
+  useLayoutEffect(() => {
+    const field = inputRef.current;
+    if (!field || !field.getClientRects().length) return;
+    field.style.height = 'auto';
+    field.style.height = `${field.scrollHeight}px`;
+  }, [input, view, compact]);
+
+  useEffect(() => {
+    if (!expanded) {
+      if (
+        expandTrigger.current?.getClientRects().length &&
+        !expandTrigger.current.disabled
+      )
+        expandTrigger.current.focus({ preventScroll: true });
+      expandTrigger.current = null;
+      return;
+    }
+    workspaceRef.current
+      ?.querySelector<HTMLButtonElement>('.admin-content .admin-preview-expand')
+      ?.focus({ preventScroll: true });
+    const close = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !event.defaultPrevented) setExpanded(false);
+    };
+    window.addEventListener('keydown', close);
+    return () => window.removeEventListener('keydown', close);
+  }, [expanded]);
 
   // Conversa livre e geração disputariam as mesmas páginas: enquanto uma roda,
   // a outra espera, e a tela diz por quê.
@@ -388,6 +437,8 @@ export function Workspace({
       filename: item.name,
     }));
     void sendMessage({ text: text.trim() || 'Use a imagem anexada.', files });
+    followMessages.current = true;
+    setAwayFromLatest(false);
     setInput('');
     setAttachments([]);
   }
@@ -399,6 +450,7 @@ export function Workspace({
     );
   }
   function beginEditing() {
+    setExpanded(false);
     if (
       locked ||
       generating ||
@@ -657,17 +709,31 @@ export function Workspace({
           {editingReady ? `editando /${current}` : 'Abrindo edição…'}
         </span>
       )}
-      <SegmentedControl
-        label="Largura da prévia"
-        value={device}
-        options={
-          [
-            ['desktop', 'Desktop'],
-            ['mobile', 'Celular'],
-          ] as const
-        }
-        onChange={setDevice}
-      />
+      <fieldset
+        className="admin-segmented admin-device-picker"
+        aria-label="Largura da prévia"
+      >
+        <button
+          type="button"
+          aria-label="Desktop"
+          title="Prévia desktop em 1280 px"
+          aria-pressed={device === 'desktop'}
+          onClick={() => setDevice('desktop')}
+        >
+          <Monitor size={17} aria-hidden="true" />
+          <span>Desktop</span>
+        </button>
+        <button
+          type="button"
+          aria-label="Celular"
+          title="Prévia celular"
+          aria-pressed={device === 'mobile'}
+          onClick={() => setDevice('mobile')}
+        >
+          <Smartphone size={17} aria-hidden="true" />
+          <span>Celular</span>
+        </button>
+      </fieldset>
       {page ? (
         <a
           href={previewUrl}
@@ -679,6 +745,42 @@ export function Workspace({
         >
           <ExternalLink size={14} aria-hidden="true" />
         </a>
+      ) : null}
+      <button
+        type="button"
+        className="admin-icon-button admin-preview-expand"
+        aria-label={expanded ? 'Restaurar prévia' : 'Ampliar prévia'}
+        title={expanded ? 'Restaurar prévia' : 'Ampliar prévia'}
+        aria-pressed={expanded}
+        disabled={editing !== 'off'}
+        onClick={(event) => {
+          if (!expanded) expandTrigger.current = event.currentTarget;
+          setView('content');
+          setExpanded(!expanded);
+        }}
+      >
+        {expanded ? (
+          <Minimize2 size={17} aria-hidden="true" />
+        ) : (
+          <Maximize2 size={17} aria-hidden="true" />
+        )}
+      </button>
+      {site.tenant.status === 'published' &&
+      page &&
+      !locked &&
+      !generating &&
+      editing === 'off' ? (
+        <button
+          type="button"
+          className="admin-secondary admin-preview-edit"
+          aria-label="Editar"
+          title="Editar na prévia"
+          disabled={publishing || uploading}
+          onClick={beginEditing}
+        >
+          <Pencil size={17} aria-hidden="true" />
+          <span>Editar</span>
+        </button>
       ) : null}
     </div>
   );
@@ -705,8 +807,10 @@ export function Workspace({
   return (
     <div
       className="admin-workspace"
+      ref={workspaceRef}
       data-view={view}
       data-conversation={collapsed ? 'collapsed' : undefined}
+      data-preview-expanded={expanded || undefined}
     >
       <WorkspaceHeader
         tenant={site.tenant}
@@ -754,7 +858,7 @@ export function Workspace({
                   !generating && (
                     <button
                       type="button"
-                      className="admin-secondary"
+                      className="admin-secondary admin-edit-action"
                       disabled={publishing || uploading}
                       onClick={beginEditing}
                     >
@@ -779,7 +883,6 @@ export function Workspace({
           </>
         }
       />
-      <MobileViews value={view} onChange={setView} />
       {notice ? (
         <output
           className="admin-notice"
@@ -843,35 +946,71 @@ export function Workspace({
             onStart={() => void startGeneration()}
             onStop={() => void stopGeneration()}
           />
-          <div ref={scrollRef} className="admin-thread">
-            {!messages.length && locked ? (
-              <p className="admin-thread-empty">
-                O agente responde aqui ao terminar cada etapa.
-              </p>
-            ) : null}
-            <div className="admin-thread-list">
-              {messages.map((message) => (
-                <Message key={message.id} message={message} />
-              ))}
-              {error ? (
-                <p className="admin-thread-error">
-                  {chatErrorMessage(error.message)}
+          <div className="admin-thread-wrap">
+            <div
+              ref={scrollRef}
+              className="admin-thread"
+              onScroll={(event) => {
+                const node = event.currentTarget;
+                if (!node.clientHeight) return;
+                const nearEnd =
+                  node.scrollHeight - node.scrollTop - node.clientHeight < 80;
+                followMessages.current = nearEnd;
+                setAwayFromLatest(!nearEnd);
+              }}
+            >
+              {!messages.length && locked ? (
+                <p className="admin-thread-empty">
+                  O agente responde aqui ao terminar cada etapa.
                 </p>
               ) : null}
-            </div>
-
-            {!locked && site.pages.length > 0 ? (
-              <div className="admin-suggestions">
-                {SUGGESTIONS.map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    type="button"
-                    onClick={() => setInput(suggestion)}
-                  >
-                    {suggestion}
-                  </button>
+              <div className="admin-thread-list">
+                {messages.map((message) => (
+                  <Message key={message.id} message={message} />
                 ))}
+                {error ? (
+                  <p className="admin-thread-error">
+                    {chatErrorMessage(error.message)}
+                  </p>
+                ) : null}
               </div>
+
+              {!locked && site.pages.length > 0 ? (
+                <details className="admin-suggestions-disclosure">
+                  <summary>Ideias para ajustar o site</summary>
+                  <div className="admin-suggestions">
+                    {SUGGESTIONS.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        onClick={() => setInput(suggestion)}
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </details>
+              ) : null}
+              <ChatUsageDetails
+                messages={messages}
+                events={generation.events}
+              />
+            </div>
+            {awayFromLatest ? (
+              <button
+                type="button"
+                className="admin-secondary admin-thread-latest"
+                onClick={() => {
+                  followMessages.current = true;
+                  setAwayFromLatest(false);
+                  scrollRef.current?.scrollTo({
+                    top: scrollRef.current.scrollHeight,
+                    behavior: 'instant',
+                  });
+                }}
+              >
+                <ArrowDown size={16} aria-hidden="true" /> Mensagens recentes
+              </button>
             ) : null}
           </div>
 
@@ -914,7 +1053,7 @@ export function Workspace({
                 </ul>
               ) : null}
               <textarea
-                ref={composerRef}
+                ref={inputRef}
                 aria-label="Mensagem para editar o site"
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
@@ -930,14 +1069,18 @@ export function Workspace({
                 onKeyDown={(event) => {
                   if (
                     event.key === 'Enter' &&
-                    !event.shiftKey &&
+                    (event.ctrlKey ||
+                      event.metaKey ||
+                      (!event.shiftKey &&
+                        !window.matchMedia('(pointer: coarse)').matches)) &&
                     !event.nativeEvent.isComposing
                   ) {
                     event.preventDefault();
                     submit(input);
                   }
                 }}
-                rows={3}
+                rows={2}
+                enterKeyHint="enter"
                 disabled={running || editing !== 'off'}
                 placeholder={
                   editing !== 'off'
@@ -1005,7 +1148,6 @@ export function Workspace({
               </div>
             </div>
           </form>
-          <ChatUsageDetails messages={messages} events={generation.events} />
         </section>
 
         <button
@@ -1024,7 +1166,11 @@ export function Workspace({
           )}
         </button>
 
-        <section className="admin-content" aria-label="Prévia e revisão">
+        <section
+          id="admin-preview"
+          className="admin-content"
+          aria-label="Prévia e revisão"
+        >
           {previewControls}
           {busy ? <ChatActivity messages={messages} compact /> : null}
 
@@ -1057,8 +1203,9 @@ export function Workspace({
                 onClick={() => {
                   setInput('Resolva as pendências de publicação.');
                   setCollapsed(false);
+                  setExpanded(false);
                   setView('chat');
-                  requestAnimationFrame(() => composerRef.current?.focus());
+                  requestAnimationFrame(() => inputRef.current?.focus());
                 }}
               >
                 Resolver pelo chat
@@ -1152,6 +1299,14 @@ export function Workspace({
           </div>
         </section>
       </div>
+      <MobileViews
+        value={view}
+        onChange={(next) => {
+          inputRef.current?.blur();
+          setView(next);
+          if (next === 'chat') setExpanded(false);
+        }}
+      />
     </div>
   );
 }

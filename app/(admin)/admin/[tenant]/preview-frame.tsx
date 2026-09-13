@@ -19,9 +19,25 @@ export function PreviewFrame({
     state: 'loaded' | 'error';
   } | null>(null);
   const scroll = useRef({ x: 0, y: 0 });
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
   const detach = useRef<() => void>(() => {});
   const url = attempt ? `${src}&reload=${attempt}` : src;
   const state = settled?.url === url ? settled.state : 'loading';
+  const width = device === 'desktop' ? 1280 : Math.min(390, size.width);
+  const scale = size.width ? Math.min(1, size.width / width) : 1;
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const observer = new ResizeObserver(() => {
+      // Alternar para a conversa não deve zerar a viewport do iframe oculto.
+      if (stage.clientWidth && stage.clientHeight)
+        setSize({ width: stage.clientWidth, height: stage.clientHeight });
+    });
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (state !== 'loading') return;
@@ -54,55 +70,67 @@ export function PreviewFrame({
           </button>
         ) : null}
       </div>
-      <iframe
-        ref={frameRef}
-        src={url}
-        title="Preview do site"
-        className="admin-preview-frame"
-        data-device={device}
-        aria-busy={state === 'loading'}
-        onError={() => setSettled({ url, state: 'error' })}
-        onLoad={(event) => {
-          const frame = event.currentTarget.contentWindow;
-          if (!frame) return;
-          try {
-            const loaded = new URL(frame.location.href);
-            const expected = new URL(url, window.location.origin);
-            if (loaded.href === 'about:blank') return;
-            if (
-              loaded.origin !== expected.origin ||
-              !loaded.pathname.startsWith('/s/') ||
-              !frame.document.querySelector('.site-theme')
-            ) {
-              setSettled({ url, state: 'error' });
-              return;
-            }
-            // Ignora um carregamento anterior que terminou depois de outra edição.
-            if (
-              loaded.searchParams.get('v') !== expected.searchParams.get('v') ||
-              loaded.searchParams.get('reload') !==
-                expected.searchParams.get('reload')
-            )
-              return;
-            detach.current();
-            // Uma edição do rodapé não deve devolver quem está conferindo ao topo.
-            frame.scrollTo({
-              left: scroll.current.x,
-              top: scroll.current.y,
-              behavior: 'instant',
-            });
-            const remember = () => {
-              scroll.current = { x: frame.scrollX, y: frame.scrollY };
-            };
-            frame.addEventListener('scroll', remember, { passive: true });
-            detach.current = () =>
-              frame.removeEventListener('scroll', remember);
-            setSettled({ url, state: 'loaded' });
-          } catch {
-            setSettled({ url, state: 'error' });
+      <div ref={stageRef} className="admin-preview-stage">
+        <iframe
+          ref={frameRef}
+          src={url}
+          title="Preview do site"
+          className="admin-preview-frame"
+          data-device={device}
+          style={
+            size.width
+              ? {
+                  width,
+                  height: size.height / scale,
+                  transform: `scale(${scale})`,
+                }
+              : undefined
           }
-        }}
-      />
+          aria-busy={state === 'loading'}
+          onError={() => setSettled({ url, state: 'error' })}
+          onLoad={(event) => {
+            const frame = event.currentTarget.contentWindow;
+            if (!frame) return;
+            try {
+              const loaded = new URL(frame.location.href);
+              const expected = new URL(url, window.location.origin);
+              if (loaded.href === 'about:blank') return;
+              if (
+                loaded.origin !== expected.origin ||
+                !loaded.pathname.startsWith('/s/') ||
+                !frame.document.querySelector('.site-theme')
+              ) {
+                setSettled({ url, state: 'error' });
+                return;
+              }
+              // Ignora um carregamento anterior que terminou depois de outra edição.
+              if (
+                loaded.searchParams.get('v') !==
+                  expected.searchParams.get('v') ||
+                loaded.searchParams.get('reload') !==
+                  expected.searchParams.get('reload')
+              )
+                return;
+              detach.current();
+              // Uma edição do rodapé não deve devolver quem está conferindo ao topo.
+              frame.scrollTo({
+                left: scroll.current.x,
+                top: scroll.current.y,
+                behavior: 'instant',
+              });
+              const remember = () => {
+                scroll.current = { x: frame.scrollX, y: frame.scrollY };
+              };
+              frame.addEventListener('scroll', remember, { passive: true });
+              detach.current = () =>
+                frame.removeEventListener('scroll', remember);
+              setSettled({ url, state: 'loaded' });
+            } catch {
+              setSettled({ url, state: 'error' });
+            }
+          }}
+        />
+      </div>
     </div>
   );
 }

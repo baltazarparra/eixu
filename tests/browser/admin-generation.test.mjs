@@ -799,17 +799,64 @@ await test(
         ]) {
           await page.setViewport({ width, height });
           if (width < 1024) await click('Conversa');
-          await page.click('.admin-usage summary');
-          await page.waitForFunction(
-            () => {
-              const details = document.querySelector('.admin-usage');
-              const box = details.getBoundingClientRect();
-              return (
-                details.open && box.top >= 0 && box.bottom <= innerHeight + 1
-              );
-            },
-            { timeout: 2000 },
+          // Media queries, a viewport visual e os limites em cqh precisam
+          // estar aplicados antes de abrir e medir o painel.
+          await page.evaluate(
+            () =>
+              new Promise((resolve) =>
+                requestAnimationFrame(() => requestAnimationFrame(resolve)),
+              ),
           );
+          await page.click('.admin-usage summary');
+          await page
+            .waitForFunction(
+              () => {
+                const details = document.querySelector('.admin-usage');
+                const box = details.getBoundingClientRect();
+                return (
+                  details.open && box.top >= 0 && box.bottom <= innerHeight + 1
+                );
+              },
+              { timeout: 2000 },
+            )
+            .catch(async (error) => {
+              console.error(
+                'consumo-geometry',
+                await page.evaluate(() =>
+                  Object.fromEntries(
+                    [
+                      '.admin-workspace',
+                      '.admin-conversation',
+                      '.admin-run',
+                      '.admin-thread-wrap',
+                      '.admin-thread',
+                      '.admin-usage',
+                      '.admin-usage-body',
+                      '.admin-composer',
+                    ].map((selector) => {
+                      const node = document.querySelector(selector);
+                      const box = node.getBoundingClientRect();
+                      return [
+                        selector,
+                        {
+                          top: box.top,
+                          bottom: box.bottom,
+                          height: box.height,
+                          scrollTop: node.scrollTop,
+                          scrollHeight: node.scrollHeight,
+                          open: node.open,
+                          maxHeight: getComputedStyle(node).maxHeight,
+                        },
+                      ];
+                    }),
+                  ),
+                ),
+              );
+              await page.screenshot({
+                path: `outputs/generation/consumo-failure-${width}.png`,
+              });
+              throw error;
+            });
 
           const region = await page.$('[aria-label="Detalhamento do consumo"]');
           assert.ok(region);
@@ -965,7 +1012,11 @@ await test(
           assert.fail('Botão de recolher a conversa ausente ou invisível.');
         };
         const layout = () =>
-          page.evaluate(() => {
+          page.evaluate(async () => {
+            // A escala do iframe acompanha o ResizeObserver após o layout.
+            await new Promise((resolve) =>
+              requestAnimationFrame(() => requestAnimationFrame(resolve)),
+            );
             const width = (selector) =>
               Math.round(
                 document.querySelector(selector)?.getBoundingClientRect()

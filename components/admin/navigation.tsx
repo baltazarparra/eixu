@@ -10,9 +10,10 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Smartphone } from 'lucide-react';
 import { StatusPill } from './primitives';
 import { useAdminSession } from './session';
+import { MobileMenu } from './mobile-menu';
 
 type TenantIdentity = { slug: string; name: string; status?: string };
 type Area = 'site' | 'imagens' | 'trafego' | 'dados';
@@ -56,6 +57,15 @@ function TenantHeader({
 }) {
   const root = `/admin/${tenant.slug}`;
   const session = useAdminSession();
+  const links = AREAS.map(([key, suffix, label]) => (
+    <Link
+      key={key}
+      href={`${root}${suffix}`}
+      aria-current={active === key ? 'page' : undefined}
+    >
+      {label}
+    </Link>
+  ));
   return (
     <header className="admin-bar">
       <div className="admin-bar-identity">
@@ -85,21 +95,20 @@ function TenantHeader({
         </div>
       </div>
       <nav className="admin-bar-nav" aria-label="Área do cliente">
-        {AREAS.map(([key, suffix, label]) => (
-          <Link
-            key={key}
-            href={`${root}${suffix}`}
-            aria-current={active === key ? 'page' : undefined}
-          >
-            {label}
-          </Link>
-        ))}
+        {links}
       </nav>
       {preview}
       <div className="admin-bar-decide">
         {decision}
-        {session?.logout}
+        <div className="admin-bar-logout">{session?.logout}</div>
       </div>
+      <MobileMenu
+        name={tenant.name}
+        published={tenant.status === 'published'}
+        logout={session?.logout}
+      >
+        <nav aria-label="Áreas do cliente no celular">{links}</nav>
+      </MobileMenu>
     </header>
   );
 }
@@ -152,7 +161,10 @@ export function TenantFrame({
                 <div ref={setDecision} className="admin-bar-slot" />
               ) : (
                 <Link className="admin-primary" href={`/admin/${tenant.slug}`}>
-                  Revisar e publicar
+                  <span className="admin-preview-link-desktop">
+                    Revisar e publicar
+                  </span>
+                  <span className="admin-preview-link-mobile">Ver prévia</span>
                 </Link>
               )
             }
@@ -212,21 +224,23 @@ export function MobileViews({
   second?: string;
 }) {
   return (
-    <div className="admin-mobile-views" aria-label="Área de trabalho">
+    <fieldset className="admin-mobile-views" aria-label="Área de trabalho">
       <button
         type="button"
         aria-pressed={value === 'chat'}
+        aria-controls="admin-conversation"
         onClick={() => onChange('chat')}
       >
-        Conversa
+        <MessageSquare size={18} aria-hidden="true" /> Conversa
       </button>
       <button
         type="button"
         aria-pressed={value === 'content'}
+        aria-controls="admin-preview"
         onClick={() => onChange('content')}
       >
-        {second}
+        <Smartphone size={18} aria-hidden="true" /> {second}
       </button>
-    </div>
+    </fieldset>
   );
 }

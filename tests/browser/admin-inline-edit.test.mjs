@@ -6,7 +6,14 @@ import { navigationPage } from '../helpers/navigation-fixture.mjs';
 const button = async (page, label) => {
   const handles = await page.$$('button');
   for (const el of handles)
-    if (await el.evaluate((e, label) => e.textContent.trim() === label, label))
+    if (
+      await el.evaluate(
+        (e, label) =>
+          e.getClientRects().length > 0 &&
+          (e.getAttribute('aria-label') ?? e.textContent.trim()) === label,
+        label,
+      )
+    )
       return el;
   throw Error(`Botão ${label} ausente`);
 };
