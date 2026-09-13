@@ -54,6 +54,8 @@ export type GenerationEvent = {
  * tempo, o run é dado por perdido e o operador pode retomar.
  */
 export const STALE_MS = 15 * 60 * 1000;
+/** A função encerra em 800 s; após 14 min o salto já não pode estar vivo. */
+export const MAX_STEP_MS = 14 * 60 * 1000;
 
 type RunRow = {
   id: string;
@@ -168,6 +170,7 @@ export async function claimStep(
     update generation_runs
     set status = case when status = 'stopping' then 'stopping' else 'running' end,
         heartbeat_at = now(),
+        phase_started_at = now(),
         hops = hops + 1
     where id = ${runId}
       and hops = ${expectedHops}
@@ -196,7 +199,7 @@ export async function saveProgress(
 
 export async function requestStop(runId: string): Promise<void> {
   await db()`
-    update generation_runs set status = 'stopping', heartbeat_at = now()
+    update generation_runs set status = 'stopping'
     where id = ${runId} and status in ('queued', 'running')
   `;
 }
@@ -248,6 +251,8 @@ export async function recordEvent(input: {
   label: string;
   tool?: string;
   payload?: Record<string, unknown>;
+  /** Eventos do operador não comprovam que o worker continua vivo. */
+  workerHeartbeat?: boolean;
 }): Promise<void> {
   await db()`
     insert into generation_events (run_id, tenant_id, phase, kind, tool, label, payload)
@@ -255,7 +260,7 @@ export async function recordEvent(input: {
             ${input.tool ?? null}, ${input.label.slice(0, 240)},
             ${JSON.stringify(input.payload ?? {})}::jsonb)
   `;
-  await heartbeat(input.runId);
+  if (input.workerHeartbeat !== false) await heartbeat(input.runId);
 }
 
 export async function listEvents(
@@ -296,19 +301,38 @@ export async function expireStaleRun(
   run: GenerationRun | null,
 ): Promise<GenerationRun | null> {
   if (!run || !ACTIVE_STATUS.includes(run.status)) return run;
-  if (Date.now() - new Date(run.heartbeatAt).getTime() < STALE_MS) return run;
-  const minutes = Math.round(STALE_MS / 60000);
-  await finishRun(
-    run.id,
-    'failed',
-    `A geração ficou sem sinal por mais de ${minutes} minutos e foi encerrada. O progresso salvo continua no painel; use Continuar para retomar.`,
-  );
+  const now = Date.now();
+  const stale = now - new Date(run.heartbeatAt).getTime() >= STALE_MS;
+  const exceeded =
+    run.phaseStartedAt !== null &&
+    now - new Date(run.phaseStartedAt).getTime() >= MAX_STEP_MS;
+  if (!stale && !exceeded) return run;
+  const message = exceeded
+    ? 'A etapa excedeu o tempo de execução e foi encerrada. O progresso está salvo; use Tentar novamente para retomar.'
+    : 'A geração ficou sem sinal por mais de 15 minutos e foi encerrada. O progresso está salvo; use Tentar novamente para retomar.';
+  // Reconfere no UPDATE: um heartbeat ou salto novo entre leitura e escrita
+  // não pode ser encerrado pela observação antiga do painel.
+  const expired = (await db()`
+    update generation_runs
+    set status = 'failed', error = ${message}, finished_at = now()
+    where id = ${run.id} and hops = ${run.hops}
+      and status = any(${ACTIVE_STATUS})
+      and (
+        heartbeat_at <= ${new Date(now - STALE_MS).toISOString()}::timestamptz
+        or phase_started_at <= ${new Date(now - MAX_STEP_MS).toISOString()}::timestamptz
+      )
+    returning id
+  `) as { id: string }[];
+  if (!expired.length) return getRun(run.id);
   await recordEvent({
     runId: run.id,
     tenantId: run.tenantId,
     phase: run.phase ?? 'briefing',
     kind: 'error',
-    label: 'Geração encerrada por falta de sinal',
+    label: exceeded
+      ? 'Geração encerrada pelo limite de tempo da etapa'
+      : 'Geração encerrada por falta de sinal',
+    workerHeartbeat: false,
   });
   return getRun(run.id);
 }

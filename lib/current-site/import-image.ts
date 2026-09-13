@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { del } from '@vercel/blob';
 import sharp from 'sharp';
+import { abortable } from '@/lib/async/abort';
 import { putTenantBlob } from '@/lib/blob/tenant-files';
 import { insertImage, listImages } from '@/lib/images/queries';
 import { publicResource, type PublicResource } from '@/lib/references/network';
@@ -60,7 +61,16 @@ export async function importCurrentSiteImages(
     existing?: TenantImage[];
   } = {},
 ) {
-  const request = deps.request ?? publicResource;
+  // O limite cobre os downloads do lote; uma gravação iniciada termina para
+  // preservar a consistência entre Blob e banco, sem corrida de escrita tardia.
+  const signal = AbortSignal.timeout(90_000);
+  const request = (url: string) => {
+    signal.throwIfAborted();
+    return abortable(
+      deps.request ? deps.request(url) : publicResource(url, signal),
+      signal,
+    );
+  };
   const importedImages: ReturnType<typeof imported>[] = [];
   const failures: string[] = [];
   const remember = (
@@ -79,6 +89,12 @@ export async function importCurrentSiteImages(
   if (!selected.length) return { importedImages, failures };
   const existing = deps.existing ?? (await listImages(tenantId));
   for (const selection of selected) {
+    if (signal.aborted) {
+      failures.push(
+        'O limite de tempo dos downloads foi atingido; os ativos já importados foram preservados.',
+      );
+      break;
+    }
     let blobUrl: string | undefined;
     try {
       const bytes = await readImage(selection.url, request);

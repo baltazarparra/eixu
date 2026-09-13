@@ -1,5 +1,11 @@
 import { isAuthenticated } from '@/lib/auth';
-import { activeRun, recordEvent, requestStop } from '@/lib/generation/runs';
+import {
+  ACTIVE_STATUS,
+  activeRun,
+  expireStaleRun,
+  recordEvent,
+  requestStop,
+} from '@/lib/generation/runs';
 import { getTenantBySlug } from '@/lib/tenant-queries';
 
 /**
@@ -16,8 +22,8 @@ export async function POST(
   const tenant = await getTenantBySlug(slug);
   if (!tenant) return new Response('Cliente não encontrado', { status: 404 });
 
-  const run = await activeRun(tenant.id);
-  if (!run)
+  const run = await expireStaleRun(await activeRun(tenant.id));
+  if (!run || !ACTIVE_STATUS.includes(run.status))
     return Response.json(
       { error: 'Não há geração em andamento para pausar.' },
       { status: 409 },
@@ -29,6 +35,7 @@ export async function POST(
     tenantId: tenant.id,
     phase: run.phase ?? 'briefing',
     kind: 'note',
+    workerHeartbeat: false,
     label: 'Pausa pedida: a etapa atual termina e a próxima não começa',
   });
   return Response.json({ ok: true });

@@ -110,6 +110,12 @@ Fora dos blocos, o render monta duas coisas a partir do cadastro. O rodapé rece
 
 O perfil de rede social informado é lido fora da resposta, por `after()`, na criação e quando o campo muda no PATCH de `/settings`; `/api/admin/[tenant]/social` refaz a leitura sob pedido do operador. `lib/social-profile.ts` normaliza `@handle` e URL de Instagram ou página de empresa do LinkedIn, e `lib/ai/social.ts` lê nome, bio, seguidores e avatar das meta tags, copia o avatar para `tenants/<slug>/social/` no Blob e descreve a imagem pelo modelo crítico, com uma chamada por avatar novo (comparado por hash). O resultado fica em `tenants.brief.social`, separado de `intake`, com estado `lendo`, `ok` ou `inacessivel` e o motivo. Cada leitura recebe um `readId`; o resultado só é gravado se esse ID e a URL do intake continuarem vigentes. Troca, remoção ou releitura invalidam respostas anteriores, e um upload descartado é removido. O avatar anterior permanece referenciado durante a leitura para reutilização ou limpeza após a troca. A leitura é melhor esforço: o LinkedIn responde 999 em perfil pessoal e o Instagram devolve a tela de login em boa parte das contas; nesses casos o prompt recebe a instrução de tratar o perfil como lacuna. `read_reference` reaproveita esse registro por 24 horas em vez de reabrir a rede. Cada escritor de `brief` mescla apenas suas próprias chaves: intake, fontes, progresso, perfil ou briefing consolidado. O chat do site recebe tanto o intake e o perfil quanto as evidências, restrições e lacunas do briefing consolidado.
 
+A leitura do Site atual registra coleta, síntese, importação e conclusão na
+linha do tempo. Coleta limita tempo (90 s) e tentativas (24), além das 12 páginas;
+a síntese tem cancelamento de 150 s e os downloads do lote têm 90 s. Material
+parcial e ativos já gravados são preservados com lacunas explícitas. O prazo de
+rede inclui DNS; a renderização também limita abertura e fechamento do Chromium.
+
 O Site atual usa outra fronteira. `lib/current-site/crawl.ts` adota a origem final
 da home e só segue links HTML dessa origem, com profundidade dois, deduplicação
 de fragmentos e parâmetros de rastreamento, bloqueio de áreas administrativas e

@@ -1,5 +1,6 @@
 import { launchBrowser } from '@/lib/review/capture';
 import { publicResource, type PublicResource } from '@/lib/references/network';
+import { abortable } from '@/lib/async/abort';
 
 export type RenderedCurrentSitePage = {
   requestedUrl: string;
@@ -12,18 +13,33 @@ export type RenderedCurrentSitePage = {
 export async function renderCurrentSitePages(
   urls: string[],
   request: (url: string) => Promise<PublicResource> = publicResource,
+  signal?: AbortSignal,
 ): Promise<RenderedCurrentSitePage[]> {
   if (!urls.length) return [];
-  const browser = await launchBrowser([
+  const deadline = AbortSignal.any([
+    AbortSignal.timeout(70_000),
+    ...(signal ? [signal] : []),
+  ]);
+  deadline.throwIfAborted();
+  const launch = launchBrowser([
     '--proxy-server=http://127.0.0.1:9',
     '--proxy-bypass-list=<-loopback>',
     '--disable-quic',
-  ]);
-  const deadline = setTimeout(() => void browser.close(), 70_000);
+  ]).then((browser) => {
+    // A extração/abertura do binário pode terminar depois do prazo.
+    if (deadline.aborted) browser.process()?.kill('SIGKILL');
+    return browser;
+  });
+  const browser = await abortable(launch, deadline);
+  const kill = () => {
+    browser.process()?.kill('SIGKILL');
+  };
+  deadline.addEventListener('abort', kill, { once: true });
   const rendered: RenderedCurrentSitePage[] = [];
   try {
     for (const requestedUrl of [...new Set(urls)].slice(0, 4)) {
-      const page = await browser.newPage();
+      deadline.throwIfAborted();
+      const page = await abortable(browser.newPage(), deadline);
       const allowedOrigin = new URL(requestedUrl).origin;
       let count = 0;
       let bytes = 0;
@@ -51,6 +67,7 @@ export async function renderCurrentSitePages(
                 return;
               }
               if (
+                deadline.aborted ||
                 incoming.method() !== 'GET' ||
                 ++count > 300 ||
                 bytes > 35_000_000
@@ -59,7 +76,10 @@ export async function renderCurrentSitePages(
                 await incoming.abort();
                 return;
               }
-              const resource = await request(incoming.url());
+              const resource = await abortable(
+                request(incoming.url()),
+                deadline,
+              );
               bytes += resource.body.length;
               if (bytes > 35_000_000) {
                 unavailableResources++;
@@ -112,12 +132,12 @@ export async function renderCurrentSitePages(
       } catch {
         // A leitura HTML continua disponível; renderização é complemento.
       } finally {
-        await page.close().catch(() => undefined);
+        await abortable(page.close(), AbortSignal.timeout(2000)).catch(kill);
       }
     }
     return rendered;
   } finally {
-    clearTimeout(deadline);
-    await browser.close().catch(() => undefined);
+    deadline.removeEventListener('abort', kill);
+    await abortable(browser.close(), AbortSignal.timeout(2000)).catch(kill);
   }
 }

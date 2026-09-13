@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { abortable } from '@/lib/async/abort';
 import { analyzeCurrentSite } from './analyze';
 import { crawlCurrentSite } from './crawl';
 import {
@@ -11,19 +12,50 @@ import {
   type CurrentSiteReceipt,
 } from './schema';
 
+export type CurrentSiteProgress = {
+  stage: 'crawl' | 'analysis' | 'import' | 'complete';
+  label: string;
+  durationMs: number;
+  pages?: number;
+  images?: number;
+};
+
 /** Orquestra coleta, síntese e importação; cada camada mantém seu próprio limite. */
 export async function readCurrentSite(input: {
   tenantId: string;
   tenantName: string;
   url: string;
   operatorStory: string;
+  onProgress?: (progress: CurrentSiteProgress) => void | Promise<void>;
 }): Promise<CurrentSiteReceipt> {
+  const started = Date.now();
+  const progress = async (
+    stage: CurrentSiteProgress['stage'],
+    label: string,
+    counts: { pages?: number; images?: number } = {},
+  ) => {
+    const event = { stage, label, durationMs: Date.now() - started, ...counts };
+    console.info('[current-site] progress', {
+      tenantId: input.tenantId,
+      ...event,
+    });
+    // Telemetria não pode prender a coleta nem invalidar o material lido.
+    await abortable(
+      Promise.resolve().then(() => input.onProgress?.(event)),
+      AbortSignal.timeout(2000),
+    ).catch(() => undefined);
+  };
   const scanId = randomUUID();
   const crawledAt = new Date().toISOString();
   let crawl;
+  await progress('crawl', 'Coletando páginas e conteúdo do site atual');
   try {
     crawl = await crawlCurrentSite(input.url);
   } catch (error) {
+    await progress(
+      'complete',
+      'Site atual inacessível; seguindo com a lacuna registrada',
+    );
     return currentSiteReceiptSchema.parse({
       version: CURRENT_SITE_VERSION,
       scanId,
@@ -46,6 +78,9 @@ export async function readCurrentSite(input: {
 
   let analysis: Awaited<ReturnType<typeof analyzeCurrentSite>> | undefined;
   let analysisReason: string | undefined;
+  await progress('analysis', 'Sintetizando as informações coletadas', {
+    pages: crawl.pages.length,
+  });
   try {
     analysis = await analyzeCurrentSite(
       crawl,
@@ -75,9 +110,17 @@ export async function readCurrentSite(input: {
       };
     })
     .filter((value): value is CurrentSiteImageSelection => value !== null);
+  await progress('import', 'Importando os ativos selecionados do site atual', {
+    images: selections.length,
+  });
   const imported = analysis
     ? await importCurrentSiteImages(input.tenantId, scanId, selections)
     : { importedImages: [], failures: [] };
+
+  await progress('complete', 'Leitura do site atual concluída', {
+    pages: crawl.pages.length,
+    images: imported.importedImages.length,
+  });
 
   return currentSiteReceiptSchema.parse({
     version: CURRENT_SITE_VERSION,

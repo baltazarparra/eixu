@@ -1,6 +1,7 @@
 import { decode, metaContent, stripNoise } from '@/lib/ai/reference';
 import { publicResource, type PublicResource } from '@/lib/references/network';
 import { renderCurrentSitePages } from './render';
+import { abortable } from '@/lib/async/abort';
 import {
   CURRENT_SITE_MAX_PAGES,
   type CurrentSiteImageCandidate,
@@ -11,6 +12,8 @@ import {
 const MAX_HTML_BYTES = 1_500_000;
 const MAX_TOTAL_HTML_BYTES = 18_000_000;
 const MAX_TOTAL_TEXT = 60_000;
+export const CRAWL_TIMEOUT_MS = 90_000;
+export const MAX_PAGE_ATTEMPTS = 24;
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
 const DOCUMENT_EXT = /\.(?:pdf|docx?|xlsx?|pptx?|zip)(?:$|[?#])/i;
 const NON_PAGE_EXT =
@@ -443,9 +446,23 @@ async function sitemapPages(
 /** Crawl same-origin com limites explícitos; links externos são inventariados, não visitados. */
 export async function crawlCurrentSite(
   inputUrl: string,
-  deps: { request?: Reader; render?: Renderer | null } = {},
+  deps: {
+    request?: Reader;
+    render?: Renderer | null;
+    signal?: AbortSignal;
+  } = {},
 ): Promise<CurrentSiteCrawl> {
-  const request = deps.request ?? publicResource;
+  const signal = AbortSignal.any([
+    AbortSignal.timeout(CRAWL_TIMEOUT_MS),
+    ...(deps.signal ? [deps.signal] : []),
+  ]);
+  const request: Reader = (url) => {
+    signal.throwIfAborted();
+    return abortable(
+      deps.request ? deps.request(url) : publicResource(url, signal),
+      signal,
+    );
+  };
   const render =
     deps.render === undefined ? renderCurrentSitePages : deps.render;
   const root = await readWithRedirects(inputUrl, request);
@@ -466,7 +483,9 @@ export async function crawlCurrentSite(
   const limits: string[] = [];
   if (render) {
     try {
-      const rendered = (await render([finalUrl], request))[0];
+      const rendered = (
+        await abortable(render([finalUrl], request, signal), signal)
+      )[0];
       if (
         rendered &&
         new URL(pageUrl(rendered.finalUrl)).origin === allowedOrigin
@@ -512,7 +531,9 @@ export async function crawlCurrentSite(
   }));
   const canonicalSeen = new Set([pageUrl(rootPage.canonical ?? finalUrl)]);
   let totalBytes = Math.min(root.body.length, MAX_HTML_BYTES);
+  let attempts = 0;
   while (queue.length && pages.length < CURRENT_SITE_MAX_PAGES) {
+    if (signal.aborted || attempts >= MAX_PAGE_ATTEMPTS) break;
     const { url: next, depth } = queue.shift()!;
     if (
       depth > 2 ||
@@ -522,6 +543,7 @@ export async function crawlCurrentSite(
     )
       continue;
     visited.add(next);
+    attempts++;
     try {
       const resource = await readWithRedirects(next, request, allowedOrigin);
       if (!htmlResource(resource)) continue;
@@ -561,11 +583,15 @@ export async function crawlCurrentSite(
     .slice(1)
     .filter((page) => page.text.length < 500)
     .slice(0, 3);
-  if (render && sparse.length) {
+  if (render && sparse.length && !signal.aborted) {
     try {
-      for (const rendered of await render(
-        sparse.map((page) => page.url),
-        request,
+      for (const rendered of await abortable(
+        render(
+          sparse.map((page) => page.url),
+          request,
+          signal,
+        ),
+        signal,
       )) {
         if (new URL(pageUrl(rendered.finalUrl)).origin !== allowedOrigin)
           continue;
@@ -592,6 +618,14 @@ export async function crawlCurrentSite(
   }
 
   let textBudget = 0;
+  if (signal.aborted)
+    limits.push(
+      'A navegação atingiu o limite de tempo; o conteúdo já coletado foi preservado.',
+    );
+  if (attempts >= MAX_PAGE_ATTEMPTS && queue.length)
+    limits.push(
+      `A navegação foi limitada a ${MAX_PAGE_ATTEMPTS} tentativas de página, incluindo falhas e duplicatas.`,
+    );
   for (const page of pages) {
     const remaining = Math.max(0, MAX_TOTAL_TEXT - textBudget);
     page.text = page.text.slice(0, remaining);

@@ -243,6 +243,12 @@ o lote mesmo quando o run terminou. O recibo persistido reutiliza a bolha do
 stream e preserva suas ferramentas e metadados. Enquanto um run
 está ativo, `/api/chat` responde 409: os dois disputariam as mesmas páginas.
 Sem sinal por 15 minutos, o run é dado por perdido e o operador pode retomar.
+O salto também expira após 14 minutos desde a reserva/início da fase: a função
+Vercel já encerrou aos 800 segundos, mesmo que o último heartbeat ainda seja
+recente. A expiração reconfirma status, salto e horários no UPDATE; uma leitura
+antiga não encerra uma reserva nova. Pedir pausa e registrar a ação do operador
+não renovam o heartbeat do worker. A retomada aceita o estado recém-expirado
+na mesma requisição, preservando o conteúdo salvo.
 
 A primeira etapa começa sozinha em cliente sem tentativa ou conversa anterior,
 sem página e com o briefing pendente. O `GET` informa `everRan` considerando
@@ -452,3 +458,20 @@ registre limitações. Um smoke multimodal ou uma nota do próprio modelo não p
 superioridade geral. Evidências desta entrega ficam em [Verificação](verification.md).
 
 O projeto Vercel foi conferido com plano Pro e Fluid Compute ativo. O teto de 800 segundos usa o limite estável documentado em [Duration](https://vercel.com/docs/functions/configuring-functions/duration). Ferramentas de um mesmo passo executam em sequência para evitar perda de edições; leituras independentes dentro dos executores continuam agrupadas. Isso não substitui locks entre abas ou instâncias.
+
+## Limites da leitura do site atual
+
+A coleta tem um prazo de 90 segundos e no máximo 24 tentativas de páginas,
+incluindo falhas e duplicatas, além do limite de 12 páginas úteis. O prazo
+cobre renderização e leituras de rede; DNS compartilha os oito segundos da
+requisição HTTP. Se o prazo terminar, o HTML já coletado permanece no recibo
+com a lacuna explícita. O navegador recebe encerramento forçado quando não
+responde ao prazo, inclusive se abrir atrasado, e fechar página/browser espera
+no máximo dois segundos.
+
+A síntese conserva os 150 segundos do crítico, com cancelamento externo ao SDK
+para uma dependência que ignore o sinal. Os downloads de ativos têm 90 segundos
+por lote; uma escrita Blob/banco já iniciada termina para preservar integridade.
+Os modelos, raciocínio e orçamento de saída permanecem os mesmos. Coleta,
+síntese, importação e conclusão emitem duração e contadores sem conteúdo do
+cliente nos logs e na linha do tempo do runner.

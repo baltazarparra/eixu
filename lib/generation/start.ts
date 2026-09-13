@@ -1,4 +1,5 @@
 import {
+  ACTIVE_STATUS,
   activeRun,
   createRun,
   expireStaleRun,
@@ -29,7 +30,7 @@ export async function startGeneration(input: {
 }): Promise<StartResult> {
   const { tenant, origin } = input;
   const existing = await expireStaleRun(await activeRun(tenant.id));
-  if (existing)
+  if (existing && ACTIVE_STATUS.includes(existing.status))
     return {
       ok: false,
       status: 409,

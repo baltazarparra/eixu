@@ -75,6 +75,7 @@ import { referenceFromSocial, readSocialProfile } from '@/lib/ai/social';
 import { normalizeSocialUrl, parseSocialRecord } from '@/lib/social-profile';
 import { intakeCurrentSiteUrl } from '@/lib/tenant-intake';
 import { readCurrentSite } from '@/lib/current-site/read';
+import type { CurrentSiteProgress } from '@/lib/current-site/read';
 import {
   currentSiteMatches,
   currentSiteRecord,
@@ -190,6 +191,7 @@ export type ToolContext = {
   /** Última mensagem do operador, para as decisões que exigem pedido dele. */
   lastUserText?: string;
   editPolicy?: EditPolicy;
+  onCurrentSiteProgress?: (event: CurrentSiteProgress) => Promise<void>;
   /** Subetapas persistidas pelo runner para o painel acompanhar a revisão. */
   onReviewProgress?: (event: {
     stage: 'preflight' | 'capture' | 'critic';
@@ -845,6 +847,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           tenantName: tenant.name,
           url,
           operatorStory,
+          onProgress: context.onCurrentSiteProgress,
         });
         // Compare-and-set: uma leitura que terminou depois da troca da
         // identidade, história ou URL não pode reaparecer no briefing.
