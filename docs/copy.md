@@ -5,7 +5,7 @@ português do Brasil, palavras do dia a dia e explicações fáceis de acompanha
 A personalidade muda; a dificuldade da leitura não. Linguagem simples é uma
 forma de respeito, sem infantilizar a pessoa ou imitar erros de escrita.
 
-## Quatro vozes
+## Cinco vozes
 
 | Vibe      | Tom                           | Como constrói o texto                                                                      | O que evitar                                                                    |
 | --------- | ----------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
@@ -13,6 +13,11 @@ forma de respeito, sem infantilizar a pessoa ou imitar erros de escrita.
 | Moderno   | Claro, preciso e tranquilo    | Nomeia o assunto e organiza a explicação em uma sequência curta e fácil de seguir.         | Inglês, linguagem de empresa de tecnologia e frases sem contexto.               |
 | Ousado    | Firme, enérgico e curto       | Abre com uma frase forte sobre a oferta real e desenvolve a explicação logo abaixo.        | Gritos, provocação contra o leitor e promessa exagerada.                        |
 | Artístico | Próximo, sensível e cuidadoso | Fala de material, cor, luz, textura e uso cotidiano com detalhes confirmados.              | Poesia abstrata, palavras difíceis e alegações de trabalho artesanal sem prova. |
+
+Landing Page usa voz objetiva e convidativa: benefício concreto, dúvidas respondidas
+e um único próximo passo repetido. Exemplo: “Uma mesa que cabe na sua rotina”.
+Números, selos, citações e preços precisam de evidência; não invente urgência,
+clientes ou resultados para preencher a sequência visual.
 
 O mesmo negócio fictício, que vende mesas e cadeiras de madeira, pode abrir com
 “Móveis de madeira para sua casa” na comercial, “Mesas e cadeiras de madeira” na

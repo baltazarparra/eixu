@@ -32,6 +32,7 @@ export const ICON_NAMES = [
 export type SiteIconName = (typeof ICON_NAMES)[number];
 
 export const ICON_STYLE = {
+  landing: { weight: 'fill', label: 'preenchida em selo', motion: 'pop' },
   comercial: { weight: 'regular', label: 'linear acolhedora', motion: 'lift' },
   moderno: { weight: 'light', label: 'linear técnica', motion: 'nudge' },
   ousado: { weight: 'bold', label: 'gráfica de traço forte', motion: 'push' },

@@ -2940,3 +2940,26 @@ textarea.admin-input {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.admin-vibe-preview[data-vibe='landing'] {
+  background: #fff;
+  color: #0b0b0f;
+}
+.admin-vibe-preview[data-vibe='landing'] .admin-vibe-nav {
+  width: 48%;
+  border-radius: 99px;
+  background: #ecfdf5;
+}
+.admin-vibe-preview[data-vibe='landing'] .admin-vibe-copy {
+  width: 68%;
+  align-self: center;
+}
+.admin-vibe-preview[data-vibe='landing'] .admin-vibe-image {
+  border: 1px solid #b7cabe;
+  background: #ecfdf5;
+  border-radius: 6px;
+}
+.admin-vibe-preview[data-vibe='landing'] .admin-vibe-accent {
+  background: #16a34a;
+  border-radius: 99px;
+}

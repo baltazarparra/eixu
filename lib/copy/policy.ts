@@ -20,6 +20,18 @@ type Voice = {
 
 /** Exemplos usam a mesma oferta fictícia para mostrar voz, sem mudar os fatos. */
 export const VIBE_COPY: Record<Vibe, Voice> = {
+  landing: {
+    tone: 'Concreta, confiante e focada em um pedido.',
+    approach:
+      'Diga o benefício, mostre prova confirmada e peça uma única ação ao longo da página.',
+    avoid:
+      'Convites concorrentes, urgência inventada, números sem fonte e superlativos.',
+    example: {
+      headline: 'Mesas de madeira sob medida',
+      body: 'Você escolhe a medida e a cor. Conte o que precisa para receber um orçamento.',
+      cta: 'Pedir orçamento',
+    },
+  },
   comercial: {
     tone: 'Direta, prestativa e segura.',
     approach:

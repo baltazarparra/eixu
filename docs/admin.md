@@ -1,5 +1,20 @@
 # Manual do operador
 
+## Escolher Landing Page
+
+O cadastro oferece cinco vibes. **Landing Page** concentra a oferta em uma home
+com seções e âncoras, mais uma página de obrigado. A referência visual pode
+orientar aparência, mas mantém esse formato. Informe provas e preços confirmados
+na história/evidências; sem prova suficiente, o painel mantém a pendência de
+publicação para o operador resolver.
+
+Ao trocar um site existente para Landing Page em Dados, as páginas internas
+permanecem salvas. O aviso explica a incompatibilidade e os gates bloqueiam a
+publicação até a remoção explícita dessas páginas ou a escolha de outra vibe.
+A troca não altera o site publicado. A prévia permite revisar os dois tipos de
+abertura, com imagem ou formulário, e os textos dos novos blocos podem ser
+ajustados pela edição direta ou pelo chat.
+
 ## Encontrar ou cadastrar um cliente
 
 Entre em `/admin` com a credencial do operador. A busca procura nome ou
@@ -28,7 +43,7 @@ imagem de borda a borda; **Artístico** usa serifas editoriais, assimetria e
 colagem controlada. Sem referência visual verificada, a vibe limita tipografia,
 abertura, navegação, ritmo, superfície, imagens, ícones e movimento. Uma
 referência verificada comanda esses aspectos e pode escolher qualquer uma das
-doze estruturas disponíveis; a vibe completa as lacunas e continua definindo a
+doze estruturas multipágina disponíveis; Landing Page mantém a home única. A vibe completa as lacunas e continua definindo a
 voz do texto. Ela pode ser trocada depois em
 Dados; isso abre uma nova direção no rascunho e exige recomposição antes de
 publicar.

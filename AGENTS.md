@@ -89,7 +89,9 @@ Somente evidência atual comprova essa análise. Preserve erros e gates de publi
   verificada, o perfil v6 escolhe a estrutura mais próxima entre as doze e a
   fonte comanda os eixos visuais; a vibe permanece como voz e fallback. Plano
   de cenas, catálogo, pre-flight, renderer e crítica usam a mesma decisão.
-  Perfis v2-v5 publicados preservam o que está no ar.
+  Landing Page usa perfil v7 sem estrutura multipágina: home e obrigado,
+  hero stage/form, navegação mínima e uma ação. A referência mantém essa forma.
+  Perfis v2-v6 publicados preservam o que está no ar.
 - Preserve a separação `blocks`/`seo` e `published_blocks`/`published_seo`, com
   pre-flight nos dois caminhos de publicação. Marca e metadados fora desse snapshot
   têm limites descritos na arquitetura. Preview por query não é controle de acesso.

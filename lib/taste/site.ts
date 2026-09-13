@@ -1,3 +1,5 @@
+import { siteShape } from '@/lib/design/vibes';
+import { landingFindings } from './landing';
 import { lintTextStyles } from '@/lib/blocks/text-style-lint';
 import { z } from 'zod';
 import { logoFindings } from '@/lib/images/logo-fit';
@@ -78,6 +80,7 @@ export function lintSite(
   images: TenantImage[],
   mode: 'draft' | 'publish',
   brand?: LintBrand,
+  brief: Record<string, unknown> = {},
 ): SiteFinding[] {
   const findings: SiteFinding[] = pages.flatMap((page) =>
     lintTextStyles(page, (brand ?? {}) as Brand).map((finding) => ({
@@ -94,7 +97,8 @@ export function lintSite(
     (p) =>
       ['page', 'post'].includes(p.type) && !p.seo.noindex && p.blocks.length,
   );
-  if (organic.length < 3)
+  const landing = siteShape(brand) === 'landing';
+  if (!landing && organic.length < 3)
     fail(
       '',
       'inbound-paginas',
@@ -135,7 +139,10 @@ export function lintSite(
         !destination.blocks.some(
           (b) =>
             (b.props.anchor ?? (b.type === 'form.lead' ? 'contato' : '')) ===
-            anchor,
+              anchor ||
+            (b.type === 'hero.landing' &&
+              b.props.layout === 'form' &&
+              (b.props.formAnchor ?? 'contato') === anchor),
         )
       )
         fail(page.slug, 'anchor-inexistente', `Âncora inexistente: ${href}.`);
@@ -181,11 +188,12 @@ export function lintSite(
         'Escreva uma descrição de busca específica para a página.',
       );
     const text = contentText(page.blocks);
-    if (text.split(/\s+/).length < 100)
+    const minWords = landing && page.slug === '' ? 250 : 100;
+    if (text.split(/\s+/).length < minWords)
       fail(
         page.slug,
         'inbound-conteudo',
-        'A página tem menos de 100 palavras de conteúdo útil. Desenvolva a resposta à intenção, sem filler.',
+        `A página tem menos de ${minWords} palavras de conteúdo útil. Desenvolva a resposta à intenção, sem filler.`,
       );
     if (texts.has(text))
       fail(page.slug, 'inbound-copia', 'Conteúdo repetido entre páginas.');
@@ -198,15 +206,17 @@ export function lintSite(
       );
   }
   if (
-    !stages.has('discovery') ||
-    !stages.has('consideration') ||
-    !stages.has('conversion')
+    !landing &&
+    (!stages.has('discovery') ||
+      !stages.has('consideration') ||
+      !stages.has('conversion'))
   )
     fail(
       '',
       'inbound-jornada',
       'Cubra descoberta, consideração e conversão com páginas conectadas.',
     );
+  if (landing) findings.push(...landingFindings(pages, brief, images));
   // Composição: fotos por página, seção protagonista e ritmo tonal. Estas
   // regras vivem em metrics porque a revisão do agente usa as mesmas medidas.
   for (const finding of structuralFindings(pages, images, brand))

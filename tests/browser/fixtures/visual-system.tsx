@@ -13,6 +13,7 @@ export const VISUAL_PAIRS = {
   moderno: ['grotesk', 'source'],
   ousado: ['condensed', 'work'],
   artistico: ['classic', 'literary'],
+  landing: ['grotesk', 'sans'],
 } as const;
 
 const VISUAL_STRUCTURES = {
@@ -20,6 +21,7 @@ const VISUAL_STRUCTURES = {
   moderno: ['moderno-editorial', 'editorial'],
   ousado: ['ousado-campanha', 'poster'],
   artistico: ['artistico-revista', 'offset'],
+  landing: [undefined, 'stage'],
 } as const;
 
 export function visualTenant(

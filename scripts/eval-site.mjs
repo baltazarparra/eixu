@@ -269,7 +269,7 @@ const [pages, images] = await Promise.all([
 ]);
 report.elapsedMs = Date.now() - started;
 report.metrics = siteMetrics(pages, images, tenant.brand.design);
-report.site = lintSite(pages, images, 'draft', tenant.brand);
+report.site = lintSite(pages, images, 'draft', tenant.brand, tenant.brief);
 report.structural = structuralFindings(pages, images, tenant.brand);
 // A silhueta é o número que mostra se a vibe produziu composição própria.
 report.silhouette = report.metrics.silhouette;

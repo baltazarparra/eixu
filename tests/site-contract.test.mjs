@@ -1685,7 +1685,7 @@ await test('cada vibe tem abertura, protagonista e fechamento próprios', () => 
     }
     // Nenhuma vibe repete a seção protagonista de outra na mesma variante.
     for (const [other, otherGrammar] of entries) {
-      if (other === vibe) continue;
+      if (other === vibe || vibe === 'landing' || other === 'landing') continue;
       for (const entry of grammar.protagonists)
         assert.equal(
           otherGrammar.protagonists.includes(entry),

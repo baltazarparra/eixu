@@ -1,5 +1,53 @@
 # Design dos sites gerados
 
+## Landing Page v7
+
+A quinta vibe acrescenta uma forma de site: home indexável e obrigado, com a
+mesma ação na abertura, no meio e no fechamento. Não recebe as doze estruturas
+multipágina nem `signature.composition`. O perfil v7 preserva os eixos de design
+e permite referência visual verificada, mantendo hero `stage`/`form` e navegação
+`minimal`. Os perfis v2-v6 publicados conservam seu contrato.
+
+O preset usa papel branco, tinta `#0b0b0f`, acento `#16a34a`, secundária
+`#ecfdf5`, destaque `#f59e0b`, display grotesca/geométrica e corpo sans/geométrico.
+A paleta final continua passando por contraste AA e respeita cores do operador.
+A sequência reúne hero, prova, problema/promessa, demonstração, passos,
+depoimentos, preço quando confirmado, FAQ e fechamento. São 6–11 seções e no
+mínimo 250 palavras úteis na home, sem contar navegação e rodapé.
+
+| Bloco                 | Layouts             | Contrato                                                                                                           |
+| --------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `hero.landing`        | `stage`, `form`     | Até 60 caracteres; imagem em moldura ou formulário nativo com 2–4 campos. `form` permite foto 4:5 junto da oferta. |
+| `proof.strip`         | `logos`, `numbers`  | 3–6 marcas ou 2–4 números; cada item aponta uma evidência literal do briefing.                                     |
+| `narrative.statement` | `center`, `split`   | Problema ou promessa em uma frase, até 160 caracteres.                                                             |
+| `feature.showcase`    | `steps`, `tabs`     | 2–4 itens com imagem; abas com setas e Home/End, todos os painéis legíveis sem JS ou na edição.                    |
+| `proof.testimonials`  | `grid`, `spotlight` | 2–3 citações, autor, cargo e resultado sustentados pela mesma evidência; foto opcional somente do acervo enviado.  |
+
+A protagonista é `feature.showcase` ou `feature.bento:showcase` com duas fotos.
+O plano mantém cinco cenas na home: hero, duas da protagonista, apoio em
+`media.image` e fechamento em `cta.band`. Não solicita retratos de clientes
+para preencher depoimentos. A imagem da faixa final fica separada do texto.
+
+Os controles têm alvo de 48 px e formulários em coluna única. `nav.bar.stickyCta`
+com `position: fixed` habilita o botão inferior de 56 px em telas abaixo de
+1024 px e com pelo menos 440 px de altura. Ele respeita a área segura e some
+com formulário visível, campo em foco, menu aberto, sem JS ou em edição.
+A FAQ usa duas colunas a partir de 1024 px; movimento reduzido preserva o
+conteúdo e desliga animações.
+
+`landingFindings` bloqueia ação divergente, menu fora da home, prova sem
+correspondência literal, preço não confirmado, páginas extras e formulário
+sem obrigado. Repetição da ação é aviso. `form.lead` com 5–6 campos avisa;
+menos de 2 ou mais de 6 bloqueia. O hero embutido só aceita 2–4 no schema.
+A correspondência de evidência verifica o texto fornecido, não a veracidade
+externa; a confirmação continua sendo responsabilidade editorial.
+
+A unicidade compara somente landings v7: exige dois eixos diferentes e mede
+semelhança de silhueta entre direções próximas. Navegação, catálogo, plano de
+cenas, prompt, crítico e publicação compartilham essa decisão.
+Veja o [plano implementado](plano-vibe-landing-page.md) e os
+[registros de validação local](verification.md).
+
 Referências lidas em 10/09/2026: [Frontend Design, Anthropic](https://github.com/anthropics/claude-code/blob/main/plugins/frontend-design/skills/frontend-design/SKILL.md) e [Taste Skill v1](https://github.com/Leonxlnx/taste-skill/blob/main/skills/taste-skill-v1/SKILL.md). Para mudanças de frontend, use ambas como direção, respeitando o negócio, o contrato do repositório e o código disponível. Este documento registra a adaptação ao gerador, não substitui a leitura das referências ao mudar a direção visual.
 
 ## Painel administrativo
@@ -238,7 +286,7 @@ inglês, jargão ou texto difícil.
 
 O operador escolhe a vibe no cadastro como direção inicial para o site inteiro.
 Referências visuais verificadas nesse cadastro têm prioridade sobre a vibe. Sem
-essa direção, as quatro vibes têm contratos próprios e delimitam a faixa em que
+essa direção, as cinco vibes têm contratos próprios e delimitam a faixa em que
 a direção de arte decide; `comercial` deixou de poder reproduzir qualquer uma
 das outras. Referências
 lidas em 10/09/2026: [Linear](https://linear.app/) para `moderno`,
@@ -265,7 +313,7 @@ autoral usadas pelos dois perfis.
 
 ## Estruturas v5/v6 e composição autoral
 
-Sites novos gravam `structure` e `structureRationale`. V5 escolhe entre as três
+Sites multipágina novos gravam `structure` e `structureRationale`. V5 escolhe entre as três
 jornadas da vibe; v6 escolhe entre as doze pela proximidade com a referência.
 Cada jornada fixa abertura, ordem mínima,
 protagonista, apoios, fechamento, proporção das cenas e um layout de
@@ -678,18 +726,18 @@ apresentação atual até uma recomposição explícita e nova publicação.
 
 ## Contrato visual versionado
 
-| Recurso              | Comportamento                                                                                                                                                                                                                                                                                                                                   |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Perfil persistido    | `brand.design` guarda conceito, elemento-assinatura, estrutura, justificativa e oito eixos. Sem referência nova grava v5; com referência verificada grava v6 e `referenceDirection`. A leitura aceita v2-v6 para preservar sites existentes. `tenant.brief` guarda também plano editorial e cenas semânticas.                                   |
-| Tipografia           | 14 famílias, dez opções de display e sete de corpo, descritas acima. `next/font` auto-hospeda os arquivos; o navegador carrega somente as famílias usadas. Escala, peso, entrelinha, medida, legendas e números têm papéis consistentes.                                                                                                        |
-| Vibe e referência    | Sem referência, `brand.vibe` define gramática, eixos, raio, luminância e dials. No v6, a referência escolhe entre as doze estruturas e pode definir todos esses valores; a vibe continua como voz e fallback. Ausente significa `comercial`.                                                                                                    |
-| Paleta               | O cadastro oferece uma sugestão por vibe. Enquanto `paletteSource` for `sugerida`, a direção pode adaptá-la ao negócio; editar qualquer cor muda a origem para `operador` e trava `accent`, `accentAlt` e `highlight`. `ink`, `paper` e `surface` continuam com a direção. Contraste AA e diferença entre primária/secundária permanecem gates. |
-| Composição global    | Três estruturas por vibe combinam abertura, ordem mínima, assinatura e fechamento. V5 escolhe dentro da vibe; v6 escolhe a mais próxima da referência entre as doze. Seis heroes, quatro navegações, quatro ritmos, quatro tratamentos de imagem, quatro superfícies e cinco motivos modulam o resultado.                                       |
-| Apresentação local   | Todo bloco aceita `presentation`: tom (incluindo a cor secundária), largura, respiro, alinhamento, borda e motion (`none`, `reveal`, `stagger`, `image`). Use um a três momentos de movimento coerentes com a narrativa.                                                                                                                        |
-| Exploração e inbound | `feature.explorer` oferece seleção de aplicações com imagem, texto, fatos e CTA por aba; suporta teclado. `editorial.resources` conecta páginas com hierarquia editorial e imagem ou símbolo. Ambos oferecem layouts próprios.                                                                                                                  |
-| Imagens              | Hero aceita posição, `cover`/`contain`, ponto focal e legendas; atelier aceita imagem secundária. A home exige duas fotos geradas distintas da biblioteca do tenant. Imagens geradas chegam ao agente com número e URL para uso imediato, sem aprovação.                                                                                        |
-| Navegação e FAQ      | Menu mobile e perguntas usam `details`/`summary` nativos, foco visível e interação por teclado.                                                                                                                                                                                                                                                 |
-| Âncoras              | Todo bloco aceita `anchor` opcional, começando com letra minúscula, seguido de letras/números/hífens, até 64 caracteres. Link usa `#anchor`. Duplicação bloqueia publicação. Formulário sem âncora mantém `contato`.                                                                                                                            |
+| Recurso              | Comportamento                                                                                                                                                                                                                                                                                                                                                  |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Perfil persistido    | `brand.design` guarda conceito, elemento-assinatura, estrutura, justificativa e oito eixos. Sem referência nova grava v5; com referência verificada grava v6 e `referenceDirection`. Landing Page grava v7 sem estrutura multipágina. A leitura aceita v2-v7 para preservar sites existentes. `tenant.brief` guarda também plano editorial e cenas semânticas. |
+| Tipografia           | 14 famílias, dez opções de display e sete de corpo, descritas acima. `next/font` auto-hospeda os arquivos; o navegador carrega somente as famílias usadas. Escala, peso, entrelinha, medida, legendas e números têm papéis consistentes.                                                                                                                       |
+| Vibe e referência    | Sem referência, `brand.vibe` define gramática, eixos, raio, luminância e dials. No v6, a referência escolhe entre as doze estruturas e pode definir todos esses valores; a vibe continua como voz e fallback. Ausente significa `comercial`.                                                                                                                   |
+| Paleta               | O cadastro oferece uma sugestão por vibe. Enquanto `paletteSource` for `sugerida`, a direção pode adaptá-la ao negócio; editar qualquer cor muda a origem para `operador` e trava `accent`, `accentAlt` e `highlight`. `ink`, `paper` e `surface` continuam com a direção. Contraste AA e diferença entre primária/secundária permanecem gates.                |
+| Composição global    | Três estruturas por vibe combinam abertura, ordem mínima, assinatura e fechamento. V5 escolhe dentro da vibe; v6 escolhe a mais próxima da referência entre as doze. Seis heroes, quatro navegações, quatro ritmos, quatro tratamentos de imagem, quatro superfícies e cinco motivos modulam o resultado.                                                      |
+| Apresentação local   | Todo bloco aceita `presentation`: tom (incluindo a cor secundária), largura, respiro, alinhamento, borda e motion (`none`, `reveal`, `stagger`, `image`). Use um a três momentos de movimento coerentes com a narrativa.                                                                                                                                       |
+| Exploração e inbound | `feature.explorer` oferece seleção de aplicações com imagem, texto, fatos e CTA por aba; suporta teclado. `editorial.resources` conecta páginas com hierarquia editorial e imagem ou símbolo. Ambos oferecem layouts próprios.                                                                                                                                 |
+| Imagens              | Hero aceita posição, `cover`/`contain`, ponto focal e legendas; atelier aceita imagem secundária. A home exige duas fotos geradas distintas da biblioteca do tenant. Imagens geradas chegam ao agente com número e URL para uso imediato, sem aprovação.                                                                                                       |
+| Navegação e FAQ      | Menu mobile e perguntas usam `details`/`summary` nativos, foco visível e interação por teclado.                                                                                                                                                                                                                                                                |
+| Âncoras              | Todo bloco aceita `anchor` opcional, começando com letra minúscula, seguido de letras/números/hífens, até 64 caracteres. Link usa `#anchor`. Duplicação bloqueia publicação. Formulário sem âncora mantém `contato`.                                                                                                                                           |
 
 ## Unicidade e coerência
 
@@ -722,12 +770,12 @@ contraste, imagens e responsividade continuam nos gates.
 Essas verificações detectam repetição estrutural; não medem qualidade estética nem comprovam coerência semântica. A revisão visual precisa conferir a ligação entre briefing, imagens, silhueta, ritmo e elemento-assinatura. Trocar cores e fontes para vencer o gate não substitui uma direção própria. Uma empresa de pedras pode privilegiar matéria e aplicações; isso não obriga outros negócios a usar a mesma colagem ou as mesmas abas.
 
 O pre-flight exige decisões locais de layout e presentation em páginas
-comerciais dos perfis v2-v6; somente escolher motion não conta como decisão de
+comerciais dos perfis v2-v7; somente escolher motion não conta como decisão de
 composição. `build_site` valida páginas e projeto antes de gravar o lote em uma
 transação. Um erro não substitui páginas válidas. Edições incrementais podem
 produzir rascunho inválido, mas a publicação continua bloqueada.
 
-`lintSite` exige três páginas orgânicas com pelo menos 100 palavras de conteúdo,
+Na forma `multi`, `lintSite` exige três páginas orgânicas com pelo menos 100 palavras de conteúdo,
 intenções e SEO distintos, etapas de inbound, links e âncoras válidos e alcance
 a partir da home. Também exige duas fotos geradas distintas, uma seção
 protagonista e imagem em toda página orgânica. Sem referência, exige cor de

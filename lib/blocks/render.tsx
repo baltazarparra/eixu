@@ -1,3 +1,4 @@
+import { LandingStickyCta } from './landing-interactions';
 import type { BlockInstance, PageType, Tenant } from '@/lib/types';
 import { blockSchemas, isBlockType } from '@/lib/blocks/registry';
 import * as B from '@/lib/blocks/components';
@@ -49,6 +50,17 @@ export function RenderBlocks({
   const content = blocks.slice(start, end);
   const trailing = blocks.slice(end);
   const usedAnchors = new Set<string>();
+  const landing = ctx.tenant.brand.vibe === 'landing';
+  const nav = blocks.find((block) => block.type === 'nav.bar');
+  const sticky =
+    landing &&
+    !ctx.editing &&
+    ctx.pageType !== 'thank_you' &&
+    ctx.pageType !== 'post' &&
+    nav?.props.stickyCta &&
+    nav.props.position === 'fixed'
+      ? blockSchemas['nav.bar'].safeParse(previewProps(nav.props, ctx))
+      : null;
   const contacts = contactsOf(ctx.tenant.contacts, ctx.tenant.whatsapp);
   const showLocation =
     contacts.addresses.length > 0 &&
@@ -77,7 +89,12 @@ export function RenderBlocks({
         ) : null}
       </main>
       {renderList(trailing, ctx, usedAnchors)}
-      {!ctx.editing && <B.FloatingWhatsapp ctx={ctx} />}
+      {sticky?.success && sticky.data.cta && (
+        <LandingStickyCta href={sticky.data.cta.href}>
+          {sticky.data.cta.label}
+        </LandingStickyCta>
+      )}
+      {!landing && !ctx.editing && <B.FloatingWhatsapp ctx={ctx} />}
     </SiteMotion>
   );
 }
@@ -102,6 +119,26 @@ function renderList(
 
         const render = () => {
           switch (block.type) {
+            case 'proof.testimonials':
+              return (
+                <B.ProofTestimonials {...(props as B.ProofTestimonialsProps)} />
+              );
+            case 'feature.showcase':
+              return (
+                <B.FeatureShowcase {...(props as B.FeatureShowcaseProps)} />
+              );
+            case 'narrative.statement':
+              return (
+                <B.NarrativeStatement
+                  {...(props as B.NarrativeStatementProps)}
+                />
+              );
+            case 'proof.strip':
+              return <B.ProofStrip {...(props as B.ProofStripProps)} />;
+            case 'hero.landing':
+              return (
+                <B.HeroLanding {...(props as B.HeroLandingProps)} ctx={ctx} />
+              );
             case 'feature.explorer':
               return <VisualExplorer {...(props as ExplorerProps)} />;
             case 'editorial.resources':

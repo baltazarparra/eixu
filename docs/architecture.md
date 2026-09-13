@@ -1,5 +1,31 @@
 # Arquitetura e limites do MVP
 
+## Landing Page: forma de página única
+
+`siteShape(brand)` em `lib/design/vibes.ts` separa `landing` de `multi`. As
+quatro vibes anteriores mantêm no mínimo três páginas orgânicas. Landing Page
+exige uma home `page` indexável e uma `thank_you`; posts são opcionais e não
+substituem a home na conclusão da geração. Páginas `page` internas e `paid_lp`
+são recusadas pela criação, pelo lote de composição e pela publicação.
+
+O perfil v7 usa `hero.landing` em `stage` ou `form`, navegação mínima e nenhum
+`structure`/`structureRationale`. Referência verificada modula os eixos visuais,
+mas mantém a forma de página única. V2-v6 continuam legíveis sem migração.
+Cinco cenas ficam na home: hero, duas da protagonista, apoio e fechamento.
+
+`lib/taste/landing.ts` verifica 6–11 seções, 250 palavras na home, jornada em
+seções, âncoras, ação principal única, prova vinculada ao briefing, preços
+confirmados e formulário curto com obrigado correspondente. O mesmo briefing
+atual entra nos gates do painel, geração e publicação. A publicação pontual
+considera o snapshot das páginas fora do lote, inclusive a página de obrigado.
+
+O formulário embutido reaproveita `FormLead` e `/api/form`: tenant, consentimento,
+atribuição e bloqueio na prévia permanecem. O botão fixo é opcional; desaparece
+com formulário visível, campo em foco, menu aberto ou tela baixa. O WhatsApp
+flutuante não é acrescentado à landing. Mudar a vibe preserva os rascunhos e
+snapshots existentes; páginas incompatíveis ficam apontadas até remoção
+explícita ou escolha de outra vibe.
+
 Mapa do admin e da geração atualizado em 11/09/2026. Descreve o comportamento implementado; os limites no fim deste arquivo não são funcionalidades entregues.
 
 ## Superfícies e dependências
@@ -106,7 +132,7 @@ com o URL ainda vigente. Não há migração: intake e recibo continuam no JSONB
 
 A exclusão de cliente em `/admin` e em Dados usa `deleteTenantAction`: adquire `FOR UPDATE` na linha do tenant, reconfirma estado e contatos, apaga o prefixo `tenants/<slug>/` no Blob e só então remove o registro na mesma transação. `pages`, `leads`, `events`, `campaign_spend`, `chat_messages` e `images` caem por `on delete cascade`. Todos os uploads do produto (fotos, logos, anexos e avatar social) usam `putTenantBlob`, que mantém `FOR KEY SHARE` durante o envio; o logo do cadastro é a exceção, porque sobe antes de existir linha para travar: a exclusão espera puts em andamento, e um upload que chega depois dela não encontra a linha nem grava arquivos. `lib/db.ts` mantém consultas comuns por HTTP e abre uma conexão WebSocket Neon por transação interativa, fechada no mesmo pedido, sem migração de schema. Os locks são de linha, portanto outros tenants continuam operando. Falha no Blob preserva o cadastro; uma limpeza parcial pode ser repetida. Cliente publicado ou com contato recebido exige o endereço digitado, conferido de novo dentro do lock. Não há lixeira nem restauração.
 
-`lintSite` também aplica o piso de composição de `lib/taste/metrics.ts`: seção protagonista com duas fotos na home, imagem em toda página orgânica, proporção coerente com o layout e ritmo entre seções. Fotos geradas, enviadas e importadas do Site atual contam quando pertencem ao caminho permitido do tenant; logo, ícone e ativo rejeitado não contam. No perfil v4 aplica a gramática ampla da vibe. V5 e v6 exigem a sequência mínima da estrutura, exatamente uma `signature.composition` e duas fotos disponíveis dentro dela. Sem referência, cor de marca e três tons continuam sendo o padrão; v6 mede o ritmo tonal da fonte e não exige uma faixa colorida que a contradiga. Abertura e protagonista da home são erro; aberturas internas, fechamentos e seções vetadas são aviso. `lintPage` bloqueia tipos ou props inválidos, duplicação de singletons, múltiplos heroes, baixa diversidade em páginas longas, ausência de decisões locais no perfil versionado, headline estimada acima de 56 caracteres, subtexto acima de 20 palavras, copy genérico, placeholders, travessão e falta de conversão, com exceções para post ou obrigado. Fonte: `lib/taste/lint.ts`.
+`lintSite` também aplica o piso de composição de `lib/taste/metrics.ts`: seção protagonista com duas fotos na home, imagem em toda página orgânica, proporção coerente com o layout e ritmo entre seções. Fotos geradas, enviadas e importadas do Site atual contam quando pertencem ao caminho permitido do tenant; logo, ícone e ativo rejeitado não contam. No perfil v4 aplica a gramática ampla da vibe. V5 e v6 exigem a sequência mínima da estrutura, exatamente uma `signature.composition` e duas fotos disponíveis dentro dela. Sem referência, cor de marca e três tons continuam sendo o padrão; v6 mede o ritmo tonal da fonte e não exige uma faixa colorida que a contradiga. Abertura e protagonista da home são erro; aberturas internas, fechamentos e seções vetadas são aviso. `lintPage` bloqueia tipos ou props inválidos, duplicação de singletons, múltiplos heroes, baixa diversidade em páginas longas, ausência de decisões locais no perfil versionado, headline acima de 60 caracteres em `hero.landing` ou estimada acima de 56 nos demais heroes, subtexto acima de 20 palavras, copy genérico, placeholders, travessão e falta de conversão, com exceções para post ou obrigado. Fonte: `lib/taste/lint.ts`.
 
 ### Edição direta na prévia
 

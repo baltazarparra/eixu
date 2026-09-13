@@ -55,7 +55,13 @@ export async function publishSite(
   // (proporção, ritmo tonal, silhueta) orientam a revisão e ficam à vista;
   // tratá-los como bloqueio deixava o botão Publicar habilitado e a
   // publicação recusada.
-  for (const finding of lintSite(live, images, 'publish', publishedBrand))
+  for (const finding of lintSite(
+    live,
+    images,
+    'publish',
+    publishedBrand,
+    tenant.brief,
+  ))
     if (finding.level === 'error')
       block(finding.page, formatFindings([finding]));
   const home = live.find((p) => p.slug === '');

@@ -16,7 +16,7 @@ import { accessibleAccent, contrastRatio } from '@/lib/blocks/contrast';
 import { BLOCK_TYPES, blockSchemas, isBlockType } from '@/lib/blocks/registry';
 import {
   completeDesignProfile,
-  designProfileInputSchema,
+  designSchemaFor,
   isDesignProfile,
   nearestDesign,
 } from '@/lib/design/profile';
@@ -361,7 +361,20 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         meta: p.meta,
       })),
     ];
-    const projectFindings = lintSite(prospective, images, 'draft', activeBrand);
+    const projectFindings = lintSite(
+      prospective,
+      images,
+      'draft',
+      activeBrand,
+      activeBrief,
+    );
+    const extraPages = projectFindings.filter(
+      (finding) => finding.rule === 'landing-pagina-extra',
+    );
+    if (extraPages.length)
+      throw new ToolError(
+        extraPages.map((finding) => finding.message).join(' '),
+      );
     if (home) {
       const conflict = await compositionConflict(
         tenant.id,
@@ -405,7 +418,13 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
       // Pendência de projeto não impede a gravação, mas impede a publicação.
       // Corrija-a com edições pontuais antes de encerrar.
       ...(projectFindings.length ? { pendencias: projectFindings } : {}),
-      publicationPending: lintSite(prospective, images, 'publish', activeBrand),
+      publicationPending: lintSite(
+        prospective,
+        images,
+        'publish',
+        activeBrand,
+        activeBrief,
+      ),
     };
   }
 
@@ -980,15 +999,19 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           label: 'Validando estrutura, conteúdo e publicação',
         });
         const deterministic = identifyFindings([
-          ...lintSite(pages, images, 'publish', reviewedTenant.brand).map(
-            (finding) => ({
-              pagina: finding.page,
-              nivel: finding.level,
-              regra: finding.rule,
-              bloco: undefined as string | undefined,
-              correcao: finding.message,
-            }),
-          ),
+          ...lintSite(
+            pages,
+            images,
+            'publish',
+            reviewedTenant.brand,
+            reviewedTenant.brief,
+          ).map((finding) => ({
+            pagina: finding.page,
+            nivel: finding.level,
+            regra: finding.rule,
+            bloco: undefined as string | undefined,
+            correcao: finding.message,
+          })),
           ...structuralFindings(pages, images, reviewedTenant.brand).map(
             (finding) => ({
               pagina: finding.page,
@@ -1438,14 +1461,22 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
     lint_site: tool({
       description:
-        'Valida o projeto completo: 3 páginas orgânicas, jornada de inbound, links internos e 2 fotos da biblioteca na home, geradas, enviadas ou importadas.',
+        'Valida a forma do projeto: site multipágina com jornada de inbound ou Landing Page com uma home e obrigado, ação única e prova. Confere links e fotos do cliente geradas, enviadas ou importadas.',
       inputSchema: z.object({}),
       execute: safe(async () => {
         const [pages, images] = await Promise.all([
           listPages(tenant.id),
           listImages(tenant.id),
         ]);
-        return { findings: lintSite(pages, images, 'publish', activeBrand) };
+        return {
+          findings: lintSite(
+            pages,
+            images,
+            'publish',
+            activeBrand,
+            activeBrief,
+          ),
+        };
       }),
     }),
     list_images: tool({
@@ -1620,8 +1651,15 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
     set_design: tool({
       description:
         'Define briefing e direção de arte versionada em uma chamada. Obrigatória antes de build_site. Com referência visual verificada, ela comanda a estrutura e os eixos; sem referência, vale a faixa da vibe e a trava de unicidade.',
-      inputSchema: designProfileInputSchema,
+      inputSchema: designSchemaFor(vibeOf(activeBrand)),
       execute: safe(async (input) => {
+        const checkedDesign = designSchemaFor(vibeOf(activeBrand)).safeParse(
+          input,
+        );
+        if (!checkedDesign.success)
+          throw new ToolError(
+            checkedDesign.error.issues.map((issue) => issue.message).join(' '),
+          );
         // Cor escolhida no cadastro é decisão do operador: a direção de arte
         // define estrutura e leitura, não reescreve a marca dele.
         const locked = activeBrand.paletteSource === 'operador';
@@ -1759,13 +1797,13 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           rows.map((row) => row.design),
         );
         if (
-          profile.version < 5 &&
-          !referenceLed &&
+          (profile.version < 5 || vibe === 'landing') &&
+          (vibe === 'landing' || !referenceLed) &&
           nearest &&
-          nearest.distance < 3
+          nearest.distance < (vibe === 'landing' ? 2 : 3)
         ) {
           throw new ToolError(
-            `Direção estrutural muito parecida com outro site da vibe ${VIBE_LABEL[vibe]}: distância ${nearest.distance}/8. Mude pelo menos ${3 - nearest.distance} decisões entre heroComposition, navigation, rhythm, imageTreatment, surfaceStyle, motif e tipografia, sempre dentro da vibe.`,
+            `Direção estrutural muito parecida com outro site da vibe ${VIBE_LABEL[vibe]}: distância ${nearest.distance}/8. Mude pelo menos ${(vibe === 'landing' ? 2 : 3) - nearest.distance} decisões entre heroComposition, navigation, rhythm, imageTreatment, surfaceStyle, motif e tipografia, sempre dentro da vibe.`,
           );
         }
 
@@ -1885,6 +1923,13 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
       }),
       execute: async (input) => {
         const slug = input.slug.replace(/^\/+|\/+$/g, '');
+        if (
+          vibeOf(activeBrand) === 'landing' &&
+          (input.type === 'paid_lp' || (input.type === 'page' && slug !== ''))
+        )
+          throw new ToolError(
+            'Landing Page usa somente a home, obrigado e posts opcionais. Use seções e âncoras na home.',
+          );
         const noindex = input.type === 'thank_you' || input.type === 'paid_lp';
         const seo = {
           title: input.seoTitle ?? input.title,

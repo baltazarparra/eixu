@@ -1,5 +1,27 @@
 # Harness e qualidade dos agentes
 
+## Fluxo da Landing Page
+
+Na vibe `landing`, `designSchemaFor` exige um único item em `pagePlan`, a home
+com `stage: conversion`. `set_design` grava perfil v7 sem estrutura multipágina,
+com abertura `stage` ou `form` e navegação `minimal`. A referência verificada
+modula a direção visual dentro dessa forma. As quatro vibes anteriores
+continuam no fluxo v5/v6 e mantêm seu piso de três páginas.
+
+`phaseBrief(phase, shape)` e `lib/taste/landing-prompt.ts` dão ao autor e ao
+crítico o mesmo contrato de ação única, prova literal, 6–11 seções, 250 palavras
+e formulário curto. Cinco cenas são planejadas na própria home. Depois da
+composição da home, a geração termina e a revisão é humana pela prévia.
+Os erros continuam bloqueando publicação; nenhuma revisão automática foi
+adicionada. O critério `conversao` participa da crítica solicitada pelo operador.
+
+O catálogo prioriza os cinco novos blocos. A comparação de unicidade considera
+outras landings v7, com piso de dois eixos. O perfil v7 convive com a versão
+atual do harness; não converte perfis publicados nem revalida recibos legados.
+`evals/cases/landing.json` oferece briefing sintético para ensaio controlado;
+a implementação foi validada localmente com ferramentas reais e persistência
+em memória, sem alegação de qualidade de uma geração paga.
+
 A prioridade do produto é qualidade: entender o negócio, compor conteúdo útil,
 observar o resultado e corrigir defeitos. Tokens, tempo e custo são medidas de
 operação; reduzir essas medidas não é o objetivo de aceitação. Política revisada
@@ -116,7 +138,7 @@ código volta a baixar e validar. Conteúdo da página permanece dado não
 confiável. O recibo fica em `brief.currentSite`, separado de `brief.sources`, e
 não cria autoridade visual.
 
-Na fase de briefing, o modelo recebe três estruturas da vibe sem referência ou
+Na fase de briefing multipágina, o modelo recebe três estruturas da vibe sem referência ou
 as doze quando há leitura visual válida. Precisa compará-las contra história,
 conteúdo disponível, jornada e, no v6, a composição observada. Após
 `set_design`, prompt, catálogo, plano de cenas, composição, pre-flight e crítico

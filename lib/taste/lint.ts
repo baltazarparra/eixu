@@ -139,7 +139,20 @@ export function lintPage(
 
   // Âncoras precisam de um destino único, inclusive o formulário legado.
   const anchors = new Set<string>();
-  for (const block of blocks) {
+  for (const block of blocks.flatMap((block) =>
+    block.type === 'hero.landing' && block.props.layout === 'form'
+      ? [
+          block,
+          {
+            ...block,
+            props: {
+              ...block.props,
+              anchor: block.props.formAnchor ?? 'contato',
+            },
+          },
+        ]
+      : [block],
+  )) {
     const anchor =
       propText(block.props, 'anchor') ||
       (block.type === 'form.lead' ? 'contato' : '');
@@ -249,11 +262,17 @@ export function lintPage(
   // 5. Disciplina do hero.
   for (const hero of heroes) {
     const headline = propText(hero.props, 'headline');
-    if (headlineLines(headline) > 2) {
+    if (
+      hero.type === 'hero.landing'
+        ? headline.length > 60
+        : headlineLines(headline) > 2
+    ) {
       push(
         'error',
         'hero-headline',
-        `Headline ocupa cerca de ${headlineLines(headline)} linhas. O limite é 2.`,
+        hero.type === 'hero.landing'
+          ? 'Headline da landing deve ter até 60 caracteres.'
+          : `Headline ocupa cerca de ${headlineLines(headline)} linhas. O limite é 2.`,
         hero.id,
       );
     }

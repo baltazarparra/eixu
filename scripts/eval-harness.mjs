@@ -34,7 +34,7 @@ const option = (key, fallback) =>
   flags.find((value) => value.startsWith(`${key}=`))?.slice(key.length + 1) ??
   fallback;
 const caseName = option('--case', 'aquecimento');
-if (!['aquecimento', 'pedras', 'mecanica-sabia'].includes(caseName))
+if (!['aquecimento', 'pedras', 'mecanica-sabia', 'landing'].includes(caseName))
   throw new Error('Caso desconhecido');
 const assetsPath = option('--assets');
 const resumePath = option('--resume');
@@ -332,7 +332,7 @@ for (let repetition = 1; repetition <= repetitions; repetition += 1) {
       );
     }
     run.findings = [
-      ...lintSite(state.pages, images, 'publish', tenant.brand),
+      ...lintSite(state.pages, images, 'publish', tenant.brand, tenant.brief),
       ...state.pages.flatMap((page) =>
         lintPage(page, tenant.brand.design).map((finding) => ({
           ...finding,

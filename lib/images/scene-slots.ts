@@ -15,6 +15,11 @@ export const SCENE_ROLES = [
 export type SceneRole = (typeof SCENE_ROLES)[number];
 
 export const SCENE_TARGET_BLOCKS = [
+  'hero.stage',
+  'hero.form',
+  'feature.showcase',
+  'proof.testimonials',
+  'cta.band',
   'hero.split',
   'hero.cover',
   'hero.poster',
