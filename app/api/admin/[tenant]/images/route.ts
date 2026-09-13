@@ -2,6 +2,10 @@ import { logoStudioSummary } from '@/lib/images/logo-studio-state';
 import { del } from '@vercel/blob';
 import { z } from 'zod';
 import { isAuthenticated } from '@/lib/auth';
+import { UploadError } from '@/lib/blob/tenant-files';
+import { TenantRemovedError } from '@/lib/tenant-lock';
+import { uploadLibraryImage } from '@/lib/images/upload';
+import { IMAGE_UPLOAD_MAX_BYTES } from '@/lib/images/upload-policy';
 import {
   deleteImage,
   getGuide,
@@ -27,6 +31,43 @@ async function resolve(params: Promise<{ tenant: string }>) {
 }
 
 const statuses = z.enum(['disponivel', 'aprovada', 'rejeitada', 'candidata']);
+
+/** Um arquivo por pedido; o painel envia seleções múltiplas em sequência. */
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ tenant: string }> },
+) {
+  const resolved = await resolve(params);
+  if (resolved.error) return resolved.error;
+  if (
+    Number(request.headers.get('content-length')) >
+    IMAGE_UPLOAD_MAX_BYTES + 64 * 1024
+  )
+    return Response.json(
+      { error: 'A imagem deve ter até 4 MB.' },
+      { status: 413 },
+    );
+  const form = await request.formData().catch(() => null);
+  const files = form?.getAll('file');
+  if (files?.length !== 1 || !(files[0] instanceof File))
+    return Response.json(
+      { error: 'Envie uma imagem por vez.' },
+      { status: 400 },
+    );
+  try {
+    const image = await uploadLibraryImage(resolved.tenant.id, files[0]);
+    return Response.json({ image }, { status: 201 });
+  } catch (error) {
+    if (error instanceof UploadError)
+      return Response.json({ error: error.message }, { status: error.status });
+    if (error instanceof TenantRemovedError)
+      return Response.json({ error: error.message }, { status: 404 });
+    return Response.json(
+      { error: 'Não foi possível salvar a imagem no acervo. Tente novamente.' },
+      { status: 502 },
+    );
+  }
+}
 
 /** Estado da biblioteca para a grade do painel. */
 export async function GET(

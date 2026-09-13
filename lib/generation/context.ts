@@ -5,7 +5,7 @@ import {
   sceneText,
 } from '@/lib/images/scene-plan';
 import { plannedScenes } from '@/lib/sites/generation';
-import { generatedPhotos } from '@/lib/taste/metrics';
+import { availablePhotos } from '@/lib/taste/metrics';
 import type { Phase } from '@/lib/taste/phases';
 import { systemPrompt, type PromptContext } from '@/lib/taste/prompt';
 import type { Page, Tenant, TenantImage } from '@/lib/types';
@@ -45,7 +45,7 @@ export function imagesSummary(images: TenantImage[]): string {
     .slice(0, 12)
     .map(
       (image) =>
-        `- #${image.seq} (${image.kind}), ${image.ratio}, ${image.targetBlock ?? 'livre'}: ${image.url} | ${image.alt ?? image.description ?? image.requestText}`,
+        `- #${image.seq} (${image.kind}${image.model === 'upload' ? ', enviada pelo operador' : ''}), ${image.ratio}, ${image.targetBlock ?? 'livre'}: ${image.url} | ${image.alt ?? image.description ?? image.requestText}`,
     )
     .join('\n');
 }
@@ -75,7 +75,7 @@ export function sourcesText(tenant: Tenant): string {
  */
 export function scenesContext(tenant: Tenant, images: TenantImage[]) {
   const plan = plannedScenes(tenant);
-  const { covered, missing } = sceneCoverage(plan, generatedPhotos(images));
+  const { covered, missing } = sceneCoverage(plan, availablePhotos(images));
   return {
     scenePlan: scenePlanText(plan),
     coverage: `${covered.length} de ${plan.length} vagas já têm foto disponível.`,

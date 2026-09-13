@@ -195,7 +195,7 @@ pelas fotos disponíveis, inclusive candidatas legadas, casando bloco e
 proporção. O laço distingue uma nova cena de uma etapa sem progresso e admite
 até 14 chamadas, incluindo todas as cenas do atelier e a revisão.
 
-A biblioteca mantém o acervo numerado. `update_image` usa a imagem indicada
+A biblioteca mantém o acervo numerado de imagens geradas e fotos enviadas. **Enviar imagens** abre seleção múltipla, com andamento e falhas por arquivo. As fotos enviadas têm os mesmos atalhos de uso e alteração, entram na composição e mantêm sua proporção real. `update_image` usa a imagem indicada
 como referência, gera uma nova versão e troca a URL e o texto alternativo nos
 rascunhos do mesmo tenant. O original e os snapshots publicados são preservados.
 A crítica continua informativa; não é uma fila de aprovação.

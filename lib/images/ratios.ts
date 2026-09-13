@@ -23,6 +23,30 @@ export const RATIO_BY_BLOCK: Record<string, Ratio> = {
 export const RATIOS = ['4:5', '5:6', '16:9', '4:3', '1:1'] as const;
 export type Ratio = (typeof RATIOS)[number];
 
+export function ratioValue(ratio: string): number | null {
+  if (typeof ratio !== 'string') return null;
+  const parts = ratio.split(':').map(Number);
+  if (
+    parts.length !== 2 ||
+    parts.some((value) => !Number.isFinite(value) || value <= 0)
+  )
+    return null;
+  return parts[0] / parts[1];
+}
+
+/** Uploads guardam a proporção real; o gerador aceita somente estes recortes. */
+export function closestGenerationRatio(ratio: string): Ratio | null {
+  const actual = ratioValue(ratio);
+  if (!actual) return null;
+  return RATIOS.reduce((closest, candidate) => {
+    const distance = (value: string) => {
+      const [w, h] = value.split(':').map(Number);
+      return Math.abs(Math.log(actual / (w / h)));
+    };
+    return distance(candidate) < distance(closest) ? candidate : closest;
+  });
+}
+
 export type TargetBlock = keyof typeof RATIO_BY_BLOCK;
 
 /** Dica de composição, para o assunto sobreviver ao recorte de cada bloco. */
@@ -150,7 +174,7 @@ const VALUE: Record<string, number> = {
  * num hero editorial servido com foto 4:3.
  */
 export function ratioFits(actual: string, expected: Ratio): boolean {
-  const from = VALUE[actual];
+  const from = VALUE[actual] ?? ratioValue(actual);
   const to = VALUE[expected];
   if (!from || !to) return true;
   const factor = from > to ? from / to : to / from;

@@ -10,7 +10,7 @@ import {
 } from '@/lib/images/scene-plan';
 import { vibeOf } from '@/lib/design/vibes';
 import { lintPage } from '@/lib/taste/lint';
-import { generatedPhotos } from '@/lib/taste/metrics';
+import { availablePhotos } from '@/lib/taste/metrics';
 import { nextPhase, type Phase } from '@/lib/taste/phases';
 import { lintSite, type SiteFinding } from '@/lib/taste/site';
 import type { Page, Tenant, TenantImage } from '@/lib/types';
@@ -96,7 +96,7 @@ export function generationState(
     ),
   ].length;
 
-  const available = generatedPhotos(images);
+  const available = availablePhotos(images);
   const review = currentReview(tenant, pages, images);
   const plan = plannedScenes(tenant);
   const { covered, missing } = sceneCoverage(plan, available);

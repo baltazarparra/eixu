@@ -102,6 +102,7 @@ export async function insertImage(input: {
   blobPath: string;
   kind?: ImageKind;
   referenceUrls?: string[];
+  alt?: string;
   width?: number;
   height?: number;
 }): Promise<TenantImage> {
@@ -112,11 +113,12 @@ export async function insertImage(input: {
     try {
       const rows = (await db()`
         insert into images (tenant_id, seq, batch_id, request_text, target_block, ratio, model, prompt_final,
-                            url, blob_path, kind, reference_urls, status, width, height)
+                            url, blob_path, kind, reference_urls, status, alt, width, height)
         select ${input.tenantId}, coalesce(max(seq), 0) + 1, ${input.batchId}, ${input.requestText},
                ${input.targetBlock}, ${input.ratio}, ${input.model}, ${input.promptFinal},
                ${input.url}, ${input.blobPath}, ${input.kind ?? 'foto'},
                ${JSON.stringify(input.referenceUrls ?? [])}::jsonb, 'disponivel',
+               ${input.alt ?? null},
                ${input.width ?? null}, ${input.height ?? null}
         from images where tenant_id = ${input.tenantId}
         returning *
