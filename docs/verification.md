@@ -21,7 +21,7 @@ uma captura sintética da mesma dupla moldura como entrada multimodal. Usou
 `siteAgent`, schemas e executores reais, com banco e páginas em memória. O
 modelo omitiu o ID do bloco na primeira chamada; o SDK a recusou, o modelo
 corrigiu o formato e houve uma única gravação válida de `frame: none` e
-`fit: natural`. Nenhum texto, imagem, link, layout ou snapshot foi alterado.
+`fit: natural`. Nenhum texto, imagem, link, layout ou snapshot publicado foi alterado.
 Foram 3 passos, 24,98 segundos, 70.590 tokens totais e custo informado pelo
 Gateway de US$ 0,045830175. Relatório local:
 `outputs/page-edits/1789312179060/report.json`. A primeira tentativa, antes
@@ -47,6 +47,11 @@ do Next 16.3.3. Ele já havia servido CSS anterior ao commit no release `f020497
 resolvido por reconstrução sem cache. O novo gate lê os arquivos compilados,
 impedindo que a ausência desses controles passe apenas pela checagem do fonte.
 O cache de desenvolvimento continua ativo.
+
+A checagem de CSS percorre `.next/static` recursivamente: a Vercel emite
+`immutable/chunks`, enquanto o build local usa `chunks`. O primeiro preview
+recusou a busca limitada à pasta local; o gate corrigido foi verificado nos
+dois formatos antes de promover o código.
 
 ## Ajuste visual fiel e recibo verificável, 13/09/2026
 

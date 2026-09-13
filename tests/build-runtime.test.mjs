@@ -10,11 +10,12 @@ const ROUTES = [
 ];
 
 await test('CSS compilado inclui os controles locais de imagem e seção', async () => {
-  const directory = '.next/static/chunks';
+  // A Vercel usa static/immutable/chunks; o build local usa static/chunks.
+  const directory = '.next/static';
   const css = (
     await Promise.all(
       (
-        await readdir(directory)
+        await readdir(directory, { recursive: true })
       )
         .filter((file) => file.endsWith('.css'))
         .map((file) => readFile(path.join(directory, file), 'utf8')),
