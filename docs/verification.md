@@ -1,5 +1,43 @@
 # Validação e publicação
 
+## Proporção da assinatura na etapa de cenas, 12/09/2026
+
+A etapa "Criar · imagens" parava em zero cena quando a composição autoral da
+estrutura não é 4:3. O plano pede a proporção da estrutura (`signatureRatio`),
+mas `prepare_site_images` derivava a proporção só do tipo do bloco: sem o
+layout, `expectedRatio('signature.composition')` devolve 4:3 e o lote inteiro
+era recusado antes de qualquer geração paga. Como `safe` devolve a recusa como
+resultado e o runner, no lote direto, só lia `imagens`, o chat dizia que o
+estúdio não preencheu vaga nenhuma e o motivo real não aparecia em lugar algum.
+
+Atingia seis das doze estruturas — `comercial-confianca`, `moderno-editorial`,
+`ousado-manifesto`, `ousado-mostruario`, `artistico-revista` e
+`artistico-galeria`. Evidência no run `4455152d` do cliente wanderb
+(`ousado-manifesto`, assinatura 16:9): `prepare_site_images` terminou em 15 ms
+com "As imagens precisam de atenção" e a fase fechou em "0 de 5 cenas". Os dois
+clientes v5 gerados no mesmo dia com assinatura 4:3, lpnet e masterflake,
+concluíram sem erro. Repetir a etapa não sairia do lugar: sem a proporção, o
+estúdio geraria 4:3 e a cobertura recusaria a foto na vaga 16:9.
+
+A ferramenta passou a tirar a proporção do próprio plano de cenas, que já
+resolve o layout da estrutura; fora do plano o comportamento anterior continua.
+O runner passa a registrar a recusa como `tool_end` sem sucesso, com nota na
+linha do tempo e o motivo no chat.
+
+Verificação local, em worktree a partir de `origin/main` `962e69a`:
+
+- Tipos (`next typegen` + `tsc --noEmit`), lint global e `git diff --check`.
+- `test:sites`: 192 casos, 191 passaram e um ficou sem executar por depender de
+  Chrome local. `test:admin`: 165 casos, 158 passaram e sete ficaram sem
+  executar por dependerem de PostgreSQL local ou Chrome.
+- `build:vercel` passou, com os três checks de artefatos serverless.
+- Os dois testes novos falham sem a correção: o lote de `comercial-confianca`
+  volta com "signature.composition exibe 4:3" e o `tool_end` da recusa fica
+  gravado como sucesso.
+
+A consulta ao banco de produção foi somente leitura, em runs, eventos e
+clientes. Nenhuma geração paga, migração, escrita remota ou publicação.
+
 ## Reconciliação da PR #41 com a edição inline, 12/09/2026
 
 O branch `feat/logo-asset` foi atualizado com `origin/main` em `a4fa5e0` (#40).

@@ -1,6 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createJiti } from 'jiti';
 import { loadModule } from './helpers/load-module.mjs';
+
+const j = createJiti(import.meta.url, {
+  alias: { '@': process.cwd() },
+  fsCache: false,
+});
+const { SITE_STRUCTURES } = await j.import('../lib/design/structures.ts');
+const { scenePlan } = await j.import('../lib/images/scene-plan.ts');
 
 const tenant = {
   id: 'fixture',
@@ -59,7 +67,29 @@ const planInput = {
   ],
 };
 
-async function fixture() {
+/** Um cliente v5 da estrutura, como o briefing entrega para a etapa de cenas. */
+function brandFor(structure) {
+  return {
+    vibe: structure.vibe,
+    design: {
+      version: 5,
+      structure: structure.key,
+      structureRationale: 'A jornada corresponde ao objetivo deste cliente.',
+      concept: 'Direção construída para o assunto do negócio',
+      signatureElement: 'Composição que relaciona cenas e critérios',
+      displayFont: 'sans',
+      bodyFont: 'sans',
+      heroComposition: structure.openings[0].split(':')[1],
+      navigation: 'bar',
+      rhythm: 'alternating',
+      imageTreatment: 'framed',
+      surfaceStyle: 'flat',
+      motif: 'none',
+    },
+  };
+}
+
+async function fixture(brand = tenant.brand) {
   const active = new Set(),
     images = new Map(),
     calls = [];
@@ -111,7 +141,8 @@ async function fixture() {
     images,
     active,
     tools: (id = tenant.id, phase = 'cenas') =>
-      buildTools({ ...tenant, id }, phase ? { phase } : {}).prepare_site_images,
+      buildTools({ ...tenant, id, brand }, phase ? { phase } : {})
+        .prepare_site_images,
   };
 }
 
@@ -243,4 +274,37 @@ await test('chat livre preserva oito cenas por turno, inclusive em chamadas para
     f.calls.reduce((sum, call) => sum + call.scenes.length, 0),
     8,
   );
+});
+
+await test('o lote da etapa cobre o plano de cada estrutura na proporção da assinatura', async () => {
+  for (const structure of Object.values(SITE_STRUCTURES)) {
+    const brand = brandFor(structure);
+    const f = await fixture(brand);
+    // O mesmo lote que o runner monta a partir do plano, com a proporção que
+    // a vaga pede. A assinatura 16:9 e 4:5 caía no 4:3 do tipo e a etapa
+    // inteira era recusada antes de gerar qualquer cena.
+    const plan = scenePlan(brand.design, 3, structure.vibe);
+    const result = await f.tools().execute({
+      scenes: plan.map((slot, index) => ({
+        request: `Cena ${index + 1} do cliente, com assunto concreto e enquadramento próprio.`,
+        role: slot.role,
+        targetBlock: slot.targetBlock,
+        ratio: slot.ratio,
+      })),
+    });
+    assert.equal(result.ok, true, `${structure.key}: ${result.error}`);
+    assert.deepEqual(
+      f.calls[0].scenes.map((scene) => scene.ratio),
+      plan.map((slot) => slot.ratio),
+      structure.key,
+    );
+    const signature = f.calls[0].scenes.filter(
+      (scene) => scene.targetBlock === 'signature.composition',
+    );
+    assert.equal(signature.length, 2, structure.key);
+    assert.ok(
+      signature.every((scene) => scene.ratio === structure.signatureRatio),
+      structure.key,
+    );
+  }
 });
