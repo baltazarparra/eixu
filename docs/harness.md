@@ -1,5 +1,53 @@
 # Harness e qualidade dos agentes
 
+## Fontes opcionais do cliente
+
+`lib/ai/source-context.ts` monta um roteiro explícito para os quatro cenários:
+nenhum link, só Site atual, só Referência visual e ambos. História, confirmações,
+marca e contatos do operador prevalecem. A ausência de link não produz uma
+pendência; falha ou conflito de uma fonte informada exige lacuna e permite
+continuar com o contexto disponível. O mesmo roteiro de coleta vale para sites
+multipágina e Landing Pages.
+
+A referência visual vai diretamente para a captura desktop/mobile e a análise
+multimodal. Não depende de leitura HTML textual anterior. O retorno da ferramenta
+e o contexto das fases contêm suas observações visuais, sem oferta ou contatos de
+outro negócio. O recibo visual utilizável é reutilizado por 24 horas; `refresh` permite nova
+leitura pedida pelo operador. Chamadas simultâneas compartilham a mesma leitura.
+Uma referência alterada durante a captura recusa o recibo atrasado. Falhas ficam
+registradas e são reutilizadas apenas no turno atual, permitindo nova tentativa
+no próximo pedido sem conservar uma indisponibilidade por 24 horas.
+
+O Site atual mantém um recibo separado, vinculado à URL do cadastro. A primeira
+leitura e o cache retornam a mesma síntese, conflitos, limites e ativos com número
+e URL. Se a síntese não verificar a identidade, o texto bruto não entra como fato
+confirmado. Uma falha de importação preserva a coleta e a síntese e registra a
+limitação. URL removida ou trocada não reaproveita esse contexto antigo. A mesma
+URL nos dois campos exige as duas leituras, sem misturar seus papéis.
+
+A síntese envia ao provedor um formato derivado do schema do recibo, com tipos,
+campos e limites descritos em texto. A combinação original de listas aninhadas
+e limites numéricos foi recusada pelo Gemini com HTTP 400. O validador Zod
+completo continua obrigatório na saída: URLs, tamanhos, contagens e enums não
+foram relaxados. A [documentação do provedor](https://ai.google.dev/gemini-api/docs/structured-output#limitations)
+descreve essa limitação de complexidade. `lib/current-site/output-schema.ts`
+centraliza essa adaptação, sem manter uma segunda definição manual do recibo.
+
+`npm run eval:site-sources -- --live --assets=<fixture.json>` exercita o modelo
+real com os quatro cenários, incluindo composição. Usa Chromium, transporte de
+fontes sintéticas, biblioteca de fotos de fixture e ferramentas reais com
+persistência em memória. Não acessa Neon nem grava Blob. `--case=nenhum`, `atual`,
+`referencia` ou `ambos` restringe o ensaio; os recibos e resultados ficam em
+`outputs/source-eval/`. Esse ensaio mede o uso das fontes e os contratos do
+resultado, sem substituir a revisão humana da qualidade visual.
+
+Para verificar apenas a composição depois de uma correção, `--resume=<caso.json>`
+reaproveita o briefing e as páginas salvas pelo ensaio correspondente, junto de
+`--case`. O relatório identifica a retomada; ela não conta como uma nova leitura
+de fontes. Quando o pre-flight recusa um lote em memória, o loop direciona o
+próximo passo a `repair_site` antes de encerrar. Isso preserva os limites, a pausa,
+a gravação atômica e a revisão humana após a composição.
+
 ## Fluxo da Landing Page
 
 Na vibe `landing`, `designSchemaFor` exige um único item em `pagePlan`, a home

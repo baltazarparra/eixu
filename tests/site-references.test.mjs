@@ -36,7 +36,11 @@ async function toolFixture(tenant, nearest = []) {
         async (parts, ...values) => {
           const sql = parts.join('?');
           queries.push({ sql, values });
-          return sql.includes("brand ? 'design'") ? nearest : [];
+          return sql.includes("brand ? 'design'")
+            ? nearest
+            : sql.includes("'{sources}'")
+              ? [{ id: tenant.id }]
+              : [];
         },
     },
     '@/lib/ai/reference': {
@@ -76,7 +80,7 @@ await test('duas chamadas simultâneas da mesma referência compartilham leitura
   ]);
   assert.equal(first.status, 'ok');
   assert.deepEqual(duplicate, first);
-  assert.equal(f.referenceCalls(), 1);
+  assert.equal(f.referenceCalls(), 0);
   assert.equal(f.visualCalls(), 1);
   assert.equal(
     f.queries.filter((query) => query.sql.includes("'{sources}'")).length,
@@ -372,6 +376,7 @@ await test('leitura visual encerra captura que ignora cancelamento e registra a 
 
 await test('crítica recebe plano de referências, leitura persistida e pixels atuais; desvio material continua erro', async () => {
   const tenant = referenceTenant();
+  tenant.brief.sources[0].texto = 'Oferta de outra empresa para descartar';
   tenant.brand.design = completeDesignProfile({
     ...direction,
     referenceDirection,
@@ -381,6 +386,10 @@ await test('crítica recebe plano de referências, leitura persistida e pixels a
       Output,
       generateText: async (input) => {
         assert.match(input.instructions, /prevalece sobre a vibe/);
+        assert.doesNotMatch(
+          input.messages[0].content[0].text,
+          /Oferta de outra empresa/,
+        );
         assert.ok(input.messages[0].content[0].text.includes(reading.layout));
         assert.ok(
           input.messages[0].content[0].text.includes(

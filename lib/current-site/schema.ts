@@ -227,12 +227,7 @@ export function currentSitePrompt(value: unknown): string {
       : '',
     accepted?.overview ? `Síntese: ${accepted.overview}` : '',
     !analysis
-      ? `Páginas coletadas sem síntese: ${receipt.pages
-          .map(
-            (page) =>
-              `${page.url}: ${page.title}; ${page.description}; ${page.headings.join('; ')}; ${page.text.slice(0, 700)}`,
-          )
-          .join(' | ')}`
+      ? 'A identidade e os fatos do domínio não foram verificados. Continue com a história do operador; não incorpore o conteúdo bruto como oferta confirmada.'
       : '',
     facts('Públicos encontrados', accepted?.audiences),
     facts('Ofertas encontradas', accepted?.offers),
@@ -255,7 +250,7 @@ export function currentSitePrompt(value: unknown): string {
           )
           .join('; ')}`
       : '',
-    (!analysis || accepted) &&
+    accepted &&
     (contacts.emails.length ||
       contacts.phones.length ||
       contacts.addresses.length)
@@ -281,7 +276,13 @@ export function currentSitePrompt(value: unknown): string {
       ? `Lacunas da leitura: ${analysis.gaps.join('; ')}`
       : '',
     receipt.analysisStatus === 'inacessivel'
-      ? `A síntese automática falhou: ${receipt.analysisReason ?? 'motivo não informado'}. Use somente os dados determinísticos acima e declare a lacuna.`
+      ? `A síntese automática falhou: ${receipt.analysisReason ?? 'motivo não informado'}. Declare a lacuna; a coleta permanece salva para nova leitura.`
+      : '',
+    receipt.limits.length
+      ? `Limites da coleta: ${receipt.limits.join('; ')}`
+      : '',
+    receipt.imageFailures.length
+      ? `Falhas de imagens: ${receipt.imageFailures.join('; ')}`
       : '',
   ]
     .filter(Boolean)

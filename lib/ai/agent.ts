@@ -4,6 +4,7 @@ import {
   PHASE_STEPS,
   PHASE_TOOLS,
   compositionReadyToFinish,
+  compositionRepairDue,
   reviewConferenceDue,
   reviewTurnFinished,
   type Phase,
@@ -53,7 +54,14 @@ export function siteAgent(input: {
             activeTools: ['review_pages'],
             toolChoice: { type: 'tool', toolName: 'review_pages' },
           }
-        : {},
+        : phase === 'composicao' &&
+            'repair_site' in tools &&
+            compositionRepairDue(steps.at(-1)?.toolResults ?? [])
+          ? {
+              activeTools: ['repair_site'],
+              toolChoice: { type: 'tool', toolName: 'repair_site' },
+            }
+          : {},
     // A função Pro/Fluid tem 800 s; reserve tempo para encerrar e persistir.
     timeout: { totalMs: TURN_TIMEOUT_MS },
     maxRetries: 1,

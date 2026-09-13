@@ -1,3 +1,4 @@
+import { abortable } from '@/lib/async/abort';
 import { lookup } from 'node:dns/promises';
 import type { ReferenceVisual } from '@/lib/references/read';
 import { publicResource } from '@/lib/references/network';
@@ -182,8 +183,10 @@ export async function readReference(
   deps: {
     fetch?: typeof globalThis.fetch;
     lookup?: typeof lookup;
+    timeoutMs?: number;
   } = {},
 ): Promise<Reference> {
+  const signal = AbortSignal.timeout(deps.timeoutMs ?? 20_000);
   const request = deps.fetch ?? globalThis.fetch;
   const resolve = deps.lookup ?? lookup;
   const lidoEm = new Date().toISOString();
@@ -214,14 +217,16 @@ export async function readReference(
       lidoEm,
     };
   try {
-    const address = await resolve(host, { all: false });
-    if (isPrivateAddress(address.address, address.family))
-      return {
-        url,
-        status: 'inacessivel',
-        motivo: 'Endereço de rede interna',
-        lidoEm,
-      };
+    if (deps.lookup || deps.fetch) {
+      const address = await abortable(resolve(host, { all: false }), signal);
+      if (isPrivateAddress(address.address, address.family))
+        return {
+          url,
+          status: 'inacessivel',
+          motivo: 'Endereço de rede interna',
+          lidoEm,
+        };
+    }
   } catch {
     return {
       url,
@@ -232,14 +237,17 @@ export async function readReference(
   }
   try {
     const response = deps.fetch
-      ? await request(parsed.toString(), {
-          redirect: 'follow',
-          signal: AbortSignal.timeout(8000),
-          headers: {
-            'user-agent': 'EIXU-SiteAgent/1.0 (+https://eixu.com.br)',
-          },
-        })
-      : await readPublicHtml(parsed.toString());
+      ? await abortable(
+          request(parsed.toString(), {
+            redirect: 'follow',
+            signal,
+            headers: {
+              'user-agent': 'EIXU-SiteAgent/1.0 (+https://eixu.com.br)',
+            },
+          }),
+          signal,
+        )
+      : await readPublicHtml(parsed.toString(), signal);
     if (!response.ok)
       return {
         url,
@@ -255,7 +263,7 @@ export async function readReference(
         motivo: `Conteúdo ${type || 'desconhecido'}`,
         lidoEm,
       };
-    const body = await response.text();
+    const body = await abortable(response.text(), signal);
     return extractReference(parsed.toString(), body.slice(0, MAX_BYTES));
   } catch (error) {
     return {
@@ -271,10 +279,13 @@ export async function readReference(
 }
 
 /** A leitura textual usa a mesma fronteira pública da captura, inclusive redirects. */
-async function readPublicHtml(url: string): Promise<Response> {
+async function readPublicHtml(
+  url: string,
+  signal: AbortSignal,
+): Promise<Response> {
   let current = url;
   for (let hop = 0; hop < 6; hop++) {
-    const resource = await publicResource(current);
+    const resource = await abortable(publicResource(current, signal), signal);
     if (
       [301, 302, 303, 307, 308].includes(resource.status) &&
       resource.headers.location

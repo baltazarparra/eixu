@@ -86,6 +86,20 @@ o que o site não pode prometer nem mostrar. Cadastros antigos continuam
 legíveis: ao abrir Dados, os campos anteriores são reunidos na história e só
 são convertidos quando o operador salva.
 
+Os dois links são independentes e opcionais:
+
+| O que foi informado  | Como a criação segue                                                          |
+| -------------------- | ----------------------------------------------------------------------------- |
+| Nenhum link          | História do cliente e vibe escolhida.                                         |
+| Só Site atual        | História complementada pelo conteúdo e fotos desse site; aparência pela vibe. |
+| Só Referência visual | Conteúdo da história; aparência inspirada na referência que foi vista.        |
+| Ambos                | Site atual complementa o conteúdo; referência orienta a aparência.            |
+
+A mesma URL pode ser usada nos dois campos. Se um link não puder ser lido, o
+agente informa essa limitação e continua com as informações disponíveis. Não é
+necessário preencher um link para conseguir criar o site. Essa regra também vale
+para Landing Pages.
+
 **Site atual** é uma fonte do próprio cliente. Durante Preparar, o agente
 navega em até 12 páginas públicas do mesmo domínio, lê sitemap e conteúdo
 carregado por JavaScript, reúne oferta, público, região, provas, páginas, links,

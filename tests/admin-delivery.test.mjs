@@ -19,6 +19,93 @@ const { reviewFingerprint, currentReview } = await j.import(
 const { workspaceState } = await j.import('../lib/admin/state.ts');
 const { savedProgressMessage } = await j.import('../lib/ai/chat-progress.ts');
 
+await test('lote recusado força reparo no loop real, salva e encerra sem conferir', async () => {
+  for (const paused of [false, true]) {
+    let calls = 0;
+    let repairs = 0;
+    const rejected = {
+      ok: false,
+      pages: [
+        {
+          page: '/obrigado',
+          preflight:
+            'ERRO [hero-subtexto] Subtexto tem 21 palavras. Limite 20.',
+          blocks: [{ index: 1, type: 'hero.statement' }],
+        },
+      ],
+    };
+    const model = new MockLanguageModelV4({
+      doGenerate: async (options) => {
+        calls++;
+        if (calls === 2) {
+          assert.deepEqual(options.toolChoice, {
+            type: 'tool',
+            toolName: 'repair_site',
+          });
+          assert.deepEqual(
+            options.tools.map((tool) => tool.name),
+            ['repair_site'],
+          );
+        }
+        return {
+          content: [
+            {
+              type: 'tool-call',
+              toolCallId: `draft-${calls}`,
+              toolName: calls === 1 ? 'build_site' : 'repair_site',
+              input: '{}',
+            },
+          ],
+          finishReason: { unified: 'tool-calls', raw: 'tool-calls' },
+          usage: { inputTokens: { total: 10 }, outputTokens: { total: 10 } },
+          warnings: [],
+        };
+      },
+    });
+    const { siteAgent } = await loadModule('lib/ai/agent.ts', {
+      './models': {
+        productModel: () => model,
+        modelSettings: () => ({}),
+        TURN_TIMEOUT_MS: 1000,
+      },
+      './usage': { gatewayOptions: () => ({}) },
+      './serial-tools': serial,
+      '../taste/phases': phases,
+    });
+    const result = await siteAgent({
+      tenantId: 'fixture',
+      phase: 'composicao',
+      instructions: 'Monte e corrija o lote.',
+      shouldStop: () => paused,
+      tools: {
+        build_site: tool({
+          inputSchema: z.object({}),
+          execute: async () => rejected,
+        }),
+        repair_site: tool({
+          inputSchema: z.object({}),
+          execute: async () => {
+            repairs++;
+            return { ok: true, pages: [{ page: '/' }, { page: '/obrigado' }] };
+          },
+        }),
+      },
+    }).generate({ prompt: 'Gere o site.' });
+    assert.equal(result.steps.length, paused ? 1 : 2);
+    assert.equal(repairs, paused ? 0 : 1);
+  }
+  for (const output of [
+    { ok: true, pages: [{ page: '/', preflight: '', blocks: [] }] },
+    { ok: false, error: 'Banco indisponível' },
+    null,
+  ]) {
+    assert.equal(
+      phases.compositionRepairDue([{ toolName: 'build_site', output }]),
+      false,
+    );
+  }
+});
+
 await test('loop real para na falha visual e não faz edições nem outra chamada', async () => {
   for (const output of [
     { visual: 'unavailable', complete: false },

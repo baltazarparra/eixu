@@ -76,12 +76,19 @@ import {
 import { readReference, type Reference } from '@/lib/ai/reference';
 import { referenceFromSocial, readSocialProfile } from '@/lib/ai/social';
 import { normalizeSocialUrl, parseSocialRecord } from '@/lib/social-profile';
-import { intakeCurrentSiteUrl } from '@/lib/tenant-intake';
+import { briefForAgent, configuredCurrentSite } from '@/lib/ai/source-context';
+import {
+  intakeCurrentSiteUrl,
+  intakeSchema,
+  intakeSocialUrl,
+} from '@/lib/tenant-intake';
 import { readCurrentSite } from '@/lib/current-site/read';
 import type { CurrentSiteProgress } from '@/lib/current-site/read';
 import {
   currentSiteMatches,
   currentSiteRecord,
+  currentSitePrompt,
+  type CurrentSiteReceipt,
   CURRENT_SITE_IMAGE_MODEL,
 } from '@/lib/current-site/schema';
 import { capturePages, type Shot } from '@/lib/review/capture';
@@ -219,6 +226,29 @@ function currentSiteAnalysisForAgent(value: unknown) {
   };
 }
 
+/** Mesmo material na primeira leitura, no cache e nas fases seguintes. */
+function currentSiteResult(receipt: CurrentSiteReceipt, cache: boolean) {
+  return {
+    status: receipt.status,
+    motivo: receipt.motivo,
+    paginas: receipt.pages.length,
+    links: receipt.links.length,
+    imagensEncontradas: receipt.imagesDiscovered,
+    imagensImportadas: receipt.importedImages.length,
+    ativos: receipt.analysis?.identity.matches ? receipt.importedImages : [],
+    analise: currentSiteAnalysisForAgent(receipt),
+    sintese: receipt.analysisStatus,
+    falhaDaSintese: receipt.analysisReason,
+    conteudo: currentSitePrompt(receipt),
+    conflitos: receipt.analysis?.identity.matches
+      ? receipt.analysis.conflicts
+      : undefined,
+    falhasDeImagem: receipt.imageFailures,
+    limites: receipt.limits,
+    cache,
+  };
+}
+
 function reviewFindingId(
   finding: Omit<ReviewFindingReceipt, 'id' | 'status'>,
   occurrence = 0,
@@ -302,6 +332,9 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
   let referencesRead = 0;
   const referenceReads = new Map<string, Promise<Reference>>();
   let currentSiteReads = 0;
+  let currentSiteReading:
+    | Promise<ReturnType<typeof currentSiteResult>>
+    | undefined;
   let reviewRounds = 0;
   let pendingDraft: SiteDraft | undefined;
 
@@ -816,6 +849,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           ),
       }),
       execute: safe(async ({ refresh }) => {
+        if (currentSiteReading) return currentSiteReading;
         const url = intakeCurrentSiteUrl(activeBrief.intake);
         if (!url)
           throw new ToolError(
@@ -824,39 +858,31 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         const cached = currentSiteRecord(activeBrief.currentSite);
         const fresh =
           cached &&
+          cached.status === 'ok' &&
+          cached.analysisStatus === 'ok' &&
           currentSiteMatches(cached, url) &&
           Date.now() - new Date(cached.crawledAt).getTime() <
             24 * 60 * 60 * 1000;
-        if (!refresh && fresh)
-          return {
-            status: cached.status,
-            motivo: cached.motivo,
-            paginas: cached.pages.length,
-            links: cached.links.length,
-            imagensEncontradas: cached.imagesDiscovered,
-            imagensImportadas: cached.importedImages.length,
-            analise: currentSiteAnalysisForAgent(cached),
-            limites: cached.limits,
-            cache: true,
-          };
+        if (!refresh && fresh) return currentSiteResult(cached, true);
         if (currentSiteReads >= 1)
           throw new ToolError(
             'O site atual já foi navegado neste turno. Use o recibo salvo e registre as lacunas encontradas.',
           );
         currentSiteReads++;
-        const intake = activeBrief.intake as { story?: unknown } | undefined;
-        const operatorStory =
-          typeof intake?.story === 'string' ? intake.story : '';
-        const receipt = await readCurrentSite({
-          tenantId: tenant.id,
-          tenantName: tenant.name,
-          url,
-          operatorStory,
-          onProgress: context.onCurrentSiteProgress,
-        });
-        // Compare-and-set: uma leitura que terminou depois da troca da
-        // identidade, história ou URL não pode reaparecer no briefing.
-        const saved = (await db()`
+        currentSiteReading = (async () => {
+          const intake = activeBrief.intake as { story?: unknown } | undefined;
+          const operatorStory =
+            typeof intake?.story === 'string' ? intake.story : '';
+          const receipt = await readCurrentSite({
+            tenantId: tenant.id,
+            tenantName: tenant.name,
+            url,
+            operatorStory,
+            onProgress: context.onCurrentSiteProgress,
+          });
+          // Compare-and-set: uma leitura que terminou depois da troca da
+          // identidade, história ou URL não pode reaparecer no briefing.
+          const saved = (await db()`
           update tenants
           set brief = jsonb_set(brief, '{currentSite}', ${JSON.stringify(receipt)}::jsonb, true),
               updated_at = now()
@@ -866,34 +892,28 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             and coalesce(brief #>> '{intake,story}', '') = ${operatorStory}
           returning id
         `) as { id: string }[];
-        if (!saved.length)
-          throw new ToolError(
-            'O nome, a história ou o Site atual mudou durante a leitura. O recibo antigo não foi aplicado; leia novamente os dados atualizados.',
-          );
-        activeBrief = { ...activeBrief, currentSite: receipt };
-        return {
-          status: receipt.status,
-          motivo: receipt.motivo,
-          paginas: receipt.pages.length,
-          links: receipt.links.length,
-          imagensEncontradas: receipt.imagesDiscovered,
-          imagensImportadas: receipt.importedImages.length,
-          analise: currentSiteAnalysisForAgent(receipt),
-          conflitos: receipt.analysis?.identity.matches
-            ? receipt.analysis.conflicts
-            : undefined,
-          falhasDeImagem: receipt.imageFailures,
-          limites: receipt.limits,
-          cache: false,
-        };
+          if (!saved.length)
+            throw new ToolError(
+              'O nome, a história ou o Site atual mudou durante a leitura. O recibo antigo não foi aplicado; leia novamente os dados atualizados.',
+            );
+          activeBrief = { ...activeBrief, currentSite: receipt };
+          return currentSiteResult(receipt, false);
+        })();
+        return currentSiteReading;
       }),
     }),
 
     read_reference: tool({
       description:
         'Lê conteúdo real da URL. Para referências do cadastro, captura desktop/mobile e analisa estrutura, tipografia, imagens, ritmo e superfícies. A leitura visual orienta a direção acima da vibe. Fonte ou captura inacessível vira lacuna. Redes sociais fornecem contexto factual, sem presumir estilo de site.',
-      inputSchema: z.object({ url: z.url() }),
-      execute: safe(async ({ url }) => {
+      inputSchema: z.object({
+        url: z.url(),
+        refresh: z
+          .boolean()
+          .optional()
+          .describe('Use true somente quando o operador pedir nova leitura.'),
+      }),
+      execute: safe(async ({ url, refresh }) => {
         const key = normalizeReferenceUrl(url);
         const inFlight = referenceReads.get(key);
         if (inFlight) return inFlight;
@@ -915,22 +935,53 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             Date.now() - new Date(saved.lidoEm).getTime() < 24 * 60 * 60 * 1000
               ? saved
               : null;
-          const reference = social
-            ? referenceFromSocial(fresh ?? (await readSocialProfile(social)))
-            : await readReference(url);
-          if (referenceUrls(activeBrief).includes(normalizeReferenceUrl(url))) {
-            reference.visual =
-              social || reference.status !== 'ok'
-                ? {
-                    status: 'inacessivel',
-                    motivo: social
-                      ? 'Perfil social não define composição de site.'
-                      : reference.motivo,
-                    capturedAt: new Date().toISOString(),
-                  }
-                : await readReferenceVisual(url, tenant.id, {
-                    onProgress: context.onReferenceProgress,
-                  });
+          const visual = referenceUrls(activeBrief).includes(key);
+          const priorSources = (
+            Array.isArray(activeBrief.sources) ? activeBrief.sources : []
+          ) as Reference[];
+          const cached = priorSources.findLast(
+            (source) =>
+              source?.url && normalizeReferenceUrl(source.url) === key,
+          );
+          if (
+            visual &&
+            !refresh &&
+            cached?.visual &&
+            referenceSources(activeBrief).some(
+              (source) => source.url === key && source.reading,
+            ) &&
+            Date.now() - new Date(cached.visual.capturedAt).getTime() <
+              24 * 60 * 60 * 1000
+          )
+            return {
+              url: key,
+              status: cached.visual.status,
+              lidoEm: cached.lidoEm,
+              visual: cached.visual,
+            };
+          // Uma referência de aparência precisa de pixels, não de um fetch de
+          // texto bem-sucedido. Também evita importar a oferta de outra empresa.
+          const reference: Reference = visual
+            ? {
+                url: key,
+                status: 'inacessivel',
+                lidoEm: new Date().toISOString(),
+              }
+            : social
+              ? referenceFromSocial(fresh ?? (await readSocialProfile(social)))
+              : await readReference(key);
+          if (visual) {
+            reference.visual = social
+              ? {
+                  status: 'inacessivel',
+                  motivo: 'Perfil social não define composição de site.',
+                  capturedAt: new Date().toISOString(),
+                }
+              : await readReferenceVisual(key, tenant.id, {
+                  onProgress: context.onReferenceProgress,
+                });
+            reference.status = reference.visual.status;
+            reference.motivo = reference.visual.motivo;
           }
           const previous = Array.isArray(activeBrief.sources)
             ? (activeBrief.sources as { url?: string }[])
@@ -944,18 +995,24 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             ),
             reference,
           ];
-          activeBrief = { ...activeBrief, sources };
           // Leituras de URLs diferentes podem terminar em paralelo. Mescle a
           // fonte no registro atual para não perder a leitura de outra chamada.
-          await db()`
+          const savedSources = (await db()`
           update tenants set brief = jsonb_set(brief, '{sources}',
             coalesce((select jsonb_agg(source)
               from jsonb_array_elements(case when jsonb_typeof(brief->'sources') = 'array'
                 then brief->'sources' else '[]'::jsonb end) source
-              where source->>'url' <> ${reference.url}), '[]'::jsonb)
+              where split_part(source->>'url', '#', 1) <> ${reference.url}), '[]'::jsonb)
             || ${JSON.stringify([reference])}::jsonb), updated_at = now()
           where id = ${tenant.id}
-        `;
+            and (${!visual} or coalesce(brief #> '{intake,references}', '[]'::jsonb) = ${JSON.stringify(intakeSchema.safeParse(activeBrief.intake).data?.references ?? [])}::jsonb)
+          returning id
+        `) as { id: string }[];
+          if (visual && !savedSources.length)
+            throw new ToolError(
+              'A referência mudou durante a leitura. Releia o cadastro atualizado antes de definir a direção.',
+            );
+          activeBrief = { ...activeBrief, sources };
           return reference;
         })();
         referenceReads.set(key, pending);
@@ -1536,7 +1593,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
       execute: async () => {
         const pages = await listPages(tenant.id);
         return {
-          brief: activeBrief,
+          brief: briefForAgent(activeBrief),
           brand: activeBrand,
           dials: activeDials,
           pages: pages.map((page) => ({
@@ -1720,18 +1777,11 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           );
         }
 
-        // Sem fonte legível, o que sobra é o que o operador informou. A
-        // lacuna precisa estar declarada, senão ela vira texto inventado.
-        const sources = Array.isArray(activeBrief.sources)
-          ? (activeBrief.sources as { status?: string }[])
-          : [];
-        const readable = sources.filter((source) => source?.status === 'ok');
-        const configuredCurrentSite = intakeCurrentSiteUrl(activeBrief.intake);
-        const currentSite = currentSiteRecord(activeBrief.currentSite);
-        if (
-          configuredCurrentSite &&
-          !currentSiteMatches(currentSite, configuredCurrentSite)
-        )
+        // Ausência de link é válida. Só fontes factuais deste cliente podem
+        // complementar a história; uma referência visual não confirma oferta.
+        const configuredUrl = intakeCurrentSiteUrl(activeBrief.intake);
+        const currentSite = configuredCurrentSite(activeBrief);
+        if (configuredUrl && !currentSite)
           throw new ToolError(
             'Leia o Site atual configurado com read_current_site antes de definir o briefing e a direção.',
           );
@@ -1739,19 +1789,37 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           currentSite?.status === 'ok' &&
           currentSite.analysisStatus === 'ok' &&
           currentSite.analysis?.identity.matches === true;
-        const blocked =
-          sources.length -
-          readable.length +
-          (configuredCurrentSite && !currentSiteReadable ? 1 : 0);
-        const readableCount = readable.length + (currentSiteReadable ? 1 : 0);
+        const intake = intakeSchema.safeParse(activeBrief.intake).data;
+        const operatorFacts = !!(
+          intake?.story ||
+          intake?.offer ||
+          intake?.evidence.length
+        );
+        const socialUrl = intakeSocialUrl(activeBrief.intake);
+        const sources = (
+          Array.isArray(activeBrief.sources) ? activeBrief.sources : []
+        ) as Reference[];
+        const socialSource = socialUrl
+          ? sources.findLast(
+              (source) =>
+                source?.url &&
+                normalizeReferenceUrl(source.url) ===
+                  normalizeReferenceUrl(socialUrl),
+            )
+          : undefined;
         if (
           !input.brief.gaps.length &&
-          (blocked > 0 || (!input.brief.evidence.length && !readableCount))
-        ) {
+          ((configuredUrl && !currentSiteReadable) ||
+            currentSite?.analysis?.conflicts.length ||
+            (socialSource && socialSource.status !== 'ok') ||
+            (!operatorFacts &&
+              !input.brief.evidence.length &&
+              !currentSiteReadable &&
+              socialSource?.status !== 'ok'))
+        )
           throw new ToolError(
-            'Nenhuma fonte confirmada sustenta os fatos deste cliente. Liste em brief.gaps o que ainda precisa ser confirmado (serviços, estrutura, região, prazos) antes de definir a direção.',
+            'Registre em brief.gaps as falhas ou conflitos das fontes informadas e continue com os fatos do operador. Links ausentes não são pendências; referência visual não confirma oferta.',
           );
-        }
 
         const referenceIssues = referenceDirectionIssues(
           activeBrief,

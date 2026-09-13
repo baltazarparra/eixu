@@ -9,6 +9,22 @@ export async function memoryHarness(tenant, images, review = {}) {
     const query = parts.join('?').replace(/\s+/g, ' ').trim();
     const operation = () => {
       if (query.startsWith('select')) return [];
+      if (
+        query.startsWith('update tenants') &&
+        query.includes("'{currentSite}'")
+      ) {
+        tenant.brief.currentSite = JSON.parse(values[0]);
+        return [{ id: tenant.id }];
+      }
+      if (query.startsWith('update tenants') && query.includes("'{sources}'")) {
+        tenant.brief.sources = [
+          ...(tenant.brief.sources ?? []).filter(
+            (source) => source.url !== values[0],
+          ),
+          ...JSON.parse(values[1]),
+        ];
+        return [{ id: tenant.id }];
+      }
       if (query.startsWith('insert into pages')) {
         const [tenantId, slug, type, title, seo, meta, blocks] = values;
         const old = pages.find((page) => page.slug === slug);
@@ -98,6 +114,20 @@ export async function memoryHarness(tenant, images, review = {}) {
         status: 'inacessivel',
         motivo: 'Sem fonte externa neste ensaio',
         lidoEm: new Date().toISOString(),
+      }),
+    },
+    '@/lib/current-site/read': {
+      readCurrentSite: async () => {
+        throw new Error(
+          'Leitura do site atual exige fixture explícita neste ensaio',
+        );
+      },
+    },
+    '@/lib/references/read': {
+      readReferenceVisual: async () => ({
+        status: 'inacessivel',
+        motivo: 'Sem fixture visual neste ensaio',
+        capturedAt: new Date().toISOString(),
       }),
     },
     '@/lib/sites/publish': {

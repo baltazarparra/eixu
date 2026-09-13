@@ -1,5 +1,68 @@
 # Validação e publicação
 
+## Fontes opcionais e coerência da criação, 13/09/2026
+
+A revisão foi feita em worktree isolada de `origin/main` `3d09ff7`, preservando
+o checkout local com alterações anteriores. O cadastro e Dados continuam sendo
+os pontos de configuração; chat, geração por etapas e crítica compartilham o
+contexto que separa o Site atual da Referência visual.
+
+A captura visual deixou de depender de um fetch textual anterior. O Site atual
+passou a conservar síntese, conflitos, ativos e limitações também no cache;
+falhas podem ser tentadas novamente no próximo turno. A coleta não verificada
+e o texto comercial de uma referência de aparência não entram como fatos do
+cliente. URLs substituídas não ressuscitam recibos antigos. Nenhuma ausência de
+link exige lacuna para aceitar o briefing, inclusive na Landing Page.
+
+O ensaio pago encontrou uma recusa HTTP 400 do Gemini no schema da síntese,
+invisível nos testes que simulavam o modelo. A adaptação do formato enviado ao
+provedor preserva a validação Zod completa no retorno. Outro caso teve o lote
+recusado por um subtítulo com 21 palavras, com limite de 20, e encerrou sem
+reparo. O loop agora solicita `repair_site` quando há lote recusado em memória,
+mantendo a pausa, os limites e o término após composição validada.
+
+Validação automatizada:
+
+- Tipos (`next typegen` e `tsc --noEmit`) e lint global passaram.
+- `build:vercel` passou, incluindo os três checks de artefatos serverless
+  para chat, geração por HTTP e fila.
+- `test:sites`: 268 aprovados, sem skips, com Chromium real.
+- `test:admin`: 181 aprovados; cinco integrações dependentes de PostgreSQL
+  local não executadas. Nenhum schema ou migração foi alterado.
+- Os dois ensaios focados de navegador passaram com CSS do build Next.js:
+  configuração em cadastro/Dados e aplicação dos aspectos da referência em
+  desktop e celular. A captura mobile do cadastro foi inspecionada.
+- Os contratos novos cobrem as quatro combinações em site multipágina e
+  Landing Page, falhas independentes, URL compartilhada pelos dois papéis,
+  cache, concorrência, troca de URL, identidade incerta, importação indisponível,
+  timeout de dependências e validação estrita da síntese.
+
+O ensaio real usa Gemini 3.8 Flash e Chromium com fontes sintéticas servidas por
+transporte controlado e fotos existentes de fixture. O domínio atual contém um
+conflito proposital de região; a referência visual pertence a uma editora
+sintética e não pode transferir a sua oferta para o cliente de aquecedores.
+O primeiro cadastro sintético de Landing Page não fornecia prova confirmada e
+foi corretamente bloqueado por `landing-prova`. A fixture seguinte informou
+dois fatos numéricos explícitos do operador, sem afrouxar esse gate.
+
+Resultados finais dos casos com o modelo real:
+
+| Fontes               | Resultado                                                                      | Registro                               |
+| -------------------- | ------------------------------------------------------------------------------ | -------------------------------------- |
+| Nenhuma              | 4 páginas, sem erros de pre-flight                                             | `1789273336855-matrix/nenhum.json`     |
+| Só Site atual        | Landing Page e obrigado, conflito de região resolvido pelo cadastro            | `1789274812598-atual/atual.json`       |
+| Só Referência visual | 5 páginas, seis aspectos visuais registrados, sem importar a oferta da editora | `1789274356520-matrix/referencia.json` |
+| Ambos                | Landing Page e obrigado, fatos e aparência com origens distintas               | `1789274356520-matrix/ambos.json`      |
+
+Todos terminaram sem erros de pre-flight no resultado final. O caso só Site
+atual retomou a composição após o ajuste do loop, reutilizando o briefing lido
+na execução anterior. Os demais encerraram com o reparo normal das ferramentas.
+As leituras sintéticas idênticas foram compartilhadas entre casos; as durações
+não representam latência de sites de clientes em produção.
+
+Os registros ficam em `outputs/source-eval/`. Não houve escrita em Neon/Blob,
+migração, geração de imagens nem publicação de páginas de clientes nesse ensaio.
+
 ## Prazo da referência visual na Arya, 13/09/2026
 
 A segunda execução da Arya, `425d39dc-5a42-4096-97d9-7c76583d1ce6`, foi
