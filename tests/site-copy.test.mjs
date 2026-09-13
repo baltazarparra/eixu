@@ -244,7 +244,7 @@ await test('botões sem ação clara são erros, enquanto o contexto decide jarg
   assert.equal(sample.blocks[0].props.body.split(' ').length, 31);
 });
 
-await test('publicação compartilhada bloqueia texto ruim antes de qualquer escrita e aceita o reparo', async () => {
+await test('publicação autorizada conserva o aviso de texto ruim e reconhece o reparo', async () => {
   let target = page('Learn more');
   let writes = 0;
   const sql = () => {
@@ -263,15 +263,20 @@ await test('publicação compartilhada bloqueia texto ruim antes de qualquer esc
   });
   for (const slug of [undefined, '']) {
     const result = await publishSite(tenant, slug);
-    assert.equal(result.published.length, 0);
-    assert.match(result.blocked[0].preflight, /acao-pouco-clara/);
-    assert.equal(writes, 0);
+    assert.equal(result.published.length, 1);
+    assert.equal(result.blocked.length, 0);
+    assert.ok(
+      result.warnings.some((finding) => finding.rule === 'acao-pouco-clara'),
+    );
   }
   target = page('Ver mesas e cadeiras');
   const repaired = await publishSite(tenant);
   assert.equal(repaired.blocked.length, 0);
   assert.equal(repaired.published.length, 1);
-  assert.equal(writes, 2);
+  assert.equal(writes, 6);
+  assert.ok(
+    !repaired.warnings.some((finding) => finding.rule === 'acao-pouco-clara'),
+  );
 });
 
 await test('crítico recebe voz, todos os textos e sinais junto dos pixels e devolve erro de clareza', async () => {

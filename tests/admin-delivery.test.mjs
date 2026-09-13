@@ -253,8 +253,8 @@ await test('entrega persiste após edição sem aprovar revisão nem apagar erro
   assert.equal(state.review.errors, 1);
   assert.equal(state.review.findings[0].rule, 'critica-indisponivel');
   assert.ok(
-    state.pages[0].errors.length > 0,
-    'entrega não remove erros do pre-flight',
+    state.pages[0].errors.length + state.pages[0].warnings.length > 0,
+    'entrega preserva o diagnóstico do pre-flight',
   );
   const base = {
     hasDesign: true,

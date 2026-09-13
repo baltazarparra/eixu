@@ -31,11 +31,32 @@ function broken() {
   return f;
 }
 
-async function fixture(text = 'Resolva as pendências de publicação.', image) {
+async function fixture(
+  text = 'Resolva as pendências de publicação.',
+  image,
+  missingEvidence = false,
+) {
   const f = broken();
+  if (missingEvidence)
+    f.tenant.brief = {
+      ...f.tenant.brief,
+      evidence: [],
+      intake: { ...f.tenant.brief.intake, evidence: [] },
+    };
   const writes = [];
   const revisions = [];
+  const published = [];
   const mocks = {
+    '@/lib/sites/publish': {
+      publishSite: async (tenant, page) => {
+        published.push({ brief: structuredClone(tenant.brief), page });
+        return {
+          published: [page ?? '/'],
+          blocked: [],
+          url: 'https://fixture.test',
+        };
+      },
+    },
     '@/lib/db': {
       db:
         () =>
@@ -111,8 +132,52 @@ async function fixture(text = 'Resolva as pendências de publicação.', image) 
     editPolicy: editPolicyFor(text, f.pages, ''),
     ...image,
   });
-  return { ...f, tools, writes, revisions, policy: editPolicyFor(text, f.pages, '') };
+  return {
+    ...f,
+    tools,
+    writes,
+    revisions,
+    published,
+    policy: editPolicyFor(text, f.pages, ''),
+  };
 }
+
+await test('reparo real salva o rascunho sem pedir fatos, publicar ou apagar evidências', async () => {
+  const f = await fixture(undefined, undefined, true);
+  const original = structuredClone(f.pages[0].blocks);
+  f.pages[0].publishedBlocks = structuredClone(original);
+  const beforeBrief = structuredClone(f.tenant.brief);
+  const result = await f.tools.repair_publication.execute({});
+  assert.equal(result.ok, true, JSON.stringify(result));
+  assert.equal(result.changed, true);
+  assert.ok(result.summary.some((line) => /retir|substituí/i.test(line)));
+  assert.deepEqual(f.tenant.brief, beforeBrief);
+  assert.deepEqual(f.pages[0].publishedBlocks, original);
+  assert.deepEqual(f.published, []);
+  assert.equal(f.writes.length, 1);
+  assert.deepEqual(
+    (await f.tools.repair_publication.execute({})).changed,
+    false,
+  );
+});
+
+await test('reparo não usa autorização visual para retirar conteúdo', async () => {
+  const f = await fixture('Tire a moldura da imagem.', undefined, true);
+  const result = await f.tools.repair_publication.execute({});
+  assert.match(result.error, /exige um pedido atual/);
+  assert.deepEqual(f.writes, []);
+});
+
+await test('publicação usa a evidência registrada neste mesmo turno', async () => {
+  const fact = 'Entrega em cinco dias úteis';
+  const f = await fixture(fact);
+  const confirmed = await f.tools.confirm_evidence.execute({ facts: [fact] });
+  assert.equal(confirmed.ok, true);
+  await f.tools.publish_site.execute({});
+  await f.tools.publish_page.execute({ page: '' });
+  assert.equal(f.published.length, 2);
+  assert.ok(f.published.every((call) => call.brief.evidence.includes(fact)));
+});
 
 await test('a validação do chat entrega o plano e a edição resolve a pendência', async () => {
   const f = await fixture();
@@ -144,7 +209,7 @@ await test('a validação do chat entrega o plano e a edição resolve a pendên
 await test('pre-flight de página acusa o gate de site que bloqueia a publicação', async () => {
   const f = await fixture();
   const report = await f.tools.lint_page.execute({ page: '' });
-  assert.equal(report.aprovado, false);
+  assert.equal(report.aprovado, true);
   assert.match(report.relatorio, /landing-prova/);
   assert.ok(report.plano.every((item) => item.pagina === '/'));
 });
@@ -247,9 +312,9 @@ await test('o fechamento nomeia a imagem nova e as frases que faltam', async () 
   );
   const text = receipt.text();
   assert.match(text, /Imagem #8 atualizada: nova versão #21 aplicada em \//);
-  assert.match(text, /A publicação está bloqueada/);
-  assert.match(text, /escrever no chat, com estas palavras: "Três cocos por litro"/);
-  assert.match(text, /Dados › Evidências: "Clara: coube\. Resultado: bom\."/);
+  assert.match(text, /não impedem a publicação/);
+  assert.match(text, /sem exigir que você repita frases/);
+  assert.doesNotMatch(text, /precisa escrever|está bloqueada/);
 });
 
 await test('o recibo substitui o texto do modelo mesmo com imagem no turno', async () => {
@@ -327,7 +392,7 @@ await test('a rota entrega as pendências e a evidência ao turno de edição', 
   ).text();
   const context = f.prompts.at(-1);
   assert.equal(context.editing, true);
-  assert.match(context.pendencias, /ERRO landing-prova/);
+  assert.match(context.pendencias, /Recomendação landing-prova/);
   assert.match(context.pendencias, /Ação alinhar: edit_page com set em/);
   assert.match(context.evidencia, /12 acabamentos disponíveis/);
 

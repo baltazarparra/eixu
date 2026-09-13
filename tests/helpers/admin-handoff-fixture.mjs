@@ -169,7 +169,7 @@ export function handoffData() {
   };
 }
 
-export async function handoffFixture({ port = 0, imageUpload } = {}) {
+export async function handoffFixture({ port = 0, imageUpload, publish } = {}) {
   const root = process.cwd();
   const directory = path.join(root, '.next/static/chunks');
   const css = (
@@ -330,6 +330,14 @@ export async function handoffFixture({ port = 0, imageUpload } = {}) {
                 return;
               }
               if (url.pathname.endsWith('/publish')) {
+                if (publish) {
+                  const response = await publish(
+                    new Request(url, { method: req.method, body: '{}' }),
+                  );
+                  res.statusCode = response.status;
+                  res.end(await response.text());
+                  return;
+                }
                 res.end(
                   JSON.stringify({
                     published: [''],

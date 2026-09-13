@@ -60,7 +60,7 @@ continuam no fluxo v5/v6 e mantêm seu piso de três páginas.
 crítico o mesmo contrato de ação única, prova literal, 6–11 seções, 250 palavras
 e formulário curto. Cinco cenas são planejadas na própria home. Depois da
 composição da home, a geração termina e a revisão é humana pela prévia.
-Os erros continuam bloqueando publicação; nenhuma revisão automática foi
+Os erros técnicos continuam bloqueando publicação; nenhuma revisão automática foi
 adicionada. O critério `conversao` participa da crítica solicitada pelo operador.
 
 O catálogo prioriza os cinco novos blocos. A comparação de unicidade considera
@@ -421,8 +421,9 @@ edição, preservado na compactação do histórico.
 
 Nos turnos limitados às ferramentas de edição, evidência e validação, o texto
 final exibido e persistido usa os recibos reais. `update_image` entra nesse
-conjunto: o recibo nomeia a nova versão e onde ela foi aplicada, e lista as
-frases que ainda faltam ser escritas pelo operador ou registradas em Dados. O loop do SDK e seus metadados
+conjunto: o recibo nomeia a nova versão e onde ela foi aplicada. `repair_publication`
+também entra e informa os reparos salvos, sem exigir que o operador repita frases.
+Recomendações não são anunciadas como bloqueios. O loop do SDK e seus metadados
 permanecem intactos. Perguntas sem operação e pedidos mistos com outras
 ferramentas conservam a resposta do modelo. `confirm_evidence` exige frases
 completas do operador, recusa lote acima do limite e verifica concorrência;
@@ -498,6 +499,14 @@ completo nasce dos recibos atuais de todas as páginas. `nextPhase` encerra com 
 entrega explícita do rascunho atual. Contar chamadas não comprova aprovação.
 
 A publicação manual mantém o pre-flight determinístico em ambos os caminhos.
+`lib/sites/publication-policy.ts` converte avaliações editoriais em recomendações
+para respeitar o pedido de publicação. O lint da geração mantém suas exigências;
+os erros técnicos continuam recusando a transação. Ordens diretas de publicar
+são executadas pelo servidor sem chamada ao modelo. No pedido de resolver
+pendências, o loop começa por `repair_publication`, com escopo limitado às
+alegações pendentes. O agente continua outros ajustes pelas ferramentas existentes,
+sem exigir a repetição de frases. `scripts/eval-publication.mjs --live` exercita
+dois casos sintéticos com o modelo real e executores em memória.
 O recibo do crítico governa a aprovação visual, sem transformar uma opinião
 do modelo em permissão para publicar ou indisponibilidade em falha da entrega.
 

@@ -135,8 +135,9 @@ montada não comprova nada sozinha. A correspondência não verifica a verdade
 externa da declaração do operador.
 A comparação ignora acento, caixa e ponto final: o fato digitado sem acento em
 Dados sustenta o selo acentuado da página, e a grafia deixa de ser o fato. Uma
-frase com pontuação no meio, ou acima de 140 caracteres, não passa por
-`confirm_evidence` e só entra em Dados › Evidências. Salvar Dados com outro
+frase com pontuação no meio não passa por `confirm_evidence` e pode entrar em
+Dados › Evidências. Cadastro, confirmação e referência do bloco aceitam até
+160 caracteres. Salvar Dados com outro
 nome, história, Site atual ou referência refaz o briefing derivado e conserva
 `brief.evidence`.
 
@@ -152,24 +153,35 @@ cabeçalho ou de apresentação de um bloco.
 `lib/taste/pendencias.ts` transforma os achados do pre-flight no que resolve
 cada um, em código. Para prova, compara a alegação exibida com as frases
 confirmadas: quando alguma sustenta o texto, devolve `alinhar` com bloco,
-caminho e valor exatos para um `set`; quando nenhuma sustenta, devolve
-`confirmar` com a frase que falta, se o operador já a escreveu nesta conversa e
-se ela cabe no chat ou só em Dados. Para `imagem-proporcao`, devolve o número da
+caminho e valor exatos para um `set`; fatos já escritos podem ser registrados
+por `confirm_evidence`. Quando falta confirmação, oferece `reparar-prova`,
+sem exigir que o operador repita frases do modelo. Para `imagem-proporcao`, devolve o número da
 imagem, a proporção atual e a exibida, as fotos da biblioteca que cabem, os
 layouts do mesmo bloco que exibem a proporção atual e a geração por
-`update_image` com `ratio`. As demais regras ficam como `manual`.
+`update_image` com `ratio`. As demais regras recebem `editar`: o agente deve
+consultar o schema, corrigir com as ferramentas existentes e verificar o resultado.
 
 O plano entra no prompt do turno de edição, junto das frases confirmadas, e no
-retorno de `lint_site`, `lint_page`, `edit_page` e `confirm_evidence`. O agente
+retorno de `lint_site`, `lint_page`, `edit_page`, `repair_publication` e `confirm_evidence`. O agente
 deixa de depender de o operador colar a lista e de adivinhar a causa do
-bloqueio. `lint_page` passou a somar as regras de site daquela página: uma home
-aprovada no lint de página não é mais anunciada como pronta enquanto a prova
-bloqueia a publicação. O painel oferece **Resolver pelo chat**, que preenche o
+bloqueio. `lint_page` soma as regras de site daquela página e usa a mesma
+classificação de publicação do painel. O painel oferece **Resolver pelo chat**, que preenche o
 pedido sem enviar.
 
-O fechamento do turno nomeia a imagem gerada e lista, sem reescrever, as frases
-que o operador ainda precisa escrever ou registrar. Confirmar um fato continua
-exigindo o texto dele: o plano indica a frase, nunca a inventa.
+Um pedido atual para resolver pendências inicia `repair_publication`. O reparo
+alinha referências com fatos existentes, retira alegações sem confirmação e
+remove fotos de depoimentos que não são envios reais. Se uma lista fica abaixo
+do mínimo do componente, preserva os fatos confirmados em texto; destinos de
+âncora são mantidos. Não altera o cadastro, imagens ou snapshots publicados,
+nem dá autorização de remoção livre ao `edit_page`. A escrita continua validada
+e compara a revisão do rascunho. O recibo descreve as mudanças efetivas.
+
+**Publicar** e pedidos diretos como **“publicar, eu autorizo”** promovem o conteúdo
+atual. O comando direto roda no servidor sem chamada ao modelo. Recomendações
+de prova, copy, SEO, imagens ou composição ficam visíveis e não vetam a decisão.
+Erros técnicos, como props inválidas, página vazia ou destino inexistente,
+continuam recusando a transação. Publicação não confirma fatos e não executa
+reparos por conta própria. A ferramenta usa o briefing atualizado no mesmo turno.
 
 ## Integridade da edição
 

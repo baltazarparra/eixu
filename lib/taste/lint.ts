@@ -88,6 +88,8 @@ export function lintPage(
     blockId?: string,
   ) => findings.push({ level, rule, message, blockId });
   const contentIcons = new Map<string, string[]>();
+  if (!blocks.length)
+    push('error', 'pagina-vazia', 'A página não tem conteúdo para renderizar.');
 
   // 1. Tipos válidos e props conformes ao schema.
   for (const block of blocks) {

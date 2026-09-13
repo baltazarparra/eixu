@@ -11,6 +11,7 @@ import { lintSite } from '@/lib/taste/site';
 import { tenantDraftSnapshot } from '@/lib/sites/snapshot';
 import type { Page, Tenant, TenantImage } from '@/lib/types';
 import { logoStudioState } from '@/lib/images/logo-studio-state';
+import { publicationFinding } from '@/lib/sites/publication-policy';
 
 /** A ordem das chaves JSON não indica uma alteração editorial. */
 function canonical(value: unknown): string {
@@ -58,13 +59,14 @@ export function workspaceState(
   pages: Page[],
   images: TenantImage[],
 ) {
-  const findings = lintSite(
+  const generationFindings = lintSite(
     pages,
     images,
     'publish',
     tenant.brand,
     tenant.brief,
   );
+  const findings = generationFindings.map(publicationFinding);
   const design = isDesignProfile(tenant.brand.design)
     ? tenant.brand.design
     : undefined;
@@ -90,7 +92,7 @@ export function workspaceState(
       hasDesign: Boolean(design),
       dirty: hasTenantDraftChanges(tenant),
     },
-    generation: generationState(tenant, pages, images, findings),
+    generation: generationState(tenant, pages, images, generationFindings),
     review: {
       current: Boolean(review),
       complete:
@@ -127,7 +129,7 @@ export function workspaceState(
       .map((f) => f.message),
     pages: pages.map((page) => {
       const all = [
-        ...lintPage(page, design),
+        ...lintPage(page, design).map(publicationFinding),
         ...findings.filter((f) => f.page === `/${page.slug}`),
       ];
       return {

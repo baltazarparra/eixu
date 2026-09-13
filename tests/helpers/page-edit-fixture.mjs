@@ -11,6 +11,9 @@ const { pageRevision, editingPageContext } = await j.import(
   '../../lib/ai/page-edits.ts',
 );
 const { systemPrompt } = await j.import('../../lib/taste/prompt.ts');
+const { publicationPlan, pendenciasContext, evidenceContext } = await j.import(
+  '../../lib/taste/pendencias.ts',
+);
 
 export const editTenant = {
   id: 'edit-fixture',
@@ -132,7 +135,14 @@ export function editPages({ hero } = {}) {
 /** Executores e schemas reais; somente o I/O é substituído. Nunca acessa Neon/Blob. */
 export async function pageEditFixture(
   text = 'Ajuste a página em foco.',
-  { race, hero, initialPages, initialTenant } = {},
+  {
+    race,
+    hero,
+    initialPages,
+    initialTenant,
+    images = [],
+    publication = false,
+  } = {},
 ) {
   const tenant = structuredClone(initialTenant ?? editTenant);
   const pages = initialPages
@@ -175,17 +185,22 @@ export async function pageEditFixture(
       listPages: async (tenantId) =>
         structuredClone(pages.filter((p) => p.tenantId === tenantId)),
     },
-    '@/lib/images/queries': { listImages: async () => [] },
+    '@/lib/images/queries': { listImages: async () => images },
   };
   mocks['@/lib/sites/edits'] = await loadModule('lib/sites/edits.ts', mocks);
   const { buildTools } = await loadModule('lib/ai/tools.ts', mocks);
-  const tools = buildTools(tenant, { lastUserText: text, editPolicy: policy });
+  const tools = buildTools(tenant, {
+    lastUserText: text,
+    operatorText: text,
+    editPolicy: policy,
+  });
   // Não deixe um modelo real executar I/O fora do ensaio autorizado.
   const allowed = new Set([
     'edit_page',
     'get_page',
     'describe_block',
     'list_state',
+    ...(publication ? ['repair_publication', 'lint_site', 'lint_page'] : []),
   ]);
   for (const [name, definition] of Object.entries(tools))
     if (!allowed.has(name))
@@ -207,6 +222,20 @@ export async function pageEditFixture(
         editing: true,
         editScope: editScopeText(policy),
         editPage: editingPageContext(pages[0]),
+        ...(publication
+          ? {
+              pendencias: pendenciasContext(
+                publicationPlan({
+                  pages,
+                  images,
+                  brand: tenant.brand,
+                  brief: tenant.brief,
+                  operatorText: text,
+                }),
+              ),
+              evidencia: evidenceContext(tenant.brief),
+            }
+          : {}),
       },
     ),
   };

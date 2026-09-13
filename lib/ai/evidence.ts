@@ -23,6 +23,8 @@ export function factWritten(fact: string, operatorText: string): boolean {
 }
 
 export const MAX_EVIDENCE = 12;
+/** Mesmo limite do cadastro; não exige que o operador encurte um fato válido. */
+export const MAX_EVIDENCE_LENGTH = 160;
 
 /** Um lote não perde fatos silenciosamente, nem duplica os itens do próprio lote. */
 export function evidenceAdditions(

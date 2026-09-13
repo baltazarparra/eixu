@@ -55,7 +55,7 @@ export function describeTool(
       const approvals =
         Array.isArray(out.publicationPending) &&
         out.publicationPending.length > 0;
-      return `Projeto salvo: ${pages} páginas${approvals ? '. Há pendências para publicar' : ''}`;
+      return `Projeto salvo: ${pages} páginas${approvals ? '. Confira os apontamentos no painel' : ''}`;
     }
     case 'set_design':
       return pending
@@ -67,7 +67,11 @@ export function describeTool(
       return pending
         ? 'Verificando o projeto'
         : Array.isArray(out.findings) && out.findings.length
-          ? 'O projeto tem ajustes pendentes'
+          ? out.findings.some(
+              (finding) => (finding as { level?: string }).level === 'error',
+            )
+            ? 'Há erros técnicos para corrigir'
+            : 'Recomendações disponíveis no painel'
           : 'Verificação do projeto concluída';
     case 'confirm_evidence':
       return pending
@@ -77,6 +81,14 @@ export function describeTool(
           : Array.isArray(out.added) && out.added.length
             ? `${out.added.length} fato(s) registrado(s)`
             : 'Os fatos já estavam registrados';
+    case 'repair_publication':
+      return pending
+        ? 'Resolvendo as pendências'
+        : out.ok !== true
+          ? 'O reparo precisa de outro ajuste'
+          : out.changed === true
+            ? 'Provas ajustadas no rascunho'
+            : 'Pendências verificadas';
     case 'publish_site':
       return pending
         ? 'Publicando o projeto'

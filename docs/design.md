@@ -39,12 +39,14 @@ A evidência confirmada vem do cadastro (`brief.intake.evidence`) ou do chat,
 por `confirm_evidence`, que grava em `brief.evidence` o fato escrito pelo
 operador. As duas origens valem no gate; nenhuma delas aceita fato deduzido.
 
-`landingFindings` bloqueia ação divergente, menu fora da home, prova sem
+Na geração, `landingFindings` aponta como erro ação divergente, menu fora da home, prova sem
 correspondência literal, preço não confirmado, páginas extras e formulário
 sem obrigado. Repetição da ação é aviso. `form.lead` com 5–6 campos avisa;
 menos de 2 ou mais de 6 bloqueia. O hero embutido só aceita 2–4 no schema.
 A correspondência de evidência verifica o texto fornecido, não a veracidade
-externa; a confirmação continua sendo responsabilidade editorial.
+externa; a confirmação continua sendo responsabilidade editorial. Na publicação
+pedida pelo operador, a política compartilhada mantém os erros técnicos e
+apresenta as avaliações editoriais como recomendações, sem vetar a decisão.
 
 A unicidade compara somente landings v7: exige dois eixos diferentes e mede
 semelhança de silhueta entre direções próximas. Navegação, catálogo, plano de

@@ -175,7 +175,7 @@ const leadFormSchema = z.object({
 const evidenceRef = z
   .string()
   .min(3)
-  .max(140)
+  .max(160)
   .describe(
     'Copie exatamente uma evidência confirmada de brief.evidence que contém este fato.',
   );

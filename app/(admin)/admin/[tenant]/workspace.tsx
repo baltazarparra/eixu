@@ -357,7 +357,7 @@ export function Workspace({
     (totalErrors > 0 ||
       reviewFindings.length > 0 ||
       site.warnings.length > 0 ||
-      (page?.warnings.length ?? 0) > 0);
+      site.pages.some((item) => item.warnings.length > 0));
   const publishable =
     site.pages.length > 0 &&
     totalErrors === 0 &&
@@ -1187,12 +1187,12 @@ export function Workspace({
                 }
               >
                 {totalErrors
-                  ? `${totalErrors} pendências para publicar`
-                  : `Confira antes de publicar${reviewSuggestions ? ` · ${reviewSuggestions} sugestão(ões)` : ''}`}
+                  ? `${totalErrors} erros técnicos para corrigir`
+                  : `Recomendações para o site${reviewSuggestions ? ` · ${reviewSuggestions} sugestão(ões)` : ''}`}
               </summary>
               <p className="mt-2 text-[var(--color-muted)]">
-                Confira a prévia e as imagens antes de publicar. Os ajustes
-                feitos pelo chat são salvos no rascunho.
+                Confira a prévia e as imagens. As recomendações não impedem
+                publicar; os ajustes pelo chat são salvos no rascunho.
               </p>
               {/* O agente recebe a mesma validação do servidor neste turno.
                   Colar a lista não é mais necessário; a frase abre o pedido. */}

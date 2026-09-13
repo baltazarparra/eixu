@@ -191,12 +191,15 @@ await test('erros agrupam por página com todos os motivos e nada é gravado', a
   assert.deepEqual(result.published, []);
   assert.deepEqual(
     result.blocked.map((item) => item.page),
-    ['/', '/guia'],
+    ['/'],
   );
   const home = result.blocked[0].preflight;
   assert.match(home, /props-invalidas/);
-  assert.match(home, /home-protagonista/);
-  assert.match(home, /composicao-duplicada/);
+  assert.doesNotMatch(home, /home-protagonista|composicao-duplicada/);
+  assert.ok(result.warnings.some((item) => item.rule === 'home-protagonista'));
+  assert.ok(
+    result.warnings.some((item) => item.rule === 'composicao-duplicada'),
+  );
   assert.doesNotMatch(home, /home-tons/);
   assert.equal(writes.length, 0);
 });

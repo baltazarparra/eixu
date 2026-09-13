@@ -213,7 +213,7 @@ export function landingFindings(
   if (!proofs.length)
     add(
       'landing-prova',
-      'A prova precisa de um fato confirmado pelo operador. Escreva o fato no chat (prêmio, número, marca) para o agente registrar com confirm_evidence, ou informe em Dados › Evidências. Sem fato, a seção de prova não entra e a lacuna fica registrada; nunca invente número, marca ou depoimento.',
+      'O site não tem uma seção de prova confirmada. Use apenas fatos disponíveis do cliente; sem evidência, mantenha a oferta sem inventar números, marcas ou depoimentos.',
     );
   for (const block of proofs) {
     const own = claims.filter(
@@ -222,7 +222,7 @@ export function landingFindings(
     if (!own.length || own.some((claim) => !claimSupported(claim, evidence)))
       add(
         'landing-prova',
-        'Cada fato, nome e citação precisa estar na evidência confirmada, vinda do cadastro ou registrada pelo chat com confirm_evidence. Use a redação confirmada; fotos de depoimentos precisam ser reais e enviadas.',
+        'Há alegações que não correspondem às evidências do cliente. O reparo pode ajustar ou retirar a prova sem confirmação. Fotos de depoimentos precisam ser enviadas pelo cliente.',
         'error',
         block,
       );
@@ -231,7 +231,7 @@ export function landingFindings(
     for (const _claim of failing(hero, 'landing-prova'))
       add(
         'landing-prova',
-        'O selo do hero não está sustentado pela evidência informada.',
+        'O selo da abertura não corresponde às evidências cadastradas. O reparo pode ajustar ou retirar o selo.',
         'error',
         hero,
       );
@@ -239,7 +239,7 @@ export function landingFindings(
     if (failing(block, 'landing-preco').length)
       add(
         'landing-preco',
-        'Nome e preço de cada plano devem constar juntos em brief.evidence.',
+        'Nome e preço de cada plano precisam corresponder às informações confirmadas do cliente.',
         'error',
         block,
       );

@@ -179,18 +179,26 @@ for (const version of [2, 3, 4]) {
       { blocks: other, design: f.tenant.brand.design },
     ]);
     const result = await gate.publish();
-    assert.equal(result.blocked.length, version === 4 ? 1 : 0);
-    assert.equal(gate.writes.length, version === 4 ? 0 : 4);
-    if (version === 4) assert.match(result.blocked[0].preflight, /80%/);
+    assert.equal(result.blocked.length, 0);
+    assert.equal(gate.writes.length, 4);
+    assert.equal(
+      result.warnings.some(
+        (finding) => finding.rule === 'composicao-duplicada',
+      ),
+      version === 4,
+    );
+    if (version === 4)
+      assert.ok(result.warnings.some((finding) => /80%/.test(finding.message)));
 
     const exact = await publisher(f, [
       { blocks: f.pages[0].blocks, design: f.tenant.brand.design },
     ]);
-    assert.match(
-      (await exact.publish()).blocked[0].preflight,
-      /composicao-duplicada/,
+    assert.ok(
+      (await exact.publish()).warnings.some(
+        (finding) => finding.rule === 'composicao-duplicada',
+      ),
     );
-    assert.equal(exact.writes.length, 0);
+    assert.ok(exact.writes.length > 0);
     // A política legada também distingue tom e ordem, sem permitir cópia exata.
     other.find((b) => b.id === 'hero').props.layout = 'split';
     other.find((b) => b.id === 'text').props.presentation.tone = 'ink';
@@ -248,11 +256,12 @@ await test('publicação pontual preserva marca publicada e publicação complet
   assert.equal(single.writes.length, 2);
   assert.equal(single.writes.at(-1).sql.includes('published_snapshot'), false);
   const complete = await publisher(f);
-  assert.match(
-    (await complete.publish()).blocked[0].preflight,
-    /abertura-fora-da-vibe/,
+  assert.ok(
+    (await complete.publish()).warnings.some(
+      (finding) => finding.rule === 'abertura-fora-da-vibe',
+    ),
   );
-  assert.equal(complete.writes.length, 0);
+  assert.ok(complete.writes.length > 0);
 
   // Também valida unicidade com o hero do snapshot quando o bloco omite layout.
   const other = structuredClone(f.pages[0].blocks);
@@ -262,8 +271,13 @@ await test('publicação pontual preserva marca publicada e publicação complet
   other.find((b) => b.id === 'hero').props.layout = 'split';
   other.find((b) => b.id === 'facts').props.layout = 'ledger';
   const duplicate = await publisher(f, [{ blocks: other }]);
-  assert.match((await duplicate.publish('guia')).blocked[0].preflight, /80%/);
-  assert.equal(duplicate.writes.length, 0);
+  assert.ok(
+    (await duplicate.publish('guia')).warnings.some(
+      (finding) =>
+        finding.rule === 'composicao-duplicada' && /80%/.test(finding.message),
+    ),
+  );
+  assert.equal(duplicate.writes.length, 2);
 });
 
 await test('primeira publicação pontual usa e grava a marca do rascunho', async () => {
@@ -282,7 +296,7 @@ await test('primeira publicação pontual usa e grava a marca do rascunho', asyn
   );
 });
 
-await test('v4 mantém o piso de layouts e apresentações, inclusive na publicação', async () => {
+await test('v4 mantém o piso na geração e o apresenta como recomendação na publicação', async () => {
   const f = fixture();
   const inner = f.pages[1];
   inner.blocks.forEach((b) => {
@@ -304,11 +318,12 @@ await test('v4 mantém o piso de layouts e apresentações, inclusive na publica
     );
   }
   const gate = await publisher(f);
-  assert.match(
-    (await gate.publish()).blocked[0].preflight,
-    /composicao-generica/,
+  assert.ok(
+    (await gate.publish()).warnings.some(
+      (finding) => finding.rule === 'composicao-generica',
+    ),
   );
-  assert.equal(gate.writes.length, 0);
+  assert.ok(gate.writes.length > 0);
 });
 
 for (const version of [2, 3]) {
@@ -387,11 +402,12 @@ await test('a gramática exige duas fotos distintas e geradas no protagonista pe
       item.image = photos[i];
     });
     const gate = await publisher(f);
-    assert.match(
-      (await gate.publish()).blocked[0].preflight,
-      /protagonista-fora-da-vibe/,
+    assert.ok(
+      (await gate.publish()).warnings.some(
+        (finding) => finding.rule === 'protagonista-fora-da-vibe',
+      ),
     );
-    assert.equal(gate.writes.length, 0);
+    assert.ok(gate.writes.length > 0);
   }
   bento.props.items.forEach((item, i) => {
     item.image = photo(i + 1);
