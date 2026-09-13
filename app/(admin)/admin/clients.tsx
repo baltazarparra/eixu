@@ -242,7 +242,7 @@ export function Clients({
         >
           {tenants.length
             ? 'Tente outro nome ou limpe os filtros para ver todos os clientes.'
-            : 'Cadastre o primeiro cliente com nome, endereço e briefing. Ao abrir o editor, o agente começa a montar o site.'}
+            : 'Cadastre o primeiro cliente com nome, endereço e história. Ao abrir o editor, o agente começa a montar o site.'}
         </EmptyState>
       )}
     </>

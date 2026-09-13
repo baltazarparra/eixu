@@ -7,6 +7,7 @@ const jiti = createJiti(import.meta.url, { alias: { '@': process.cwd() } });
 const { contactsFromForm, intakeFromForm } = await jiti.import(
   '../lib/admin/tenant-input.ts',
 );
+const { intakeForForm } = await jiti.import('../lib/tenant-intake.ts');
 const {
   contactsOf,
   contactsSchema,
@@ -17,7 +18,7 @@ const {
 } = await jiti.import('../lib/tenant-contacts.ts');
 const { previewHref } = await jiti.import('../lib/sites/preview.ts');
 
-async function legacyFixture() {
+async function legacyFixture({ runActive = false } = {}) {
   const row = {
     id: 'legacy-fixture',
     slug: 'fixture',
@@ -42,7 +43,8 @@ async function legacyFixture() {
   });
   const tenant = await queries.getTenantBySlug(row.slug);
   const cleared = [],
-    written = [];
+    written = [],
+    sqls = [];
   const { PATCH } = await loadModule(
     'app/api/admin/[tenant]/settings/route.ts',
     {
@@ -52,6 +54,7 @@ async function legacyFixture() {
         db:
           () =>
           async (_parts, ...values) => {
+            sqls.push(_parts.join('?'));
             written.push(values);
             return [];
           },
@@ -62,6 +65,7 @@ async function legacyFixture() {
           assert.fail('Não deve reler o mesmo perfil'),
         syncSocialProfile: async () => assert.fail('Não deve acessar a rede'),
       },
+      '@/lib/generation/runs': { activeRun: async () => runActive },
       'next/server': { after: () => assert.fail('Não deve agendar leitura') },
     },
   );
@@ -70,9 +74,24 @@ async function legacyFixture() {
     row,
     cleared,
     written,
+    sqls,
+    request: (body) =>
+      PATCH(
+        new Request('https://fixture.test/api/admin/fixture/settings', {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+        }),
+        { params: Promise.resolve({ tenant: row.slug }) },
+      ),
     save: async (remove = false) => {
       // Os campos repetidos são os mesmos que Dados recebe de tenant.contacts.
       const form = new FormData();
+      form.set(
+        'story',
+        intakeForForm(row.brief.intake).story ||
+          'Cliente antigo com perfil social já lido; o operador completa esta história ao salvar os dados.',
+      );
       for (const phone of tenant.contacts.phones) {
         form.append('phone', formatPhone(phone.number));
         form.append('phoneKind', phone.whatsapp ? 'whatsapp' : 'telefone');
@@ -104,6 +123,34 @@ await test('Dados conserva o perfil e o avatar de cliente anterior à coluna de 
   assert.deepEqual(f.cleared, []);
   assert.equal(f.written.length, 1);
   assert.ok(f.written[0].includes(JSON.stringify(result.intake)));
+  assert.match(f.sqls[0], /brief - 'audience'.*'imageScenes'/s);
+});
+
+await test('API exige história, limita referência e protege uma geração ativa', async () => {
+  const f = await legacyFixture();
+  assert.equal((await f.request({ intake: { references: [] } })).status, 400);
+  assert.equal(
+    (
+      await f.request({
+        intake: {
+          story: 'História suficiente para o novo cadastro.',
+          references: ['https://one.test/', 'https://two.test/'],
+        },
+      })
+    ).status,
+    400,
+  );
+  const active = await legacyFixture({ runActive: true });
+  const response = await active.request({
+    intake: {
+      story:
+        'História nova do cliente, com público, região, oferta e trajetória reunidos.',
+      references: ['https://one.test/'],
+    },
+  });
+  assert.equal(response.status, 409);
+  assert.match((await response.json()).error, /Pause a geração/);
+  assert.equal(active.written.length, 0);
 });
 
 await test('remoção explícita da rede antiga continua limpando o perfil e não o ressuscita', async () => {

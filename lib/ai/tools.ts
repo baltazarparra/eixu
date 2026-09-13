@@ -1511,7 +1511,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
     set_design: tool({
       description:
-        'Define briefing e direção de arte versionada em uma chamada. Obrigatória antes de build_site. A direção é recusada quando repete a arquitetura visual de outro cliente.',
+        'Define briefing e direção de arte versionada em uma chamada. Obrigatória antes de build_site. Com referência visual verificada, ela comanda a estrutura e os eixos; sem referência, vale a faixa da vibe e a trava de unicidade.',
       inputSchema: designProfileInputSchema,
       execute: safe(async (input) => {
         // Cor escolhida no cadastro é decisão do operador: a direção de arte
@@ -1581,11 +1581,9 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           throw new ToolError(
             'Declare em brief.gaps as referências sem leitura visual; não trate texto ou URL como evidência de estilo.',
           );
-        // Uma referência verificada decide dentro da vibe, não no lugar dela.
-        // Antes ela pulava a faixa inteira: os dois clientes medidos em
-        // 12/09/2026 gravaram eixos neutros e o renderer caía na base
-        // comercial. Agora cada aspecto documentado libera só os seus eixos;
-        // composição de hero, motivo, variância e movimento ficam com a vibe.
+        // A v6 transforma uma leitura visual completa em autoridade sobre a
+        // estrutura e os eixos. Sem referenceDirection, a vibe continua sendo
+        // o contrato determinístico da geração.
         const vibe = vibeOf(activeBrand);
         const referenceLed = !!input.referenceDirection;
         const aspects = referenceAspects({
@@ -1594,13 +1592,9 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         const outOfLane = laneIssues(vibe, input, aspects);
         if (outOfLane.length) {
           throw new ToolError(
-            `A direção não cabe na vibe ${VIBE_LABEL[vibe]} escolhida no cadastro. ${outOfLane.join(
-              ' ',
-            )}${
-              referenceLed
-                ? ` A referência dirige ${[...aspects].join(', ')}; os demais eixos continuam da vibe.`
-                : ''
-            }`,
+            referenceLed
+              ? `A direção contradiz a estrutura escolhida para reproduzir a referência. ${outOfLane.join(' ')}`
+              : `A direção não cabe na vibe ${VIBE_LABEL[vibe]} escolhida no cadastro. ${outOfLane.join(' ')}`,
           );
         }
 
@@ -1625,7 +1619,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
               )}. Escreva cada pedido com o assunto da página correspondente.`,
           );
         }
-        // A distância entre eixos continua informativa. Na v5 a família e a
+        // A distância entre eixos continua informativa. Na v5/v6 a família e a
         // silhueta completa são verificadas na composição; bloquear a direção
         // aqui impediria a terceira estrutura de moderno e ousado, cujas
         // faixas visuais têm poucos enums por definição.
@@ -1689,19 +1683,13 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         return {
           ok: true,
           vibe,
-          visualAuthority: referenceLed ? 'references' : 'vibe',
+          visualAuthority: referenceLed ? 'reference' : 'vibe',
           referenceAspects: [...aspects],
           structure: profile.structure,
           structureRationale: profile.structureRationale,
           gramatica: grammarDirection(vibe, profile),
           aberturaDaHome: structureGrammar(vibe, profile).openings,
           protagonistaDaHome: structureGrammar(vibe, profile).protagonists,
-          ...(referenceLed && nearest && nearest.distance < 3
-            ? {
-                warning:
-                  'Perfil próximo de outro site. Diferencie conteúdo e composição preservando os traços das referências; a trava de home idêntica continua ativa.',
-              }
-            : {}),
           concept: profile.concept,
           signatureElement: profile.signatureElement,
           structuralDistance: nearest?.distance ?? null,

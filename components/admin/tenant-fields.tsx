@@ -3,60 +3,58 @@ import { ContactFields } from '@/components/admin/contact-fields';
 import type { Intake } from '@/lib/tenant-intake';
 import type { Contacts } from '@/lib/tenant-contacts';
 
-const FIELD_META = {
-  segment: ['Segmento', 120],
-  region: ['Região atendida', 120],
-  audience: ['Para quem vende', 240],
-  offer: ['O que a empresa oferece', 240],
-  goal: ['Ação esperada do visitante', 240],
-} as const;
-
-function IntakeFields({
-  keys,
-  intake,
-  required = false,
-}: {
-  keys: (keyof typeof FIELD_META)[];
-  intake: Partial<Intake>;
-  required?: boolean;
-}) {
-  return keys.map((key) => {
-    const [label, maxLength] = FIELD_META[key];
-    return (
-      <label key={key} className="admin-field">
-        <span>{label}</span>
-        <input
-          className="admin-input"
-          name={key}
-          maxLength={maxLength}
-          required={required}
-          defaultValue={intake[key] ?? ''}
-        />
-      </label>
-    );
-  });
+function StoryField({ intake }: { intake: Partial<Intake> }) {
+  return (
+    <label className="admin-field sm:col-span-2">
+      <span>História do cliente</span>
+      <textarea
+        name="story"
+        className="admin-input"
+        rows={9}
+        maxLength={12000}
+        required
+        defaultValue={intake.story ?? ''}
+        placeholder="Conte como a empresa nasceu, o que faz, para quem vende, onde atende, seus diferenciais, provas e o que espera que o visitante faça."
+      />
+      <small>
+        Esta é a principal fonte factual do site. Inclua segmento, região
+        atendida e público dentro da narrativa, junto do contexto que torna o
+        cliente único.
+      </small>
+    </label>
+  );
 }
 
-function EvidenceAndReferences({ intake }: { intake: Partial<Intake> }) {
+function ReferenceField({ intake }: { intake: Partial<Intake> }) {
+  return (
+    <label className="admin-field sm:col-span-2">
+      <span>
+        Referência visual <em>opcional</em>
+      </span>
+      <input
+        name="reference"
+        className="admin-input"
+        type="url"
+        inputMode="url"
+        maxLength={2000}
+        defaultValue={intake.references?.[0] ?? ''}
+        placeholder="https://exemplo.com"
+      />
+      <small>
+        Use um único site. Quando o link puder ser lido, sua composição,
+        tipografia, imagens, ritmo e acabamento terão prioridade sobre a vibe e
+        os padrões do gerador, dentro dos recursos disponíveis.
+        {(intake.references?.length ?? 0) > 1
+          ? ` Este cadastro antigo tem ${intake.references?.length} referências; ao salvar, confirme acima qual será a única.`
+          : ''}
+      </small>
+    </label>
+  );
+}
+
+function EvidenceAndConstraints({ intake }: { intake: Partial<Intake> }) {
   return (
     <>
-      <label className="admin-field">
-        <span>
-          Referências <em>opcional</em>
-        </span>
-        <textarea
-          name="references"
-          className="admin-input"
-          rows={3}
-          defaultValue={intake.references?.join('\n')}
-          placeholder="Uma URL por linha, até 3"
-        />
-        <small>
-          Sites que devem orientar estrutura, tipografia, imagens e ritmo têm
-          prioridade sobre a vibe, mantendo a marca e a coerência do site.
-          Instagram e LinkedIn ficam em Contatos.
-        </small>
-      </label>
       <EvidenceFields initial={intake.evidence} />
       <label className="admin-field">
         <span>
@@ -156,15 +154,23 @@ export function TenantFields({
       {compact ? (
         <>
           <section id="briefing" className="admin-form-section">
-            <h2 className="text-base font-semibold">
-              O que o site precisa fazer
-            </h2>
+            <h2 className="text-base font-semibold">História do cliente</h2>
             <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
-              Dois fatos bastam para começar. O agente transforma isso em plano,
-              imagens e páginas; qualquer lacuna continua explícita.
+              Conte a história com substância. O agente transforma essa fonte em
+              posicionamento, plano, imagens e páginas sem inventar o que não
+              foi informado.
             </p>
             <div className="grid gap-4 sm:grid-cols-2">
-              <IntakeFields keys={['offer', 'goal']} intake={intake} required />
+              <StoryField intake={intake} />
+            </div>
+          </section>
+          <section id="referencia" className="admin-form-section">
+            <h2 className="text-base font-semibold">Referência para o site</h2>
+            <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
+              Se houver uma referência, ela passa a comandar a direção visual.
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <ReferenceField intake={intake} />
             </div>
           </section>
           <details className="admin-optional-fields">
@@ -180,11 +186,7 @@ export function TenantFields({
                   defaultValue={values.contactEmail ?? ''}
                 />
               </label>
-              <IntakeFields
-                keys={['segment', 'region', 'audience']}
-                intake={intake}
-              />
-              <EvidenceAndReferences intake={intake} />
+              <EvidenceAndConstraints intake={intake} />
             </div>
             <ContactFields contacts={contacts} />
           </details>
@@ -193,17 +195,15 @@ export function TenantFields({
         <>
           <ContactFields contacts={contacts} />
           <section id="briefing" className="admin-form-section">
-            <h2 className="text-base font-semibold">Briefing do negócio</h2>
+            <h2 className="text-base font-semibold">História e referência</h2>
             <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
-              O agente só afirma o que estiver aqui ou nas referências lidas; o
-              resto vira lacuna.
+              A história sustenta o conteúdo. Uma referência visual verificada
+              comanda a composição; sem ela, a vibe define a direção.
             </p>
             <div className="grid gap-4 sm:grid-cols-2">
-              <IntakeFields
-                keys={['segment', 'region', 'audience', 'offer', 'goal']}
-                intake={intake}
-              />
-              <EvidenceAndReferences intake={intake} />
+              <StoryField intake={intake} />
+              <ReferenceField intake={intake} />
+              <EvidenceAndConstraints intake={intake} />
             </div>
           </section>
         </>

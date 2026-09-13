@@ -1,7 +1,7 @@
 /** Política única do produto e das avaliações. IDs confirmados no AI Gateway. */
 export const DEFAULT_MODEL = 'google/gemini-3.8-flash';
 export const DEFAULT_LOGO_CRITIC_MODEL = 'anthropic/claude-sonnet-5';
-export const HARNESS_VERSION = 'gemini-3.8-quality-v5-logo';
+export const HARNESS_VERSION = 'gemini-3.8-quality-v6-reference-story';
 export const TURN_TIMEOUT_MS = 760_000;
 export const CRITIC_TIMEOUT_MS = 150_000;
 export const LOGO_READ_TIMEOUT_MS = 12_000;

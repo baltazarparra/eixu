@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { intakeSchema, lines } from '@/lib/tenant-intake';
+import { intakeWriteSchema, lines } from '@/lib/tenant-intake';
 import { contactsSchema, derivedSocialUrl } from '@/lib/tenant-contacts';
 import { vibeSchema } from '@/lib/design/vibes';
 import { text } from '@/lib/form-data';
@@ -74,15 +74,17 @@ export function intakeFromForm(form: FormData) {
   const field = (name: string) => text(form, name).trim();
   // O perfil lido no briefing é a primeira rede que a leitura sabe abrir.
   const contacts = contactsFromForm(form);
-  return intakeSchema.safeParse({
-    segment: field('segment'),
-    region: field('region'),
-    audience: field('audience'),
-    offer: field('offer'),
-    goal: field('goal'),
+  const references = [
+    ...rows(form, 'reference'),
+    ...field('references')
+      .split('\n')
+      .map((value) => value.trim()),
+  ].filter(Boolean);
+  return intakeWriteSchema.safeParse({
+    story: field('story'),
     evidence: lines(field('evidence')),
     constraints: lines(field('constraints')),
-    references: lines(field('references'), 3),
+    references,
     socialUrl: contacts.success ? derivedSocialUrl(contacts.data) : '',
   });
 }

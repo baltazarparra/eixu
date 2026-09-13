@@ -147,6 +147,7 @@ export async function critiquePages(
   if (!shots.length) throw new Error('Não há capturas para a crítica visual.');
   const legacy =
     tenant.brand.design?.version === 2 || tenant.brand.design?.version === 3;
+  const referenceAuthority = tenant.brand.design?.version === 6;
   const { generation: _generation, ...brief } = tenant.brief;
   const content: (TextPart | FilePart)[] = [
     {
@@ -214,11 +215,13 @@ export async function critiquePages(
 Verifique factualidade da oferta, identidade ligada ao negócio, decisão de abertura, ritmo, recorte, legibilidade e jornada com intenções diferentes.
 ${
   legacy
-    ? 'O perfil v2/v3 conserva sua composição e a prioridade das referências verificadas. Não aplique a gramática v4 nem peça migração de abertura ou protagonista ao revisar esse perfil.'
-    : `${grammarDirection(vibeOf(tenant.brand), tenant.brand.design)}\nUse criterio identidade-da-vibe quando os pixels não realizam essa gramática: abertura genérica, seção protagonista ausente ou a página lendo como um modelo neutro que serviria para qualquer negócio. Uma referência verificada decide tipografia, imagens, ritmo e superfície; ela não justifica trocar a silhueta da vibe.`
+    ? 'O perfil v2/v3 conserva sua composição e a prioridade das referências verificadas. Não aplique o perfil v6 nem peça migração de abertura ou protagonista ao revisar esse perfil.'
+    : referenceAuthority
+      ? `${grammarDirection(vibeOf(tenant.brand), tenant.brand.design, true)}\nUse criterio referencias quando os pixels não realizam a estrutura e as aplicações documentadas. A vibe do cadastro não é motivo para afastar o resultado da fonte.`
+      : `${grammarDirection(vibeOf(tenant.brand), tenant.brand.design)}\nUse criterio identidade-da-vibe quando os pixels não realizam essa gramática: abertura genérica, seção protagonista ausente ou a página lendo como um modelo neutro que serviria para qualquer negócio.`
 }
 Se brand.logoFit existir, confira o logo do cabeçalho e do rodapé sobre a superfície real: placa branca de um arquivo sem transparência ou tinta sem contraste sobre fundo escuro é erro de identidade; brand.logoDarkUrl é a versão usada sobre papel escuro.
-Quando brand.design.referenceDirection existe, ela prevalece sobre a vibe nos aspectos listados em aspectosDaReferencia: compare os pixels do rascunho com as observações visuais persistidas em brief.sources e as aplicações planejadas. Confira layout, escala tipográfica, papel/recorte das imagens e ritmo na home e nas outras páginas como um conjunto. Não reivindique comparação com pixels da referência original: você recebe sua leitura visual, além dos pixels atuais do cliente. Use criterio referencias para desvios concretos; uma direção que ignora os traços centrais documentados sem adaptação justificada é erro material. Similaridade apenas de cor ou fonte não satisfaz o plano. Adaptação por marca, factualidade, legibilidade e jornada pode ser correta; mistura incoerente entre fontes precisa de correção. Sem referenceDirection, a vibe orienta também tipografia, imagens e superfície. Imagem de inspiração não prova obra/equipe real. Não proponha serviço, prova, recurso ou gráfico não sustentado pelo briefing e pelo catálogo existente.
+Quando brand.design.referenceDirection existe, compare os pixels do rascunho com as observações visuais persistidas em brief.sources e as seis aplicações planejadas. Confira estrutura, abertura, escala tipográfica, papel e recorte das imagens, ritmo, superfície e mobile na home e nas outras páginas como um conjunto. No perfil v6, a referência prevalece sobre a vibe em toda a direção visual. Não reivindique comparação com pixels da referência original: você recebe sua leitura visual, além dos pixels atuais do cliente. Use criterio referencias para desvios concretos; uma direção que ignora os traços centrais documentados sem adaptação justificada é erro material. Similaridade apenas de cor ou fonte não satisfaz o plano. Adaptação por marca, factualidade, legibilidade, catálogo e jornada pode ser correta. Sem referenceDirection, a vibe orienta a direção. Imagem de inspiração não prova obra ou equipe real. Não proponha serviço, prova, recurso ou gráfico não sustentado pelo briefing e pelo catálogo existente.
 ${copyDirection(vibeOf(tenant.brand))}
 ${COPY_REVIEW}
 ${RESPONSIVE_CONTRACT}

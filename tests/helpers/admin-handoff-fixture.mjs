@@ -35,11 +35,8 @@ export function handoffData() {
     tenant,
     summary: { leads30d: 147, running: 1 },
     intake: {
-      segment: 'Marcenaria',
-      region: 'Campinas',
-      audience: 'Arquitetos e moradores',
-      offer: 'Móveis planejados sob medida',
-      goal: 'Pedir orçamento',
+      story:
+        'A Marcenaria Horizonte nasceu em Campinas e há 12 anos cria móveis planejados sob medida para arquitetos e moradores da região. A oficina própria acompanha cada projeto e o site deve facilitar pedidos de orçamento.',
       evidence: ['Oficina própria', '12 anos de atuação'],
       constraints: ['Não prometer prazo'],
       references: [],

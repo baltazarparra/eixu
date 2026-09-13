@@ -3,7 +3,7 @@ import { after } from 'next/server';
 import { isAuthenticated } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { getTenantBySlug } from '@/lib/tenant-queries';
-import { intakeSchema } from '@/lib/tenant-intake';
+import { intakeSchema, intakeWriteSchema } from '@/lib/tenant-intake';
 import { contactsSchema, primaryWhatsapp } from '@/lib/tenant-contacts';
 import { tenantDetailsSchema } from '@/lib/admin/tenant-input';
 import { vibeOf, vibeSchema } from '@/lib/design/vibes';
@@ -25,7 +25,7 @@ const patch = z
     logoUrl: z.url().nullable().optional(),
     /** Versão do logo para superfície escura; null remove a escolha. */
     logoDarkUrl: z.url().nullable().optional(),
-    intake: intakeSchema.optional(),
+    intake: intakeWriteSchema.optional(),
     vibe: vibeSchema.optional(),
   })
   .refine(
@@ -71,14 +71,23 @@ export async function PATCH(
       );
   }
 
-  const previousSocial = intakeSchema.safeParse(tenant.brief.intake).data
-    ?.socialUrl;
+  const previousIntake = intakeSchema.safeParse(tenant.brief.intake).data;
+  const previousSocial = previousIntake?.socialUrl;
   const vibeChanged =
     input.vibe !== undefined && input.vibe !== vibeOf(tenant.brand);
-  if (vibeChanged && (await activeRun(tenant.id)))
+  const storyChanged =
+    input.intake !== undefined &&
+    input.intake.story !== (previousIntake?.story ?? '');
+  const referenceChanged =
+    input.intake !== undefined &&
+    JSON.stringify(input.intake.references) !==
+      JSON.stringify(previousIntake?.references ?? []);
+  const directionChanged = vibeChanged || storyChanged || referenceChanged;
+  if (directionChanged && (await activeRun(tenant.id)))
     return Response.json(
       {
-        error: 'Pause a geração em andamento antes de trocar a direção visual.',
+        error:
+          'Pause a geração em andamento antes de alterar a história, a referência ou a direção visual.',
       },
       { status: 409 },
     );
@@ -92,7 +101,12 @@ export async function PATCH(
       contacts = case when ${contacts !== undefined} then ${JSON.stringify(contacts ?? {})}::jsonb else contacts end,
       whatsapp = case when ${contacts !== undefined} then ${contacts ? primaryWhatsapp(contacts) : null} else whatsapp end,
       contact_email = case when ${input.contactEmail !== undefined} then ${input.contactEmail ?? null} else contact_email end,
-      brief = case when ${input.intake !== undefined} then brief || jsonb_build_object('intake', ${JSON.stringify(input.intake ?? {})}::jsonb) else brief end,
+      brief = case when ${input.intake !== undefined}
+                   then (case when ${storyChanged || referenceChanged}
+                         then brief - 'audience' - 'offer' - 'goal' - 'personality' - 'evidence' - 'constraints' - 'gaps' - 'pagePlan' - 'imageScenes'
+                         else brief end)
+                        || jsonb_build_object('intake', ${JSON.stringify(input.intake ?? {})}::jsonb)
+                   else brief end,
       brand = case when ${vibeChanged}
                    then (brand - 'design') || jsonb_build_object('vibe', ${input.vibe ?? null}::text)
                    else brand end,
@@ -129,6 +143,6 @@ export async function PATCH(
     ok: true,
     brand,
     social,
-    regenerationRequired: vibeChanged,
+    regenerationRequired: directionChanged,
   });
 }

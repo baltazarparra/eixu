@@ -71,10 +71,7 @@ await test(
         .then((rows) => rows.length),
       1,
     );
-    assert.equal(
-      await page.$$('.admin-bar').then((rows) => rows.length),
-      1,
-    );
+    assert.equal(await page.$$('.admin-bar').then((rows) => rows.length), 1);
     await clickText('Publicar');
     await page.waitForFunction(() => window.__refreshes === 1);
     // Seletor de página na barra: abre pelo teclado com foco itinerante, a
@@ -95,7 +92,8 @@ await test(
       page.$eval('.admin-bar-page', (node) => node.textContent);
     const pickerFocused = () =>
       page.evaluate(
-        () => document.activeElement === document.querySelector('.admin-bar-page'),
+        () =>
+          document.activeElement === document.querySelector('.admin-bar-page'),
       );
     assert.equal(await pickerText(), '/rascunho');
     await page.focus('.admin-bar-page');
@@ -107,7 +105,9 @@ await test(
     );
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
-    await page.waitForFunction(() => !document.querySelector('.admin-bar-menu'));
+    await page.waitForFunction(
+      () => !document.querySelector('.admin-bar-menu'),
+    );
     assert.equal(await pickerText(), '/servicos');
     assert.match(
       await page.$eval('iframe', (node) => node.getAttribute('src')),
@@ -121,7 +121,9 @@ await test(
     await page.click('.admin-bar-page');
     await page.waitForSelector('.admin-bar-menu');
     await page.keyboard.press('Escape');
-    await page.waitForFunction(() => !document.querySelector('.admin-bar-menu'));
+    await page.waitForFunction(
+      () => !document.querySelector('.admin-bar-menu'),
+    );
     assert.equal(await pickerFocused(), true);
     fixture.data.site.pages.pop();
     await open('/admin/marcenaria-horizonte/imagens');
@@ -236,6 +238,51 @@ await test(
     await open('/admin?empty');
     await clickText('Cadastrar cliente');
     await page.waitForSelector('#new-client');
+    assert.deepEqual(
+      await page.$eval('[name="story"]', (node) => ({
+        required: node.required,
+        rows: node.rows,
+      })),
+      { required: true, rows: 9 },
+    );
+    assert.equal(
+      await page.$$('[name="reference"]').then((nodes) => nodes.length),
+      1,
+    );
+    assert.equal(
+      await page.$eval('[name="reference"]', (node) => node.type),
+      'url',
+    );
+    for (const removed of ['segment', 'region', 'audience', 'offer', 'goal'])
+      assert.equal(await page.$(`[name="${removed}"]`), null);
+    for (const removed of [
+      'O que o site precisa fazer',
+      'Segmento',
+      'Região atendida',
+      'Para quem vende',
+    ])
+      assert.equal(
+        await page.evaluate(
+          (label) => document.body.innerText.includes(label),
+          removed,
+        ),
+        false,
+      );
+    for (const width of [390, 1440]) {
+      await page.setViewport({ width, height: 900 });
+      assert.equal(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth + 1,
+        ),
+        true,
+        `novo cadastro sem overflow em ${width}`,
+      );
+      await page.screenshot({
+        path: `outputs/admin-handoff/novo-cliente-${width}.png`,
+        fullPage: true,
+      });
+    }
+    await page.setViewport({ width: 1440, height: 900 });
     assert.equal(
       await page.evaluate(() => {
         const summary = [...document.querySelectorAll('summary')].find(

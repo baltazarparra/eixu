@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { referenceDirectionSchema } from './references';
+import { REFERENCE_ASPECTS, referenceDirectionSchema } from './references';
 import {
   BODY_FONTS,
   BODY_TYPE,
@@ -45,7 +45,7 @@ export const creativeBriefSchema = z.object({
 export const designProfileInputSchema = z.object({
   brief: creativeBriefSchema,
   structure: structureKeySchema.describe(
-    'Uma das três estruturas completas da vibe escolhida no cadastro.',
+    'Sem referência, uma das três estruturas da vibe. Com referência visual verificada, a mais próxima entre as doze estruturas disponíveis.',
   ),
   structureRationale: z
     .string()
@@ -114,9 +114,11 @@ export type DesignProfileInput = z.infer<typeof designProfileInputSchema>;
  * Versões do perfil. 2 e 3 preservam sites publicados: uma referência
  * verificada os renderiza na base comercial neutra. A 4 traz a gramática por
  * vibe, a referência modulando aspectos e a vibe preservada no renderer. A 5
- * fixa uma das três estruturas da vibe e sua composição autoral.
+ * fixa uma das três estruturas da vibe e sua composição autoral. A 6 dá à
+ * referência verificada autoridade sobre a estrutura e toda a direção visual;
+ * a vibe permanece como voz e fallback.
  */
-export const DESIGN_PROFILE_VERSION = 5;
+export const DESIGN_PROFILE_VERSION = 6;
 
 export type DesignProfile = Omit<
   DesignProfileInput,
@@ -133,7 +135,7 @@ export type DesignProfile = Omit<
   | 'motion'
   | 'density'
 > & {
-  version: 2 | 3 | 4 | 5;
+  version: 2 | 3 | 4 | 5 | 6;
   structure?: StructureKey;
   structureRationale?: string;
   signature: string;
@@ -183,7 +185,7 @@ export function completeDesignProfile(
       : {}),
   };
   return {
-    version: DESIGN_PROFILE_VERSION,
+    version: input.referenceDirection ? DESIGN_PROFILE_VERSION : 5,
     ...structural,
     signature: designSignature(structural),
     definedAt: now,
@@ -193,13 +195,23 @@ export function completeDesignProfile(
 export function isDesignProfile(value: unknown): value is DesignProfile {
   if (!value || typeof value !== 'object') return false;
   const profile = value as Partial<DesignProfile>;
+  const reference = referenceDirectionSchema.safeParse(
+    profile.referenceDirection,
+  );
   return (
-    [2, 3, 4, 5].includes(profile.version ?? 0) &&
+    [2, 3, 4, 5, 6].includes(profile.version ?? 0) &&
     typeof profile.concept === 'string' &&
     typeof profile.signatureElement === 'string' &&
-    (profile.version !== 5 ||
+    ((profile.version ?? 0) < 5 ||
       (isStructureKey(profile.structure) &&
         typeof profile.structureRationale === 'string')) &&
+    (profile.version !== 6 ||
+      (reference.success &&
+        REFERENCE_ASPECTS.every((aspect) =>
+          reference.data.decisions.some(
+            (decision) => decision.aspect === aspect,
+          ),
+        ))) &&
     DESIGN_AXES.every((axis) => typeof profile[axis] === 'string')
   );
 }

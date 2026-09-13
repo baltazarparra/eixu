@@ -31,11 +31,15 @@ export type CompositionConflict = {
 export async function compositionConflict(
   tenantId: string,
   blocks: BlockInstance[],
-  design?: Pick<DesignProfile, 'version' | 'heroComposition' | 'navigation'>,
+  design?: Pick<
+    DesignProfile,
+    'version' | 'heroComposition' | 'navigation' | 'referenceDirection'
+  >,
 ): Promise<CompositionConflict | null> {
+  if (design?.version === 6 && design.referenceDirection) return null;
   const legacy = !design?.version || design.version < 4;
   const own =
-    design?.version === 5
+    (design?.version ?? 0) >= 5
       ? uniquenessSilhouette(blocks, design)
       : silhouette(blocks, design);
   if (own.length < 4) return null;
@@ -99,11 +103,11 @@ export async function compositionConflict(
     }
     const otherDesign = row.design as DesignProfile | undefined;
     const other =
-      design?.version === 5
+      (design?.version ?? 0) >= 5
         ? uniquenessSilhouette(row.blocks, otherDesign)
         : silhouette(row.blocks, otherDesign);
     const similarity =
-      design?.version === 5
+      (design?.version ?? 0) >= 5
         ? orderedSilhouetteSimilarity(own, other)
         : silhouetteSimilarity(own, other);
     if (similarity < SILHOUETTE_LIMIT) continue;

@@ -24,19 +24,19 @@ publica.
 Medido por `siteMetrics` e pelos gates; abaixo disso a saída nem chega à
 revisão humana.
 
-| Medida                                      | Mínimo                              |
-| ------------------------------------------- | ----------------------------------- |
-| Páginas orgânicas conectadas                | 3                                   |
-| Palavras úteis por página orgânica          | 100                                 |
-| Fotos geradas distintas na home             | 2                                   |
-| Páginas orgânicas com pelo menos uma imagem | todas                               |
-| Seção protagonista na home                  | 1                                   |
-| Estrutura v5 escolhida e preservada         | 1 das 3 da vibe                     |
-| Composição autoral v5                       | 1, com duas fotos e papéis próprios |
-| Tons distintos na home                      | 3, um deles accent ou secondary     |
-| Momentos de motion                          | 1 a 3                               |
-| Erros de `lintPage` e `lintSite`            | 0                                   |
-| Overflow horizontal em 1440 e 390           | nenhum                              |
+| Medida                                      | Mínimo                                     |
+| ------------------------------------------- | ------------------------------------------ |
+| Páginas orgânicas conectadas                | 3                                          |
+| Palavras úteis por página orgânica          | 100                                        |
+| Fotos geradas distintas na home             | 2                                          |
+| Páginas orgânicas com pelo menos uma imagem | todas                                      |
+| Seção protagonista na home                  | 1                                          |
+| Estrutura v5 ou v6 escolhida e preservada   | 1 da vibe ou 1 das 12 pela referência      |
+| Composição autoral v5/v6                    | 1, com duas fotos e papéis próprios        |
+| Tons distintos na home                      | 3 sem referência; ritmo da fonte no v6     |
+| Momentos de motion                          | 1 a 3 sem referência; ritmo da fonte no v6 |
+| Erros de `lintPage` e `lintSite`            | 0                                          |
+| Overflow horizontal em 1440 e 390           | nenhum                                     |
 
 ## Rubrica, 0 a 3
 

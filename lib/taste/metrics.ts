@@ -326,9 +326,9 @@ export function siteMetrics(
  * de texto: sem foto no miolo, sem seção protagonista e com um tom só.
  */
 /**
- * Gramática da vibe: a silhueta pertence à vibe escolhida no cadastro, e uma
- * referência verificada decide dentro dela. V4 usa a faixa ampla da vibe; v5
- * usa a estrutura escolhida. Sites v2 e v3 mantêm a composição publicada.
+ * V4 usa a faixa ampla da vibe; v5 usa uma de suas três estruturas; v6 usa a
+ * estrutura que mais se aproxima da referência, mesmo quando pertence a outra
+ * família. Sites v2 e v3 mantêm a composição publicada.
  */
 function grammarFindings(
   pages: SitePage[],
@@ -338,7 +338,10 @@ function grammarFindings(
 ): StructuralFinding[] {
   const grammar = structureGrammar(vibe, design);
   const findings: StructuralFinding[] = [];
-  const label = VIBE_LABEL[vibe];
+  const referenceAuthority = design.version === 6;
+  const label = referenceAuthority
+    ? `estrutura guiada pela referência ${grammar.structure?.label ?? ''}`.trim()
+    : `vibe ${VIBE_LABEL[vibe]}`;
   for (const page of pages) {
     if (page.type === 'thank_you' || page.type === 'post') continue;
     const content = contentBlocks(page.blocks);
@@ -375,7 +378,7 @@ function grammarFindings(
           page: path,
           level: 'error',
           rule: 'composicao-autoral-obrigatoria',
-          message: `A home v5 precisa de exatamente uma signature.composition; recebeu ${signatureBlocks.length}.`,
+          message: `A home com perfil v${design.version} precisa de exatamente uma signature.composition; recebeu ${signatureBlocks.length}.`,
         });
     }
     const opening = marks[0];
@@ -390,7 +393,7 @@ function grammarFindings(
         blockId: opening.block.id,
         blockIndex: 0,
         blockType: opening.block.type,
-        message: `A abertura ${opening.signature} não pertence à vibe ${label}. Use uma destas: ${allowedOpenings.join(', ')}.`,
+        message: `A abertura ${opening.signature} não pertence à ${label}. Use uma destas: ${allowedOpenings.join(', ')}.`,
       });
     for (const [index, mark] of marks.entries()) {
       if (!mark.block.type.startsWith('hero.')) continue;
@@ -404,7 +407,7 @@ function grammarFindings(
         blockId: mark.block.id,
         blockIndex: index,
         blockType: mark.block.type,
-        message: `Headline com ${headline.length} caracteres. A vibe ${label} sustenta até ${grammar.headline}: encurte o título e leve o resto para o subtext.`,
+        message: `Headline com ${headline.length} caracteres. A ${label} sustenta até ${grammar.headline}: encurte o título e leve o resto para o subtext.`,
       });
     }
     if (
@@ -420,7 +423,7 @@ function grammarFindings(
         page: path,
         level: 'error',
         rule: 'protagonista-fora-da-vibe',
-        message: `A home precisa da seção protagonista da vibe ${label}: ${grammar.protagonists.join(' ou ')}. Coloque duas fotos distintas da biblioteca deste cliente no próprio bloco.`,
+        message: `A home precisa da seção protagonista da ${label}: ${grammar.protagonists.join(' ou ')}. Coloque duas fotos distintas da biblioteca deste cliente no próprio bloco.`,
       });
     const closing = marks[marks.length - 1];
     if (!grammar.closings.includes(closing.signature))
@@ -431,7 +434,7 @@ function grammarFindings(
         blockId: closing.block.id,
         blockIndex: marks.length - 1,
         blockType: closing.block.type,
-        message: `O fechamento ${closing.signature} não é o da vibe ${label}. Prefira uma destas: ${grammar.closings.join(', ')}.`,
+        message: `O fechamento ${closing.signature} não é o da ${label}. Prefira uma destas: ${grammar.closings.join(', ')}.`,
       });
     for (const [index, mark] of marks.entries())
       if (grammar.avoid.includes(mark.signature))
@@ -442,7 +445,7 @@ function grammarFindings(
           blockId: mark.block.id,
           blockIndex: index,
           blockType: mark.block.type,
-          message: `${mark.signature} contradiz a vibe ${label}. Escolha outro layout para esta seção.`,
+          message: `${mark.signature} contradiz a ${label}. Escolha outro layout para esta seção.`,
         });
   }
   return findings;
@@ -542,7 +545,19 @@ export function structuralFindings(
           'A home não tem seção protagonista: nenhuma seção reúne duas fotos do cliente. Use feature.explorer, media.gallery, feature.bento com imagens, editorial.resources com imagem, ou o hero atelier com outra seção ilustrada.',
       });
     const tones = new Set(metrics.tones);
-    if (![...tones].some((t) => t === 'accent' || t === 'secondary'))
+    const referenceAuthority = design?.version === 6;
+    if (referenceAuthority && tones.size < 2)
+      findings.push({
+        page: '/',
+        level: 'warn',
+        rule: 'home-tons',
+        message:
+          'A home usa um único tom. Confirme que esse ritmo contínuo vem da referência; caso contrário, crie ao menos uma transição de superfície.',
+      });
+    else if (
+      !referenceAuthority &&
+      ![...tones].some((t) => t === 'accent' || t === 'secondary')
+    )
       findings.push({
         page: '/',
         level: 'error',
@@ -550,7 +565,7 @@ export function structuralFindings(
         message:
           'Aplique a cor principal ou complementar em uma seção da home, além das áreas de leitura.',
       });
-    else if (tones.size < 3)
+    else if (!referenceAuthority && tones.size < 3)
       findings.push({
         page: '/',
         level: 'warn',

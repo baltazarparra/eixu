@@ -1,17 +1,18 @@
 /*
- * Vibes do site. A vibe é escolhida no cadastro e delimita os eixos que a
- * direção de arte pode usar (lib/design/vibes.ts); aqui ficam as decisões que
- * só o CSS realiza: escala tipográfica, respiro, superfície e tratamento.
+ * Famílias visuais do site. Sem referência, a vibe escolhida no cadastro
+ * delimita os eixos da direção de arte (lib/design/vibes.ts). No perfil v6,
+ * data-vibe recebe a família da estrutura escolhida pela referência. Aqui
+ * ficam as decisões que só o CSS realiza: escala, respiro e tratamento.
  *
  * As regras anteriores das três vibes não comerciais continuam compatíveis
  * com perfis v2. A seção de contratos v3, mais abaixo, vale também para o v4 e
  * separa as quatro faixas sem redesenhar automaticamente os sites já
  * publicados.
  *
- * No perfil v4 a vibe chega ao renderer mesmo com referência verificada; antes
- * qualquer leitura visual derrubava o site inteiro para a base comercial.
- * `data-reference-aspects` lista o que a referência documentou, e as duas
- * decisões mais opinativas da vibe saem do caminho do aspecto correspondente.
+ * No perfil v4/v5 a vibe chega ao renderer mesmo com referência verificada;
+ * antes qualquer leitura visual derrubava o site inteiro para a base
+ * comercial. No v6, a referência escolhe uma das quatro famílias. O atributo
+ * `data-reference-aspects` registra os seis aspectos verificados.
  *
  * Nada aqui toca variáveis emitidas por themeVars no atributo style (--radius,
  * fontes e cores): elas são inline e a faixa da vibe é quem as restringe.

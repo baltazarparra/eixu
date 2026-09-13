@@ -12,7 +12,7 @@ import {
 } from '../helpers/reference-fixture.mjs';
 
 await test(
-  'referência preserva fontes, superfície e layout no CSS real mesmo com vibe conflitante',
+  'referência assume fontes, superfície e família visual no CSS real mesmo com vibe conflitante',
   { skip: !process.env.EIXU_CHROME_PATH },
   async () => {
     const j = createJiti(import.meta.url, {
@@ -102,8 +102,13 @@ await test(
             className: 'site-theme',
             'data-vibe': renderingVibeOf(tenant.brand),
             'data-reference-direction': referenceDirected ? 'true' : undefined,
+            'data-visual-authority':
+              tenant.brand.design?.version === 6 && referenceDirected
+                ? 'reference'
+                : 'vibe',
             'data-design-version':
-              tenant.brand.design?.version === 5
+              tenant.brand.design?.version === 5 ||
+              tenant.brand.design?.version === 6
                 ? 4
                 : tenant.brand.design?.version,
             'data-profile-version': tenant.brand.design?.version,
@@ -137,6 +142,7 @@ await test(
             );
             return {
               vibe: theme.dataset.vibe,
+              visualAuthority: theme.dataset.visualAuthority,
               designVersion: theme.dataset.designVersion,
               profileVersion: theme.dataset.profileVersion,
               aspects: theme.dataset.referenceAspects,
@@ -160,21 +166,18 @@ await test(
               leadFont: lead ? getComputedStyle(lead).fontFamily : null,
             };
           });
-          if (vibe === 'moderno') {
-            // O sistema moderno é papel liso, fio entre capítulos e pílula
-            // clara; a grade que ficava na raiz não pode voltar.
-            assert.equal(measured.themeBackgroundImage, 'none');
-            assert.equal(measured.actionRadius, '999px');
-            assert.equal(measured.chapterLine, '1px');
-            assert.match(measured.leadFont, /Georgia/);
-          }
-          // O perfil v5 preserva a vibe no renderer; a referência decide os
-          // aspectos que documentou. O CSS reutiliza o contrato visual v4 e a
-          // versão persistida continua observável separadamente.
-          assert.equal(measured.vibe, vibe);
+          // O perfil v6 escolheu artistico-revista pela referência. Essa
+          // família governa o CSS mesmo quando a vibe cadastrada é outra; o
+          // contrato visual continua sendo reutilizado pela versão 4 do CSS.
+          assert.equal(measured.vibe, 'artistico');
+          assert.equal(measured.visualAuthority, 'reference');
           assert.equal(measured.designVersion, '4');
-          assert.equal(measured.profileVersion, '5');
+          assert.equal(measured.profileVersion, '6');
           assert.match(measured.aspects, /surface/);
+          assert.equal(measured.themeBackgroundImage, 'none');
+          assert.equal(measured.actionRadius, '999px');
+          assert.equal(measured.chapterLine, '0px');
+          assert.match(measured.leadFont, /Arial/);
           // A superfície documentada vale como está, sem a lavagem artística.
           assert.equal(measured.surface, '#eeeeee');
           assert.match(measured.font, /Georgia/);

@@ -17,14 +17,19 @@ export const referenceDirection = {
   primaryUrl: url,
   // surface entra porque a leitura descreve fundo branco: sem esse aspecto a
   // faixa da vibe continua exigindo papel escuro no moderno.
-  decisions: ['layout', 'typography', 'imagery', 'rhythm', 'surface'].map(
-    (aspect) => ({
-      aspect,
-      sourceUrl: url,
-      observed: reading[aspect],
-      application: `Aplicar ${aspect} na abertura e capítulos com hero.split offset, galeria e narrative.split editorial.`,
-    }),
-  ),
+  decisions: [
+    'layout',
+    'typography',
+    'imagery',
+    'rhythm',
+    'surface',
+    'mobile',
+  ].map((aspect) => ({
+    aspect,
+    sourceUrl: url,
+    observed: reading[aspect],
+    application: `Aplicar ${aspect} na abertura e capítulos com hero.split offset, galeria e narrative.split editorial.`,
+  })),
   adaptations:
     'Preservar as cores cadastradas e fotos de matéria; manter a mesma escala e respiro nas páginas internas.',
 };
@@ -38,9 +43,9 @@ export const direction = {
   },
   concept: 'Recortes da matéria em escala arquitetônica',
   signatureElement: 'Janela vertical de matéria',
-  structure: 'moderno-sistema',
+  structure: 'artistico-revista',
   structureRationale:
-    'O mapa de sistema relaciona materiais, aplicações e orientação antes do contato.',
+    'O ensaio editorial reproduz a abertura serifada, as imagens e os capítulos observados na referência.',
   accent: '#87522a',
   accentAlt: '#315b48',
   ink: '#111111',

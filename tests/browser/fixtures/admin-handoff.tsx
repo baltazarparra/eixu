@@ -26,7 +26,7 @@ const content = isClients ? (
     <div className="admin-page-heading">
       <div>
         <h1>Dados do cliente</h1>
-        <p>Contatos, briefing e marca em um só lugar.</p>
+        <p>Contatos, história e marca em um só lugar.</p>
       </div>
     </div>
     <SettingsForm

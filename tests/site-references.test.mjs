@@ -11,10 +11,9 @@ import {
   url,
 } from './helpers/reference-fixture.mjs';
 const j = createJiti(import.meta.url, { alias: { '@': process.cwd() } });
-const { designProfileInputSchema, completeDesignProfile } = await j.import(
-  '../lib/design/profile.ts',
-);
-const { referenceDirectionIssues } = await j.import(
+const { designProfileInputSchema, completeDesignProfile, isDesignProfile } =
+  await j.import('../lib/design/profile.ts');
+const { hasReferenceDirection, referenceDirectionIssues } = await j.import(
   '../lib/design/references.ts',
 );
 const { renderingVibeOf, vibeOf } = await j.import('../lib/design/vibes.ts');
@@ -69,7 +68,7 @@ await test('direção só sai da vibe depois de leitura visual e aplicações co
   ]);
   assert.match(
     (await f.tools.set_design.execute(input)).error,
-    /Leia as referências/,
+    /Leia a referência visual/,
   );
   assert.equal(f.queries.length, 0);
   await f.tools.read_reference.execute({ url });
@@ -80,9 +79,9 @@ await test('direção só sai da vibe depois de leitura visual e aplicações co
   assert.match(missing.error, /referenceDirection/);
   const result = await f.tools.set_design.execute(input);
   assert.equal(result.error, undefined);
-  assert.equal(result.visualAuthority, 'references');
+  assert.equal(result.visualAuthority, 'reference');
   assert.equal(result.structuralDistance, 0);
-  assert.match(result.warning, /home idêntica/);
+  assert.equal(result.warning, undefined);
   const saved = f.queries.find((q) => q.sql.includes('brand ='));
   // A escrita agora envia só a direção; a marca completa segue no contexto
   // do chat. As integrações de logo verificam o merge com SQL real.
@@ -159,7 +158,7 @@ await test('sem referência verificada permanece a faixa, com lacuna declarada n
   assert.equal(f.queries.length, 0);
 });
 
-await test('todas as etapas mantêm evidência e prioridade; a referência modula aspectos e a vibe segue no renderer', () => {
+await test('todas as etapas mantêm evidência e a referência assume estrutura e renderer', () => {
   const tenant = referenceTenant();
   tenant.brand.design = completeDesignProfile(
     designProfileInputSchema.parse({ ...direction, referenceDirection }),
@@ -169,19 +168,23 @@ await test('todas as etapas mantêm evidência e prioridade; a referência modul
     const prompt = systemPrompt(tenant, '', '/', '', { phase, sources });
     assert.ok(prompt.includes(reading.rhythm), phase);
     assert.ok(prompt.includes(referenceDirection.adaptations), phase);
-    assert.match(prompt, /acima do estilo da vibe/);
+    assert.match(prompt, /autoridade visual do perfil v6/i);
     assert.equal(prompt.includes('paper e surface quase pretos'), false);
     assert.equal(prompt.includes('Luz fria e controlada'), false);
     if (phase === 'briefing') {
-      assert.match(prompt, /Estruturas disponíveis para sites novos/);
+      assert.match(
+        prompt,
+        /Estruturas disponíveis para sites novos com referência/,
+      );
+      assert.match(prompt, /comercial-atendimento/);
       assert.match(prompt, /moderno-editorial/);
-      assert.match(prompt, /moderno-sistema/);
+      assert.match(prompt, /artistico-revista/);
       assert.match(prompt, /moderno-exploracao/);
     }
-    // A silhueta continua sendo da vibe em todas as fases com composição.
+    // A estrutura escolhida pela referência governa as fases de composição.
     if (phase !== 'briefing' && phase !== 'cenas') {
-      assert.match(prompt, /Gramática obrigatória da vibe Moderno/, phase);
-      assert.match(prompt, /Estrutura selecionada: moderno-sistema/, phase);
+      assert.match(prompt, /Estrutura guiada pela referência/, phase);
+      assert.match(prompt, /artistico-revista/, phase);
       assert.doesNotMatch(
         prompt,
         /Estruturas disponíveis para sites novos/,
@@ -190,10 +193,21 @@ await test('todas as etapas mantêm evidência e prioridade; a referência modul
     }
   }
   assert.equal(vibeOf(tenant.brand), 'moderno');
-  // O perfil v5 conserva a vibe no renderer: a referência modula aspectos, e
-  // antes qualquer leitura visual derrubava o site para a base comercial.
-  assert.equal(tenant.brand.design.version, 5);
-  assert.equal(renderingVibeOf(tenant.brand), 'moderno');
+  assert.equal(tenant.brand.design.version, 6);
+  assert.equal(renderingVibeOf(tenant.brand), 'artistico');
+  const incompleteV6 = structuredClone(tenant.brand.design);
+  incompleteV6.referenceDirection.decisions =
+    incompleteV6.referenceDirection.decisions.filter(
+      (decision) => decision.aspect !== 'mobile',
+    );
+  assert.equal(isDesignProfile(incompleteV6), false);
+  assert.equal(
+    hasReferenceDirection({ ...tenant.brand, design: incompleteV6 }),
+    false,
+  );
+  tenant.brand.design.structure = 'comercial-vitrine';
+  assert.equal(renderingVibeOf(tenant.brand), 'comercial');
+  tenant.brand.design.structure = 'artistico-revista';
   assert.equal(renderingVibeOf({ vibe: 'moderno' }), 'moderno');
   // Perfis já publicados preservam a base neutra com que foram ao ar.
   assert.equal(
@@ -222,6 +236,7 @@ await test('todas as etapas mantêm evidência e prioridade; a referência modul
     ...artistic,
     design: {
       ...artistic.design,
+      version: 5,
       referenceDirection: {
         ...referenceDirection,
         decisions: referenceDirection.decisions.filter(
@@ -234,6 +249,18 @@ await test('todas as etapas mantêm evidência e prioridade; a referência modul
   const old = reviewFingerprint(tenant, [], []);
   tenant.brand.design.referenceDirection.adaptations += ' Ajustar galeria.';
   assert.notEqual(reviewFingerprint(tenant, [], []), old);
+});
+
+await test('remover a referência do cadastro não reaproveita a autoridade v6 numa reconstrução', () => {
+  const tenant = referenceTenant();
+  tenant.brand.design = completeDesignProfile(
+    designProfileInputSchema.parse({ ...direction, referenceDirection }),
+  );
+  tenant.brief.intake.references = [];
+  const prompt = systemPrompt(tenant, '', '/', '');
+  assert.doesNotMatch(prompt, /autoridade visual do perfil v6/i);
+  assert.match(prompt, /Vibe do site: Moderno/);
+  assert.match(prompt, /Gramática da vibe Moderno/);
 });
 
 await test('leitura visual usa pixels multimodais, devolve relatório e declara falha sem inventar estilo', async () => {
