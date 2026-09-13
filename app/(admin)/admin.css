@@ -2120,6 +2120,18 @@ textarea.admin-input {
   flex-wrap: wrap;
   gap: 8px;
 }
+.admin-page-actions .admin-upload-hint {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12px;
+}
+.admin-images-page .admin-page-actions > button,
+.admin-images-page .admin-page-actions > a {
+  min-height: 44px;
+}
+.admin-images-page .admin-notice {
+  overflow-wrap: anywhere;
+}
 .admin-images-layout {
   display: grid;
   grid-template-columns: 272px minmax(0, 1fr);

@@ -121,7 +121,7 @@ await test('repetir a mesma foto não satisfaz duas imagens', () => {
   pages[0].blocks[1].props.secondaryImage = scene(1);
   assert.ok(rules(pages).includes('home-imagens-geradas'));
 });
-await test('imagem de outro tenant ou upload não conta como geração própria', () => {
+await test('imagem fora do acervo do tenant não conta na composição', () => {
   assert.ok(
     rules(project(), images.slice(0, 1)).includes('home-imagens-geradas'),
   );
@@ -130,6 +130,32 @@ await test('imagem de outro tenant ou upload não conta como geração própria'
       project(),
       images.map((i) => ({ ...i, blobPath: 'uploads/file.webp' })),
     ).includes('home-imagens-geradas'),
+  );
+});
+await test('fotos enviadas ao acervo completam composição e publicação como as geradas', () => {
+  const uploads = images.map((image) => ({
+    ...image,
+    model: 'upload',
+    blobPath: `tenants/sample/uploads/${image.seq}.webp`,
+    status: 'disponivel',
+  }));
+  assert.deepEqual(rules(rich(), uploads, 'draft'), []);
+  assert.deepEqual(rules(rich(), uploads), []);
+  assert.deepEqual(rules(rich(), [uploads[0], images[1]]), []);
+  assert.ok(
+    rules(rich(), uploads.slice(0, 1)).includes('home-imagens-geradas'),
+  );
+  assert.ok(
+    rules(
+      rich(),
+      uploads.map((image) => ({ ...image, kind: 'logo' })),
+    ).includes('home-imagens-geradas'),
+  );
+  assert.ok(
+    rules(
+      rich(),
+      uploads.map((image) => ({ ...image, status: 'rejeitada' })),
+    ).includes('imagens-rejeitadas'),
   );
 });
 for (const status of ['disponivel', 'candidata', 'aprovada'])
@@ -817,8 +843,9 @@ await test('a cobertura casa biblioteca aprovada com as vagas do plano', () => {
   const torta = sceneCoverage(offset, [photo('hero.offset', '16:9')]);
   assert.equal(torta.missing[0].role, 'hero');
   assert.equal(torta.covered[0].targetBlock, 'media.image');
-  // Proporção ausente ou fora do vocabulário também não vale por cobertura.
-  for (const ratio of [undefined, '', '3:2'])
+  // Proporção ausente ou inválida não vale por cobertura. Uploads podem ter
+  // proporções numéricas fora do vocabulário do gerador, como 3:2.
+  for (const ratio of [undefined, '', 'inválida', '0:0'])
     assert.equal(
       sceneCoverage(offset, [photo('hero.offset', ratio)]).covered.length,
       0,

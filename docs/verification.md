@@ -41,6 +41,36 @@ Os 12 casos de navegador do admin passaram, incluindo chat, geração e edição
 direta em desktop/celular. O teste de interrupção aguarda a resposta real de
 estado, sem depender do contador de rede ociosa de uma conexão SSE cancelada.
 
+## Upload no acervo de imagens, 12/09/2026
+
+O painel de imagens passou a receber várias fotos e registrar cada uma no
+mesmo acervo numerado da geração. O POST autenticado valida pixels, formato e
+tamanho, aplica orientação EXIF e preserva dimensões/proporção na saída WebP.
+Uploads registrados também contam na composição, na cobertura de cenas e nos
+gates de publicação. O chat recebe a origem e pode usar ou alterar a imagem
+pelo número; proporções fora das opções do gerador usam o recorte mais próximo
+na nova versão, com aviso e preservação da original.
+
+Validação local:
+
+- Tipos (`next typegen` + `tsc --noEmit`), lint global e `git diff --check`.
+- `test:sites`: 193 testes aprovados, com Chrome local e sem skips.
+- `test:admin`: 173 aprovados e 5 não executados por dependerem de PostgreSQL
+  local configurado. Inclui validação dos arquivos, sessão, tenant resolvido
+  no servidor, falha no Blob, limpeza após falha de insert e proporção real.
+- `build:vercel` aprovado, incluindo os três checks de artefatos serverless.
+- No navegador, a rota e o processamento reais foram ligados a adaptadores
+  simulados de banco/Blob: seleção múltipla pelo teclado, falha parcial,
+  reenvio, recarga, número, dimensões e atalho de uso pelo chat. O teste usa CSS
+  do build de produção e viewports reais de 1440×900, 390×844, 320×568 e
+  667×375. A fixture recebeu meta viewport para não usar 980 px na emulação
+  móvel. A verificação apontou botões menores que 44 px, corrigidos antes da
+  rodada final. O teste geral do painel também passou.
+
+Nenhuma migração, geração paga, escrita remota ou publicação foi executada.
+O upload contra Blob/Neon reais e o envio do pedido ao modelo não foram
+executados nesta validação.
+
 ## Proporção da assinatura na etapa de cenas, 12/09/2026
 
 A etapa "Criar · imagens" parava em zero cena quando a composição autoral da

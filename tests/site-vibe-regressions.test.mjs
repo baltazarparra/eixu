@@ -409,6 +409,14 @@ await test('a gramática exige duas fotos distintas e geradas no protagonista pe
     ),
     false,
   );
+  f.images[1].blobPath = 'tenants/fixture/uploads/2.webp';
+  f.images[1].model = 'upload';
+  assert.equal(
+    lintSite(f.pages, f.images, 'publish', f.tenant.brand).some(
+      (finding) => finding.rule === 'protagonista-fora-da-vibe',
+    ),
+    false,
+  );
   const repaired = await publisher(f);
   assert.deepEqual(plain((await repaired.publish()).published), [
     '/',
@@ -515,7 +523,10 @@ await test('o renderer marca o comprimento do headline para a escala da display'
       ctx,
     }),
   );
-  assert.match(split, /<h1[^>]*class="site-headline[^"]*"[^>]*data-length="long"/);
+  assert.match(
+    split,
+    /<h1[^>]*class="site-headline[^"]*"[^>]*data-length="long"/,
+  );
   const statement = renderToString(
     createElement(HeroStatement, {
       headline: 'Fale com a equipe',
@@ -592,7 +603,8 @@ await test('o pre-flight avisa logo de placa clara sobre papel escuro e some com
   assert.equal(warning.level, 'warn');
   assert.equal(warning.page, '/');
   assert.match(warning.message, /placa clara/);
-  f.tenant.brand.logoDarkUrl = 'https://blob.test/tenants/fixture/logo/b/branca.png';
+  f.tenant.brand.logoDarkUrl =
+    'https://blob.test/tenants/fixture/logo/b/branca.png';
   assert.equal(logoWarnings().length, 0);
   // A medição de um logo anterior não acusa o logo atual.
   f.tenant.brand.logoDarkUrl = undefined;
@@ -630,7 +642,13 @@ await test('nav e rodapé mostram a versão escura do logo sobre papel escuro', 
       }),
     ),
   });
-  const dark = { ...tenant.brand, paper: '#0b0e14', ink: '#f5f5f4', logoUrl, logoDarkUrl };
+  const dark = {
+    ...tenant.brand,
+    paper: '#0b0e14',
+    ink: '#f5f5f4',
+    logoUrl,
+    logoDarkUrl,
+  };
   const onDark = render(dark);
   assert.match(onDark.nav, /src="https:\/\/blob\.test\/branca\.png"/);
   assert.match(onDark.footer, /src="https:\/\/blob\.test\/branca\.png"/);

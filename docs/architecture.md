@@ -149,6 +149,10 @@ alt por URL exata, em uma transação. Links, textos, SEO, marca e snapshots
 publicados não são alterados. A imagem nova continua na biblioteca se a
 aplicação falhar, e a ferramenta informa a falha com o novo número.
 
+O POST de `/api/admin/[tenant]/images` recebe um arquivo por pedido, exige sessão e resolve o tenant pelo slug no servidor. A seleção múltipla do painel envia em sequência e preserva sucessos parciais. JPG, PNG, WebP e AVIF estáticos de até 4 MB e 40 megapixels passam por leitura completa dos pixels, orientação EXIF e conversão para WebP sem metadados. O limite por arquivo deixa margem para multipart dentro do [limite da função Vercel](https://vercel.com/docs/functions/limitations#request-body-size). `putTenantBlob` conserva o lock de upload/exclusão; `insertImage` reserva o número e grava dimensões, proporção real, alt inicial pelo nome do arquivo, estado `disponivel` e `model: upload`. O caminho é `tenants/<slug>/uploads/<uuid>.webp`; falha de insert tenta remover só esse blob. Não exige migração nem crítica paga. Anexos e logos de `/upload` mantêm seu fluxo separado.
+
+`availablePhotos` reúne as fotos geradas e os uploads registrados no acervo para composição, cobertura de cenas e publicação. `generatedPhotos` mantém a contagem exclusiva de geração. Logos, rejeitadas e arquivos sem registro no acervo não completam o piso. A proporção real também participa dos avisos de recorte; para alteração por IA, um upload fora das proporções suportadas usa a mais próxima.
+
 A galeria mostra as imagens disponíveis, onde cada URL aparece no rascunho e
 no publicado, e dois atalhos: **Usar no site** e **Solicitar alteração** abrem
 o chat com o número preenchido, sem enviar nem gerar automaticamente.
@@ -158,7 +162,7 @@ um pedido detectado na última mensagem e uma imagem de tipo logo disponível;
 por `/settings`, exige logo da biblioteca do tenant ou upload manual no
 caminho de logo daquele cliente, e o mesmo portão vale para `logoDarkUrl`,
 que a biblioteca aplica por **Usar sobre fundo escuro** e Dados remove. A
-home continua exigindo duas fotos geradas distintas da biblioteca do tenant.
+home continua exigindo duas fotos distintas da biblioteca do tenant, geradas ou enviadas.
 Fontes: `lib/ai/tools.ts`, `lib/images/queries.ts`, `lib/images/revise.ts`,
 `lib/images/replacement.ts`, `lib/images/logo-apply.ts`,
 `lib/sites/generation.ts` e `lib/taste/site.ts`.

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   EmptyState,
@@ -10,6 +10,11 @@ import {
 import { adminFetch } from '@/lib/admin/http';
 import type { ImageUsage } from '@/lib/images/usage';
 import type { ImageGuide, TenantImage } from '@/lib/types';
+import {
+  IMAGE_UPLOAD_ACCEPT,
+  IMAGE_UPLOAD_HINT,
+  imageUploadError,
+} from '@/lib/images/upload-policy';
 
 type LibraryState = {
   logoStudioSummary?: string;
@@ -49,7 +54,7 @@ function scoreTone(score: number | null) {
 }
 
 /**
- * Acervo numerado do cliente, disponível assim que a imagem é gerada.
+ * Acervo numerado do cliente, disponível assim que a imagem é gerada ou enviada.
  * Alterações são pedidas no chat; a remoção continua protegida por uso.
  */
 export function ImagesLibrary({
@@ -63,9 +68,60 @@ export function ImagesLibrary({
   const [actionId, setActionId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const uploadInput = useRef<HTMLInputElement>(null);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+  const [uploadFailures, setUploadFailures] = useState<string[]>([]);
   const [filter, setFilter] = useState<'todas' | 'foto' | 'logo' | 'rejeitada'>(
     'todas',
   );
+
+  async function upload(files: File[]) {
+    if (actionId || !files.length) return;
+    setActionId('upload');
+    setNotice(null);
+    setUploadFailures([]);
+    const saved: number[] = [];
+    const failures: string[] = [];
+    try {
+      for (const [index, file] of files.entries()) {
+        setUploadProgress(
+          `Enviando ${index + 1} de ${files.length}: ${file.name}`,
+        );
+        try {
+          const error = imageUploadError(file);
+          if (error) throw new Error(error);
+          const body = new FormData();
+          body.set('file', file);
+          const { image } = await adminFetch<{ image: TenantImage }>(
+            `/api/admin/${tenant.slug}/images`,
+            { method: 'POST', body },
+          );
+          saved.push(image.seq);
+          setLibrary((current) => ({
+            ...current,
+            images: [
+              image,
+              ...current.images.filter((item) => item.id !== image.id),
+            ].slice(0, 200),
+            usage: { ...current.usage, [image.id]: [] },
+          }));
+          setFilter('todas');
+        } catch (error) {
+          failures.push(
+            `${file.name}: ${error instanceof Error ? error.message : 'Não foi possível enviar.'}`,
+          );
+        }
+      }
+      setUploadFailures(failures);
+      if (saved.length)
+        setNotice(
+          `${saved.length === 1 ? 'Imagem disponível' : 'Imagens disponíveis'}: ${saved.map((seq) => `#${seq}`).join(', ')}. Clique em “Usar no site” para escolher onde colocar.`,
+        );
+    } finally {
+      setUploadProgress(null);
+      setActionId(null);
+    }
+  }
 
   async function runAction(id: string, run: () => Promise<void>) {
     if (actionId) return;
@@ -146,7 +202,8 @@ export function ImagesLibrary({
           <div>
             <h1>Imagens</h1>
             <p>
-              Peça uma mudança pelo número no chat: “atualize a imagem{' '}
+              Envie suas fotos ou gere novas imagens. Peça uma mudança pelo
+              número no chat: “atualize a imagem{' '}
               <strong className="admin-numeric">#5</strong>”. A nova versão
               troca os rascunhos e preserva a original.
             </p>
@@ -159,11 +216,37 @@ export function ImagesLibrary({
               Editar guia
             </Link>
             <Link
-              className="admin-primary"
+              className="admin-secondary"
               href={chatLink('Quero gerar novas imagens para o site: ')}
             >
               Gerar imagens
             </Link>
+            <input
+              ref={uploadInput}
+              type="file"
+              accept={IMAGE_UPLOAD_ACCEPT}
+              multiple
+              hidden
+              aria-label="Selecionar imagens para enviar"
+              disabled={Boolean(actionId)}
+              onChange={(event) => {
+                const files = Array.from(event.currentTarget.files ?? []);
+                event.currentTarget.value = '';
+                void upload(files);
+              }}
+            />
+            <button
+              type="button"
+              className="admin-primary"
+              disabled={Boolean(actionId)}
+              aria-describedby="image-upload-hint"
+              onClick={() => uploadInput.current?.click()}
+            >
+              {uploadProgress ? 'Enviando imagens…' : 'Enviar imagens'}
+            </button>
+            <p id="image-upload-hint" className="admin-upload-hint">
+              {IMAGE_UPLOAD_HINT}
+            </p>
           </div>
         </div>
         {library.logoStudioSummary ? (
@@ -176,6 +259,21 @@ export function ImagesLibrary({
           <output className="admin-notice" aria-live="polite">
             {notice}
           </output>
+        ) : null}
+        {uploadProgress ? (
+          <output className="admin-notice" aria-live="polite">
+            {uploadProgress}
+          </output>
+        ) : null}
+        {uploadFailures.length ? (
+          <div className="admin-notice" role="alert">
+            <p>Não foi possível enviar:</p>
+            <ul>
+              {uploadFailures.map((failure, index) => (
+                <li key={index}>{failure}</li>
+              ))}
+            </ul>
+          </div>
         ) : null}
         <div className="admin-images-layout">
           <aside className="admin-image-guide">
@@ -288,6 +386,7 @@ export function ImagesLibrary({
                       <div className="admin-image-meta">
                         <span>
                           {image.kind}
+                          {image.model === 'upload' ? ' · enviada' : ''}
                           {image.url === library.logoUrl
                             ? ' · logo do site'
                             : image.url === library.logoDarkUrl
@@ -408,7 +507,7 @@ export function ImagesLibrary({
               >
                 {library.images.length
                   ? 'Escolha outro filtro para ver o restante do acervo.'
-                  : 'Defina o estilo, a paleta e o que nunca pode aparecer. Depois, peça as imagens na conversa do site.'}
+                  : 'Envie suas fotos pelo botão Enviar imagens ou defina o guia e peça novas imagens na conversa do site.'}
               </EmptyState>
             )}
           </section>

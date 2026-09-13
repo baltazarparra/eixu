@@ -691,7 +691,7 @@ export const blockMeta: Record<BlockType, Meta> = {
   'signature.composition': {
     family: 'signature',
     label: 'Composição autoral',
-    use: 'Seção exclusiva do cliente. Traduza o elemento-assinatura em uma composição útil com duas fotos geradas, papéis distintos e conteúdo confirmado. O layout precisa ser o da estrutura escolhida; não copie a mesma organização para outro projeto.',
+    use: 'Seção exclusiva do cliente. Traduza o elemento-assinatura em uma composição útil com duas fotos da biblioteca, geradas ou enviadas, papéis distintos e conteúdo confirmado. O layout precisa ser o da estrutura escolhida; não copie a mesma organização para outro projeto.',
     singleton: true,
   },
   'footer.compact': {

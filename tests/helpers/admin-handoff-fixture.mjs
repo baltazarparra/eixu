@@ -172,7 +172,7 @@ export function handoffData() {
   };
 }
 
-export async function handoffFixture({ port = 0 } = {}) {
+export async function handoffFixture({ port = 0, imageUpload } = {}) {
   const root = process.cwd();
   const directory = path.join(root, '.next/static/chunks');
   const css = (
@@ -343,8 +343,28 @@ export async function handoffFixture({ port = 0 } = {}) {
                 return;
               }
               if (url.pathname.endsWith('/images')) {
+                if (req.method === 'POST' && imageUpload) {
+                  const chunks = [];
+                  for await (const chunk of req) chunks.push(chunk);
+                  const response = await imageUpload(
+                    new Request(url, {
+                      method: 'POST',
+                      headers: {
+                        'content-type': req.headers['content-type'] ?? '',
+                      },
+                      body: Buffer.concat(chunks),
+                    }),
+                  );
+                  res.statusCode = response.status;
+                  res.end(await response.text());
+                  return;
+                }
                 res.end(
-                  JSON.stringify({ guide: data.guide, images: data.images }),
+                  JSON.stringify({
+                    guide: data.guide,
+                    images: data.images,
+                    usage: {},
+                  }),
                 );
                 return;
               }
@@ -387,7 +407,7 @@ export async function handoffFixture({ port = 0 } = {}) {
                   tenant: { ...data.site.tenant, ...client },
                 },
               };
-              const html = `<html lang="pt-BR" style="--font-admin-sans:Geist;--font-admin-mono:'Geist Mono'"><head><meta charset="utf-8"><style>@font-face{font-family:Geist;src:url('/app/(admin)/fonts/geist-latin.woff2')}@font-face{font-family:'Geist Mono';src:url('/app/(admin)/fonts/geist-mono-latin.woff2')}#root{height:100%}${css}</style></head><body><div id="root"></div><script type="application/json" id="fixture-state">${JSON.stringify(state).replaceAll('<', '\\u003c')}</script><script type="module" src="/tests/browser/fixtures/admin-handoff.tsx"></script></body></html>`;
+              const html = `<html lang="pt-BR" style="--font-admin-sans:Geist;--font-admin-mono:'Geist Mono'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>@font-face{font-family:Geist;src:url('/app/(admin)/fonts/geist-latin.woff2')}@font-face{font-family:'Geist Mono';src:url('/app/(admin)/fonts/geist-mono-latin.woff2')}#root{height:100%}${css}</style></head><body><div id="root"></div><script type="application/json" id="fixture-state">${JSON.stringify(state).replaceAll('<', '\\u003c')}</script><script type="module" src="/tests/browser/fixtures/admin-handoff.tsx"></script></body></html>`;
               res.setHeader('content-type', 'text/html; charset=utf-8');
               res.end(await vite.transformIndexHtml(url.pathname, html));
               return;
