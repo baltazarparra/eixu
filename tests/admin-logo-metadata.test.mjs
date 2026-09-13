@@ -62,6 +62,7 @@ async function fixture({ client = tenant, home = page, auth = true } = {}) {
     },
     '@/lib/auth': { isAuthenticated: async () => auth },
     '@/lib/blocks/render': { RenderBlocks: () => null },
+    '@/lib/blocks/inline-editor-loader': { InlineEditorLoader: () => null },
     'next/headers': {
       headers: async () => new Headers({ host: 'demo.localhost:3000' }),
     },

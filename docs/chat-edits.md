@@ -42,7 +42,7 @@ Se o loop terminar após ferramentas sem resposta textual, o stream produz
 um recibo das edições salvas e recusadas, preservado no histórico.
 
 O executor prepara o lote em memória, valida os blocos tocados e recusa novos
-erros de `lintPage`. Erros anteriores fora do pedido permanecem no recibo. A
+erros de `lintPage` e `lintTextStyles`. Erros anteriores fora do pedido permanecem no recibo. A
 escrita compara `blocks` em JSONB e usa ID da página e do tenant; se outra aba
 gravou, retorna conflito. Os mutadores antigos também usam essa gravação.
 Nenhum snapshot publicado é alterado. A atomicidade vale por página, não por
@@ -55,6 +55,13 @@ O renderer calcula texto, apoio e links legíveis localmente.
 4,5:1. Sem essas props o comportamento anterior permanece. A ordem salva é
 respeitada após o footer, com um único `main` e localização automática antes do
 rodapé. A seção extra posterior fica fora de `main`.
+
+`savePageEdit` fica em `lib/sites/edits.ts` e é compartilhado pelo chat, pelos
+mutadores legados e pela rota administrativa de edição direta. A prop
+`textStyles` permite pedidos de tamanho e cor pelo mesmo `edit_page`, por
+exemplo `set` de `textStyles` com `[{"field":"headline","size":1}]`. Os
+limites e o contraste são os do [contrato visual](design.md#texto-por-campo).
+O chat não muda de modelo, raciocínio ou fluxo por causa dessa prop.
 
 ## Validação reproduzível
 

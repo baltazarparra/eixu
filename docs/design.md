@@ -59,6 +59,33 @@ recuperação de senha, identidade nominal, deltas comerciais e navegação de d
 do protótipo não representam recursos existentes. Os componentes foram
 adaptados às APIs reais; o handoff não autoriza esses serviços adicionais.
 
+A edição direta usa uma barra junto ao campo no desktop e presa ao rodapé da
+prévia abaixo de 640 px, com rolagem própria em telas baixas. Foco e erros têm
+contorno e texto; o contraste aparece numericamente. O CSS da ilha só é
+carregado na prévia em edição. Menus e painéis ficam visíveis, movimento e
+navegação ficam suspensos, e o cabeçalho troca Publicar por Salvar/Cancelar.
+
+## Texto por campo
+
+A prop comum `textStyles` aceita até 40 entradas únicas com `field`, `size`
+entre -2 e 2 e/ou `color` em hex de seis dígitos. Não aceita CSS livre.
+`lib/blocks/fields.ts` deriva o inventário do catálogo, incluindo limites e
+piso de leitura. Textos de controles, inclusive os títulos das abas do
+explorador, são editáveis sem estilo individual.
+
+`textAttrs` insere `.site-styled` apenas em campos com estilo; sem ele, o HTML
+público permanece igual. O span usa 80, 90, 100, 115 ou 130% sobre a tipografia
+fluida existente. Cor explícita remove a opacidade decorativa do texto para
+preservar o contraste medido. `data-field` e `data-part` só existem na edição.
+
+`sectionBackgrounds` e `fieldBackgrounds` compartilham tokens com o renderer,
+incluindo tons, fundos locais, cartões, painéis, superfícies modernas e
+legendas translúcidas. Seções sem tom consideram papel e superfície alternada.
+O servidor exige 4,5:1 no salvamento e na publicação. A ilha também mede o
+fundo calculado pelo navegador, incluindo transparência e `color-mix`. Texto
+sobre foto sem um painel uniforme só permite cor automática; tamanho segue
+editável. Não se presume uma cor de fundo a partir da imagem.
+
 ## Direção e qualidade
 
 A composição parte do briefing, da marca e de cenas coerentes com o cliente: uma seção protagonista, hierarquia de texto e variação de layout. Não há uma única receita de home: o perfil v5 escolhe uma de três estruturas completas da vibe a partir da oferta, do público e da jornada. Cada projeto tem pelo menos três páginas orgânicas conectadas, com intenções de descoberta, consideração e conversão. Obrigado e landing de anúncio não completam esse mínimo. Serviços usam listas editoriais; números de ordem ficam em processos. Provas, garantias, equipamentos e capacidades operacionais dependem de evidência do briefing.

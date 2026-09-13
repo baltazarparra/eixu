@@ -2,6 +2,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { createServer } from 'vite';
 import react from '@vitejs/plugin-react';
+import { inlineHtml } from './inline-edit-fixture.mjs';
 
 export function handoffData() {
   const clients = [
@@ -103,7 +104,12 @@ export function handoffData() {
       ],
     },
     site: {
-      tenant: { slug: tenant.slug, name: tenant.name, hasDesign: true },
+      tenant: {
+        slug: tenant.slug,
+        name: tenant.name,
+        status: tenant.status,
+        hasDesign: true,
+      },
       previewRevision: 'test-v1',
       review: {
         current: false,
@@ -185,11 +191,34 @@ export async function handoffFixture({ port = 0 } = {}) {
   const data = handoffData();
   const writes = [];
   let failSave = false;
+  let editStatus = 200;
+  let holdingFeed = false;
+  const heldFeeds = [];
+  const editWrites = [];
   const server = await createServer({
     configFile: false,
     root,
     cacheDir: path.join(root, 'node_modules/.vite-admin-handoff'),
     define: { 'process.env': '{}' },
+    optimizeDeps: {
+      noDiscovery: true,
+      include: [
+        'react',
+        'react-dom',
+        'react-dom/client',
+        'react/jsx-runtime',
+        'react/jsx-dev-runtime',
+        'framer-motion',
+        'zod',
+        '@ai-sdk/react',
+        'ai',
+        'lucide-react',
+        'three',
+        'next/link',
+        'next/image',
+        '@neondatabase/serverless',
+      ],
+    },
     plugins: [
       react(),
       {
@@ -223,6 +252,45 @@ export async function handoffFixture({ port = 0 } = {}) {
             }
             if (url.pathname.startsWith('/api/admin/')) {
               res.setHeader('content-type', 'application/json');
+              const client = data.clients.find(
+                (client) => client.slug === url.pathname.split('/')[3],
+              );
+              const site = {
+                ...data.site,
+                tenant: { ...data.site.tenant, ...client },
+              };
+              if (url.pathname.endsWith('/edit')) {
+                const chunks = [];
+                for await (const chunk of req) chunks.push(chunk);
+                const body = JSON.parse(Buffer.concat(chunks).toString());
+                editWrites.push(body);
+                res.statusCode = editStatus;
+                if (editStatus === 200)
+                  data.site.previewRevision = `test-v${editWrites.length + 1}`;
+                res.end(
+                  JSON.stringify(
+                    editStatus === 200
+                      ? { ok: true, changed: true, revision: 'b'.repeat(64) }
+                      : {
+                          error:
+                            editStatus === 409
+                              ? 'A página mudou.'
+                              : 'Confira o título.',
+                          fields:
+                            editStatus === 422
+                              ? [
+                                  {
+                                    block: 'hero',
+                                    path: 'headline',
+                                    message: 'Confira o título.',
+                                  },
+                                ]
+                              : [],
+                        },
+                  ),
+                );
+                return;
+              }
               if (url.pathname.endsWith('/settings')) {
                 const chunks = [];
                 for await (const chunk of req) chunks.push(chunk);
@@ -241,9 +309,14 @@ export async function handoffFixture({ port = 0 } = {}) {
                 return;
               }
               if (url.pathname.endsWith('/generation')) {
+                if (holdingFeed)
+                  await new Promise((resolve) => heldFeeds.push(resolve));
                 res.end(
                   JSON.stringify({
-                    state: data.site,
+                    state: {
+                      ...site,
+                      previewRevision: data.site.previewRevision,
+                    },
                     run: null,
                     events: [],
                     messages: [],
@@ -256,7 +329,7 @@ export async function handoffFixture({ port = 0 } = {}) {
                 return;
               }
               if (url.pathname.endsWith('/state')) {
-                res.end(JSON.stringify(data.site));
+                res.end(JSON.stringify(site));
                 return;
               }
               if (url.pathname.endsWith('/publish')) {
@@ -283,6 +356,15 @@ export async function handoffFixture({ port = 0 } = {}) {
             }
             if (url.pathname.startsWith('/s/')) {
               res.setHeader('content-type', 'text/html; charset=utf-8');
+              if (url.searchParams.get('edit') === '1') {
+                res.end(
+                  await vite.transformIndexHtml(
+                    url.pathname,
+                    await inlineHtml(url.search),
+                  ),
+                );
+                return;
+              }
               res.end(
                 '<html lang="pt-BR"><body style="font:18px system-ui;background:#f0ece4;color:#2b251f;padding:30px"><h1>Marcenaria Horizonte</h1><p>Prévia sintética para verificar a moldura do editor.</p></body></html>',
               );
@@ -324,6 +406,17 @@ export async function handoffFixture({ port = 0 } = {}) {
     server,
     data,
     writes,
+    editWrites,
+    holdFeed() {
+      holdingFeed = true;
+    },
+    releaseFeed() {
+      holdingFeed = false;
+      for (const resolve of heldFeeds.splice(0)) resolve();
+    },
+    setEditStatus(status) {
+      editStatus = status;
+    },
     failSave(value) {
       failSave = value;
     },

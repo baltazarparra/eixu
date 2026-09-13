@@ -171,6 +171,38 @@ No computador, conversa e prévia ficam lado a lado; o botão primário ao lado 
 
 Os textos das 60 mensagens mais recentes são recuperados ao abrir a tela. Ferramentas, anexos e contagens de custo antigos não são restaurados. Registre decisões duráveis no briefing; não dependa de uma conversa extensa como única fonte do negócio.
 
+### Editar na prévia
+
+Em um cliente publicado, selecione a página e clique em **Editar**, ao lado de
+**Publicar**. O botão aparece quando a geração e o chat estão parados. Clique
+no texto da prévia para escrever. A barra mostra o campo, seu limite e
+**Restaurar**, que recupera o texto e o estilo anteriores daquele campo.
+
+Use **A−** e **A+** para escolher entre 80, 90, 100, 115 e 130% do tamanho
+original. Textos de leitura corrida e legendas começam em 90%. Escolha uma cor
+da marca ou digite um hexadecimal. Cores precisam de contraste mínimo de
+4,5:1; **Automático** recupera a cor do layout. Texto sobre foto sem fundo
+uniforme mantém a cor automática. Rótulos de links, botões, abas e formulários
+podem ser reescritos, mas conservam tamanho e cor do controle.
+
+O texto colado perde a formatação. Em blocos de texto editorial, Enter cria um
+parágrafo e Backspace no início o une ao anterior. Nos demais campos, Enter
+não cria linha. Tab percorre os campos; Esc fecha a barra e Ctrl+S ou Cmd+S
+solicita o salvamento. Links não navegam durante a edição; menus e painéis
+ficam expostos para permitir editar seus textos.
+
+**Salvar** grava tudo de uma vez no rascunho e fecha a edição. Depois, confira
+a prévia e clique em **Publicar** para atualizar o site no ar. **Cancelar**
+descarta o que foi digitado, pedindo confirmação quando há alterações. O chat
+e a troca de página ficam bloqueados durante a edição; Desktop/Celular
+continuam disponíveis. Se outra aba salvar a mesma página, a gravação é
+recusada e **Recarregar a prévia** descarta a tentativa local após confirmação.
+
+Posts, listagens dinâmicas, textos automáticos de contatos, URLs, imagens e
+textos alternativos continuam pelo chat, cadastro ou biblioteca. A edição é
+por campo inteiro; não há formatação de palavras isoladas nem histórico de
+desfazer além de **Restaurar**.
+
 ## Biblioteca e publicação
 
 Imagens (`/admin/[tenant]/imagens`) reúne o guia visual e o acervo numerado, com filtros Todas, Fotos, Logos e Rejeitadas. Todas inclui as rejeitadas. Os cartões mostram proporção, descrição e nota quando existe; sem nota, mostram **sem crítica**. As candidatas antigas estão disponíveis sem aprovação. **Editar guia** e **Gerar imagens** abrem um pedido na conversa; revise e envie para executar.

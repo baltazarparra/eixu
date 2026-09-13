@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { textStylesSchema } from './text-style-schema';
 import { contrastRatio } from './contrast';
 import { ICON_NAMES } from '@/lib/design/iconography';
 import { structureGrammar, type Vibe } from '@/lib/design/vibes';
@@ -115,6 +116,7 @@ export const blockSchemas = {
   'nav.bar': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     layout: z.enum(['bar', 'floating', 'minimal', 'split']).optional(),
     position: z
       .enum(['static', 'fixed'])
@@ -144,6 +146,7 @@ export const blockSchemas = {
   'hero.split': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     layout: z
       .enum(['split', 'cover', 'poster', 'editorial', 'offset', 'atelier'])
       .optional(),
@@ -175,6 +178,7 @@ export const blockSchemas = {
   'hero.statement': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     layout: z.enum(['left', 'center', 'oversize', 'framed']).optional(),
     eyebrow: z.string().max(48).optional(),
     headline: z.string().min(4).max(90),
@@ -185,6 +189,7 @@ export const blockSchemas = {
   'proof.logos': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     layout: z.enum(['rail', 'grid', 'stamp']).optional(),
     title: z.string().max(80).optional(),
     logos: z.array(z.string().max(40)).min(3).max(10),
@@ -193,6 +198,7 @@ export const blockSchemas = {
   'proof.stats': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     layout: z.enum(['strip', 'cards', 'editorial']).optional(),
     items: z
       .array(z.object({ value: z.string().max(12), label: z.string().max(60) }))
@@ -203,6 +209,7 @@ export const blockSchemas = {
   'proof.testimonial': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     layout: z.enum(['quote', 'spotlight', 'split']).optional(),
     quote: z.string().min(20).max(320),
     author: z.string().max(60),
@@ -212,6 +219,7 @@ export const blockSchemas = {
   'feature.numbered': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     layout: z.enum(['ledger', 'rail', 'cards', 'index']).optional(),
     eyebrow: z.string().max(48).optional(),
     title: z.string().min(4).max(90),
@@ -232,6 +240,7 @@ export const blockSchemas = {
   'feature.bento': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     layout: z.enum(['mosaic', 'gallery', 'stack', 'showcase']).optional(),
     eyebrow: z.string().max(48).optional(),
     title: z.string().min(4).max(90),
@@ -252,6 +261,7 @@ export const blockSchemas = {
   'narrative.steps': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     layout: z.enum(['timeline', 'cards', 'horizontal', 'chapters']).optional(),
     eyebrow: z.string().max(48).optional(),
     title: z.string().min(4).max(90),
@@ -264,6 +274,7 @@ export const blockSchemas = {
   'narrative.split': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     layout: z.enum(['split', 'reverse', 'overlap', 'editorial']).optional(),
     eyebrow: z.string().max(48).optional(),
     title: z.string().min(4).max(90),
@@ -289,6 +300,7 @@ export const blockSchemas = {
   'feature.explorer': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     layout: z.enum(['showroom', 'panorama']).default('showroom'),
     title: z.string().min(4).max(90),
     body: z.string().max(260).optional(),
@@ -313,6 +325,7 @@ export const blockSchemas = {
   'editorial.resources': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     layout: z.enum(['feature', 'list']).default('feature'),
     title: z.string().min(4).max(90),
     body: z.string().max(260).optional(),
@@ -336,6 +349,7 @@ export const blockSchemas = {
     .object({
       anchor,
       presentation,
+      textStyles: textStylesSchema.optional(),
       layout: z.enum(SIGNATURE_LAYOUTS),
       eyebrow: z.string().max(48).optional(),
       title: z.string().min(4).max(90),
@@ -386,6 +400,7 @@ export const blockSchemas = {
   'editorial.facts': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     layout: z.enum(['split', 'poster', 'ledger']).optional(),
     eyebrow: z.string().max(48).optional(),
     title: z.string().min(4).max(90),
@@ -400,6 +415,7 @@ export const blockSchemas = {
   'faq.accordion': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     layout: z.enum(['split', 'stack', 'cards']).optional(),
     title: z.string().min(4).max(90),
     items: z
@@ -411,6 +427,7 @@ export const blockSchemas = {
   'cta.band': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     layout: z.enum(['band', 'poster', 'split', 'minimal']).optional(),
     title: z.string().min(4).max(90),
     body: z.string().max(200).optional(),
@@ -421,6 +438,7 @@ export const blockSchemas = {
   'form.lead': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     layout: z.enum(['split', 'panel', 'stack']).optional(),
     title: z.string().min(4).max(90),
     body: z.string().max(200).optional(),
@@ -445,6 +463,7 @@ export const blockSchemas = {
   'editorial.text': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     layout: z.enum(['narrow', 'lead', 'columns']).optional(),
     title: z.string().max(90).optional(),
     body: z.string().min(20).max(4000),
@@ -453,6 +472,7 @@ export const blockSchemas = {
   'editorial.postList': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     layout: z.enum(['grid', 'list', 'magazine']).optional(),
     title: z.string().min(2).max(90),
     limit: z.number().int().min(1).max(24).default(9),
@@ -461,12 +481,14 @@ export const blockSchemas = {
   'editorial.postBody': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     body: z.string().min(20).max(30000),
   }),
 
   'media.gallery': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     layout: z.enum(['grid', 'masonry', 'filmstrip', 'collage']).optional(),
     title: z.string().max(90).optional(),
     images: z
@@ -480,6 +502,7 @@ export const blockSchemas = {
   'media.image': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     layout: z.enum(['wide', 'bleed', 'portrait', 'offset']).optional(),
     src: z.url().startsWith('http'),
     alt: z.string().max(140),
@@ -489,6 +512,7 @@ export const blockSchemas = {
   'media.map': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     layout: z.enum(['split', 'framed', 'wide']).optional(),
     title: z.string().max(90).optional(),
     address: z.string().max(200),
@@ -498,6 +522,7 @@ export const blockSchemas = {
   'pricing.table': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     layout: z.enum(['cards', 'comparison', 'editorial']).optional(),
     title: z.string().min(4).max(90),
     plans: z
@@ -518,6 +543,7 @@ export const blockSchemas = {
   'footer.compact': z.object({
     anchor,
     presentation,
+    textStyles: textStylesSchema.optional(),
     layout: z.enum(['split', 'stack', 'minimal']).optional(),
     logoText: z.string().min(1).max(24),
     logoHeight,
@@ -735,7 +761,10 @@ function summarize(schema: Record<string, unknown>, depth = 0): string {
   >;
   const required = new Set((schema.required ?? []) as string[]);
   return Object.entries(props)
-    .filter(([key]) => key !== 'anchor' && key !== 'presentation')
+    .filter(
+      ([key]) =>
+        key !== 'anchor' && key !== 'presentation' && key !== 'textStyles',
+    )
     .map(([key, def]) => {
       const opt = required.has(key) && !('default' in def) ? '' : '?';
       const minItems = typeof def.minItems === 'number' ? def.minItems : 0;
@@ -830,7 +859,7 @@ export function catalogForPrompt(
 ): string {
   const { vibe, design } = options;
   return (
-    `Comum a todos: anchor?; presentation? { ${summarize(z.toJSONSchema(presentation.unwrap()) as Record<string, unknown>, 1)} }. ? = opcional; ≤ = máximo de caracteres.\n` +
+    `Comum a todos: anchor?; textStyles? [{field, size?: -2|-1|0|1|2, color?: #RRGGBB}] (até 40, por campo de texto; contraste ≥4,5:1); presentation? { ${summarize(z.toJSONSchema(presentation.unwrap()) as Record<string, unknown>, 1)} }. ? = opcional; ≤ = máximo de caracteres.\n` +
     BLOCK_TYPES.map((type) => {
       const json = z.toJSONSchema(blockSchemas[type]) as Record<
         string,

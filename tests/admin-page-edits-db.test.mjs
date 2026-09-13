@@ -58,10 +58,16 @@ await test(
     });
     const a = await loadModule('lib/ai/tools.ts', {
       '@/lib/db': database,
+      '@/lib/sites/edits': await loadModule('lib/sites/edits.ts', {
+        '@/lib/db': database,
+      }),
       '@/lib/tenant-queries': wrap(queriesA),
     });
     const b = await loadModule('lib/ai/tools.ts', {
       '@/lib/db': other,
+      '@/lib/sites/edits': await loadModule('lib/sites/edits.ts', {
+        '@/lib/db': other,
+      }),
       '@/lib/tenant-queries': wrap(queriesB),
     });
     const { pageRevision } = await loadModule('lib/ai/page-edits.ts');

@@ -20,6 +20,10 @@ import {
 import { publicPage, publicTenant } from '@/lib/sites/snapshot';
 import { currentLogoAsset } from '@/lib/images/logo-schema';
 import { logoThemeColor, siteOrigin } from '@/lib/sites/logo-metadata';
+import { InlineEditorLoader } from '@/lib/blocks/inline-editor-loader';
+import { blockFields } from '@/lib/blocks/fields';
+import { fieldBackgrounds } from '@/lib/blocks/text-style-lint';
+import { pageRevision } from '@/lib/ai/page-edits';
 
 type Params = { tenant: string; slug?: string[] };
 type Props = {
@@ -142,6 +146,7 @@ export default async function TenantPage({ params, searchParams }: Props) {
   const resolvedParams = await params;
   const query = await searchParams;
   const isPreview = query.preview === '1';
+  const editing = isPreview && query.edit === '1';
   if (isPreview && !(await isAuthenticated())) notFound();
   const resolved = await resolve(
     resolvedParams.tenant,
@@ -178,6 +183,7 @@ export default async function TenantPage({ params, searchParams }: Props) {
   return (
     <div
       className="site-theme"
+      data-editing={editing || undefined}
       style={themeVars(renderedTenant.brand) as React.CSSProperties}
       data-variance={
         renderedTenant.dials.variance <= 3 ? 'quiet' : 'expressive'
@@ -189,7 +195,9 @@ export default async function TenantPage({ params, searchParams }: Props) {
             ? 'compact'
             : 'normal'
       }
-      data-motion={renderedTenant.dials.motion <= 3 ? 'still' : 'gentle'}
+      data-motion={
+        editing || renderedTenant.dials.motion <= 3 ? 'still' : 'gentle'
+      }
       data-vibe={renderingVibeOf(renderedTenant.brand)}
       data-reference-direction={referenceDirected ? 'true' : undefined}
       // O seletor continua no contrato visual v4; data-profile-version expõe
@@ -228,8 +236,35 @@ export default async function TenantPage({ params, searchParams }: Props) {
           pageType: renderedPage.type,
           previewTenant: query.__tenant ? tenant.slug : undefined,
           isPreview,
+          editing,
         }}
       />
+      {editing && (
+        <InlineEditorLoader
+          page={page.slug}
+          revision={pageRevision(page)}
+          fields={blocks.flatMap((block) =>
+            blockFields(block, renderedTenant.brand).map((field) => ({
+              ...field,
+              backgrounds: fieldBackgrounds(
+                block,
+                field.path,
+                renderedTenant.brand,
+              ),
+            })),
+          )}
+          palette={[
+            ['Tinta', '--ink'],
+            ['Apoio', '--muted'],
+            ['Destaque', '--highlight-text'],
+            ['Primária', '--accent'],
+            ['Secundária', '--accent-2'],
+          ].map(([label, token]) => ({
+            label,
+            color: themeVars(renderedTenant.brand)[token],
+          }))}
+        />
+      )}
       {!isPreview ? (
         <script
           // Rastreamento de primeira parte, sem biblioteca externa.

@@ -2876,3 +2876,12 @@ textarea.admin-input {
     scroll-behavior: auto !important;
   }
 }
+
+.admin-edit-status {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
