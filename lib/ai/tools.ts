@@ -566,7 +566,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         // pela estrutura escolhida. `expectedRatio` só pelo tipo devolvia 4:3
         // para signature.composition e recusava o lote inteiro nas estruturas
         // de assinatura 16:9 e 4:5. Visto no cliente wanderb em 12/09/2026.
-        const plan = scenePlan(design, 3, vibeOf(activeBrand));
+        const plan = scenePlan(design, 3, vibeOf(activeBrand), activeBrief);
         const plannedRatio = (targetBlock: string) =>
           plan.find((slot) => slot.targetBlock === targetBlock)?.ratio ??
           expectedRatio(targetBlock);
@@ -1153,18 +1153,21 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             bloco: undefined as string | undefined,
             correcao: finding.message,
           })),
-          ...structuralFindings(pages, images, reviewedTenant.brand).map(
-            (finding) => ({
-              pagina: finding.page,
-              nivel: finding.level,
-              regra: finding.rule,
-              bloco:
-                finding.blockIndex === undefined
-                  ? undefined
-                  : `${finding.blockIndex}: ${finding.blockType}#${finding.blockId}`,
-              correcao: finding.message,
-            }),
-          ),
+          ...structuralFindings(
+            pages,
+            images,
+            reviewedTenant.brand,
+            reviewedTenant.brief,
+          ).map((finding) => ({
+            pagina: finding.page,
+            nivel: finding.level,
+            regra: finding.rule,
+            bloco:
+              finding.blockIndex === undefined
+                ? undefined
+                : `${finding.blockIndex}: ${finding.blockType}#${finding.blockId}`,
+            correcao: finding.message,
+          })),
           ...pages.flatMap((page) =>
             lintPage(page, reviewedTenant.brand.design)
               .filter((finding) => finding.level === 'error')
@@ -1334,6 +1337,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
                 reviewedTenant,
                 completeTargets,
                 capturas.filter((shot) => completePaths.has(shot.page)),
+                images,
               );
               await context.onReviewProgress?.({
                 stage: 'critic',
@@ -1365,13 +1369,21 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
                 .filter((finding) => finding.pagina === path)
                 .map(({ id: _id, status: _status, ...finding }) => finding),
               ...pageShots
-                .filter((shot) => shot.overflow || shot.brokenImages)
+                .filter(
+                  (shot) =>
+                    shot.overflow ||
+                    shot.brokenImages ||
+                    (shot.text?.brokenWords.length ?? 0) > 0,
+                )
                 .map((shot) => ({
                   pagina: path,
                   nivel: 'error',
                   regra: 'render',
                   viewport: shot.viewport,
-                  correcao: `${shot.viewport}: ${shot.overflow ? 'overflow horizontal; ' : ''}${shot.brokenImages} imagem(ns) quebrada(s). Corrija e capture novamente.`,
+                  evidencia: shot.text?.brokenWords.length
+                    ? `Palavras quebradas: ${shot.text.brokenWords.map(({ selector, word }) => `${word} em ${selector}`).join('; ')}`
+                    : undefined,
+                  correcao: `${shot.viewport}: ${shot.overflow ? 'overflow horizontal; ' : ''}${shot.brokenImages} imagem(ns) quebrada(s)${shot.text?.brokenWords.length ? `; ${shot.text.brokenWords.length} palavra(s) fragmentada(s)` : ''}. Corrija e capture novamente.`,
                 })),
               ...pageShots.flatMap((shot) =>
                 (shot.navigation?.issues ?? []).map((issue) => ({
@@ -1902,6 +1914,10 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           throw new ToolError(
             checkedDesign.error.issues.map((issue) => issue.message).join(' '),
           );
+        // O intake (incluindo a história longa) vive no brief já persistido;
+        // a proposta da ferramenta traz o plano editorial. A profundidade e o
+        // plano de cenas precisam enxergar o estado prospectivo completo.
+        const proposedBrief = { ...activeBrief, ...input.brief };
         // Cor escolhida no cadastro é decisão do operador: a direção de arte
         // define estrutura e leitura, não reescreve a marca dele.
         const locked = activeBrand.paletteSource === 'operador';
@@ -2019,7 +2035,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           context.phase === 'briefing' &&
           (!input.brief.imageScenes ||
             !sceneRequestsMatchPlan(
-              scenePlan(profile, 3, vibe),
+              scenePlan(profile, 3, vibe, proposedBrief),
               input.brief.imageScenes,
             ))
         ) {
@@ -2028,6 +2044,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
               profile,
               3,
               vibe,
+              proposedBrief,
             )
               .map((scene) => `${scene.role} (${scene.targetBlock})`)
               .join(
@@ -2083,7 +2100,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         };
         // O brief guarda também intake, fontes lidas e progresso da geração:
         // sobrescrever o objeto inteiro apagaria esse contexto.
-        const brief = { ...activeBrief, ...input.brief };
+        const brief = proposedBrief;
         const saved = (await db()`
           update tenants
           set brief = brief || ${JSON.stringify(input.brief)}::jsonb,

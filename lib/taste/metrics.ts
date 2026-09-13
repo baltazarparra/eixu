@@ -6,7 +6,12 @@ import {
   type BlockType,
 } from '../blocks/registry';
 import { expectedRatio, ratioFits } from '../images/ratios';
-import { signatureItemsInRenderOrder } from '../design/structures';
+import {
+  signatureItemsInRenderOrder,
+  structureByKey,
+  type HomeExpansion,
+  type SiteStructure,
+} from '../design/structures';
 import {
   VIBE_LABEL,
   structureGrammar,
@@ -270,6 +275,194 @@ export function availablePhotos(images: TenantImage[]): TenantImage[] {
   );
 }
 
+export type BriefDepth = {
+  evidenceCount: number;
+  numericEvidenceCount: number;
+  storyLength: number;
+  pagePlanLength: number;
+  photos: number;
+  evidence: string[];
+  story: string;
+};
+
+/** Sinais estáveis que permitem aprofundar a home sem inventar conteúdo. */
+export function briefDepth(
+  brief: Record<string, unknown> = {},
+  images: TenantImage[] | number = [],
+): BriefDepth {
+  const evidence = Array.isArray(brief.evidence)
+    ? brief.evidence.filter(
+        (item): item is string =>
+          typeof item === 'string' && Boolean(item.trim()),
+      )
+    : [];
+  const intake =
+    brief.intake && typeof brief.intake === 'object'
+      ? (brief.intake as Record<string, unknown>)
+      : {};
+  const story = typeof intake.story === 'string' ? intake.story.trim() : '';
+  return {
+    evidenceCount: evidence.length,
+    numericEvidenceCount: evidence.filter((item) => /\d/u.test(item)).length,
+    storyLength: story.length,
+    pagePlanLength: Array.isArray(brief.pagePlan) ? brief.pagePlan.length : 0,
+    photos:
+      typeof images === 'number' ? images : availablePhotos(images).length,
+    evidence,
+    story,
+  };
+}
+
+/** Piso proporcional ao material confirmado, limitado para manter a edição útil. */
+export function homeSectionFloor(
+  structure: SiteStructure | string | null | undefined,
+  depth: BriefDepth,
+): number {
+  const resolved =
+    typeof structure === 'string' ? structureByKey(structure) : structure;
+  let floor = Math.max(5, resolved?.sequence.length ?? 5);
+  if (depth.evidenceCount >= 4) floor += 1;
+  if (
+    depth.evidenceCount >= 6 &&
+    (depth.numericEvidenceCount >= 2 || depth.storyLength > 1500)
+  )
+    floor += 1;
+  return Math.min(8, floor);
+}
+
+export function homeWordFloor(sectionFloor: number): number {
+  return sectionFloor >= 7 ? 220 : sectionFloor >= 6 ? 180 : 100;
+}
+
+function countMatches(values: string[], pattern: RegExp): number {
+  return values.filter((value) => pattern.test(value)).length;
+}
+
+function expansionAvailable(
+  expansion: HomeExpansion,
+  depth: BriefDepth,
+  structure?: SiteStructure | null,
+): boolean {
+  const evidenceText = depth.evidence.join('\n');
+  switch (expansion.condition) {
+    case 'numeric-evidence':
+      return depth.numericEvidenceCount >= 2;
+    case 'benefit-evidence':
+      return /benef[ií]cio|resultado|redu[çc]|aument|econom|ganh|melhor|impact/iu.test(
+        evidenceText,
+      );
+    case 'context-evidence':
+      return /onde|unidade|loja|cidade|estado|munic[ií]pio|pa[ií]s|marca|cliente|presen[çc]a|atua/iu.test(
+        evidenceText,
+      );
+    case 'testimonial-evidence':
+      return (
+        countMatches(
+          depth.evidence,
+          /depoimento|relatou|afirmou|disse|“[^”]+”|"[^"]+"/iu,
+        ) >= (expansion.signature === 'proof.testimonials:grid' ? 2 : 1)
+      );
+    case 'support-steps': {
+      const signals = [
+        /atendimento/iu,
+        /suporte/iu,
+        /implanta[çc][aã]o/iu,
+        /diagn[oó]stico/iu,
+        /triagem/iu,
+        /etapa|passo/iu,
+        /acompanha/iu,
+      ];
+      return signals.filter((pattern) => pattern.test(depth.story)).length >= 2;
+    }
+    case 'brand-evidence':
+      return (
+        countMatches(
+          depth.evidence,
+          /marca|cliente|empresa|parceir|atende/iu,
+        ) >= 3
+      );
+    case 'photo-library':
+      // A vitrine precisa de três imagens que sobrem depois de cobrir o plano
+      // estrutural. Uma home ampla ganha a sexta cena de apoio; as demais
+      // estruturas comerciais continuam com cinco vagas.
+      return (
+        depth.photos >=
+        (structure && homeSectionFloor(structure, depth) >= 7 ? 6 : 5) + 3
+      );
+    case 'coverage-evidence':
+      return /estrutura|cobertura|hor[aá]rio|hora|unidade|equipe|turno|cidade|estado|pa[ií]s|atendimento/iu.test(
+        evidenceText,
+      );
+  }
+}
+
+/** Camadas liberadas, na ordem de inserção definida pela estrutura. */
+export function availableHomeExpansions(
+  structure: SiteStructure | string | null | undefined,
+  depth: BriefDepth,
+): readonly HomeExpansion[] {
+  const resolved =
+    typeof structure === 'string' ? structureByKey(structure) : structure;
+  return (resolved?.expansions ?? []).filter((expansion) =>
+    expansionAvailable(expansion, depth, resolved),
+  );
+}
+
+function expansionPlacementFits(
+  layer: HomeExpansion,
+  marks: string[],
+  structure: SiteStructure,
+): boolean {
+  const layerIndex = marks.indexOf(layer.signature);
+  if (layerIndex < 0) return false;
+  const baseIndex = (signature: string | undefined) =>
+    signature ? marks.indexOf(signature) : -1;
+  const interval = (left: string | undefined, right: string | undefined) => {
+    const leftIndex = baseIndex(left);
+    const rightIndex = baseIndex(right);
+    return (
+      leftIndex >= 0 &&
+      rightIndex >= 0 &&
+      layerIndex > leftIndex &&
+      layerIndex < rightIndex
+    );
+  };
+  const positionOf = (predicate: (signature: string) => boolean) =>
+    structure.sequence.findIndex(predicate);
+  const betweenBefore = (index: number) =>
+    index > 0 &&
+    interval(structure.sequence[index - 1], structure.sequence[index]);
+  const betweenAfter = (index: number) =>
+    index >= 0 &&
+    index < structure.sequence.length - 1 &&
+    interval(structure.sequence[index], structure.sequence[index + 1]);
+
+  switch (layer.placement) {
+    case 'after-hero':
+      return betweenAfter(0);
+    case 'before-protagonist':
+      return betweenBefore(
+        positionOf((signature) => structure.protagonists.includes(signature)),
+      );
+    case 'after-protagonist':
+      return betweenAfter(
+        positionOf((signature) => structure.protagonists.includes(signature)),
+      );
+    case 'before-explorer':
+      return betweenBefore(
+        positionOf((signature) => signature.startsWith('feature.explorer:')),
+      );
+    case 'after-resources':
+      return betweenAfter(
+        positionOf((signature) => signature.startsWith('editorial.resources:')),
+      );
+    case 'before-closing':
+      return betweenBefore(
+        positionOf((signature) => structure.closings.includes(signature)),
+      );
+  }
+}
+
 export type PageMetrics = {
   slug: string;
   type: string;
@@ -484,6 +677,7 @@ export function structuralFindings(
   pages: SitePage[],
   images: TenantImage[],
   brand?: { vibe?: string; design?: unknown },
+  brief: Record<string, unknown> = {},
 ): StructuralFinding[] {
   const findings: StructuralFinding[] = [];
   const design = brand?.design as DesignProfile | undefined;
@@ -602,6 +796,38 @@ export function structuralFindings(
         rule: 'home-tons',
         message: `A home usa ${tones.size} tom(ns) (${[...tones].join(', ')}). Alterne pelo menos três entre paper, soft, accent, secondary e ink para criar ritmo.`,
       });
+
+    const structure = structureByKey(design?.structure);
+    if (
+      structure?.vibe === 'comercial' &&
+      (design?.version === 5 || design?.version === 6)
+    ) {
+      const depth = briefDepth(brief, images);
+      const floor = homeSectionFloor(structure, depth);
+      const wordFloor = homeWordFloor(floor);
+      const availableLayers = availableHomeExpansions(structure, depth);
+      const marks = silhouette(home.blocks, design);
+      const requiredLayers = Math.max(0, floor - structure.sequence.length);
+      const requiredExpansions = availableLayers.slice(
+        0,
+        Math.min(requiredLayers, availableLayers.length),
+      );
+      const requiredIndexes = requiredExpansions.map((layer) =>
+        marks.indexOf(layer.signature),
+      );
+      const expansionsValid = requiredExpansions.every(
+        (layer, index) =>
+          expansionPlacementFits(layer, marks, structure) &&
+          (index === 0 || requiredIndexes[index - 1] < requiredIndexes[index]),
+      );
+      if (metrics.sections < floor || !expansionsValid)
+        findings.push({
+          page: '/',
+          level: 'error',
+          rule: 'home-rasa',
+          message: `A home comercial tem ${metrics.sections} seções e ${metrics.words} palavras; este briefing sustenta o piso de ${floor} seções e ${wordFloor} palavras. Camadas liberadas, nesta ordem: ${availableLayers.length ? availableLayers.map((layer) => `${layer.signature} (${layer.description})`).join(' > ') : 'nenhuma com a evidência atual'}. Inclua ${requiredExpansions.length} camada(s) liberada(s) na posição indicada e complete o piso somente com conteúdo útil, sem inventar prova.`,
+        });
+    }
   }
 
   if (design && design.version >= 4)

@@ -6,7 +6,10 @@ import { logoFindings } from '@/lib/images/logo-fit';
 import type { BlockInstance, Brand, Page, TenantImage } from '../types';
 import type { Finding } from './lint';
 import {
+  briefDepth,
   contentText,
+  homeSectionFloor,
+  homeWordFloor,
   pageImageUrls,
   structuralFindings,
   type SitePage,
@@ -112,6 +115,15 @@ export function lintSite(
   const titles = new Set<string>();
   const texts = new Set<string>();
   const graph = new Map<string, Set<string>>();
+  const design = brand?.design as
+    | { version?: number; structure?: string }
+    | undefined;
+  const commercialHomeFloor =
+    home &&
+    (design?.version === 5 || design?.version === 6) &&
+    design.structure?.startsWith('comercial-')
+      ? homeSectionFloor(design.structure, briefDepth(brief, images))
+      : undefined;
   for (const page of pages) {
     const edges = new Set<string>();
     graph.set(page.slug, edges);
@@ -188,7 +200,12 @@ export function lintSite(
         'Escreva uma descrição de busca específica para a página.',
       );
     const text = contentText(page.blocks);
-    const minWords = landing && page.slug === '' ? 250 : 100;
+    const minWords =
+      page.slug === '' && commercialHomeFloor
+        ? homeWordFloor(commercialHomeFloor)
+        : landing && page.slug === ''
+          ? 250
+          : 100;
     if (text.split(/\s+/).length < minWords)
       fail(
         page.slug,
@@ -219,7 +236,7 @@ export function lintSite(
   if (landing) findings.push(...landingFindings(pages, brief, images));
   // Composição: fotos por página, seção protagonista e ritmo tonal. Estas
   // regras vivem em metrics porque a revisão do agente usa as mesmas medidas.
-  for (const finding of structuralFindings(pages, images, brand))
+  for (const finding of structuralFindings(pages, images, brand, brief))
     findings.push(finding);
   // O logo aplicado contra o papel real do cabeçalho e do rodapé. Aviso, não
   // bloqueio: o logo é escolha do operador e a versão escura resolve o caso.

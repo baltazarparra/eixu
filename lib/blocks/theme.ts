@@ -56,6 +56,17 @@ export function themeVars(brand: Brand): Record<string, string> {
       : paper
     : brand.surface || mixHex(ink, paper, 0.04);
   const servicesSurface = mixHex(paper, ink, 0.03);
+  const washCandidate = mixHex(paper, accent, 0.07);
+  const wash = contrastRatio(ink, washCandidate) >= 4.5 ? washCandidate : paper;
+  const wash2Candidate = mixHex(paper, accentAlt, 0.09);
+  const wash2 =
+    contrastRatio(ink, wash2Candidate) >= 4.5 ? wash2Candidate : paper;
+  const accentDeepCandidate = mixHex(accent, ink, 0.12);
+  const accentDeep =
+    contrastRatio(accentInk, accent) >= 4.5 &&
+    contrastRatio(accentInk, accentDeepCandidate) >= 4.5
+      ? accentDeepCandidate
+      : accent;
   const legacyFont =
     brand.font === 'serif'
       ? 'var(--font-serif)'
@@ -76,6 +87,7 @@ export function themeVars(brand: Brand): Record<string, string> {
     '--ink': ink,
     '--paper': paper,
     '--accent': accent,
+    '--accent-deep': accentDeep,
     '--accent-ink': accentInk,
     '--accent-2': accentAlt,
     '--accent-2-ink': accentAltInk,
@@ -91,8 +103,12 @@ export function themeVars(brand: Brand): Record<string, string> {
     '--highlight-text-accent': readableHighlight(highlight, accent),
     '--highlight-text-accent-2': readableHighlight(highlight, accentAlt),
     '--surface': surface,
+    '--wash': wash,
+    '--wash-2': wash2,
     '--services-surface': servicesSurface,
     '--muted': readableMuted(ink, paper),
+    '--muted-wash': readableMuted(ink, wash),
+    '--muted-wash-2': readableMuted(ink, wash2),
     // Cada tom de seção troca ink e paper, então o texto de apoio precisa do
     // seu próprio valor medido. A mistura fixa do CSS dava 3,56 contra a cor
     // de marca, e o miolo das seções coloridas ficava ilegível.

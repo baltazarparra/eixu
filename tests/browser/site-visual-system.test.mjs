@@ -25,6 +25,7 @@ await test(
     const { DISPLAY_TYPE, BODY_TYPE } = await jiti.import(
       '../../lib/design/typography.ts',
     );
+    const { inspectText } = await jiti.import('../../lib/review/text.ts');
     const css = (
       await Promise.all(
         (
@@ -222,12 +223,24 @@ await test(
               JSON.stringify(metrics),
             );
             assert.ok(metrics.headlineSize >= metrics.bodySize * 2);
+            const textInspection = await inspectText(page, {
+              page: '/',
+              viewport: `${width}px`,
+            });
+            assert.deepEqual(
+              textInspection.brokenWords,
+              [],
+              `${vibe} ${width}: palavra fragmentada`,
+            );
             assert.notEqual(metrics.visibleTabIcon, 'none');
+            const expectedFamilies = [
+              DISPLAY_TYPE[pair[0]].name,
+              BODY_TYPE[pair[1]].name,
+              ...(vibe === 'moderno' ? ['Geist Mono'] : []),
+            ];
             assert.deepEqual(
               metrics.families.sort((a, b) => a.localeCompare(b)),
-              [DISPLAY_TYPE[pair[0]].name, BODY_TYPE[pair[1]].name].sort(
-                (a, b) => a.localeCompare(b),
-              ),
+              [...new Set(expectedFamilies)].sort((a, b) => a.localeCompare(b)),
             );
             assert.equal(metrics.decorativeIcons, 0);
             assert.ok(metrics.itemIcons.length > 0);
@@ -426,7 +439,7 @@ await test(
           });
           assert.equal(
             await page.$eval('h1', (node) => node.textContent),
-            'Forma para novas ideias.',
+            'Sustentabilidade orienta decisões.',
           );
           assert.ok(
             await page.$('.site-icon[data-icon-vibe="artistico"] path'),

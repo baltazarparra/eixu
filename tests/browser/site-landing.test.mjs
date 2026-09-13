@@ -49,11 +49,21 @@ await test(
               hasTouch: width < 1024,
               isMobile: width < 1024,
             });
-            await open(`/?layout=${layout}`);
+            await open(`/?layout=${layout}&longword=1`);
             assert.ok(
               await page.evaluate(
                 () => document.documentElement.scrollWidth <= innerWidth + 1,
               ),
+            );
+            assert.deepEqual(
+              (
+                await fixture.inspectText(page, {
+                  page: '/',
+                  viewport: `${width}px`,
+                })
+              ).brokenWords,
+              [],
+              `${layout} ${width}: palavra fragmentada`,
             );
             const tiny = await page.$$eval(
               '.site-menu-toggle,.site-nav-cta,.site-action,.site-submit,.site-showcase-tablist button,.site-faq-summary',

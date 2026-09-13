@@ -1361,7 +1361,7 @@ await test('ferramentas preservam o perfil e o intake atualizados durante o turn
     rhythm: 'alternating',
     imageTreatment: 'framed',
     surfaceStyle: 'flat',
-    motif: 'corners',
+    motif: 'wash',
     variance: 5,
     motion: 3,
     density: 5,

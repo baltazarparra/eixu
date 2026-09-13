@@ -49,7 +49,7 @@ details[open] > summary {
   color: var(--ink);
   font-family:
     var(--font-body, var(--font-site)), ui-sans-serif, system-ui, sans-serif;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .site-theme[data-density='airy'] {
   --section-space: clamp(4rem, 9vw, 8.5rem);
@@ -732,6 +732,16 @@ details[open] > summary .site-disclosure {
   background: var(--accent-2);
   color: var(--accent-2-ink);
 }
+@media (min-width: 768px) {
+  .site-cta-split .site-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) auto;
+    align-items: end;
+  }
+  .site-cta-split .site-action {
+    justify-self: end;
+  }
+}
 .site-cta-minimal {
   background: transparent;
   color: var(--ink);
@@ -929,12 +939,24 @@ details[open] > summary .site-disclosure {
 .site-theme[data-imagery='collage'] .site-hero-media {
   box-shadow: 1rem 1rem 0 color-mix(in oklab, var(--accent-2) 38%, var(--paper));
 }
-.site-theme[data-motif='grid'] .site-hero,
-.site-theme[data-motif='grid'] main > .site-block:nth-child(3n) {
+.site-theme[data-design-version='2'][data-motif='grid'] .site-hero,
+.site-theme[data-design-version='2'][data-motif='grid']
+  main
+  > .site-block:nth-child(3n) {
   background-image:
     linear-gradient(var(--line) 1px, transparent 1px),
     linear-gradient(90deg, var(--line) 1px, transparent 1px);
   background-size: 3rem 3rem;
+}
+.site-theme[data-motif='wash'] .site-hero {
+  --muted: var(--muted-wash);
+  background-image: linear-gradient(160deg, var(--wash), var(--paper) 62%);
+}
+.site-theme[data-motif='wash']
+  main
+  > .site-block:not([data-tone]):nth-child(3n) {
+  --muted: var(--muted-wash-2);
+  background-image: linear-gradient(180deg, var(--paper), var(--wash-2));
 }
 .site-theme[data-motif='stripes'] .site-cta::before {
   display: block;

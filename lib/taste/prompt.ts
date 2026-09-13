@@ -27,6 +27,13 @@ import { intakeSocialUrl, intakeSummary } from '../tenant-intake';
 import { currentSitePrompt } from '@/lib/current-site/schema';
 import { socialSummary } from '../social-profile';
 import { phaseBrief, type Phase } from './phases';
+import {
+  availableHomeExpansions,
+  briefDepth,
+  homeSectionFloor,
+  homeWordFloor,
+} from './metrics';
+import { structureByKey } from '../design/structures';
 import type { Tenant } from '../types';
 
 export type PromptContext = {
@@ -49,11 +56,14 @@ export type PromptContext = {
   pendencias?: string;
   /** Frases que a validação aceita como prova. */
   evidencia?: string;
+  /** Quantas fotos válidas existem no acervo, para liberar camadas visuais. */
+  availablePhotoCount?: number;
 };
 
 /** Piso de composição. Sem isto o resultado passa nos validadores como lista de texto. */
 const COMPOSITION = `## Briefing de composição
 - A home precisa de uma seção protagonista com pelo menos duas fotos deste cliente. O hero atelier conta como protagonista só quando outra seção também mostra o negócio em foto. Nos perfis v5/v6 essas fotos ficam na seção indicada pela estrutura.
+- A profundidade da home responde aos dados do briefing. Briefing amplo sem as camadas liberadas é recusado como home rasa; camada de prova sem a evidence literal correspondente continua pendente. Não acrescente seção só para atingir contagem.
 - Sem referência, a home não pode repetir a composição de outro cliente. No perfil v6 guiado por referência, fidelidade à fonte prevalece e a composição não deve ser alterada só para parecer diferente.
 - Toda página orgânica mostra pelo menos uma foto. Página de texto puro é recusada no pre-flight.
 - Sem referência, a home alterna pelo menos três tons entre paper, soft, accent, secondary e ink, incluindo accent ou secondary. Com referência, reproduza o ritmo tonal observado e use a marca sem contrariar a fonte.
@@ -166,6 +176,7 @@ export function systemPrompt(
     review,
     pendencias,
     evidencia,
+    availablePhotoCount = 0,
   } = context;
   const currentSite = configuredCurrentSite(tenant.brief);
   const intake = [
@@ -218,6 +229,24 @@ export function systemPrompt(
   );
 
   const landing = vibe === 'landing';
+  const selectedStructure = structureByKey(tenant.brand.design?.structure);
+  const depth = briefDepth(tenant.brief, availablePhotoCount);
+  const sectionFloor = selectedStructure
+    ? homeSectionFloor(selectedStructure, depth)
+    : undefined;
+  const expansions = selectedStructure
+    ? availableHomeExpansions(selectedStructure, depth)
+    : [];
+  const homeDirection =
+    selectedStructure?.vibe === 'comercial' &&
+    (designVersion === 5 || designVersion === 6) &&
+    sectionFloor
+      ? {
+          sectionFloor,
+          wordFloor: homeWordFloor(sectionFloor),
+          expansions,
+        }
+      : undefined;
   const sections = [
     `## Identidade EIXU\n${soul}`,
     FACTS,
@@ -241,6 +270,7 @@ export function systemPrompt(
           vibe,
           phase === 'briefing' ? undefined : tenant.brand.design,
           referenceAuthority,
+          homeDirection,
         )}`
       : '',
     legacy
@@ -279,6 +309,9 @@ export function systemPrompt(
               ? undefined
               : vibe,
           design: tenant.brand.design,
+          expansions: homeDirection?.expansions.map(
+            (expansion) => expansion.signature,
+          ),
         })}`
       : '',
     scenePlan ? `## Plano de cenas\n${scenePlan}` : '',

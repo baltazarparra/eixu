@@ -20,6 +20,10 @@ export function LandingFixture({
       `${origin}/fixture-media/`,
     ),
   );
+  if (params.has('longword'))
+    blocks.find(
+      (block: { id?: string }) => block.id === 'hero',
+    ).props.headline = 'Sustentabilidade orienta decisões.';
   if (params.has('dark'))
     Object.assign(f.tenant.brand, {
       ink: '#f5f5f5',

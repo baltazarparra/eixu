@@ -1,5 +1,6 @@
 import sharp from 'sharp';
 import { inspectNavigation, type NavigationMeasurement } from './navigation';
+import { inspectText, type TextInspection } from './text';
 
 export type Shot = {
   page: string;
@@ -8,6 +9,7 @@ export type Shot = {
   scrollWidth: number;
   overflow: boolean;
   brokenImages: number;
+  text: TextInspection;
   navigation?: NavigationMeasurement;
   menuJpeg?: Buffer;
   jpeg: Buffer;
@@ -186,6 +188,10 @@ export async function capturePages(
           .jpeg({ quality: 85 })
           .toBuffer();
         const navigation = await inspectNavigation(page);
+        const text = await inspectText(page, {
+          page: `/${slug}`,
+          viewport: viewport.name,
+        });
         return {
           page: `/${slug}`,
           viewport: viewport.name,
@@ -193,6 +199,7 @@ export async function capturePages(
           scrollWidth: measured.scrollWidth,
           overflow: measured.scrollWidth > measured.innerWidth + 2,
           brokenImages: measured.brokenImages,
+          text,
           jpeg,
           ...navigation,
         };

@@ -27,19 +27,27 @@ Confirme destino e escopo autorizado antes de executar.
 
 Medido por `siteMetrics` e pelo lint da geração. Este piso orienta o aceite do experimento. Na publicação pedida pelo operador, os achados editoriais classificados em `lib/sites/publication-policy.ts` viram recomendações; erros técnicos continuam bloqueando a transação. Publicar não equivale a atingir a rubrica nem a confirmar fatos.
 
-| Medida                                      | Mínimo                                     |
-| ------------------------------------------- | ------------------------------------------ |
-| Páginas orgânicas conectadas                | 3 em multi; 1 home + obrigado em landing   |
-| Palavras úteis por página orgânica          | 100; 250 na home landing                   |
-| Fotos disponíveis distintas na home         | 2                                          |
-| Páginas orgânicas com pelo menos uma imagem | todas                                      |
-| Seção protagonista na home                  | 1                                          |
-| Estrutura v5 ou v6 escolhida e preservada   | 1 da vibe ou 1 das 12 pela referência      |
-| Composição autoral v5/v6                    | 1, com duas fotos e papéis próprios        |
-| Tons distintos na home                      | 3 sem referência; ritmo da fonte no v6     |
-| Momentos de motion                          | 1 a 3 sem referência; ritmo da fonte no v6 |
-| Erros de `lintPage` e `lintSite`            | 0                                          |
-| Overflow horizontal em 1440 e 390           | nenhum                                     |
+| Medida                                      | Mínimo                                               |
+| ------------------------------------------- | ---------------------------------------------------- |
+| Páginas orgânicas conectadas                | 3 em multi; 1 home + obrigado em landing             |
+| Palavras úteis por página orgânica          | 100; 180/220 na home comercial ampla; 250 na landing |
+| Fotos disponíveis distintas na home         | 2                                                    |
+| Páginas orgânicas com pelo menos uma imagem | todas                                                |
+| Seção protagonista na home                  | 1                                                    |
+| Estrutura v5 ou v6 escolhida e preservada   | 1 da vibe ou 1 das 12 pela referência                |
+| Composição autoral v5/v6                    | 1, com duas fotos e papéis próprios                  |
+| Tons distintos na home                      | 3 sem referência; ritmo da fonte no v6               |
+| Momentos de motion                          | 1 a 3 sem referência; ritmo da fonte no v6           |
+| Erros de `lintPage` e `lintSite`            | 0                                                    |
+| Overflow horizontal em 1440 e 390           | nenhum                                               |
+| Palavra visível partida em qualquer captura | nenhuma                                              |
+
+Em comercial v5/v6, a profundidade do briefing define o piso entre cinco e oito
+seções: quatro evidências acrescentam uma, e seis evidências mais dois números ou
+história acima de 1.500 caracteres acrescentam outra. Só contam camadas opcionais
+sustentadas pelos dados e na ordem da estrutura. Seis seções pedem 180 palavras;
+sete ou mais, 220. A contagem evita uma home desproporcional, mas não substitui a
+nota humana de utilidade, factualidade e jornada.
 
 Para `landing` (perfil v7), estrutura v5/v6 e composição autoral não se aplicam.
 A home tem 6–11 seções, protagonista com duas fotos, prova confirmada e uma ação

@@ -1,6 +1,6 @@
 # Evolução das vibes
 
-Reconciliado em 13/09/2026 com `main` até o PR #58. O diagnóstico e o plano
+Reconciliado em 13/09/2026 com o contrato da vibe comercial. O diagnóstico e o plano
 originais estão no [arquivo histórico](archive/vibes-plan-2026-09-12.md).
 Este documento mantém apenas a direção das próximas evoluções; o contrato
 implementado está em [Design](design.md).
@@ -17,7 +17,9 @@ apresentação até uma recomposição e publicação explícitas.
 A moderna já tem fio entre capítulos, painéis, pílula e rótulos em mono.
 Iconografia contextual, fotos numeradas geradas/enviadas/importadas, edição de
 texto e estilo na prévia e controles de moldura, recorte, largura e espaçamento
-já existem. Não devem voltar ao backlog como funcionalidades ausentes.
+já existem. A comercial usa lavagem cromática sem grade em perfis atuais, protege
+palavras inteiras no renderer e amplia a home conforme a profundidade factual do
+briefing. Não devem voltar ao backlog como funcionalidades ausentes.
 
 ## Propostas que continuam abertas
 

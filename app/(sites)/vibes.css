@@ -224,6 +224,54 @@
     [data-design-version='3'],
     [data-design-version='4']
   )[data-vibe='comercial']
+  .site-headline[data-length='medium'] {
+  max-width: 16ch;
+  font-size: clamp(2.7rem, 5vw, 5.25rem);
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='comercial']
+  .site-headline[data-length='long'] {
+  max-width: 20ch;
+  font-size: clamp(2.5rem, 3.8vw, 4.25rem);
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='comercial']
+  .site-headline[data-length='short'][data-long-word='true'] {
+  max-width: 16ch;
+  font-size: clamp(2.7rem, 5vw, 5.25rem);
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='comercial']
+  .site-headline[data-length='medium'][data-long-word='true'] {
+  max-width: 19ch;
+  font-size: clamp(2.4rem, 3.8vw, 4.25rem);
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='comercial']
+  .site-headline[data-length='long'][data-long-word='true'] {
+  max-width: 23ch;
+  font-size: clamp(2.4rem, 3.2vw, 3.8rem);
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='comercial']
+  .site-cta
+  h2[data-long-word='true'] {
+  max-width: 23ch;
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='comercial']
   :is(.site-services-cards li, .site-steps-cards li, .site-faq-cards details) {
   border-top: 2px solid var(--accent);
   background: var(--paper);
@@ -236,6 +284,72 @@
   .site-icon-badge {
   width: 2.35rem;
   height: 2.35rem;
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='comercial']
+  .site-hero {
+  --muted: var(--muted-wash);
+  background-image: linear-gradient(160deg, var(--wash), var(--paper) 62%);
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='comercial']
+  .site-footer {
+  --muted: var(--muted-wash);
+  background-image: linear-gradient(160deg, var(--wash), var(--paper) 68%);
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='comercial']
+  .site-block[data-block='cta.band'][data-tone='accent'] {
+  background-image: linear-gradient(135deg, var(--accent), var(--accent-deep));
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='comercial']
+  .site-explorer-panel {
+  --muted: var(--muted-wash-2);
+  background: var(--wash-2);
+  color: var(--brand-ink);
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='comercial']
+  .site-proof-strip-numbers {
+  --muted: var(--muted-wash);
+  background: var(--wash);
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='comercial']
+  .site-proof-strip-numbers
+  strong {
+  color: var(--accent);
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='comercial']
+  .site-narrative-statement-split
+  h2 {
+  margin-inline: 0;
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='comercial']
+  .site-facts-ledger
+  dl {
+  --muted: var(--muted-wash-2);
+  border-color: transparent;
+  background: var(--wash-2);
 }
 
 /* Moderno v3/v4: sistema tipográfico lido em 12/09/2026 em linear.app,
@@ -320,6 +434,14 @@
   font-weight: 500;
   line-height: 1.02;
   letter-spacing: -0.035em;
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='moderno']
+  .site-headline[data-long-word='true'] {
+  max-width: 19ch;
+  font-size: clamp(2.1rem, 3.8vw, 3.6rem);
 }
 .site-theme:is(
     [data-design-version='3'],
@@ -649,6 +771,14 @@
   .site-hero-text
   .site-headline[data-length='long'] {
   max-width: 22ch;
+}
+.site-theme:is(
+    [data-design-version='3'],
+    [data-design-version='4']
+  )[data-vibe='artistico']
+  .site-headline[data-long-word='true'] {
+  max-width: 20ch;
+  font-size: clamp(2.55rem, 3.8vw, 4rem);
 }
 /* Cabeçalho flutuante: ilha compacta e translúcida. Com position fixed a
    moldura deixa de reservar altura, a abertura sobe até o topo e paga o

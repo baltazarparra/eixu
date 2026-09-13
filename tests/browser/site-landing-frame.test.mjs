@@ -138,6 +138,7 @@ await test(
           await tab.setViewport({ width, height: 900 });
           await load(html(original));
           const before = await measure();
+          assert.equal(before.overflow, false, `${layout} ${width}: antes`);
           assert.ok(
             parseFloat(before.image.border) > 0,
             'A fixture precisa da moldura global.',

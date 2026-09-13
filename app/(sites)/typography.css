@@ -25,6 +25,43 @@
 .site-theme :is(h1, h2, h3, blockquote) {
   text-wrap: balance;
 }
+/* Perfis legados e v2 não têm uma faixa tipográfica própria por comprimento.
+   A maior palavra ainda precisa caber inteira, inclusive durante edição local. */
+.site-theme .site-headline[data-long-word='true'] {
+  max-width: 21ch;
+  font-size: clamp(2.1rem, 3.8vw, 3.6rem);
+}
+.site-theme .site-cta h2[data-long-word='true'] {
+  max-width: 24ch;
+  font-size: clamp(1.75rem, 3.5vw, 3rem);
+}
+.site-theme
+  :is(
+    h1,
+    .site-headline,
+    .site-h2,
+    .site-explorer-heading h2,
+    .site-signature h3,
+    blockquote,
+    .site-action,
+    .site-nav-link,
+    .site-nav-cta
+  ) {
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: manual;
+}
+.site-theme
+  :is(
+    .site-nav-mobile,
+    .site-footer-contacts,
+    .site-footer-nav,
+    .site-location-address
+  )
+  :is(a, address),
+.site-theme .site-location-address {
+  overflow-wrap: anywhere;
+}
 .site-theme[data-vibe]
   :is(
     .site-headline,

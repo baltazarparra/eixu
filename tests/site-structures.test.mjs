@@ -13,15 +13,18 @@ const j = createJiti(import.meta.url, {
 const structures = await j.import('../lib/design/structures.ts');
 const metrics = await j.import('../lib/taste/metrics.ts');
 const profile = await j.import('../lib/design/profile.ts');
-const { structureGrammar, laneIssues, VIBE_LANE } = await j.import(
-  '../lib/design/vibes.ts',
-);
+const { grammarDirection, structureGrammar, laneIssues, VIBE_LANE } =
+  await j.import('../lib/design/vibes.ts');
 const { blockSchemas, catalogForPrompt } = await j.import(
   '../lib/blocks/registry.ts',
 );
 const { SignatureComposition } = await j.import('../lib/blocks/components.tsx');
 const { scenePlan } = await j.import('../lib/images/scene-plan.ts');
 const { expectedRatio } = await j.import('../lib/images/ratios.ts');
+const { lintSite } = await j.import('../lib/taste/site.ts');
+const { publicationFinding } = await j.import(
+  '../lib/sites/publication-policy.ts',
+);
 
 const photo = (index) => `https://assets.test/signature-${index}.webp`;
 
@@ -173,6 +176,18 @@ await test('cada vibe oferece três estruturas completas e distintas', () => {
         const options =
           layoutSchema?.def?.innerType?.options ?? layoutSchema?.options;
         assert.ok(options?.includes(layout), `${choice.key}: ${mark}`);
+      }
+    for (const choice of choices)
+      for (const expansion of choice.expansions ?? []) {
+        const [type, layout] = expansion.signature.split(':');
+        assert.ok(blockSchemas[type], `${choice.key}: ${expansion.signature}`);
+        const layoutSchema = blockSchemas[type].shape.layout;
+        const options =
+          layoutSchema?.def?.innerType?.options ?? layoutSchema?.options;
+        assert.ok(
+          options?.includes(layout),
+          `${choice.key}: ${expansion.signature}`,
+        );
       }
   }
 });
@@ -450,6 +465,170 @@ await test('catálogo da composição aponta somente o layout selecionado', () =
     /signature\.composition · .*protagonista da home em signature\.composition:story-orbit/,
   );
   assert.match(catalog, /layout\(decision-path\|service-lens\|proof-route/);
+});
+
+await test('home comercial cresce de forma proporcional somente com camadas sustentadas', () => {
+  const structure = structures.SITE_STRUCTURES['comercial-vitrine'];
+  const minimal = metrics.briefDepth(
+    { evidence: ['Atendimento confirmado.'] },
+    2,
+  );
+  assert.equal(metrics.homeSectionFloor(structure, minimal), 5);
+  assert.deepEqual(metrics.availableHomeExpansions(structure, minimal), []);
+  const brief = {
+    evidence: [
+      'A operação atende 12 unidades em três estados.',
+      'O processo reduziu em 35% o tempo de resposta confirmado.',
+      'A equipe atua com marcas dos setores de energia e indústria.',
+      'Há cobertura presencial nas cidades informadas pelo cliente.',
+      'Depoimento: “A implantação organizou nossa rotina”, afirmou Ana Lima.',
+      'Depoimento: “O resultado ficou visível no primeiro ciclo”, disse Rui Alves.',
+      'A estrutura de atendimento funciona em horário comercial.',
+      'O benefício confirmado é uma decisão com contexto centralizado.',
+    ],
+    intake: { story: 'Contexto operacional detalhado. '.repeat(70) },
+    pagePlan: Array.from({ length: 5 }, (_, index) => ({ slug: `${index}` })),
+  };
+  const depth = metrics.briefDepth(brief, 6);
+  assert.equal(depth.evidenceCount, 8);
+  assert.equal(depth.numericEvidenceCount, 2);
+  assert.ok(depth.storyLength > 1500);
+  assert.equal(depth.pagePlanLength, 5);
+  assert.equal(depth.photos, 6);
+  assert.equal(metrics.homeSectionFloor(structure, depth), 7);
+  assert.equal(metrics.homeWordFloor(7), 220);
+
+  const confidence = structures.SITE_STRUCTURES['comercial-confianca'];
+  const confidenceDepth = metrics.briefDepth(
+    {
+      evidence: [
+        'Cliente Marca Norte confirmou a parceria.',
+        'Cliente Marca Sul confirmou a parceria.',
+        'Cliente Marca Leste confirmou a parceria.',
+        'A cobertura inclui atendimento em horário comercial.',
+      ],
+    },
+    8,
+  );
+  assert.deepEqual(
+    metrics
+      .availableHomeExpansions(confidence, confidenceDepth)
+      .map((item) => item.signature),
+    ['proof.strip:logos', 'feature.showcase:tabs', 'editorial.facts:ledger'],
+  );
+  assert.deepEqual(
+    metrics
+      .availableHomeExpansions(confidence, { ...confidenceDepth, photos: 7 })
+      .map((item) => item.signature),
+    ['proof.strip:logos', 'editorial.facts:ledger'],
+  );
+
+  const expansions = metrics.availableHomeExpansions(structure, depth);
+  assert.deepEqual(
+    expansions.map((item) => item.signature),
+    [
+      'proof.strip:numbers',
+      'narrative.statement:split',
+      'editorial.facts:ledger',
+      'proof.testimonials:grid',
+    ],
+  );
+  const shallow = homeFor(structure);
+  let findings = metrics.structuralFindings(
+    [shallow],
+    imagesFor(structure),
+    { vibe: structure.vibe, design: designFor(structure) },
+    brief,
+  );
+  const shallowFinding = findings.find(
+    (finding) => finding.rule === 'home-rasa',
+  );
+  assert.equal(shallowFinding.level, 'error');
+  assert.match(shallowFinding.message, /5 seções/);
+  assert.match(shallowFinding.message, /piso de 7 seções e 220 palavras/);
+  assert.match(
+    shallowFinding.message,
+    /proof\.strip:numbers.*narrative\.statement:split/,
+  );
+  assert.equal(publicationFinding(shallowFinding).level, 'warn');
+
+  const expanded = homeFor(structure);
+  expanded.blocks.splice(1, 0, blockFromMark('proof.strip:numbers', 90));
+  const explorer = expanded.blocks.findIndex(
+    (block) => block.type === 'feature.explorer',
+  );
+  expanded.blocks.splice(
+    explorer,
+    0,
+    blockFromMark('narrative.statement:split', 91),
+  );
+  findings = metrics.structuralFindings(
+    [expanded],
+    imagesFor(structure),
+    { vibe: structure.vibe, design: designFor(structure) },
+    brief,
+  );
+  assert.equal(
+    findings.some((finding) => finding.rule === 'home-rasa'),
+    false,
+  );
+
+  const misplaced = structuredClone(expanded);
+  const statement = misplaced.blocks.findIndex(
+    (block) => block.type === 'narrative.statement',
+  );
+  misplaced.blocks.splice(1, 0, misplaced.blocks.splice(statement, 1)[0]);
+  findings = metrics.structuralFindings(
+    [misplaced],
+    imagesFor(structure),
+    { vibe: structure.vibe, design: designFor(structure) },
+    brief,
+  );
+  assert.equal(
+    findings.some((finding) => finding.rule === 'home-rasa'),
+    true,
+  );
+
+  const wordFinding = lintSite(
+    [
+      expanded,
+      { ...expanded, slug: 'solucoes', title: 'Soluções' },
+      { ...expanded, slug: 'contato', title: 'Contato' },
+    ],
+    imagesFor(structure),
+    'draft',
+    { vibe: structure.vibe, design: designFor(structure) },
+    brief,
+  ).find(
+    (finding) => finding.page === '/' && finding.rule === 'inbound-conteudo',
+  );
+  assert.match(wordFinding.message, /menos de 220 palavras/);
+
+  const direction = grammarDirection('comercial', designFor(structure), false, {
+    sectionFloor: 7,
+    wordFloor: 220,
+    expansions,
+  });
+  assert.match(direction, /no mínimo 7 seções e 220 palavras/);
+  const catalog = catalogForPrompt({
+    vibe: 'comercial',
+    design: designFor(structure),
+    expansions: expansions.map((item) => item.signature),
+  });
+  assert.match(
+    catalog,
+    /proof\.strip.*aprofundamento da home em proof\.strip:numbers/s,
+  );
+
+  const scenes = scenePlan(designFor(structure), 3, 'comercial', brief);
+  assert.equal(scenes.length, 6);
+  assert.deepEqual(scenes.at(-1), {
+    role: 'apoio',
+    targetBlock: 'narrative.split',
+    ratio: '5:6',
+    page: '',
+    hint: 'Cena vertical de apoio para aprofundar a narrativa da home comercial, sem simular prova ou cliente.',
+  });
 });
 
 await test('mover o focus no JSON não diferencia mapas com o mesmo HTML', async () => {

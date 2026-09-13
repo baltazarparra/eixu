@@ -85,6 +85,21 @@ export function renderingVibeOf(
     : vibeOf(brand);
 }
 
+/**
+ * Motivo efetivamente realizado pelo renderer. O grid continua disponível
+ * apenas para o perfil v2 já publicado; a partir do v3 ele vira uma lavagem
+ * discreta sem alterar o valor persistido nem o snapshot do cliente.
+ */
+export function renderedMotif(
+  brand: { design?: unknown } | null | undefined,
+): string | undefined {
+  const design = brand?.design as
+    | { version?: number; motif?: string }
+    | undefined;
+  if (design?.motif === 'grid' && (design.version ?? 0) >= 3) return 'wash';
+  return design?.motif;
+}
+
 export const VIBE_LABEL: Record<Vibe, string> = {
   landing: 'Landing Page',
   comercial: 'Comercial',
@@ -160,7 +175,7 @@ export const VIBE_LANE: Record<Vibe, Lane> = {
       rhythm: ['alternating', 'compact'],
       imageTreatment: ['framed'],
       surfaceStyle: ['outlined', 'layered'],
-      motif: ['none', 'grid'],
+      motif: ['none', 'wash'],
     },
     radius: ['md', 'lg'],
     paper: [0.85, 1],
@@ -175,7 +190,7 @@ export const VIBE_LANE: Record<Vibe, Lane> = {
       rhythm: ['alternating', 'compact'],
       imageTreatment: ['framed'],
       surfaceStyle: ['flat'],
-      motif: ['none', 'corners'],
+      motif: ['none', 'wash'],
     },
     radius: ['sm', 'md'],
     paper: [0.82, 1],
@@ -421,8 +436,16 @@ export function grammarDirection(
   vibe: Vibe,
   design?: GrammarProfile,
   referenceLed = design?.version === 6,
+  home?: {
+    sectionFloor: number;
+    wordFloor: number;
+    expansions: readonly { signature: string; description: string }[];
+  },
 ): string {
   const grammar = structureGrammar(vibe, design);
+  const homeDirection = home
+    ? `\n- Profundidade desta home: no mínimo ${home.sectionFloor} seções e ${home.wordFloor} palavras úteis. Camadas liberadas, em ordem: ${home.expansions.length ? home.expansions.map((layer) => `${layer.signature} (${layer.description})`).join(' > ') : 'nenhuma com a evidência atual'}. Use somente as camadas liberadas e preserve a evidence literal dos blocos de prova.`
+    : '';
   if (vibe === 'landing')
     return `${VIBE_DIRECTION.landing}
 Abertura da home: ${grammar.openings.join(' ou ')}. Protagonista: ${grammar.protagonists.join(' ou ')}.
@@ -440,7 +463,7 @@ ${allStructuresDirection()}`;
 - Fechamento de cada página: ${grammar.closings.join(' ou ')}.
 - Headline de todo hero: até ${grammar.headline} caracteres.
 - Sequência mínima: ${grammar.structure.sequence.join(' > ')}.
-Realize as seis aplicações documentadas da referência em estrutura, hero, tipografia, imagens, ritmo, superfície, mobile, movimento e densidade. Adapte somente por factualidade, marca, acessibilidade e limites do catálogo.`;
+Realize as seis aplicações documentadas da referência em estrutura, hero, tipografia, imagens, ritmo, superfície, mobile, movimento e densidade. Adapte somente por factualidade, marca, acessibilidade e limites do catálogo.${homeDirection}`;
   const choices =
     design?.version === 5
       ? ''
@@ -453,7 +476,7 @@ Realize as seis aplicações documentadas da referência em estrutura, hero, tip
 - Headline de todo hero: até ${grammar.headline} caracteres. O que sobrar vai para o subtext.
 - Evite nesta vibe: ${grammar.avoid.join(', ')}.
 ${grammar.structure ? `- Estrutura selecionada: ${grammar.structure.key}. Sequência mínima: ${grammar.structure.sequence.join(' > ')}.` : ''}
-Sem referência visual verificada, esta gramática define a direção completa.${choices}`;
+Sem referência visual verificada, esta gramática define a direção completa.${homeDirection}${choices}`;
 }
 
 const AXIS_LABEL: Record<Axis, string> = {
@@ -466,6 +489,9 @@ const AXIS_LABEL: Record<Axis, string> = {
   surfaceStyle: 'surfaceStyle',
   motif: 'motif',
 };
+
+/** Motivos que a leitura legada aceita, mas nenhuma direção nova pode usar. */
+export const MOTIFS_VETADOS = ['grid'] as const;
 
 /**
  * O que cada aspecto de uma referência verificada libera na faixa. A leitura
@@ -511,6 +537,11 @@ export function laneIssues(
 ): string[] {
   const lane = VIBE_LANE[vibe];
   const aspectList = [...(aspects ?? [])];
+  const issues: string[] = [];
+  if ((MOTIFS_VETADOS as readonly string[]).includes(input.motif))
+    issues.push(
+      'motif: "grid" é legado e permanece somente em perfis v2. Use none ou wash.',
+    );
   const referenceLed = REFERENCE_ASPECTS.every((aspect) =>
     aspectList.includes(aspect),
   );
@@ -522,7 +553,6 @@ export function laneIssues(
       relaxed.dials.add(dial);
     relaxed.luminance = true;
   }
-  const issues: string[] = [];
   const landingHero = ['stage', 'form'].includes(input.heroComposition);
   if ((vibe === 'landing') !== landingHero)
     issues.push(
@@ -556,6 +586,11 @@ export function laneIssues(
       );
   }
   for (const axis of DESIGN_AXES) {
+    if (
+      axis === 'motif' &&
+      (MOTIFS_VETADOS as readonly string[]).includes(input.motif)
+    )
+      continue;
     const allowed = lane.axes[axis] as readonly string[];
     if (!relaxed.axes.has(axis) && !allowed.includes(input[axis]))
       issues.push(
@@ -612,6 +647,7 @@ export const VIBE_DIRECTION: Record<Vibe, string> = {
   landing: `Vibe Landing Page: uma página, uma ação. Menu minimal em pílulas e âncoras; hero.landing stage com produto em moldura ou form com formulário curto. Benefício concreto, prova real, protagonista com duas fotos, passos, FAQ e fechamento sobre acento. De 6 a 11 seções de conteúdo. Repita o destino primário na abertura, no meio e no fechamento. nav.bar com stickyCta true e position fixed. A referência modula os eixos visuais, mas nunca a forma de página única.`,
   comercial: `Vibe comercial: percurso direto, acolhedor e orientado à decisão.
 - Display humanist ou slab com corpo humanist/source. Navegação bar, imagem framed e superfície flat.
+- motif wash ou none. A cor de marca ocupa no máximo 8% do papel como lavagem contínua no hero e em uma seção intermediária; sem linha, textura, repetição ou grade.
 - A home abre com benefício, foto documental e CTA visível, e o miolo alterna oferta, aplicações reais, dúvidas e contato. Não transforme tudo em cartões.
 - feature.numbered layout ledger para serviços, proof.testimonial só com depoimento real, faq.accordion layout split.
 - Ícones regulares e semânticos só onde aceleram leitura. Cantos discretos, movimento funcional e hierarquia de conversão clara.`,

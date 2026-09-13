@@ -17,6 +17,7 @@ import {
   type Vibe,
 } from '@/lib/design/vibes';
 import type { DesignProfile } from '@/lib/design/profile';
+import { briefDepth, homeSectionFloor } from '@/lib/taste/metrics';
 
 export {
   SCENE_ROLES,
@@ -57,6 +58,7 @@ export function scenePlan(
     | undefined,
   organicPages = 3,
   vibe: Vibe = 'comercial',
+  brief: Record<string, unknown> = {},
 ): PlannedScene[] {
   const legacy = design?.version === 2 || design?.version === 3;
   const grammar = legacy ? undefined : structureGrammar(vibe, design);
@@ -126,7 +128,19 @@ export function scenePlan(
       hint: 'A cena de uma página interna, coerente com o assunto dela.',
     });
   }
-  return scenes;
+  if (
+    structure?.vibe === 'comercial' &&
+    homeSectionFloor(structure, briefDepth(brief)) >= 7 &&
+    scenes.length < 6
+  )
+    scenes.push({
+      role: 'apoio',
+      targetBlock: 'narrative.split',
+      ratio: '5:6',
+      page: '',
+      hint: 'Cena vertical de apoio para aprofundar a narrativa da home comercial, sem simular prova ou cliente.',
+    });
+  return scenes.slice(0, 6);
 }
 
 /** O plano semântico precisa preencher exatamente as vagas estruturais. */
