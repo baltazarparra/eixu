@@ -15,7 +15,7 @@ const { productModel } = await j.import('../lib/ai/models.ts');
 const { usageRecord, sumGatewayCosts } = await j.import('../lib/ai/usage.ts');
 if (!process.argv.includes('--live')) {
   console.log(
-    'Use npm run eval:edits -- --live [--case=text|nested|color|insert|move|ambiguous]. Modelo configurado, fixture sintética, executores reais; nenhuma gravação remota.',
+    'Use npm run eval:edits -- --live [--case=text|nested|color|insert|move|move-within|impossible-move|ambiguous]. Modelo configurado, fixture sintética, executores reais; nenhuma gravação remota.',
   );
   process.exit(0);
 }
@@ -78,6 +78,28 @@ const cases = [
     },
   },
   {
+    // O pedido que motivou a guarda: mover selos dentro do hero.
+    id: 'move-within',
+    hero: 'bullets',
+    text: 'coloque esses selos do hero embaixo do título',
+    check: (pages) => {
+      const expected = editPages({ hero: 'bullets' });
+      expected[0].blocks[1].props.bulletsPlacement = 'headline';
+      assert.deepEqual(pages, expected);
+    },
+  },
+  {
+    // Reposicionar sem campo para isso: explicar, nunca apagar.
+    id: 'impossible-move',
+    hero: 'bullets',
+    text: 'mova o texto de apoio do hero para dentro do rodapé, na mesma linha do logo',
+    check: (pages, result) => {
+      assert.deepEqual(pages, editPages({ hero: 'bullets' }));
+      assert.ok(result.text.trim().length > 0);
+      assert.doesNotMatch(result.text, /removi|apaguei|exclu/i);
+    },
+  },
+  {
     id: 'ambiguous',
     text: 'Troque "Ver materiais" por "Ver opções".',
     check: (pages, result) => {
@@ -100,7 +122,7 @@ const report = {
   runs: [],
 };
 for (const scenario of cases.filter((c) => !selected || c.id === selected)) {
-  const f = await pageEditFixture(scenario.text);
+  const f = await pageEditFixture(scenario.text, { hero: scenario.hero });
   const trace = [];
   const started = Date.now();
   const agent = siteAgent({

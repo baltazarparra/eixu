@@ -250,6 +250,7 @@ export function HeroSplit({
   cta,
   secondary,
   bullets,
+  bulletsPlacement,
   image,
   imageAlt,
   layout,
@@ -266,6 +267,21 @@ export function HeroSplit({
   const hasImage = Boolean(image && /^https?:\/\//.test(image));
   const resolvedLayout =
     layout ?? ctx.tenant.brand.design?.heroComposition ?? 'split';
+  // A ordem no DOM segue a leitura; o CSS não reordena, para o teclado e o
+  // leitor de tela encontrarem os selos onde eles aparecem.
+  const bulletList = bullets?.length ? (
+    <ul
+      className="site-hero-bullets flex flex-wrap gap-x-6 gap-y-3 pt-4 text-sm text-[var(--muted)]"
+      data-placement={bulletsPlacement ?? 'cta'}
+    >
+      {bullets.map((bullet, index) => (
+        <li key={bullet} className="border-l-2 border-[var(--line)] pl-3">
+          <SiteIcon name="check" vibe={vibe} size={16} />
+          {text.node(`bullets.${index}`, bullet)}
+        </li>
+      ))}
+    </ul>
+  ) : null;
   return (
     <section
       className={`site-hero ${hasImage ? `site-hero-${resolvedLayout}` : 'site-hero-text'} site-image-${imagePosition}`}
@@ -282,6 +298,7 @@ export function HeroSplit({
           >
             {text.content('headline', headline)}
           </h1>
+          {bulletsPlacement === 'headline' ? bulletList : null}
           {subtext ? (
             <p
               className="max-w-[44ch] text-[1.08rem] leading-relaxed text-[var(--muted)]"
@@ -308,19 +325,7 @@ export function HeroSplit({
               />
             ) : null}
           </div>
-          {bullets?.length ? (
-            <ul className="site-hero-bullets flex flex-wrap gap-x-6 gap-y-3 pt-4 text-sm text-[var(--muted)]">
-              {bullets.map((bullet, index) => (
-                <li
-                  key={bullet}
-                  className="border-l-2 border-[var(--line)] pl-3"
-                >
-                  <SiteIcon name="check" vibe={vibe} size={16} />
-                  {text.node(`bullets.${index}`, bullet)}
-                </li>
-              ))}
-            </ul>
-          ) : null}
+          {(bulletsPlacement ?? 'cta') === 'cta' ? bulletList : null}
         </div>
         {hasImage ? (
           <div className="site-hero-visual">
@@ -1981,6 +1986,7 @@ export function HeroLanding({
   cta,
   secondary,
   badges,
+  badgesPlacement,
   image,
   imageAlt,
   form,
@@ -1988,6 +1994,14 @@ export function HeroLanding({
   ctx,
 }: HeroLandingProps & { ctx: RenderContext }) {
   const text = textAttrs(textStyles, editing);
+  // A ordem no DOM segue a leitura; o CSS não reordena.
+  const badgeList = badges.length ? (
+    <ul className="site-landing-badges" data-placement={badgesPlacement ?? 'cta'}>
+      {badges.map((badge, index) => (
+        <li key={index}>{text.node(`badges.${index}.label`, badge.label)}</li>
+      ))}
+    </ul>
+  ) : null;
   return (
     <section
       className={`site-section site-landing-hero site-landing-hero-${layout}`}
@@ -1998,6 +2012,7 @@ export function HeroLanding({
           <h1 {...text.mark('headline')}>
             {text.content('headline', headline)}
           </h1>
+          {badgesPlacement === 'headline' ? badgeList : null}
           {subtext && (
             <p className="site-landing-subtext" {...text.mark('subtext')}>
               {text.content('subtext', subtext)}
@@ -2015,15 +2030,7 @@ export function HeroLanding({
               />
             )}
           </div>
-          {badges.length > 0 && (
-            <ul className="site-landing-badges">
-              {badges.map((badge, index) => (
-                <li key={index}>
-                  {text.node(`badges.${index}.label`, badge.label)}
-                </li>
-              ))}
-            </ul>
-          )}
+          {(badgesPlacement ?? 'cta') === 'cta' ? badgeList : null}
           {layout === 'form' && image && (
             <img
               className="site-landing-form-image"

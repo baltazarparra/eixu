@@ -70,6 +70,36 @@ quando carrega o documento do site. Erro, redirecionamento de sessão ou espera
 maior que 20 segundos oferecem nova tentativa. A rolagem é preservada em
 edições da mesma página; escolher outra página começa uma prévia nova.
 
+## Pedido que não cabe no bloco
+
+Reposicionar um elemento dentro de um bloco só existe quando há campo para
+isso. Os selos do hero ganharam `bulletsPlacement` em `hero.split` e
+`badgesPlacement` em `hero.landing`, com `cta` (sob os botões, padrão) e
+`headline` (logo abaixo do título). A ordem muda no DOM, não por CSS, para o
+teclado e o leitor de tela encontrarem os selos onde eles aparecem; no layout
+`editorial` os selos pedidos sob o título acompanham a coluna dele.
+
+Sem um campo assim, o agente não grava: explica o limite e oferece a
+alternativa real. `contentLossError` garante isso em código, não só no prompt.
+Quando o pedido atual não menciona remoção, uma operação que apague texto é
+recusada com o lote inteiro: campo de copy que some ou fica vazio, lista que
+encolhe, bloco com texto removido e troca de tipo que não migra o texto.
+`asksRemoval` reconhece o pedido de remoção na mensagem atual e é generoso de
+propósito: um falso positivo devolve o comportamento anterior, um falso
+negativo recusaria uma remoção legítima. Apresentação, layout, links, imagens
+e `textStyles` não contam como conteúdo. A guarda vale na edição geral; a
+composição e o reparo continuam livres para recompor a página.
+
+## Fato confirmado pelo operador
+
+`landing-prova` e as demais regras de prova leem a evidência confirmada. Ela
+vem do cadastro, em Dados › Evidências, ou do chat: `confirm_evidence` grava
+em `brief.evidence` os fatos que o operador escreveu na conversa. O executor
+compara os termos do fato com o texto dele, ignorando palavras vazias, e
+recusa o que ninguém digitou; a página montada não comprova nada sozinha.
+A ferramenta não apaga evidência existente, não duplica e não entra no escopo
+restrito de cabeçalho.
+
 ## Integridade da edição
 
 O executor prepara o lote em memória, valida os blocos tocados e recusa novos

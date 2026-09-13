@@ -20,7 +20,7 @@ export const creativeBriefSchema = z.object({
   offer: z.string().min(8).max(180),
   goal: z.string().min(8).max(140),
   personality: z.array(z.string().min(2).max(32)).min(2).max(5),
-  evidence: z.array(z.string().min(3).max(140)).max(8).default([]),
+  evidence: z.array(z.string().min(3).max(140)).max(12).default([]),
   constraints: z.array(z.string().min(3).max(140)).max(8).default([]),
   /** O que não foi confirmado por fonte alguma. Impede afirmação sem evidência. */
   gaps: z.array(z.string().min(3).max(140)).max(6).default([]),
