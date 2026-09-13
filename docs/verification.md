@@ -1,5 +1,45 @@
 # Validação e publicação
 
+
+## Recuperação da geração Arya, 13/09/2026
+
+A execução `aaa92099-53b1-4346-86c5-b53f0aa9e34c`, no SHA
+`30fb18c5e89f03d833f2055b82a72f5722b95f4b`, começou às 03:06:33 UTC.
+O consumidor da Vercel retornou 504 com `Task timed out after 800 seconds`.
+A leitura `read_current_site` abriu sem evento de conclusão; as referências
+seguintes aguardavam a fila serial. O estúdio de logo terminou em 78,6 s.
+Pedir pausa às 03:26:44 renovou o heartbeat de uma execução já encerrada,
+prolongando o estado ativo no painel. Os logs antigos não identificam qual
+subetapa interna da leitura travou. A coleta pública local, sem síntese paga ou
+importação, terminou em 15,6 s com renderização e em 25,4 s só com HTML;
+essas amostras não são benchmark de desempenho da geração em produção.
+
+A correção limita coleta, tentativas, DNS, síntese e downloads, registra as
+subetapas e encerra Chromium atrasado ou sem resposta no fechamento. A
+expiração do run considera o teto da função e reconfirma status, salto e
+horários atomicamente. A pausa deixa de atualizar o heartbeat; uma execução
+recém-expirada pode ser retomada no mesmo POST.
+
+Validação na cópia isolada da versão em produção:
+
+- Tipos (`next typegen` e `tsc`), lint global e build Next.js/Turbopack passaram.
+  Os três testes do artefato serverless confirmaram identidade e binários.
+- A suíte de sites passou em 246 testes e a de admin em 210, sem skips, com
+  Chrome real e PostgreSQL 14 local descartável quando aplicável.
+- Os 18 checks focados finais de recuperação/fila passaram. Incluem API de
+  pausa com banco real, heartbeat, expiração simultânea, reserva nova e retomada.
+- Cancelamento de DNS, renderização pendente, abertura tardia do browser,
+  fechamento travado, teto de tentativas e síntese que ignora aborto foram
+  exercitados com dependências controladas; o material parcial foi preservado.
+- Sete checks HTTP no build servido localmente passaram: home/login, redirect
+  administrativo (meta refresh do streaming Next.js) e quatro APIs sem sessão.
+
+Às 03:37:55 UTC, a recuperação validada foi aplicada somente ao run acima,
+reconfirmando tenant, fase, salto e início. Ele passou de `stopping` a `failed`
+com a causa e a opção Tentar novamente. Nenhum novo run foi iniciado por essa
+recuperação. A correção permanente de código ainda não foi publicada; não houve
+nova geração paga nem validação da latência completa depois dela.
+
 ## Site atual como fonte factual e de ativos, 12/09/2026
 
 O cadastro ganhou o campo opcional **Site atual**, separado da Referência visual.

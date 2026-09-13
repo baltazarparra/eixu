@@ -364,3 +364,35 @@ await test('falha do primeiro envio distingue recusa de resposta perdida após r
     }
   }
 });
+
+await test('retomar usa o mesmo pedido quando a execução antiga acaba de expirar', async () => {
+  let created = 0,
+    dispatched = 0;
+  const { startGeneration } = await loadModule('lib/generation/start.ts', {
+    '@/lib/generation/runs': {
+      ACTIVE_STATUS: ['queued', 'running', 'stopping'],
+      activeRun: async () => ({ id: 'old', status: 'stopping' }),
+      expireStaleRun: async (run) => ({ ...run, status: 'failed' }),
+      createRun: async () => {
+        created++;
+        return { id: 'new', hops: 0, status: 'queued' };
+      },
+      recordEvent: async () => {},
+    },
+    '@/lib/generation/dispatch': {
+      dispatchStep: async () => {
+        dispatched++;
+      },
+    },
+    '@/lib/images/queries': { listImages: async () => [] },
+    '@/lib/tenant-queries': { listPages: async () => [] },
+    '@/lib/sites/generation': { generationState: () => ({ next: 'briefing' }) },
+  });
+  const result = await startGeneration({
+    tenant: { id: 'tenant', slug: 'fixture' },
+    origin: 'https://fixture.test',
+  });
+  assert.equal(result.ok, true);
+  assert.equal(created, 1);
+  assert.equal(dispatched, 1);
+});

@@ -256,5 +256,98 @@ await test(
         );
       },
     );
+    await t.test(
+      'pausa não renova worker; limite da função e expiração concorrente preservam reserva nova',
+      async () => {
+        const create = async () => {
+          const run = await a.createRun({
+            tenantId: legacyId,
+            origin: 'https://fixture.test',
+            phase: 'briefing',
+          });
+          return a.claimStep(run.id, 0);
+        };
+        const run = await create();
+        await database.query(
+          "update generation_runs set phase_started_at=now()-interval '20 minutes', heartbeat_at=now()-interval '7 minutes' where id=$1",
+          [run.id],
+        );
+        const dead = await a.getRun(run.id);
+        await a.requestStop(run.id);
+        await a.recordEvent({
+          runId: run.id,
+          tenantId: legacyId,
+          phase: 'briefing',
+          kind: 'note',
+          label: 'Pausa pedida',
+          workerHeartbeat: false,
+        });
+        assert.equal((await a.getRun(run.id)).heartbeatAt, dead.heartbeatAt);
+        const ended = await a.expireStaleRun(await a.getRun(run.id));
+        assert.equal(ended.status, 'failed');
+        assert.match(ended.error, /tempo de execução/);
+        assert.equal(
+          (await a.listEvents(run.id)).filter((e) => e.kind === 'error').length,
+          1,
+        );
+        await a.expireStaleRun(dead);
+        assert.equal(
+          (await a.listEvents(run.id)).filter((e) => e.kind === 'error').length,
+          1,
+        );
+
+        const live = await create();
+        await database.query(
+          "update generation_runs set phase_started_at=now()-interval '2 minutes', heartbeat_at=now()-interval '16 minutes' where id=$1",
+          [live.id],
+        );
+        const stale = await a.getRun(live.id);
+        await b.heartbeat(live.id);
+        assert.equal((await a.expireStaleRun(stale)).status, 'running');
+        await database.query(
+          "update generation_runs set phase_started_at=now()-interval '20 minutes' where id=$1",
+          [live.id],
+        );
+        const oldHop = await a.getRun(live.id);
+        await b.claimStep(live.id, oldHop.hops);
+        const newer = await a.expireStaleRun(oldHop);
+        assert.equal(newer.status, 'running');
+        assert.equal(newer.hops, oldHop.hops + 1);
+        assert.ok(
+          new Date(newer.phaseStartedAt) > new Date(oldHop.phaseStartedAt),
+        );
+        await a.finishRun(live.id, 'paused');
+        const stopRun = await create();
+        const { POST } = await loadModule(
+          'app/api/admin/[tenant]/generation/stop/route.ts',
+          {
+            '@/lib/auth': { isAuthenticated: async () => true },
+            '@/lib/tenant-queries': {
+              getTenantBySlug: async () => ({ id: legacyId }),
+            },
+            '@/lib/generation/runs': a,
+          },
+        );
+        const pause = () =>
+          POST(
+            new Request('https://fixture.test/generation/stop', {
+              method: 'POST',
+            }),
+            { params: Promise.resolve({ tenant: 'fixture' }) },
+          );
+        const beforePause = await a.getRun(stopRun.id);
+        assert.equal((await pause()).status, 200);
+        assert.equal(
+          (await a.getRun(stopRun.id)).heartbeatAt,
+          beforePause.heartbeatAt,
+        );
+        await database.query(
+          "update generation_runs set phase_started_at=now()-interval '20 minutes' where id=$1",
+          [stopRun.id],
+        );
+        assert.equal((await pause()).status, 409);
+        assert.equal((await a.getRun(stopRun.id)).status, 'failed');
+      },
+    );
   },
 );

@@ -591,3 +591,104 @@ await test('read_current_site usa só o URL do cadastro e set_design exige a ten
   assert.equal(mismatch.conflitos, undefined);
   assert.match(mismatch.analise.gaps[0], /outro negócio/);
 });
+
+await test('coleta preserva HTML quando renderização não responde ao cancelamento', async () => {
+  const controller = new AbortController();
+  const result = await crawlCurrentSite('https://cliente.test/', {
+    signal: controller.signal,
+    request: async () => response('<h1>Material preservado</h1>'),
+    render: async () => {
+      controller.abort(new Error('Prazo da coleta'));
+      return new Promise(() => {});
+    },
+  });
+  assert.equal(result.pages.length, 1);
+  assert.match(result.pages[0].text, /Material preservado/);
+  assert.ok(result.limits.some((value) => /limite de tempo/.test(value)));
+});
+
+await test('limite de tentativas conta páginas recusadas e não percorre sitemap ilimitado', async () => {
+  let attempts = 0;
+  const result = await crawlCurrentSite('https://cliente.test/', {
+    render: null,
+    request: async (url) => {
+      const path = new URL(url).pathname;
+      if (path === '/')
+        return response(
+          '<h1>Empresa</h1>' +
+            Array.from(
+              { length: 100 },
+              (_, i) => `<a href="/p${i}">Página ${i}</a>`,
+            ).join(''),
+        );
+      if (path === '/sitemap.xml') return response('', 'text/xml');
+      attempts++;
+      return response('', 'text/html', 404);
+    },
+  });
+  assert.equal(attempts, 24);
+  assert.equal(result.pages.length, 1);
+  assert.ok(result.limits.some((value) => /tentativas/.test(value)));
+});
+
+await test('DNS pendente respeita aborto antes de criar socket e sem ignorar guard de rede', async () => {
+  const controller = new AbortController();
+  let sockets = 0;
+  const { publicResource } = await loadModule('lib/references/network.ts', {
+    'node:dns/promises': {
+      lookup: async () => {
+        controller.abort(new Error('DNS sem resposta'));
+        return new Promise(() => {});
+      },
+    },
+    'node:https': {
+      request: () => {
+        sockets++;
+        assert.fail('Não pode abrir socket sem IP validado');
+      },
+    },
+  });
+  await assert.rejects(
+    publicResource('https://cliente.test/', controller.signal),
+    /DNS sem resposta/,
+  );
+  assert.equal(sockets, 0);
+});
+
+await test('síntese sem resposta respeita o prazo mesmo se o SDK ignorar o aborto', async () => {
+  let sawSignal = false;
+  const { analyzeCurrentSite } = await loadModule(
+    'lib/current-site/analyze.ts',
+    {
+      ai: {
+        Output: { object: (value) => value },
+        generateText: (input) => {
+          sawSignal = Boolean(input.abortSignal);
+          return new Promise(() => {});
+        },
+      },
+    },
+    {
+      AbortSignal: {
+        timeout: () => {
+          const controller = new AbortController();
+          setTimeout(
+            () => controller.abort(new Error('Síntese excedeu prazo')),
+            1,
+          );
+          return controller.signal;
+        },
+      },
+    },
+  );
+  await assert.rejects(
+    analyzeCurrentSite(
+      { pages: [], images: [], links: [], limits: [] },
+      'tenant-fixture',
+      'Empresa',
+      'História',
+    ),
+    /Síntese excedeu prazo/,
+  );
+  assert.equal(sawSignal, true);
+});

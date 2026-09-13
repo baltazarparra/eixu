@@ -332,6 +332,17 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
       origin: run.origin,
       cookie: `eixu_admin=${await createSessionToken()}`,
       phase,
+      onCurrentSiteProgress: async (progress) => {
+        await recordEvent({
+          runId: run.id,
+          tenantId: tenant.id,
+          phase,
+          kind: 'note',
+          tool: 'read_current_site',
+          label: progress.label,
+          payload: { ...progress },
+        });
+      },
     });
     const recordToolStart = async (
       name: string,

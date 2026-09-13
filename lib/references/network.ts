@@ -2,6 +2,7 @@ import { lookup } from 'node:dns/promises';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import { BlockList, isIP } from 'node:net';
+import { abortable } from '@/lib/async/abort';
 
 const blocked = new BlockList();
 for (const [address, prefix] of [
@@ -47,7 +48,15 @@ export type PublicResource = {
 };
 
 /** GET sem credenciais, IP validado fixado ao socket; redirects voltam ao guard. */
-export async function publicResource(url: string): Promise<PublicResource> {
+export async function publicResource(
+  url: string,
+  signal?: AbortSignal,
+): Promise<PublicResource> {
+  const deadline = AbortSignal.any([
+    AbortSignal.timeout(8000),
+    ...(signal ? [signal] : []),
+  ]);
+  deadline.throwIfAborted();
   const parsed = new URL(url);
   if (
     !['https:', 'http:'].includes(parsed.protocol) ||
@@ -59,7 +68,8 @@ export async function publicResource(url: string): Promise<PublicResource> {
   const host = parsed.hostname.replace(/^\[|\]$/g, '');
   const addresses = isIP(host)
     ? [{ address: host, family: isIP(host) }]
-    : await lookup(host, { all: true });
+    : await abortable(lookup(host, { all: true }), deadline);
+  deadline.throwIfAborted();
   if (
     !addresses.length ||
     addresses.some(({ address }) => !isPublicAddress(address))
@@ -72,7 +82,7 @@ export async function publicResource(url: string): Promise<PublicResource> {
       {
         method: 'GET',
         agent: false,
-        signal: AbortSignal.timeout(8000),
+        signal: deadline,
         // O navegador nunca envia seus cookies/headers ao proxy de leitura.
         headers: {
           'user-agent': 'EIXU-SiteAgent/1.0',
