@@ -39,7 +39,7 @@ export function contentBlocks(blocks: BlockInstance[]): BlockInstance[] {
   return blocks.filter((b) => isBlockType(b.type) && !CHROME.test(b.type));
 }
 
-function layoutOf(block: BlockInstance): string | undefined {
+export function layoutOf(block: BlockInstance): string | undefined {
   return typeof block.props.layout === 'string'
     ? block.props.layout
     : undefined;

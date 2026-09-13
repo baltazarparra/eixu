@@ -40,3 +40,39 @@ export function evidenceAdditions(
   }
   return added;
 }
+
+/** Duas grafias do mesmo fato: acento, caixa e ponto final não separam. */
+export function sameEvidence(a: string, b: string): boolean {
+  return evidenceKey(a) === evidenceKey(b);
+}
+
+/**
+ * O texto exibido aparece inteiro dentro da evidência, delimitado por
+ * não-letra. É o predicado da regra de prova: um trecho contíguo, não um
+ * conjunto de palavras soltas, para "3" não ser sustentado por "13 cocos".
+ */
+export function phraseSupported(source: string, part: string): boolean {
+  const needle = evidenceKey(part);
+  if (!needle) return false;
+  const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(
+    `(^|[^\\p{L}\\p{N}])${escaped}($|[^\\p{L}\\p{N}])`,
+    'u',
+  ).test(evidenceKey(source));
+}
+
+/** Fatos confirmados pelas duas origens: cadastro (intake) e chat. */
+export function confirmedEvidence(brief: Record<string, unknown>): string[] {
+  const intake = (brief.intake ?? {}) as Record<string, unknown>;
+  const all = [
+    ...(Array.isArray(brief.evidence) ? brief.evidence : []),
+    ...(Array.isArray(intake.evidence) ? intake.evidence : []),
+  ].filter((value): value is string => typeof value === 'string');
+  const seen = new Set<string>();
+  return all.filter((value) => {
+    const key = evidenceKey(value);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}

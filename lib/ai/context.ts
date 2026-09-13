@@ -124,6 +124,7 @@ export function contextMessages(
               'apontamentos',
               'pendencias',
               'publicationPending',
+              'plano',
               'medicoes',
               'erros',
               'visual',

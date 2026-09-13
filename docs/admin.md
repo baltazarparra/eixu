@@ -257,7 +257,17 @@ letras.
 Se a pendência **Falta prova confirmada** aparecer, escreva o fato no chat
 (prêmio, número, marca) e peça para registrar, ou informe em **Dados ›
 Evidências**. O agente só registra o que você escreveu; a página montada não
-comprova o fato sozinha.
+comprova o fato sozinha. Acento, maiúsculas e ponto final não separam o fato da
+página: o que muda é o conteúdo da frase. Uma frase com ponto no meio ou muito
+longa só é aceita em Dados › Evidências.
+
+**Resolver pelo chat**, ao lado da lista de pendências, abre o pedido já
+escrito; revise e envie. O agente recebe as mesmas pendências do painel e
+resolve sozinho o que não depende de você: aponta os blocos para a frase
+confirmada certa e gera a imagem na proporção que o bloco exibe, mantendo a
+original no acervo. Quando falta um fato, ele encerra pedindo as frases exatas
+em vez de inventar uma prova. Alterar nome, história, Site atual ou referência
+em Dados não apaga mais os fatos confirmados.
 
 Os textos das 60 mensagens mais recentes são recuperados ao abrir a tela. Ferramentas, anexos e contagens de custo antigos não são restaurados. Registre decisões duráveis no briefing; não dependa de uma conversa extensa como única fonte do negócio.
 

@@ -39,6 +39,11 @@ import { activeRun, expireStaleRun } from '@/lib/generation/runs';
 import { startGeneration } from '@/lib/generation/start';
 import { listImages } from '@/lib/images/queries';
 import { isPhase, PHASE_STEPS } from '@/lib/taste/phases';
+import {
+  evidenceContext,
+  pendenciasContext,
+  publicationPlan,
+} from '@/lib/taste/pendencias';
 import { systemPrompt, type PromptContext } from '@/lib/taste/prompt';
 import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
 
@@ -196,6 +201,21 @@ export async function POST(request: Request) {
         .map((part) => (part as { text: string }).text),
     )
     .join('\n');
+  // As pendências do painel entram no turno com a resolução decidida em código.
+  // Antes, o agente só as via se o operador colasse a lista, e mesmo assim
+  // precisava adivinhar qual frase faltava confirmar.
+  if (editPolicy) {
+    context.pendencias = pendenciasContext(
+      publicationPlan({
+        pages,
+        images: libraryImages,
+        brand: tenant.brand,
+        brief: tenant.brief,
+        operatorText,
+      }),
+    );
+    context.evidencia = evidenceContext(tenant.brief);
+  }
   const tools = buildTools(tenant, {
     origin,
     cookie: request.headers.get('cookie') ?? undefined,
