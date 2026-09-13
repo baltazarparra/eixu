@@ -68,8 +68,12 @@ quando o teclado abre, sem desabilitar o zoom. Campos têm pelo menos 16 px
 e os controles principais oferecem alvos de 44 px.
 
 A prévia abre em Celular, com até 390 px de largura real; em telas menores,
-usa toda a largura disponível. Desktop renderiza em 1280 px e reduz a escala
-para caber, preservando o layout de desktop. Ampliar recolhe o cabeçalho sem
+usa toda a largura disponível. Desktop renderiza em pelo menos 1280 px e
+reduz a escala para caber em áreas menores; acima disso, a viewport do site
+acompanha toda a largura disponível. A prévia ocupa a altura restante da
+coluna, sem moldura, cantos arredondados ou margens externas. Só a linha de
+status tem espaçamento próprio; a rolagem fica dentro do iframe.
+Ampliar recolhe o cabeçalho sem
 recarregar o iframe; Restaurar, Escape ou Conversa devolvem o contexto.
 Editar fica junto da prévia no celular; a edição mantém Salvar/Cancelar no
 cabeçalho e suspende a ampliação para conservar essas ações acessíveis.
