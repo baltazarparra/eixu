@@ -66,21 +66,21 @@ e campos de logo ficam fora da checagem de vocabulário. As regras entram em
 `lintPage`, compartilhado pelo lote inicial, reparos, edição, estado do painel,
 progresso da geração e serviço de publicação usado pela API e pelas ferramentas.
 
-| Regra                   | Nível | Efeito                                                                                                                                                           |
-| ----------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `acao-pouco-clara`      | Erro  | Recusa rótulos da lista explícita, como “Clique aqui”, “Saiba mais”, “Learn more” e “Submit”, em links e envio de formulário.                                    |
-| `linguagem-vocabulario` | Aviso | Aponta termos do glossário e alternativas simples para avaliação em contexto. Não recusa uma marca ou um termo necessário bem explicado só por conter a palavra. |
-| `linguagem-frase-longa` | Aviso | Aponta trechos com mais de 30 palavras sem pausa para revisão. É uma estimativa, não uma medida de compreensão.                                                  |
+| Regra                   | Nível na geração | Efeito                                                                                                                                                           |
+| ----------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `acao-pouco-clara`      | Erro             | Recusa rótulos da lista explícita, como “Clique aqui”, “Saiba mais”, “Learn more” e “Submit”, em links e envio de formulário.                                    |
+| `linguagem-vocabulario` | Aviso            | Aponta termos do glossário e alternativas simples para avaliação em contexto. Não recusa uma marca ou um termo necessário bem explicado só por conter a palavra. |
+| `linguagem-frase-longa` | Aviso            | Aponta trechos com mais de 30 palavras sem pausa para revisão. É uma estimativa, não uma medida de compreensão.                                                  |
 
 O crítico recebe os sinais junto dos textos completos e das capturas. O critério
 `linguagem-simples` exige evidência e reescrita quando houver uma dificuldade real
 de compreensão. `voz-da-vibe` avalia a coerência do tom; preferências de estilo
-são avisos. Um erro material mantém a geração em revisão. Depois do reparo, é
-necessária uma nova leitura do rascunho atual. A versão do harness invalida os
+são avisos. Na análise visual solicitada, um erro material impede um parecer
+favorável; depois do reparo, é necessária uma leitura do rascunho atual para
+comprovar a correção. Isso não reabre uma geração concluída. A versão do harness invalida os
 recibos anteriores a este contrato, inclusive localmente.
 
-A publicação manual mantém o gate determinístico; a opinião do crítico governa
-a conclusão automática e não concede autorização para publicar. A lista de
+A publicação manual mantém o gate técnico determinístico. Pela política de publicação, `acao-pouco-clara` vira recomendação; os avisos de linguagem continuam visíveis. A opinião do crítico governa a conclusão da análise visual solicitada e não concede autorização para publicar. A lista de
 palavras não reconhece todo inglês, jargão ou ambiguidade, e o crítico também
 pode errar. A avaliação de compreensão está na [rubrica](eval-rubric.md).
 O contrato orienta novos textos e revisões; não reescreve nem republica sites

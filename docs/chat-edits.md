@@ -1,6 +1,6 @@
 # Edição de sites gerados pelo chat
 
-## Diagnóstico e plano
+## Objetivo e escopo
 
 O estudo de 12/09/2026 encontrou uma leitura obrigatória da página em cada
 edição, substituição integral de objetos/listas em `update_block`, posições
@@ -9,7 +9,7 @@ disso, o renderer agrupava todo conteúdo antes do rodapé, mesmo quando a
 ordem salva colocava um bloco depois dele. Serializar ferramentas do mesmo
 turno não protegia a página de outra aba.
 
-O plano implementado reúne o pedido de uma página em uma operação validada,
+O contrato implementado reúne o pedido de uma página em uma operação validada,
 entrega o snapshot atual no contexto do agente, preserva posição e campos não
 alterados, permite uma paleta local e confere concorrência na gravação. A
 melhoria de latência buscada é eliminar viagens desnecessárias entre modelo e
@@ -234,7 +234,7 @@ O chat não muda de modelo, raciocínio ou fluxo por causa dessa prop.
   `--attachment=fixture.png` envia os pixels de uma captura sintética ao modelo;
   o caso `landing-frame` usa o pedido real de remover o container e deixar a imagem.
 
-Os resultados medidos e as limitações da entrega ficam em
-[Verificação](verification.md). Testes determinísticos não provam que toda
+Os checks atuais estão em [Verificação](verification.md); resultados medidos
+ficam no [histórico](archive/verification-2026-09-13.md). Testes determinísticos não provam que toda
 formulação em linguagem natural será interpretada corretamente, e uma
 medição de chamadas não equivale a comparação estatística de latência.

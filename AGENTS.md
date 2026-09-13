@@ -28,6 +28,8 @@ Codex/GPT-6 Astra e Claude Code/Fable 5.1; `CLAUDE.md` o importa.
 | Neon ou schema                             | `db/schema.sql`, `lib/db.ts` e a skill relevante em `.agents/skills/neon/` ou `.agents/skills/neon-postgres/` |
 | APIs do Next.js                            | Guia correspondente em `node_modules/next/dist/docs/`, na versão instalada                                    |
 
+Consulte o [índice da documentação](docs/README.md) para distinguir guias vigentes, planos e histórico.
+
 Carregue apenas o material necessário. `.agents/skills/` contém as skills locais;
 `.claude/skills/` contém os adaptadores existentes. Evite copiar políticas entre
 arquivos ou criar camadas de instrução sem uma necessidade observada.
@@ -101,8 +103,9 @@ Somente evidência atual comprova essa análise. Preserve erros e gates de publi
   hero stage/form, navegação mínima e uma ação. A referência mantém essa forma.
   Perfis v2-v6 publicados preservam o que está no ar.
 - Preserve a separação `blocks`/`seo` e `published_blocks`/`published_seo`, com
-  pre-flight nos dois caminhos de publicação. Marca e metadados fora desse snapshot
-  têm limites descritos na arquitetura. Preview por query não é controle de acesso.
+  pre-flight nos dois caminhos de publicação. O snapshot também inclui apresentação global
+  e dados editoriais; a publicação pontual preserva a marca já publicada,
+  conforme a arquitetura. Preview por query não é controle de acesso.
 - Imagens ficam disponíveis com número e URL assim que são geradas, sem aprovação.
   Mantenha o acervo em `/admin/[tenant]/imagens` e alterações pelo número no chat.
   A crítica orienta ajustes. Só o estúdio paralelo ao briefing pode aplicar
@@ -120,7 +123,7 @@ Use npm e o lockfile existente. Tipos: `npx next typegen && npx tsc --noEmit`.
 Código: `npm run lint`. Contratos: `npm run test:sites` e `npm run test:admin`. Produção: `npm run build:vercel`. Verifique o fluxo afetado
 além da compilação; não adicione testes que só repitam uma alteração documental.
 O lint global deve passar sem desligar regras. O build também verifica os arquivos
-necessários à captura serverless; os registros estão em [Verificação](docs/verification.md).
+necessários à captura serverless; o procedimento e o acesso aos registros estão em [Verificação](docs/verification.md).
 
 Não imprima nem versione `.env*`, tokens, cookies ou dados pessoais. Antes de
 migração, seed, geração paga ou escrita remota, confirme o recurso e o escopo já

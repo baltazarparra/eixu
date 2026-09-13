@@ -1,8 +1,10 @@
 # Gerador: riqueza visual, movimento e inbound
 
+> Histórico: diagnóstico, proposta ou ensaio daquela versão. Não é contrato vigente nem confirmação de produção. Consulte o [índice](../README.md) e a [verificação atual](../verification.md). Artefatos de `outputs/` são locais e podem não acompanhar o checkout.
+
 Registro histórico da entrega de 10/09/2026. A aprovação de imagens descrita
 neste plano foi removida em 11/09/2026; o fluxo vigente está no
-[manual do operador](admin.md#biblioteca-e-publicação).
+[manual do operador](../admin.md#biblioteca-e-publicação).
 
 Pedido de 10/09/2026. Entrega autorizada: analisar, implementar, validar e publicar.
 
@@ -27,16 +29,16 @@ Contratos e componentes; cenas pelo gerador; composição das páginas; validaç
 
 ## Publicação
 
-A base funcional foi publicada em `03aa858`; a inspeção posterior identificou e corrigiu o carregamento do CSS criativo no build de produção. Após aprovação explícita das imagens e da composição, o [Porto Pedras](https://portopedras.eixu.com.br/) recebeu home, [materiais](https://portopedras.eixu.com.br/materiais), [guia de escolha](https://portopedras.eixu.com.br/guia-escolher-pedra) e obrigado. A home usa as fotos geradas #1, #4 e #5, todas aprovadas. Os resultados e limites das verificações estão em [Verificação](verification.md#riqueza-visual-motion-e-inbound-10092026).
+A base funcional foi publicada em `03aa858`; a inspeção posterior identificou e corrigiu o carregamento do CSS criativo no build de produção. Após aprovação explícita das imagens e da composição, o [Porto Pedras](https://portopedras.eixu.com.br/) recebeu home, [materiais](https://portopedras.eixu.com.br/materiais), [guia de escolha](https://portopedras.eixu.com.br/guia-escolher-pedra) e obrigado. A home usa as fotos geradas #1, #4 e #5, todas aprovadas. Os resultados e limites das verificações estão em [Verificação](verification-2026-09-13.md#riqueza-visual-motion-e-inbound-10092026).
 
 ## Critério de conclusão do gerador
 
 O Porto Pedras é uma referência de aceite, não a entrega inteira. Uma composição ajustada manualmente demonstra o renderer, mas não comprova o gerador. A validação restante exige saídas automáticas do modelo para briefings de negócios diferentes, renderizadas sem correção manual, comparando identidade, coerência, imagens, motion, percurso entre páginas e tokens. As travas de assinatura detectam repetição estrutural; não garantem qualidade estética por si só.
 
-A avaliação automática entre negócios foi executada e registrou limitações concretas do modelo atual. Foram corrigidos o overflow do hero offset, a aceitação de motion como única decisão visual, o reenvio integral de lotes recusados e a mensagem do painel que anunciava sucesso em uma recusa. A comparação adicional com Fable 5.1 não alterou o modelo de produção. As evidências e o que ainda não foi comprovado estão em [Verificação](verification.md#avaliação-entre-negócios-e-reparos-10092026).
+A avaliação automática entre negócios foi executada e registrou limitações concretas do modelo atual. Foram corrigidos o overflow do hero offset, a aceitação de motion como única decisão visual, o reenvio integral de lotes recusados e a mensagem do painel que anunciava sucesso em uma recusa. A comparação adicional com Fable 5.1 não alterou o modelo de produção. As evidências e o que ainda não foi comprovado estão em [Verificação](verification-2026-09-13.md#avaliação-entre-negócios-e-reparos-10092026).
 
-A revisão posterior de operação e custo está em [Revisão do admin](admin-review.md). O diagnóstico inicial acima descreve o estado anterior às entregas desta página.
+A revisão posterior de operação e custo está em [Revisão do admin](admin-review-2026-09-10.md). O diagnóstico inicial acima descreve o estado anterior às entregas desta página.
 
 ## Continuidade em 11/09/2026
 
-O [harness de qualidade](harness.md) passa a usar Gemini 3.8 Flash com raciocínio alto, plano editorial, contexto recente preservado e crítica das capturas. Os resultados anteriores desta página permanecem históricos. O aceite automático agora exige uma revisão completa do estado atual, além dos contratos de composição.
+O [harness de qualidade](../harness.md) passa a usar Gemini 3.8 Flash com raciocínio alto, plano editorial, contexto recente preservado e crítica das capturas. Os resultados anteriores desta página permanecem históricos. O aceite automático agora exige uma revisão completa do estado atual, além dos contratos de composição.

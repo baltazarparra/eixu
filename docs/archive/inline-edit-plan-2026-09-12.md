@@ -1,11 +1,13 @@
 # Plano: edição de texto na prévia de um site publicado
 
+> Histórico: diagnóstico, proposta ou ensaio daquela versão. Não é contrato vigente nem confirmação de produção. Consulte o [índice](../README.md) e a [verificação atual](../verification.md). Artefatos de `outputs/` são locais e podem não acompanhar o checkout.
+
 Plano original de 12/09/2026, baseado em `main` (`8ab02d1`). Implementação das
 fases 1 e 2 autorizada pelo objetivo desta tarefa, em checkout isolado a partir
 de `eeff730`. A fase 3 continua opcional e fora desta entrega.
 
 **Estado:** fases 1 e 2 implementadas; ver resultados em
-[Verificação](verification.md). Salvar altera o rascunho e Publicar continua
+[Verificação](../verification.md). Salvar altera o rascunho e Publicar continua
 separado. Nenhuma página de cliente real é publicada por esta implementação.
 
 A validação do CSS refinou o cálculo de contraste para superfícies internas e
@@ -35,15 +37,15 @@ O plano entrega:
 
 ## 2. Decisões e premissas
 
-| Decisão                 | Escolha                                                                                            | Por quê                                                                                                                                           | Alternativa não adotada                                                                                                                 |
-| ----------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Destino da gravação     | Rascunho (`pages.blocks`); `published_blocks` intocado                                             | Invariante de [AGENTS.md](../AGENTS.md): separação rascunho/publicado e pre-flight nos dois caminhos. Publicar já valida e promove atomicamente.  | Publicar ao salvar pularia o pre-flight de projeto. Um botão "Salvar e publicar" pode reutilizar `publishSite(tenant, slug)` na fase 3. |
-| Granularidade do estilo | Por campo: o título inteiro, o parágrafo inteiro, a pergunta inteira                               | As props são strings simples, escapadas pelo React. Formatação de trecho exigiria marcação inline, parser, renderer, lint e `replace_text` novos. | Marcação restrita por trecho fica como fase futura, com contrato próprio.                                                               |
-| Quando o botão aparece  | `tenant.status === 'published'`                                                                    | É o pedido. O mecanismo funciona igual em rascunho; a condição é uma linha no workspace.                                                          | Mostrar também em rascunho, se o operador quiser depois.                                                                                |
-| Tamanho                 | Passos relativos `-2..2` = 80, 90, 100, 115 e 130% do tamanho atual do elemento                    | Responsividade é requisito de todas as vibes. A escala por vibe continua em `clamp()`; o passo multiplica o resultado em qualquer largura.        | Pixels ou `rem` fixos quebrariam a escala fluida e o celular.                                                                           |
-| Cor                     | Hex de seis dígitos, contraste mínimo de 4,5:1 contra o fundo efetivo da seção, medido no servidor | Mesma regra de `presentation.foreground` e dos tokens em `lib/blocks/contrast.ts`. Nunca CSS livre.                                               | Aceitar qualquer cor e avisar depois deixaria o rascunho publicável com texto ilegível.                                                 |
-| Executor                | `applyPageEdit` + gravação com comparação do JSONB, compartilhados com o chat                      | Já validam schema estrito, campos desconhecidos, lint e concorrência. Um segundo caminho de escrita divergiria.                                   | Escrita própria da rota administrativa.                                                                                                 |
-| Persistência            | Prop opcional `textStyles` no JSONB de cada bloco                                                  | Sem migração; snapshot publicado versiona junto, como `presentation`.                                                                             | Coluna ou tabela nova.                                                                                                                  |
+| Decisão                 | Escolha                                                                                            | Por quê                                                                                                                                             | Alternativa não adotada                                                                                                                 |
+| ----------------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Destino da gravação     | Rascunho (`pages.blocks`); `published_blocks` intocado                                             | Invariante de [AGENTS.md](../../AGENTS.md): separação rascunho/publicado e pre-flight nos dois caminhos. Publicar já valida e promove atomicamente. | Publicar ao salvar pularia o pre-flight de projeto. Um botão "Salvar e publicar" pode reutilizar `publishSite(tenant, slug)` na fase 3. |
+| Granularidade do estilo | Por campo: o título inteiro, o parágrafo inteiro, a pergunta inteira                               | As props são strings simples, escapadas pelo React. Formatação de trecho exigiria marcação inline, parser, renderer, lint e `replace_text` novos.   | Marcação restrita por trecho fica como fase futura, com contrato próprio.                                                               |
+| Quando o botão aparece  | `tenant.status === 'published'`                                                                    | É o pedido. O mecanismo funciona igual em rascunho; a condição é uma linha no workspace.                                                            | Mostrar também em rascunho, se o operador quiser depois.                                                                                |
+| Tamanho                 | Passos relativos `-2..2` = 80, 90, 100, 115 e 130% do tamanho atual do elemento                    | Responsividade é requisito de todas as vibes. A escala por vibe continua em `clamp()`; o passo multiplica o resultado em qualquer largura.          | Pixels ou `rem` fixos quebrariam a escala fluida e o celular.                                                                           |
+| Cor                     | Hex de seis dígitos, contraste mínimo de 4,5:1 contra o fundo efetivo da seção, medido no servidor | Mesma regra de `presentation.foreground` e dos tokens em `lib/blocks/contrast.ts`. Nunca CSS livre.                                                 | Aceitar qualquer cor e avisar depois deixaria o rascunho publicável com texto ilegível.                                                 |
+| Executor                | `applyPageEdit` + gravação com comparação do JSONB, compartilhados com o chat                      | Já validam schema estrito, campos desconhecidos, lint e concorrência. Um segundo caminho de escrita divergiria.                                     | Escrita própria da rota administrativa.                                                                                                 |
+| Persistência            | Prop opcional `textStyles` no JSONB de cada bloco                                                  | Sem migração; snapshot publicado versiona junto, como `presentation`.                                                                               | Coluna ou tabela nova.                                                                                                                  |
 
 Modelo, raciocínio e fluxo de geração não mudam; o catálogo injetado no prompt
 apenas ganha a prop nova. A ilha de edição só existe na prévia autenticada; a
@@ -53,22 +55,22 @@ aplicado.
 ## 3. O que já existe e será reaproveitado
 
 - **Prévia.** O iframe abre `/s/[tenant]/[slug]?preview=1&__tenant=` em
-  [workspace.tsx](<../app/(admin)/admin/[tenant]/workspace.tsx>), exige sessão,
+  [workspace.tsx](<../../app/(admin)/admin/[tenant]/workspace.tsx>), exige sessão,
   recebe `noindex`, mantém links no tenant por `lib/sites/preview.ts` e
   desativa formulários e tracking. `nonce` recarrega o iframe quando
-  `previewRevision` muda ([review/state.ts](../lib/review/state.ts)).
+  `previewRevision` muda ([review/state.ts](../../lib/review/state.ts)).
 - **Cabeçalho.** `WorkspaceHeader` injeta por portal os grupos `preview` e
-  `decision` ([navigation.tsx](../components/admin/navigation.tsx)); Publicar
+  `decision` ([navigation.tsx](../../components/admin/navigation.tsx)); Publicar
   vive em `decision`. É onde Editar, Salvar e Cancelar entram.
-- **Executor.** `applyPageEdit` ([page-edits.ts](../lib/ai/page-edits.ts))
+- **Executor.** `applyPageEdit` ([page-edits.ts](../../lib/ai/page-edits.ts))
   confere a revisão (sha256 dos blocos), aplica `set` por caminho, valida o
   bloco com schema estrito e campos desconhecidos. `savePageEdit`, hoje função
-  interna de `buildTools` ([tools.ts](../lib/ai/tools.ts)), recusa novos erros
+  interna de `buildTools` ([tools.ts](../../lib/ai/tools.ts)), recusa novos erros
   de `lintPage` e grava com `where blocks = <anterior>`, devolvendo conflito
-  quando outra aba escreveu. O [contrato de edição](chat-edits.md) descreve o
+  quando outra aba escreveu. O [contrato de edição](../chat-edits.md) descreve o
   comportamento.
 - **Renderer.** Cada bloco sai em `.site-block[data-block][data-block-id]`
-  ([render.tsx](../lib/blocks/render.tsx)); cores locais em
+  ([render.tsx](../../lib/blocks/render.tsx)); cores locais em
   `sectionColorVars`; tons em `site.css` (`[data-tone]`, linhas 249–306);
   ritmo alternado e superfície de contraste pintam `--surface` em seções sem
   tom; a lavagem artística é uma mistura clara do papel.
@@ -76,8 +78,8 @@ aplicado.
   o hero usa `.site-headline` com `clamp()` por vibe, versão e comprimento.
 - **Validação.** `lintPage` (headline até duas linhas estimadas, subtexto até
   20 palavras, travessão, texto genérico, placeholders), `lintCopy` e
-  `lintSite` com a marca ([lint.ts](../lib/taste/lint.ts),
-  [copy/lint.ts](../lib/copy/lint.ts), [taste/site.ts](../lib/taste/site.ts)).
+  `lintSite` com a marca ([lint.ts](../../lib/taste/lint.ts),
+  [copy/lint.ts](../../lib/copy/lint.ts), [taste/site.ts](../../lib/taste/site.ts)).
 - **Testes.** `page-edit-fixture.mjs` executa os executores reais com I/O
   simulado; `admin-handoff-fixture.mjs` monta o workspace em Vite com API
   simulada; `navigation-fixture.mjs` serve HTML de servidor, hidratação real e
@@ -88,7 +90,7 @@ aplicado.
 ### 4.1 `textStyles`
 
 Prop comum a todos os blocos, ao lado de `anchor` e `presentation`, em
-[registry.ts](../lib/blocks/registry.ts):
+[registry.ts](../../lib/blocks/registry.ts):
 
 ```ts
 textStyles?: { field: string; size?: -2 | -1 | 0 | 1 | 2; color?: string }[];
@@ -123,15 +125,15 @@ todo caminho `editable` aparece no DOM como `[data-field]`, e nada além disso.
 `minStep` é `-1` para campos de leitura corrida (`body`, `a`, `legal`,
 `note`, `consentText`, legendas) e `-2` para os demais. O piso protege o
 tamanho legível no celular exigido pelo
-[contrato responsivo](../lib/design/responsive.ts).
+[contrato responsivo](../../lib/design/responsive.ts).
 
 `multiline` vale só para `editorial.text.body` na fase 1: o renderer já separa
 parágrafos por `\n\n`. Os demais corpos são um parágrafo; Enter é ignorado.
 
 ### 4.3 Âncoras e estilos no DOM
 
-Um helper `textAttrs(textStyles)` em [components.tsx](../lib/blocks/components.tsx)
-e [explorer.tsx](../lib/blocks/explorer.tsx) marca cada elemento de texto com
+Um helper `textAttrs(textStyles)` em [components.tsx](../../lib/blocks/components.tsx)
+e [explorer.tsx](../../lib/blocks/explorer.tsx) marca cada elemento de texto com
 `data-field="<caminho>"` e, quando o campo tem partes, `data-part="n"`. Quando o
 campo tem estilo, o texto é envolvido por
 `<span class="site-styled" data-scale="1" style="color:#…">`.
@@ -151,7 +153,7 @@ campo tem estilo, o texto é envolvido por
 ### 4.4 Fundo efetivo e contraste
 
 `sectionBackgrounds(presentation, brand)` em
-[section-colors.ts](../lib/blocks/section-colors.ts) devolve os fundos contra os
+[section-colors.ts](../../lib/blocks/section-colors.ts) devolve os fundos contra os
 quais uma cor de texto precisa passar, usando os mesmos tokens de
 `themeVars(brand)` que o CSS aplica:
 
@@ -200,7 +202,7 @@ de texto; `set` ou `unset` de `textStyles` por bloco) e grava por
 | 422     | Validação: `{ error, fields: [{ block, path, message }] }`, para a ilha destacar os campos     |
 | 401/404 | Como as demais rotas administrativas                                                           |
 
-Na página ([page.tsx](<../app/(sites)/s/[tenant]/[[...slug]]/page.tsx>)),
+Na página ([page.tsx](<../../app/(sites)/s/[tenant]/[[...slug]]/page.tsx>)),
 quando `isPreview && query.edit === '1'`: o invólucro recebe
 `data-editing="true"`, os dials de movimento são forçados a parado e a ilha
 `<InlineEditor page revision fields />` é renderizada depois de `RenderBlocks`,
@@ -250,7 +252,7 @@ Protocolo entre iframe e workspace por `postMessage`, com
 
 ## 7. Workspace
 
-Em [workspace.tsx](<../app/(admin)/admin/[tenant]/workspace.tsx>):
+Em [workspace.tsx](<../../app/(admin)/admin/[tenant]/workspace.tsx>):
 
 - Estado `editing: 'off' | 'on' | 'saving'`. **Editar** entra no grupo
   `decision`, antes de Publicar, quando
@@ -351,7 +353,7 @@ tamanho e cor no `eval:edits`.
 
 ## 11. Validação
 
-Os comandos são os já registrados em [Verificação](verification.md#comandos-existentes):
+Os comandos são os já registrados em [Verificação](../verification.md#comandos-existentes):
 
 ```bash
 npm run lint
@@ -371,16 +373,16 @@ Testes com dados sintéticos não substituem o ensaio manual da fase 2.
 
 ## 12. Documentação a atualizar na entrega
 
-- [Manual do operador](admin.md): seção "Editar na prévia" em "Gerar e editar o
+- [Manual do operador](../admin.md): seção "Editar na prévia" em "Gerar e editar o
   site", com limites e o passo Publicar.
-- [Arquitetura](architecture.md): item de edição e publicação, rota na tabela
+- [Arquitetura](../architecture.md): item de edição e publicação, rota na tabela
   de superfícies e limites (sem trecho, sem post, sem desfazer).
-- [Design](design.md): `textStyles`, `.site-styled` e o fundo efetivo em "Piso
+- [Design](../design.md): `textStyles`, `.site-styled` e o fundo efetivo em "Piso
   de composição"; a barra de edição em "Interface de operação do admin".
-- [Contrato de edição](chat-edits.md): executor compartilhado e `textStyles`
+- [Contrato de edição](../chat-edits.md): executor compartilhado e `textStyles`
   no `edit_page`.
-- [Verificação](verification.md): registro da validação com evidências.
-- [README](../README.md): uma linha em "O que já existe".
-- [AGENTS.md](../AGENTS.md): nada previsto. Se o contrato virar invariante,
+- [Verificação](../verification.md): registro da validação com evidências.
+- [README](../../README.md): uma linha em "O que já existe".
+- [AGENTS.md](../../AGENTS.md): nada previsto. Se o contrato virar invariante,
   uma linha em "Invariantes do produto" sobre tamanho por passo e cor com
   contraste, nunca CSS livre.

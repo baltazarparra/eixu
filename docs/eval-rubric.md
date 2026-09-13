@@ -1,6 +1,6 @@
 # Rubrica de avaliação do gerador
 
-Escrita em 10/09/2026. Serve para comparar saídas automáticas entre si e com a
+Contrato revisado em 13/09/2026. Serve para comparar saídas automáticas entre si e com a
 referência, sem confundir contagem com qualidade. A nota é de revisão humana; o
 runner mede o que dá para medir e registra o resto como evidência.
 
@@ -14,21 +14,24 @@ Os casos ficam em `evals/cases/`. O runner cria um tenant `eval-*` descartável,
 roda as mesmas fases e ferramentas do painel e grava o relatório em
 `outputs/evals/<data>/`. Sem `--generate`, a biblioteca é semeada com fotos de
 um tenant existente e a fase de cenas é pulada: dá para comparar composição sem
-geração paga. Com `--generate`, o fluxo é o de produção inteiro.
+gerar novas fotos. As chamadas de texto/crítica continuam pagas. Com
+`--generate`, também há geração real de cenas. O runner usa os executores
+do produto em um laço próprio; não testa a entrega da Vercel Queues.
 
-O runner escreve no banco. Ele recusa slug que não comece com `eval-`, e nunca
-publica.
+O runner escreve no banco mesmo sem `--generate`; o reaproveitamento de fotos
+lê também o tenant de origem. Ele recusa slug que não comece com `eval-` e
+nunca publica. `--fresh` exclui o tenant do caso antes de criá-lo novamente.
+Confirme destino e escopo autorizado antes de executar.
 
 ## Piso estrutural
 
-Medido por `siteMetrics` e pelos gates; abaixo disso a saída nem chega à
-revisão humana.
+Medido por `siteMetrics` e pelo lint da geração. Este piso orienta o aceite do experimento. Na publicação pedida pelo operador, os achados editoriais classificados em `lib/sites/publication-policy.ts` viram recomendações; erros técnicos continuam bloqueando a transação. Publicar não equivale a atingir a rubrica nem a confirmar fatos.
 
 | Medida                                      | Mínimo                                     |
 | ------------------------------------------- | ------------------------------------------ |
 | Páginas orgânicas conectadas                | 3 em multi; 1 home + obrigado em landing   |
 | Palavras úteis por página orgânica          | 100; 250 na home landing                   |
-| Fotos geradas distintas na home             | 2                                          |
+| Fotos disponíveis distintas na home         | 2                                          |
 | Páginas orgânicas com pelo menos uma imagem | todas                                      |
 | Seção protagonista na home                  | 1                                          |
 | Estrutura v5 ou v6 escolhida e preservada   | 1 da vibe ou 1 das 12 pela referência      |
@@ -71,7 +74,9 @@ própria e coerente. O aceite é média 2 sem nenhum critério em 0.
    lida. Lacuna aparece como lacuna, não como promessa.
 8. **Jornada.** Descoberta, consideração e conversão se conectam por links
    reais, e cada página responde a uma intenção diferente.
-9. **Mobile.** Hierarquia e ação continuam legíveis em 390 px.
+9. **Mobile.** Hierarquia e ação continuam legíveis desde 320 px. Confira
+   menu aberto/fechado, toque, teclado, foco e rolagem também em tela baixa.
+   A captura padrão de 390 px não cobre sozinha esse contrato.
 10. **Linguagem simples.** A oferta, as explicações e as ações são entendidas
     sem conhecer tecnologia ou inglês. Avalie também perguntas, formulários,
     legendas, busca e rodapé. Termo necessário vem explicado; nome oficial é
@@ -87,7 +92,7 @@ Clareza e voz precisam de nota pelo menos 2, além da regra geral de aceite.
 Uma média alta em aparência não compensa texto difícil.
 
 Para avaliar a escrita e a variação estrutural, use a mesma oferta confirmada
-nas quatro vibes e execute as três estruturas de cada uma. Inclua
+nas quatro vibes multipágina e execute as três estruturas de cada uma. Avalie Landing Page separadamente, com jornada de página única. Inclua
 um negócio de serviço e um de produto; repita a geração e uma edição pontual.
 Registre textos automáticos antes de qualquer intervenção. Inclua nomes oficiais,
 um termo técnico necessário e explicado, e casos com inglês desnecessário,
@@ -105,8 +110,13 @@ Modelo exato, commit, caso, se houve `--generate`, tokens de entrada e saída
 por fase, tempo, ferramentas recusadas, rodadas de revisão e qualquer
 intervenção manual. Saída com acabamento manual não comprova o gerador.
 
-## Harness de qualidade, 11/09/2026
+## Ensaio do harness e conclusão do produto
 
 Use `npm run eval:harness -- --live --case=... --assets=... --repeat=2` para ensaios com modelos, executores e renderer reais, I/O em memória e fotos de fixture. Registre o nível de raciocínio, orçamento por fase, versão do harness, motivo de término e tokens de raciocínio. A saída sem edição manual, capturas e relatório ficam em `outputs/harness/`.
 
-O aceite automático exige pre-flight sem erros e recibo visual completo, sem erro material e referente ao rascunho atual. Crítica de IA e medições não preenchem automaticamente as notas humanas de 0 a 3 acima. Uma execução aprovada não demonstra superioridade universal; compare as mesmas fixtures e repita. Custo e latência são diagnósticos secundários, nunca compensam uma falha de factualidade, fluxo ou legibilidade.
+No `eval:harness`, o aceite do experimento exige pre-flight sem erros e recibo visual completo, sem erro material e referente ao rascunho atual. Crítica de IA e medições não preenchem automaticamente as notas humanas de 0 a 3 acima. Uma execução aprovada não demonstra superioridade universal; compare as mesmas fixtures e repita. Custo e latência são diagnósticos secundários, nunca compensam uma falha de factualidade, fluxo ou legibilidade.
+
+A geração do produto e `eval:site` encerram pela composição/entrega, sem
+exigir esse recibo visual. `eval:harness` solicita a revisão explicitamente
+para medir qualidade. Conclusão de geração, aprovação do ensaio e autorização
+para publicar são estados distintos.

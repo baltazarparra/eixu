@@ -2,9 +2,11 @@
 
 Site institucional da EIXU e MVP de uma plataforma operada por agentes para criar sites de clientes, captar contatos e acompanhar tráfego. O operador trabalha em `/admin`; cada cliente tem conteúdo e imagens próprios no mesmo banco e aplicação, com endereço previsto em `cliente.eixu.com.br`.
 
+O [índice da documentação](docs/README.md) reúne os guias vigentes, as evoluções propostas e o histórico de entregas. A revisão de 13/09/2026 foi reconciliada com a implementação de `main` até `cf911cc` (PR #57). Evidência de cada release exige conferir o deployment do mesmo commit.
+
 ## Qualidade dos agentes
 
-O modelo interno é **Gemini 3.8 Flash**, com raciocínio `high`. O harness prioriza plano editorial, contexto recente preservado e composição com espaço para reparo. A geração termina quando as páginas são montadas; a revisão é humana pela prévia, com ajustes pelo chat. Não há etapa automática Conferir nem estado de revisão visual pendente. Os erros de publicação continuam valendo. [SOUL.md](SOUL.md) define a identidade e entra no prompt; [harness](docs/harness.md) explica políticas, limites e avaliações.
+O modelo interno é **Gemini 3.8 Flash**, com raciocínio `high`. O harness prioriza plano editorial, contexto recente preservado e composição com espaço para reparo. A geração termina quando as páginas são montadas; a revisão é humana pela prévia, com ajustes pelo chat. Não há etapa automática Conferir nem estado de revisão visual pendente. Erros técnicos bloqueiam a publicação; avaliações editoriais são recomendações quando o operador pede para publicar. [SOUL.md](SOUL.md) define a identidade e entra no prompt; [harness](docs/harness.md) explica políticas, limites e avaliações.
 
 ## O que já existe
 
@@ -22,7 +24,7 @@ O modelo interno é **Gemini 3.8 Flash**, com raciocínio `high`. O harness prio
 
 ## Rodar localmente
 
-Use Node.js 24.x para acompanhar a Vercel; o mínimo declarado é 22.13.0. O gerenciador é npm, com versões resolvidas em `package-lock.json`.
+O mínimo declarado em `package.json` é Node.js 22.13.0; o ambiente local desta revisão usa 24.x. Confira a versão configurada na Vercel antes do release. O gerenciador é npm, com versões resolvidas em `package-lock.json`.
 
 ```bash
 npm ci
@@ -75,11 +77,7 @@ Na Vercel, as etapas da geração são entregues pela fila `eixu-generation-step
 | Agentes do produto    | `app/api/chat/`, `lib/ai/`, `lib/images/`                                                    |
 | Dados e atribuição    | `db/schema.sql`, `lib/db.ts`, `lib/tracking.ts`, `app/api/form/`, `app/api/e/`, `app/go/wa/` |
 
-Os três grupos de rotas têm layouts e CSS próprios. A publicação valida páginas
-e projeto por `lintPage` e `lintSite`, incluindo a forma do site (três páginas de inbound ou uma landing com obrigado) e duas
-fotos disponíveis na home, e promove conteúdo, SEO, dados editoriais e apresentação
-global para um snapshot coerente na mesma transação. Veja o
-[mapa de arquitetura](docs/architecture.md).
+Os três grupos de rotas têm layouts e CSS próprios. A geração valida páginas e projeto por `lintPage` e `lintSite`. Na publicação solicitada, `publication-policy.ts` converte achados editoriais em recomendações; erros técnicos preservam a versão anterior. O serviço promove conteúdo, SEO, dados editoriais e apresentação global para um snapshot coerente na mesma transação. Veja o [mapa de arquitetura](docs/architecture.md).
 
 ## Comandos e validação
 
@@ -92,11 +90,13 @@ global para um snapshot coerente na mesma transação. Veja o
 | `npm run lint`                                               | Analisa código com oxlint; não executa o pre-flight dos sites.                                                                                                         |
 | `npm run test:sites`                                         | Testa o contrato de páginas, imagens, alterações por número e links sem banco ou chamadas pagas.                                                                       |
 | `npm run test:sites:browser`                                 | Depois do build Next.js, verifica contraste, contatos, hidratação, teclado, carrossel e preferências do navegador. Requer `EIXU_CHROME_PATH`.                          |
-| `npm run test:admin`                                         | Testa contexto, estado editorial, autenticação, logos, datas, custos, CSV e tracking sem banco ou chamadas pagas. Captura requer `EIXU_CHROME_PATH`.                   |
+| `npm run test:admin`                                         | Testa contexto, estado editorial, autenticação, logos, datas, custos, CSV e tracking. Suítes opcionais exigem PostgreSQL local ou Chrome; não chama modelos pagos.     |
 | `npm run test:admin:browser`                                 | Depois do build Next.js, exercita o painel real no Chrome: andamento da geração, início automático, conversa e consumo. Requer `EIXU_CHROME_PATH`.                     |
 | `npm run eval:harness`                                       | Orienta o ensaio de qualidade; `--live --case=... --assets=... --repeat=2` chama modelos reais com ferramentas em memória e capturas do renderer. Não grava Neon/Blob. |
 | `npm run eval:admin-cost`                                    | Compara o payload de histórico em memória; `-- --live` executa três chamadas pagas controladas, sem escrever no banco/Blob.                                            |
-| `npm run eval:site -- <caso>`                                | Roda a geração real num tenant descartável e mede o resultado pela rubrica.                                                                                            |
+| `npm run eval:edits`                                         | Orienta o ensaio de edições pontuais; `-- --live` faz chamadas pagas com executores em memória.                                                                        |
+| `npm run eval:site-sources`                                  | Orienta a comparação entre história, Site atual e referência; `-- --live --assets=arquivo.json` usa modelo e Chromium reais, sem Neon/Blob.                            |
+| `npm run eval:site -- <caso>`                                | Chama modelos e escreve em um tenant `eval-*`, sem publicar; `--generate` acrescenta fotos e `--fresh` exclui o tenant do caso. Requer recurso e escopo autorizados.   |
 | `npm run format -- --check README.md AGENTS.md SOUL.md docs` | Confere a formatação da documentação sem reescrever arquivos.                                                                                                          |
 | `npm run db:migrate`                                         | Aplica statements idempotentes de `db/schema.sql`; escreve no banco. Coluna nova exige rodar antes do deploy do código que a usa.                                      |
 | `npm run db:seed-demo`                                       | Sobrescreve e publica home/obrigado do tenant `vertice` já existente; altera marca e dials. Use só em demo descartável.                                                |
@@ -106,7 +106,7 @@ global para um snapshot coerente na mesma transação. Veja o
 
 Há testes dos contratos de sites e admin; não há workflow de CI versionado. O lint global deve passar. O [guia de validação](docs/verification.md) registra as referências e os checks por tipo de mudança, incluindo integração em PostgreSQL descartável. Build aprovado não equivale a fluxo com banco ou IA testado.
 
-O [manual do operador](docs/admin.md) explica a jornada de cadastro, geração, revisão, publicação e acompanhamento. A [revisão do admin](docs/admin-review.md) registra o escopo e a comparação controlada de custo.
+O [manual do operador](docs/admin.md) explica cadastro, geração, revisão humana, publicação e acompanhamento. Para contratos técnicos e planos, use o [índice](docs/README.md).
 
 ## Agentes e modelos de desenvolvimento
 
@@ -114,6 +114,6 @@ GPT-6 Astra e Claude Fable 5.1 são os modelos de trabalho considerados pelo [ha
 
 ## Publicação
 
-O repositório [baltazarparra/eixu](https://github.com/baltazarparra/eixu) está ligado ao projeto `eixu` da Vercel, com `main` como branch de produção e `npm run build:vercel` como build. Valide o diff, publique pelo fluxo Git e confira o deployment do mesmo SHA até `READY`, seguido de smoke no domínio servido. O [procedimento completo](docs/verification.md#publicação) inclui os comandos.
+O destino conferido em 13/09/2026 é o repositório [baltazarparra/eixu](https://github.com/baltazarparra/eixu), projeto `eixu` da equipe `rvnn` na Vercel e branch `main`. `vercel.json` define `npm run build:vercel`; vínculo, branch e ambiente remoto devem ser reconfirmados quando houver release. Publique pelo fluxo Git autorizado e confira o deployment do mesmo SHA até `READY`, seguido de smoke, conforme o [procedimento](docs/verification.md#publicação).
 
 Publicar código na Vercel e publicar páginas de clientes são operações distintas. O deploy não executa migrações, não roda o seed e não publica rascunhos. Subdomínios dependem de domínio, DNS e certificado configurados na Vercel.
