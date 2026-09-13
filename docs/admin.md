@@ -224,6 +224,19 @@ mesmo texto aparecer em mais de um lugar, indique qual deles ou peça todas as
 ocorrências. Uma edição em outra aba pode exigir releitura antes de salvar. As
 alterações aparecem no rascunho; a publicação continua sendo uma ação separada.
 
+Para ajustar uma imagem sem recompor a seção, indique o nome do bloco entre
+aspas e descreva a apresentação desejada. Na composição autoral é possível
+retirar a moldura e o fundo do box, mostrar a imagem inteira na largura
+disponível e remover o espaço superior. Esses controles preservam textos,
+itens e organização. Se o bloco não tiver o controle necessário, o chat deve
+explicar o limite.
+
+O fechamento de uma edição informa o que foi salvo ou recusado conforme o
+retorno do servidor. A comprovação de um prêmio exige um fato escrito por você
+ou cadastrado em Dados; uma imagem na prévia não registra essa confirmação.
+Quando a validação aponta uma pendência, ela precisa ser resolvida — não há
+uma sincronização posterior que libere a publicação sozinha.
+
 Ao pedir uma alteração, como **“o footer quero em darkmode”** ou **“quero o
 header em darkmode”**, acompanhe a atividade e o tempo junto da caixa de
 mensagem ou acima da prévia. O andamento permanece visível ao recolher a

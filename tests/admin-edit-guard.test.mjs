@@ -232,7 +232,9 @@ await test('os selos do hero saem sob os botões ou sob o título, na ordem do D
               id: 't',
               slug: 't',
               name: 'Teste',
-              brand: { vibe: type === 'hero.landing' ? 'landing' : 'comercial' },
+              brand: {
+                vibe: type === 'hero.landing' ? 'landing' : 'comercial',
+              },
               brief: {},
               dials: {},
               imageGuide: {},
@@ -253,17 +255,49 @@ await test('os selos do hero saem sob os botões ou sob o título, na ordem do D
 
 await test('um fato só vira evidência quando o operador o escreveu', () => {
   const written =
-    'ganhamos o prêmio do Estadão em 2023 e são três cocos por litro';
-  assert.equal(factWritten('Prêmio Estadão 2023', written), true);
-  assert.equal(factWritten('três cocos por litro', written), true);
+    'Ganhamos o prêmio do Estadão em 2023. São três cocos por litro.';
+  assert.equal(
+    factWritten('Ganhamos o prêmio do Estadão em 2023', written),
+    true,
+  );
+  assert.equal(factWritten('São três cocos por litro', written), true);
   assert.equal(factWritten('melhor água de coco do Brasil', written), false);
   assert.equal(factWritten('prêmio Estadão 2024', written), false);
   assert.equal(factWritten('', written), false);
+  assert.equal(
+    factWritten(
+      'Ganhamos o prêmio Estadão 2023',
+      'Não ganhamos o prêmio Estadão 2023.',
+    ),
+    false,
+  );
+  assert.equal(
+    factWritten(
+      '10 anos de experiência',
+      'Temos 10 funcionários e 2 anos de experiência.',
+    ),
+    false,
+  );
+  assert.equal(
+    factWritten(
+      'Ganhamos o prêmio Estadão 2023',
+      'Ganhamos o prêmio Estadão 2023?',
+    ),
+    false,
+  );
+  assert.equal(
+    factWritten(
+      'Ganhamos o prêmio Estadão 2023?',
+      'Ganhamos o prêmio Estadão 2023?',
+    ),
+    false,
+  );
+  assert.equal(factWritten('Sem conservantes', 'Sem conservantes.'), true);
 });
 
 await test('confirm_evidence grava o que o operador escreveu e recusa o resto', async () => {
   const operatorText =
-    'a foto nova é do produto, ganhamos o prêmio do Estadão em 2023 e são três cocos por litro';
+    'A foto nova é do produto. Prêmio Estadão 2023. Três cocos por litro.';
   const updates = [];
   const tenant = {
     id: 'fixture',
@@ -310,7 +344,10 @@ await test('confirm_evidence grava o que o operador escreveu e recusa o resto', 
     facts: ['Prêmio Estadão 2023', 'Três cocos por litro'],
   });
   assert.equal(saved.ok, true, JSON.stringify(saved));
-  assert.deepEqual(saved.added, ['Prêmio Estadão 2023', 'Três cocos por litro']);
+  assert.deepEqual(saved.added, [
+    'Prêmio Estadão 2023',
+    'Três cocos por litro',
+  ]);
   assert.equal(updates.length, 1);
   assert.match(updates[0].sql, /jsonb_set\(brief, '\{evidence\}'/);
 

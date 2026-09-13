@@ -348,6 +348,17 @@ details[open] > summary .site-disclosure {
   max-width: none;
   padding-inline: 0;
 }
+/* Controles locais de edição: não dependem da vibe nem mudam a grade. */
+.site-theme .site-block[data-edge='none'],
+.site-theme .site-block[data-edge='none'] > :is(section, article) {
+  border: 0;
+  box-shadow: none;
+}
+.site-theme .site-block[data-spacing-top='none'],
+.site-theme .site-block[data-spacing-top='none'] > .site-section {
+  margin-top: 0;
+  padding-top: 0;
+}
 
 /* Navegação */
 .site-navigation-content {

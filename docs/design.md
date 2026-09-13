@@ -172,6 +172,14 @@ sobre o tom padrão da vibe sem mudar a marca. O renderer respeita a ordem
 salva inclusive para uma seção inserida depois do rodapé; a localização
 automática continua antes dele. Veja o [contrato de edição](chat-edits.md).
 
+`background: transparent` remove o fundo local e usa as cores legíveis da
+marca; nesse caso, omita `foreground`. `edge: none` remove a borda/sombra da
+seção e `spacingTop: none` retira somente o respiro superior.
+Em `signature.composition`, `items.N.imagePresentation` controla a moldura,
+a proporção natural, a largura do box e o respiro superior de uma única imagem.
+As quatro famílias usam os mesmos controles, com precedência sobre a moldura
+global `imagery: framed`. A grade, os textos e os demais itens são preservados.
+
 O cabeçalho `nav.bar` aceita `position: fixed` sem trocar layout ou direção da
 marca. `backgroundOpacity` controla o fundo entre 70 e 100%; o tom escuro vem de
 `presentation.tone: ink`. A ilha `NavigationFrame` mede e reserva sua altura,

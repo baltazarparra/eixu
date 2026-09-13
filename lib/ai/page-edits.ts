@@ -308,7 +308,9 @@ export function contentLossError(
     const now = current.get(id);
     if (!now) {
       if (block.fields.size)
-        lost.push(`${block.type} (${block.fields.size} texto(s), bloco inteiro)`);
+        lost.push(
+          `${block.type} (${block.fields.size} texto(s), bloco inteiro)`,
+        );
       continue;
     }
     // Outro tipo renomeia os caminhos; compare o volume de texto preservado.
@@ -406,6 +408,22 @@ function positionIndex(
   return blocks.indexOf(target) + (position.relation === 'after' ? 1 : 0);
 }
 
+const VISUAL_SUMMARIES: Record<string, Record<string, string>> = {
+  'presentation.background': { transparent: 'fundo da seção removido' },
+  'presentation.edge': { none: 'borda da seção removida' },
+  'presentation.spacingTop': { none: 'espaço acima da seção removido' },
+  'imagePresentation.frame': { none: 'moldura da imagem removida' },
+  'imagePresentation.fit': { natural: 'imagem inteira na proporção original' },
+  'imagePresentation.width': { container: 'imagem na largura do próprio box' },
+  'imagePresentation.spacingTop': { none: 'espaço acima da imagem removido' },
+};
+const OPERATION_SUMMARIES: Record<string, string> = {
+  replace_text: 'texto atualizado',
+  remove: 'bloco removido',
+  insert: 'bloco inserido',
+  move: 'bloco reposicionado',
+};
+
 /** Plano puro: valida todas as operações antes de permitir qualquer escrita. */
 export function applyPageEdit(
   page: Page,
@@ -428,6 +446,10 @@ export function applyPageEdit(
     to?: number;
   }[] = [];
   for (const operation of input.operations) {
+    if (policy?.visualOnly && !['set', 'unset'].includes(operation.op))
+      throw new PageEditError(
+        'Este pedido visual preserva os blocos, seus itens e textos. Use set/unset nos controles de apresentação do bloco atual; não reconstrua a seção.',
+      );
     if (
       policy?.kind === 'navigation-style' &&
       !['set', 'unset'].includes(operation.op)
@@ -541,5 +563,42 @@ export function applyPageEdit(
       if (error) throw new PageEditError(error);
     }
   }
-  return { blocks, changes };
+  const summary = [
+    ...new Set(
+      changes
+        .map((change) => {
+          const block = blocks.find((item) => item.id === change.blockId);
+          const before = page.blocks.find((item) => item.id === change.blockId);
+          if (JSON.stringify(block) === JSON.stringify(before)) return '';
+          const name =
+            [
+              block?.props.eyebrow,
+              block?.props.title,
+              before?.props.title,
+            ].find(
+              (value): value is string =>
+                typeof value === 'string' && Boolean(value.trim()),
+            ) ?? 'seção';
+          const path = change.path ?? '';
+          let value: unknown = block?.props;
+          for (const key of path.split('.'))
+            value =
+              value && typeof value === 'object'
+                ? (value as Record<string, unknown>)[key]
+                : undefined;
+          const property = path.replace(/^items\.\d+\./, '');
+          const visual =
+            typeof value === 'string'
+              ? VISUAL_SUMMARIES[property]?.[value]
+              : undefined;
+          const detail =
+            visual ??
+            OPERATION_SUMMARIES[change.op] ??
+            (property === 'image' ? 'imagem atualizada' : 'ajuste salvo');
+          return `Em “${name}”: ${detail}.`;
+        })
+        .filter(Boolean),
+    ),
+  ];
+  return { blocks, changes, summary };
 }
