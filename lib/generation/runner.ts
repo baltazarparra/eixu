@@ -27,7 +27,7 @@ import { listImages } from '@/lib/images/queries';
 import { reviewFingerprint } from '@/lib/review/state';
 import { sceneCoverage } from '@/lib/images/scene-plan';
 import { generationState, plannedScenes } from '@/lib/sites/generation';
-import { generatedPhotos } from '@/lib/taste/metrics';
+import { availablePhotos } from '@/lib/taste/metrics';
 import {
   PHASE_LABEL,
   PHASE_MESSAGE,
@@ -65,7 +65,7 @@ function directSceneBatch(
 ) {
   const { missing } = sceneCoverage(
     plannedScenes(tenant),
-    generatedPhotos(images),
+    availablePhotos(images),
   );
   if (!missing.length || missing.some((scene) => !scene.request)) return null;
   return {

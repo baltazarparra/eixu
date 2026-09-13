@@ -228,6 +228,19 @@ export function generatedPhotos(images: TenantImage[]): TenantImage[] {
   );
 }
 
+/** Fotos do acervo do tenant, incluindo uploads registrados pela biblioteca. */
+export function availablePhotos(images: TenantImage[]): TenantImage[] {
+  const generated = new Set(generatedPhotos(images).map((image) => image.id));
+  return images.filter(
+    (image) =>
+      image.kind === 'foto' &&
+      image.status !== 'rejeitada' &&
+      (generated.has(image.id) ||
+        (image.model === 'upload' &&
+          /^tenants\/[^/]+\/uploads\/[^/]+$/.test(image.blobPath))),
+  );
+}
+
 export type PageMetrics = {
   slug: string;
   type: string;
@@ -249,13 +262,14 @@ export function pageMetrics(
 ): PageMetrics {
   const content = contentBlocks(page.blocks);
   const generatedUrls = new Set(generatedPhotos(images).map((i) => i.url));
-  const generatedIn = (block: BlockInstance) =>
-    blockImageUrls(block).filter((url) => generatedUrls.has(url));
-  const rich = content.filter((b) => generatedIn(b).length >= 2);
+  const availableUrls = new Set(availablePhotos(images).map((i) => i.url));
+  const availableIn = (block: BlockInstance) =>
+    blockImageUrls(block).filter((url) => availableUrls.has(url));
+  const rich = content.filter((b) => availableIn(b).length >= 2);
   const heroRich = rich.filter((b) => familyOf(b.type) === 'hero');
   const otherRich = rich.filter((b) => familyOf(b.type) !== 'hero');
   const otherWithPhoto = content.filter(
-    (b) => familyOf(b.type) !== 'hero' && generatedIn(b).length >= 1,
+    (b) => familyOf(b.type) !== 'hero' && availableIn(b).length >= 1,
   );
   // O hero atelier já é uma composição de duas fotos; ele só sustenta a página
   // quando o miolo também mostra o negócio em imagem.
@@ -406,7 +420,7 @@ function grammarFindings(
         page: path,
         level: 'error',
         rule: 'protagonista-fora-da-vibe',
-        message: `A home precisa da seção protagonista da vibe ${label}: ${grammar.protagonists.join(' ou ')}. Coloque duas fotos geradas distintas deste cliente no próprio bloco.`,
+        message: `A home precisa da seção protagonista da vibe ${label}: ${grammar.protagonists.join(' ou ')}. Coloque duas fotos distintas da biblioteca deste cliente no próprio bloco.`,
       });
     const closing = marks[marks.length - 1];
     if (!grammar.closings.includes(closing.signature))
@@ -441,8 +455,8 @@ export function structuralFindings(
 ): StructuralFinding[] {
   const findings: StructuralFinding[] = [];
   const design = brand?.design as DesignProfile | undefined;
-  const generated = generatedPhotos(images);
-  const byUrl = new Map(generated.map((i) => [i.url, i]));
+  const available = availablePhotos(images);
+  const byUrl = new Map(available.map((i) => [i.url, i]));
   const libraryByUrl = new Map(
     images.filter((i) => i.kind === 'foto').map((i) => [i.url, i]),
   );
@@ -517,7 +531,7 @@ export function structuralFindings(
         level: 'error',
         rule: 'home-imagens-geradas',
         message:
-          'A home precisa de 2 fotos geradas distintas da biblioteca deste cliente, com cenas coerentes. Logos, uploads e repetição da mesma foto não contam.',
+          'A home precisa de 2 fotos distintas da biblioteca deste cliente, geradas ou enviadas, com cenas coerentes. Logos, arquivos fora do acervo e repetição da mesma foto não contam.',
       });
     if (!metrics.protagonist)
       findings.push({

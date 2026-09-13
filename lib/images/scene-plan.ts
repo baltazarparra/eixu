@@ -1,7 +1,7 @@
 import {
-  RATIOS,
   expectedRatio,
   ratioFits,
+  ratioValue,
   type Ratio,
 } from '@/lib/images/ratios';
 import {
@@ -156,8 +156,7 @@ export type CoverageImage = { targetBlock: string | null; ratio: string };
  */
 function fits(image: CoverageImage, scene: PlannedScene): boolean {
   return (
-    (RATIOS as readonly string[]).includes(image.ratio) &&
-    ratioFits(image.ratio, scene.ratio)
+    ratioValue(image.ratio) !== null && ratioFits(image.ratio, scene.ratio)
   );
 }
 

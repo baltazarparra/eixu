@@ -66,7 +66,7 @@ import { publishSite } from '@/lib/sites/publish';
 import { formatFindings, lintPage } from '@/lib/taste/lint';
 import { inboundSchema, lintSite, type SitePage } from '@/lib/taste/site';
 import {
-  generatedPhotos,
+  availablePhotos,
   siteMetrics,
   structuralFindings,
 } from '@/lib/taste/metrics';
@@ -483,7 +483,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             // Relê a cobertura dentro do lock, pois outra requisição pode ter
             // gerado a mesma vaga depois do snapshot da rota.
             const library = await listImages(tenant.id);
-            const { missing } = sceneCoverage(plan, generatedPhotos(library));
+            const { missing } = sceneCoverage(plan, availablePhotos(library));
             if (inPhase) {
               if (!missing.length)
                 throw new ToolError(
@@ -517,7 +517,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             );
             const coverage = sceneCoverage(
               plan,
-              generatedPhotos(await listImages(tenant.id)),
+              availablePhotos(await listImages(tenant.id)),
             );
             return {
               ...generated,
@@ -541,7 +541,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
     update_image: tool({
       description:
-        'Altera uma imagem existente pelo número, por exemplo "quero atualizar a imagem #5, quero outro carro". Usa a imagem original como referência, mantém a proporção e salva uma nova versão numerada na biblioteca, sem aprovação. Troca as ocorrências nos rascunhos deste cliente e preserva os snapshots publicados. Para logo, a aplicação na marca continua em set_site_logo por pedido do usuário.',
+        'Altera uma imagem existente pelo número, por exemplo "quero atualizar a imagem #5, quero outro carro". Usa a imagem original como referência, mantém a proporção quando suportada pelo gerador (uploads usam o recorte suportado mais próximo) e salva uma nova versão numerada na biblioteca, sem aprovação. Informe se o recorte mudou. Troca as ocorrências nos rascunhos deste cliente e preserva os snapshots publicados. Para logo, a aplicação na marca continua em set_site_logo por pedido do usuário.',
       inputSchema: z.object({
         image: z
           .string()
@@ -595,6 +595,11 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
               alt: image.alt,
               nota: image.score,
               problemas: image.critique.problemas ?? [],
+              ...(previous.ratio !== image.ratio
+                ? {
+                    aviso: `A nova versão usa proporção ${image.ratio}; a original ${previous.ratio} permanece no acervo.`,
+                  }
+                : {}),
             };
             try {
               const pages = await replaceDraftImage(tenant.id, previous, image);
@@ -1329,7 +1334,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
     lint_site: tool({
       description:
-        'Valida o projeto completo: 3 páginas orgânicas, jornada de inbound, links internos e 2 fotos geradas na home.',
+        'Valida o projeto completo: 3 páginas orgânicas, jornada de inbound, links internos e 2 fotos da biblioteca na home, geradas ou enviadas.',
       inputSchema: z.object({}),
       execute: safe(async () => {
         const [pages, images] = await Promise.all([
@@ -1341,7 +1346,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
     }),
     list_images: tool({
       description:
-        'Lista as imagens disponíveis do cliente com número, descrição e URL exata para os blocos. Não há aprovação. Use update_image para pedidos de alteração pelo número.',
+        'Lista as imagens geradas e enviadas disponíveis do cliente com número, descrição e URL exata para os blocos. Não há aprovação. Use update_image para pedidos de alteração pelo número.',
       inputSchema: z.object({}),
       execute: safe(async () => {
         const library = await listImages(tenant.id);
@@ -1351,6 +1356,8 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             .map((image) => ({
               numero: `#${image.seq}`,
               kind: image.kind,
+              origem:
+                image.model === 'upload' ? 'enviada pelo operador' : 'gerada',
               url: image.url,
               alt: image.alt,
               ratio: image.ratio,

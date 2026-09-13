@@ -3,7 +3,11 @@ import { generateCandidates } from '@/lib/images/generate';
 import { fetchReference, generateLogoCandidates } from '@/lib/images/logo';
 import { critiqueLogo } from '@/lib/images/logo-critic';
 import { getGuide } from '@/lib/images/queries';
-import { RATIOS, type Ratio } from '@/lib/images/ratios';
+import {
+  RATIOS,
+  closestGenerationRatio,
+  type Ratio,
+} from '@/lib/images/ratios';
 import type { Critique, Tenant, TenantImage } from '@/lib/types';
 
 /** Mantém a imagem anterior no acervo e gera uma versão usando seus pixels. */
@@ -13,7 +17,12 @@ export async function reviseImage(
   request: string,
   logo: { brandName?: string; wordmark?: boolean } = {},
 ): Promise<TenantImage> {
-  if (!(RATIOS as readonly string[]).includes(previous.ratio))
+  const ratio = (RATIOS as readonly string[]).includes(previous.ratio)
+    ? (previous.ratio as Ratio)
+    : previous.model === 'upload'
+      ? closestGenerationRatio(previous.ratio)
+      : null;
+  if (!ratio)
     throw new Error(`A proporção da imagem #${previous.seq} não é suportada.`);
   const [guide, reference] = await Promise.all([
     getGuide(tenant.id),
@@ -56,7 +65,7 @@ export async function reviseImage(
       tenant,
       guide,
       request: `${description}. Use a imagem anexada como base e preserve o que não foi solicitado mudar.`,
-      ratio: previous.ratio as Ratio,
+      ratio,
       targetBlock: previous.targetBlock ?? 'livre',
       models: ['openai/gpt-image-2'],
       reference,
@@ -72,7 +81,7 @@ export async function reviseImage(
       bytes: generated.bytes,
       guide,
       request: description,
-      ratio: previous.ratio,
+      ratio,
       targetBlock: previous.targetBlock ?? 'livre',
     });
     image = generated;

@@ -125,6 +125,17 @@ await test('alteração usa os pixels da #5, mantém o recorte e continua dispon
   assert.equal(calls[0].ratio, original.ratio);
   assert.equal(calls[0].targetBlock, original.targetBlock);
   assert.match(calls[0].request, /quero outro carro/);
+  await reviseImage(
+    tenant,
+    { ...original, model: 'upload', ratio: '3:2' },
+    'quero outro carro',
+  );
+  assert.equal(calls[1].reference, bytes);
+  assert.equal(
+    calls[1].ratio,
+    '4:3',
+    'upload fora dos recortes do gerador usa o mais próximo',
+  );
   assert.equal(original.seq, 5);
 });
 
