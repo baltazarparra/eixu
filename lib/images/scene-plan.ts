@@ -12,11 +12,10 @@ import {
   type SceneRole,
 } from '@/lib/images/scene-slots';
 import {
-  VIBE_GRAMMAR,
   heroCompositionFor,
+  structureGrammar,
   type Vibe,
 } from '@/lib/design/vibes';
-import { structureFor } from '@/lib/design/structures';
 import type { DesignProfile } from '@/lib/design/profile';
 
 export {
@@ -60,19 +59,15 @@ export function scenePlan(
   vibe: Vibe = 'comercial',
 ): PlannedScene[] {
   const legacy = design?.version === 2 || design?.version === 3;
-  const structure =
-    design?.version === 5 ? structureFor(vibe, design.structure) : null;
-  const grammar = legacy
-    ? undefined
-    : structure
-      ? { ...VIBE_GRAMMAR[vibe], ...structure }
-      : VIBE_GRAMMAR[vibe];
-  // A abertura da home pertence à vibe. Sob direção por referência o eixo pode
-  // ter sido escolhido fora da faixa; a cena segue a composição que a vibe
-  // sustenta, senão a foto nasceria na proporção de um hero que a home não usa.
+  const grammar = legacy ? undefined : structureGrammar(vibe, design);
+  const structure = grammar?.structure;
+  // V6 usa a abertura escolhida a partir da referência; perfis v4/v5 continuam
+  // limitados à faixa da vibe com que foram criados.
   const composition = legacy
     ? design.heroComposition
-    : heroCompositionFor(vibe, design?.heroComposition);
+    : design?.version === 6
+      ? design.heroComposition
+      : heroCompositionFor(vibe, design?.heroComposition);
   const heroBlock = `hero.${composition}`;
   const scenes: PlannedScene[] = [
     {

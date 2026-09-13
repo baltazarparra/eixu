@@ -81,10 +81,8 @@ export async function createTenantAction(
   if (!intake.success)
     return (
       intake.error.issues[0]?.message ??
-      'Confira o briefing: URLs válidas e até 160 caracteres por fato ou restrição.'
+      'Confira a história, o link de referência e o limite de 160 caracteres por fato ou restrição.'
     );
-  if (!intake.data.offer || !intake.data.goal)
-    return 'Informe o que a empresa oferece e a ação esperada do visitante.';
   if (!colors.success)
     return colors.error.issues[0]?.message ?? 'Confira as cores da marca.';
   if (!vibe.success) return 'Escolha uma vibe para o site.';

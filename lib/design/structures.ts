@@ -2,8 +2,10 @@ import { z } from 'zod';
 import type { Vibe } from './vibes';
 
 /**
- * Três jornadas completas por vibe. A chave fica no perfil v5 para que o
- * plano de cenas, o prompt, o pre-flight e o renderer usem a mesma decisão.
+ * Três jornadas completas por vibe. A chave fica no perfil para que o plano
+ * de cenas, o prompt, o pre-flight e o renderer usem a mesma decisão. Perfis
+ * v6 guiados por referência podem escolher a estrutura mais próxima entre as
+ * doze, independentemente da vibe informada no cadastro.
  */
 export const STRUCTURE_KEYS = [
   'comercial-atendimento',
@@ -364,8 +366,21 @@ export function structureFor(vibe: Vibe, key: unknown): SiteStructure | null {
   return structure.vibe === vibe ? structure : null;
 }
 
+export function structureByKey(key: unknown): SiteStructure | null {
+  return isStructureKey(key) ? SITE_STRUCTURES[key] : null;
+}
+
 export function structuresDirection(vibe: Vibe): string {
   return STRUCTURES_BY_VIBE[vibe]
+    .map(
+      (structure) =>
+        `- ${structure.key} (${structure.label}): ${structure.intent} Sequência mínima: ${structure.sequence.join(' > ')}.`,
+    )
+    .join('\n');
+}
+
+export function allStructuresDirection(): string {
+  return STRUCTURE_KEYS.map((key) => SITE_STRUCTURES[key])
     .map(
       (structure) =>
         `- ${structure.key} (${structure.label}): ${structure.intent} Sequência mínima: ${structure.sequence.join(' > ')}.`,

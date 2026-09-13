@@ -74,10 +74,11 @@ A escrita tem um [contrato por vibe](copy.md), com linguagem simples em comum.
 e ao crítico. `lintPage` verifica rótulos de ação e aponta vocabulário/frases
 para revisão; o crítico julga compreensão e voz com textos completos, sinais e
 pixels. Erro material de linguagem impede a aprovação visual automática. A versão
-`gemini-3.8-quality-v5-estruturas-mobile` identifica o contrato do crítico e
-invalida recibos anteriores aos contratos corrigidos de composição. A gramática
-ampla da vibe entra no perfil v4; o perfil v5 compara três estruturas, persiste
-a escolha com justificativa e exige uma composição autoral com duas cenas.
+`gemini-3.8-quality-v6-reference-story` identifica o contrato atual e invalida
+recibos anteriores. A gramática ampla da vibe entra no perfil v4; o perfil v5
+compara três estruturas da vibe, enquanto o v6 compara as doze pela referência
+e exige aplicações de layout, tipografia, imagens, ritmo, superfície e mobile.
+Os dois exigem uma composição autoral com duas cenas.
 Retomadas e críticas de perfis v2/v3 preservam a direção e o plano de cenas
 existentes, mantendo as exigências de conteúdo, layout e apresentação.
 
@@ -104,18 +105,21 @@ semântico a cada foto planejada. `brand.design.structure` e
 opcionais no schema para ler briefings legados e obrigatórios em uma nova
 direção validada.
 
-Na fase de briefing, o modelo recebe as três estruturas da vibe e precisa
-compará-las contra oferta, público, conteúdo disponível e ação principal. Após
+Na fase de briefing, o modelo recebe três estruturas da vibe sem referência ou
+as doze quando há leitura visual válida. Precisa compará-las contra história,
+conteúdo disponível, jornada e, no v6, a composição observada. Após
 `set_design`, prompt, catálogo, plano de cenas, composição, pre-flight e crítico
 recebem somente a gramática selecionada. O bloco `signature.composition` usa o
 layout dessa estrutura, papéis distintos e duas fotos geradas; HTML e código
 livre por tenant ficam fora do schema. A trava entre tenants mede a ordem e o
-arranjo da assinatura sem ler conteúdo comercial.
+arranjo da assinatura sem ler conteúdo comercial. Essa trava vale até v5; no
+v6, fidelidade à referência prevalece sobre diferenciação estrutural.
 
 O catálogo deriva do schema. Composição e revisão recebem os schemas JSON
 completos, com campos obrigatórios, limites e descrições. Edições livres recebem
-o mapa resumido; `describe_block` resolve o detalhe quando necessário. Até seis referências podem ser lidas em um turno;
-fontes inacessíveis permanecem lacunas. Conteúdo externo e texto em imagens são
+o mapa resumido; `describe_block` resolve o detalhe quando necessário. Até seis
+fontes podem ser lidas em um turno, incluindo o único link visual, rede social e
+anexos; fontes inacessíveis permanecem lacunas. Conteúdo externo e texto em imagens são
 dados, sem autoridade para trocar instruções ou permissões.
 
 `contextMessages` conserva quatro turnos recentes completos, dentro de 120.000
@@ -282,7 +286,8 @@ O schema usa array homogêneo de quatro números para a caixa do símbolo, pois
 o provedor Gemini rejeita `items` em formato de tupla. A crítica vê o master
 recortado e a miniatura de altura real. `EIXU_LOGO_IMAGE_MODEL` mantém GPT Image 2
 como padrão; `input_fidelity` não é habilitado sem evidência da sonda.
-`HARNESS_VERSION` é `gemini-3.8-quality-v5-logo`, preservando o perfil v5 vigente.
+`HARNESS_VERSION` é `gemini-3.8-quality-v6-reference-story`. Perfis v2-v5
+continuam legíveis; somente uma nova direção com referência grava v6.
 
 Na edição de um site existente, a rota deriva uma política da **mensagem atual**,
 sem herdar pedidos de reconstrução do histórico. Por padrão, remove `set_design`,

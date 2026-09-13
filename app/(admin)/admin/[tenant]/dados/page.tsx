@@ -7,7 +7,7 @@ import { adminTenant } from '@/lib/admin/queries';
 import { notFound, redirect } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
 import { countTenantData } from '@/lib/tenant-queries';
-import { intakeSchema } from '@/lib/tenant-intake';
+import { intakeForForm } from '@/lib/tenant-intake';
 import { parseSocialRecord } from '@/lib/social-profile';
 import { vibeOf } from '@/lib/design/vibes';
 import { logoIssueText } from '@/lib/images/logo-fit';
@@ -26,7 +26,7 @@ export default async function SettingsPage({
     );
   const tenant = await adminTenant(slug);
   if (!tenant) notFound();
-  const intake = intakeSchema.safeParse(tenant.brief.intake);
+  const intake = intakeForForm(tenant.brief.intake);
   const counts = await countTenantData(tenant.id);
   return (
     <>
@@ -35,7 +35,7 @@ export default async function SettingsPage({
           <div>
             <h1>Dados do cliente</h1>
             <p className="mt-3 mb-8 max-w-2xl text-sm text-[var(--color-muted)]">
-              Mantenha contatos e briefing atualizados. O agente usa essas
+              Mantenha contatos e história atualizados. O agente usa essas
               informações nas próximas edições.
             </p>
           </div>
@@ -62,7 +62,7 @@ export default async function SettingsPage({
             leadCount: counts.leads,
             imageCount: counts.images,
           }}
-          intake={intake.success ? intake.data : {}}
+          intake={intake ?? {}}
           contacts={tenant.contacts}
           social={parseSocialRecord(tenant.brief.social)}
         />

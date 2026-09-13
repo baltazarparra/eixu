@@ -200,7 +200,7 @@ export function lintPage(
   // a página volta a ser a mesma sequência genérica pintada com outra paleta.
   if (
     design &&
-    [2, 3, 4, 5].includes(design.version) &&
+    [2, 3, 4, 5, 6].includes(design.version) &&
     page.type !== 'thank_you' &&
     page.type !== 'post'
   ) {

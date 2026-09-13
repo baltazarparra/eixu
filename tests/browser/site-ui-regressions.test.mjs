@@ -34,6 +34,7 @@ await test(
     const server = await createServer({
       configFile: false,
       root,
+      cacheDir: path.join(root, 'node_modules/.vite/site-ui-regressions'),
       plugins: [
         react(),
         {

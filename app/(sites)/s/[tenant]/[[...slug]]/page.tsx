@@ -158,10 +158,11 @@ export default async function TenantPage({ params, searchParams }: Props) {
   const renderedPage = isPreview ? page : publicPage(page);
   const referenceDirected = hasReferenceDirection(renderedTenant.brand);
   const designVersion = renderedTenant.brand.design?.version;
-  // Nos perfis v4 e v5 a referência modula aspectos e a vibe continua no CSS.
-  // Os perfis 2 e 3 mantêm a base neutra com que foram publicados.
+  // V4/v5 modulam a vibe histórica. V6 expõe os seis aspectos e troca a
+  // família de CSS pela estrutura escolhida a partir da referência.
   const modulated =
-    (designVersion === 4 || designVersion === 5) && referenceDirected;
+    (designVersion === 4 || designVersion === 5 || designVersion === 6) &&
+    referenceDirected;
   const aspects = modulated
     ? [...referenceAspects(renderedTenant.brand)]
         .sort((a, b) => a.localeCompare(b))
@@ -200,12 +201,15 @@ export default async function TenantPage({ params, searchParams }: Props) {
       }
       data-vibe={renderingVibeOf(renderedTenant.brand)}
       data-reference-direction={referenceDirected ? 'true' : undefined}
-      // O seletor continua no contrato visual v4; data-profile-version expõe
-      // a versão persistida, e a v5 acrescenta a estrutura sem duplicar CSS.
+      data-visual-authority={
+        designVersion === 6 && referenceDirected ? 'reference' : 'vibe'
+      }
+      // O seletor continua no contrato CSS v4; data-profile-version expõe a
+      // versão persistida, e v5/v6 acrescentam estrutura sem duplicar CSS.
       data-design-version={
         referenceDirected && !modulated
           ? 'reference'
-          : designVersion === 5
+          : designVersion === 5 || designVersion === 6
             ? 4
             : designVersion
       }

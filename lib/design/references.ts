@@ -33,9 +33,7 @@ export type ReferenceAspect = (typeof REFERENCE_ASPECTS)[number];
 export const referenceDirectionSchema = z.object({
   primaryUrl: z
     .url()
-    .describe(
-      'Referência visual principal, escolhida entre as URLs lidas do cadastro.',
-    ),
+    .describe('Única referência visual lida e verificada no cadastro.'),
   decisions: z
     .array(
       z.object({
@@ -103,10 +101,14 @@ export function referenceDirectionIssues(
   direction?: ReferenceDirection,
 ): string[] {
   const sources = referenceSources(brief);
+  if (sources.length > 1)
+    return [
+      'A nova direção aceita uma única referência visual. Escolha um link em Dados antes de reconstruir o site.',
+    ];
   const unread = sources.filter((s) => !s.attempted);
   if (unread.length)
     return [
-      `Leia as referências do cadastro com read_reference antes de set_design: ${unread.map((s) => s.url).join(', ')}.`,
+      `Leia a referência visual do cadastro com read_reference antes de set_design: ${unread.map((s) => s.url).join(', ')}.`,
     ];
   const readable = sources.filter((s) => s.reading);
   if (!readable.length)
@@ -117,7 +119,7 @@ export function referenceDirectionIssues(
       : [];
   if (!direction)
     return [
-      'As referências visuais têm prioridade sobre a vibe. Preencha referenceDirection com a fonte principal e aplicações para layout, typography, imagery e rhythm.',
+      'A referência visual tem prioridade sobre a vibe. Preencha referenceDirection com aplicações para layout, typography, imagery, rhythm, surface e mobile.',
     ];
   const allowed = new Set(readable.map((s) => s.url));
   const issues: string[] = [];
@@ -140,7 +142,7 @@ export function referenceDirectionIssues(
     issues.push(
       'A referência principal precisa orientar decisões da composição.',
     );
-  for (const aspect of ['layout', 'typography', 'imagery', 'rhythm'])
+  for (const aspect of REFERENCE_ASPECTS)
     if (!direction.decisions.some((d) => d.aspect === aspect))
       issues.push(`Falta aplicação da referência em ${aspect}.`);
   return issues;
@@ -153,9 +155,18 @@ export function referenceDirectionOf(
   const design = brand?.design as
     | { version?: number; referenceDirection?: unknown }
     | undefined;
-  if (!design || ![2, 3, 4, 5].includes(design.version ?? 0)) return null;
+  if (!design || ![2, 3, 4, 5, 6].includes(design.version ?? 0)) return null;
   const parsed = referenceDirectionSchema.safeParse(design.referenceDirection);
-  return parsed.success ? parsed.data : null;
+  if (!parsed.success) return null;
+  if (
+    design.version === 6 &&
+    REFERENCE_ASPECTS.some(
+      (aspect) =>
+        !parsed.data.decisions.some((decision) => decision.aspect === aspect),
+    )
+  )
+    return null;
+  return parsed.data;
 }
 
 export function hasReferenceDirection(
@@ -166,9 +177,9 @@ export function hasReferenceDirection(
 
 /**
  * Aspectos que a referência documentou com traço observado e aplicação. Só
- * eles liberam a faixa da vibe; uma leitura genérica não vira licença para
- * trocar a silhueta. O schema já exige layout, typography, imagery e rhythm,
- * então surface e mobile são o que varia entre clientes.
+ * eles registram o que a fonte realmente sustenta. No perfil v6 a direção só
+ * é aceita quando cobre os seis aspectos, e então passa a comandar toda a
+ * faixa visual; versões anteriores continuam legíveis sem migração.
  */
 export function referenceAspects(
   brand?: { design?: unknown } | null,

@@ -4,10 +4,13 @@
 
 Entre em `/admin` com a credencial do operador. A busca procura nome ou
 endereço; os filtros separam rascunhos e clientes com site publicado. Abra
-**Novo cliente** e informe nome, endereço, oferta, ação principal e vibe. Esses
-campos bastam para **Criar site**; contexto, contatos, referências, logo e cores
-ficam em seções opcionais. O endereço aceita letras minúsculas, números e
-hífens; nomes reservados e duplicados são recusados.
+**Novo cliente** e informe nome, endereço, **História do cliente** e vibe. A
+história é obrigatória e deve reunir o que a empresa faz, para quem vende, onde
+atende, sua trajetória, diferenciais, provas e o próximo passo esperado. Um
+único link de referência visual fica à vista e é opcional; fatos confirmados,
+restrições, contatos, logo e cores ficam nas seções complementares. O endereço
+aceita letras minúsculas, números e hífens; nomes reservados e duplicados são
+recusados.
 
 Em **Contatos**, tudo é opcional e vai direto para o site. Cada telefone é WhatsApp ou telefone comum: o primeiro WhatsApp vira o botão flutuante e os CTAs rastreados, os demais aparecem no rodapé, e o telefone comum vira link de ligação. O e-mail aparece no rodapé. Cada endereço vira a seção "Onde estamos", com mapa e link de rota, logo acima do rodapé de toda página comum; com mais de um, o visitante alterna entre eles. As redes sociais aparecem no rodapé com o ícone da rede, e o primeiro Instagram ou LinkedIn da lista é o perfil lido para o briefing.
 
@@ -23,8 +26,9 @@ fios de 1px, rótulos em mono e pílula clara; **Ousado** usa tipografia condens
 imagem de borda a borda; **Artístico** usa serifas editoriais, assimetria e
 colagem controlada. Sem referência visual verificada, a vibe limita tipografia,
 abertura, navegação, ritmo, superfície, imagens, ícones e movimento. Uma
-referência verificada tem prioridade nesses aspectos; a vibe completa as
-lacunas e continua definindo a voz do texto. Ela pode ser trocada depois em
+referência verificada comanda esses aspectos e pode escolher qualquer uma das
+doze estruturas disponíveis; a vibe completa as lacunas e continua definindo a
+voz do texto. Ela pode ser trocada depois em
 Dados; isso abre uma nova direção no rascunho e exige recomposição antes de
 publicar.
 
@@ -46,11 +50,12 @@ O botão de sair fica no fim das ações do cabeçalho, na lista e no cliente.
 ## Preparar os dados
 
 Dentro do cliente, a navegação reúne **Site**, **Imagens**, **Tráfego** e
-**Dados**. Em Dados, atualize diretamente contatos e briefing: telefones,
-e-mail, endereços, redes sociais, segmento, região, público, oferta, ação
-esperada, fatos confirmados, restrições e até três referências. A direção visual
-também pode ser trocada ali. A edição dos campos não usa o chat; a descrição de
-um avatar social novo pode consumir uma chamada ao modelo.
+**Dados**. Em Dados, atualize diretamente contatos e briefing: a **História do
+cliente**, uma referência visual opcional, fatos confirmados, restrições,
+telefones, e-mail, endereços e redes sociais. A história reúne origem, oferta,
+segmento, região atendida, público, diferenciais, provas e a ação esperada. A
+direção visual também pode ser trocada ali. A edição dos campos não usa o chat;
+a descrição de um avatar social novo pode consumir uma chamada ao modelo.
 
 A barra inferior conta alterações não salvas. **Salvar dados** confirma os
 campos; **Descartar** restaura o último salvamento, incluindo listas de contatos
@@ -58,13 +63,18 @@ e fatos. Se salvar falhar, os valores continuam no formulário. Adicione fatos
 pelo botão **+ prova** e remova um pelo seu ×. O upload do logo é imediato e
 fica fora dessa barra.
 
-Todos os campos do briefing são opcionais e cada um traz a legenda do que registrar. **Fatos confirmados** é o que a empresa faz e comprova; o site só afirma o que estiver ali ou numa referência lida, e sem isso o agente declara lacunas. **Restrições** é o que ele não pode prometer nem mostrar.
+**História do cliente** é obrigatória e se torna a principal fonte factual.
+**Fatos confirmados** registra o que a empresa comprova; **Restrições** registra
+o que o site não pode prometer nem mostrar. Cadastros antigos continuam
+legíveis: ao abrir Dados, os campos anteriores são reunidos na história e só
+são convertidos quando o operador salva.
 
-As referências do cadastro orientam estrutura, tipografia, imagens e ritmo
-depois de uma leitura visual em desktop e celular. Um site de outro negócio é
-referência apenas de design: não confirma oferta, capacidade ou contato do
-cliente. Se a captura estiver bloqueada ou incompleta, o painel conserva a
-lacuna e o gerador usa a vibe.
+O cadastro aceita um único link de referência. Depois de uma leitura visual em
+desktop e celular, ele comanda estrutura, abertura, tipografia, imagens, ritmo,
+superfícies, comportamento e responsividade do perfil v6. A vibe permanece como
+voz e fallback. Um site de outro negócio é referência apenas de design: não
+confirma oferta, capacidade ou contato do cliente. Se a captura estiver
+bloqueada ou incompleta, o painel conserva a lacuna e o gerador usa a vibe.
 
 **Redes sociais** aceita `@perfil`, o link da rede ou a página de empresa no LinkedIn; o primeiro Instagram ou LinkedIn da lista é o perfil lido. Ao salvar, o painel lê nome, bio e foto de perfil públicos e descreve o avatar para orientar marca e imagens. A leitura é melhor esforço: perfil pessoal do LinkedIn e boa parte das contas do Instagram respondem a tela de login, e o card mostra o motivo. Nesse caso, cole a bio em Fatos confirmados e envie a imagem em Logo do site. **Ler perfil novamente** repete a tentativa.
 
@@ -76,7 +86,10 @@ essa linha explicitamente continua removendo o perfil.
 
 Nome, contatos, logo e direção alteram o rascunho. O site no ar conserva o
 snapshot completo até a próxima publicação. Alterar o briefing orienta as
-próximas edições; não reescreve páginas automaticamente. Para trocar o endereço
+próximas edições; não reescreve páginas automaticamente. Alterar história,
+referência ou vibe durante uma geração ativa é recusado. Ao salvar uma dessas
+mudanças, o briefing derivado é invalidado e o painel pede uma reconstrução;
+as páginas e o snapshot publicado são preservados. Para trocar o endereço
 de um cliente existente, é necessária uma operação técnica; o formulário não
 altera o slug.
 

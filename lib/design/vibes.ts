@@ -1,8 +1,14 @@
 import { z } from 'zod';
 import { relativeLuminance } from '@/lib/blocks/contrast';
 import { DESIGN_AXES, type DesignProfileInput } from '@/lib/design/profile';
-import { hasReferenceDirection, type ReferenceAspect } from './references';
 import {
+  hasReferenceDirection,
+  REFERENCE_ASPECTS,
+  type ReferenceAspect,
+} from './references';
+import {
+  allStructuresDirection,
+  structureByKey,
   structureFor,
   structuresDirection,
   type SiteStructure,
@@ -42,13 +48,18 @@ export function vibeOf(brand: { vibe?: string } | null | undefined): Vibe {
  * Vibe usada pelo renderer. Nos perfis v2 e v3 uma referência verificada
  * desligava a vibe inteira e o site caía na base comercial: CSS, ícones e tom
  * da localização sumiam junto com a silhueta. Isso fica preservado para não
- * redesenhar o que já está publicado. A partir do perfil v4 a referência
- * modula aspectos (lib/design/references.ts) e a vibe continua no renderer.
+ * redesenhar o que já está publicado. V4/v5 modulam aspectos e preservam a
+ * vibe; v6 usa a família da estrutura escolhida pela referência.
  */
 export function renderingVibeOf(
   brand: { vibe?: string; design?: unknown } | null | undefined,
 ): Vibe {
-  const version = (brand?.design as { version?: number } | undefined)?.version;
+  const design = brand?.design as
+    | { version?: number; structure?: unknown }
+    | undefined;
+  const version = design?.version;
+  if (version === 6 && hasReferenceDirection(brand))
+    return structureByKey(design?.structure)?.vibe ?? vibeOf(brand);
   return (!version || version < 4) && hasReferenceDirection(brand)
     ? 'comercial'
     : vibeOf(brand);
@@ -214,14 +225,22 @@ export type VibeGrammar = {
 
 type GrammarProfile = { version?: number; structure?: unknown } | undefined;
 
-/** A v5 usa a família escolhida; v4 preserva a gramática ampla já publicada. */
+/** V5 usa a família da vibe; v6 pode usar qualquer família guiada pela fonte. */
 export function structureGrammar(
   vibe: Vibe,
   design?: GrammarProfile,
 ): VibeGrammar & { structure?: SiteStructure } {
-  const base = VIBE_GRAMMAR[vibe];
-  const structure =
-    design?.version === 5 ? structureFor(vibe, design.structure) : null;
+  const selected =
+    design?.version === 6
+      ? structureByKey(design.structure)
+      : design?.version === 5
+        ? structureFor(vibe, design.structure)
+        : null;
+  const base =
+    design?.version === 6 && selected
+      ? VIBE_GRAMMAR[selected.vibe]
+      : VIBE_GRAMMAR[vibe];
+  const structure = selected;
   if (!structure) return base;
   return {
     ...base,
@@ -314,7 +333,7 @@ export const VIBE_GRAMMAR: Record<Vibe, VibeGrammar> = {
   },
 };
 
-/** A composição de hero que a vibe sustenta, mesmo sob direção por referência. */
+/** A composição de hero que a vibe sustenta nos perfis até v5. */
 export function heroCompositionFor(
   vibe: Vibe,
   composition: string | undefined,
@@ -326,8 +345,25 @@ export function heroCompositionFor(
 }
 
 /** Texto da gramática para o prompt e para as mensagens de recusa. */
-export function grammarDirection(vibe: Vibe, design?: GrammarProfile): string {
+export function grammarDirection(
+  vibe: Vibe,
+  design?: GrammarProfile,
+  referenceLed = design?.version === 6,
+): string {
   const grammar = structureGrammar(vibe, design);
+  if (referenceLed && !grammar.structure)
+    return `Autoridade visual da referência. Compare as doze estruturas disponíveis e escolha a que mais se aproxima da composição observada; a vibe ${VIBE_LABEL[vibe]} serve apenas para voz e lacunas que a fonte não resolver.
+Estruturas disponíveis para sites novos com referência:
+${allStructuresDirection()}`;
+  if (referenceLed && grammar.structure)
+    return `Estrutura guiada pela referência: ${grammar.structure.label} (${grammar.structure.key}). A vibe ${VIBE_LABEL[vibe]} serve apenas para voz e fallback.
+- Abertura da home: ${grammar.openings.join(' ou ')}.
+- Seção protagonista da home, com duas fotos deste cliente: ${grammar.protagonists.join(' ou ')}.
+- Abertura das páginas internas: ${[...grammar.innerOpenings, ...grammar.openings].join(', ')}.
+- Fechamento de cada página: ${grammar.closings.join(' ou ')}.
+- Headline de todo hero: até ${grammar.headline} caracteres.
+- Sequência mínima: ${grammar.structure.sequence.join(' > ')}.
+Realize as seis aplicações documentadas da referência em estrutura, hero, tipografia, imagens, ritmo, superfície, mobile, movimento e densidade. Adapte somente por factualidade, marca, acessibilidade e limites do catálogo.`;
   const choices =
     design?.version === 5
       ? ''
@@ -340,7 +376,7 @@ export function grammarDirection(vibe: Vibe, design?: GrammarProfile): string {
 - Headline de todo hero: até ${grammar.headline} caracteres. O que sobrar vai para o subtext.
 - Evite nesta vibe: ${grammar.avoid.join(', ')}.
 ${grammar.structure ? `- Estrutura selecionada: ${grammar.structure.key}. Sequência mínima: ${grammar.structure.sequence.join(' > ')}.` : ''}
-Referência verificada escolhe dentro desta gramática e decide tipografia, imagens, ritmo e superfície. Ela não troca a silhueta da vibe.${choices}`;
+Sem referência visual verificada, esta gramática define a direção completa.${choices}`;
 }
 
 const AXIS_LABEL: Record<Axis, string> = {
@@ -356,10 +392,8 @@ const AXIS_LABEL: Record<Axis, string> = {
 
 /**
  * O que cada aspecto de uma referência verificada libera na faixa. A leitura
- * visual dirige tipografia, imagens, ritmo e superfície; ela não escolhe a
- * silhueta. heroComposition, motif e os dials de variância e movimento ficam
- * sempre com a vibe, porque são o que distingue um cliente ousado de um
- * artístico quando os dois citam a mesma referência.
+ * visual documenta as decisões que serão realizadas no perfil v6. Perfis v4 e
+ * v5 continuam usando o mapeamento histórico ao serem renderizados.
  */
 const ASPECT_AXES: Record<ReferenceAspect, readonly (Axis | 'radius')[]> = {
   layout: ['navigation'],
@@ -370,7 +404,7 @@ const ASPECT_AXES: Record<ReferenceAspect, readonly (Axis | 'radius')[]> = {
   mobile: [],
 };
 
-/** Dials que cada aspecto libera. Variância e movimento continuam da vibe. */
+/** Compatibilidade v4/v5; a cobertura completa libera todos os dials na v6. */
 const ASPECT_DIALS: Partial<
   Record<ReferenceAspect, readonly ('variance' | 'motion' | 'density')[]>
 > = { rhythm: ['density'] };
@@ -390,8 +424,8 @@ function relaxedBy(aspects: Iterable<ReferenceAspect> | undefined) {
 /**
  * O que a direção proposta viola na faixa da vibe. Lista vazia quer dizer
  * aprovada. Serve tanto para o gate de set_design quanto para teste.
- * `aspects` traz os aspectos cobertos por referência visual verificada: eles
- * liberam os eixos correspondentes, nunca a faixa inteira.
+ * `aspects` traz a cobertura visual verificada. Cobertura parcial mantém o
+ * comportamento v4/v5; os seis aspectos juntos autorizam toda a faixa v6.
  */
 export function laneIssues(
   vibe: Vibe,
@@ -399,15 +433,30 @@ export function laneIssues(
   aspects?: Iterable<ReferenceAspect>,
 ): string[] {
   const lane = VIBE_LANE[vibe];
-  const relaxed = relaxedBy(aspects);
+  const aspectList = [...(aspects ?? [])];
+  const referenceLed = REFERENCE_ASPECTS.every((aspect) =>
+    aspectList.includes(aspect),
+  );
+  const relaxed = relaxedBy(aspectList);
+  if (referenceLed) {
+    for (const axis of DESIGN_AXES) relaxed.axes.add(axis);
+    relaxed.axes.add('radius');
+    for (const dial of ['variance', 'motion', 'density'])
+      relaxed.dials.add(dial);
+    relaxed.luminance = true;
+  }
   const issues: string[] = [];
-  // O schema de set_design exige a estrutura no perfil v5. A ausência segue
-  // aceita aqui porque esta função também audita perfis v2-v4 publicados.
+  // O schema de set_design exige estrutura em v5/v6. A ausência segue aceita
+  // aqui porque esta função também audita perfis v2-v4 publicados.
   if (input.structure !== undefined) {
-    const selectedStructure = structureFor(vibe, input.structure);
+    const selectedStructure = referenceLed
+      ? structureByKey(input.structure)
+      : structureFor(vibe, input.structure);
     if (!selectedStructure)
       issues.push(
-        `structure: "${input.structure}" não pertence à vibe ${VIBE_LABEL[vibe]}. Use ${structuresDirection(vibe).replaceAll('\n', ' ')}`,
+        referenceLed
+          ? `structure: "${input.structure}" não é uma estrutura disponível. Use ${allStructuresDirection().replaceAll('\n', ' ')}`
+          : `structure: "${input.structure}" não pertence à vibe ${VIBE_LABEL[vibe]}. Use ${structuresDirection(vibe).replaceAll('\n', ' ')}`,
       );
     else if (
       !selectedStructure.openings.includes(

@@ -84,11 +84,12 @@ Somente evidência atual comprova essa análise. Preserve erros e gates de publi
 - Site novo sai pelo fluxo em etapas de `lib/taste/phases.ts` e cumpre o piso de
   composição de `lib/taste/metrics.ts`: seção protagonista com fotos na home,
   imagem em toda página orgânica, ritmo tonal e proporção coerente com o layout.
-- A vibe define a silhueta em `VIBE_GRAMMAR`: abertura, seção protagonista,
-  aberturas internas, fechamentos e alvos de cena. O plano de cenas, o catálogo
-  do prompt, o pre-flight e a crítica usam a mesma gramática. Referência
-  verificada decide dentro dela e libera só os eixos do aspecto que documentou.
-  Regras de gramática valem no perfil v4; v2 e v3 preservam o que está no ar.
+- Sem referência, a vibe define a silhueta em `VIBE_GRAMMAR` e o perfil v5
+  escolhe uma de suas três estruturas. Com uma única referência visual
+  verificada, o perfil v6 escolhe a estrutura mais próxima entre as doze e a
+  fonte comanda os eixos visuais; a vibe permanece como voz e fallback. Plano
+  de cenas, catálogo, pre-flight, renderer e crítica usam a mesma decisão.
+  Perfis v2-v5 publicados preservam o que está no ar.
 - Preserve a separação `blocks`/`seo` e `published_blocks`/`published_seo`, com
   pre-flight nos dois caminhos de publicação. Marca e metadados fora desse snapshot
   têm limites descritos na arquitetura. Preview por query não é controle de acesso.

@@ -673,9 +673,14 @@ const { normalizeSocialUrl, socialSummary } = await j.import(
 );
 const { parseSocialProfile, readSocialProfile, referenceFromSocial } =
   await j.import('../lib/ai/social.ts');
-const { intakeSchema, intakeSocialUrl, intakeSummary, lines } = await j.import(
-  '../lib/tenant-intake.ts',
-);
+const {
+  intakeForForm,
+  intakeSchema,
+  intakeSocialUrl,
+  intakeSummary,
+  intakeWriteSchema,
+  lines,
+} = await j.import('../lib/tenant-intake.ts');
 const { scenePlan, sceneCoverage } = await j.import(
   '../lib/images/scene-plan.ts',
 );
@@ -753,6 +758,59 @@ await test('intake do operador vira resumo legível e ignora linha vazia', () =>
   assert.ok(summary.includes('Segmento: oficina mecânica'));
   assert.ok(summary.includes('Diagnóstico eletrônico; Revisão programada'));
   assert.equal(intakeSummary({}), '');
+});
+
+await test('história é obrigatória na escrita, incorpora o legado e aceita uma referência', () => {
+  const legacy = intakeSchema.parse({
+    segment: 'oficina mecânica',
+    region: 'São Paulo',
+    audience: 'motoristas',
+    offer: 'diagnóstico e revisão',
+    goal: 'iniciar uma conversa',
+    references: [
+      'https://one.test/',
+      'https://two.test/',
+      'https://three.test/',
+    ],
+  });
+  const editable = intakeForForm(legacy);
+  assert.match(editable.story, /Segmento: oficina mecânica/);
+  assert.match(editable.story, /Região atendida: São Paulo/);
+  assert.match(editable.story, /Para quem vende: motoristas/);
+  assert.equal(intakeWriteSchema.safeParse({ references: [] }).success, false);
+  assert.equal(
+    intakeWriteSchema.safeParse({
+      story: editable.story,
+      references: ['https://one.test/', 'https://two.test/'],
+    }).success,
+    false,
+  );
+  assert.equal(
+    intakeWriteSchema.safeParse({
+      story: editable.story,
+      references: ['mailto:referencia@example.test'],
+    }).success,
+    false,
+  );
+  const current = intakeWriteSchema.parse({
+    story:
+      'A oficina nasceu em São Paulo e atende motoristas com diagnóstico e revisão antes de iniciar uma conversa.',
+    references: ['https://one.test/'],
+  });
+  const summary = intakeSummary(current);
+  assert.match(summary, /História do cliente: A oficina nasceu/);
+  assert.equal(summary.includes('Segmento:'), false);
+  assert.match(summary, /Referência visual: https:\/\/one\.test\//);
+  assert.deepEqual(
+    [
+      current.segment,
+      current.region,
+      current.audience,
+      current.offer,
+      current.goal,
+    ],
+    ['', '', '', '', ''],
+  );
 });
 
 await test('plano de cenas cobre abertura, protagonista e páginas internas', () => {
@@ -1626,7 +1684,7 @@ await test('cada vibe tem abertura, protagonista e fechamento próprios', () => 
   }
 });
 
-await test('a referência libera só os eixos do aspecto que documentou', () => {
+await test('somente a leitura completa libera a direção visual acima da vibe', () => {
   // Direção clara e serifada num cliente moderno: a leitura visual autoriza a
   // fonte, mas não o papel branco nem a superfície plana.
   const input = {
@@ -1671,15 +1729,15 @@ await test('a referência libera só os eixos do aspecto que documentou', () => 
   ]).join(' ');
   assert.equal(comSuperficie.includes('surfaceStyle'), false);
   assert.equal(comSuperficie.includes('paper'), false);
-  // Composição de hero, motivo, variância e movimento nunca são liberados.
+  // Enquanto mobile não estiver documentado, a leitura ainda é incompleta e
+  // preserva as decisões sem cobertura.
   assert.match(comSuperficie, /variance/);
-  const foraDaVibe = laneIssues(
+  const completo = laneIssues(
     'moderno',
     { ...input, heroComposition: 'poster', motif: 'stripes', variance: 4 },
-    ['layout', 'typography', 'imagery', 'rhythm', 'surface'],
+    ['layout', 'typography', 'imagery', 'rhythm', 'surface', 'mobile'],
   ).join(' ');
-  assert.match(foraDaVibe, /heroComposition/);
-  assert.match(foraDaVibe, /motif/);
+  assert.equal(completo, '');
 });
 
 await test('o catálogo diz o papel de cada bloco na vibe pedida', () => {

@@ -1,6 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { createJiti } from 'jiti';
 import { loadModule } from './helpers/load-module.mjs';
+
+const j = createJiti(import.meta.url, {
+  alias: { '@': process.cwd() },
+  jsx: { runtime: 'automatic' },
+});
 
 async function fixture({
   insert = 'ok',
@@ -72,8 +80,8 @@ async function fixture({
     name: 'Fixture',
     slug: 'fixture',
     contactEmail: 'contato@fixture.com.br',
-    offer: 'Pedras naturais para projetos de arquitetura',
-    goal: 'Pedir uma orientação comercial',
+    story:
+      'A Fixture trabalha com pedras naturais para projetos de arquitetura em Bauru. Atende arquitetos e pessoas em reforma que procuram orientação para escolher os materiais e iniciar uma conversa comercial.',
     primary: '#112233',
     secondary: '#445566',
     highlight: '#ffffff',
@@ -144,6 +152,9 @@ await test('cadastro grava contatos, vibe e o WhatsApp derivado da lista', async
     { label: 'Loja', text: 'Rua das Pedras, 100, Bauru' },
   ]);
   assert.deepEqual(row.contacts.social, ['https://www.instagram.com/fixture/']);
+  assert.match(row.brief.intake.story, /pedras naturais/);
+  assert.equal(row.brief.intake.offer, '');
+  assert.equal(row.brief.intake.references.length, 0);
 });
 
 await test('vibe desconhecida recusa o cadastro antes de enviar o logo', async () => {
@@ -165,3 +176,21 @@ for (const insert of ['duplicate', 'error'])
     assert.equal(f.inserted.length, 0);
     assert.equal(f.scheduled.length, 0);
   });
+
+await test('cadastro exibe história obrigatória e uma única referência fora do contexto opcional', async () => {
+  const { TenantFields } = await j.import(
+    '../components/admin/tenant-fields.tsx',
+  );
+  const markup = renderToStaticMarkup(
+    createElement(TenantFields, { compact: true, withSlug: true }),
+  );
+  assert.match(markup, /História do cliente/);
+  assert.match(markup, /name="story"[^>]*required/);
+  assert.match(markup, /<input[^>]*type="url"[^>]*name="reference"/);
+  assert.match(markup, /Referência para o site/);
+  assert.equal(markup.includes('O que o site precisa fazer'), false);
+  assert.equal(markup.includes('Segmento</span>'), false);
+  assert.equal(markup.includes('Região atendida'), false);
+  assert.equal(markup.includes('Para quem vende'), false);
+  assert.equal(markup.includes('name="references"'), false);
+});

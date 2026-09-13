@@ -64,9 +64,9 @@ export function BrandFields() {
         <legend className="text-base font-semibold">Direção visual</legend>
         <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
           Compare as quatro direções. A escolha coordena tipografia, navegação,
-          escala, ícones, imagens e ritmo do site inteiro. Se você informar
-          referências, elas terão prioridade no visual; a vibe completa o que
-          faltar e continua definindo a voz.
+          escala, ícones, imagens e ritmo quando não houver referência. Com um
+          link visual verificado, a referência comanda o layout e a vibe passa a
+          definir a voz e completar apenas o que a fonte não resolver.
         </p>
         <div className="admin-vibe-grid">
           {VIBES.map((option) => (

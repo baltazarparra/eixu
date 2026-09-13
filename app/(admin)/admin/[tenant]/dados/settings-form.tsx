@@ -150,7 +150,7 @@ export function SettingsForm({
     if (!parsed.success) {
       setNotice(
         parsed.error.issues[0]?.message ??
-          'Confira as referências e o limite de 160 caracteres por fato ou restrição.',
+          'Confira a história, a referência e o limite de 160 caracteres por fato ou restrição.',
       );
       return;
     }
@@ -188,7 +188,7 @@ export function SettingsForm({
       setNotice(
         regenerationRequired
           ? 'Direção salva no rascunho. Volte ao Site e peça "Refaça o site" pelo chat para aplicar a nova direção; a versão publicada foi preservada.'
-          : 'Dados salvos no rascunho. O briefing será usado nas próximas edições do site.',
+          : 'Dados salvos no rascunho. A história será usada nas próximas edições do site.',
       );
     } catch (error) {
       setNotice(
@@ -237,7 +237,7 @@ export function SettingsForm({
         {[
           ['identificacao', 'Identificação'],
           ['contato', 'Contato'],
-          ['briefing', 'Briefing'],
+          ['briefing', 'História'],
           ['direcao', 'Direção visual'],
           ['marca', 'Logo'],
           ['risco', 'Zona de risco'],
@@ -295,10 +295,10 @@ export function SettingsForm({
             </section>
             <p className="mt-5 text-xs leading-relaxed text-[var(--color-muted)]">
               Nome, contatos, logo e direção alteram o rascunho. O site no ar
-              continua no snapshot anterior até Publicar. Alterar o briefing
-              orienta novas edições; não reescreve páginas automaticamente.
-              Referências visuais verificadas têm prioridade na geração; na
-              ausência delas, vale o contrato da vibe escolhida.
+              continua no snapshot anterior até Publicar. Alterar a história ou
+              a referência orienta uma reconstrução; não reescreve páginas
+              automaticamente. A referência visual verificada tem prioridade na
+              geração; na ausência dela, vale o contrato da vibe escolhida.
             </p>
           </fieldset>
         </form>

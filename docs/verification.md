@@ -2392,3 +2392,39 @@ ou avaliação humana pela rubrica. Ela comprova os contratos determinísticos, 
 renderizador e o CSS de produção com fixtures atuais; a variedade e a qualidade
 editorial das saídas reais ainda precisam ser medidas em uma rodada controlada
 com as três estruturas de cada vibe.
+
+## História do cliente e autoridade visual v6, 12/09/2026
+
+O cadastro e a edição passaram a exigir uma única **História do cliente**. O
+formulário removeu segmento, região, público, oferta e ação esperada como campos
+separados, aceita um único link de referência e converte o intake legado apenas
+quando o operador salva. Não houve mudança de schema no banco: o contrato segue
+em `tenants.brief.intake`.
+
+Com leitura visual utilizável, o perfil v6 escolhe a estrutura mais próxima
+entre as doze e usa sua família no renderer, independentemente da vibe do
+cadastro. As seis aplicações verificadas da fonte liberam os eixos visuais; a
+vibe permanece como voz e fallback. Referência inacessível não recebe essa
+autoridade. Mudanças de história, referência ou vibe são recusadas durante uma
+geração ativa e sinalizam reconstrução sem alterar o snapshot publicado.
+
+Os gates locais passaram:
+
+- `npx next typegen && npx tsc --noEmit`;
+- `npm run lint`;
+- `npm run test:sites`: 196 testes, 195 aprovados e 1 ignorado por depender do
+  ambiente de integração;
+- `npm run test:admin`: 181 testes, 174 aprovados e 7 ignorados por dependerem
+  de serviços ou configuração externa;
+- `npm run build:vercel`, incluindo 3 de 3 verificações dos artefatos
+  serverless;
+- suíte administrativa no Chromium: 13 de 13 cenários aprovados, incluindo o
+  novo cadastro, salvamento em Dados e responsividade;
+- suíte de sites no Chromium: 59 de 59 cenários aprovados, incluindo a
+  precedência da estrutura guiada pela referência, as doze composições e os
+  contratos mobile.
+
+Esta rodada não executou geração paga, mutação no banco nem publicação de página
+de cliente. Os testes comprovam intake, API, prompts, gates, plano de cenas,
+pre-flight e renderer com fixtures atuais. A fidelidade editorial de uma saída
+real ainda depende de uma geração controlada e avaliação humana pela rubrica.

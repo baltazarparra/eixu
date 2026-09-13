@@ -398,6 +398,47 @@ await test('a assinatura diferencia sites da mesma estrutura sem usar conteúdo 
   );
 });
 
+await test('perfil v6 preserva a composição escolhida pela referência sem consultar unicidade', async () => {
+  const structure = structures.SITE_STRUCTURES['artistico-revista'];
+  const design = {
+    ...designFor(structure),
+    version: 6,
+    referenceDirection: {
+      primaryUrl: 'https://reference.test/',
+      decisions: [
+        'layout',
+        'typography',
+        'imagery',
+        'rhythm',
+        'surface',
+        'mobile',
+      ].map((aspect) => ({
+        aspect,
+        sourceUrl: 'https://reference.test/',
+        observed: `Característica visual observada para ${aspect}.`,
+        application: `Aplicação concreta da referência para ${aspect}.`,
+      })),
+      adaptations:
+        'Preservar a marca, o conteúdo e a acessibilidade ao adaptar a referência.',
+    },
+  };
+  const uniqueness = await loadModule('lib/design/uniqueness.ts', {
+    '../db': {
+      db: () => assert.fail('perfil v6 não deve consultar outros clientes'),
+    },
+    '../taste/metrics': metrics,
+    './profile': profile,
+  });
+  assert.equal(
+    await uniqueness.compositionConflict(
+      'fixture',
+      homeFor(structure).blocks,
+      design,
+    ),
+    null,
+  );
+});
+
 await test('catálogo da composição aponta somente o layout selecionado', () => {
   const structure = structures.SITE_STRUCTURES['artistico-galeria'];
   const catalog = catalogForPrompt({
