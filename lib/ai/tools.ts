@@ -1,3 +1,4 @@
+import { currentLogoAsset } from '@/lib/images/logo-schema';
 import { savePageEdit } from '@/lib/sites/edits';
 import { createHash } from 'node:crypto';
 import { tool } from 'ai';
@@ -239,7 +240,7 @@ function identifyFindings(
  * o código exige o pedido na última mensagem dele.
  */
 function operatorAsked(lastUserText: string): boolean {
-  return /\b(aprov\w*|usa\w*|use\w*|aplic\w*|defin\w*|coloc\w*|escolh\w*|pode\s+ser|essa\s+mesma?)\b/i.test(
+  return /\b(aprov\w*|usa\w*|use\w*|aplic\w*|defin\w*|coloc\w*|escolh\w*|volt\w*\s+(?:para|pra|ao?|com)|revert\w*|restaur\w*|pode\s+ser|essa\s+mesma?)\b/i.test(
     lastUserText,
   );
 }
@@ -619,13 +620,15 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
     generate_logo: tool({
       description:
-        'Cria variantes de logotipo e avalia cada uma. Em "modernizar", usa a URL do logo anexado; devolve uma variante fiel e uma ousada. Em "criar", propõe conceitos do zero. As variantes ficam disponíveis na biblioteca com número e URL, sem aprovação. A aplicação como logo do site depende do pedido do usuário.',
+        'Cria variantes de logotipo e avalia cada uma. Em "modernizar", usa o logo anexado ou o logo atual do cliente; por padrão devolve fiel e ousada. Se o operador pedir uma só, use variants: 1. Em "criar", propõe conceitos do zero. As variantes ficam disponíveis na biblioteca com número e URL, sem aprovação. A aplicação como logo do site depende do pedido do usuário.',
       inputSchema: z.object({
         mode: z.enum(['modernizar', 'criar']),
         referenceUrl: z
           .url()
           .optional()
-          .describe('URL do logo anexado. Obrigatória em modernizar.'),
+          .describe(
+            'URL do logo anexado. Sem anexo, modernizar usa o logo atual do cliente.',
+          ),
         brief: z
           .string()
           .max(400)
@@ -640,17 +643,22 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           .boolean()
           .default(true)
           .describe('false quando o operador pediu só o símbolo, sem texto.'),
-        variants: z.number().int().min(2).max(3).default(2),
+        variants: z.number().int().min(1).max(3).default(2),
       }),
       execute: safe(async (input) => {
-        if (input.mode === 'modernizar' && !input.referenceUrl)
+        const referenceUrl =
+          input.referenceUrl ??
+          (input.mode === 'modernizar'
+            ? (currentLogoAsset(activeBrand)?.master.url ?? activeBrand.logoUrl)
+            : undefined);
+        if (input.mode === 'modernizar' && !referenceUrl)
           throw new ToolError(
-            'Para modernizar eu preciso do logo atual. Peça para o operador anexar a imagem no chat.',
+            'Este cliente ainda não tem logo. Envie o logo para modernizar ou peça um novo.',
           );
 
         const brandName = input.brandName?.trim() || tenant.name;
-        const reference = input.referenceUrl
-          ? await fetchReference(input.referenceUrl)
+        const reference = referenceUrl
+          ? await fetchReference(referenceUrl)
           : undefined;
         const guide = await getGuide(tenant.id);
 
@@ -662,7 +670,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           wordmark: input.wordmark,
           brief: input.brief,
           reference,
-          referenceUrl: input.referenceUrl,
+          referenceUrl,
           variants: input.variants,
         });
         if (!images.length)

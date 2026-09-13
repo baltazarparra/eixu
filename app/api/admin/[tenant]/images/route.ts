@@ -1,3 +1,4 @@
+import { logoStudioSummary } from '@/lib/images/logo-studio-state';
 import { del } from '@vercel/blob';
 import { z } from 'zod';
 import { isAuthenticated } from '@/lib/auth';
@@ -48,6 +49,10 @@ export async function GET(
     images,
     logoUrl: resolved.tenant.brand.logoUrl ?? null,
     logoDarkUrl: resolved.tenant.brand.logoDarkUrl ?? null,
+    logoStudioSummary: logoStudioSummary(
+      resolved.tenant.brief,
+      resolved.tenant.brand,
+    ),
     usage: imageUsage(resolved.tenant, pages, images),
   });
 }

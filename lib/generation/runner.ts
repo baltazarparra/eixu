@@ -1,7 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { siteAgent } from '@/lib/ai/agent';
 import { savedProgressMessage } from '@/lib/ai/chat-progress';
-import { HARNESS_VERSION, productModel } from '@/lib/ai/models';
+import {
+  HARNESS_VERSION,
+  LOGO_STUDIO_TIMEOUT_MS,
+  productModel,
+} from '@/lib/ai/models';
 import { buildTools } from '@/lib/ai/tools';
 import { sumGatewayCosts, usageRecord } from '@/lib/ai/usage';
 import { workspaceState } from '@/lib/admin/state';
@@ -31,7 +35,8 @@ import {
   type Phase,
 } from '@/lib/taste/phases';
 import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
-import type { Tenant } from '@/lib/types';
+import type { LogoStudioState, Tenant } from '@/lib/types';
+import { runLogoStudio, shouldRunLogoStudio } from '@/lib/images/logo-studio';
 
 /** Teto de fases-passo encadeadas. Cenas podem precisar de lotes adicionais. */
 export const MAX_HOPS = 14;
@@ -298,10 +303,16 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
   }
 
   let stopRequested = false;
+  const logoAbort = new AbortController();
+  let logoJob: Promise<LogoStudioState> | undefined;
+  let logoResult: LogoStudioState | undefined;
   const watcher = setInterval(() => {
     void isStopping(run.id)
       .then((stopping) => {
-        if (stopping) stopRequested = true;
+        if (stopping) {
+          stopRequested = true;
+          logoAbort.abort();
+        }
         // Mesmo laço mantém o sinal de vida: uma composição passa minutos
         // sem evento de ferramenta e seria dada como órfã.
         return heartbeat(run.id);
@@ -389,6 +400,44 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
         ? `${plural(generated, 'imagem foi criada', 'imagens foram criadas')} e já estão disponíveis na biblioteca.`
         : 'O estúdio terminou sem preencher uma nova vaga; a pendência ficou registrada.';
     } else {
+      if (
+        phase === 'briefing' &&
+        shouldRunLogoStudio(ready, ready.brand.logoAsset?.sourceHash ?? '')
+      ) {
+        const callId = randomUUID();
+        const logoStartedAt = Date.now();
+        logoJob = runLogoStudio({
+          tenant: ready,
+          trigger: 'briefing',
+          signal: AbortSignal.any([
+            logoAbort.signal,
+            AbortSignal.timeout(LOGO_STUDIO_TIMEOUT_MS),
+          ]),
+          persistReceipt: (text) =>
+            persistMessage(tenant.id, 'assistant', text),
+          onEvent: (event) =>
+            recordEvent({
+              runId: run.id,
+              tenantId: tenant.id,
+              phase,
+              kind:
+                event.kind === 'start'
+                  ? 'tool_start'
+                  : event.kind === 'end'
+                    ? 'tool_end'
+                    : 'note',
+              tool: 'logo_studio',
+              label: event.label,
+              payload: {
+                ...event.payload,
+                callId,
+                ...(event.kind === 'end'
+                  ? { durationMs: Date.now() - logoStartedAt }
+                  : {}),
+              },
+            }).then(() => undefined),
+        });
+      }
       const agent = siteAgent({
         tenantId: tenant.id,
         tools,
@@ -472,6 +521,8 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
     if (!isTimeout(error)) phaseError = message;
     timedOut = isTimeout(error);
   } finally {
+    if (stopRequested) logoAbort.abort();
+    if (logoJob) logoResult = await logoJob.catch(() => undefined);
     clearInterval(watcher);
   }
 
@@ -541,6 +592,7 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
     payload: {
       steps,
       next: after.next,
+      ...(logoResult ? { logoStudio: logoResult.status } : {}),
       ...(usage ? { usage } : {}),
       ...(timedOut ? { timeout: true } : {}),
       flowVersion: GENERATION_FLOW_VERSION,

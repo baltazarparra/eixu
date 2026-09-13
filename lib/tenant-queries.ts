@@ -5,6 +5,9 @@ import { intakeSocialUrl } from '@/lib/tenant-intake';
 import type {
   BlockInstance,
   LogoFit,
+  LogoAsset,
+  LogoRendition,
+  Brand,
   Page,
   PageType,
   Seo,
@@ -131,9 +134,9 @@ export async function setBrandLogo(
   const rows = (await db()`
     update tenants set
       brand = (case
-        when ${url}::text is null then brand - 'logoUrl' - 'logoFit' - 'logoDarkUrl'
+        when ${url}::text is null then brand - 'logoUrl' - 'logoFit' - 'logoDarkUrl' - 'logoAsset' - 'logoDarkAsset'
         when brand->>'logoUrl' = ${url}::text then brand
-        else (brand - 'logoFit' - 'logoDarkUrl') || jsonb_build_object('logoUrl', ${url}::text)
+        else (brand - 'logoFit' - 'logoDarkUrl' - 'logoAsset' - 'logoDarkAsset') || jsonb_build_object('logoUrl', ${url}::text)
       end) || jsonb_build_object('logoRevision', ${randomUUID()}::text),
       updated_at = now()
     where id = ${tenantId}
@@ -150,18 +153,26 @@ export async function setBrandLogo(
 export async function setBrandLogoDerived(
   tenantId: string,
   source: string,
-  derived: { fit?: LogoFit; darkUrl?: string },
+  derived: {
+    fit?: LogoFit;
+    asset?: LogoAsset;
+    darkUrl?: string;
+    darkAsset?: LogoRendition;
+  },
   revision: string,
 ): Promise<boolean> {
   const patch: Record<string, unknown> = {};
   if (derived.fit) patch.logoFit = derived.fit;
+  if (derived.asset) patch.logoAsset = derived.asset;
   if (derived.darkUrl) patch.logoDarkUrl = derived.darkUrl;
+  if (derived.darkAsset) patch.logoDarkAsset = derived.darkAsset;
   const rows = (await db()`
     update tenants set
       brand = brand || ${JSON.stringify(patch)}::jsonb,
       updated_at = case when ${Boolean(derived.darkUrl)} then now() else updated_at end
     where id = ${tenantId} and brand->>'logoUrl' = ${source}
       and brand->>'logoRevision' = ${revision}
+      and (${!derived.darkAsset || Boolean(derived.darkUrl)} or brand->>'logoDarkUrl' = ${derived.darkAsset?.source ?? null})
     returning id
   `) as Row[];
   return rows.length > 0;
@@ -174,14 +185,31 @@ export async function setBrandLogoDark(
 ): Promise<Record<string, unknown>> {
   const rows = (await db()`
     update tenants set
-      brand = (case when ${url}::text is null then brand - 'logoDarkUrl'
-                   else brand || jsonb_build_object('logoDarkUrl', ${url}::text) end)
+      brand = (case when ${url}::text is null then brand - 'logoDarkUrl' - 'logoDarkAsset'
+                   else (brand - 'logoDarkAsset') || jsonb_build_object('logoDarkUrl', ${url}::text) end)
         || jsonb_build_object('logoRevision', ${randomUUID()}::text),
       updated_at = now()
     where id = ${tenantId}
     returning brand
   `) as Row[];
   return (rows[0]?.brand ?? {}) as Record<string, unknown>;
+}
+
+/** Troca atômica usada exclusivamente pelos gates do estúdio; nunca toca snapshot. */
+export async function replaceBrandLogoIfSource(
+  tenantId: string,
+  source: string,
+  url: string,
+  revision?: string,
+): Promise<Brand | null> {
+  const rows = (await db()`
+    update tenants set brand = (brand - 'logoFit' - 'logoDarkUrl' - 'logoAsset' - 'logoDarkAsset')
+      || jsonb_build_object('logoUrl', ${url}::text, 'logoRevision', ${randomUUID()}::text), updated_at = now()
+    where id = ${tenantId} and brand->>'logoUrl' = ${source}
+      and (${revision ?? null}::text is null or brand->>'logoRevision' = ${revision ?? null})
+    returning brand
+  `) as Row[];
+  return rows[0] ? (rows[0].brand as Brand) : null;
 }
 
 export async function listPages(tenantId: string): Promise<Page[]> {

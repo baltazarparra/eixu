@@ -10,6 +10,7 @@ import { lintPage } from '@/lib/taste/lint';
 import { lintSite } from '@/lib/taste/site';
 import { tenantDraftSnapshot } from '@/lib/sites/snapshot';
 import type { Page, Tenant, TenantImage } from '@/lib/types';
+import { logoStudioState } from '@/lib/images/logo-studio-state';
 
 /** A ordem das chaves JSON não indica uma alteração editorial. */
 function canonical(value: unknown): string {
@@ -75,6 +76,7 @@ export function workspaceState(
   );
   return {
     previewRevision: previewFingerprint(tenant, pages),
+    logoStudio: logoStudioState(tenant.brief) ?? null,
     tenant: {
       slug: tenant.slug,
       name: tenant.name,

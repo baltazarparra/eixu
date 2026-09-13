@@ -141,8 +141,12 @@ foi o defeito observado em produção.
 
 O contrato em `lib/design/responsive.ts` vale para todas as vibes, referências e
 perfis legados, sem migrar sua composição. `navigation.css` mantém logo e Menu
-na mesma barra, com alvos de pelo menos 44 px. `logoHeight` define a altura
-desejada no desktop; no cabeçalho compacto o limite é 48 px e a largura
+na mesma barra, com alvos de pelo menos 44 px. `logoImage` usa o PNG recortado
+com atributos proporcionais às dimensões reais, reservando o espaço antes do
+carregamento. A altura padrão vem da proporção: 40 px a partir de 3,5; 48 px
+entre 2 e 3,5; 56 px entre 1 e 2; 64 px abaixo de 1. Sem asset fresco, permanece
+o fallback de 48 px. O rodapé usa 75% da altura. `logoHeight` continua sendo
+um ajuste explícito do operador; no cabeçalho compacto o limite é 48 px e a largura
 disponível, preservando a proporção. Abaixo de 1024 px, ou quando a largura real
 dos destinos não cabe, `NavigationFrame` recolhe links e CTA juntos.
 
@@ -471,14 +475,20 @@ virava uma placa branca no cabeçalho, e nada media isso, porque `logoPrecheck`
 só corria em `generate_logo` e `update_image`. Agora aplicar um logo, por
 upload, pela biblioteca ou pelo chat, passa por
 `applyBrandLogo`: grava `logoUrl` e a versão operacional `logoRevision`, e
-depois da resposta mede o arquivo com `measureLogoFit` (alfa, luminância dos
-pixels pintados, placa) em
+depois da resposta prepara `logoAsset`: remove o fundo uniforme conectado à
+borda, recorta margens e gera master, PNG de navegação e derivados de marca.
+O master tem lado máximo de 1024 px, com respiro de 2%. O traçado SVG só entra
+quando mantém silhueta, cores e tamanho de arquivo dentro dos gates; SVG seguro
+de origem mantém seu vetor. `measureLogoFit` mede esse master (ou a origem se
+o fundo não pôde ser removido), registrando alfa, luminância e placa em
 `brand.logoFit` e deriva uma versão branca por recorte de luminância
 (`deriveWhiteLogo`): pixel escuro ou colorido vira branco, pixel claro vira
 transparente, o que preserva o texto vazado de uma placa colorida e apaga a
 placa de um arquivo sem alfa. A versão entra na biblioteca com número e
 `reference_urls` do original, passa pelo crítico de logo em modo `derivar`,
-composta sobre papel escuro, e, aprovada, vira `brand.logoDarkUrl`.
+composta sobre papel escuro, e, aprovada, vira `brand.logoDarkUrl`, com
+`logoDarkAsset.nav` para render. Uma versão escura escolhida manualmente ganha
+sua própria rendição, guardada pela mesma revisão.
 O cadastro persiste a mesma versão antes de agendar `deriveLogoAssets`.
 
 `NavBar` e `FooterCompact` escolhem o logo pelo papel real da seção
@@ -501,10 +511,17 @@ só grava se a URL e essa versão ainda coincidirem. Reaplicar a mesma URL
 preserva a medição e a variante existentes, invalidando trabalhos anteriores.
 O chat usa a marca devolvida pela aplicação; ajustes de cor e design mesclam
 somente seus campos no banco, preservando escolhas e derivados concorrentes.
-Medição e versão operacional ficam fora do snapshot publicado; renovar a
+`logoAsset` e `logoDarkAsset` integram o snapshot publicado. Medição e versão
+operacional ficam fora dele; renovar a
 versão não marca o rascunho como alterado nem invalida a evidência visual.
 Ilustrações e logos de meio-tom não têm versão por recorte: o aviso permanece e a versão pode ser
 pedida ao modelo pelo chat.
+
+Ícones opacos usam o papel da marca e, quando necessário, uma placa de contraste.
+O ícone maskable mantém a arte nos 60% centrais. Um símbolo separado, detectado
+nos componentes ou lido na imagem, pode ocupar o favicon; sem símbolo, fica a
+marca inteira. A imagem OG usa 1200 × 630, papel da marca e logo centralizado
+sem texto; a placa de contraste aparece somente quando a tinta sumiria.
 
 ## Referências acima da vibe
 

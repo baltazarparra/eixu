@@ -216,6 +216,7 @@ await test('o achado do logo usa o papel real do cabeçalho e some com a versão
   // Com a versão branca na biblioteca, o aviso cita o número dela.
   const white = {
     seq: 7,
+    critique: { variante: 'branca' },
     kind: 'logo',
     status: 'disponivel',
     url: 'https://blob.test/tenants/x/logo/b/branca.png',

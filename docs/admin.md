@@ -80,10 +80,26 @@ próximas edições; não reescreve páginas automaticamente. Para trocar o ende
 de um cliente existente, é necessária uma operação técnica; o formulário não
 altera o slug.
 
-Envie um logo final em Dados ou escolha uma opção gerada na conversa do site. O
-arquivo enviado manualmente entra no rascunho ao terminar o upload. Uma opção
-gerada fica disponível em Imagens para **Usar como logo**, sem aprovação. Dados
-não altera as cores; peça essa mudança na conversa do site.
+Envie o logo em Dados ou escolha uma opção na conversa do site. O upload entra
+no rascunho imediatamente; em seguida o sistema remove fundo uniforme quando
+seguro, recorta margens e prepara as versões para cabeçalho, fundo escuro,
+favicon e compartilhamento. Dados mostra as prévias e oferece **Abrir SVG**
+quando o vetor original ou o traçado passou na verificação de fidelidade.
+Arquivos complexos podem continuar em PNG.
+
+Durante o primeiro briefing, o estúdio cria propostas fiel e ousada em paralelo
+ao planejamento. A fiel só entra sozinha no rascunho se mantiver nome e
+identidade, atingir nota 8 e fidelidade 7, e o logo enviado continuar sendo a
+escolha atual. O original fica numerado em Imagens. O recibo informa o que foi
+aplicado e como voltar: **“volta para a #12”** ou **Usar como logo** no original.
+Se os critérios falharem, as propostas continuam disponíveis para sua escolha.
+O estúdio não publica o site.
+
+**“Modernize o logo”** usa a marca cadastrada mesmo sem anexo. Uma proposta
+pedida pelo chat só é aplicada quando você pedir. **“Atualize a imagem #13…”**
+cria outra versão e preserva a anterior. Dados não altera as cores; peça essa
+mudança na conversa. Favicon e imagem de compartilhamento do site no ar só
+mudam depois de publicar o rascunho com os assets prontos.
 
 ## Excluir um cliente
 

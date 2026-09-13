@@ -94,8 +94,11 @@ Somente evidência atual comprova essa análise. Preserve erros e gates de publi
   têm limites descritos na arquitetura. Preview por query não é controle de acesso.
 - Imagens ficam disponíveis com número e URL assim que são geradas, sem aprovação.
   Mantenha o acervo em `/admin/[tenant]/imagens` e alterações pelo número no chat.
-  A crítica orienta ajustes. Preserve o escopo do tenant, o pedido para aplicar
-  logo e o bloqueio de exclusão em uso; uma nova versão troca os rascunhos sem
+  A crítica orienta ajustes. Só o estúdio paralelo ao briefing pode aplicar
+  automaticamente a proposta fiel sobre upload manual: exige os gates de nota,
+  grafia e fidelidade, troca condicional por URL/revisão, original numerado e
+  recibo reversível no rascunho. Fora dele, aplicar logo exige pedido do operador.
+  Preserve o escopo do tenant e o bloqueio de exclusão em uso; uma nova versão troca os rascunhos sem
   alterar snapshots publicados nem apagar a original.
 - Regras em prompts e neste arquivo orientam agentes; garantias de acesso,
   publicação e integridade precisam de código e verificação externa.

@@ -1,5 +1,118 @@
 # Validação e publicação
 
+## Reconciliação da PR #41 com a edição inline, 12/09/2026
+
+O branch `feat/logo-asset` foi atualizado com `origin/main` em `a4fa5e0` (#40).
+Os dois fluxos compartilham o renderer: a edição inline mantém os marcadores de
+texto enquanto navegação e rodapé usam a rendição medida do logo. Metadata,
+viewport, manifest, favicon e JSON-LD continuam escolhendo rascunho autenticado
+ou snapshot público antes de expor qualquer asset.
+
+O merge revelou que o teste isolado de metadata passava a carregar o componente
+cliente do editor por dependência, fora do runtime Next. A fixture agora substitui
+somente esse componente, preservando a rota e suas dependências reais. O teste
+focal falhou antes da correção e passou nos quatro casos depois dela.
+
+Validação do estado combinado:
+
+- Tipos (`next typegen` e `tsc --noEmit`), lint global, formatação e
+  `git diff --check` passaram.
+- `test:sites`: 191 casos; `test:admin`: 189 casos com PostgreSQL local e Chrome.
+  Todos passaram, sem skips.
+- `build:vercel` passou com os três checks de artefatos serverless.
+- `test:sites:browser`: 59 casos; `test:admin:browser`: 11 casos. Todos passaram,
+  incluindo logo recortado, edição inline, fluxo publicado, desktop e mobile.
+
+Nenhuma chamada paga, escrita em banco remoto ou alteração de cliente foi feita
+durante essa reconciliação.
+
+## Estúdio de logo, 12/09/2026
+
+Implementação em `feat/logo-asset`, worktree isolado, a partir de `origin/main`
+`eeff730` (#39). O perfil vigente v5 foi preservado; o harness passou a
+`gemini-3.8-quality-v5-logo`. Não há migração de schema.
+
+Verificação determinística e de integração:
+
+- Tipos (`next typegen` + `tsc --noEmit`), lint global, formatação e
+  `git diff --check`; `build:vercel` com três checks de artefatos serverless.
+- `test:sites`: 163 casos, incluindo remoção de fundo sem color-key global,
+  recorte/padding, limite real de 1024 px, dimensões, ícones opacos, área segura
+  maskable, contraste OG, idempotência, SVG seguro e gate de traçado.
+- `test:admin` com PostgreSQL local descartável e Chrome: 184 casos. Inclui
+  corrida A-B-A, escolha escura manual durante crítica, reserva concorrente do
+  estúdio, conclusão de job antigo recusada, escopo JSONB, bloqueio de exclusão
+  por assets publicados e lock de upload mantido até o último arquivo mesmo
+  após falha parcial. Pausa aborta o estúdio enquanto o runner o aguarda.
+- `test:sites:browser`: 56 casos com CSS de produção, incluindo navegação em
+  todas as vibes/perfis, proporção real e altura compacta do novo asset,
+  toque, teclado, menu aberto/fechado, paisagem e ausência de overflow.
+
+O ensaio pago usou somente a marca sintética MIRA e oito imagens: quatro da
+sonda, duas do estúdio, uma modernização pelo chat e uma por `update_image`.
+O cadastro foi feito pela interface no tenant descartável
+`logo-ensaio-1789255500317`, no recurso conferido `eixu-sites/main`. O briefing
+real levou 166 s; o estúdio paralelo terminou em 55,5 s, guardou o original
+como #2 e aplicou a fiel #3 (nota 8,7; fidelidade 9). A ousada #4 ficou na
+biblioteca. Eventos e recibo foram persistidos. Pelo endpoint real do chat,
+“volta para a #2” restaurou o original; modernização sem anexo criou #7 em
+uma única variante; alteração por número criou #8. As duas últimas ficaram
+sem aplicação, como solicitado. Versões brancas são derivadas com Sharp e
+não contam como novas gerações de imagem.
+
+A comparação de leitura usou os mesmos cinco logos sintéticos, PNG limpo,
+saída estruturada, raciocínio high e limite de 12 s. Após corrigir o schema
+de tupla incompatível com o Gemini, ele entregou 3/5 respostas válidas, com
+mediana de 10,894 s; as outras duas falharam na validação do objeto. Sonnet 5
+entregou 5/5, com mediana de 1,977 s. Na mesma imagem e referência, a crítica
+Gemini também falhou no objeto; Sonnet retornou grafia correta e nota/fidelidade
+9 em 6,2 s. A evidência favorece robustez e latência nesse papel, sem provar
+superioridade geral. Só o fallback de leitura/crítica de logo mudou para
+`anthropic/claude-sonnet-5`; overrides explícitos continuam prevalecendo.
+O ambiente local já definia `EIXU_MODEL`, então o ensaio do estúdio selecionou
+Sonnet explicitamente por `EIXU_LOGO_CRITIC_MODEL`. Nenhuma variável remota foi
+alterada. Um destino com modelo global explícito precisa desse override de logo
+para ativar Sonnet. Após garantir que a crítica recebe os mesmos bytes do master
+salvo, esse arquivo foi reavaliado por Sonnet: aprovado, nota 8,3, fidelidade 9
+e 6,7 s. Essa conferência não gerou outra imagem.
+
+| Gerador e parâmetro da sonda        | Geração |    PNG limpo | Nota / fidelidade por Sonnet | SVG                 |
+| ----------------------------------- | ------: | -----------: | ---------------------------- | ------------------- |
+| GPT Image 2, padrão                 |  36,1 s | 31.796 bytes | 9 / 9                        | IoU 0,948           |
+| GPT Image 2, `input_fidelity: high` |  35,3 s | 24.515 bytes | 9 / 9                        | Recusado, IoU 0,898 |
+| GPT Image 2.5 Flare                 |  15,9 s | 27.104 bytes | 8,5 / 8                      | IoU 0,950           |
+| GPT Image 2.5 Sunburst              |  19,0 s | 23.120 bytes | 8,7 / 8                      | IoU 0,962           |
+
+As quatro saídas tinham alfa real, mas a bbox ainda ocupava só 33–41% da tela;
+o recorte determinístico continua necessário. O primeiro processamento
+confundiu SVG nos metadados C2PA de PNG com entrada XML. A correção ganhou
+regressão; as mesmas imagens foram reprocessadas, sem pagar outra geração.
+Essa falha ocorreu antes de registrar `warnings` naquela rodada: não há
+conclusão sobre suporte efetivo a `input_fidelity`. O script agora grava esses
+avisos antes de processar os pixels. GPT Image 2 permanece como padrão,
+sem habilitar o parâmetro, pois a amostra não mostrou ganho de fidelidade.
+
+O smoke local Next confirmou favicon 302 e cache de 600 s, manifest 200,
+icons/OG/Twitter/theme-color/JSON-LD no HTML, SVG aberto no navegador e
+separação entre assets de rascunho e snapshot. Navegação clara/escura e prévia
+passaram em 1440 e 390 px. Dados mostrou as duas rendições, números para
+reversão e link SVG; as capturas e o OG foram inspecionados. O favicon do
+domínio principal continuou 404. O gate real recusou publicar o projeto
+incompleto. Para o smoke HTTP foram inseridas páginas e snapshot sintéticos,
+com noindex, exclusivamente nesse tenant; isso não representa publicação
+aprovada nem geração completa de site.
+
+Artefatos em `outputs/logo-studio/`: sondas, PNG/SVG/OG, recibos, tempos,
+capturas e `live/smoke.json`. O script de backfill só foi exercitado em dry-run
+nesse tenant. O cadastro de teste e seu prefixo Blob foram removidos pela
+interface ao terminar, com ausência no banco e no Blob conferida. A espera
+de redirecionamento no Puppeteer expirou após a ação de exclusão; a limpeza
+foi confirmada por leitura independente, sem repetir a ação.
+Ficaram fora: geração completa das fotos/páginas (para respeitar o teto inicial
+de oito imagens), aparelhos físicos, Safari, logos de clientes reais,
+backfill de clientes e publicação/merge em produção. O push/PR pode criar
+preview Vercel; não promove páginas de clientes.
+
 ## Edição de texto na prévia, 12/09/2026
 
 As fases 1 e 2 do [plano](plano-edicao-na-previa.md) foram implementadas no

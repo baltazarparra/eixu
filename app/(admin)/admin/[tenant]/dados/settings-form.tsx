@@ -36,6 +36,10 @@ export function SettingsForm({
     contactEmail: string | null;
     logoUrl?: string;
     logoDarkUrl?: string;
+    logoPreviewUrl?: string;
+    logoDarkPreviewUrl?: string;
+    logoSvgUrl?: string;
+    logoStudioSummary?: string;
     paper?: string;
     /** Problema medido do logo sobre o papel da marca, ou null. */
     logoIssue?: string | null;
@@ -268,8 +272,8 @@ export function SettingsForm({
               <h2 className="text-base font-semibold">Direção visual</h2>
               <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
                 Uma troca abre uma nova direção no rascunho e preserva a versão
-                publicada. Depois de salvar, volte ao Site e peça “Refaça o site”
-                pelo chat para aplicar a nova direção.
+                publicada. Depois de salvar, volte ao Site e peça “Refaça o
+                site” pelo chat para aplicar a nova direção.
               </p>
               <div className="admin-vibe-grid">
                 {VIBES.map((vibe) => (
@@ -304,7 +308,11 @@ export function SettingsForm({
             // placa branca de um PNG sem alfa só aparece na segunda.
             <div className="admin-logo-previews">
               <Image
-                src={logoUrl}
+                src={
+                  logoUrl === tenant.logoUrl
+                    ? (tenant.logoPreviewUrl ?? logoUrl)
+                    : logoUrl
+                }
                 alt={`Logo de ${tenant.name} sobre o papel da marca`}
                 width={112}
                 height={80}
@@ -313,7 +321,14 @@ export function SettingsForm({
                 style={{ background: tenant.paper ?? '#ffffff' }}
               />
               <Image
-                src={logoDarkUrl ?? logoUrl}
+                src={
+                  logoDarkUrl === tenant.logoDarkUrl && logoDarkUrl
+                    ? (tenant.logoDarkPreviewUrl ?? logoDarkUrl)
+                    : (logoDarkUrl ??
+                      (logoUrl === tenant.logoUrl
+                        ? (tenant.logoPreviewUrl ?? logoUrl)
+                        : logoUrl))
+                }
                 alt={`Logo de ${tenant.name} sobre fundo escuro`}
                 width={112}
                 height={80}
@@ -329,9 +344,28 @@ export function SettingsForm({
             <h2 className="text-base font-semibold">Logo do site</h2>
             <p className="mt-1 text-sm text-[var(--color-muted)]">
               Envie o arquivo final ou escolha um logo na biblioteca. Ao
-              aplicar, o logo é medido e ganha uma versão para fundo escuro
-              quando o recorte funciona.
+              aplicar, as margens são recortadas e o fundo uniforme é removido
+              quando possível. A versão para fundo escuro, os ícones e a imagem
+              de compartilhamento são preparados em seguida.
             </p>
+            {tenant.logoStudioSummary ? (
+              <p className="mt-2 text-sm">
+                {tenant.logoStudioSummary}.{' '}
+                <a className="underline" href={`/admin/${tenant.slug}/imagens`}>
+                  Escolher ou voltar ao original
+                </a>
+              </p>
+            ) : null}
+            {tenant.logoSvgUrl && logoUrl === tenant.logoUrl ? (
+              <a
+                className="mt-2 inline-block text-sm underline"
+                href={tenant.logoSvgUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Abrir logo em SVG
+              </a>
+            ) : null}
             {logoDarkUrl ? (
               <p className="mt-2 text-sm text-[var(--color-muted)]">
                 Versão para fundo escuro aplicada.{' '}

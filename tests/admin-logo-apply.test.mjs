@@ -1,3 +1,4 @@
+import { mockLogoAssets } from './helpers/logo-fixture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -33,13 +34,18 @@ async function fixture({ approve = true, current } = {}) {
     blobs: [],
     inserted: [],
     critiques: [],
+    assets: [],
   };
   const png = await plateWhite();
-  const { applyBrandLogo, deriveLogoAssets } = await loadModule(
-    'lib/images/logo-apply.ts',
-    {
+  const { applyBrandLogo, applyBrandLogoDark, deriveLogoAssets } =
+    await loadModule('lib/images/logo-apply.ts', {
       'next/server': { after: (callback) => calls.scheduled.push(callback) },
       '@/lib/tenant-queries': {
+        setBrandLogoDark: async (_id, url) => ({
+          logoUrl: source,
+          logoDarkUrl: url,
+          logoRevision: revision,
+        }),
         setBrandLogo: async (_id, url) => ({
           logoUrl: url,
           logoRevision: revision,
@@ -58,7 +64,15 @@ async function fixture({ approve = true, current } = {}) {
           return (current ?? source) === measured;
         },
       },
-      '@/lib/images/logo': { fetchReference: async () => png },
+      '@/lib/images/logo': {
+        fetchReferenceRaw: async () => ({
+          bytes: png,
+          contentType: 'image/png',
+        }),
+      },
+      '@/lib/images/logo-asset': mockLogoAssets((file) =>
+        calls.assets.push(file),
+      ),
       '@/lib/blob/tenant-files': {
         putTenantBlob: async (_id, pathname, body) => {
           calls.blobs.push({ pathname, bytes: body.length });
@@ -84,15 +98,27 @@ async function fixture({ approve = true, current } = {}) {
           };
         },
       },
-    },
-  );
+    });
   const tenant = {
     id: 'tenant-1',
     slug: 'fixture',
     name: 'Fixture',
-    brand: { paper: '#0b0e14', ink: '#f5f5f4', logoRevision: revision },
+    brand: {
+      logoUrl: source,
+      paper: '#0b0e14',
+      ink: '#f5f5f4',
+      logoRevision: revision,
+    },
   };
-  return { applyBrandLogo, deriveLogoAssets, calls, tenant, source, revision };
+  return {
+    applyBrandLogo,
+    applyBrandLogoDark,
+    deriveLogoAssets,
+    calls,
+    tenant,
+    source,
+    revision,
+  };
 }
 
 await test('aplicar o logo grava a URL e agenda medição e versão escura depois da resposta', async () => {
@@ -107,8 +133,11 @@ await test('aplicar o logo grava a URL e agenda medição e versão escura depoi
   assert.equal(f.calls.derived.length, 2);
   assert.equal(f.calls.derived[0].source, f.source);
   assert.ok(f.calls.derived.every((call) => call.revision === f.revision));
-  assert.equal(f.calls.derived[0].fit.plate, 'light');
-  assert.equal(f.calls.derived[0].fit.hasAlpha, false);
+  assert.equal(f.calls.derived[0].fit.plate, null);
+  assert.equal(f.calls.derived[0].asset.background, 'removed');
+  assert.ok(f.calls.derived[0].fit.width < 150);
+  assert.ok(f.calls.derived[1].darkAsset.nav.url.endsWith('/nav-dark.png'));
+  assert.equal(f.calls.derived[0].fit.hasAlpha, true);
   assert.match(f.calls.derived[1].darkUrl, /\/logo\/[0-9a-f-]+\/branca\.png$/);
   assert.equal(f.calls.blobs.length, 1);
   assert.match(f.calls.blobs[0].pathname, /^logo\/[0-9a-f-]+\/branca\.png$/);
@@ -143,22 +172,35 @@ await test('logo trocado durante a derivação não recebe a medição nem a ver
   assert.equal(f.calls.inserted.length, 0);
 });
 
-await test('logo já medido e com versão escura não é derivado de novo', async () => {
+await test('logo com assets frescos e versão escura não é derivado de novo', async () => {
   const f = await fixture();
-  await f.deriveLogoAssets(
-    {
-      ...f.tenant,
-      brand: {
-        ...f.tenant.brand,
-        logoUrl: f.source,
-        logoFit: { source: f.source },
-        logoDarkUrl: 'https://blob.test/tenants/fixture/logo/b/branca.png',
-      },
-    },
-    f.source,
-  );
+  await f.deriveLogoAssets(f.tenant, f.source);
+  f.calls.derived.length = 0;
+  f.calls.blobs.length = 0;
+  f.calls.assets.length = 0;
+  await f.deriveLogoAssets(f.tenant, f.source);
   assert.equal(f.calls.derived.length, 0);
   assert.equal(f.calls.blobs.length, 0);
+  assert.equal(f.calls.assets.length, 0);
+});
+
+await test('wait:true aguarda o asset e versão escura; escolha manual prepara só nav escuro', async () => {
+  const f = await fixture();
+  const brand = await f.applyBrandLogo(f.tenant, f.source, { wait: true });
+  assert.equal(f.calls.scheduled.length, 0);
+  assert.ok(brand.logoAsset);
+  assert.ok(brand.logoDarkAsset);
+  f.calls.derived.length = 0;
+  f.calls.assets.length = 0;
+  const dark = await f.applyBrandLogoDark(
+    f.tenant,
+    'https://blob.test/manual.png',
+    { wait: true },
+  );
+  assert.ok(dark.logoDarkAsset);
+  assert.equal(f.calls.assets.length, 1);
+  assert.ok(f.calls.derived[0].darkAsset);
+  assert.equal(f.calls.derived[0].darkUrl, undefined);
 });
 
 await test('trocar e publicar pelo mesmo chat usa a marca devolvida pela aplicação', async () => {

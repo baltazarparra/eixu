@@ -2,13 +2,13 @@ import { z } from 'zod';
 import { after } from 'next/server';
 import { isAuthenticated } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { getTenantBySlug, setBrandLogoDark } from '@/lib/tenant-queries';
+import { getTenantBySlug } from '@/lib/tenant-queries';
 import { intakeSchema } from '@/lib/tenant-intake';
 import { contactsSchema, primaryWhatsapp } from '@/lib/tenant-contacts';
 import { tenantDetailsSchema } from '@/lib/admin/tenant-input';
 import { vibeOf, vibeSchema } from '@/lib/design/vibes';
 import { canApplyLogo } from '@/lib/images/logo-access';
-import { applyBrandLogo } from '@/lib/images/logo-apply';
+import { applyBrandLogo, applyBrandLogoDark } from '@/lib/images/logo-apply';
 import { normalizeSocialUrl, parseSocialRecord } from '@/lib/social-profile';
 import {
   clearSocialProfile,
@@ -16,7 +16,6 @@ import {
   syncSocialProfile,
 } from '@/lib/ai/social';
 import { activeRun } from '@/lib/generation/runs';
-import type { Brand } from '@/lib/types';
 
 const patch = z
   .object({
@@ -106,7 +105,7 @@ export async function PATCH(
   if (input.logoUrl !== undefined)
     brand = await applyBrandLogo(tenant, input.logoUrl);
   if (input.logoDarkUrl !== undefined)
-    brand = (await setBrandLogoDark(tenant.id, input.logoDarkUrl)) as Brand;
+    brand = await applyBrandLogoDark({ ...tenant, brand }, input.logoDarkUrl);
 
   // O perfil vive em brief.social, fora de brief.intake, porque o update acima
   // substitui o intake inteiro. A leitura corre depois da resposta.

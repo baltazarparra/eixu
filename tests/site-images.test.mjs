@@ -395,3 +395,119 @@ await test('API mantém sessão e recusa tentativas de reintroduzir aprovação 
   );
   assert.equal(writes, 1);
 });
+
+await test('modernizar sem anexo usa o master atual e só falha quando não há logo', async () => {
+  let received;
+  const toolsModule = await loadModule('lib/ai/tools.ts', {
+    '@/lib/images/logo': {
+      fetchReference: async (url) => {
+        received = url;
+        return Buffer.from('master');
+      },
+      generateLogoCandidates: async () => ({
+        images: [
+          {
+            id: 'logo',
+            seq: 10,
+            url: 'https://assets.test/new.png',
+            variant: 'fiel',
+            bytes: Buffer.from('logo'),
+          },
+        ],
+        failures: [],
+      }),
+    },
+    '@/lib/images/queries': { getGuide: async () => ({}) },
+    '@/lib/images/logo-critic': {
+      critiqueLogo: async () => ({ aprovado: true, nota: 8 }),
+    },
+  });
+  const { logoAssetFor } = await import('./helpers/logo-fixture.mjs');
+  const url = 'https://assets.test/brand.png';
+  const asset = logoAssetFor(url);
+  const tools = toolsModule.buildTools({
+    ...tenant,
+    brand: { logoUrl: url, logoAsset: asset },
+  });
+  const input = tools.generate_logo.inputSchema.parse({
+    mode: 'modernizar',
+    wordmark: true,
+    variants: 1,
+  });
+  const output = await tools.generate_logo.execute(input);
+  assert.equal(output.error, undefined);
+  assert.equal(received, asset.master.url);
+  const missing = toolsModule.buildTools({ ...tenant, brand: {} });
+  assert.match(
+    (
+      await missing.generate_logo.execute({
+        mode: 'modernizar',
+        wordmark: true,
+        variants: 2,
+      })
+    ).error,
+    /ainda não tem logo/,
+  );
+});
+
+await test('logo usa tela por tipo e prompt que preenche a área útil', async () => {
+  const { logoDimensions, composeLogoPrompt } =
+    await loadModule('lib/images/logo.ts');
+  assert.equal(logoDimensions(true).size, '1536x1024');
+  assert.equal(logoDimensions(false).size, '1024x1024');
+  assert.match(
+    composeLogoPrompt({
+      tenant,
+      guide: {},
+      brandName: 'Marca',
+      wordmark: true,
+      variant: 'fiel',
+    }),
+    /80%/,
+  );
+});
+
+await test('o crítico recebe os mesmos bytes do master gravado na biblioteca', async () => {
+  const stored = Buffer.from('master final gravado');
+  const { generateLogoCandidates } = await loadModule('lib/images/logo.ts', {
+    ai: {
+      generateImage: async () => ({
+        image: { uint8Array: Buffer.from('gerado') },
+        warnings: [],
+      }),
+    },
+    '@/lib/images/logo-asset': {
+      cleanLogo: async () => ({ master: Buffer.from('primeiro recorte') }),
+      prepareLogoRendition: async () => ({
+        master: stored,
+        rendition: {
+          master: {
+            url: 'https://assets.test/final.png',
+            width: 600,
+            height: 150,
+          },
+        },
+      }),
+    },
+    '@/lib/blob/tenant-files': {
+      putTenantBlob: async () => ({ url: 'https://assets.test/primeiro.png' }),
+    },
+    '@/lib/images/queries': {
+      insertImage: async (image) => ({ ...image, id: 'logo', seq: 1 }),
+    },
+  });
+  const result = await generateLogoCandidates({
+    tenant,
+    guide: {},
+    mode: 'criar',
+    brandName: 'Marca',
+    wordmark: true,
+    variants: 1,
+  });
+  assert.equal(result.failures.length, 0);
+  assert.equal(result.images[0].url, 'https://assets.test/final.png');
+  assert.equal(
+    Buffer.from(result.images[0].bytes).toString(),
+    stored.toString(),
+  );
+});

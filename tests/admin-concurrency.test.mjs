@@ -369,6 +369,48 @@ await test(
     );
 
     await t.test(
+      'lote de derivados mantém o lock até o último upload mesmo com falha parcial',
+      async () => {
+        const tenant = await fixture();
+        const entered = deferred(),
+          release = deferred();
+        hooks.put = async (path) => {
+          if (path.endsWith('failed.png'))
+            throw new Error('Falha simulada no derivado');
+          entered.resolve();
+          await release.promise;
+        };
+        const upload = blobFiles.putTenantBlobs(
+          tenant.id,
+          ['failed.png', 'slow.png'].map((name) => ({
+            path: `logo/asset/test/${name}`,
+            body: png,
+            options: { access: 'public' },
+          })),
+        );
+        const rejected = assert.rejects(upload, /Falha simulada no derivado/);
+        await entered.promise;
+        const deletion = remove(tenant);
+        try {
+          await waitLocked('FOR UPDATE');
+          release.resolve();
+          await rejected;
+          assert.equal((await deletion).ok, true);
+          assert.equal(
+            [...files.values()].some((path) =>
+              path.startsWith(`tenants/${tenant.slug}/`),
+            ),
+            false,
+          );
+        } finally {
+          delete hooks.put;
+          release.resolve();
+          await Promise.allSettled([rejected, deletion]);
+        }
+      },
+    );
+
+    await t.test(
       'upload que chega durante a exclusão é recusado; outro tenant continua',
       async () => {
         const tenant = await fixture(),

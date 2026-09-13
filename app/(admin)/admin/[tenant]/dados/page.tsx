@@ -1,3 +1,8 @@
+import {
+  currentLogoAsset,
+  currentDarkLogoAsset,
+} from '@/lib/images/logo-schema';
+import { logoStudioSummary } from '@/lib/images/logo-studio-state';
 import { adminTenant } from '@/lib/admin/queries';
 import { notFound, redirect } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
@@ -44,6 +49,10 @@ export default async function SettingsPage({
             contactEmail: tenant.contactEmail,
             logoUrl: tenant.brand.logoUrl,
             logoDarkUrl: tenant.brand.logoDarkUrl,
+            logoPreviewUrl: currentLogoAsset(tenant.brand)?.nav.url,
+            logoDarkPreviewUrl: currentDarkLogoAsset(tenant.brand)?.nav.url,
+            logoSvgUrl: currentLogoAsset(tenant.brand)?.svg?.url,
+            logoStudioSummary: logoStudioSummary(tenant.brief, tenant.brand),
             paper: tenant.brand.paper,
             // O achado de composição usa o papel real do cabeçalho; aqui a
             // prévia avisa pelo papel da marca, que é o caso comum.

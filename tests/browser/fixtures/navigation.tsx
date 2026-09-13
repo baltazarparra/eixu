@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { hydrateRoot } from 'react-dom/client';
 import { RenderBlocks } from '@/lib/blocks/render';
 import { themeVars } from '@/lib/blocks/theme';
-import type { Tenant } from '@/lib/types';
+import type { LogoAsset, Tenant } from '@/lib/types';
 
 export function NavigationFixture({ query = '' }: { query?: string }) {
   const params = new URLSearchParams(query);
@@ -10,7 +10,8 @@ export function NavigationFixture({ query = '' }: { query?: string }) {
   const vibe = params.get('vibe') ?? 'artistico';
   const layout = params.get('layout') ?? 'floating';
   const version = Number(params.get('version') ?? 0);
-  const logo = params.get('logo');
+  const asset = params.has('asset');
+  const logo = params.get('logo') ?? (asset ? 'asset' : null);
   const long = params.has('long');
   const preview = params.has('preview');
   const [visible, setVisible] = useState(true);
@@ -38,6 +39,28 @@ export function NavigationFixture({ query = '' }: { query?: string }) {
     brief: {},
     imageGuide: {},
   } as Tenant;
+  if (asset) {
+    const url = 'https://assets.test/nav-asset.png';
+    tenant.brand.logoAsset = {
+      version: 1,
+      source: tenant.brand.logoUrl!,
+      sourceHash: '123456789abc',
+      background: 'transparent',
+      master: { url, width: 384, height: 256 },
+      nav: { url, width: 384, height: 256 },
+      aspect: 1.5,
+      displayHeight: 56,
+      preparedAt: '2026-09-12T12:00:00.000Z',
+      icon: {
+        png32: url,
+        png192: url,
+        png512: url,
+        maskable512: url,
+        apple180: url,
+      },
+      og: { url, width: 1200, height: 630 },
+    } satisfies LogoAsset;
+  }
   const links = params.has('empty')
     ? []
     : long
@@ -83,9 +106,10 @@ export function NavigationFixture({ query = '' }: { query?: string }) {
               type: 'nav.bar',
               props: {
                 logoText: long ? 'Arquitetura & Interiores' : 'Ateliê de teste',
-                logoHeight: logo
-                  ? Number(params.get('logoHeight') ?? 160)
-                  : undefined,
+                logoHeight:
+                  !asset && logo
+                    ? Number(params.get('logoHeight') ?? 160)
+                    : undefined,
                 layout: layout === 'contrast' ? undefined : layout,
                 position: params.get('position') ?? 'fixed',
                 backgroundOpacity: 88,

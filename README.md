@@ -12,7 +12,8 @@ O modelo interno é **Gemini 3.8 Flash**, com raciocínio `high`. O harness prio
 - Painel com login de operador, busca e filtros de clientes, cadastro compacto com quatro direções visuais comparáveis, geração em Preparar/Criar, chat com histórico recente, prévia em desktop/mobile, dados e briefing editáveis e publicação.
 - Páginas orgânicas, landing pages pagas, posts e páginas de agradecimento compostas por blocos com schemas Zod. O agente edita conteúdo por ferramentas; o painel também permite ajustar dados do cliente e gerenciar imagens.
 - Edição direta na prévia de clientes publicados: texto, tamanho e cor por campo, com contraste validado. Salvar altera o rascunho; Publicar leva as mudanças ao site no ar.
-- Imagens geradas na conversa do site, com guia por cliente e crítica, disponíveis sem aprovação. A biblioteca em `/admin/[tenant]/imagens` mantém números para pedir alterações, como “atualize a imagem #5 com outro carro”. A nova versão substitui a anterior nos rascunhos e ambas ficam salvas; aplicar um logo continua sendo uma ação do usuário.
+- Imagens geradas na conversa do site, com guia por cliente e crítica, disponíveis sem aprovação. A biblioteca em `/admin/[tenant]/imagens` mantém números para pedir alterações, como “atualize a imagem #5 com outro carro”. A nova versão substitui a anterior nos rascunhos e ambas ficam salvas.
+- Estúdio de logo durante o briefing: limpa fundo e margens, prepara altura, SVG quando fiel, ícones e imagem de compartilhamento. A modernização fiel aprovada pelos gates pode entrar no rascunho automaticamente, com original numerado e reversão pelo chat. Outras aplicações exigem pedido; o site público só muda ao publicar.
 - Contatos do cadastro renderizados sozinhos no site: telefones, e-mail e redes sociais no rodapé, e uma seção de localização com mapa acima dele quando há endereço.
 - Quatro vibes com contratos próprios de tipografia, abertura, navegação, ritmo, superfície, iconografia, imagem e [voz de escrita](docs/copy.md). Cada uma oferece três estruturas completas; sites novos usam uma composição autoral com cenas e conteúdo do cliente. Referências visuais verificadas prevalecem na direção visual; a voz continua usando a vibe e linguagem simples.
 - Formulários, WhatsApp rastreado, atribuição de campanhas, exportação de contatos em CSV e painel de tráfego com gastos informados à mão.
@@ -30,18 +31,21 @@ npm run dev:vercel
 
 O institucional e a tela de login abrem sem banco. Para usar o painel e os sites, configure `.env.local` com recursos de desenvolvimento:
 
-| Variável                | Uso                                                                                                       |
-| ----------------------- | --------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`          | Conexão Postgres/Neon das rotas dinâmicas e scripts de banco.                                             |
-| `ADMIN_USER`            | Usuário do operador; fallback `admin`.                                                                    |
-| `ADMIN_PASSWORD`        | Senha do operador. Produção recusa login se estiver ausente.                                              |
-| `ADMIN_SESSION_SECRET`  | Segredo de assinatura da sessão; configure um valor próprio. O código usa a senha como fallback.          |
-| `AI_GATEWAY_API_KEY`    | Autenticação explícita do AI Gateway, útil localmente. O SDK também aceita OIDC da Vercel.                |
-| `EIXU_MODEL`            | Modelo do chat do site; fallback no código: `google/gemini-3.8-flash`.                                    |
-| `EIXU_CRITIC_MODEL`     | Modelo da crítica visual e leitura de avatar social; fallback em `EIXU_MODEL`, depois Gemini 3.8 Flash.   |
-| `BLOB_READ_WRITE_TOKEN` | Upload, geração e remoção de imagens no Vercel Blob.                                                      |
-| `EIXU_REVIEW_CAPTURE`   | Captura e crítica visual ligadas por padrão; `0` permite só diagnóstico estrutural, sem conclusão visual. |
-| `EIXU_CHROME_PATH`      | Caminho do Chrome local para a captura em desenvolvimento.                                                |
+| Variável                 | Uso                                                                                                        |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`           | Conexão Postgres/Neon das rotas dinâmicas e scripts de banco.                                              |
+| `ADMIN_USER`             | Usuário do operador; fallback `admin`.                                                                     |
+| `ADMIN_PASSWORD`         | Senha do operador. Produção recusa login se estiver ausente.                                               |
+| `ADMIN_SESSION_SECRET`   | Segredo de assinatura da sessão; configure um valor próprio. O código usa a senha como fallback.           |
+| `AI_GATEWAY_API_KEY`     | Autenticação explícita do AI Gateway, útil localmente. O SDK também aceita OIDC da Vercel.                 |
+| `EIXU_MODEL`             | Modelo do chat do site; fallback no código: `google/gemini-3.8-flash`.                                     |
+| `EIXU_CRITIC_MODEL`      | Modelo da crítica visual e leitura de avatar social; fallback em `EIXU_MODEL`, depois Gemini 3.8 Flash.    |
+| `EIXU_LOGO_CRITIC_MODEL` | Modelo de leitura e crítica do logo; prevalece sobre os fallbacks descritos em [Harness](docs/harness.md). |
+| `EIXU_LOGO_IMAGE_MODEL`  | Gerador de logos; padrão `openai/gpt-image-2`.                                                             |
+| `EIXU_LOGO_AUTO_APPLY`   | `0` desativa a aplicação automática do estúdio; as propostas continuam disponíveis.                        |
+| `BLOB_READ_WRITE_TOKEN`  | Upload, geração e remoção de imagens no Vercel Blob.                                                       |
+| `EIXU_REVIEW_CAPTURE`    | Captura e crítica visual ligadas por padrão; `0` permite só diagnóstico estrutural, sem conclusão visual.  |
+| `EIXU_CHROME_PATH`       | Caminho do Chrome local para a captura em desenvolvimento.                                                 |
 
 Crie o arquivo localmente, sem versionar credenciais. Se já tiver acesso ao projeto Vercel, `vercel link --project eixu` e `vercel env pull .env.local --environment=development` são uma alternativa; confira o destino de `DATABASE_URL` antes de qualquer escrita. O nome do ambiente Vercel não garante que o banco conectado seja de desenvolvimento.
 
@@ -97,6 +101,7 @@ global para um snapshot coerente na mesma transação. Veja o
 | `npm run db:migrate`                                         | Aplica statements idempotentes de `db/schema.sql`; escreve no banco. Coluna nova exige rodar antes do deploy do código que a usa.                                      |
 | `npm run db:seed-demo`                                       | Sobrescreve e publica home/obrigado do tenant `vertice` já existente; altera marca e dials. Use só em demo descartável.                                                |
 | `npm run db:requantize-logos`                                | Recomprime logos de todos os tenants do banco conectado, sobrescrevendo arquivos no Blob.                                                                              |
+| `npm run db:prepare-logo-assets -- --slug=cliente`           | Diagnóstico sem escrita por padrão. `--apply` prepara assets só do rascunho, com crítica da versão branca; exige escopo autorizado. `--all` seleciona todos.           |
 | `npm run dev` / `npm run build` / `npm start`                | Caminho Vinext/Cloudflare herdado; não valida o deploy Next.js da Vercel.                                                                                              |
 
 Há testes dos contratos de sites e admin; não há workflow de CI versionado. O lint global deve passar. O [guia de validação](docs/verification.md) registra as referências e os checks por tipo de mudança, incluindo integração em PostgreSQL descartável. Build aprovado não equivale a fluxo com banco ou IA testado.

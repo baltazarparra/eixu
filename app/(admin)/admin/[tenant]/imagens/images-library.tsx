@@ -12,6 +12,7 @@ import type { ImageUsage } from '@/lib/images/usage';
 import type { ImageGuide, TenantImage } from '@/lib/types';
 
 type LibraryState = {
+  logoStudioSummary?: string;
   guide: ImageGuide;
   images: TenantImage[];
   logoUrl?: string | null;
@@ -96,7 +97,7 @@ export function ImagesLibrary({
         body: JSON.stringify({ logoUrl: url }),
       });
       setNotice(
-        `Logo #${seq} aplicado no site. A versão para fundo escuro é preparada em seguida.`,
+        `Logo #${seq} aplicado no rascunho. Os arquivos para o site são preparados em seguida.`,
       );
     });
   }
@@ -165,6 +166,12 @@ export function ImagesLibrary({
             </Link>
           </div>
         </div>
+        {library.logoStudioSummary ? (
+          <p className="admin-notice">
+            {library.logoStudioSummary}. Para trocar, use “Usar como logo” na
+            imagem desejada.
+          </p>
+        ) : null}
         {notice ? (
           <output className="admin-notice" aria-live="polite">
             {notice}

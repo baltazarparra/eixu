@@ -68,6 +68,40 @@ await test(
       return check;
     }
     try {
+      await t.test(
+        'asset recortado reserva a proporção real e respeita a altura compacta',
+        async () => {
+          for (const width of [1440, 1024, 390, 320]) {
+            const check = await verify(
+              'asset=1&vibe=comercial&layout=bar&version=5',
+              width,
+            );
+            const image = await page.$eval('.site-nav-logo', (img) => ({
+              src: img.currentSrc,
+              naturalWidth: img.naturalWidth,
+              naturalHeight: img.naturalHeight,
+              width: img.width,
+              height: img.height,
+              renderedHeight: img.getBoundingClientRect().height,
+            }));
+            assert.equal(image.src, 'https://assets.test/nav-asset.png');
+            assert.equal(
+              image.naturalWidth / image.naturalHeight,
+              image.width / image.height,
+            );
+            assert.equal(
+              image.renderedHeight,
+              check.navigation.compact ? 48 : 56,
+            );
+            if (width === 1440 || width === 390) {
+              await mkdir('outputs/logo-studio', { recursive: true });
+              await page.screenshot({
+                path: `outputs/logo-studio/nav-asset-${width}.png`,
+              });
+            }
+          }
+        },
+      );
       for (const version of [0, 2, 3, 4]) {
         for (const [vibe, layout] of [
           ['comercial', 'bar'],

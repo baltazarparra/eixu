@@ -36,6 +36,9 @@ function toImage(row: Row): TenantImage {
     alt: (row.alt as string) ?? null,
     description: (row.description as string) ?? null,
     createdAt: str(row.created_at),
+    ...(row.width && row.height
+      ? { width: Number(row.width), height: Number(row.height) }
+      : {}),
   };
 }
 
@@ -99,6 +102,8 @@ export async function insertImage(input: {
   blobPath: string;
   kind?: ImageKind;
   referenceUrls?: string[];
+  width?: number;
+  height?: number;
 }): Promise<TenantImage> {
   // O número é reservado dentro do próprio insert. Ler o máximo antes e gravar
   // depois só funcionava com geração sequencial: com cenas em paralelo dois
@@ -107,11 +112,12 @@ export async function insertImage(input: {
     try {
       const rows = (await db()`
         insert into images (tenant_id, seq, batch_id, request_text, target_block, ratio, model, prompt_final,
-                            url, blob_path, kind, reference_urls, status)
+                            url, blob_path, kind, reference_urls, status, width, height)
         select ${input.tenantId}, coalesce(max(seq), 0) + 1, ${input.batchId}, ${input.requestText},
                ${input.targetBlock}, ${input.ratio}, ${input.model}, ${input.promptFinal},
                ${input.url}, ${input.blobPath}, ${input.kind ?? 'foto'},
-               ${JSON.stringify(input.referenceUrls ?? [])}::jsonb, 'disponivel'
+               ${JSON.stringify(input.referenceUrls ?? [])}::jsonb, 'disponivel',
+               ${input.width ?? null}, ${input.height ?? null}
         from images where tenant_id = ${input.tenantId}
         returning *
       `) as Row[];
@@ -171,7 +177,11 @@ export async function referenceReason(
     select 1 from tenants where id = ${tenantId}
       and (brand->>'logoUrl' = ${url} or brand->>'logoDarkUrl' = ${url}
         or published_snapshot->'brand'->>'logoUrl' = ${url}
-        or published_snapshot->'brand'->>'logoDarkUrl' = ${url})
+        or published_snapshot->'brand'->>'logoDarkUrl' = ${url}
+        or jsonb_path_exists(brand, '$.logoAsset.** ? (@ == $url)', jsonb_build_object('url', ${url}::text))
+        or jsonb_path_exists(brand, '$.logoDarkAsset.** ? (@ == $url)', jsonb_build_object('url', ${url}::text))
+        or jsonb_path_exists(published_snapshot->'brand', '$.logoAsset.** ? (@ == $url)', jsonb_build_object('url', ${url}::text))
+        or jsonb_path_exists(published_snapshot->'brand', '$.logoDarkAsset.** ? (@ == $url)', jsonb_build_object('url', ${url}::text)))
     limit 1
   `) as Row[];
   return asLogo.length ? 'logo' : null;

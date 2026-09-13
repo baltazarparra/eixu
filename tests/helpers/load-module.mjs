@@ -19,6 +19,7 @@ export async function loadModule(relative, mocks = {}, globals = {}) {
       module: ts.ModuleKind.CommonJS,
       target: ts.ScriptTarget.ES2022,
       esModuleInterop: true,
+      jsx: ts.JsxEmit.ReactJSX,
     },
   });
   const dependencies = new Map();
@@ -58,6 +59,7 @@ export async function loadModule(relative, mocks = {}, globals = {}) {
       FormData,
       File,
       AbortSignal,
+      AbortController,
       ReadableStream,
       TransformStream,
       Date,

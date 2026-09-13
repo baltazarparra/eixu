@@ -1,3 +1,4 @@
+import { mockLogoAssets, logoAssetFor } from './helpers/logo-fixture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -37,6 +38,8 @@ await test(
       logoUrl: original,
       logoDarkUrl: 'https://blob.test/original-branca.png',
       logoFit: { source: original },
+      logoAsset: logoAssetFor(original),
+      logoDarkAsset: logoAssetFor('https://blob.test/original-branca.png'),
     };
     for (const tenantId of [id, foreignId])
       await database.query(
@@ -70,7 +73,13 @@ await test(
     const application = await loadModule('lib/images/logo-apply.ts', {
       'next/server': { after: (callback) => scheduled.push(callback) },
       '@/lib/tenant-queries': queries,
-      '@/lib/images/logo': { fetchReference: async () => png },
+      '@/lib/images/logo': {
+        fetchReferenceRaw: async () => ({
+          bytes: png,
+          contentType: 'image/png',
+        }),
+      },
+      '@/lib/images/logo-asset': mockLogoAssets(),
       '@/lib/blob/tenant-files': {
         putTenantBlob: async (_tenantId, pathname) => ({
           url: `https://blob.test/${pathname}`,
@@ -105,7 +114,7 @@ await test(
       'troca limpa derivados anteriores no banco e no mesmo chat',
       async () => {
         const tools = buildTools(await current(), {
-          lastUserText: 'Use o logo #2 e publique',
+          lastUserText: 'volta para a #2 e publique',
         });
         const applied = await tools.set_site_logo.execute({ image: '#2' });
         assert.equal(applied.ok, true, JSON.stringify(applied));
@@ -115,6 +124,8 @@ await test(
         ]) {
           assert.equal(brand.logoUrl, replacement);
           assert.equal(brand.logoFit, undefined);
+          assert.equal(brand.logoAsset, undefined);
+          assert.equal(brand.logoDarkAsset, undefined);
           assert.equal(brand.logoDarkUrl, undefined);
         }
         await tools.set_brand.execute({ accent: '#225588' });
@@ -233,12 +244,20 @@ await test(
         ]) {
           const tools = buildTools(await current());
           await manualQueries.setBrandLogoDark(id, manual);
+          const selected = (await current()).brand;
+          await manualQueries.setBrandLogoDerived(
+            id,
+            selected.logoUrl,
+            { asset: logoAssetFor(selected.logoUrl) },
+            selected.logoRevision,
+          );
           const before = (await current()).brand;
           const result = await tools[toolName].execute(input);
           assert.equal(result.error, undefined, JSON.stringify(result));
           const saved = (await current()).brand;
           assert.equal(saved.logoDarkUrl, manual);
           assert.equal(saved.logoRevision, before.logoRevision);
+          assert.deepEqual(saved.logoAsset, before.logoAsset);
           assert.equal(
             (await tools.publish_site.execute({})).brand.logoDarkUrl,
             manual,
@@ -273,6 +292,133 @@ await test(
       },
     );
 
+    await t.test(
+      'auto-aplicação é atômica e recusa A-B-A ou mudança manual da versão escura',
+      async () => {
+        const before = await queries.setBrandLogo(id, original);
+        await manualQueries.setBrandLogoDark(id, manual);
+        assert.equal(
+          await queries.replaceBrandLogoIfSource(
+            id,
+            original,
+            replacement,
+            before.logoRevision,
+          ),
+          null,
+        );
+        const currentBrand = (await current()).brand;
+        const applied = await queries.replaceBrandLogoIfSource(
+          id,
+          original,
+          replacement,
+          currentBrand.logoRevision,
+        );
+        assert.equal(applied.logoUrl, replacement);
+        assert.equal(applied.logoAsset, undefined);
+        assert.equal(applied.logoDarkAsset, undefined);
+        assert.equal(
+          await queries.replaceBrandLogoIfSource(id, original, replacement),
+          null,
+        );
+      },
+    );
+
+    await t.test(
+      'reserva do estúdio impede cobrança duplicada e um job antigo não conclui a nova reserva',
+      async () => {
+        const a = await loadModule('lib/images/logo-studio-queries.ts', {
+          '@/lib/db': database,
+        });
+        const b = await loadModule('lib/images/logo-studio-queries.ts', {
+          '@/lib/db': other,
+        });
+        await database.query(
+          'update tenants set brief = $2::jsonb where id = $1',
+          [
+            id,
+            JSON.stringify({
+              intake: { offer: 'Fixture' },
+              social: { status: 'done' },
+            }),
+          ],
+        );
+        const state = {
+          status: 'running',
+          sourceHash: 'aabbccddeeff',
+          startedAt: new Date().toISOString(),
+          proposals: [],
+        };
+        const claims = await Promise.all([
+          a.claimLogoStudio(id, replacement, state),
+          b.claimLogoStudio(id, replacement, state),
+        ]);
+        assert.equal(claims.filter(Boolean).length, 1);
+        const newer = {
+          ...state,
+          sourceHash: 'bbccddeeff00',
+          startedAt: new Date(Date.now() + 1).toISOString(),
+        };
+        assert.equal(await b.claimLogoStudio(id, replacement, newer), true);
+        assert.equal(
+          await a.finishLogoStudio(id, { ...state, status: 'done' }),
+          false,
+        );
+        assert.equal(
+          await b.finishLogoStudio(id, { ...newer, status: 'done' }),
+          true,
+        );
+        const brief = (await current()).brief;
+        assert.deepEqual(brief.intake, { offer: 'Fixture' });
+        assert.deepEqual(brief.social, { status: 'done' });
+        assert.equal(brief.logoStudio.sourceHash, newer.sourceHash);
+        assert.equal(await a.claimLogoStudio(id, replacement, newer), false);
+        const stale = {
+          ...newer,
+          status: 'running',
+          startedAt: '2000-01-01T00:00:00.000Z',
+        };
+        await database.query(
+          'update tenants set brief = brief || $2::jsonb where id = $1',
+          [id, JSON.stringify({ logoStudio: stale })],
+        );
+        assert.equal(
+          await a.claimLogoStudio(id, replacement, {
+            ...newer,
+            startedAt: new Date().toISOString(),
+          }),
+          true,
+        );
+        assert.equal(
+          await a.claimLogoStudio(foreignId, replacement, state),
+          false,
+        );
+      },
+    );
+
+    await t.test(
+      'URLs aninhadas nos assets publicados impedem exclusão por correspondência exata',
+      async () => {
+        const images = await loadModule('lib/images/queries.ts', {
+          '@/lib/db': database,
+        });
+        assert.equal(
+          await images.referenceReason(id, oldBrand.logoAsset.nav.url),
+          'logo',
+        );
+        assert.equal(
+          await images.referenceReason(id, oldBrand.logoAsset.icon.png512),
+          'logo',
+        );
+        assert.equal(
+          await images.referenceReason(
+            id,
+            `${oldBrand.logoAsset.icon.png512}.other`,
+          ),
+          null,
+        );
+      },
+    );
+
     // Escritas só no tenant alvo e no rascunho, sem tocar apresentação pública.
     assert.deepEqual(
       (await queries.getTenantBySlug(foreignId)).brand,
@@ -281,7 +427,13 @@ await test(
     assert.deepEqual((await current()).publishedSnapshot, { brand: oldBrand });
     await queries.setBrandLogo(id, null);
     const removed = (await current()).brand;
-    for (const key of ['logoUrl', 'logoDarkUrl', 'logoFit'])
+    for (const key of [
+      'logoUrl',
+      'logoDarkUrl',
+      'logoFit',
+      'logoAsset',
+      'logoDarkAsset',
+    ])
       assert.equal(removed[key], undefined);
   },
 );
