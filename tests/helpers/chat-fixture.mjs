@@ -8,8 +8,14 @@ export async function chatFixture({
   delay = 0,
   authenticated = true,
   running = null,
+  /** Páginas reais para os caminhos que dependem de blocos, como o plano de
+   * pendências. Sem elas, a fixture usa o formato do painel. */
+  sitePages,
+  images = [],
+  tenant: tenantOverride,
 } = {}) {
   const starts = [];
+  const prompts = [];
   const state = {
     tenant: {
       slug: 'stream-fixture',
@@ -54,6 +60,7 @@ export async function chatFixture({
     brief: {},
     dials: {},
     imageGuide: {},
+    ...tenantOverride,
   };
   const turns = [];
   const writes = [];
@@ -118,9 +125,9 @@ export async function chatFixture({
     '@/lib/tenant-queries': {
       getTenantBySlug: async (slug) =>
         slug === state.tenant.slug ? tenant : null,
-      listPages: async () => state.pages,
+      listPages: async () => sitePages ?? state.pages,
     },
-    '@/lib/images/queries': { listImages: async () => [] },
+    '@/lib/images/queries': { listImages: async () => images },
     '@/lib/generation/runs': {
       activeRun: async () => running,
       expireStaleRun: async (run) => run,
@@ -134,7 +141,10 @@ export async function chatFixture({
     },
     '@/lib/admin/state': { workspaceState: () => structuredClone(state) },
     '@/lib/taste/prompt': {
-      systemPrompt: () => 'Fixture sintética de streaming.',
+      systemPrompt: (...args) => {
+        prompts.push(args[4] ?? {});
+        return 'Fixture sintética de streaming.';
+      },
     },
     '@/lib/ai/tools': { buildTools: () => tools },
     '@/lib/ai/agent': {
@@ -212,6 +222,8 @@ export async function chatFixture({
     turns,
     modelCalls,
     starts,
+    prompts,
+    tenant,
     executions: () => executions,
   };
 }

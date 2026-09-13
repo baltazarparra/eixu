@@ -1194,6 +1194,22 @@ export function Workspace({
                 Confira a prévia e as imagens antes de publicar. Os ajustes
                 feitos pelo chat são salvos no rascunho.
               </p>
+              {/* O agente recebe a mesma validação do servidor neste turno.
+                  Colar a lista não é mais necessário; a frase abre o pedido. */}
+              <button
+                type="button"
+                className="admin-review-action"
+                disabled={locked}
+                onClick={() => {
+                  setInput('Resolva as pendências de publicação.');
+                  setCollapsed(false);
+                  setExpanded(false);
+                  setView('chat');
+                  requestAnimationFrame(() => inputRef.current?.focus());
+                }}
+              >
+                Resolver pelo chat
+              </button>
               <ul>
                 {reviewFindings.map((finding) => {
                   const slug = finding.page.replace(/^\//, '');

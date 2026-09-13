@@ -56,6 +56,75 @@ Verificação local:
 As alterações se limitam ao painel e à moldura da prévia. Os gates de
 publicação, autorização, rascunhos e snapshots publicados foram preservados.
 
+## Pendências de publicação resolvidas pelo chat, 13/09/2026
+
+Caso real do cliente villa-piva, lido no banco de produção e nos logs da Vercel.
+A publicação passou às 15:06. Um minuto depois, salvar Dados com outro nome e
+outra história apagou `brief.evidence`, e o painel passou a mostrar duas
+pendências de prova e duas recomendações de proporção. O operador colou a lista
+no chat; o agente rodou `lint_page` (aprovado, porque prova é regra de site),
+`lint_site`, `confirm_evidence` duas vezes (uma recusada pelo schema, com o fato
+acima de 140 caracteres, outra por fatos que o operador não escreveu) e
+encerrou sem salvar nada.
+
+Quatro causas no código, todas confirmadas por leitura:
+
+- O prompt do chat não recebia as pendências nem as frases confirmadas. A
+  validação existia no painel e no retorno das ferramentas, sem dizer o que
+  resolve cada achado.
+- `supports` comparava a referência por igualdade exata e o texto exibido com
+  acento. O fato digitado sem acento em Dados não sustentava o selo acentuado, e
+  a única saída seria copiar o erro de grafia para o site.
+- `update_image` não aceitava proporção e `prepare_site_images` recusa qualquer
+  recorte fora do plano, então "gere a cena na proporção certa" não tinha
+  ferramenta.
+- O PATCH de Dados apagava `brief.evidence` junto do briefing derivado.
+
+Entregue nesta rodada:
+
+- `lib/ai/evidence.ts` ganhou `sameEvidence`, `phraseSupported` e
+  `confirmedEvidence`. A regra de prova e o plano usam o mesmo predicado:
+  trecho contíguo, sem acento, caixa ou ponto final, e não um conjunto de
+  palavras soltas.
+- `lib/taste/landing.ts` expõe `landingClaims`/`claimSupported`; regras,
+  mensagens e níveis continuam iguais.
+- `lib/taste/pendencias.ts` devolve `alinhar`, `confirmar`, `imagem` ou
+  `manual` por achado. O plano entra no prompt do turno de edição, com as
+  frases confirmadas, e no retorno de `lint_site`, `lint_page`, `edit_page` e
+  `confirm_evidence`.
+- `lint_page` soma as regras de site da própria página; `update_image` aceita
+  `ratio`; o recibo nomeia a imagem nova e lista as frases que faltam.
+- O PATCH de Dados conserva `brief.evidence`. O painel oferece **Resolver pelo
+  chat**, que preenche o pedido sem enviar.
+
+Validação local, sem chamada paga e sem escrita remota:
+
+- `npm run lint`, `npx next typegen && npx tsc --noEmit` e `npm run build:vercel`
+  passam, incluindo os três checks dos artefatos de captura serverless.
+- `npm run test:sites` (278 aprovados, 1 pulado) e `npm run test:admin`
+  (211 aprovados, 7 pulados por dependerem de PostgreSQL local e Chrome) passam,
+  depois de incorporar a remoção de moldura da abertura vinda de `main`. Os casos novos
+  cobrem a equivalência de grafia e seu limite (um número não se sustenta em
+  outro número da mesma frase), o plano sobre a fixture de landing, a proporção
+  com biblioteca e layouts alternativos, o corte do contexto, as seções do
+  prompt na edição e sua ausência nas fases, a edição que resolve a pendência
+  pelo caminho indicado, o pre-flight de página que acusa o gate de site, o
+  `ratio` em `reviseImage` e em `update_image`, a política do texto colado e o
+  fechamento com imagem e frases pendentes.
+- Replay somente leitura do rascunho de villa-piva com o código novo: o plano
+  aponta `alinhar` no selo do hero e no `proof.strip` com a frase do cadastro,
+  `confirmar` para os cinco fatos que o operador não escreveu e `imagem` para
+  as duas recomendações, com #18/#17/#15 e #16/#14 como trocas possíveis. Não
+  houve publicação, geração paga nem escrita no banco.
+
+Limites desta entrega: um fato que o operador não escreveu continua exigindo a
+escrita dele ou o cadastro em Dados; `set_design` ainda substitui
+`brief.evidence` numa reconstrução; evidência entre 141 e 160 caracteres não
+cabe no campo do bloco e vira nota para encurtar em Dados; resolver a
+recomendação de proporção por geração produz outra foto sobre a original, que
+permanece no acervo. O fluxo com modelo real e geração paga não foi executado
+nesta rodada.
+
 ## Remoção de moldura na abertura da landing, 13/09/2026
 
 O pedido do `villa-piva` era retirar o container branco com borda dupla,

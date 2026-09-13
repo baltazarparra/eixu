@@ -136,6 +136,24 @@ await test('alteração usa os pixels da #5, mantém o recorte e continua dispon
     '4:3',
     'upload fora dos recortes do gerador usa o mais próximo',
   );
+  // Pendência de proporção: a nova versão nasce no recorte que o bloco exibe.
+  await reviseImage(
+    tenant,
+    { ...original, model: 'upload', ratio: '12:5' },
+    'a mesma cena, panorâmica',
+    { ratio: '16:9' },
+  );
+  assert.equal(calls[2].ratio, '16:9');
+  await assert.rejects(
+    reviseImage(
+      tenant,
+      { ...original, kind: 'logo' },
+      'modernize',
+      { ratio: '16:9' },
+    ),
+    /logo não aceita proporção/i,
+  );
+  assert.equal(calls.length, 3);
   assert.equal(original.seq, 5);
 });
 

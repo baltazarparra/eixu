@@ -16,13 +16,20 @@ export async function reviseImage(
   tenant: Tenant,
   previous: TenantImage,
   request: string,
-  logo: { brandName?: string; wordmark?: boolean } = {},
+  logo: { brandName?: string; wordmark?: boolean; ratio?: Ratio } = {},
 ): Promise<TenantImage> {
-  const ratio = (RATIOS as readonly string[]).includes(previous.ratio)
-    ? (previous.ratio as Ratio)
-    : previous.model === 'upload' || previous.model === CURRENT_SITE_IMAGE_MODEL
-      ? closestGenerationRatio(previous.ratio)
-      : null;
+  // A proporção pedida vence a da original: é assim que uma recomendação de
+  // recorte vira uma nova versão que cabe no bloco, sem trocar a foto.
+  if (logo.ratio && previous.kind === 'logo')
+    throw new Error('Um logo não aceita proporção; omita ratio.');
+  const ratio =
+    logo.ratio ??
+    ((RATIOS as readonly string[]).includes(previous.ratio)
+      ? (previous.ratio as Ratio)
+      : previous.model === 'upload' ||
+          previous.model === CURRENT_SITE_IMAGE_MODEL
+        ? closestGenerationRatio(previous.ratio)
+        : null);
   if (!ratio)
     throw new Error(`A proporção da imagem #${previous.seq} não é suportada.`);
   const [guide, reference] = await Promise.all([

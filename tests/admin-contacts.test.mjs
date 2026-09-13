@@ -124,6 +124,9 @@ await test('Dados conserva o perfil e o avatar de cliente anterior à coluna de 
   assert.equal(f.written.length, 1);
   assert.ok(f.written[0].includes(JSON.stringify(result.intake)));
   assert.match(f.sqls[0], /brief - 'currentSite'.*'audience'.*'imageScenes'/s);
+  // Fatos confirmados pelo operador sobrevivem à troca de direção: apagá-los
+  // transformava um salvamento em Dados em bloqueio de publicação por prova.
+  assert.doesNotMatch(f.sqls[0], /- 'evidence'/);
 });
 
 await test('API exige história, limita referência e protege uma geração ativa', async () => {
