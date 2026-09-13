@@ -41,6 +41,12 @@ Os 12 casos de navegador do admin passaram, incluindo chat, geração e edição
 direta em desktop/celular. O teste de interrupção aguarda a resposta real de
 estado, sem depender do contador de rede ociosa de uma conexão SSE cancelada.
 
+Integração final com `origin/main` `7d41a73`, incluindo o upload de fotos da
+PR #43: tipos, lint global e build Vercel passaram novamente. Sites teve 193
+casos aprovados e admin teve 174 aprovados, com cinco integrações locais
+puladas. Os 13 testes de navegador passaram na mesma execução, com CSS de
+produção, incluindo edições pelo chat, edição direta e upload no acervo.
+
 ## Upload no acervo de imagens, 12/09/2026
 
 O painel de imagens passou a receber várias fotos e registrar cada uma no
