@@ -222,6 +222,7 @@ export const visualBlocks: BlockInstance[] = [
           icon: 'sun',
           title: 'Luz e presença',
           body: 'Cada elemento tem uma função na composição.',
+          href: '/padaria-e-confeitaria',
         },
         {
           icon: 'tools',

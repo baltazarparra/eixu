@@ -166,8 +166,16 @@ await test('reparo real salva o rascunho sem pedir fatos, publicar ou apagar evi
 
 await test('reparo não usa autorização visual para retirar conteúdo', async () => {
   const f = await fixture('Tire a moldura da imagem.', undefined, true);
-  const result = await f.tools.repair_publication.execute({});
-  assert.match(result.error, /exige um pedido atual/);
+  assert.equal(f.tools.repair_publication, undefined);
+  assert.deepEqual(f.writes, []);
+});
+
+await test('pedido visual real nunca expõe repair_publication e recebe o contrato da faixa', async () => {
+  const text =
+    'inserir uma imagem de fundo na parte que cita o telefone e o endereço. Adicionar ícones nessa parte também. corrigir';
+  const f = await fixture(text, undefined, true);
+  assert.equal(f.tools.repair_publication, undefined);
+  assert.ok(f.tools.edit_page);
   assert.deepEqual(f.writes, []);
 });
 

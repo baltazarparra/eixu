@@ -59,7 +59,10 @@ comercial e na Landing. Não há animação infinita decorativa.
 A protagonista é `feature.showcase` ou `feature.bento:showcase` com duas fotos.
 O plano mantém cinco cenas na home: hero, duas da protagonista, apoio em
 `media.image` e fechamento em `cta.band`. Não solicita retratos de clientes
-para preencher depoimentos. A imagem da faixa final fica separada do texto.
+para preencher depoimentos. Nos layouts `band`, `split`, `poster` e `minimal`,
+a imagem da faixa final fica separada do texto. O layout `cover` posiciona a
+foto 16:9 como fundo sob uma camada de contraste; imagem e descrição são
+obrigatórias no schema e no pre-flight.
 
 Os controles têm alvo de 48 px e formulários em coluna única. `nav.bar.stickyCta`
 com `position: fixed` habilita o botão inferior de 56 px em telas abaixo de
@@ -881,11 +884,26 @@ em cada página. O navegador busca apenas as famílias e estilos efetivamente us
 `lib/blocks/icon.tsx` usa [Phosphor](https://github.com/phosphor-icons/react)
 com imports individuais compatíveis com SSR e 26 símbolos semânticos. O campo
 opcional `icon` nos itens de serviços, bento, narrativa, explorer e recursos é
-validado por enum. Sem esse campo, o item usa apenas texto, sem símbolo padrão
-nem espaço reservado. Em bento e recursos, a foto tem prioridade sobre o ícone.
-Ícones não substituem fotos nem sustentam alegações comerciais.
+validado por enum. Em `cta.band.items`, o símbolo é obrigatório porque identifica
+o telefone, WhatsApp, endereço ou outro contato ao qual o rótulo pertence; o
+link continua opcional. Sem `items`, a faixa não cria símbolos nem espaços
+reservados. Em bento e recursos, a foto tem prioridade sobre o ícone. Ícones
+não substituem fotos nem sustentam alegações comerciais.
 O renderer fornece a vibe resolvida no servidor; blocos não escolhem um peso
 arbitrário nem fornecem SVG ou URLs de ícones.
+
+Em `feature.bento`, `items.href` é opcional. Quando existe, foto, título e texto
+do item formam um único link, com seta funcional, foco visível e destino
+resolvido pela prévia. Itens sem destino preservam o HTML e a apresentação
+anteriores. O agente liga um card a uma página existente sem trocar a seção nem
+inventar um botão separado.
+
+O layout `featured-masonry` de `feature.bento` usa o primeiro item como faixa
+protagonista na largura integral do container. Os demais cards seguem logo
+abaixo em colunas CSS balanceadas, com `break-inside` e retorno a uma coluna em
+telas estreitas. O arranjo continua responsivo e não cria HTML ou CSS livre por
+tenant. Na gramática comercial, ele também satisfaz o papel de seção
+protagonista quando reúne as fotos exigidas pelo pre-flight.
 
 Títulos de seção, rótulos, estatísticas, fatos, números de etapas e legendas
 não recebem ícones automáticos. Os símbolos escolhidos para itens de serviços,

@@ -112,7 +112,7 @@ export function scenePlan(
         targetBlock: 'cta.band',
         ratio: '16:9',
         page: '',
-        hint: 'Foto de apoio ao fechamento, com texto sobre painel sólido separado.',
+        hint: 'Foto panorâmica de apoio ao fechamento; no layout cover, preserve uma área limpa para o texto sob a camada de contraste.',
       },
     );
     return scenes.map((scene) => ({ ...scene, page: '' }));

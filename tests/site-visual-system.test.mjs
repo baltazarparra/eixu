@@ -329,6 +329,116 @@ await test('ícone passa pelo schema e pelo renderer em cada variante, sem aceit
   }
 });
 
+await test('cta cover integra fundo, contatos com ícones e pre-flight sem alterar layouts legados', () => {
+  const props = blockSchemas['cta.band'].parse({
+    layout: 'cover',
+    image: 'https://assets.test/cta-cover.svg',
+    imageAlt: 'Equipe reunida diante de um painel de indicadores',
+    title: 'Converse com a equipe',
+    body: 'Escolha o canal mais conveniente ou venha conhecer nosso espaço.',
+    items: [
+      {
+        icon: 'chat',
+        label: 'WhatsApp (85) 99999-0000',
+        href: '/go/wa?from=/',
+      },
+      {
+        icon: 'pin',
+        label: 'Avenida da Operação, 120 — Fortaleza',
+        href: '#onde-estamos',
+      },
+    ],
+    cta: { label: 'Iniciar conversa', href: '#contato' },
+  });
+  const block = { id: 'cta-cover', type: 'cta.band', props };
+  const html = renderToStaticMarkup(
+    createElement(VisualSystemFixture, { blocks: [block] }),
+  );
+  assert.match(html, /site-cta-cover/);
+  assert.match(html, /class="site-cta-image"/);
+  assert.match(html, /aria-label="Contatos e localização"/);
+  assert.match(html, /data-icon="chat"/);
+  assert.match(html, /data-icon="pin"/);
+  assert.match(html, /WhatsApp \(85\) 99999-0000/);
+  assert.match(html, /Avenida da Operação, 120/);
+  assert.equal(
+    lintPage({ blocks: [block], type: 'page', title: 'Início', seo: {} }).some(
+      (finding) => finding.rule === 'props-invalidas',
+    ),
+    false,
+  );
+
+  const withoutBackground = blockSchemas['cta.band'].safeParse({
+    ...props,
+    image: undefined,
+  });
+  assert.equal(withoutBackground.success, false);
+  assert.match(withoutBackground.error.message, /imagem de fundo/);
+  assert.equal(
+    blockSchemas['cta.band'].safeParse({
+      ...props,
+      layout: 'band',
+      items: [{ icon: '<svg onload=alert(1)>', label: 'Contato' }],
+    }).success,
+    false,
+  );
+  for (const layout of ['band', 'poster', 'split', 'minimal'])
+    assert.equal(
+      blockSchemas['cta.band'].safeParse({
+        title: 'Converse com a equipe',
+        cta: { label: 'Iniciar conversa', href: '#contato' },
+        layout,
+      }).success,
+      true,
+    );
+});
+
+await test('feature bento transforma somente o item com href em navegação de card', () => {
+  const source = visualBlocks.find((block) => block.type === 'feature.bento');
+  const props = blockSchemas['feature.bento'].parse(source.props);
+  const html = renderToStaticMarkup(
+    createElement(VisualSystemFixture, {
+      blocks: [{ ...source, props }],
+    }),
+  );
+  assert.match(html, /class="site-bento-link"/);
+  assert.match(html, /href="\/padaria-e-confeitaria"/);
+  assert.match(html, /data-icon="arrow-up-right"/);
+  assert.ok(html.indexOf('Luz e presença') < html.indexOf('</a>'));
+  assert.equal((html.match(/class="site-bento-link"/g) ?? []).length, 1);
+  assert.equal(
+    blockSchemas['feature.bento'].safeParse({
+      ...source.props,
+      items: source.props.items.map((item, index) =>
+        index ? item : { ...item, href: '' },
+      ),
+    }).success,
+    false,
+  );
+});
+
+await test('feature bento aceita protagonista integral com masonry sem props livres', () => {
+  const source = visualBlocks.find((block) => block.type === 'feature.bento');
+  const parsed = blockSchemas['feature.bento'].safeParse({
+    ...source.props,
+    layout: 'featured-masonry',
+  });
+  assert.equal(parsed.success, true);
+  const html = renderToStaticMarkup(
+    createElement(VisualSystemFixture, {
+      blocks: [{ ...source, props: parsed.data }],
+    }),
+  );
+  assert.match(html, /site-bento-featured-masonry/);
+  assert.equal(
+    blockSchemas['feature.bento'].safeParse({
+      ...source.props,
+      layout: 'free-masonry',
+    }).success,
+    false,
+  );
+});
+
 await test('omitir icon mantém conteúdo e ações sem acrescentar símbolos ou molduras vazias', () => {
   const blocks = visualBlocks.map((block) => ({
     ...block,
@@ -410,7 +520,8 @@ await test('pre-flight avisa sobre repetição no conteúdo, preservando control
   const html = renderToStaticMarkup(
     createElement(VisualSystemFixture, { blocks: [withPhoto] }),
   );
-  assert.doesNotMatch(html, /data-icon=/);
+  assert.doesNotMatch(html, /data-icon="(?:leaf|tools)"/);
+  assert.match(html, /data-icon="arrow-up-right"/);
   const controls = visualBlocks.filter((block) =>
     ['faq.accordion', 'pricing.table', 'form.lead'].includes(block.type),
   );

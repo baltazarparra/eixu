@@ -597,7 +597,12 @@ export const blockSchemas = {
     anchor,
     presentation,
     textStyles: textStylesSchema.optional(),
-    layout: z.enum(['mosaic', 'gallery', 'stack', 'showcase']).optional(),
+    layout: z
+      .enum(['mosaic', 'gallery', 'stack', 'showcase', 'featured-masonry'])
+      .optional()
+      .describe(
+        'featured-masonry coloca o primeiro item na largura inteira do container e distribui os demais em colunas masonry responsivas.',
+      ),
     eyebrow: z.string().max(48).optional(),
     title: z.string().min(4).max(90),
     items: z
@@ -606,6 +611,13 @@ export const blockSchemas = {
           icon,
           title: z.string().max(60),
           body: z.string().max(220),
+          href: z
+            .string()
+            .min(1)
+            .optional()
+            .describe(
+              'Destino opcional do card, como /padaria-e-confeitaria. Quando existe, foto, título e texto formam um único link acessível.',
+            ),
           image: z.url().startsWith('http').optional(),
           imageAlt: z.string().max(140).optional(),
         }),
@@ -781,18 +793,69 @@ export const blockSchemas = {
       .max(10),
   }),
 
-  'cta.band': z.object({
-    image: z.url().startsWith('http').optional(),
-    imageAlt: z.string().min(5).max(140).optional(),
-    anchor,
-    presentation,
-    textStyles: textStylesSchema.optional(),
-    layout: z.enum(['band', 'poster', 'split', 'minimal']).optional(),
-    title: z.string().min(4).max(90),
-    body: z.string().max(200).optional(),
-    cta: link,
-    whatsapp: z.boolean().default(false),
-  }),
+  'cta.band': z
+    .object({
+      image: z
+        .url()
+        .startsWith('http')
+        .optional()
+        .describe(
+          'Foto 16:9 da faixa. Em cover, ocupa o fundo inteiro sob uma camada de contraste; nos demais layouts, continua separada do texto.',
+        ),
+      imageAlt: z.string().min(5).max(140).optional(),
+      anchor,
+      presentation,
+      textStyles: textStylesSchema.optional(),
+      layout: z
+        .enum(['band', 'poster', 'split', 'minimal', 'cover'])
+        .optional()
+        .describe(
+          'cover aplica image como fundo da faixa; os demais layouts preservam a foto separada do texto.',
+        ),
+      title: z.string().min(4).max(90),
+      body: z.string().max(200).optional(),
+      items: z
+        .array(
+          z.object({
+            icon: z
+              .enum(ICON_NAMES)
+              .describe(
+                'Símbolo semântico para identificar o contato ou endereço; não aceita SVG arbitrário.',
+              ),
+            label: z.string().min(2).max(100),
+            href: z
+              .string()
+              .min(1)
+              .optional()
+              .describe(
+                'Destino opcional, como /go/wa?from=/, tel:+5511999999999 ou uma âncora de localização.',
+              ),
+          }),
+        )
+        .min(1)
+        .max(4)
+        .optional()
+        .describe(
+          'Até quatro contatos ou referências curtas, cada um com ícone significativo e link opcional.',
+        ),
+      cta: link,
+      whatsapp: z.boolean().default(false),
+    })
+    .superRefine((value, ctx) => {
+      if (value.layout !== 'cover') return;
+      if (!value.image)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['image'],
+          message: 'O layout cover exige uma imagem de fundo.',
+        });
+      if (!value.imageAlt)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['imageAlt'],
+          message: 'Descreva a imagem de fundo do layout cover.',
+        });
+    }),
 
   'form.lead': leadFormSchema,
 
@@ -973,7 +1036,7 @@ export const blockMeta: Record<BlockType, Meta> = {
   'feature.bento': {
     family: 'feature',
     label: 'Grade de recursos',
-    use: 'Serviços ou diferenciais em grade irregular.',
+    use: 'Serviços ou diferenciais em grade irregular. featured-masonry destaca o primeiro item em largura total e organiza os demais em masonry responsiva. Cada item aceita href para que o card inteiro navegue a uma página ou âncora, sem trocar de bloco.',
   },
   'feature.numbered': {
     family: 'feature',
@@ -1003,7 +1066,7 @@ export const blockMeta: Record<BlockType, Meta> = {
   'cta.band': {
     family: 'cta',
     label: 'Faixa de chamada',
-    use: 'Convite direto para ação, com WhatsApp quando houver.',
+    use: 'Convite direto para ação. cover usa a foto 16:9 como fundo com contraste; band, split, poster e minimal mantêm a foto separada. items associa até quatro contatos ou endereços a ícones semânticos e links opcionais. O atalho principal usa WhatsApp quando houver.',
   },
   'form.lead': {
     family: 'form',

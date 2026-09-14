@@ -187,7 +187,7 @@ await test(
                 ).length,
                 itemIcons: [
                   ...document.querySelectorAll(
-                    '.site-item-heading > .site-icon',
+                    '.site-item-heading > .site-icon:not(.site-bento-link-icon)',
                   ),
                 ].map((icon) => {
                   const heading = icon.parentElement;

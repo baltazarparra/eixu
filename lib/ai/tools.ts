@@ -1794,7 +1794,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
     edit_page: tool({
       description:
-        'Aplica em uma única gravação todas as edições pedidas na página: replace_text literal, set/unset por caminho (inclusive items.0.title), insert/move antes ou depois de um ID e remove. Prefira para sites existentes. Exige a revisão do contexto atual/get_page; ambiguidade, conflito ou erro recusa o lote inteiro. Preserva os demais campos e o publicado. Cor local: presentation.background em hex ou transparent; use backgroundEnd com gradient down, diagonal ou right para degradê, e decoration none para retirar a decoração da vibe. foreground só com fundo hex e precisa passar em todas as extremidades. hero.landing permite imagePresentation; signature.composition permite items.N.imagePresentation. frame none retira o box decorativo e a moldura herdada; fit natural elimina a proporção fixa; width container e spacingTop none ajustam largura e espaço superior. Preserve layout, conteúdo e itens. Para tamanho e cor de texto, use textStyles por caminho, size de -2 a 2 e color hex com contraste mínimo de 4,5:1. Recusa operações que apaguem texto que o pedido atual não mandou remover. Uma edição visual salva é medida em 1440 e 390 px sem chamada de modelo; o retorno declara falha ou indisponibilidade. O retorno já inclui o pre-flight: não revise ou leia novamente sem necessidade.',
+        'Aplica em uma única gravação todas as edições pedidas na página: replace_text literal, set/unset por caminho (inclusive items.0.title), remove_item por caminho e índice, insert/move antes ou depois de um ID e remove de bloco. Prefira para sites existentes. Exige a revisão do contexto atual/get_page; ambiguidade, conflito ou erro recusa o lote inteiro. Preserva os demais campos e o publicado. Cor local: presentation.background em hex ou transparent; use backgroundEnd com gradient down, diagonal ou right para degradê, e decoration none para retirar a decoração da vibe. foreground só com fundo hex e precisa passar em todas as extremidades. hero.landing permite imagePresentation; signature.composition permite items.N.imagePresentation. cta.band permite layout cover com image/imageAlt para fundo e items com icon, label e href opcional. feature.bento permite items.N.href para transformar o card existente em navegação e layout featured-masonry para primeiro item em largura total com os demais em masonry. frame none retira o box decorativo e a moldura herdada; fit natural elimina a proporção fixa; width container e spacingTop none ajustam largura e espaço superior. Preserve layout, conteúdo e itens fora do pedido. Para tamanho e cor de texto, use textStyles por caminho, size de -2 a 2 e color hex com contraste mínimo de 4,5:1. Recusa operações que apaguem texto que o pedido atual não mandou remover. Uma edição visual salva é medida em 1440 e 390 px sem chamada de modelo; o retorno declara falha ou indisponibilidade. O retorno já inclui o pre-flight: não revise ou leia novamente sem necessidade.',
       inputSchema: pageEditSchema,
       execute: safe(async (input) => {
         const page = await requirePage(tenant.id, input.page);
@@ -2554,5 +2554,9 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
       ),
     }),
   };
-  return editTools(tools, context.editPolicy);
+  return editTools(
+    tools,
+    context.editPolicy,
+    isPublicationRepairRequest(context.lastUserText ?? ''),
+  );
 }

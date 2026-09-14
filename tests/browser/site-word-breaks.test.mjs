@@ -135,6 +135,16 @@ await test(
           const accentCta = document.querySelector(
             '[data-block="cta.band"][data-tone="accent"]',
           );
+          const cover = document.querySelector('.site-cta-cover');
+          const coverImage = cover.querySelector('.site-cta-image');
+          const coverItems = [...cover.querySelectorAll('.site-cta-item')];
+          const coverOverlay = getComputedStyle(cover, '::after');
+          const masonry = document.querySelector(
+            '.site-bento-featured-masonry',
+          );
+          const masonryCards = [
+            ...masonry.querySelectorAll('.site-bento-item'),
+          ].map((item) => item.getBoundingClientRect());
           return {
             innerWidth,
             scrollWidth: document.documentElement.scrollWidth,
@@ -147,6 +157,22 @@ await test(
               document.querySelector('.site-footer'),
             ).backgroundImage,
             ctaBackground: getComputedStyle(accentCta).backgroundImage,
+            coverImagePosition: getComputedStyle(coverImage).position,
+            coverImageWidth: coverImage.getBoundingClientRect().width,
+            coverWidth: cover.getBoundingClientRect().width,
+            coverOverlayImage: coverOverlay.backgroundImage,
+            coverOverlayColor: coverOverlay.backgroundColor,
+            coverIcons: cover.querySelectorAll('.site-cta-items [data-icon]')
+              .length,
+            coverItemHeights: coverItems.map(
+              (item) => item.getBoundingClientRect().height,
+            ),
+            masonryWidth: masonry.getBoundingClientRect().width,
+            masonryCards: masonryCards.map((card) => ({
+              left: card.left,
+              top: card.top,
+              width: card.width,
+            })),
             serviceLensRight: document
               .querySelector('.site-signature-service-lens')
               .getBoundingClientRect().right,
@@ -170,6 +196,31 @@ await test(
         // O brilho é fundo de texto corrido: o piso é AAA, não AA.
         assert.ok(contrastRatio(measured.ink, measured.glow) >= 7);
         assert.ok(contrastRatio(measured.ink, measured.glow2) >= 7);
+        assert.equal(measured.coverImagePosition, 'absolute');
+        assert.ok(measured.coverImageWidth >= measured.coverWidth - 1);
+        assert.ok(
+          measured.coverOverlayImage !== 'none' ||
+            !['rgba(0, 0, 0, 0)', 'transparent'].includes(
+              measured.coverOverlayColor,
+            ),
+        );
+        assert.equal(measured.coverIcons, 2);
+        assert.ok(measured.coverItemHeights.every((height) => height >= 44));
+        assert.ok(
+          measured.masonryCards[0].width >= measured.masonryWidth - 1,
+          `${width}px: o protagonista não ocupa o container`,
+        );
+        if (width >= 768) {
+          const columns = new Set(
+            measured.masonryCards.slice(1).map((card) => Math.round(card.left)),
+          );
+          assert.ok(columns.size >= 2, `${width}px: masonry sem colunas`);
+          assert.ok(
+            measured.masonryCards
+              .slice(1)
+              .every((card) => card.top >= measured.masonryCards[0].top),
+          );
+        }
         assert.ok(measured.serviceLensRight <= width + 1);
         const inspection = await inspectText(page, {
           page: '/',

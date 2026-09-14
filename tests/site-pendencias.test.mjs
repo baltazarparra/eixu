@@ -223,7 +223,7 @@ await test('as seções entram na edição e ficam fora das fases da geração',
   assert.match(edicao, /## Evidência confirmada\nEVIDENCIA-SINTETICA/);
   assert.match(
     edicao,
-    /Pedido de resolver pendências: execute repair_publication/,
+    /Pedido explícito de resolver pendências: execute repair_publication/,
   );
   const composicao = systemPrompt(tenant, '', '/', '', { phase: 'composicao' });
   assert.ok(!composicao.includes('PENDENCIA-SINTETICA'));
