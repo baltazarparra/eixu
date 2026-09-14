@@ -10,7 +10,7 @@ import react from '@vitejs/plugin-react';
 import puppeteer from 'puppeteer-core';
 
 await test(
-  'palavras inteiras e lavagem comercial sobrevivem a cinco larguras reais',
+  'palavras inteiras e brilho comercial sobrevivem a cinco larguras reais',
   { skip: !process.env.EIXU_CHROME_PATH },
   async () => {
     const root = process.cwd();
@@ -139,10 +139,13 @@ await test(
             innerWidth,
             scrollWidth: document.documentElement.scrollWidth,
             motif: root.dataset.motif,
-            wash: style.getPropertyValue('--wash').trim(),
-            wash2: style.getPropertyValue('--wash-2').trim(),
+            glow: style.getPropertyValue('--glow').trim(),
+            glow2: style.getPropertyValue('--glow-2').trim(),
             ink: style.getPropertyValue('--brand-ink').trim(),
             heroBackground: getComputedStyle(hero).backgroundImage,
+            footerBackground: getComputedStyle(
+              document.querySelector('.site-footer'),
+            ).backgroundImage,
             ctaBackground: getComputedStyle(accentCta).backgroundImage,
             serviceLensRight: document
               .querySelector('.site-signature-service-lens')
@@ -154,11 +157,19 @@ await test(
           `${width}px: overflow ${measured.scrollWidth}`,
         );
         assert.equal(measured.motif, 'wash');
-        assert.match(measured.heroBackground, /linear-gradient/);
-        assert.doesNotMatch(measured.heroBackground, /1px|repeating/);
-        assert.match(measured.ctaBackground, /linear-gradient/);
-        assert.ok(contrastRatio(measured.ink, measured.wash) >= 4.5);
-        assert.ok(contrastRatio(measured.ink, measured.wash2) >= 4.5);
+        // O hero desta fixture é `cover`: a foto ocupa a caixa inteira
+        // (position absolute, inset 0), e um brilho medido contra o papel da
+        // marca nunca apareceu sob ela. A vibe não pinta fundo aqui.
+        assert.equal(measured.heroBackground, 'none');
+        // Luz sobre papel: brilho radial, nunca uma reta entre duas cores.
+        assert.match(measured.footerBackground, /radial-gradient/);
+        assert.doesNotMatch(measured.footerBackground, /1px|repeating/);
+        assert.doesNotMatch(measured.footerBackground, /linear-gradient/);
+        assert.match(measured.ctaBackground, /radial-gradient/);
+        assert.doesNotMatch(measured.ctaBackground, /linear-gradient/);
+        // O brilho é fundo de texto corrido: o piso é AAA, não AA.
+        assert.ok(contrastRatio(measured.ink, measured.glow) >= 7);
+        assert.ok(contrastRatio(measured.ink, measured.glow2) >= 7);
         assert.ok(measured.serviceLensRight <= width + 1);
         const inspection = await inspectText(page, {
           page: '/',

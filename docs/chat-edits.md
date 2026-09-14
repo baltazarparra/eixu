@@ -85,6 +85,12 @@ isso. Os selos do hero ganharam `bulletsPlacement` em `hero.split` e
 teclado e o leitor de tela encontrarem os selos onde eles aparecem; no layout
 `editorial` os selos pedidos sob o título acompanham a coluna dele.
 
+Degradê é um desses pedidos. `presentation.background` grava uma cor chapada e
+remove lavagem, brilho e motivo da vibe naquela seção; não existe campo para um
+degradê local. O agente explica isso e oferece o que o bloco permite — a cor
+chapada, ou o tom da marca, que devolve a seção ao brilho da vibe. Ver
+[Design](design.md), "Degradê com técnica".
+
 Sem um campo assim, o agente não grava: explica o limite e oferece a
 alternativa real. `contentLossError` garante isso em código, não só no prompt.
 Quando o pedido atual não menciona remoção, uma operação que apague texto é

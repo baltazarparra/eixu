@@ -5,6 +5,7 @@ import {
 import {
   accessibleAccent,
   contrastRatio,
+  glowOf,
   isDarkSurface,
   mixHex,
   mixOklabHex,
@@ -56,16 +57,27 @@ export function themeVars(brand: Brand): Record<string, string> {
       : paper
     : brand.surface || mixHex(ink, paper, 0.04);
   const servicesSurface = mixHex(paper, ink, 0.03);
-  const washCandidate = mixHex(paper, accent, 0.07);
-  const wash = contrastRatio(ink, washCandidate) >= 4.5 ? washCandidate : paper;
-  const wash2Candidate = mixHex(paper, accentAlt, 0.09);
-  const wash2 =
-    contrastRatio(ink, wash2Candidate) >= 4.5 ? wash2Candidate : paper;
-  const accentDeepCandidate = mixHex(accent, ink, 0.12);
-  const accentDeep =
+  // Parada mais forte dos brilhos de fundo. A lavagem anterior era um ponto
+  // opaco ligado ao papel por uma reta: o olho lia a direção do degradê, não
+  // uma luz. Aqui a cor só existe como brilho que some no papel, e o token
+  // guarda o extremo, que é onde o texto precisa ser medido.
+  const glow = glowOf(paper, accent, ink);
+  const glow2 =
+    highlight !== accent
+      ? glowOf(paper, highlight, ink)
+      : accentAlt !== accent
+        ? glowOf(paper, accentAlt, ink)
+        : paper;
+  // Superfície chapada das seções internas: o mesmo brilho a 40% do papel,
+  // resolvido aqui para o apoio poder ser medido contra ele.
+  const glow2Flat = mixOklabHex(paper, glow2, 0.4);
+  // Clarear preserva croma e matiz; misturar com a tinta, como fazia
+  // --accent-deep, escurecia o amarelo até mostarda.
+  const accentGlowCandidate = mixOklabHex(accent, '#ffffff', 0.35);
+  const accentGlow =
     contrastRatio(accentInk, accent) >= 4.5 &&
-    contrastRatio(accentInk, accentDeepCandidate) >= 4.5
-      ? accentDeepCandidate
+    contrastRatio(accentInk, accentGlowCandidate) >= 4.5
+      ? accentGlowCandidate
       : accent;
   const legacyFont =
     brand.font === 'serif'
@@ -87,7 +99,7 @@ export function themeVars(brand: Brand): Record<string, string> {
     '--ink': ink,
     '--paper': paper,
     '--accent': accent,
-    '--accent-deep': accentDeep,
+    '--accent-glow': accentGlow,
     '--accent-ink': accentInk,
     '--accent-2': accentAlt,
     '--accent-2-ink': accentAltInk,
@@ -103,12 +115,16 @@ export function themeVars(brand: Brand): Record<string, string> {
     '--highlight-text-accent': readableHighlight(highlight, accent),
     '--highlight-text-accent-2': readableHighlight(highlight, accentAlt),
     '--surface': surface,
-    '--wash': wash,
-    '--wash-2': wash2,
+    '--glow': glow,
+    '--glow-2': glow2,
+    '--glow-2-flat': glow2Flat,
     '--services-surface': servicesSurface,
     '--muted': readableMuted(ink, paper),
-    '--muted-wash': readableMuted(ink, wash),
-    '--muted-wash-2': readableMuted(ink, wash2),
+    // O apoio é medido contra a parada mais saturada do brilho, não contra a
+    // média: é onde ele pode ficar ilegível.
+    '--muted-glow': readableMuted(ink, glow),
+    '--muted-glow-2': readableMuted(ink, glow2),
+    '--muted-glow-2-flat': readableMuted(ink, glow2Flat),
     // Cada tom de seção troca ink e paper, então o texto de apoio precisa do
     // seu próprio valor medido. A mistura fixa do CSS dava 3,56 contra a cor
     // de marca, e o miolo das seções coloridas ficava ilegível.

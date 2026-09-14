@@ -73,7 +73,7 @@ const presentation = z
       .union([z.string().regex(/^#[0-9a-fA-F]{6}$/), z.literal('transparent')])
       .optional()
       .describe(
-        'Cor hex exclusiva desta seção, ou transparent para remover seu fundo. Prevalece sobre tone sem mudar a marca; texto com contraste automático.',
+        'Cor chapada exclusiva desta seção, ou transparent para remover seu fundo. Remove lavagem, brilho e motivo da vibe; prevalece sobre tone sem mudar a marca; texto com contraste automático.',
       ),
     foreground: z
       .string()

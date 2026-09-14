@@ -17,9 +17,14 @@ const { designProfileInputSchema, completeDesignProfile } = await jiti.import(
 );
 const { laneIssues, VIBE_LANE } = await jiti.import('../lib/design/vibes.ts');
 const { themeVars } = await jiti.import('../lib/blocks/theme.ts');
-const { contrastRatio, mixHex } = await jiti.import(
-  '../lib/blocks/contrast.ts',
-);
+const {
+  contrastRatio,
+  mixOklabHex,
+  oklchLightness,
+  GLOW_LIGHT_FLOOR,
+  GLOW_DARK_CEILING,
+  GLOW_CONTRAST,
+} = await jiti.import('../lib/blocks/contrast.ts');
 const { blockSchemas } = await jiti.import('../lib/blocks/registry.ts');
 const { lintPage } = await jiti.import('../lib/taste/lint.ts');
 const { VisualSystemFixture, visualBlocks, visualTenant } = await jiti.import(
@@ -58,31 +63,97 @@ await test('todas as famílias atravessam schema, persistência e tokens, inclui
   );
 });
 
-await test('lavagens e gradiente comercial saem resolvidos e mantêm contraste AA', () => {
-  const brand = {
-    ink: '#171717',
+await test('brilhos de fundo saem resolvidos, claros e medidos contra a tinta', () => {
+  // Os valores vêm da tabela do estudo em
+  // docs/archive/gradient-technique-plan-2026-09-13.md, medida sobre papel
+  // branco e tinta #1f2937 com paletas de clientes reais.
+  const ink = '#1f2937';
+  for (const [accent, expected] of [
+    ['#ffdd00', '#ffec93'],
+    ['#b80505', '#f5cac3'],
+    ['#1f6feb', '#bdd6fd'],
+    ['#fffbeb', '#fffdf3'],
+    // #c45c26 reprova no AA e accessibleAccent o escurece antes: o brilho sai
+    // do acento efetivamente usado, não do hex cru do cadastro.
+    ['#c45c26', '#efcdbe'],
+  ]) {
+    const vars = themeVars({ ink, paper: '#ffffff', accent });
+    assert.equal(vars['--glow'], expected, accent);
+    assert.match(vars['--glow'], /^#[0-9a-f]{6}$/);
+    assert.ok(oklchLightness(vars['--glow']) >= GLOW_LIGHT_FLOOR, accent);
+    assert.ok(contrastRatio(ink, vars['--glow']) >= GLOW_CONTRAST, accent);
+    // O apoio é medido contra a parada mais forte, que é onde ele some.
+    assert.ok(contrastRatio(vars['--muted-glow'], vars['--glow']) >= 4.5);
+  }
+
+  // Paleta do Skinão: o destaque vira o segundo brilho e a superfície chapada.
+  const skinao = themeVars({
+    ink,
     paper: '#ffffff',
+    accent: '#ffdd00',
+    highlight: '#b80505',
+    accentAlt: '#fffbeb',
+  });
+  assert.equal(skinao['--glow-2'], '#f5cac3');
+  assert.equal(
+    skinao['--glow-2-flat'],
+    mixOklabHex('#ffffff', skinao['--glow-2'], 0.4),
+  );
+  assert.ok(
+    contrastRatio(skinao['--muted-glow-2'], skinao['--glow-2']) >= 4.5,
+  );
+  assert.ok(
+    contrastRatio(skinao['--muted-glow-2-flat'], skinao['--glow-2-flat']) >=
+      4.5,
+  );
+  // Clarear preserva croma; --accent-deep misturava com a tinta e sujava a cor.
+  assert.equal(skinao['--accent-glow'], '#ffea88');
+  assert.ok(
+    contrastRatio(skinao['--accent-ink'], skinao['--accent-glow']) >= 4.5,
+  );
+  assert.equal(skinao['--accent-deep'], undefined);
+  assert.equal(skinao['--wash'], undefined);
+  assert.equal(skinao['--wash-2'], undefined);
+  assert.equal(skinao['--muted-wash'], undefined);
+
+  // Papel escuro tem teto de claridade, não piso: o brilho não pode clarear
+  // até virar uma faixa branca no meio da vibe moderna.
+  const darkPaper = themeVars({
+    ink: '#fafafa',
+    paper: '#101112',
     accent: '#1f6feb',
     accentAlt: '#b45309',
-  };
-  const vars = themeVars(brand);
-  assert.equal(vars['--wash'], mixHex(brand.paper, brand.accent, 0.07));
-  assert.equal(vars['--wash-2'], mixHex(brand.paper, brand.accentAlt, 0.09));
-  assert.ok(contrastRatio(brand.ink, vars['--wash']) >= 4.5);
-  assert.ok(contrastRatio(brand.ink, vars['--wash-2']) >= 4.5);
-  assert.ok(contrastRatio(vars['--accent-ink'], vars['--accent']) >= 4.5);
-  assert.ok(contrastRatio(vars['--accent-ink'], vars['--accent-deep']) >= 4.5);
-  assert.ok(contrastRatio(vars['--muted-wash'], vars['--wash']) >= 4.5);
-  assert.ok(contrastRatio(vars['--muted-wash-2'], vars['--wash-2']) >= 4.5);
+  });
+  assert.ok(oklchLightness(darkPaper['--glow']) <= GLOW_DARK_CEILING);
+  assert.ok(contrastRatio('#fafafa', darkPaper['--glow']) >= GLOW_CONTRAST);
 
-  const fallback = themeVars({
+  // Sem mistura legível o brilho devolve o papel e o fundo fica plano, como
+  // já acontecia com a lavagem.
+  const flat = themeVars({
     ink: '#808080',
     paper: '#ffffff',
     accent: '#f2f2f2',
     accentAlt: '#eeeeee',
   });
-  assert.equal(fallback['--wash'], '#ffffff');
-  assert.equal(fallback['--wash-2'], '#ffffff');
+  assert.equal(flat['--glow'], '#ffffff');
+  assert.equal(flat['--glow-2'], '#ffffff');
+
+  // Nenhum token de fundo escurece em direção à tinta: o brilho da faixa de
+  // conversão só clareia, e os brilhos de papel claro ficam acima do piso.
+  for (const accent of ['#ffdd00', '#b80505', '#1f6feb', '#c45c26']) {
+    const vars = themeVars({ ink, paper: '#ffffff', accent });
+    assert.ok(
+      oklchLightness(vars['--accent-glow']) >=
+        oklchLightness(vars['--accent']),
+      `--accent-glow escureceu com ${accent}`,
+    );
+  }
+  for (const vars of [skinao, flat])
+    for (const token of ['--glow', '--glow-2', '--glow-2-flat'])
+      assert.ok(
+        oklchLightness(vars[token]) >= GLOW_LIGHT_FLOOR,
+        `${token} abaixo do piso de claridade`,
+      );
 });
 
 await test('novos pares pertencem às vibes sem liberar serifas no moderno ou display no corpo', () => {

@@ -122,6 +122,49 @@ export function mixOklabHex(
   );
 }
 
+/**
+ * Claridade OKLCH (o L de OKLab, a mesma escala) de um hex. Serve para medir o
+ * piso de claridade de um brilho: contraste sozinho não distingue um creme de
+ * um bordô, e os dois passam com a mesma tinta.
+ */
+export function oklchLightness(hex: string): number {
+  const [r, g, b] = toRgb(hex).map(channel);
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+}
+
+/** Piso de claridade do brilho sobre papel claro e teto sobre papel escuro. */
+export const GLOW_LIGHT_FLOOR = 0.86;
+export const GLOW_DARK_CEILING = 0.3;
+/** O brilho é fundo de texto corrido: AA não basta, o piso é AAA. */
+export const GLOW_CONTRAST = 7;
+
+/**
+ * Parada mais forte de um brilho de fundo: a maior presença da cor de marca
+ * sobre o papel que ainda sustenta texto.
+ *
+ * Degradê de fundo é luz sobre papel, não transição entre duas cores. A cor
+ * entra misturada ao papel da própria seção — nunca em direção à tinta, que
+ * tira croma e suja a cor — e o CSS a dissolve em `transparent` antes de
+ * chegar ao texto. Sem mistura legível, devolve o papel e o fundo fica plano,
+ * como já acontecia com a lavagem.
+ */
+export function glowOf(paper: string, color: string, ink: string): string {
+  const dark = isDarkSurface(paper);
+  for (let amount = 0.6; amount >= 0.0999; amount -= 0.05) {
+    const candidate = mixOklabHex(paper, color, amount);
+    const lightness = oklchLightness(candidate);
+    const withinRange = dark
+      ? lightness <= GLOW_DARK_CEILING
+      : lightness >= GLOW_LIGHT_FLOOR;
+    if (withinRange && contrastRatio(candidate, ink) >= GLOW_CONTRAST)
+      return candidate;
+  }
+  return paper;
+}
+
 /** Preserva o destaque quando legível e o aproxima de preto/branco até AA. */
 export function readableHighlight(
   highlight: string,

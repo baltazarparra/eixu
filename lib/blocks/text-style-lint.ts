@@ -69,13 +69,13 @@ export function fieldBackgrounds(
     p.layout === 'numbers' &&
     !presentation?.background
   )
-    return [tokens['--wash']];
+    return [tokens['--glow-2-flat']];
   if (block.type === 'feature.explorer' && field.startsWith('items.'))
     return [
       field.endsWith('.caption')
         ? tokens['--brand-paper']
         : commercial && version >= 3
-          ? tokens['--wash-2']
+          ? tokens['--glow-2-flat']
           : tokens['--surface'],
     ];
   if (block.type === 'editorial.resources' && field.startsWith('items.'))
@@ -123,7 +123,7 @@ export function fieldBackgrounds(
     p.layout === 'ledger' &&
     field.startsWith('facts.')
   )
-    return [tokens['--wash-2']];
+    return [tokens['--glow-2-flat']];
   if (
     block.type === 'proof.stats' &&
     p.layout === 'cards' &&
