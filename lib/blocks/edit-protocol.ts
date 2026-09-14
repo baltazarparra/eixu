@@ -11,6 +11,22 @@ export type EditChanges = {
     textStyles?: TextStyle[];
   }[];
 };
+/**
+ * Alvo apontado pelo operador na prévia.
+ *
+ * O anexo dizia "esse aqui" e o modelo adivinhava qual bloco ou card era. O
+ * texto visível do elemento é o que liga o pixel ao conteúdo salvo: o servidor
+ * confere esse texto nas props antes de aceitar o índice do item.
+ */
+export type PointedAnchor = {
+  blockId: string;
+  blockType?: string;
+  /** Texto visível do elemento apontado, para o servidor localizar o item. */
+  text: string;
+  /** Título curto do elemento, exibido ao operador no compositor. */
+  label: string;
+};
+
 export type EditorMessage =
   | {
       type: typeof EDIT_PROTOCOL;
@@ -26,7 +42,15 @@ export type EditorMessage =
       invalid: FieldError[];
     }
   | ({ type: typeof EDIT_PROTOCOL; action: 'changes' } & EditChanges)
-  | { type: typeof EDIT_PROTOCOL; action: 'save' };
+  | { type: typeof EDIT_PROTOCOL; action: 'save' }
+  | { type: typeof EDIT_PROTOCOL; action: 'point'; enabled: boolean }
+  | { type: typeof EDIT_PROTOCOL; action: 'point-ready' }
+  | {
+      type: typeof EDIT_PROTOCOL;
+      action: 'anchor';
+      page: string;
+      anchor: PointedAnchor;
+    };
 export type EditorField = TextField & { backgrounds: string[] };
 export type InlineEditorProps = {
   page: string;

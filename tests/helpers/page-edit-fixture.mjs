@@ -189,6 +189,10 @@ export async function pageEditFixture(
     ? structuredClone(initialPages)
     : editPages({ hero });
   const writes = [];
+  // Histórico do rascunho em memória: o desfazer é testado pelo mesmo caminho
+  // do servidor, sem Neon.
+  const revisions = [];
+  let revisionSeq = 0;
   const policy = editPolicyFor(text, pages);
   const mocks = {
     '@/lib/db': {
@@ -196,6 +200,48 @@ export async function pageEditFixture(
         () =>
         async (parts, ...values) => {
           const sql = parts.join('?');
+          if (sql.includes('insert into page_revisions')) {
+            const [tenantId, pageId, blocks, revision, origin, summary] = values;
+            revisions.push({
+              id: `rev-${++revisionSeq}`,
+              tenant_id: tenantId,
+              page_id: pageId,
+              blocks: JSON.parse(blocks),
+              revision,
+              origin,
+              summary,
+              created_at: new Date(Date.now() + revisionSeq),
+            });
+            return [];
+          }
+          if (sql.includes('from page_revisions') && sql.includes('select')) {
+            if (sql.includes('distinct p.slug'))
+              return [
+                ...new Set(
+                  revisions.map(
+                    (row) => pages.find((p) => p.id === row.page_id)?.slug,
+                  ),
+                ),
+              ]
+                .filter((slug) => slug !== undefined)
+                .map((slug) => ({ slug }));
+            const [pageId, tenantId] = values;
+            const found = revisions
+              .filter(
+                (row) => row.page_id === pageId && row.tenant_id === tenantId,
+              )
+              .sort((a, b) => b.created_at - a.created_at);
+            return found.slice(0, 1);
+          }
+          if (sql.includes('delete from page_revisions')) {
+            // A poda por retenção não tem efeito no tamanho de um ensaio.
+            if (sql.includes('id not in')) return [];
+            const [target] = values;
+            const remaining = revisions.filter((row) => row.id !== target);
+            revisions.length = 0;
+            revisions.push(...remaining);
+            return [];
+          }
           if (
             !sql.includes('update pages set blocks') ||
             !sql.includes('returning id')
@@ -231,6 +277,12 @@ export async function pageEditFixture(
       measureEditedBlocks,
     },
   };
+  // O histórico é dependência indireta: sem carregá-lo com o mesmo I/O falso,
+  // ele cairia no Neon real e o desfazer ficaria sem versão anterior.
+  mocks['@/lib/sites/revisions'] = await loadModule(
+    'lib/sites/revisions.ts',
+    mocks,
+  );
   mocks['@/lib/sites/edits'] = await loadModule('lib/sites/edits.ts', mocks);
   const { buildTools } = await loadModule('lib/ai/tools.ts', mocks);
   const tools = buildTools(tenant, {
@@ -242,6 +294,7 @@ export async function pageEditFixture(
   // Não deixe um modelo real executar I/O fora do ensaio autorizado.
   const allowed = new Set([
     'edit_page',
+    'undo_page_edit',
     'get_page',
     'describe_block',
     'list_state',
@@ -257,6 +310,7 @@ export async function pageEditFixture(
     pages,
     mocks,
     tools,
+    revisions,
     writes,
     instructions: systemPrompt(
       tenant,

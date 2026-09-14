@@ -645,10 +645,13 @@ await test('pedido real remove a parte indicada e aplica destaque integral com m
   assert.equal(f.tools.repair_publication, undefined);
   assert.equal(f.writes.length, 1);
   assert.match(f.instructions, /feature\.bento aceita layout featured-masonry/);
+  // A mesma orientação precisa valer quando a seção de cards já é a
+  // composição de assinatura, como na home que motivou o caso.
   assert.match(
     f.instructions,
-    /Não substitua o bloco por signature\.composition/,
+    /signature\.composition aceita arrangement focus-full/,
   );
+  assert.match(f.instructions, /Não troque o tipo do bloco para obter o arranjo/);
 });
 
 await test('remove_item exige que o pedido atual autorize remoção', async () => {

@@ -719,6 +719,12 @@ export const blockSchemas = {
       presentation,
       textStyles: textStylesSchema.optional(),
       layout: z.enum(SIGNATURE_LAYOUTS),
+      arrangement: z
+        .enum(['default', 'focus-full'])
+        .optional()
+        .describe(
+          'focus-full coloca o item focus em 100% da largura do container e distribui os demais em colunas masonry logo abaixo, preservando tipo, layout, itens e papéis. Use quando o operador pedir destaque total para um item da seção.',
+        ),
       eyebrow: z.string().max(48).optional(),
       title: z.string().min(4).max(90),
       body: z.string().min(20).max(320),

@@ -1,0 +1,235 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createJiti } from 'jiti';
+import { editPages } from './helpers/page-edit-fixture.mjs';
+
+const j = createJiti(import.meta.url, {
+  alias: { '@': process.cwd() },
+  fsCache: false,
+});
+const { applyPageEdit, pageRevision, BLOCK_REMOVAL_CONFIRMATION } =
+  await j.import('../lib/ai/page-edits.ts');
+const { editPolicyFor, removalScope } = await j.import(
+  '../lib/ai/edit-policy.ts',
+);
+const { resolveAnchor, anchorContext } = await j.import('../lib/ai/anchor.ts');
+
+const input = (page, operations) => ({
+  page: page.slug,
+  revision: pageRevision(page),
+  operations,
+});
+
+/**
+ * O pedido do incidente: o operador chamou de "bloco" o card que marcou numa
+ * imagem, e a seção inteira foi apagada.
+ */
+const POINTED = 'remove esse bloco em anexo de referencia da pagina inicial';
+
+await test('o tamanho da remoção sai do pedido, não de um único bit', () => {
+  assert.equal(removalScope('remova esse card do bloco Variedade'), 'item');
+  assert.equal(removalScope('remova essa parte que anexei'), 'item');
+  assert.equal(removalScope('apague a foto do segundo item'), 'item');
+  assert.equal(removalScope(POINTED), undefined);
+  assert.equal(removalScope('remova o bloco inteiro'), 'block');
+  assert.equal(removalScope('apague a seção de dúvidas'), 'block');
+  assert.equal(removalScope('troque o título da home'), undefined);
+});
+
+await test('apagar a seção inteira é recusado quando o pedido aponta um item', () => {
+  const [page] = editPages();
+  const policy = editPolicyFor(POINTED, editPages(), '');
+  assert.equal(policy.removal, true);
+  assert.equal(policy.removalScope, undefined);
+  assert.throws(
+    () => applyPageEdit(page, input(page, [{ op: 'remove', block: 'faq' }]), policy),
+    (error) => {
+      assert.match(error.message, /seção inteira/);
+      assert.match(error.message, /2 itens/);
+      assert.ok(error.message.includes(BLOCK_REMOVAL_CONFIRMATION));
+      return true;
+    },
+  );
+  // Nada foi alterado no plano recusado.
+  assert.equal(page.blocks.length, 6);
+});
+
+/** Seção de cards como a que o operador apontou: quatro itens em uma lista. */
+function pageWithCards() {
+  const [page] = editPages();
+  page.blocks.splice(3, 0, {
+    id: 'cards',
+    type: 'feature.bento',
+    props: {
+      title: 'Variedade para o seu lar',
+      items: [
+        { title: 'Hortifrúti', body: 'Frutas e verduras repostas todos os dias.' },
+        { title: 'Açougue', body: 'Cortes selecionados no balcão da loja.' },
+        { title: 'Mercearia', body: 'Itens essenciais com preço para a semana.' },
+        { title: 'Ofertas', body: 'Campanhas com dias especiais de economia.' },
+      ],
+    },
+  });
+  return page;
+}
+
+await test('o item indicado sai sem levar a seção junto', () => {
+  const page = pageWithCards();
+  const policy = editPolicyFor('remova esse card em anexo', editPages(), '');
+  const edited = applyPageEdit(
+    page,
+    input(page, [
+      { op: 'remove_item', block: 'cards', path: 'items', index: 3 },
+    ]),
+    policy,
+  );
+  const cards = edited.blocks.find((block) => block.id === 'cards');
+  assert.equal(cards.props.items.length, 3);
+  assert.equal(cards.props.items.at(-1).title, 'Mercearia');
+  assert.equal(edited.blocks.length, 7);
+});
+
+await test('o mínimo do schema recusa o item e não vira remoção da seção', () => {
+  const [page] = editPages();
+  const policy = editPolicyFor('remova essa pergunta em anexo', editPages(), '');
+  // O bloco de dúvidas exige duas perguntas: tirar uma é recusado pelo schema.
+  assert.throws(
+    () =>
+      applyPageEdit(
+        page,
+        input(page, [
+          { op: 'remove_item', block: 'faq', path: 'items', index: 1 },
+        ]),
+        policy,
+      ),
+    /Bloco faq inválido/,
+  );
+  // E a saída destrutiva continua fechada pelo mesmo pedido.
+  assert.throws(
+    () =>
+      applyPageEdit(page, input(page, [{ op: 'remove', block: 'faq' }]), policy),
+    /seção inteira/,
+  );
+  assert.equal(page.blocks.length, 6);
+});
+
+await test('a confirmação do operador libera a remoção da seção', () => {
+  const [page] = editPages();
+  const policy = editPolicyFor('sim, pode remover', editPages(), '', {
+    confirmedBlockRemoval: true,
+  });
+  assert.equal(policy.removalScope, 'block');
+  const edited = applyPageEdit(
+    page,
+    input(page, [{ op: 'remove', block: 'faq' }]),
+    policy,
+  );
+  assert.equal(edited.blocks.length, 5);
+  assert.match(edited.summary.join(' '), /seção removida, com 2 itens/);
+});
+
+await test('um lote não apaga duas seções de uma vez', () => {
+  const [page] = editPages();
+  const policy = editPolicyFor('remova a seção inteira', editPages(), '');
+  assert.throws(
+    () =>
+      applyPageEdit(
+        page,
+        input(page, [
+          { op: 'remove', block: 'faq' },
+          { op: 'remove', block: 'intro' },
+        ]),
+        policy,
+      ),
+    /já remove uma seção/,
+  );
+});
+
+await test('o alvo apontado na prévia vira bloco e índice conferidos no conteúdo', () => {
+  const [page] = editPages();
+  const anchor = resolveAnchor(page, {
+    blockId: 'faq',
+    text: 'O que observar no projeto? Observe as dimensões, a iluminação e as referências de acabamento.',
+    label: 'O que observar no projeto?',
+  });
+  assert.equal(anchor.blockId, 'faq');
+  assert.equal(anchor.path, 'items');
+  assert.equal(anchor.index, 1);
+  assert.match(anchorContext(anchor), /remove_item/);
+  // Texto que não existe no bloco não inventa índice.
+  const vague = resolveAnchor(page, {
+    blockId: 'faq',
+    text: 'Dúvidas sobre materiais',
+    label: 'Dúvidas sobre materiais',
+  });
+  assert.equal(vague.index, undefined);
+  assert.match(anchorContext(vague), /confirme antes de qualquer remoção/);
+});
+
+const { compositionFloorError } = await j.import(
+  '../lib/taste/composition-floor.ts',
+);
+
+const photos = [1, 2].map((seq) => ({
+  id: `img-${seq}`,
+  seq,
+  url: `https://assets.test/cena-${seq}.webp`,
+  kind: 'foto',
+  model: 'openai/gpt-image-2',
+  blobPath: `tenants/sample/gerado/batch/${seq}.webp`,
+  status: 'aprovada',
+  targetBlock: null,
+  requestText: `Cena ${seq}`,
+  alt: null,
+  score: null,
+  critique: {},
+  createdAt: '2026-09-01T10:00:00.000Z',
+}));
+
+/** Home com a seção protagonista: duas fotos do acervo no mesmo bloco. */
+function homeWithProtagonist() {
+  const page = pageWithCards();
+  const cards = page.blocks.find((block) => block.id === 'cards');
+  cards.props.items[0].image = photos[0].url;
+  cards.props.items[0].imageAlt = 'Bancada de hortifrúti com frutas frescas';
+  cards.props.items[1].image = photos[1].url;
+  cards.props.items[1].imageAlt = 'Balcão do açougue com cortes selecionados';
+  return page;
+}
+
+await test('remover a seção protagonista da home vira pergunta antes da escrita', () => {
+  const page = homeWithProtagonist();
+  const withoutCards = page.blocks.filter((block) => block.id !== 'cards');
+  const error = compositionFloorError({
+    pages: [page],
+    slug: '',
+    blocks: withoutCards,
+    images: photos,
+    brand: {},
+    brief: {},
+    confirmation: BLOCK_REMOVAL_CONFIRMATION,
+  });
+  assert.match(error, /piso de composição/);
+  assert.ok(error.includes(BLOCK_REMOVAL_CONFIRMATION));
+  // Tirar um card não derruba o piso e não deve perguntar nada.
+  const lighter = page.blocks.map((block) =>
+    block.id === 'cards'
+      ? {
+          ...block,
+          props: { ...block.props, items: block.props.items.slice(0, 3) },
+        }
+      : block,
+  );
+  assert.equal(
+    compositionFloorError({
+      pages: [page],
+      slug: '',
+      blocks: lighter,
+      images: photos,
+      brand: {},
+      brief: {},
+      confirmation: BLOCK_REMOVAL_CONFIRMATION,
+    }),
+    null,
+  );
+});

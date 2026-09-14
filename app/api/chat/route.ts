@@ -8,18 +8,23 @@ import {
 import { siteAgent } from '@/lib/ai/agent';
 import { productModel } from '@/lib/ai/models';
 import { annotateAttachments } from '@/lib/ai/attachments';
+import { anchorContext, resolveAnchor } from '@/lib/ai/anchor';
 import { chatRequestSchema, contextMessages } from '@/lib/ai/context';
 import { usageRecord, usageMetadata, sumGatewayCosts } from '@/lib/ai/usage';
 import { completeChatStream, CHAT_INTERRUPTED } from '@/lib/ai/chat-stream';
 import { createEditReceipt } from '@/lib/ai/edit-receipt';
 import {
+  isAffirmative,
   isProgressQuestion,
   isResumeRequest,
+  isUndoRequest,
   savedProgressMessage,
 } from '@/lib/ai/chat-progress';
 import { workspaceState } from '@/lib/admin/state';
 import { editPolicyFor, editScopeText } from '@/lib/ai/edit-policy';
 import {
+  BLOCK_REMOVAL_CONFIRMATION,
+  PageEditError,
   editingPageContext,
   literalEditClarification,
 } from '@/lib/ai/page-edits';
@@ -47,6 +52,7 @@ import {
 } from '@/lib/taste/pendencias';
 import { systemPrompt, type PromptContext } from '@/lib/taste/prompt';
 import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
+import { undoPageEdit } from '@/lib/sites/edits';
 import { publicationMessage, publishSite } from '@/lib/sites/publish';
 import {
   isDirectPublicationRequest,
@@ -56,7 +62,7 @@ import {
 export const maxDuration = 800;
 
 /** Stream de uma resposta pronta: mesma bolha do chat, sem chamar o modelo. */
-function textResponse(text: string) {
+function textResponse(text: string, changedDraft = false) {
   return createUIMessageStreamResponse({
     stream: createUIMessageStream({
       execute({ writer }) {
@@ -64,6 +70,14 @@ function textResponse(text: string) {
         writer.write({ type: 'text-start', id: 'aviso' });
         writer.write({ type: 'text-delta', id: 'aviso', delta: text });
         writer.write({ type: 'text-end', id: 'aviso' });
+        // O rascunho mudou sem passar por ferramenta: a prévia precisa recarregar
+        // pelo mesmo evento transitório que as edições do agente usam.
+        if (changedDraft)
+          writer.write({
+            type: 'data-preview-update',
+            transient: true,
+            data: { toolCallId: 'servidor' },
+          });
         writer.write({ type: 'finish', finishReason: 'stop' });
       },
     }),
@@ -197,14 +211,55 @@ export async function POST(request: Request) {
     return textResponse(text);
   }
 
+  // Reverter é restaurar o estado anterior, não recriar conteúdo pelo modelo.
+  // Sem isso, "não era pra remover" virava um bloco novo, com outro ID e outro
+  // texto, anunciado como se fosse a seção de volta.
+  if (!phase && isUndoRequest(lastUserText)) {
+    const text = focusedPage
+      ? await undoPageEdit({
+          tenant,
+          page: focusedPage,
+          brand: tenant.brand,
+        })
+          .then(
+            (undone) =>
+              `Desfeito: o rascunho de ${undone.page} voltou ao estado anterior, com os mesmos blocos, textos e posições. Nada foi publicado. Confira a prévia.`,
+          )
+          .catch((error) =>
+            error instanceof PageEditError
+              ? error.message
+              : 'Não consegui desfazer agora. Nada foi alterado.',
+          )
+      : 'Escolha primeiro a página no painel; o desfazer age sobre o rascunho da página em foco.';
+    await persistAssistant(text);
+    return textResponse(text, text.startsWith('Desfeito'));
+  }
+
   // A revisão renderiza o rascunho pela própria origem da requisição.
   const origin = new URL(request.url).origin;
+  // Uma recusa por tamanho de remoção termina com uma frase estável no recibo
+  // do servidor. Só a resposta afirmativa a essa pergunta eleva o escopo, e
+  // apenas no turno seguinte: um "sim" solto não autoriza nada.
+  const previousAssistant = [...body.messages]
+    .filter((message) => message.role === 'assistant')
+    .at(-1);
+  const askedBlockRemoval = (previousAssistant?.parts ?? [])
+    .filter((part) => part.type === 'text')
+    .some((part) =>
+      (part as { text: string }).text.includes(BLOCK_REMOVAL_CONFIRMATION),
+    );
+  const confirmedBlockRemoval =
+    askedBlockRemoval && isAffirmative(lastUserText);
   const editPolicy = phase
     ? undefined
-    : editPolicyFor(lastUserText, pages, body.page ?? '');
+    : editPolicyFor(lastUserText, pages, body.page ?? '', {
+        confirmedBlockRemoval,
+      });
   const repairPublication = !phase && isPublicationRepairRequest(lastUserText);
+  const anchor = resolveAnchor(focusedPage, body.anchor);
   context.editing = Boolean(editPolicy);
   context.editScope = editPolicy ? editScopeText(editPolicy) : undefined;
+  context.anchor = editPolicy ? anchorContext(anchor) : undefined;
   if (editPolicy)
     context.editPage = editingPageContext(focusedPage, pages, editPolicy);
   // Tudo que o operador escreveu nesta conversa; confirm_evidence só aceita

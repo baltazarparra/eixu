@@ -1,5 +1,6 @@
 import { isAuthenticated } from '@/lib/auth';
 import { workspaceState } from '@/lib/admin/state';
+import { pagesWithUndo } from '@/lib/sites/revisions';
 import { listImages } from '@/lib/images/queries';
 import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
 
@@ -24,5 +25,7 @@ export async function GET(
     listPages(tenant.id),
     listImages(tenant.id),
   ]);
-  return Response.json(workspaceState(tenant, pages, images));
+  return Response.json(
+    workspaceState(tenant, pages, images, await pagesWithUndo(tenant.id)),
+  );
 }

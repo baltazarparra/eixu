@@ -5,6 +5,7 @@ export function changesPreview(name: string, output: unknown): boolean {
   if (out.error || out.ok === false || out.changed === false) return false;
   switch (name) {
     case 'edit_page':
+    case 'undo_page_edit':
     case 'update_block':
     case 'insert_block':
     case 'remove_block':

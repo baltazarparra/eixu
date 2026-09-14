@@ -79,8 +79,15 @@ await test('pedido de mover não apaga: unset, lista menor e texto vazio são re
     assert.throws(
       () => applyPageEdit(page, input(page, operations), policy),
       (error) => {
-        assert.match(error.message, /não menciona remoção/);
-        assert.match(error.message, /Nenhuma alteração salva/);
+        // Apagar a seção inteira é barrado antes, pelo tamanho da remoção; as
+        // demais tentativas continuam recusadas pela perda de texto.
+        assert.match(
+          error.message,
+          operations[0].op === 'remove'
+            ? /não autoriza esse tamanho/
+            : /não menciona remoção/,
+        );
+        assert.match(error.message, /Nenhuma alteração (salva|foi salva)/);
         return true;
       },
       JSON.stringify(operations),

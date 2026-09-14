@@ -454,6 +454,49 @@
   border: 0;
 }
 
+/* Destaque total pedido pelo operador: o item focus ocupa a largura inteira do
+   container e os demais descem em colunas masonry. Preserva tipo, layout,
+   papéis e ordem da composição; muda só o arranjo. */
+.site-signature[data-arrangement='focus-full'] .site-signature-lens {
+  display: block;
+  columns: 1;
+  column-gap: clamp(1rem, 2vw, 1.5rem);
+}
+.site-signature[data-arrangement='focus-full'] .site-signature-lens > article {
+  width: 100%;
+  margin-block-end: clamp(1rem, 2vw, 1.5rem);
+  break-inside: avoid;
+}
+.site-signature[data-arrangement='focus-full']
+  .site-signature-lens
+  > article[data-role='focus'] {
+  column-span: all;
+  grid-template-columns: minmax(0, 1fr);
+  padding-top: 0;
+  border-top: 0;
+}
+.site-signature[data-arrangement='focus-full']
+  .site-signature-lens
+  > article[data-role='focus']
+  .site-signature-media img {
+  width: 100%;
+  min-height: 0;
+  max-height: 32rem;
+  aspect-ratio: 21 / 9;
+}
+
+@media (min-width: 768px) {
+  .site-signature[data-arrangement='focus-full'] .site-signature-lens {
+    columns: 2;
+  }
+}
+
+@media (min-width: 1100px) {
+  .site-signature[data-arrangement='focus-full'] .site-signature-lens {
+    columns: 3;
+  }
+}
+
 /* Mapa: uma cena principal e evidências conectadas em uma coluna lateral. */
 .site-signature-map {
   display: grid;

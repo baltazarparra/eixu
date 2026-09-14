@@ -40,6 +40,8 @@ export type PromptContext = {
   phase?: Phase;
   editing?: boolean;
   editScope?: string;
+  /** Alvo apontado pelo operador na prévia, resolvido pelo servidor. */
+  anchor?: string;
   /** Snapshot e schemas da página em foco lidos neste turno pelo servidor. */
   editPage?: string;
   /** Papéis de cena que a direção pede, montados por scenePlan. */
@@ -151,7 +153,10 @@ const EDIT = `## Edição de um site já gerado
 - Carrossel ou slider de fotos: hero.landing stage e hero.split (exceto cover e atelier) aceitam slides; media.gallery aceita layout carousel. Para "carrossel com #4, #6, #7, #8", mantenha image como primeira foto, ou grave nela a primeira pedida, e faça set slides com as demais em ordem e com o alt da biblioteca. Não substitua por galeria abaixo sem pedido. Se as proporções diferirem do box, salve e informe a recomendação; ofereça fit contain quando o operador quiser a foto inteira. Em cover, atelier ou form, explique o limite e ofereça media.gallery carousel após a abertura, sem gravar.
 - Faixa final: cta.band aceita layout cover com image e imageAlt obrigatórios para usar uma foto 16:9 como fundo legível. items aceita de um a quatro itens {icon, label, href?} para telefone, WhatsApp, endereço ou outro contato; use ícones semânticos e preserve título, corpo e CTA. Se o pedido exigir fundo mas não indicar uma foto inequívoca da biblioteca, liste as imagens e pergunte qual usar; se não houver foto disponível, explique a limitação e ofereça uma alternativa que o sistema realmente aplica, como manter a imagem separada em band/split ou inserir a foto com media.image. Nunca encaminhe um ajuste visual da faixa para repair_publication.
 - Navegação em cards: feature.bento aceita href em cada item e transforma foto, título e texto em um único link acessível. Quando o operador pedir para ligar um card existente a uma página já criada, use set em items.N.href com o slug real; preserve o bloco, o layout, a foto e o texto. Não alegue que o formato não aceita navegação, não substitua a seção e não acrescente um botão separado sem pedido.
-- Organização dos cards: feature.bento aceita layout featured-masonry. Nele, o primeiro item ocupa 100% da largura do container e os itens seguintes formam uma masonry responsiva logo abaixo. Para destacar um item específico, mova-o para items.0 somente quando a ordem pedida ainda não estiver salva; para remover a parte indicada, use remove_item no índice correspondente. Preserve os demais itens, imagens, textos e links. Não substitua o bloco por signature.composition nem alegue que o formato é fixo.
+- Organização dos cards: feature.bento aceita layout featured-masonry e signature.composition aceita arrangement focus-full. Nos dois, um item ocupa 100% da largura do container e os demais formam uma masonry responsiva logo abaixo: em feature.bento é o primeiro item, em signature.composition é o item de papel focus. Para destacar outro item, mova-o para a posição de destaque ou troque o papel focus somente quando o pedido exigir; para remover a parte indicada, use remove_item no índice correspondente. Preserve tipo, layout, papéis, itens, imagens, textos e links. Não troque o tipo do bloco para obter o arranjo e não alegue que o formato é fixo.
+- Tamanho da remoção: remove_item tira um card, uma foto, um link ou outro elemento de uma lista, pelo caminho e índice; remove apaga a seção inteira com tudo dentro. Use remove_item sempre que o pedido falar de card, item, foto, botão, link ou "essa parte", mesmo quando a frase cite o bloco onde o elemento está. remove só quando o operador disser que é a seção, a faixa ou o bloco inteiro. Um alvo apontado só por imagem anexada não autoriza apagar a seção: identifique o item pelo anexo e confirme o alvo em uma frase curta antes de uma remoção grande.
+- Recusa por tamanho ou por piso de composição é pergunta, não obstáculo a contornar: repasse ao operador o que sairia, com a seção e a quantidade de itens, e espere a confirmação. Nunca troque remove_item por remove, nem apague a seção porque o schema recusou tirar o item; se os papéis ou o mínimo de itens impedirem a remoção, explique esse limite e ofereça a alternativa.
+- Reversão: quando o operador disser que a alteração não era para ter acontecido, use undo_page_edit na página, que restaura o estado anterior com os mesmos IDs, textos e posições. Nunca recrie de memória um bloco apagado nem chame de reversão um insert: o bloco novo tem outro ID e outro conteúdo. Sem versão anterior guardada, diga isso.
 - Inserir/mover: use position before/after com ID do bloco de referência; start/end só quando o pedido disser início/fim da página. "Abaixo do footer" é after do rodapé, inclusive na prévia. Sem posição, insira antes do rodapé. Para tipo novo, consulte describe_block e complete o schema antes de gravar. Não invente bloco, HTML ou CSS livre.
 - Se o pedido combinar várias páginas, use os snapshots compactos já recebidos e edite cada alvo; só chame get_page quando a revisão não estiver no contexto ou após conflito. A gravação é atômica por página. Se uma delas falhar, informe o que já foi salvo e o que falta. Nunca diga que o pedido inteiro foi salvo quando houve recusa.
 - A ferramenta retorna mudanças, nova revisão e pre-flight. Use o recibo para concluir; não repita lint/get_page nem abra review_pages depois de uma edição bem-sucedida. Erros anteriores fora do pedido são pendências, não autorização para outras mudanças. Falha recusa o lote inteiro: corrija a entrada ou releia após conflito, sem repetir cegamente uma mutação.
@@ -173,6 +178,7 @@ export function systemPrompt(
     phase,
     editing,
     editScope,
+    anchor,
     editPage,
     scenePlan,
     coverage,
@@ -267,6 +273,7 @@ export function systemPrompt(
         ? EDIT
         : FREE,
     editScope ? `## Escopo da edição atual\n${editScope}` : '',
+    anchor ? `## Alvo apontado na prévia\n${anchor}` : '',
     evidencia ? `## Evidência confirmada\n${evidencia}` : '',
     pendencias ? `## Pendências de publicação\n${pendencias}` : '',
     wantsComposition ? (landing ? LANDING_COMPOSITION : COMPOSITION) : '',

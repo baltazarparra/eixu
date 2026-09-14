@@ -26,6 +26,8 @@ import {
   Monitor,
   Smartphone,
   Pencil,
+  Crosshair,
+  Undo2,
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react';
@@ -48,6 +50,7 @@ import {
   EDIT_PROTOCOL,
   type EditChanges,
   type EditorMessage,
+  type PointedAnchor,
 } from '@/lib/blocks/edit-protocol';
 import type { FieldError } from '@/lib/blocks/fields';
 import type { PublishResult } from '@/lib/sites/publish';
@@ -138,6 +141,10 @@ export function Workspace({
   const previewUpdatePending = useRef(false);
   const refreshSeq = useRef(0);
   const previewRevision = useRef(initial.previewRevision);
+  // Alvo apontado na prévia: vai junto da próxima mensagem e some depois dela.
+  const [pointing, setPointing] = useState(false);
+  const [anchor, setAnchor] = useState<PointedAnchor | null>(null);
+
 
   const { messages, setMessages, sendMessage, status, error, stop } =
     useChat<ChatMessage>({
@@ -331,6 +338,38 @@ export function Workspace({
   // a outra espera, e a tela diz por quê.
   const locked = busy || running || editing !== 'off';
   const page = site.pages.find((item) => item.slug === current);
+  const undoAvailable = page?.canUndo === true;
+  // Restaurar é do servidor: o painel não recompõe blocos, só pede a volta da
+  // versão anterior e recarrega a prévia com o que foi restaurado.
+  const undoLastEdit = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/admin/${tenantSlug}/undo`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ page: current }),
+        signal: AbortSignal.timeout(20_000),
+      });
+      const result = (await response.json().catch(() => null)) as {
+        error?: string;
+        ok?: boolean;
+      } | null;
+      if (!response.ok || !result?.ok) {
+        setNotice({
+          tone: 'err',
+          text: result?.error ?? 'Não foi possível desfazer agora.',
+        });
+        return;
+      }
+      setNonce((value) => value + 1);
+      setNotice({
+        tone: 'ok',
+        text: 'Alteração desfeita: o rascunho voltou ao estado anterior.',
+      });
+      await refresh();
+    } catch {
+      setNotice({ tone: 'err', text: 'Não foi possível desfazer agora.' });
+    }
+  }, [current, refresh, tenantSlug]);
   const previewUrl = `/s/${tenantSlug}/${current}?preview=1&__tenant=${tenantSlug}&v=${nonce}`;
   const totalErrors = site.pages.reduce(
     (sum, item) => sum + item.errors.length,
@@ -436,11 +475,17 @@ export function Workspace({
       url: item.url,
       filename: item.name,
     }));
-    void sendMessage({ text: text.trim() || 'Use a imagem anexada.', files });
+    // O alvo apontado viaja com a mensagem: o corpo do transporte é montado
+    // uma vez e não enxergaria o estado atual.
+    void sendMessage(
+      { text: text.trim() || 'Use a imagem anexada.', files },
+      anchor ? { body: { anchor } } : undefined,
+    );
     followMessages.current = true;
     setAwayFromLatest(false);
     setInput('');
     setAttachments([]);
+    setAnchor(null);
   }
 
   function postEditor(message: object) {
@@ -529,6 +574,38 @@ export function Workspace({
       });
     }, 10_000);
   }, []);
+  useEffect(() => {
+    const receivePointed = (event: MessageEvent<EditorMessage>) => {
+      if (
+        event.origin !== location.origin ||
+        event.source !== frameRef.current?.contentWindow ||
+        event.data?.type !== EDIT_PROTOCOL
+      )
+        return;
+      if (event.data.action === 'point-ready') {
+        frameRef.current?.contentWindow?.postMessage(
+          { type: EDIT_PROTOCOL, action: 'point', enabled: pointing },
+          location.origin,
+        );
+        return;
+      }
+      if (event.data.action !== 'anchor') return;
+      setAnchor(event.data.anchor);
+      setPointing(false);
+      inputRef.current?.focus();
+    };
+    window.addEventListener('message', receivePointed);
+    return () => window.removeEventListener('message', receivePointed);
+  }, [pointing]);
+
+  // O modo só existe enquanto a prévia está montada e a conversa livre.
+  useEffect(() => {
+    frameRef.current?.contentWindow?.postMessage(
+      { type: EDIT_PROTOCOL, action: 'point', enabled: pointing },
+      location.origin,
+    );
+  }, [pointing, nonce, current]);
+
   useEffect(() => {
     const receive = async (event: MessageEvent<EditorMessage>) => {
       const session = editSession.current;
@@ -765,6 +842,35 @@ export function Workspace({
           <Maximize2 size={17} aria-hidden="true" />
         )}
       </button>
+      {page && !locked && !generating && editing === 'off' ? (
+        <button
+          type="button"
+          className="admin-icon-button admin-preview-point"
+          aria-label={pointing ? 'Cancelar o apontar' : 'Apontar na prévia'}
+          title={
+            pointing
+              ? 'Clique no elemento da prévia ou cancele'
+              : 'Apontar um elemento da prévia para o pedido'
+          }
+          aria-pressed={pointing}
+          disabled={publishing || uploading || busy}
+          onClick={() => setPointing((value) => !value)}
+        >
+          <Crosshair size={17} aria-hidden="true" />
+        </button>
+      ) : null}
+      {page && !locked && !generating && editing === 'off' && undoAvailable ? (
+        <button
+          type="button"
+          className="admin-icon-button admin-preview-undo"
+          aria-label="Desfazer a última alteração desta página"
+          title="Desfazer a última alteração desta página"
+          disabled={publishing || uploading || busy}
+          onClick={() => void undoLastEdit()}
+        >
+          <Undo2 size={17} aria-hidden="true" />
+        </button>
+      ) : null}
       {site.tenant.status === 'published' &&
       page &&
       !locked &&
@@ -1030,6 +1136,19 @@ export function Workspace({
                 void attach(event.dataTransfer.files);
               }}
             >
+              {anchor ? (
+                <p className="admin-composer-anchor">
+                  <Crosshair size={13} aria-hidden="true" />
+                  <span>Alvo apontado: {anchor.label}</span>
+                  <button
+                    type="button"
+                    aria-label="Remover o alvo apontado"
+                    onClick={() => setAnchor(null)}
+                  >
+                    ×
+                  </button>
+                </p>
+              ) : null}
               {attachments.length ? (
                 <ul className="admin-composer-files">
                   {attachments.map((item) => (

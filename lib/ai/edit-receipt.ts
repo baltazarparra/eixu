@@ -9,6 +9,7 @@ const strings = (value: unknown): string[] =>
     : [];
 const receiptTools = new Set([
   'edit_page',
+  'undo_page_edit',
   'repair_publication',
   'confirm_evidence',
   'lint_site',
@@ -38,6 +39,8 @@ export function createEditReceipt() {
   let attempted = false;
   let unchanged = false;
   let complete = true;
+  let undoAvailable = false;
+  let restored: string | undefined;
 
   return {
     observe(name: string, input: unknown, output: unknown) {
@@ -80,6 +83,7 @@ export function createEditReceipt() {
       if (
         ![
           'edit_page',
+          'undo_page_edit',
           'repair_publication',
           'confirm_evidence',
           'lint_site',
@@ -91,7 +95,7 @@ export function createEditReceipt() {
         typeof inp.page === 'string'
           ? `/${inp.page.replace(/^\/+|\/+$/g, '')}`
           : '/';
-      const key = name === 'edit_page' ? page : name;
+      const key = ['edit_page', 'undo_page_edit'].includes(name) ? page : name;
       if (out.error || out.ok === false) {
         failures.set(
           key,
@@ -107,6 +111,12 @@ export function createEditReceipt() {
         if (Object.keys(measurement).length)
           visualMeasurements.set(page, measurement);
       }
+      if (name === 'undo_page_edit' && out.ok === true) {
+        restored = `A última alteração de ${page} foi desfeita: o rascunho voltou ao estado anterior, com os mesmos blocos, textos e posições.`;
+        saved.set(page, saved.get(page) ?? []);
+        undoAvailable = out.undoAvailable === true;
+        return;
+      }
       if (
         ['edit_page', 'repair_publication'].includes(name) &&
         out.ok === true
@@ -114,6 +124,7 @@ export function createEditReceipt() {
         if (out.changed === true) {
           const details = strings(out.summary);
           saved.set(page, [...(saved.get(page) ?? []), ...details]);
+          if (out.undoAvailable === true) undoAvailable = true;
         } else unchanged = true;
       }
       if (name === 'confirm_evidence' && out.ok === true) {
@@ -220,6 +231,7 @@ export function createEditReceipt() {
           }.`,
         );
       }
+      if (restored) lines.push(restored);
       lines.push(...visualLines);
       if (facts.size)
         lines.push(`Fatos registrados: ${[...facts].join('; ')}.`);
@@ -295,6 +307,12 @@ export function createEditReceipt() {
       if (written.length)
         lines.push(
           `Fatos já escritos pelo operador que continuam sem registro: ${phrases(written)}.`,
+        );
+      // Quem acabou de perder conteúdo precisa saber que dá para voltar, e
+      // pelo caminho que restaura o estado anterior em vez de recriá-lo.
+      if (undoAvailable)
+        lines.push(
+          'Se não era isso, peça "desfaz" que o rascunho volta ao estado anterior desta página.',
         );
       if (saved.size) lines.push('Confira o resultado na prévia.');
       return lines.join(' ');

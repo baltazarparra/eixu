@@ -29,7 +29,9 @@ executor repete essa proteção para que IDs escolhidos pelo modelo não a
 contornem. Esse reconhecimento é restrito; pedidos compostos ou com alvo
 explícito continuam sendo interpretados pelo agente.
 URLs, âncoras e configuração não entram na busca textual. `insert` e `move`
-aceitam antes/depois de um ID ou início/fim; `remove` remove o alvo indicado.
+aceitam antes/depois de um ID ou início/fim. `remove_item` tira um elemento de
+uma lista pelo caminho e índice; `remove` apaga o bloco inteiro e só é aceito
+quando o pedido autoriza esse tamanho.
 `replace_block` troca o tipo e as props completas mantendo o ID, quando a
 mudança de variante exige outro schema; ajustes de layout usam `set`.
 
@@ -265,6 +267,48 @@ Erros técnicos, como props inválidas, página vazia ou destino inexistente,
 continuam recusando a transação. Publicação não confirma fatos e não executa
 reparos por conta própria. A ferramenta usa o briefing atualizado no mesmo turno.
 
+## Tamanho da remoção e reversão
+
+A autorização para apagar deixou de ser um único bit do turno. `removalScope`
+em `lib/ai/edit-policy.ts` classifica o pedido atual: card, item, foto, botão,
+link ou "essa parte" autorizam `item`, mesmo quando a frase cita o bloco onde o
+elemento está; seção, faixa ou bloco inteiro autorizam `block`. Um alvo citado
+como bloco mas apontado só por anexo fica indefinido, e a remoção grande passa
+a exigir confirmação.
+
+`applyPageEdit` mede a operação contra esse escopo antes de qualquer escrita.
+Apagar um bloco sob escopo de item é recusado com o nome da seção, a quantidade
+de itens e textos que sairiam e a frase estável `pode remover a seção inteira`;
+um lote não apaga duas seções de uma vez. A rota reconhece a resposta afirmativa
+do operador à pergunta anterior, pelo recibo do servidor, e só então eleva o
+escopo. Um "sim" sem pergunta pendente não autoriza nada. Quando o lote remove
+blocos, `compositionFloorError` recalcula protagonista e fotos da página pelas
+regras de `lib/taste/metrics.ts` e transforma a queda do piso em pergunta, antes
+da gravação; na publicação essas regras continuam recomendações.
+
+Toda escrita do rascunho guarda o estado anterior em `page_revisions`, com
+retenção das vinte últimas versões por página. `undo_page_edit` e o botão
+Desfazer do painel restauram essa versão com os mesmos blocos, IDs, textos e
+posições, e guardam o estado atual antes de restaurar, de modo que um segundo
+desfazer devolve o que estava ali. Um pedido curto e direto de reverter é
+resolvido pelo servidor, sem chamar o modelo. O histórico é melhor esforço: se
+a gravação falhar, a edição continua valendo e o recibo não oferece desfazer.
+Nada disso alcança snapshot publicado, imagens ou cadastro.
+
+O recibo declara o tamanho do que saiu, por exemplo `seção removida, com 4
+itens e 21 textos`, e uma inserção é descrita como seção nova, nunca como
+reversão. Depois de um lote que removeu conteúdo, o fechamento informa que é
+possível desfazer.
+
+## Alvo apontado na prévia
+
+No modo apontar, a prévia marca o elemento sob o cursor e envia bloco e texto
+visível pelo protocolo `eixu-edit/1`. O painel exibe o alvo escolhido junto do
+compositor e o envia com a próxima mensagem. `resolveAnchor` confere esse texto
+nas props antes de aceitar o índice do item: sem correspondência, o alvo fica
+no bloco e a remoção grande continua exigindo confirmação. O modo existe apenas
+na prévia autenticada e não altera o layout do site.
+
 ## Integridade da edição
 
 O executor prepara o lote em memória, valida os blocos tocados e recusa novos
@@ -272,8 +316,9 @@ erros de `lintPage` e `lintTextStyles`. Erros anteriores fora do pedido permanec
 escrita compara `blocks` em JSONB e usa ID da página e do tenant; se outra aba
 gravou, retorna conflito. Os mutadores antigos também usam essa gravação.
 Nenhum snapshot publicado é alterado. A atomicidade vale por página, não por
-um pedido com várias páginas. Uma repetição com revisão antiga é recusada; não
-é um mecanismo de desfazer ou histórico de versões.
+um pedido com várias páginas. Uma repetição com revisão antiga é recusada. O
+desfazer é o caminho de reversão, descrito acima; a comparação de revisão
+continua sendo proteção de concorrência, não histórico de versões do site.
 
 `presentation.background` aceita hex de seis dígitos ou `transparent`; degradê
 e decoração seguem o contrato acima. `sectionBackgrounds` resolve a superfície
@@ -300,6 +345,17 @@ O chat não muda de modelo, raciocínio ou fluxo por causa dessa prop.
   interrupção, recusas, ausência de mudança e recuperação em desktop/celular.
 - `node --test tests/admin-page-edits.test.mjs tests/admin-edit-scope.test.mjs`
   confere operações reais, recusas, preservação e os scopes.
+- `node --test tests/admin-remocao-escopo.test.mjs` classifica os pedidos do
+  caso real, recusa a remoção da seção sob escopo de item, mantém a recusa
+  quando o mínimo do schema impede tirar o elemento, libera a seção após a
+  confirmação, barra dois blocos no mesmo lote, resolve o alvo apontado e mede
+  o piso de composição antes da escrita.
+- `node --test tests/admin-desfazer.test.mjs` usa a rota, os executores e o
+  histórico em memória: reconhece o pedido de reverter, restaura blocos, IDs e
+  posições idênticos, alterna entre desfazer e refazer e explica a ausência de
+  versão anterior sem recriar conteúdo.
+- `node --test tests/site-signature-arranjo.test.mjs` confere o arranjo
+  `focus-full` no schema, no HTML e no CSS da composição de assinatura.
 - `tests/admin-visual-edit.test.mjs` e `tests/admin-evidence.test.mjs` cobrem
   o pedido de reconhecimento, recusas, fechamento do chat e integridade dos
   fatos. `tests/browser/site-recognition-edit.test.mjs` mede quatro famílias

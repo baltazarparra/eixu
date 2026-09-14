@@ -7,6 +7,16 @@ export type EditPolicy = {
   paths?: string[];
   /** O pedido atual menciona tirar conteúdo. Sem isso, apagar texto é recusado. */
   removal?: boolean;
+  /**
+   * Até onde vai a autorização de remover: `item` tira um elemento de uma
+   * lista, `block` tira a seção inteira. Indefinido significa que o pedido
+   * menciona remoção sem dizer o tamanho, e a operação destrutiva precisa de
+   * confirmação. "remove esse bloco em anexo" apagou uma seção com quatro
+   * cards porque a autorização era um único bit para o turno inteiro.
+   */
+  removalScope?: 'item' | 'block';
+  /** O operador confirmou, no turno anterior, a remoção da seção inteira. */
+  removalConfirmed?: boolean;
   /** Pedido visual em um bloco nomeado: preserva conteúdo, tipo e ordem. */
   visualOnly?: boolean;
   /** Famílias nomeadas pelo operador, aplicadas nas páginas selecionadas. */
@@ -60,6 +70,38 @@ export function asksRemoval(text: string): boolean {
       )
     );
   });
+}
+
+/**
+ * Até onde o pedido atual autoriza remover.
+ *
+ * O padrão é o dano menor: quando o operador aponta o alvo por imagem, ou não
+ * diz o tamanho, o resultado é indefinido e a remoção de uma seção inteira
+ * passa a exigir confirmação. Nomear um card, uma foto ou uma parte autoriza
+ * só o item, mesmo que a frase cite o bloco onde ele está.
+ */
+export function removalScope(text: string): 'item' | 'block' | undefined {
+  if (!asksRemoval(text)) return undefined;
+  const request = normalized(text);
+  const item =
+    /\b(cards?|cartao|cartoes|itens?|parte|partes|pedaco|trecho|fotos?|imagens?|icones?|botoes?|botao|links?|selos?|etiquetas?|depoimentos?|perguntas?|colunas?|linhas?|opcoes|opcao)\b/.test(
+      request,
+    );
+  const block =
+    /\b(secao|secoes|blocos?|faixas?|banner|galeria|rodape|footer|cabecalho|header|menu|navbar|formulario|hero|abertura)\b/.test(
+      request,
+    );
+  const whole = /\b(inteir\w*|toda|todo|todas|todos|complet\w*)\b/.test(request);
+  // Alvo apontado por imagem: o texto não diz o que é, e o modelo adivinha.
+  const pointed =
+    /\b(anex\w*|referencia|print|captura|screenshot|imagem acima|acima|marcad\w*|circulad\w*)\b/.test(
+      request,
+    );
+  if (item && !block) return 'item';
+  if (block && whole) return 'block';
+  if (block && item) return 'item';
+  if (block) return pointed ? undefined : 'block';
+  return item ? 'item' : undefined;
 }
 
 function namedVisualScope(text: string, pages: Page[], pageSlug?: string) {
@@ -160,8 +202,16 @@ export function editPolicyFor(
   text: string,
   pages: Page[],
   pageSlug?: string,
+  options: {
+    /** O turno anterior perguntou, em recibo verificável, se podia remover a
+     * seção inteira, e o operador respondeu que sim. */
+    confirmedBlockRemoval?: boolean;
+  } = {},
 ): EditPolicy | undefined {
   if (!pages.length) return undefined;
+  const scope = options.confirmedBlockRemoval
+    ? ('block' as const)
+    : removalScope(text);
   const visualTargets = namedVisualScope(text, pages, pageSlug);
   if (visualTargets)
     return {
@@ -190,7 +240,9 @@ export function editPolicyFor(
       kind: 'navigation-style',
       visualOnly: true,
       visualFamilies: ['nav'],
-      removal: asksRemoval(text),
+      removal: asksRemoval(text) || options.confirmedBlockRemoval === true,
+      removalScope: scope,
+      removalConfirmed: options.confirmedBlockRemoval === true,
       targets: selected.flatMap((page) =>
         page.blocks
           .filter((block) => block.type === 'nav.bar')
@@ -230,9 +282,19 @@ export function editPolicyFor(
       !/\b(nao|apenas|somente|so)\b/.test(request)
     )
       return undefined;
-    return { kind: 'edit', removal: asksRemoval(text) };
+    return {
+      kind: 'edit',
+      removal: asksRemoval(text) || options.confirmedBlockRemoval === true,
+      removalScope: scope,
+      removalConfirmed: options.confirmedBlockRemoval === true,
+    };
   }
-  return { kind: 'edit', removal: asksRemoval(text) };
+  return {
+    kind: 'edit',
+    removal: asksRemoval(text) || options.confirmedBlockRemoval === true,
+    removalScope: scope,
+    removalConfirmed: options.confirmedBlockRemoval === true,
+  };
 }
 
 const REBUILD_TOOLS = new Set([
@@ -258,6 +320,7 @@ const LEGACY_EDIT_TOOLS = new Set([
   'remove_block',
 ]);
 const VISUAL_EDIT_TOOLS = new Set([
+  'undo_page_edit',
   'list_state',
   'get_page',
   'describe_block',
