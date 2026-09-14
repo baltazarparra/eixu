@@ -65,6 +65,59 @@ await test('desfazer duas vezes volta ao estado desfeito, sem recriar conteúdo'
   assert.deepEqual(home.blocks, afterRemoval);
 });
 
+await test('histórico acompanha a ordem de duas edições concorrentes', async () => {
+  let releaseFirst;
+  let reachedHistory;
+  let firstInsert = true;
+  const firstAtHistory = new Promise((resolve) => {
+    reachedHistory = resolve;
+  });
+  const holdFirstHistory = new Promise((resolve) => {
+    releaseFirst = resolve;
+  });
+  const fixture = await pageEditFixture(undefined, {
+    beforeRevisionInsert: async () => {
+      if (!firstInsert) return;
+      firstInsert = false;
+      reachedHistory();
+      await holdFirstHistory;
+    },
+  });
+  const edits = fixture.mocks['@/lib/sites/edits'];
+  const initial = structuredClone(fixture.pages[0]);
+  const firstBlocks = structuredClone(initial.blocks);
+  firstBlocks[2].props.title = 'Primeira alteração';
+  const firstSave = edits.savePageEdit({
+    tenant: fixture.tenant,
+    page: initial,
+    blocks: firstBlocks,
+    brand: fixture.tenant.brand,
+  });
+
+  await firstAtHistory;
+  const afterFirst = structuredClone(fixture.pages[0]);
+  const secondBlocks = structuredClone(afterFirst.blocks);
+  secondBlocks[2].props.title = 'Segunda alteração';
+  const secondSave = edits.savePageEdit({
+    tenant: fixture.tenant,
+    page: afterFirst,
+    blocks: secondBlocks,
+    brand: fixture.tenant.brand,
+  });
+  releaseFirst();
+  const saved = await Promise.all([firstSave, secondSave]);
+  assert.equal(saved.every((result) => result.undoAvailable), true);
+
+  const current = structuredClone(fixture.pages[0]);
+  assert.equal(current.blocks[2].props.title, 'Segunda alteração');
+  await edits.undoPageEdit({
+    tenant: fixture.tenant,
+    page: current,
+    brand: fixture.tenant.brand,
+  });
+  assert.equal(fixture.pages[0].blocks[2].props.title, 'Primeira alteração');
+});
+
 await test('sem versão guardada, o desfazer explica em vez de inventar', async () => {
   const fixture = await pageEditFixture('desfaz');
   const result = await fixture.tools.undo_page_edit.execute({ page: '' });

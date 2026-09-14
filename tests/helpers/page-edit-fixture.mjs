@@ -176,6 +176,7 @@ export async function pageEditFixture(
     images = [],
     publication = false,
     toolContext = {},
+    beforeRevisionInsert = async () => {},
     measureEditedBlocks = async () => ({
       status: 'complete',
       ok: true,
@@ -194,75 +195,114 @@ export async function pageEditFixture(
   const revisions = [];
   let revisionSeq = 0;
   const policy = editPolicyFor(text, pages);
-  const mocks = {
-    '@/lib/db': {
-      db:
-        () =>
-        async (parts, ...values) => {
-          const sql = parts.join('?');
-          if (sql.includes('insert into page_revisions')) {
-            const [tenantId, pageId, blocks, revision, origin, summary] = values;
-            revisions.push({
-              id: `rev-${++revisionSeq}`,
-              tenant_id: tenantId,
-              page_id: pageId,
-              blocks: JSON.parse(blocks),
-              revision,
-              origin,
-              summary,
-              created_at: new Date(Date.now() + revisionSeq),
-            });
-            return [];
-          }
-          if (sql.includes('from page_revisions') && sql.includes('select')) {
-            if (sql.includes('distinct p.slug'))
-              return [
-                ...new Set(
-                  revisions.map(
-                    (row) => pages.find((p) => p.id === row.page_id)?.slug,
-                  ),
-                ),
-              ]
-                .filter((slug) => slug !== undefined)
-                .map((slug) => ({ slug }));
-            const [pageId, tenantId] = values;
-            const found = revisions
-              .filter(
-                (row) => row.page_id === pageId && row.tenant_id === tenantId,
-              )
-              .sort((a, b) => b.created_at - a.created_at);
-            return found.slice(0, 1);
-          }
-          if (sql.includes('delete from page_revisions')) {
-            // A poda por retenção não tem efeito no tamanho de um ensaio.
-            if (sql.includes('id not in')) return [];
-            const [target] = values;
-            const remaining = revisions.filter((row) => row.id !== target);
-            revisions.length = 0;
-            revisions.push(...remaining);
-            return [];
-          }
-          if (
-            !sql.includes('update pages set blocks') ||
-            !sql.includes('returning id')
-          )
-            throw new Error('I/O fora do escopo da fixture.');
-          const [blocks, pageId, tenantId, expected] = values;
-          const page = pages.find(
-            (p) => p.id === pageId && p.tenantId === tenantId,
-          );
-          if (!page) return [];
-          race?.(page);
-          if (
-            pageRevision(page) !==
-            pageRevision({ blocks: JSON.parse(expected) })
-          )
-            return [];
-          page.blocks = JSON.parse(blocks);
-          writes.push({ page: page.slug, sql });
-          return [{ id: pageId }];
-        },
+  const executeQuery = async (sql, values = []) => {
+    if (
+      sql === 'SAVEPOINT page_revision_history' ||
+      sql === 'RELEASE SAVEPOINT page_revision_history' ||
+      sql === 'ROLLBACK TO SAVEPOINT page_revision_history'
+    )
+      return [];
+    if (sql.includes('insert into page_revisions')) {
+      await beforeRevisionInsert();
+      const [tenantId, pageId, blocks, revision, origin, summary] = values;
+      revisions.push({
+        id: `rev-${++revisionSeq}`,
+        tenant_id: tenantId,
+        page_id: pageId,
+        blocks: JSON.parse(blocks),
+        revision,
+        origin,
+        summary,
+        created_at: new Date(Date.now() + revisionSeq),
+      });
+      return [];
+    }
+    if (sql.includes('from page_revisions') && sql.includes('select')) {
+      if (sql.includes('distinct p.slug'))
+        return [
+          ...new Set(
+            revisions.map(
+              (row) => pages.find((p) => p.id === row.page_id)?.slug,
+            ),
+          ),
+        ]
+          .filter((slug) => slug !== undefined)
+          .map((slug) => ({ slug }));
+      const [pageId, tenantId] = values;
+      const found = revisions
+        .filter(
+          (row) => row.page_id === pageId && row.tenant_id === tenantId,
+        )
+        .sort((a, b) => b.created_at - a.created_at);
+      return found.slice(0, 1);
+    }
+    if (sql.includes('delete from page_revisions')) {
+      // A poda por retenção não tem efeito no tamanho de um ensaio.
+      if (sql.includes('id not in')) return [];
+      const [target] = values;
+      const remaining = revisions.filter((row) => row.id !== target);
+      revisions.length = 0;
+      revisions.push(...remaining);
+      return [];
+    }
+    if (sql.includes('select id from pages') && sql.includes('for update')) {
+      const [pageId, tenantId, expected] = values;
+      const page = pages.find(
+        (item) => item.id === pageId && item.tenantId === tenantId,
+      );
+      return page &&
+        pageRevision(page) === pageRevision({ blocks: JSON.parse(expected) })
+        ? [{ id: pageId }]
+        : [];
+    }
+    if (sql.includes('update pages set blocks')) {
+      const [blocks, pageId, tenantId, expected] = values;
+      const page = pages.find(
+        (item) =>
+          item.id === pageId &&
+          (tenantId === undefined || item.tenantId === tenantId),
+      );
+      if (!page) return [];
+      if (sql.includes('returning id')) {
+        race?.(page);
+        if (
+          pageRevision(page) !==
+          pageRevision({ blocks: JSON.parse(expected) })
+        )
+          return [];
+      }
+      page.blocks = JSON.parse(blocks);
+      writes.push({ page: page.slug, sql });
+      return sql.includes('returning id') ? [{ id: pageId }] : [];
+    }
+    throw new Error('I/O fora do escopo da fixture.');
+  };
+  let transactionTail = Promise.resolve();
+  const database = {
+    db:
+      () =>
+      async (parts, ...values) =>
+        executeQuery(parts.join('?'), values),
+    transaction: async (run) => {
+      const previous = transactionTail;
+      let release;
+      transactionTail = new Promise((resolve) => {
+        release = resolve;
+      });
+      await previous;
+      try {
+        return await run({
+          query: async (sql, values) => ({
+            rows: await executeQuery(sql, values),
+          }),
+        });
+      } finally {
+        release();
+      }
     },
+  };
+  const mocks = {
+    '@/lib/db': database,
     '@/lib/tenant-queries': {
       getPage: async (tenantId, slug) =>
         structuredClone(

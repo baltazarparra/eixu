@@ -69,6 +69,17 @@ async function fixture(text = request) {
           pages[0].blocks = JSON.parse(values[0]);
           return [{ id: 'page' }];
         },
+      transaction: async (run) =>
+        run({
+          query: async (sql, values = []) => {
+            if (sql.includes('update pages set blocks')) {
+              writes.push(values);
+              pages[0].blocks = JSON.parse(values[0]);
+              return { rows: [{ id: 'page' }] };
+            }
+            return { rows: [] };
+          },
+        }),
     },
     '@/lib/tenant-queries': { getPage: async () => structuredClone(pages[0]) },
     '@/lib/taste/lint': {

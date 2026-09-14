@@ -272,13 +272,15 @@ reparos por conta própria. A ferramenta usa o briefing atualizado no mesmo turn
 A autorização para apagar deixou de ser um único bit do turno. `removalScope`
 em `lib/ai/edit-policy.ts` classifica o pedido atual: card, item, foto, botão,
 link ou "essa parte" autorizam `item`, mesmo quando a frase cita o bloco onde o
-elemento está; seção, faixa ou bloco inteiro autorizam `block`. Um alvo citado
+elemento está ou pede para manter "todos os outros"; seção, faixa ou bloco
+inteiro autorizam `block`. Um alvo citado
 como bloco mas apontado só por anexo fica indefinido, e a remoção grande passa
 a exigir confirmação.
 
 `applyPageEdit` mede a operação contra esse escopo antes de qualquer escrita.
-Apagar um bloco sob escopo de item é recusado com o nome da seção, a quantidade
-de itens e textos que sairiam e a frase estável `pode remover a seção inteira`;
+Apagar ou substituir um bloco sob escopo de item é recusado com o nome da seção,
+a quantidade de itens e textos que sairiam e a frase estável
+`pode remover a seção inteira`;
 um lote não apaga duas seções de uma vez. A rota reconhece a resposta afirmativa
 do operador à pergunta anterior, pelo recibo do servidor, e só então eleva o
 escopo. Um "sim" sem pergunta pendente não autoriza nada. Quando o lote remove
@@ -293,6 +295,10 @@ posições, e guardam o estado atual antes de restaurar, de modo que um segundo
 desfazer devolve o que estava ali. Um pedido curto e direto de reverter é
 resolvido pelo servidor, sem chamar o modelo. O histórico é melhor esforço: se
 a gravação falhar, a edição continua valendo e o recibo não oferece desfazer.
+Atualização da página, inserção da revisão e retenção usam a mesma transação e
+mantêm o lock da página até o commit. Assim duas edições aceitas não conseguem
+inverter a ordem do histórico; o desfazer também escolhe, restaura e consome a
+revisão sob o mesmo lock.
 Nada disso alcança snapshot publicado, imagens ou cadastro.
 
 O recibo declara o tamanho do que saiu, por exemplo `seção removida, com 4
@@ -314,7 +320,8 @@ na prévia autenticada e não altera o layout do site.
 O executor prepara o lote em memória, valida os blocos tocados e recusa novos
 erros de `lintPage` e `lintTextStyles`. Erros anteriores fora do pedido permanecem no recibo. A
 escrita compara `blocks` em JSONB e usa ID da página e do tenant; se outra aba
-gravou, retorna conflito. Os mutadores antigos também usam essa gravação.
+gravou, retorna conflito. O lock da página ordena a revisão e a mutação até o
+commit. Os mutadores antigos também usam essa gravação.
 Nenhum snapshot publicado é alterado. A atomicidade vale por página, não por
 um pedido com várias páginas. Uma repetição com revisão antiga é recusada. O
 desfazer é o caminho de reversão, descrito acima; a comparação de revisão

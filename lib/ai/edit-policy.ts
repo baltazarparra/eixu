@@ -91,17 +91,25 @@ export function removalScope(text: string): 'item' | 'block' | undefined {
     /\b(secao|secoes|blocos?|faixas?|banner|galeria|rodape|footer|cabecalho|header|menu|navbar|formulario|hero|abertura)\b/.test(
       request,
     );
-  const whole = /\b(inteir\w*|toda|todo|todas|todos|complet\w*)\b/.test(request);
+  const explicitWholeBlock =
+    /\b(?:secoes?|blocos?|faixas?|banner|galeria|rodape|footer|cabecalho|header|menu|navbar|formulario|hero|abertura)\s+(?:inteir\w*|complet\w*)\b/.test(
+      request,
+    ) ||
+    /\b(?:toda|todo|todas|todos)\s+(?:a\s+|o\s+|as\s+|os\s+)?(?:secoes?|blocos?|faixas?|banner|galeria|rodape|footer|cabecalho|header|menu|navbar|formulario|hero|abertura)\b/.test(
+      request,
+    );
   // Alvo apontado por imagem: o texto não diz o que é, e o modelo adivinha.
   const pointed =
     /\b(anex\w*|referencia|print|captura|screenshot|imagem acima|acima|marcad\w*|circulad\w*)\b/.test(
       request,
     );
-  if (item && !block) return 'item';
-  if (block && whole) return 'block';
-  if (block && item) return 'item';
+  // O alvo menor prevalece. Palavras de preservação como “todos os outros”
+  // não podem transformar “remova esse card da seção” em autorização para
+  // apagar a seção inteira.
+  if (block && explicitWholeBlock) return 'block';
+  if (item) return 'item';
   if (block) return pointed ? undefined : 'block';
-  return item ? 'item' : undefined;
+  return undefined;
 }
 
 function namedVisualScope(text: string, pages: Page[], pageSlug?: string) {

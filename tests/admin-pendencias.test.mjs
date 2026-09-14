@@ -49,6 +49,44 @@ async function fixture(
   const writes = [];
   const revisions = [];
   const published = [];
+  const executeQuery = async (sql, values = []) => {
+    if (sql.includes('update pages set blocks')) {
+      const [blocks, pageId, tenantId, expected] = values;
+      const page = f.pages.find(
+        (candidate) =>
+          candidate.id === pageId && candidate.tenantId === tenantId,
+      );
+      if (!page) return [];
+      if (
+        pageRevision(page) !==
+        pageRevision({ blocks: JSON.parse(expected) })
+      )
+        return [];
+      page.blocks = JSON.parse(blocks);
+      writes.push({ page: page.slug });
+      return [{ id: pageId }];
+    }
+    if (sql.includes("jsonb_set(brief, '{evidence}')")) {
+      const [next, tenantId, expected] = values;
+      if (JSON.stringify(f.tenant.brief.evidence ?? null) !== expected)
+        return [];
+      f.tenant.brief = {
+        ...f.tenant.brief,
+        evidence: JSON.parse(next),
+      };
+      writes.push({ evidence: JSON.parse(next) });
+      return [{ id: tenantId }];
+    }
+    if (
+      sql.startsWith('SAVEPOINT') ||
+      sql.startsWith('RELEASE SAVEPOINT') ||
+      sql.startsWith('ROLLBACK TO SAVEPOINT') ||
+      sql.includes('insert into page_revisions') ||
+      sql.includes('delete from page_revisions')
+    )
+      return [];
+    throw new Error(`I/O fora do escopo da fixture: ${sql}`);
+  };
   const mocks = {
     '@/lib/sites/publish': {
       publishSite: async (tenant, page) => {
@@ -93,6 +131,12 @@ async function fixture(
           }
           throw new Error(`I/O fora do escopo da fixture: ${sql}`);
         },
+      transaction: async (run) =>
+        run({
+          query: async (sql, values = []) => ({
+            rows: await executeQuery(sql, values),
+          }),
+        }),
     },
     '@/lib/tenant-queries': {
       ...(await j.import('../lib/tenant-queries.ts')),
