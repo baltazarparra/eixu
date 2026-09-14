@@ -33,7 +33,7 @@ export function SiteMotion({
             { duration: 0.65, delay: stagger(0.085), ease: [0.22, 1, 0.36, 1] },
           ),
         );
-      const photo = hero.querySelector('.site-hero-media > img');
+      const photo = hero.querySelector('.site-hero-media img:first-of-type');
       if (photo)
         controls.push(
           animate(
@@ -53,7 +53,9 @@ export function SiteMotion({
           if (section.contains(hero)) return;
           const elements =
             section.dataset.animation === 'image'
-              ? section.querySelectorAll('img')
+              ? section.querySelectorAll(
+                  'img:not(.site-carousel-image), .site-carousel-slide:first-child .site-carousel-image',
+                )
               : section.dataset.animation === 'stagger'
                 ? section.querySelectorAll('article, ol > li')
                 : section.querySelectorAll(

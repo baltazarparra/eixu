@@ -21,13 +21,96 @@ const j = createJiti(import.meta.url, {
 const { siteAgent } = await j.import('../lib/ai/agent.ts');
 const { productModel } = await j.import('../lib/ai/models.ts');
 const { usageRecord, sumGatewayCosts } = await j.import('../lib/ai/usage.ts');
-if (!process.argv.includes('--live')) {
-  console.log(
-    'Use npm run eval:edits -- --live [--case=text|nested|color|insert|move|move-within|impossible-move|ambiguous|recognition-image|landing-frame] [--attachment=fixture.png]. Modelo configurado, fixture sintética, executores reais; nenhuma gravação remota.',
-  );
-  process.exit(0);
+const CAROUSEL_REQUEST =
+  'No lugar de apenas uma imagem no hero, quero um carrossel com as imagens #4, #6, #7 e #8.';
+const carouselImages = [
+  [4, '3:2', 'Produto principal em uma bancada clara'],
+  [6, '1:1', 'Detalhe lateral do material aplicado'],
+  [7, '1:1', 'Acabamento do material visto de perto'],
+  [8, '1:1', 'Material em outro ambiente iluminado'],
+].map(([seq, ratio, alt]) => ({
+  id: `image-${seq}`,
+  tenantId: 'edit-fixture',
+  seq,
+  kind: 'foto',
+  ratio,
+  model: 'upload',
+  status: 'disponivel',
+  url: `https://assets.test/foto-${seq}.webp`,
+  blobPath: `tenants/edit-fixture/uploads/foto-${seq}.webp`,
+  targetBlock: 'livre',
+  requestText: alt,
+  alt,
+  critique: {},
+  createdAt: '2026-09-13T00:00:00Z',
+}));
+const carouselSlides = carouselImages.slice(1).map((image) => ({
+  src: image.url,
+  alt: image.alt,
+}));
+function carouselPages(unsupported = false) {
+  const pages = editPages();
+  pages[0].blocks[1] = unsupported
+    ? {
+        id: 'hero',
+        type: 'hero.split',
+        props: {
+          layout: 'cover',
+          headline: 'Materiais para cada ambiente',
+          subtext: 'Compare detalhes e acabamentos antes de escolher.',
+          cta: { label: 'Conferir opções', href: '/materiais' },
+          image: carouselImages[0].url,
+          imageAlt: carouselImages[0].alt,
+        },
+      }
+    : {
+        id: 'hero',
+        type: 'hero.landing',
+        props: {
+          layout: 'stage',
+          headline: 'Materiais para cada ambiente',
+          subtext: 'Compare detalhes e acabamentos antes de escolher.',
+          cta: { label: 'Conferir opções', href: '/materiais' },
+          image: carouselImages[0].url,
+          imageAlt: carouselImages[0].alt,
+        },
+      };
+  pages[0].publishedBlocks = structuredClone(pages[0].blocks);
+  return pages;
 }
 const cases = [
+  {
+    id: 'hero-carousel',
+    text: CAROUSEL_REQUEST,
+    initialPages: carouselPages(),
+    images: carouselImages,
+    check: (pages, result, run) => {
+      const hero = pages[0].blocks.find((block) => block.id === 'hero');
+      assert.equal(hero.props.image, carouselImages[0].url);
+      assert.deepEqual(hero.props.slides, carouselSlides);
+      assert.equal(
+        pages[0].blocks.some((block) => block.type === 'media.gallery'),
+        false,
+      );
+      assert.deepEqual(
+        run.trace.flatMap((step) => step.calls.map((call) => call.toolName)),
+        ['edit_page'],
+      );
+      assert.equal(run.writes.length, 1);
+      assert.doesNotMatch(result.text, /\?/);
+    },
+  },
+  {
+    id: 'hero-carousel-unsupported',
+    text: CAROUSEL_REQUEST,
+    initialPages: carouselPages(true),
+    images: carouselImages,
+    check: (pages, result, run) => {
+      assert.deepEqual(pages, carouselPages(true));
+      assert.equal(run.writes.length, 0);
+      assert.match(result.text, /media\.gallery|galeria.+carrossel/i);
+    },
+  },
   {
     id: 'landing-frame',
     text: landingFrameRequest,
@@ -160,6 +243,56 @@ const selected = process.argv
   ?.slice(7);
 if (selected && !cases.some((c) => c.id === selected))
   throw new Error('Caso desconhecido.');
+if (!process.argv.includes('--live')) {
+  const supported = await pageEditFixture(CAROUSEL_REQUEST, {
+    initialPages: carouselPages(),
+    images: carouselImages,
+  });
+  const applied = await supported.tools.edit_page.execute({
+    page: '',
+    revision: (await j.import('../lib/ai/page-edits.ts')).pageRevision(
+      supported.pages[0],
+    ),
+    operations: [
+      { op: 'set', block: 'hero', path: 'slides', value: carouselSlides },
+    ],
+  });
+  assert.equal(applied.ok, true, JSON.stringify(applied));
+  assert.equal(supported.writes.length, 1);
+  assert.match(applied.summary.join(' '), /carrossel com 4 fotos/);
+  cases[0].check(
+    supported.pages,
+    { text: '' },
+    {
+      trace: [{ calls: [{ toolName: 'edit_page' }] }],
+      writes: supported.writes,
+    },
+  );
+
+  const unsupported = await pageEditFixture(CAROUSEL_REQUEST, {
+    initialPages: carouselPages(true),
+    images: carouselImages,
+  });
+  const refused = await unsupported.tools.edit_page.execute({
+    page: '',
+    revision: (await j.import('../lib/ai/page-edits.ts')).pageRevision(
+      unsupported.pages[0],
+    ),
+    operations: [
+      { op: 'set', block: 'hero', path: 'slides', value: carouselSlides },
+    ],
+  });
+  assert.match(refused.error, /media\.gallery.*carousel/i);
+  assert.equal(unsupported.writes.length, 0);
+  assert.deepEqual(unsupported.pages, carouselPages(true));
+  console.log(
+    'Fixtures hero-carousel e hero-carousel-unsupported validadas com executores reais; nenhuma gravação remota.',
+  );
+  console.log(
+    'Use npm run eval:edits -- --live [--case=hero-carousel|hero-carousel-unsupported|text|nested|color|insert|move|move-within|impossible-move|ambiguous|recognition-image|landing-frame] [--attachment=fixture.png] para medir o modelo configurado.',
+  );
+  process.exit(0);
+}
 const directory = `outputs/page-edits/${Date.now()}`;
 const attachment = process.argv
   .find((arg) => arg.startsWith('--attachment='))
@@ -177,6 +310,7 @@ for (const scenario of cases.filter((c) => !selected || c.id === selected)) {
     hero: scenario.hero,
     initialPages: scenario.initialPages,
     initialTenant: scenario.initialTenant,
+    images: scenario.images,
   });
   const trace = [];
   const started = Date.now();
@@ -215,7 +349,7 @@ for (const scenario of cases.filter((c) => !selected || c.id === selected)) {
         );
       },
     });
-    scenario.check(f.pages, result);
+    scenario.check(f.pages, result, { trace, writes: f.writes });
     const run = {
       case: scenario.id,
       correct: true,

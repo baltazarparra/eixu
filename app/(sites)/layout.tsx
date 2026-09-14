@@ -17,6 +17,7 @@ import {
 } from 'next/font/google';
 import './site.css';
 import './creative.css';
+import './primitives.css';
 import './vibes.css';
 import './typography.css';
 import './iconography.css';

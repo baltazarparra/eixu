@@ -57,8 +57,15 @@ function showsWholeImage(block: BlockInstance, url: string): boolean {
     const fit = (value as Record<string, unknown>).fit;
     return fit === 'natural' || fit === 'contain';
   };
-  if (block.type === 'hero.landing' && block.props.image === url)
+  const usesSlide =
+    Array.isArray(block.props.slides) &&
+    block.props.slides.some(
+      (slide) => slide && typeof slide === 'object' && slide.src === url,
+    );
+  if (block.type === 'hero.landing' && (block.props.image === url || usesSlide))
     return whole(block.props.imagePresentation);
+  if (block.type === 'hero.split' && (block.props.image === url || usesSlide))
+    return block.props.imageFit === 'contain';
   if (
     block.type === 'signature.composition' &&
     Array.isArray(block.props.items)

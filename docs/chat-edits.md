@@ -123,6 +123,18 @@ O pedido de remover um container **deixando apenas a imagem** não autoriza
 apagar o conteúdo do bloco. Esse recorte é conservador e não substitui a
 interpretação do alvo pelo agente e pelo anexo do operador.
 
+Para carrosséis, `hero.landing:stage` e os layouts `split`, `poster`,
+`editorial` e `offset` de `hero.split` aceitam `slides`; a configuração comum
+fica em `carousel`, e `media.gallery` aceita o layout `carousel`. A foto já
+salva em `image` permanece como primeira imagem, e `slides` recebe as demais na
+ordem pedida. O recibo de um `set slides` informa **“carrossel com N fotos”**;
+alterar autoplay ou intervalo informa **“carrossel ajustado”**. Remover depois
+uma foto reduz a lista e exige que a mensagem atual peça essa remoção, pois
+`alt` e legenda também são conteúdo. `hero.landing:form`, `hero.split:cover` e
+`hero.split:atelier` não aceitam slides: o agente deve explicar o limite e
+oferecer `media.gallery:carousel` após a abertura, sem gravar uma mudança não
+pedida.
+
 ## Fato confirmado pelo operador
 
 `landing-prova` e as demais regras de prova leem a evidência confirmada. Ela

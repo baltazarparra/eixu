@@ -2928,3 +2928,38 @@ Esta rodada não executou geração paga, mutação no banco nem publicação de
 de cliente. Os testes comprovam intake, API, prompts, gates, plano de cenas,
 pre-flight e renderer com fixtures atuais. A fidelidade editorial de uma saída
 real ainda depende de uma geração controlada e avaliação humana pela rubrica.
+
+## Primitivos interativos e carrossel, 13/09/2026
+
+O checkout isolado sobre `main` `f9d5918` recebeu o primitivo progressivo
+`SiteCarousel`, o carrossel em `hero.landing:stage`, quatro layouts de
+`hero.split` e `media.gallery`, além do contrato completo de edição, proporção,
+acervo e recibo. O plano original foi preservado no arquivo
+`primitivos-interativos-plan-2026-09-13.md`; a fase opcional de miniaturas,
+lightbox e navegação automatizada da crítica não entrou nesta entrega.
+
+Os gates locais passaram:
+
+- `npx next typegen && npx tsc --noEmit`;
+- `npm run lint`;
+- `npm run test:sites`: 25 de 25 arquivos de teste aprovados;
+- `npm run test:admin`: 30 de 30 arquivos de teste aprovados;
+- `npm run eval:edits`, sem `--live`: os casos `hero-carousel` e
+  `hero-carousel-unsupported` passaram com executores reais e memória local;
+- `npm run build:vercel`: Turbopack, TypeScript, 15 páginas estáticas e 4 de 4
+  verificações dos artefatos de runtime aprovados;
+- suíte de sites no Chromium: 77 de 77 testes aprovados, incluindo SSR sem
+  JavaScript, importação condicional do Embla, teclado, toque, arrasto,
+  movimento reduzido, edição, quatro vibes e larguras de 1440, 390 e 320 px;
+- suíte administrativa no Chromium: 19 de 19 cenários aprovados; o pedido com
+  as imagens #4, #6, #7 e #8 fez uma escrita, recarregou a prévia e exibiu o
+  recibo “carrossel com 4 fotos”;
+- `git diff --check`.
+
+O build oficial precisou rodar fora do sandbox local: dentro dele, os
+subprocessos do Next/TypeScript ficaram sem progresso ou saída, enquanto a
+tipagem direta passava. Fora da restrição, o próprio comando `build:vercel`
+terminou normalmente. Não houve chamada ao modelo, escrita em Neon/Blob,
+publicação de página de cliente, deploy ou alteração no `deckdisck`. Também não
+houve ensaio em Safari ou aparelho físico, nem medição temporal do autoplay;
+esses limites permanecem para uma validação posterior autorizada.

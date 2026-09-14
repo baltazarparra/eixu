@@ -45,6 +45,12 @@ await test('acervo distingue uso no rascunho, no publicado e no logo sem casar t
     seq: 7,
     url: 'https://assets.test/branca.png',
   };
+  const slide = {
+    ...original,
+    id: '00000000-0000-4000-8000-000000000008',
+    seq: 8,
+    url: 'https://assets.test/slide.webp',
+  };
   const client = {
     ...tenant,
     brand: { logoUrl: other.url, logoDarkUrl: dark.url },
@@ -60,6 +66,7 @@ await test('acervo distingue uso no rascunho, no publicado e no logo sem casar t
           type: 'hero.split',
           props: {
             image: original.url,
+            slides: [{ src: slide.url, alt: 'Detalhe da oficina' }],
             body: `Referência textual: ${other.url}`,
           },
         },
@@ -73,7 +80,7 @@ await test('acervo distingue uso no rascunho, no publicado e no logo sem casar t
       ],
     },
   ];
-  const usage = plain(imageUsage(client, pages, [original, other]));
+  const usage = plain(imageUsage(client, pages, [original, other, slide]));
   assert.deepEqual(usage[original.id], [
     { scope: 'published', page: null, block: null, kind: 'logo' },
     { scope: 'draft', page: '/', block: 'hero', kind: 'page' },
@@ -81,6 +88,9 @@ await test('acervo distingue uso no rascunho, no publicado e no logo sem casar t
   assert.deepEqual(usage[other.id], [
     { scope: 'draft', page: null, block: null, kind: 'logo' },
     { scope: 'published', page: '/', block: 'galeria', kind: 'page' },
+  ]);
+  assert.deepEqual(usage[slide.id], [
+    { scope: 'draft', page: '/', block: 'hero', kind: 'page' },
   ]);
 });
 
@@ -145,12 +155,9 @@ await test('alteração usa os pixels da #5, mantém o recorte e continua dispon
   );
   assert.equal(calls[2].ratio, '16:9');
   await assert.rejects(
-    reviseImage(
-      tenant,
-      { ...original, kind: 'logo' },
-      'modernize',
-      { ratio: '16:9' },
-    ),
+    reviseImage(tenant, { ...original, kind: 'logo' }, 'modernize', {
+      ratio: '16:9',
+    }),
     /logo não aceita proporção/i,
   );
   assert.equal(calls.length, 3);
@@ -178,6 +185,7 @@ await test('troca URL exata e alt em hero, galeria e abas, preservando texto e l
           { image: original.url, imageAlt: 'Antiga' },
           { image: `${original.url}?other=1` },
         ],
+        slides: [{ src: original.url, alt: 'Slide antigo' }],
       },
     },
   ];
@@ -192,6 +200,8 @@ await test('troca URL exata e alt em hero, galeria e abas, preservando texto e l
   assert.equal(props.items[0].alt, replacement.alt);
   assert.equal(props.items[1].image, replacement.url);
   assert.equal(props.items[2].image, `${original.url}?other=1`);
+  assert.equal(props.slides[0].src, replacement.url);
+  assert.equal(props.slides[0].alt, replacement.alt);
   assert.equal(props.body, original.url);
   assert.equal(props.cta.href, original.url);
   assert.equal(JSON.stringify(blocks), before);

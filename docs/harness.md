@@ -410,6 +410,15 @@ de preservar a imagem enquanto se retira a caixa não libera apagar conteúdo.
 O ensaio `eval:edits -- --live --case=landing-frame --attachment=fixture.png`
 testa a interpretação multimodal com o agente configurado e gravação em memória.
 
+O prompt de edição trata carrossel como forma da mídia existente. Para um
+pedido com fotos numeradas, mantém `image` como primeira foto e grava as demais
+em `slides`, em vez de inserir uma galeria não pedida. `hero.landing:stage` e
+`hero.split` sem `cover`/`atelier` aceitam essa forma; `media.gallery` aceita
+layout `carousel`. Proporções diferentes ficam no recibo, com `contain` como
+opção para mostrar a foto inteira. `form`, `cover` e `atelier` geram explicação
+e alternativa sem escrita. A composição não é instruída a criar carrosséis por
+padrão: slides ocultos não cumprem sozinhos o piso de protagonista.
+
 O turno de edição recebe duas seções próprias: as pendências de publicação com
 a resolução decidida em código (`lib/taste/pendencias.ts`) e as frases que a
 validação aceita como prova. As fases da geração não recebem nenhuma das duas.
@@ -513,6 +522,12 @@ do modelo em permissão para publicar ou indisponibilidade em falha da entrega.
 `npm run test:sites` e `npm run test:admin` cobrem contratos, contexto, erro de
 revisão, captura incompleta, evidência desatualizada e isolamento. Captura real
 usa `EIXU_CHROME_PATH`. Esses testes não chamam modelos pagos.
+
+`npm run eval:edits` valida em memória os casos `hero-carousel` e
+`hero-carousel-unsupported`: o primeiro preserva a foto principal, grava os
+slides em uma única `edit_page` e não insere galeria; o segundo mantém um hero
+`cover` intacto e devolve a alternativa. `--live` usa o modelo configurado,
+exige autorização por envolver chamada paga e não é um check local obrigatório.
 
 `npm run eval:harness` explica o ensaio. Com `--live`, usa o modelo, os schemas,
 os executores e o renderer reais; substitui I/O editorial por memória, com fotos

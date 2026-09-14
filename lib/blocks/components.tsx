@@ -5,6 +5,7 @@
 // oxlint-disable next/no-img-element
 import { z } from 'zod';
 import { ShowcaseTabs } from './landing-interactions';
+import { SiteCarousel } from './ui/carousel';
 import { headlineAttributes } from './headline';
 import { textAttrs } from './text';
 import type { TextStyle } from './text-style-schema';
@@ -254,12 +255,29 @@ export function HeroSplit({
   secondaryImageAlt,
   imageCaption,
   secondaryCaption,
+  slides,
+  carousel,
   ctx,
 }: HeroSplitProps & { ctx: RenderContext }) {
   const text = textAttrs(textStyles, editing);
   const hasImage = Boolean(image && /^https?:\/\//.test(image));
   const resolvedLayout =
     layout ?? ctx.tenant.brand.design?.heroComposition ?? 'split';
+  const carouselSlides =
+    image && slides?.length
+      ? [
+          {
+            src: image,
+            alt: imageAlt ?? '',
+            caption: imageCaption,
+            captionField: 'imageCaption',
+          },
+          ...slides.map((slide, index) => ({
+            ...slide,
+            captionField: `slides.${index}.caption`,
+          })),
+        ]
+      : undefined;
   // A ordem no DOM segue a leitura; o CSS não reordena, para o teclado e o
   // leitor de tela encontrarem os selos onde eles aparecem.
   const bulletList = bullets?.length ? (
@@ -322,26 +340,44 @@ export function HeroSplit({
         </div>
         {hasImage ? (
           <div className="site-hero-visual">
-            <figure className="site-hero-media">
-              <img
-                src={image}
-                alt={imageAlt ?? ''}
-                width={960}
-                height={1080}
-                className={`h-full w-full ${imageFit === 'contain' ? 'object-contain' : 'object-cover'}`}
-                data-focal={focalPoint}
-                fetchPriority="high"
-                decoding="async"
-              />
-              {imageCaption && (
-                <figcaption
-                  className="site-hero-caption"
-                  {...text.mark('imageCaption')}
-                >
-                  {text.content('imageCaption', imageCaption)}
-                </figcaption>
-              )}
-            </figure>
+            {carouselSlides ? (
+              <div className="site-hero-media">
+                <SiteCarousel
+                  label="Fotos da abertura"
+                  slides={carouselSlides}
+                  vibe={vibe}
+                  editing={editing}
+                  autoplay={carousel?.autoplay}
+                  interval={carousel?.interval}
+                  fit={imageFit}
+                  focalPoint={focalPoint}
+                  width={960}
+                  height={1080}
+                  textStyles={textStyles}
+                />
+              </div>
+            ) : (
+              <figure className="site-hero-media">
+                <img
+                  src={image}
+                  alt={imageAlt ?? ''}
+                  width={960}
+                  height={1080}
+                  className={`h-full w-full ${imageFit === 'contain' ? 'object-contain' : 'object-cover'}`}
+                  data-focal={focalPoint}
+                  fetchPriority="high"
+                  decoding="async"
+                />
+                {imageCaption && (
+                  <figcaption
+                    className="site-hero-caption"
+                    {...text.mark('imageCaption')}
+                  >
+                    {text.content('imageCaption', imageCaption)}
+                  </figcaption>
+                )}
+              </figure>
+            )}
             {secondaryImage && (
               <figure className="site-hero-detail">
                 <img
@@ -1374,6 +1410,7 @@ export function EditorialPostBody({ body }: EditorialPostBodyProps) {
 export function MediaGallery({
   textStyles,
   editing,
+  vibe = 'comercial',
   title,
   images,
   layout = 'grid',
@@ -1389,21 +1426,43 @@ export function MediaGallery({
             {text.content('title', title)}
           </h2>
         ) : null}
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {images.map((image) => (
-            <li key={image.src}>
-              <img
-                src={image.src}
-                alt={image.alt}
-                width={640}
-                height={480}
-                loading="lazy"
-                decoding="async"
-                className="aspect-[4/3] w-full rounded-[var(--radius)] object-cover"
-              />
-            </li>
-          ))}
-        </ul>
+        {layout === 'carousel' ? (
+          <SiteCarousel
+            label={title ? `Galeria: ${title}` : 'Galeria de fotos'}
+            slides={images.map((image, index) => ({
+              ...image,
+              captionField: `images.${index}.caption`,
+            }))}
+            vibe={vibe}
+            editing={editing}
+            width={640}
+            height={480}
+            textStyles={textStyles}
+          />
+        ) : (
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {images.map((image, index) => (
+              <li key={`${image.src}-${index}`}>
+                <figure>
+                  <img
+                    src={image.src}
+                    alt={image.alt}
+                    width={640}
+                    height={480}
+                    loading="lazy"
+                    decoding="async"
+                    className="aspect-[4/3] w-full rounded-[var(--radius)] object-cover"
+                  />
+                  {image.caption ? (
+                    <figcaption className="mt-3 text-[0.88rem] text-[var(--muted)]">
+                      {text.node(`images.${index}.caption`, image.caption)}
+                    </figcaption>
+                  ) : null}
+                </figure>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </section>
   );
@@ -2018,11 +2077,23 @@ export function HeroLanding({
   image,
   imageAlt,
   imagePresentation,
+  slides,
+  carousel,
   form,
   formAnchor,
   ctx,
 }: HeroLandingProps & { ctx: RenderContext }) {
   const text = textAttrs(textStyles, editing);
+  const carouselSlides =
+    image && slides?.length
+      ? [
+          { src: image, alt: imageAlt ?? '' },
+          ...slides.map((slide, index) => ({
+            ...slide,
+            captionField: `slides.${index}.caption`,
+          })),
+        ]
+      : undefined;
   // A ordem no DOM segue a leitura; o CSS não reordena.
   const badgeList = badges.length ? (
     <ul
@@ -2088,6 +2159,24 @@ export function HeroLanding({
               fieldPrefix="form."
             />
           </div>
+        ) : carouselSlides ? (
+          <figure
+            className="site-landing-product"
+            {...imagePresentationAttrs(imagePresentation)}
+          >
+            <SiteCarousel
+              label="Fotos da abertura"
+              slides={carouselSlides}
+              vibe={vibe}
+              editing={editing}
+              autoplay={carousel?.autoplay}
+              interval={carousel?.interval}
+              fit={imagePresentation?.fit ?? 'cover'}
+              width={1600}
+              height={900}
+              textStyles={textStyles}
+            />
+          </figure>
         ) : image ? (
           <figure
             className="site-landing-product"

@@ -16,8 +16,11 @@ const { workspaceState } = await jiti.import('../../lib/admin/state.ts');
 const { pageRevision } = await jiti.import('../../lib/ai/page-edits.ts');
 
 /** Rota, SDK, executores, validação e UI reais; banco/modelo isolados em memória. */
-export async function editBrowserFixture() {
-  const fixture = await pageEditFixture();
+export async function editBrowserFixture({
+  text = 'Ajuste a página em foco.',
+  fixtureOptions = {},
+} = {}) {
+  const fixture = await pageEditFixture(text, fixtureOptions);
   let turn;
   let previewReads = 0;
   let stateReads = 0;
@@ -36,7 +39,9 @@ export async function editBrowserFixture() {
       getTenantBySlug: async () => fixture.tenant,
       listPages: async () => structuredClone(fixture.pages),
     },
-    '@/lib/images/queries': { listImages: async () => [] },
+    '@/lib/images/queries': {
+      listImages: async () => fixtureOptions.images ?? [],
+    },
     '@/lib/generation/runs': {
       activeRun: async () => null,
       expireStaleRun: async () => null,
@@ -74,7 +79,7 @@ export async function editBrowserFixture() {
                         input: JSON.stringify({
                           page: '',
                           revision: pageRevision(fixture.pages[0]),
-                          operations: [
+                          operations: active.operations ?? [
                             {
                               op: 'set',
                               block: active.block,
@@ -252,10 +257,11 @@ export async function editBrowserFixture() {
     redirectPreview: (value) => {
       previewRedirect = value;
     },
-    nextTurn: (block, invalid = false) => {
+    nextTurn: (block, invalid = false, operations) => {
       turn = {
         block,
         invalid,
+        operations,
         understanding: Promise.withResolvers(),
         apply: Promise.withResolvers(),
         finish: Promise.withResolvers(),

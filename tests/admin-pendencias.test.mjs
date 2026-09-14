@@ -12,6 +12,9 @@ const { landingFixture, landingEvidence } = await j.import(
 const { editPolicyFor } = await j.import('../lib/ai/edit-policy.ts');
 const { pageRevision } = await j.import('../lib/ai/page-edits.ts');
 const { createEditReceipt } = await j.import('../lib/ai/edit-receipt.ts');
+const { publicationPlan, pendenciasContext } = await j.import(
+  '../lib/taste/pendencias.ts',
+);
 const { completeChatStream } = await j.import('../lib/ai/chat-stream.ts');
 const { chatFixture, chatRequest } = await import('./helpers/chat-fixture.mjs');
 
@@ -250,6 +253,43 @@ await test('update_image gera a nova versão na proporção pedida', async () =>
   // A original continua no acervo com a proporção antiga.
   assert.match(result.aviso ?? '', /4:3/);
   assert.equal(result.anterior, '#1');
+});
+
+await test('pendência de slide oferece acervo, nova versão e foto inteira', () => {
+  const f = landingFixture();
+  const hero = f.pages[0].blocks.find((block) => block.id === 'hero');
+  hero.props.slides = [
+    {
+      src: f.images[1].url,
+      alt: 'Detalhe quadrado da mesa e do acabamento',
+    },
+  ];
+  f.images[1].ratio = '1:1';
+  f.images[2].ratio = '16:9';
+  const item = publicationPlan({
+    pages: f.pages,
+    images: f.images,
+    brand: f.tenant.brand,
+    brief: f.tenant.brief,
+  }).find(
+    (entry) =>
+      entry.regra === 'imagem-proporcao' &&
+      entry.bloco === 'hero' &&
+      entry.imagem?.numero === '#2',
+  );
+  assert.equal(item.acao, 'imagem');
+  assert.ok(item.imagem.biblioteca.some((photo) => photo.numero === '#3'));
+  assert.deepEqual(item.imagem.gerar, {
+    ferramenta: 'update_image',
+    image: '#2',
+    ratio: '16:9',
+  });
+  assert.deepEqual(item.imagem.apresentacao, {
+    ferramenta: 'edit_page',
+    caminho: 'imagePresentation.fit',
+    valor: 'contain',
+  });
+  assert.match(pendenciasContext([item]), /mostrar a foto inteira/);
 });
 
 await test('o pedido de resolver pendências não vira remoção nem escopo visual', async () => {

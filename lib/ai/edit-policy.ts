@@ -65,7 +65,7 @@ function namedVisualScope(text: string, pages: Page[], pageSlug?: string) {
   if (!quoted) return undefined;
   const request = normalized(text.replace(quoted, ''));
   if (
-    !/\b(imagem|imagens|foto|bg|background|borda|border|padding|margin|margem|width|largura|espaco|espacamento|clean|moldura)\b/.test(
+    !/\b(imagem|imagens|foto|fotos|carrossel|carousel|slider|slides?|autoplay|bg|background|borda|border|padding|margin|margem|width|largura|espaco|espacamento|clean|moldura)\b/.test(
       request,
     )
   )
@@ -242,6 +242,8 @@ export function scopedUpdateError(
       (path) =>
         !/^presentation(?:\.|$)/.test(path) &&
         !/^(?:items\.\d+\.)?imagePresentation(?:\.|$)/.test(path) &&
+        !/^slides(?:\.|$)/.test(path) &&
+        !/^carousel(?:\.|$)/.test(path) &&
         !/^(?:items\.\d+\.)?(?:image|imageAlt|imageFit|imagePosition|imageFocus)$/.test(
           path,
         ),
@@ -269,7 +271,7 @@ export function scopedUpdateError(
 
 export function editScopeText(policy?: EditPolicy): string {
   if (policy?.visualOnly)
-    return `Ajuste visual no bloco nomeado. Alvos: ${JSON.stringify(policy.targets)}. Preserve tipo, layout, ordem, itens, textos e ações. Use presentation e imagePresentation do schema, sem reconstruir a seção ou a página. Trocar a imagem não altera outros itens. Se o alvo não foi encontrado ou o schema não atende, explique o limite sem gravar.`;
+    return `Ajuste visual no bloco nomeado. Alvos: ${JSON.stringify(policy.targets)}. Preserve tipo, layout, ordem, textos e ações. Use presentation, imagePresentation, imageFit, slides e carousel do schema, sem reconstruir a seção ou a página. Em slides, preserve a ordem e altere apenas a mídia pedida. Trocar a imagem não altera outros itens. Se o alvo não foi encontrado ou o schema não atende, explique o limite sem gravar.`;
   return policy?.kind === 'navigation-style'
     ? `Pedido restrito ao estilo do cabeçalho. Alvos: ${JSON.stringify(policy.targets)}. Campos permitidos: ${policy.paths?.join(', ')}. Preserve marca, textos, links, imagens, outros campos e todos os outros blocos. Achados da revisão fora desses alvos devem ser relatados, nunca corrigidos neste turno.`
     : 'Edição de site existente. Preserve a direção e os blocos fora do pedido atual. Reconstrução completa não está disponível neste turno; não tente contorná-la com várias edições pequenas. Uma revisão não autoriza corrigir achados fora do pedido.';

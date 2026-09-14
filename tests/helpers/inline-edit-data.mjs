@@ -60,7 +60,11 @@ export function inlineBlocks() {
       });
     if (type === 'hero.landing') delete props.form;
     if (type === 'proof.strip') props.items = props.items.slice(0, 4);
-    if (type === 'hero.split') props.layout = 'atelier';
+    if (type === 'hero.split') {
+      props.layout = 'atelier';
+      delete props.slides;
+      delete props.carousel;
+    }
     if (type === 'editorial.text')
       props.body += '\n\nOutro parágrafo com conteúdo diferente.';
     if (type === 'form.lead')

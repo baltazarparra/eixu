@@ -10,6 +10,7 @@ const { applyPageEdit, pageRevision, pageEditSchema } = await j.import(
   '../lib/ai/page-edits.ts',
 );
 const { editPolicyFor } = await j.import('../lib/ai/edit-policy.ts');
+const { createEditReceipt } = await j.import('../lib/ai/edit-receipt.ts');
 const { sectionColorVars } = await j.import('../lib/blocks/section-colors.ts');
 const { contrastRatio } = await j.import('../lib/blocks/contrast.ts');
 const input = (page, operations) => ({
@@ -439,4 +440,115 @@ await test('texto padrão do render pode ser alterado sem persistir outros defau
   assert.equal(addressed.blocks.at(-1).props.fields[0].label, 'Seu contato');
   assert.equal(addressed.blocks.at(-1).props.fields[0].name, 'email');
   assert.equal(addressed.blocks.at(-1).props.fields[0].type, 'email');
+});
+
+function carouselPage() {
+  const page = editPages()[0];
+  page.blocks[1] = {
+    id: 'hero',
+    type: 'hero.landing',
+    props: {
+      layout: 'stage',
+      headline: 'Materiais para cada ambiente',
+      subtext: 'Considere o uso e as referências do projeto antes da escolha.',
+      cta: { label: 'Conferir opções', href: '/materiais' },
+      image: 'https://assets.test/foto-4.webp',
+      imageAlt: 'Material principal aplicado em uma bancada clara',
+      imagePresentation: { frame: 'none', fit: 'contain' },
+    },
+  };
+  return page;
+}
+
+const carouselSlides = [
+  {
+    src: 'https://assets.test/foto-6.webp',
+    alt: 'Detalhe lateral do material aplicado',
+  },
+  {
+    src: 'https://assets.test/foto-7.webp',
+    alt: 'Acabamento do material visto de perto',
+    caption: 'Detalhe do acabamento',
+  },
+  {
+    src: 'https://assets.test/foto-8.webp',
+    alt: 'Material em outro ambiente iluminado',
+  },
+];
+
+await test('set slides preserva a primeira foto e entrega recibo determinístico', () => {
+  const page = carouselPage();
+  const before = structuredClone(page.blocks[1].props);
+  const request = input(page, [
+    { op: 'set', block: 'hero', path: 'slides', value: carouselSlides },
+  ]);
+  const edited = applyPageEdit(
+    page,
+    request,
+    editPolicyFor(
+      'No lugar de apenas uma imagem no hero, quero um carrossel com as imagens #4, #6, #7 e #8.',
+      [page],
+    ),
+  );
+  const hero = edited.blocks.find((block) => block.id === 'hero');
+  assert.equal(hero.props.image, before.image);
+  assert.equal(hero.props.headline, before.headline);
+  assert.deepEqual(hero.props.imagePresentation, before.imagePresentation);
+  assert.deepEqual(hero.props.slides, carouselSlides);
+  assert.deepEqual(edited.summary, ['Em “seção”: carrossel com 4 fotos.']);
+
+  const receipt = createEditReceipt();
+  receipt.observe(
+    'edit_page',
+    { page: '' },
+    {
+      ok: true,
+      changed: true,
+      summary: edited.summary,
+    },
+  );
+  assert.match(receipt.text(), /carrossel com 4 fotos/);
+});
+
+await test('remover slide exige pedido de remoção e escopo visual aceita a mídia no bloco nomeado', () => {
+  const page = carouselPage();
+  page.blocks[1].props.slides = structuredClone(carouselSlides);
+  assert.throws(
+    () =>
+      applyPageEdit(
+        page,
+        input(page, [
+          {
+            op: 'set',
+            block: 'hero',
+            path: 'slides',
+            value: carouselSlides.slice(0, 2),
+          },
+        ]),
+        editPolicyFor('Ajuste o carrossel do hero.', [page]),
+      ),
+    /apagaria conteúdo/,
+  );
+
+  const clean = carouselPage();
+  const visual = editPolicyFor(
+    'No bloco “hero”, quero um carrossel de fotos.',
+    [clean],
+  );
+  assert.equal(visual.visualOnly, true);
+  const edited = applyPageEdit(
+    clean,
+    input(clean, [
+      { op: 'set', block: 'hero', path: 'slides', value: carouselSlides },
+      {
+        op: 'set',
+        block: 'hero',
+        path: 'carousel.autoplay',
+        value: false,
+      },
+    ]),
+    visual,
+  );
+  assert.deepEqual(edited.blocks[1].props.slides, carouselSlides);
+  assert.equal(edited.blocks[1].props.carousel.autoplay, false);
 });

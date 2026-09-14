@@ -139,6 +139,31 @@ const imagePresentation = z
   })
   .optional();
 
+const carouselSlide = z.object({
+  src: z.url().startsWith('http'),
+  alt: z.string().min(5).max(140),
+  caption: z.string().max(160).optional(),
+});
+
+const carousel = z
+  .object({
+    autoplay: z
+      .boolean()
+      .optional()
+      .describe(
+        'Desligado por padrão. Respeita movimento reduzido e pausa durante interação.',
+      ),
+    interval: z
+      .number()
+      .int()
+      .min(4)
+      .max(12)
+      .optional()
+      .describe('Intervalo do autoplay em segundos, de 4 a 12.'),
+  })
+  .optional()
+  .describe('Comportamento opcional do carrossel de fotos.');
+
 const field = z.object({
   name: z.string().regex(/^[a-z0-9_]+$/, 'use minúsculas, números e underline'),
   label: z.string().min(1).max(60),
@@ -208,6 +233,15 @@ export const blockSchemas = {
       image: z.url().startsWith('http').optional(),
       imageAlt: z.string().min(5).max(140).optional(),
       imagePresentation,
+      slides: z
+        .array(carouselSlide)
+        .min(1)
+        .max(5)
+        .optional()
+        .describe(
+          'Fotos adicionais do carrossel, na ordem. image continua sendo a primeira foto e a imagem de carregamento prioritário.',
+        ),
+      carousel,
       form: leadFormSchema
         .omit({
           anchor: true,
@@ -242,6 +276,13 @@ export const blockSchemas = {
           code: 'custom',
           path: ['form'],
           message: 'O formulário embutido pertence somente ao layout form.',
+        });
+      if (value.layout === 'form' && value.slides?.length)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['slides'],
+          message:
+            'hero.landing form não aceita carrossel. Use media.gallery com layout carousel logo após a abertura.',
         });
     }),
   'proof.strip': z
@@ -365,45 +406,80 @@ export const blockSchemas = {
     cta: link.optional(),
   }),
 
-  'hero.split': z.object({
-    anchor,
-    presentation,
-    textStyles: textStylesSchema.optional(),
-    layout: z
-      .enum(['split', 'cover', 'poster', 'editorial', 'offset', 'atelier'])
-      .optional(),
-    imagePosition: z.enum(['left', 'right']).optional(),
-    imageFit: z.enum(['cover', 'contain']).optional(),
-    focalPoint: z.enum(['center', 'top', 'bottom', 'left', 'right']).optional(),
-    secondaryImage: z.url().startsWith('http').optional(),
-    secondaryImageAlt: z.string().max(140).optional(),
-    imageCaption: z.string().max(140).optional(),
-    secondaryCaption: z.string().max(100).optional(),
-    eyebrow: z.string().max(48).optional(),
-    headline: z.string().min(4).max(90),
-    subtext: z.string().max(160).optional(),
-    cta: link,
-    secondary: link.optional(),
-    bullets: z
-      .array(z.string().max(48))
-      .max(3)
-      .optional()
-      .describe(
-        'Até 3 selos curtos de confiança. bulletsPlacement decide onde.',
-      ),
-    bulletsPlacement: z
-      .enum(['cta', 'headline'])
-      .default('cta')
-      .describe(
-        'Onde os selos aparecem: cta sob os botões (padrão) ou headline logo abaixo do título, antes do texto de apoio.',
-      ),
-    image: z
-      .url()
-      .startsWith('http')
-      .optional()
-      .describe('URL http(s) de uma imagem real. Omita se não tiver.'),
-    imageAlt: z.string().max(140).optional(),
-  }),
+  'hero.split': z
+    .object({
+      anchor,
+      presentation,
+      textStyles: textStylesSchema.optional(),
+      layout: z
+        .enum(['split', 'cover', 'poster', 'editorial', 'offset', 'atelier'])
+        .optional(),
+      imagePosition: z.enum(['left', 'right']).optional(),
+      imageFit: z.enum(['cover', 'contain']).optional(),
+      focalPoint: z
+        .enum(['center', 'top', 'bottom', 'left', 'right'])
+        .optional(),
+      secondaryImage: z.url().startsWith('http').optional(),
+      secondaryImageAlt: z.string().max(140).optional(),
+      imageCaption: z.string().max(140).optional(),
+      secondaryCaption: z.string().max(100).optional(),
+      eyebrow: z.string().max(48).optional(),
+      headline: z.string().min(4).max(90),
+      subtext: z.string().max(160).optional(),
+      cta: link,
+      secondary: link.optional(),
+      bullets: z
+        .array(z.string().max(48))
+        .max(3)
+        .optional()
+        .describe(
+          'Até 3 selos curtos de confiança. bulletsPlacement decide onde.',
+        ),
+      bulletsPlacement: z
+        .enum(['cta', 'headline'])
+        .default('cta')
+        .describe(
+          'Onde os selos aparecem: cta sob os botões (padrão) ou headline logo abaixo do título, antes do texto de apoio.',
+        ),
+      image: z
+        .url()
+        .startsWith('http')
+        .optional()
+        .describe('URL http(s) de uma imagem real. Omita se não tiver.'),
+      imageAlt: z.string().max(140).optional(),
+      slides: z
+        .array(carouselSlide)
+        .min(1)
+        .max(5)
+        .optional()
+        .describe(
+          'Fotos adicionais do carrossel, na ordem. image continua sendo a primeira foto e a imagem de carregamento prioritário.',
+        ),
+      carousel,
+    })
+    .superRefine((value, ctx) => {
+      if (!value.slides?.length) return;
+      if (!value.image || !value.imageAlt)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['image'],
+          message:
+            'O carrossel exige image e imageAlt como primeira foto da abertura.',
+        });
+      if (!value.layout)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['layout'],
+          message:
+            'Defina split, poster, editorial ou offset para usar carrossel neste hero.',
+        });
+      if (value.layout === 'cover' || value.layout === 'atelier')
+        ctx.addIssue({
+          code: 'custom',
+          path: ['slides'],
+          message: `hero.split ${value.layout} não aceita carrossel. Use media.gallery com layout carousel logo após a abertura.`,
+        });
+    }),
 
   'hero.statement': z.object({
     anchor,
@@ -699,14 +775,11 @@ export const blockSchemas = {
     anchor,
     presentation,
     textStyles: textStylesSchema.optional(),
-    layout: z.enum(['grid', 'masonry', 'filmstrip', 'collage']).optional(),
+    layout: z
+      .enum(['grid', 'masonry', 'filmstrip', 'collage', 'carousel'])
+      .optional(),
     title: z.string().max(90).optional(),
-    images: z
-      .array(
-        z.object({ src: z.url().startsWith('http'), alt: z.string().max(140) }),
-      )
-      .min(2)
-      .max(8),
+    images: z.array(carouselSlide).min(2).max(8),
   }),
 
   'media.image': z.object({
@@ -799,7 +872,7 @@ export const blockMeta: Record<BlockType, Meta> = {
   'hero.landing': {
     family: 'hero',
     label: 'Abertura de conversão',
-    use: 'Benefício e ação única; stage mostra a imagem abaixo da oferta, form embute o formulário. imagePresentation.frame none remove o box decorativo e a moldura da imagem sem trocar o layout; fit natural elimina o espaço reservado pela proporção fixa. Selos somente com evidence do briefing, sob os botões ou sob o título por badgesPlacement.',
+    use: 'Benefício e ação única; stage mostra a imagem abaixo da oferta e aceita slides para um carrossel, mantendo image como primeira foto. form embute o formulário e não aceita carrossel. imagePresentation vale para todas as fotos; frame none remove o box decorativo e fit natural mostra a imagem inteira. Selos somente com evidence do briefing, sob os botões ou sob o título por badgesPlacement.',
     singleton: true,
   },
   'feature.explorer': {
@@ -821,7 +894,7 @@ export const blockMeta: Record<BlockType, Meta> = {
   'hero.split': {
     family: 'hero',
     label: 'Hero dividido',
-    use: 'Abertura assimétrica com imagem ao lado. Padrão para site com identidade visual. Selos sob os botões ou sob o título, por bulletsPlacement.',
+    use: 'Abertura assimétrica com imagem ao lado. split, poster, editorial e offset aceitam slides para carrossel, mantendo image como primeira foto; cover e atelier não aceitam e usam media.gallery carousel como alternativa. imageFit e focalPoint valem para todas as fotos. Selos sob os botões ou sob o título, por bulletsPlacement.',
     variance: [5, 10],
     singleton: true,
   },
@@ -907,7 +980,7 @@ export const blockMeta: Record<BlockType, Meta> = {
   'media.gallery': {
     family: 'media',
     label: 'Galeria',
-    use: 'Duas a oito fotos em grade. Fotos do negócio ou cenas geradas identificadas como inspiração na legenda.',
+    use: 'Duas a oito fotos. carousel mostra uma por vez em 4:3, com controles; grid, masonry, filmstrip e collage preservam suas composições. Fotos do negócio ou cenas geradas identificadas como inspiração na legenda.',
   },
   'media.image': {
     family: 'media',

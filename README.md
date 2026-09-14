@@ -2,7 +2,7 @@
 
 Site institucional da EIXU e MVP de uma plataforma operada por agentes para criar sites de clientes, captar contatos e acompanhar tráfego. O operador trabalha em `/admin`; cada cliente tem conteúdo e imagens próprios no mesmo banco e aplicação, com endereço previsto em `cliente.eixu.com.br`.
 
-O [índice da documentação](docs/README.md) reúne os guias vigentes, as evoluções propostas e o histórico de entregas. A revisão de 13/09/2026 foi reconciliada com a implementação de `main` até `c1548be` (PR #58). Evidência de cada release exige conferir o deployment do mesmo commit.
+O [índice da documentação](docs/README.md) reúne os guias vigentes, as evoluções propostas e o histórico de entregas. A revisão de 13/09/2026 parte de `main` `f9d5918` (PR #60) e inclui as alterações descritas no checkout. Evidência de cada release exige conferir o deployment do mesmo commit.
 
 ## Qualidade dos agentes
 

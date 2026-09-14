@@ -224,6 +224,16 @@ mesmo texto aparecer em mais de um lugar, indique qual deles ou peça todas as
 ocorrências. Uma edição em outra aba pode exigir releitura antes de salvar. As
 alterações aparecem no rascunho; a publicação continua sendo uma ação separada.
 
+Para trocar a foto única por uma sequência, peça, por exemplo: **“quero um
+carrossel no hero com as imagens #4, #6, #7 e #8”**. Na abertura compatível, a
+foto já usada continua primeiro e as demais entram nessa ordem; o recibo
+confirma a quantidade. Se alguma foto ficar cortada, peça **“mostre a foto
+inteira”** para usar o enquadramento disponível no bloco. O chat informa as
+recomendações de proporção sem tratar o aviso como bloqueio. Aberturas com
+formulário, texto sobre a foto ou composição de duas fotos não viram carrossel;
+nesses casos, o chat oferece uma galeria logo depois sem alterar nada até você
+pedir.
+
 Para ajustar uma imagem sem recompor a seção, indique o nome do bloco entre
 aspas e descreva a apresentação desejada. Na composição autoral é possível
 retirar a moldura e o fundo do box, mostrar a imagem inteira na largura

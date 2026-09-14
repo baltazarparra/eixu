@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import puppeteer from 'puppeteer-core';
 import { editBrowserFixture } from '../helpers/chat-edit-browser-fixture.mjs';
+import { editPages } from '../helpers/page-edit-fixture.mjs';
 
 await test(
   'edições mostram etapas e atualizam a prévia antes da resposta e da consulta de estado',
@@ -224,6 +225,121 @@ await test(
       assert.deepEqual(
         fixture.fixture.pages.map((p) => p.publishedBlocks),
         published,
+      );
+      assert.deepEqual(errors, []);
+    } finally {
+      await browser.close();
+      await fixture.close();
+    }
+  },
+);
+
+await test(
+  'pedido do carrossel faz uma escrita, atualiza a prévia e usa o recibo real',
+  { skip: !process.env.EIXU_CHROME_PATH, timeout: 90_000 },
+  async () => {
+    const pages = editPages();
+    pages[0].blocks[1] = {
+      id: 'hero',
+      type: 'hero.landing',
+      props: {
+        layout: 'stage',
+        headline: 'Materiais para cada ambiente',
+        subtext: 'Compare os acabamentos em quatro fotografias.',
+        cta: { label: 'Conferir opções', href: '/materiais' },
+        image: 'https://assets.test/foto-4.webp',
+        imageAlt: 'Material principal aplicado em uma bancada clara',
+      },
+    };
+    pages[0].publishedBlocks = structuredClone(pages[0].blocks);
+    const request =
+      'No lugar de apenas uma imagem no hero, quero um carrossel com as imagens #4, #6, #7 e #8.';
+    const slides = [
+      {
+        src: 'https://assets.test/foto-6.webp',
+        alt: 'Detalhe lateral do material aplicado',
+      },
+      {
+        src: 'https://assets.test/foto-7.webp',
+        alt: 'Acabamento do material visto de perto',
+      },
+      {
+        src: 'https://assets.test/foto-8.webp',
+        alt: 'Material em outro ambiente iluminado',
+      },
+    ];
+    const fixture = await editBrowserFixture({
+      text: request,
+      fixtureOptions: { initialPages: pages },
+    });
+    const browser = await puppeteer.launch({
+      executablePath: process.env.EIXU_CHROME_PATH,
+      headless: true,
+      args: ['--no-sandbox', '--disable-dev-shm-usage'],
+    });
+    try {
+      const page = await browser.newPage();
+      const errors = [];
+      page.on('pageerror', (error) => errors.push(error.message));
+      await page.setViewport({ width: 1280, height: 900 });
+      await page.goto(fixture.url, { waitUntil: 'networkidle0' });
+      await page.waitForSelector('[data-preview-state="loaded"]');
+      const beforePreview = fixture.reads().preview;
+      const turn = fixture.nextTurn('hero', false, [
+        { op: 'set', block: 'hero', path: 'slides', value: slides },
+      ]);
+      await page.type('textarea', request);
+      const send = await Promise.all(
+        (await page.$$('button')).map(async (button) => ({
+          button,
+          label: await button.evaluate((node) => node.textContent.trim()),
+        })),
+      );
+      const submit = send.find((item) => item.label === 'Enviar');
+      assert.ok(submit, 'Botão Enviar ausente.');
+      await submit.button.click();
+      turn.understanding.resolve();
+      await page.waitForFunction(() =>
+        document
+          .querySelector('[data-chat-activity]')
+          ?.textContent.includes('Aplicando alterações'),
+      );
+      const previewResponse = page.waitForResponse((response) =>
+        new URL(response.url()).pathname.startsWith('/s/'),
+      );
+      turn.apply.resolve();
+      await previewResponse;
+      await page.waitForSelector('[data-preview-state="loaded"]');
+      await page.waitForFunction(() =>
+        document
+          .querySelector('[data-chat-activity]')
+          ?.textContent.includes('Preparando a resposta'),
+      );
+      const synchronized = page.waitForResponse((response) =>
+        new URL(response.url()).pathname.endsWith('/state'),
+      );
+      turn.finish.resolve();
+      turn.state.resolve();
+      await synchronized;
+      await page.waitForFunction(
+        () => !document.querySelector('[data-chat-activity]'),
+      );
+      const hero = fixture.fixture.pages[0].blocks.find(
+        (block) => block.id === 'hero',
+      );
+      assert.equal(hero.props.image, 'https://assets.test/foto-4.webp');
+      assert.deepEqual(hero.props.slides, slides);
+      assert.equal(
+        fixture.fixture.pages[0].blocks.some(
+          (block) => block.type === 'media.gallery',
+        ),
+        false,
+      );
+      assert.equal(fixture.fixture.writes.length, 1);
+      assert.equal(fixture.reads().preview, beforePreview + 1);
+      assert.match(
+        await page.$eval('.admin-conversation', (node) => node.textContent),
+        /carrossel com 4 fotos/,
       );
       assert.deepEqual(errors, []);
     } finally {

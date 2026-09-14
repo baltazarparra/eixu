@@ -80,6 +80,11 @@ Somente evidência atual comprova essa análise. Preserve erros e gates de publi
   O admin atual é global, sem autorização individual por tenant.
 - Novo bloco exige schema/catálogo, renderizador, componente e pre-flight coerentes
   em `lib/blocks/` e `lib/taste/`. Não afrouxe validação para aceitar uma geração.
+- Primitivos interativos dos sites vivem em `lib/blocks/ui/`, entregam HTML útil
+  no servidor, carregam o motor sob demanda e respeitam movimento reduzido,
+  edição, teclado e toque. Seus estilos ficam em `(sites)`; `components/ui/`
+  pertence ao painel. Conteúdo oculto por passagem continua no pre-flight e não
+  satisfaz sozinho o piso de protagonista.
 - Na edição pelo chat, um pedido que o schema não atende vira explicação, nunca
   outra mudança: mover não pode apagar. Isso é gate em código
   (`contentLossError`), não só instrução de prompt. Prova depende de fato

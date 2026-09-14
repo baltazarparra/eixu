@@ -547,8 +547,6 @@ export function applyPageEdit(
     throw new PageEditError(
       'A página aceita até 20 blocos. Reorganize o pedido sem remover conteúdo por conta própria.',
     );
-  const loss = contentLossError(policy, page.blocks, blocks);
-  if (loss) throw new PageEditError(loss);
   for (const block of blocks.filter((b) => touched.has(b.id))) {
     validateEditedBlock(block);
     const before = page.blocks.find((b) => b.id === block.id);
@@ -563,6 +561,8 @@ export function applyPageEdit(
       if (error) throw new PageEditError(error);
     }
   }
+  const loss = contentLossError(policy, page.blocks, blocks);
+  if (loss) throw new PageEditError(loss);
   const summary = [
     ...new Set(
       changes
@@ -591,7 +591,18 @@ export function applyPageEdit(
             typeof value === 'string'
               ? VISUAL_SUMMARIES[property]?.[value]
               : undefined;
+          const slideCount = Array.isArray(block?.props.slides)
+            ? block.props.slides.length +
+              (typeof block.props.image === 'string' ? 1 : 0)
+            : 0;
           const detail =
+            (property === 'slides'
+              ? `carrossel com ${slideCount} foto${slideCount === 1 ? '' : 's'}`
+              : property === 'carousel' ||
+                  property.startsWith('carousel.') ||
+                  (property === 'layout' && value === 'carousel')
+                ? 'carrossel ajustado'
+                : undefined) ??
             visual ??
             OPERATION_SUMMARIES[change.op] ??
             (property === 'image' ? 'imagem atualizada' : 'ajuste salvo');

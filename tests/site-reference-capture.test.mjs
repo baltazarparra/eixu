@@ -13,12 +13,19 @@ await test('prazo inclui a abertura do Chromium e mata um processo que chega atr
   const lateBrowser = new Promise((resolve) => {
     release = resolve;
   });
-  await assert.rejects(
-    captureReference('https://reference.test/', publicResource, {
-      timeoutMs: 10,
-      launch: async () => lateBrowser,
-    }),
-  );
+  // AbortSignal.timeout usa timer sem ref; mantenha o worker vivo enquanto a
+  // fixture simula uma abertura que nunca conclui.
+  const keepAlive = setTimeout(() => undefined, 1_000);
+  try {
+    await assert.rejects(
+      captureReference('https://reference.test/', publicResource, {
+        timeoutMs: 10,
+        launch: async () => lateBrowser,
+      }),
+    );
+  } finally {
+    clearTimeout(keepAlive);
+  }
   release({
     process: () => ({
       kill: () => {

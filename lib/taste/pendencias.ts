@@ -43,6 +43,11 @@ export type PendenciaImagem = {
   layout?: string;
   biblioteca: { numero: string; url: string; ratio: string }[];
   layouts: string[];
+  apresentacao?: {
+    ferramenta: 'edit_page';
+    caminho: string;
+    valor: 'contain';
+  };
   gerar?: { ferramenta: 'update_image'; image: string; ratio: Ratio };
 };
 
@@ -162,6 +167,39 @@ function imageResolution(
     used.find((item) => item.seq === seq) ??
     used.find((item) => !ratioFits(item.ratio, esperada));
   if (!image) return { acao: 'editar' };
+  const slides = Array.isArray(block.props.slides) ? block.props.slides : [];
+  const usesHeroImage =
+    block.props.image === image.url ||
+    slides.some(
+      (slide) => slide && typeof slide === 'object' && slide.src === image.url,
+    );
+  const signatureIndex =
+    block.type === 'signature.composition' && Array.isArray(block.props.items)
+      ? block.props.items.findIndex(
+          (item) =>
+            item && typeof item === 'object' && item.image === image.url,
+        )
+      : -1;
+  const apresentacao =
+    block.type === 'hero.landing' && usesHeroImage
+      ? {
+          ferramenta: 'edit_page' as const,
+          caminho: 'imagePresentation.fit',
+          valor: 'contain' as const,
+        }
+      : block.type === 'hero.split' && usesHeroImage
+        ? {
+            ferramenta: 'edit_page' as const,
+            caminho: 'imageFit',
+            valor: 'contain' as const,
+          }
+        : signatureIndex >= 0
+          ? {
+              ferramenta: 'edit_page' as const,
+              caminho: `items.${signatureIndex}.imagePresentation.fit`,
+              valor: 'contain' as const,
+            }
+          : undefined;
   return {
     acao: 'imagem',
     imagem: {
@@ -186,6 +224,7 @@ function imageResolution(
           option !== layout &&
           ratioFits(image.ratio, expectedRatio(block.type, option)),
       ),
+      ...(apresentacao ? { apresentacao } : {}),
       // Um depoimento exige foto real enviada: gerar a cena não resolve.
       ...(block.type === 'proof.testimonials'
         ? {}
@@ -311,6 +350,9 @@ function pendenciaLine(item: Pendencia): string {
         image.layouts.length
           ? `layouts que exibem ${image.atual}: ${image.layouts.join(', ')}`
           : 'sem layout alternativo',
+        image.apresentacao
+          ? `mostrar a foto inteira com ${image.apresentacao.ferramenta} set ${image.apresentacao.caminho}=${image.apresentacao.valor} no bloco ${image.bloco}`
+          : 'sem controle de apresentação para mostrar a foto inteira',
         image.gerar
           ? `gerar com update_image image ${quote(image.gerar.image)} ratio ${quote(image.gerar.ratio)}`
           : 'sem geração, o bloco exige foto enviada',

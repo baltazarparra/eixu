@@ -15,13 +15,46 @@ A sequência reúne hero, prova, problema/promessa, demonstração, passos,
 depoimentos, preço quando confirmado, FAQ e fechamento. São 6–11 seções e no
 mínimo 250 palavras úteis na home, sem contar navegação e rodapé.
 
-| Bloco                 | Layouts             | Contrato                                                                                                                     |
-| --------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `hero.landing`        | `stage`, `form`     | Até 60 caracteres; imagem com moldura opcional ou formulário nativo com 2–4 campos. `form` permite foto 4:5 junto da oferta. |
-| `proof.strip`         | `logos`, `numbers`  | 3–6 marcas ou 2–4 números; cada item aponta uma evidência literal do briefing.                                               |
-| `narrative.statement` | `center`, `split`   | Problema ou promessa em uma frase, até 160 caracteres.                                                                       |
-| `feature.showcase`    | `steps`, `tabs`     | 2–4 itens com imagem; abas com setas e Home/End, todos os painéis legíveis sem JS ou na edição.                              |
-| `proof.testimonials`  | `grid`, `spotlight` | 2–3 citações, autor, cargo e resultado sustentados pela mesma evidência; foto opcional somente do acervo enviado.            |
+| Bloco                 | Layouts             | Contrato                                                                                                          |
+| --------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `hero.landing`        | `stage`, `form`     | Até 60 caracteres; `stage` aceita carrossel de fotos e `form` mantém uma foto 4:5 opcional junto da oferta.       |
+| `proof.strip`         | `logos`, `numbers`  | 3–6 marcas ou 2–4 números; cada item aponta uma evidência literal do briefing.                                    |
+| `narrative.statement` | `center`, `split`   | Problema ou promessa em uma frase, até 160 caracteres.                                                            |
+| `feature.showcase`    | `steps`, `tabs`     | 2–4 itens com imagem; abas com setas e Home/End, todos os painéis legíveis sem JS ou na edição.                   |
+| `proof.testimonials`  | `grid`, `spotlight` | 2–3 citações, autor, cargo e resultado sustentados pela mesma evidência; foto opcional somente do acervo enviado. |
+
+## Primitivos interativos
+
+Os primitivos neutros dos sites vivem em `lib/blocks/ui/`; seus estilos ficam
+em `app/(sites)/primitives.css`, separados dos componentes do painel. O HTML
+completo sai do servidor e permanece utilizável sem JavaScript. A hidratação
+acrescenta comportamento sem transformar o conteúdo em uma caixa-preta, e o
+motor só é importado pelas páginas que usam o primitivo. Variantes são enums do
+schema e atributos `data-*`, nunca CSS livre produzido pelo agente.
+
+O primeiro primitivo é `SiteCarousel`. Sem JavaScript, a trilha usa rolagem e
+`scroll-snap`; após hidratar, Embla acrescenta loop, arrasto e toque. Setas,
+Home, End, botões anterior/próxima, indicadores, foco visível, rótulos em
+português e anúncio da foto atual cobrem teclado e leitor de tela. Os alvos têm
+pelo menos 44 px, ou 48 px na Landing Page. Movimento reduzido,
+`data-motion='still'` e edição desligam autoplay e transições; na edição, todas
+as fotos e legendas ficam alcançáveis na trilha estática.
+
+`hero.landing:stage` e `hero.split` nos layouts `split`, `poster`, `editorial`
+e `offset` aceitam até cinco fotos adicionais em `slides`. A imagem principal
+continua sendo a primeira, com prioridade de carregamento; a segunda é eager e
+as demais são lazy. `media.gallery:carousel` usa o mesmo primitivo com duas a
+oito fotos. `hero.landing:form`, `hero.split:cover` e `hero.split:atelier`
+recusam slides porque a mídia conflita com formulário, legibilidade ou a
+composição de duas fotos; a alternativa é uma galeria `carousel` após a
+abertura. `carousel.autoplay` é opcional, vem desligado e aceita intervalo de 4
+a 12 segundos; quando ligado, pausa com hover, foco, aba oculta ou diálogo
+aberto.
+
+Enquadramento, foco e proporção continuam pertencendo ao bloco. O CSS usa os
+tokens do site e modula os controles por vibe: formas mais retas no ousado,
+pílulas com fio no artístico, indicadores lineares no moderno e círculos no
+comercial e na Landing. Não há animação infinita decorativa.
 
 A protagonista é `feature.showcase` ou `feature.bento:showcase` com duas fotos.
 O plano mantém cinco cenas na home: hero, duas da protagonista, apoio em
@@ -234,6 +267,14 @@ A variante `media.gallery/filmstrip` cria uma coluna por foto. Duas imagens
 preenchem a largura disponível em desktop; acervos maiores rolam horizontalmente.
 O CSS anterior sempre criava oito colunas e deixava seis vazias numa galeria
 de duas fotos. A correção atua no renderizador, preservando conteúdo e imagens.
+
+No layout `carousel`, `media.gallery` mostra uma foto por vez em 4:3. Em
+perfis v5/v6, trocar pela galeria mínima da sequência pode gerar o aviso
+editorial `estrutura-v5-incompleta`, porque a assinatura da estrutura continua
+sendo específica. Slides contam como imagens da página e cada um recebe sua
+própria conferência de proporção. Um hero com carrossel não satisfaz sozinho
+`home-protagonista`: fotos ocultas na passagem não substituem a seção
+protagonista que mostra o negócio.
 
 Passar nos validadores não era o mesmo que entregar um site rico: uma home com
 cinco seções, três delas só texto, duas fotos na abertura e subpáginas sem

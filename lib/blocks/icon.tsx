@@ -1,5 +1,6 @@
 import { ArrowUpRightIcon } from '@phosphor-icons/react/dist/ssr/ArrowUpRight';
 import { ArrowRightIcon } from '@phosphor-icons/react/dist/ssr/ArrowRight';
+import { ArrowLeftIcon } from '@phosphor-icons/react/dist/ssr/ArrowLeft';
 import { PlusIcon } from '@phosphor-icons/react/dist/ssr/Plus';
 import { CheckIcon } from '@phosphor-icons/react/dist/ssr/Check';
 import { QuotesIcon } from '@phosphor-icons/react/dist/ssr/Quotes';
@@ -56,6 +57,13 @@ const icons = {
   cube: CubeIcon,
 } satisfies Record<SiteIconName, typeof ArrowUpRightIcon>;
 
+/** Sinais funcionais que não entram no enum de conteúdo exposto ao agente. */
+export const CONTROL_ICON_NAMES = ['arrow-left'] as const;
+type ControlIconName = (typeof CONTROL_ICON_NAMES)[number];
+const controlIcons = {
+  'arrow-left': ArrowLeftIcon,
+} satisfies Record<ControlIconName, typeof ArrowLeftIcon>;
+
 /** SVG visível no SSR, sem provider/hidratação por ícone. O CSS anima o gesto. */
 export function SiteIcon({
   name,
@@ -64,13 +72,16 @@ export function SiteIcon({
   badge = false,
   className = '',
 }: {
-  name: SiteIconName;
+  name: SiteIconName | ControlIconName;
   vibe?: Vibe;
   size?: number;
   badge?: boolean;
   className?: string;
 }) {
-  const Icon = icons[name] ?? icons.layers;
+  const Icon =
+    name in controlIcons
+      ? controlIcons[name as ControlIconName]
+      : (icons[name as SiteIconName] ?? icons.layers);
   const style = ICON_STYLE[vibe] ?? ICON_STYLE.comercial;
   return (
     <span

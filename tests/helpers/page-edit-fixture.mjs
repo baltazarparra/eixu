@@ -217,7 +217,13 @@ export async function pageEditFixture(
       tenant,
       pages.map((p) => `- /${p.slug}: ${p.title}`).join('\n'),
       '/',
-      '',
+      images
+        .filter((image) => image.status !== 'rejeitada')
+        .map(
+          (image) =>
+            `- #${image.seq} (${image.kind}${image.model === 'upload' ? ', enviada pelo operador' : ''}), ${image.ratio}, ${image.targetBlock ?? 'livre'}: ${image.url} | ${image.alt ?? image.description ?? image.requestText}`,
+        )
+        .join('\n'),
       {
         editing: true,
         editScope: editScopeText(policy),
