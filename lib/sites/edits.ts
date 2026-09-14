@@ -1,4 +1,4 @@
-import { db } from '@/lib/db';
+import { transaction } from '@/lib/db';
 import { PageEditError, pageRevision } from '@/lib/ai/page-edits';
 import {
   dropPageRevision,
@@ -64,26 +64,48 @@ export async function savePageEdit({
   const changed = revision !== previousRevision;
   let undoAvailable = false;
   if (changed) {
-    const saved = await db()`
-      update pages set blocks = ${JSON.stringify(blocks)}::jsonb, updated_at = now()
-      where id = ${page.id} and tenant_id = ${tenant.id}
-        and blocks = ${JSON.stringify(page.blocks)}::jsonb
-      returning id
-    `;
-    if (!Array.isArray(saved) || !saved.length)
-      throw new PageEditError(
-        'A página mudou durante a edição. Nenhuma alteração salva por esta chamada. Releia com get_page e reaplique apenas o pedido atual.',
-        409,
+    undoAvailable = await transaction(async (connection) => {
+      const saved = await connection.query(
+        `update pages set blocks = $1::jsonb, updated_at = now()
+         where id = $2 and tenant_id = $3 and blocks = $4::jsonb
+         returning id`,
+        [
+          JSON.stringify(blocks),
+          page.id,
+          tenant.id,
+          JSON.stringify(page.blocks),
+        ],
       );
-    // Depois da escrita: guardar antes e falhar aqui deixaria histórico de uma
-    // edição que não aconteceu. O estado anterior já está em memória.
-    undoAvailable = await recordPageRevision({
-      tenantId: tenant.id,
-      pageId: page.id,
-      blocks: page.blocks,
-      revision: previousRevision,
-      origin,
-      summary,
+      if (!saved.rows.length)
+        throw new PageEditError(
+          'A página mudou durante a edição. Nenhuma alteração salva por esta chamada. Releia com get_page e reaplique apenas o pedido atual.',
+          409,
+        );
+
+      // A migration é aditiva e pode chegar logo depois do código. Um savepoint
+      // mantém a edição disponível nesse intervalo sem soltar o lock da página:
+      // ou a revisão entra antes do commit, ou o recibo não oferece desfazer.
+      await connection.query('SAVEPOINT page_revision_history');
+      try {
+        await recordPageRevision(connection, {
+          tenantId: tenant.id,
+          pageId: page.id,
+          blocks: page.blocks,
+          revision: previousRevision,
+          origin,
+          summary,
+        });
+        await connection.query('RELEASE SAVEPOINT page_revision_history');
+        return true;
+      } catch (error) {
+        await connection.query('ROLLBACK TO SAVEPOINT page_revision_history');
+        await connection.query('RELEASE SAVEPOINT page_revision_history');
+        console.warn('[edits] histórico do rascunho não gravado', {
+          pageId: page.id,
+          error: error instanceof Error ? error.name : 'unknown',
+        });
+        return false;
+      }
     });
   }
   return {
@@ -114,40 +136,49 @@ export async function undoPageEdit({
   page: Page;
   brand: Brand;
 }) {
-  const previous = await lastPageRevision(tenant.id, page.id);
-  if (!previous)
-    throw new PageEditError(
-      `Não há alteração anterior guardada para /${page.slug}. O desfazer alcança apenas as edições feitas depois que o histórico do rascunho passou a ser gravado. Nenhuma alteração foi feita.`,
-      404,
-    );
   const current = pageRevision(page);
-  if (previous.revision === current)
-    throw new PageEditError(
-      `A página /${page.slug} já está na versão anterior guardada. Nenhuma alteração foi feita.`,
-      409,
+  const previous = await transaction(async (connection) => {
+    // Toda edição e todo desfazer travam primeiro a mesma linha. A comparação
+    // continua otimista, mas a revisão é escolhida e consumida sob esse lock.
+    const locked = await connection.query(
+      `select id from pages
+       where id = $1 and tenant_id = $2 and blocks = $3::jsonb
+       for update`,
+      [page.id, tenant.id, JSON.stringify(page.blocks)],
     );
-  const saved = await db()`
-    update pages set blocks = ${JSON.stringify(previous.blocks)}::jsonb, updated_at = now()
-    where id = ${page.id} and tenant_id = ${tenant.id}
-      and blocks = ${JSON.stringify(page.blocks)}::jsonb
-    returning id
-  `;
-  if (!Array.isArray(saved) || !saved.length)
-    throw new PageEditError(
-      'A página mudou durante o desfazer. Nada foi restaurado. Releia a página e tente de novo.',
-      409,
+    if (!locked.rows.length)
+      throw new PageEditError(
+        'A página mudou durante o desfazer. Nada foi restaurado. Releia a página e tente de novo.',
+        409,
+      );
+    const previous = await lastPageRevision(connection, tenant.id, page.id);
+    if (!previous)
+      throw new PageEditError(
+        `Não há alteração anterior guardada para /${page.slug}. O desfazer alcança apenas as edições feitas depois que o histórico do rascunho passou a ser gravado. Nenhuma alteração foi feita.`,
+        404,
+      );
+    if (previous.revision === current)
+      throw new PageEditError(
+        `A página /${page.slug} já está na versão anterior guardada. Nenhuma alteração foi feita.`,
+        409,
+      );
+    await connection.query(
+      'update pages set blocks = $1::jsonb, updated_at = now() where id = $2',
+      [JSON.stringify(previous.blocks), page.id],
     );
-  // O estado que acabou de sair vira o próximo ponto de retorno; a versão
-  // consumida sai da fila para o desfazer não ficar oscilando entre as duas.
-  await recordPageRevision({
-    tenantId: tenant.id,
-    pageId: page.id,
-    blocks: page.blocks,
-    revision: current,
-    origin: 'desfazer',
-    summary: 'Estado anterior ao desfazer.',
+    // O estado que acabou de sair vira o próximo ponto de retorno; a versão
+    // consumida sai da fila para o desfazer não ficar oscilando entre as duas.
+    await recordPageRevision(connection, {
+      tenantId: tenant.id,
+      pageId: page.id,
+      blocks: page.blocks,
+      revision: current,
+      origin: 'desfazer',
+      summary: 'Estado anterior ao desfazer.',
+    });
+    await dropPageRevision(connection, previous.id);
+    return previous;
   });
-  await dropPageRevision(previous.id);
   const findings = [
     ...lintPage({ ...page, blocks: previous.blocks }, brand.design),
     ...lintTextStyles({ ...page, blocks: previous.blocks }, brand),

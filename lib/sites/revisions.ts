@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import type { Client } from '@neondatabase/serverless';
 import type { BlockInstance } from '@/lib/types';
 
 /** Quantas versões do rascunho ficam guardadas por página. */
@@ -15,48 +16,50 @@ export type PageRevision = {
   createdAt: string;
 };
 
-/**
- * Guarda o estado anterior do rascunho antes de sobrescrevê-lo.
- *
- * É melhor esforço de propósito: uma falha aqui não pode impedir a edição que o
- * operador pediu, inclusive num deploy que chegue antes da migração. O que se
- * perde é o desfazer daquele lote, e o recibo só oferece desfazer quando a
- * gravação do histórico confirma.
- */
-export async function recordPageRevision(input: {
+type RevisionConnection = Pick<Client, 'query'>;
+
+export type PageRevisionInput = {
   tenantId: string;
   pageId: string;
   blocks: BlockInstance[];
   revision: string;
   origin: RevisionOrigin;
   summary?: string;
-}): Promise<boolean> {
-  try {
-    await db()`
-      insert into page_revisions (tenant_id, page_id, blocks, revision, origin, summary)
-      values (
-        ${input.tenantId}, ${input.pageId}, ${JSON.stringify(input.blocks)}::jsonb,
-        ${input.revision}, ${input.origin}, ${input.summary ?? null}
-      )
-    `;
-    await db()`
-      delete from page_revisions
-      where page_id = ${input.pageId}
-        and id not in (
-          select id from page_revisions
-          where page_id = ${input.pageId}
-          order by created_at desc, id desc
-          limit ${MAX_PAGE_REVISIONS}
-        )
-    `;
-    return true;
-  } catch (error) {
-    console.warn('[edits] histórico do rascunho não gravado', {
-      pageId: input.pageId,
-      error: error instanceof Error ? error.name : 'unknown',
-    });
-    return false;
-  }
+};
+
+/**
+ * Guarda o estado anterior do rascunho antes de sobrescrevê-lo.
+ * A conexão pertence à mesma transação da escrita da página, para a ordem do
+ * histórico acompanhar a ordem efetiva das edições.
+ */
+export async function recordPageRevision(
+  connection: RevisionConnection,
+  input: PageRevisionInput,
+): Promise<void> {
+  await connection.query(
+    `insert into page_revisions
+       (tenant_id, page_id, blocks, revision, origin, summary)
+     values ($1, $2, $3::jsonb, $4, $5, $6)`,
+    [
+      input.tenantId,
+      input.pageId,
+      JSON.stringify(input.blocks),
+      input.revision,
+      input.origin,
+      input.summary ?? null,
+    ],
+  );
+  await connection.query(
+    `delete from page_revisions
+     where page_id = $1
+       and id not in (
+         select id from page_revisions
+         where page_id = $1
+         order by created_at desc, id desc
+         limit $2
+       )`,
+    [input.pageId, MAX_PAGE_REVISIONS],
+  );
 }
 
 function toRevision(row: Record<string, unknown>): PageRevision {
@@ -75,38 +78,29 @@ function toRevision(row: Record<string, unknown>): PageRevision {
 
 /** A versão anterior mais recente de uma página, se existir. */
 export async function lastPageRevision(
+  connection: RevisionConnection,
   tenantId: string,
   pageId: string,
 ): Promise<PageRevision | undefined> {
-  try {
-    const rows = await db()`
-      select id, blocks, revision, origin, summary, created_at
-      from page_revisions
-      where page_id = ${pageId} and tenant_id = ${tenantId}
-      order by created_at desc, id desc
-      limit 1
-    `;
-    const [row] = rows as Record<string, unknown>[];
-    return row ? toRevision(row) : undefined;
-  } catch (error) {
-    console.warn('[edits] histórico do rascunho indisponível', {
-      pageId,
-      error: error instanceof Error ? error.name : 'unknown',
-    });
-    return undefined;
-  }
+  const result = await connection.query(
+    `select id, blocks, revision, origin, summary, created_at
+     from page_revisions
+     where page_id = $1 and tenant_id = $2
+     order by created_at desc, id desc
+     limit 1
+     for update`,
+    [pageId, tenantId],
+  );
+  const [row] = result.rows as Record<string, unknown>[];
+  return row ? toRevision(row) : undefined;
 }
 
 /** Consome a versão anterior: ela deixa de ser candidata a um novo desfazer. */
-export async function dropPageRevision(id: string): Promise<void> {
-  try {
-    await db()`delete from page_revisions where id = ${id}`;
-  } catch (error) {
-    console.warn('[edits] versão do rascunho não removida', {
-      id,
-      error: error instanceof Error ? error.name : 'unknown',
-    });
-  }
+export async function dropPageRevision(
+  connection: RevisionConnection,
+  id: string,
+): Promise<void> {
+  await connection.query('delete from page_revisions where id = $1', [id]);
 }
 
 /** Quais páginas do cliente têm desfazer disponível, para o painel. */

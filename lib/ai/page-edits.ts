@@ -650,7 +650,7 @@ export function applyPageEdit(
     );
   const blocks: BlockInstance[] = JSON.parse(JSON.stringify(page.blocks));
   const touched = new Set<string>();
-  let removedBlocks = 0;
+  let rewrittenSections = 0;
   const changes: {
     op: string;
     blockId: string;
@@ -725,14 +725,22 @@ export function applyPageEdit(
     const block = selectBlock(blocks, operation.block);
     const from = blocks.indexOf(block);
     if (operation.op === 'replace_block') {
+      // Uma troca de bloco reescreve a seção inteira e pode eliminar tanto
+      // conteúdo quanto remove. Em um pedido limitado a card/item, ela não é
+      // uma saída alternativa para contornar remove_item ou o schema do bloco.
+      if (policy?.removal) {
+        const error = blockRemovalError(policy, block, rewrittenSections);
+        if (error) throw new PageEditError(error);
+        rewrittenSections += 1;
+      }
       block.type = operation.replacement.type;
       block.props = JSON.parse(JSON.stringify(operation.replacement.props));
       touched.add(block.id);
       changes.push({ op: operation.op, blockId: block.id });
     } else if (operation.op === 'remove') {
-      const error = blockRemovalError(policy, block, removedBlocks);
+      const error = blockRemovalError(policy, block, rewrittenSections);
       if (error) throw new PageEditError(error);
-      removedBlocks += 1;
+      rewrittenSections += 1;
       blocks.splice(from, 1);
       changes.push({ op: operation.op, blockId: block.id, from });
     } else if (operation.op === 'move') {

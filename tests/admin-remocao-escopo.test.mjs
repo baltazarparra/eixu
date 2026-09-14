@@ -28,6 +28,15 @@ const POINTED = 'remove esse bloco em anexo de referencia da pagina inicial';
 
 await test('o tamanho da remoção sai do pedido, não de um único bit', () => {
   assert.equal(removalScope('remova esse card do bloco Variedade'), 'item');
+  assert.equal(
+    removalScope('remova esse card da seção e mantenha todos os outros'),
+    'item',
+  );
+  assert.equal(removalScope('remova todos os cards da seção'), 'item');
+  assert.equal(
+    removalScope('remova o bloco inteiro com todos os cards'),
+    'block',
+  );
   assert.equal(removalScope('remova essa parte que anexei'), 'item');
   assert.equal(removalScope('apague a foto do segundo item'), 'item');
   assert.equal(removalScope(POINTED), undefined);
@@ -52,6 +61,54 @@ await test('apagar a seção inteira é recusado quando o pedido aponta um item'
   );
   // Nada foi alterado no plano recusado.
   assert.equal(page.blocks.length, 6);
+});
+
+await test('preservar os outros cards não amplia a remoção para a seção', () => {
+  const [page] = editPages();
+  const policy = editPolicyFor(
+    'remova esse card da seção e mantenha todos os outros',
+    [page],
+    '',
+  );
+  assert.equal(policy.removalScope, 'item');
+  assert.throws(
+    () =>
+      applyPageEdit(
+        page,
+        input(page, [{ op: 'remove', block: 'faq' }]),
+        policy,
+      ),
+    /seção inteira/,
+  );
+  assert.equal(page.blocks.length, 6);
+});
+
+await test('replace_block não contorna uma remoção limitada ao item', () => {
+  const [page] = editPages();
+  const policy = editPolicyFor('remova esse card da seção', [page], '');
+  assert.equal(policy.removalScope, 'item');
+  assert.throws(
+    () =>
+      applyPageEdit(
+        page,
+        input(page, [
+          {
+            op: 'replace_block',
+            block: 'faq',
+            replacement: {
+              type: 'editorial.text',
+              props: {
+                title: 'Seção substituída',
+                body: 'Esta troca eliminaria todas as perguntas da seção.',
+              },
+            },
+          },
+        ]),
+        policy,
+      ),
+    /seção inteira/,
+  );
+  assert.equal(page.blocks.find((block) => block.id === 'faq')?.type, 'faq.accordion');
 });
 
 /** Seção de cards como a que o operador apontou: quatro itens em uma lista. */
