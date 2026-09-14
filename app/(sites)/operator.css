@@ -30,9 +30,9 @@
 /* Scrim do hero `cover` na cor da seção.
  *
  * A cópia do cover é branca sobre a foto, e o véu que a sustenta era preto.
- * Com fundo escuro do operador o resultado era um cinza que negava a cor
- * pedida; o servidor marca data-scrim="paper" e o véu passa a ser o próprio
- * papel da seção. Com fundo claro o véu continua preto: a cópia é branca. */
+ * Quando a composição da cor, do véu a 78% e do apoio branco a 78% sustenta
+ * AA, o servidor marca data-scrim="paper" e o véu usa o papel da seção.
+ * Tons sem contraste suficiente conservam o véu preto. */
 .site-theme
   .site-block[data-scrim='paper']
   .site-hero-cover

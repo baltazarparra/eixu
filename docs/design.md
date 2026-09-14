@@ -600,6 +600,15 @@ chapada: `app/(sites)/operator.css`, importado por último, apaga lavagem,
 brilho e motivo da seção. O estudo que originou o contrato está em
 [registro do plano](archive/gradient-technique-plan-2026-09-13.md).
 
+No hero `cover`, a cor local só substitui o véu preto se o extremo de 78% do
+véu, composto sobre branco, sustentar o texto de apoio branco a 78% com
+contraste de pelo menos 4,5:1. O limiar de fundo escuro usado para logos não
+decide esse caso. Tons intermediários conservam o véu preto; vinho escuro
+continua colorido. A escolha não certifica qualquer foto: o gradiente perde
+opacidade ao longo da imagem. O teste de navegador inclui o `cover`, com uma
+imagem cinza controlada, seis cores locais e medição da transparência real
+do apoio em 1440 e 390 px.
+
 ## Refinamento da vibe artística
 
 Medido em 12/09/2026 no cliente `grupofisk` (artístico, perfil v4, hero

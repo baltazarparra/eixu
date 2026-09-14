@@ -1,7 +1,8 @@
 import {
+  AA_NORMAL,
   bestInk,
   contrastRatio,
-  isDarkSurface,
+  mixHex,
   readableHighlight,
   readableMuted,
 } from '@/lib/blocks/contrast';
@@ -64,14 +65,20 @@ export function sectionColorVars(
 }
 
 /**
- * Véu do hero `cover` quando a seção recebeu cor escura do operador. O véu
- * padrão é preto e nega a cor pedida: um vermelho escuro vira cinza. Com fundo
- * claro ele continua preto, porque a cópia do cover é branca.
+ * Véu do hero `cover` na cor do operador quando ela sustenta a cópia branca.
+ * O limiar usado para logos também aceita tons médios e não serve para texto.
+ * Recusa a cor se nem o extremo de 78% do véu, composto sobre uma foto branca,
+ * sustenta o apoio branco a 78% em AA. As opacidades vêm de operator.css e
+ * site.css; a dissolução do gradiente ainda exige verificar os pixels.
  */
 export function sectionScrim(
   presentation: { background?: string } | undefined,
 ): 'paper' | undefined {
   const background = presentation?.background;
   if (!background || !/^#[0-9a-f]{6}$/i.test(background)) return undefined;
-  return isDarkSurface(background) ? 'paper' : undefined;
+  const scrimOnWhite = mixHex('#ffffff', background, 0.78);
+  const copyOnScrim = mixHex(scrimOnWhite, '#ffffff', 0.78);
+  return contrastRatio(copyOnScrim, scrimOnWhite) >= AA_NORMAL
+    ? 'paper'
+    : undefined;
 }

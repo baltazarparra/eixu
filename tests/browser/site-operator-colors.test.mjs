@@ -33,6 +33,17 @@ const CASES = [
   { name: 'artistico-rings', vibe: 'artistico', motif: 'rings' },
 ];
 
+// O limiar de logo escuro aceitava os tons intermediários, embora a cópia
+// branca do cover perdesse contraste. A imagem cinza isola o efeito do véu.
+const COVER_CASES = [
+  { name: 'cover', background: '#4a0303', scrim: 'paper' },
+  { name: 'cover-gray', background: '#999999', scrim: null },
+  { name: 'cover-orange', background: '#c45c26', scrim: null },
+  { name: 'cover-dim-gray', background: '#666666', scrim: null },
+  { name: 'cover-red', background: '#b80505', scrim: null },
+  { name: 'cover-light', background: '#ffffff', scrim: null },
+];
+
 function toRgb(hex) {
   const value = hex.replace('#', '');
   return [0, 2, 4].map((i) => parseInt(value.slice(i, i + 2), 16));
@@ -50,9 +61,7 @@ function luminance([r, g, b]) {
 function ratio(a, b) {
   const first = luminance(a);
   const second = luminance(b);
-  return (
-    (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05)
-  );
+  return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
 }
 
 /** Pixels reais de um elemento, em RGB, a partir da captura do navegador. */
@@ -81,7 +90,9 @@ await test(
     const directory = path.join(process.cwd(), '.next/static/chunks');
     const css = (
       await Promise.all(
-        (await readdir(directory))
+        (
+          await readdir(directory)
+        )
           .filter((file) => file.endsWith('.css'))
           .map((file) => readFile(path.join(directory, file), 'utf8')),
       )
@@ -171,44 +182,52 @@ await test(
       );
     });
 
-    // Hero cover com fundo escuro do operador: o véu preto negava a cor pedida.
+    const coverPhoto = await sharp({
+      create: { width: 1200, height: 900, channels: 3, background: '#777777' },
+    })
+      .png()
+      .toBuffer();
+    // O vinho escuro preserva o véu colorido; os demais mantêm o véu preto.
     const coverBrand = { ...palette, vibe: 'comercial' };
-    const cover = createElement(
-      'div',
-      {
-        key: 'cover',
-        'data-case': 'cover',
-        className: 'site-theme',
-        'data-vibe': 'comercial',
-        'data-design-version': '4',
-        'data-motif': 'wash',
-        'data-motion': 'still',
-        style: themeVars(coverBrand),
-      },
-      createElement(RenderBlocks, {
-        blocks: [
-          block('hero.split', {
-            headline: 'Banner do cliente',
-            subtext: 'Texto branco sobre a foto, sustentado pelo véu.',
-            layout: 'cover',
-            image: 'https://assets.test/fixture.png',
-            cta: { label: 'Contato', href: '/go/wa' },
-            presentation: { background: '#4a0303' },
-          }),
-        ],
-        ctx: {
-          tenant: {
-            id: 'cover',
-            slug: 'cover',
-            name: 'Cover',
-            brand: coverBrand,
-            contacts: { phones: [], addresses: [], emails: [] },
-            dials: { motion: 2, variance: 7, density: 4 },
-          },
-          pagePath: '/',
-          pageType: 'page',
+    const covers = COVER_CASES.map((testCase) =>
+      createElement(
+        'div',
+        {
+          key: testCase.name,
+          'data-case': testCase.name,
+          className: 'site-theme',
+          'data-vibe': 'comercial',
+          'data-design-version': '4',
+          'data-motif': 'wash',
+          'data-motion': 'still',
+          style: themeVars(coverBrand),
         },
-      }),
+        createElement(RenderBlocks, {
+          blocks: [
+            block('hero.split', {
+              headline: 'Sua próxima escolha',
+              subtext:
+                'Fale com nossa equipe para conhecer todos os serviços disponíveis para você.',
+              layout: 'cover',
+              image: 'https://assets.test/cover.png',
+              cta: { label: 'Contato', href: '/go/wa' },
+              presentation: { background: testCase.background },
+            }),
+          ],
+          ctx: {
+            tenant: {
+              id: 'cover',
+              slug: 'cover',
+              name: 'Cover',
+              brand: coverBrand,
+              contacts: { phones: [], addresses: [], emails: [] },
+              dials: { motion: 2, variance: 7, density: 4 },
+            },
+            pagePath: '/',
+            pageType: 'page',
+          },
+        }),
+      ),
     );
 
     const browser = await puppeteer.launch({
@@ -220,11 +239,16 @@ await test(
       const page = await browser.newPage();
       await page.setRequestInterception(true);
       page.on('request', (request) =>
-        request.url() === 'https://assets.test/fixture.png'
+        [
+          'https://assets.test/fixture.png',
+          'https://assets.test/cover.png',
+        ].includes(request.url())
           ? request.respond({
               status: 200,
               contentType: 'image/png',
-              body: Buffer.from(PNG, 'base64'),
+              body: request.url().endsWith('/cover.png')
+                ? coverPhoto
+                : Buffer.from(PNG, 'base64'),
             })
           : request.abort(),
       );
@@ -232,9 +256,15 @@ await test(
         await page.setViewport({ width, height: 1200 });
         await page.setContent(
           `<style>${css}</style><style>*{animation:none!important;transition:none!important}</style>` +
-            renderToStaticMarkup([...fixtures, cover]),
+            renderToStaticMarkup([...fixtures, ...covers]),
           { waitUntil: 'load' },
         );
+        await page.evaluate(async () => {
+          await document.fonts.ready;
+          await Promise.all(
+            [...document.images].map((image) => image.decode()),
+          );
+        });
 
         const measured = await page.evaluate(() =>
           [...document.querySelectorAll('[data-case]')].flatMap((root) =>
@@ -294,7 +324,35 @@ await test(
           );
         }
 
-        // O véu do hero cover usa o papel da seção, não o preto.
+        // Verifica também o fallback: cores sem contraste conservam os dois
+        // véus pretos, mesmo quando branco sobre o hex opaco passaria em AA.
+        for (const testCase of COVER_CASES) {
+          const actual = await page.$eval(
+            `[data-case="${testCase.name}"]`,
+            (root) => ({
+              scrim: root.querySelector('.site-block').dataset.scrim ?? null,
+              before: getComputedStyle(
+                root.querySelector('.site-hero-copy'),
+                '::before',
+              ).backgroundImage,
+              after: getComputedStyle(
+                root.querySelector('.site-hero-media'),
+                '::after',
+              ).backgroundImage,
+            }),
+          );
+          assert.equal(
+            actual.scrim,
+            testCase.scrim,
+            `${width}px ${testCase.name}`,
+          );
+          if (!testCase.scrim) {
+            assert.match(actual.before, /rgba\(0, 0, 0, 0\.72\)/);
+            assert.match(actual.after, /rgba\(0, 0, 0, 0\.7\)/);
+          }
+        }
+
+        // O vinho que sustenta a cópia continua usando o papel da seção.
         const scrim = await page.evaluate(() => {
           const root = document.querySelector('[data-case="cover"]');
           const copy = root.querySelector('.site-hero-copy');
@@ -355,31 +413,31 @@ await test(
             const rect = element.getBoundingClientRect();
             return rect.width > 8 && rect.height > 8;
           };
-          return [...document.querySelectorAll('[data-case]')]
-            .filter((root) => !root.dataset.case.includes('cover'))
-            .flatMap((root) =>
-              [...root.querySelectorAll('.site-hero, .site-footer')].flatMap(
-                (surface) =>
-                  [...surface.querySelectorAll('h1, h2, p, li, span')]
-                    .filter(
-                      (element) =>
-                        visible(element) &&
-                        element.textContent.trim().length > 8 &&
-                        !element.querySelector('h1, h2, p, li, span'),
-                    )
-                    .map((element) => {
-                      const rect = element.getBoundingClientRect();
-                      return {
-                        fixture: root.dataset.case,
-                        color: getComputedStyle(element).color,
-                        x: rect.x + scrollX,
-                        y: rect.y + scrollY,
-                        width: rect.width,
-                        height: rect.height,
-                      };
-                    }),
-              ),
-            );
+          return [...document.querySelectorAll('[data-case]')].flatMap((root) =>
+            [...root.querySelectorAll('.site-hero, .site-footer')].flatMap(
+              (surface) =>
+                [...surface.querySelectorAll('h1, h2, p, li, span')]
+                  .filter(
+                    (element) =>
+                      visible(element) &&
+                      element.textContent.trim().length > 8 &&
+                      !element.querySelector('h1, h2, p, li, span'),
+                  )
+                  .map((element) => {
+                    const rect = element.getBoundingClientRect();
+                    return {
+                      fixture: root.dataset.case,
+                      tag: element.tagName,
+                      color: getComputedStyle(element).color,
+                      opacity: Number(getComputedStyle(element).opacity),
+                      x: rect.x + scrollX,
+                      y: rect.y + scrollY,
+                      width: rect.width,
+                      height: rect.height,
+                    };
+                  }),
+            ),
+          );
         });
         assert.ok(texts.length > 10, `${width}px: poucos textos medidos`);
         await page.addStyleTag({
@@ -391,8 +449,11 @@ await test(
           .raw()
           .toBuffer({ resolveWithObject: true });
         let worst = { ratio: Infinity };
+        let worstCover = Infinity;
+        const sampledCovers = new Set();
         for (const text of texts) {
-          const ink = text.color.match(/\d+/g).slice(0, 3).map(Number);
+          const channels = text.color.match(/[\d.]+/g).map(Number);
+          const alpha = (channels[3] ?? 1) * text.opacity;
           for (let row = 1; row <= 4; row += 1)
             for (let column = 1; column <= 6; column += 1) {
               const x = Math.round(text.x + (column / 7) * text.width);
@@ -400,17 +461,27 @@ await test(
               if (x < 0 || y < 0 || x >= info.width || y >= info.height)
                 continue;
               const i = (y * info.width + x) * 3;
-              const measure = ratio(ink, [data[i], data[i + 1], data[i + 2]]);
+              const background = [data[i], data[i + 1], data[i + 2]];
+              // O apoio do cover é branco a 78%, não branco opaco.
+              const ink = background.map((value, index) =>
+                Math.round(channels[index] * alpha + value * (1 - alpha)),
+              );
+              const measure = ratio(ink, background);
+              if (text.fixture.startsWith('cover') && text.tag === 'P') {
+                sampledCovers.add(text.fixture);
+                worstCover = Math.min(worstCover, measure);
+              }
               if (measure < worst.ratio)
-                worst = { ratio: measure, ...text, x, y };
+                worst = { ratio: measure, ...text, x, y, background, ink };
             }
         }
         assert.ok(
           worst.ratio >= 4.5,
-          `${width}px: fundo sob o texto em ${worst.ratio?.toFixed(2)}:1 (${worst.fixture}, ${worst.x},${worst.y})`,
+          `${width}px: fundo sob o texto em ${worst.ratio?.toFixed(2)}:1 (${JSON.stringify(worst)})`,
         );
+        assert.equal(sampledCovers.size, COVER_CASES.length);
         t.diagnostic(
-          `${width}px: ${measured.length} superfícies, ${texts.length} textos; pior fundo sob texto ${worst.ratio.toFixed(2)}:1.`,
+          `${width}px: ${measured.length} superfícies, ${texts.length} textos; pior fundo sob texto ${worst.ratio.toFixed(2)}:1; apoio do cover ${worstCover.toFixed(2)}:1.`,
         );
       }
     } finally {
