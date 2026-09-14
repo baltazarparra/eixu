@@ -650,6 +650,7 @@ export function SignatureComposition({
   body,
   items: sourceItems,
   layout,
+  arrangement,
 }: SignatureCompositionProps) {
   const text = textAttrs(textStyles, editing);
   const items = sourceItems.map((item, sourceIndex) => ({
@@ -659,7 +660,10 @@ export function SignatureComposition({
     editing,
   }));
   return (
-    <section className={`${section} site-signature site-signature-${layout}`}>
+    <section
+      className={`${section} site-signature site-signature-${layout}`}
+      data-arrangement={arrangement === 'focus-full' ? 'focus-full' : undefined}
+    >
       <div className={shell}>
         <header className="site-signature-header">
           <Eyebrow {...text.mark('eyebrow')}>

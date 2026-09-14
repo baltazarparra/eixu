@@ -58,6 +58,8 @@ export function workspaceState(
   tenant: Tenant,
   pages: Page[],
   images: TenantImage[],
+  /** Slugs com versão anterior guardada; o painel só oferece desfazer nelas. */
+  undoPages: string[] = [],
 ) {
   const generationFindings = lintSite(
     pages,
@@ -140,6 +142,7 @@ export function workspaceState(
         published: page.publishedBlocks !== null,
         publishedAt: page.publishedAt,
         dirty: hasDraftChanges(page),
+        canUndo: undoPages.includes(page.slug),
         errors: [
           ...new Set(
             all.filter((f) => f.level === 'error').map((f) => f.message),

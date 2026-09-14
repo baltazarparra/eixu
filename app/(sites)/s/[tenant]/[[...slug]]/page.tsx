@@ -21,6 +21,7 @@ import { publicPage, publicTenant } from '@/lib/sites/snapshot';
 import { currentLogoAsset } from '@/lib/images/logo-schema';
 import { logoThemeColor, siteOrigin } from '@/lib/sites/logo-metadata';
 import { InlineEditorLoader } from '@/lib/blocks/inline-editor-loader';
+import { PreviewPointer } from '@/lib/blocks/preview-pointer';
 import { blockFields } from '@/lib/blocks/fields';
 import { fieldBackgrounds } from '@/lib/blocks/text-style-lint';
 import { pageRevision } from '@/lib/ai/page-edits';
@@ -237,6 +238,7 @@ export default async function TenantPage({ params, searchParams }: Props) {
           editing,
         }}
       />
+      {isPreview && !editing && <PreviewPointer page={page.slug} />}
       {editing && (
         <InlineEditorLoader
           page={page.slug}

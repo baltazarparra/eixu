@@ -4,6 +4,7 @@ import { isAuthenticated } from '@/lib/auth';
 import { chatHistory, messageCursor } from '@/lib/ai/history';
 import { workspaceState } from '@/lib/admin/state';
 import { listImages } from '@/lib/images/queries';
+import { pagesWithUndo } from '@/lib/sites/revisions';
 import { listPages } from '@/lib/tenant-queries';
 import { Workspace } from './workspace';
 
@@ -25,9 +26,10 @@ export default async function TenantWorkspace({
   const tenant = await adminTenant(slug);
   if (!tenant) notFound();
 
-  const [pages, images] = await Promise.all([
+  const [pages, images, undoPages] = await Promise.all([
     listPages(tenant.id),
     listImages(tenant.id),
+    pagesWithUndo(tenant.id),
   ]);
   const history = await chatHistory(tenant.id, 'site');
   const { imagem, pedido } = await searchParams;
@@ -40,7 +42,7 @@ export default async function TenantWorkspace({
   return (
     <Workspace
       key={tenant.slug}
-      initial={workspaceState(tenant, pages, images)}
+      initial={workspaceState(tenant, pages, images, undoPages)}
       history={history}
       lastMessageId={messageCursor(history)}
       imageRequest={imageRequest}

@@ -369,6 +369,46 @@ function textMap(blocks: BlockInstance[]) {
   );
 }
 
+/** Frase estável que autoriza a remoção da seção no turno seguinte. A rota
+ * procura esta confirmação no recibo anterior; o texto do modelo não decide. */
+export const BLOCK_REMOVAL_CONFIRMATION = 'pode remover a seção inteira';
+
+/** Quanto conteúdo uma seção carrega, para o operador dimensionar o que sai. */
+export function blockContentSize(block: BlockInstance) {
+  const lists = Object.values(block.props).filter((value): value is unknown[] =>
+    Array.isArray(value),
+  );
+  return {
+    items: Math.max(0, ...lists.map((list) => list.length)),
+    texts: blockTextFields(block).filter((field) => field.value.trim()).length,
+  };
+}
+
+/**
+ * Recusa apagar uma seção inteira quando o pedido autoriza menos que isso.
+ *
+ * O `remove` de bloco só dependia de o texto conter um verbo de remoção: "tira
+ * esse card" e "apaga a seção" passavam pelo mesmo gate. Aqui a operação é
+ * medida contra o escopo declarado e, na dúvida, vira pergunta.
+ */
+function blockRemovalError(
+  policy: EditPolicy | undefined,
+  block: BlockInstance,
+  removedSoFar: number,
+): string | null {
+  if (!policy) return null;
+  const { items, texts } = blockContentSize(block);
+  const size = items
+    ? `${items} ${items === 1 ? 'item' : 'itens'} e ${texts} ${texts === 1 ? 'texto' : 'textos'}`
+    : `${texts} ${texts === 1 ? 'texto' : 'textos'}`;
+  const ask = `Nenhuma alteração foi salva. Para tirar só um elemento, use remove_item com o caminho da lista e o índice. Se a intenção for apagar a seção com tudo dentro, peça ao operador que confirme que ${BLOCK_REMOVAL_CONFIRMATION}.`;
+  if (policy.removalScope !== 'block')
+    return `Apagar “${blockName(block)}” tiraria a seção inteira, com ${size}, e o pedido atual não autoriza esse tamanho. ${ask}`;
+  if (removedSoFar >= 1)
+    return `Este lote já remove uma seção e tentou remover também “${blockName(block)}”, com ${size}. ${ask}`;
+  return null;
+}
+
 /** Recusa uma edição que apague texto sem que o pedido atual mencione remoção.
  * O schema estrito e o lint não veem um opcional esvaziado nem uma lista menor;
  * um pedido de mover não autoriza apagar. O recorte é textual e por pedido:
@@ -491,6 +531,10 @@ const VISUAL_SUMMARIES: Record<string, Record<string, string>> = {
     cover: 'imagem aplicada ao fundo da faixa',
     'featured-masonry': 'primeiro card em largura total e demais em masonry',
   },
+  arrangement: {
+    'focus-full': 'item em destaque na largura total e demais em masonry',
+    default: 'arranjo padrão da composição restaurado',
+  },
   'presentation.background': { transparent: 'fundo da seção removido' },
   'presentation.decoration': {
     none: 'decoração da vibe removida',
@@ -511,8 +555,10 @@ const VISUAL_SUMMARIES: Record<string, Record<string, string>> = {
 const OPERATION_SUMMARIES: Record<string, string> = {
   replace_text: 'texto atualizado',
   remove_item: 'item removido',
-  remove: 'bloco removido',
-  insert: 'bloco inserido',
+  remove: 'seção removida',
+  // "bloco inserido" logo depois de uma remoção era lido como reversão, e o
+  // bloco novo tinha ID e conteúdo diferentes do que havia sido apagado.
+  insert: 'seção nova inserida, com conteúdo novo',
   move: 'bloco reposicionado',
 };
 
@@ -604,6 +650,7 @@ export function applyPageEdit(
     );
   const blocks: BlockInstance[] = JSON.parse(JSON.stringify(page.blocks));
   const touched = new Set<string>();
+  let removedBlocks = 0;
   const changes: {
     op: string;
     blockId: string;
@@ -683,6 +730,9 @@ export function applyPageEdit(
       touched.add(block.id);
       changes.push({ op: operation.op, blockId: block.id });
     } else if (operation.op === 'remove') {
+      const error = blockRemovalError(policy, block, removedBlocks);
+      if (error) throw new PageEditError(error);
+      removedBlocks += 1;
       blocks.splice(from, 1);
       changes.push({ op: operation.op, blockId: block.id, from });
     } else if (operation.op === 'move') {
@@ -777,13 +827,24 @@ export function applyPageEdit(
                   property.startsWith('carousel.') ||
                   (property === 'layout' && value === 'carousel')
                 ? 'carrossel ajustado'
-                : change.op === 'remove_item'
-                  ? 'item indicado removido'
-                  : property === 'items' && block?.type === 'cta.band'
-                    ? 'ícones e atalhos ajustados'
-                    : property === 'href' && block?.type === 'feature.bento'
-                      ? 'navegação do card atualizada'
-                      : undefined) ??
+                : change.op === 'remove'
+                  ? (() => {
+                      // O operador precisa ver o tamanho do que saiu: "bloco
+                      // removido" escondia uma seção com quatro cards.
+                      const size = before
+                        ? blockContentSize(before)
+                        : undefined;
+                      return size
+                        ? `seção removida, com ${size.items} ${size.items === 1 ? 'item' : 'itens'} e ${size.texts} ${size.texts === 1 ? 'texto' : 'textos'}`
+                        : 'seção removida';
+                    })()
+                  : change.op === 'remove_item'
+                    ? 'item indicado removido'
+                    : property === 'items' && block?.type === 'cta.band'
+                      ? 'ícones e atalhos ajustados'
+                      : property === 'href' && block?.type === 'feature.bento'
+                        ? 'navegação do card atualizada'
+                        : undefined) ??
             visual ??
             OPERATION_SUMMARIES[change.op] ??
             (property === 'image' ? 'imagem atualizada' : 'ajuste salvo');

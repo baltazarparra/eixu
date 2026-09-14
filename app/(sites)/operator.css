@@ -89,3 +89,18 @@
     color-mix(in oklab, var(--paper) 10%, transparent)
   );
 }
+
+/*
+ * Modo apontar da prévia: vale só enquanto o painel liga o modo, e nunca no
+ * site publicado, porque o componente que aplica a classe só é montado na
+ * prévia autenticada. Nada aqui altera o layout do bloco.
+ */
+body.eixu-pointing,
+body.eixu-pointing * {
+  cursor: crosshair !important;
+}
+body.eixu-pointing .eixu-pointing-target {
+  outline: 2px solid #1f6feb;
+  outline-offset: 2px;
+  border-radius: 2px;
+}

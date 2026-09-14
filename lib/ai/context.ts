@@ -9,6 +9,15 @@ export const chatRequestSchema = z
       .max(63)
       .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
     page: z.string().max(200).optional(),
+    /** Alvo escolhido no modo apontar da prévia. */
+    anchor: z
+      .object({
+        blockId: z.string().min(1).max(100),
+        blockType: z.string().max(60).optional(),
+        text: z.string().max(600),
+        label: z.string().max(80),
+      })
+      .optional(),
     phase: z.enum(['briefing', 'cenas', 'composicao', 'revisao']).optional(),
     messages: z
       .array(

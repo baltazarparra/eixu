@@ -19,6 +19,10 @@ const { pageRevision } = await jiti.import('../../lib/ai/page-edits.ts');
 export async function editBrowserFixture({
   text = 'Ajuste a página em foco.',
   fixtureOptions = {},
+  /** Serve a prévia com o componente real de apontar, em vez do HTML sintético. */
+  pointerPreview = false,
+  /** Slugs com versão anterior guardada, como o painel recebe do servidor. */
+  undoPages = [],
 } = {}) {
   const fixture = await pageEditFixture(text, fixtureOptions);
   let turn;
@@ -31,7 +35,9 @@ export async function editBrowserFixture({
     await turn.apply.promise;
     return execute(...args);
   };
-  const state = () => workspaceState(fixture.tenant, fixture.pages, []);
+  const state = () =>
+    workspaceState(fixture.tenant, fixture.pages, [], undoPages);
+  const requests = [];
   const { POST } = await loadModule('app/api/chat/route.ts', {
     '@/lib/auth': { isAuthenticated: async () => true },
     '@/lib/db': { db: () => async () => [] },
@@ -185,6 +191,7 @@ export async function editBrowserFixture({
               } else if (pathname === '/api/chat') {
                 const chunks = [];
                 for await (const chunk of request) chunks.push(chunk);
+                requests.push(JSON.parse(Buffer.concat(chunks).toString()));
                 const result = await POST(
                   new Request('http://fixture.test/api/chat', {
                     method: 'POST',
@@ -198,6 +205,34 @@ export async function editBrowserFixture({
                 );
                 for await (const chunk of result.body) response.write(chunk);
                 response.end();
+              } else if (pathname.endsWith('/undo')) {
+                const chunks = [];
+                for await (const chunk of request) chunks.push(chunk);
+                const { page: slug } = JSON.parse(
+                  Buffer.concat(chunks).toString(),
+                );
+                const target = fixture.pages.find((p) => p.slug === slug);
+                response.setHeader('Content-Type', 'application/json');
+                try {
+                  const undone = await fixture.mocks['@/lib/sites/edits'].undoPageEdit({
+                    tenant: fixture.tenant,
+                    page: structuredClone(target),
+                    brand: fixture.tenant.brand,
+                  });
+                  response.end(JSON.stringify(undone));
+                } catch (error) {
+                  response.statusCode = 422;
+                  response.end(JSON.stringify({ error: error.message }));
+                }
+              } else if (pointerPreview && pathname.startsWith('/s/')) {
+                previewReads++;
+                response.setHeader('Content-Type', 'text/html; charset=utf-8');
+                response.end(
+                  await server.transformIndexHtml(
+                    '/preview',
+                    '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"></head><body style="margin:0"><div id="root"></div><script type="module" src="/tests/browser/fixtures/pointer.tsx"></script></body></html>',
+                  ),
+                );
               } else if (pathname.startsWith('/s/')) {
                 previewReads++;
                 await previewGate?.promise;
@@ -248,6 +283,7 @@ export async function editBrowserFixture({
   return {
     fixture,
     server,
+    requests,
     url: `http://127.0.0.1:${server.httpServer.address().port}`,
     reads: () => ({ preview: previewReads, state: stateReads }),
     holdPreview: () => {

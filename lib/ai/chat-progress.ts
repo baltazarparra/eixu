@@ -70,3 +70,27 @@ export function savedProgressMessage(
       : ' Use Continuar para retomar pelo progresso salvo.'
   }`;
 }
+
+/**
+ * "Desfaz" digitado, em pedido curto e direto.
+ *
+ * O modelo não tem como reverter: sem histórico ele recriava o bloco apagado,
+ * com outro ID e outro conteúdo, e chamava isso de reversão. A restauração é
+ * resolvida no servidor, pela versão anterior guardada.
+ */
+export function isUndoRequest(text: string): boolean {
+  const request = normalize(text);
+  return /^(?:(?:pode|por favor|quero que voce|voce pode|da pra|nao era pra fazer isso) )?(?:desfaz|desfaca|desfazer|reverte|reverta|reverter|volta|volte|voltar)(?: (?:isso|essa|esta|a|as|essas|ultima|ultimas|alteracao|alteracoes|mudanca|mudancas|edicao|edicoes))*(?: (?:como|ao|para o|pro|pra) (?:estava|era|anterior|antes))?$/.test(
+    request,
+  );
+}
+
+/**
+ * Resposta afirmativa curta. Só vale como autorização quando o turno anterior
+ * fez a pergunta correspondente; sozinha não confirma nada.
+ */
+export function isAffirmative(text: string): boolean {
+  return /^(?:sim|isso|isso mesmo|ok|okay|confirmo|confirmado|pode|pode sim|pode remover|pode remover a secao inteira|pode apagar|autorizo|manda|vai|correto|exato|positivo|e isso)(?:[ ,](?:pode|remover|apagar|sim|isso|mesmo|a|o|secao|bloco|inteira|inteiro|tudo))*$/.test(
+    normalize(text),
+  );
+}

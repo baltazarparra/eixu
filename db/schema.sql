@@ -226,3 +226,22 @@ create unique index if not exists generation_runs_active_idx
   on generation_runs (tenant_id) where status in ('queued', 'running', 'stopping');
 create index if not exists generation_runs_tenant_time_idx on generation_runs (tenant_id, created_at desc);
 create index if not exists generation_events_run_idx on generation_events (run_id, id);
+
+-- Histórico curto do rascunho de cada página. Uma edição pontual sobrescrevia
+-- `pages.blocks` sem deixar cópia: quando o agente removia a seção errada, não
+-- havia como voltar e a "reversão" virava um bloco novo inventado. Guarda o
+-- estado anterior a cada escrita do rascunho; snapshots publicados não entram.
+create table if not exists page_revisions (
+  id         uuid primary key default gen_random_uuid(),
+  tenant_id  uuid not null references tenants(id) on delete cascade,
+  page_id    uuid not null references pages(id) on delete cascade,
+  blocks     jsonb not null,
+  revision   text not null,
+  -- chat | previa | geracao | desfazer
+  origin     text not null default 'chat',
+  summary    text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists page_revisions_page_time_idx
+  on page_revisions (page_id, created_at desc);

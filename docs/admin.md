@@ -234,6 +234,25 @@ formulário, texto sobre a foto ou composição de duas fotos não viram carross
 nesses casos, o chat oferece uma galeria logo depois sem alterar nada até você
 pedir.
 
+Para apontar o alvo sem descrevê-lo, use o ícone de mira acima da prévia e
+clique no elemento: o card escolhido aparece como etiqueta na caixa de mensagem
+e segue junto do pedido. Assim **“remove esse card”** não depende do agente
+adivinhar pela imagem anexada. Esc cancela o modo, e o × remove a etiqueta.
+
+Pedir para remover um card, uma foto ou um botão tira só aquele elemento.
+Apagar uma seção inteira exige dizer isso, por exemplo **“remova a seção de
+dúvidas”**; quando o pedido aponta um item, ou o alvo vem apenas de um anexo, o
+chat informa o tamanho do que sairia e espera sua confirmação. O mesmo vale
+quando a remoção deixaria a home sem a seção de fotos que a sustenta. Se o
+formato exigir um mínimo de itens, o chat explica o limite em vez de apagar a
+seção.
+
+Se uma alteração não era para ter acontecido, escreva **“desfaz”** ou use o
+ícone de desfazer acima da prévia: o rascunho daquela página volta ao estado
+anterior, com os mesmos textos, fotos e posições. O desfazer alcança a última
+alteração salva de cada página e pode ser repetido para voltar ao estado
+desfeito. Ele não muda o site publicado nem a biblioteca de imagens.
+
 Para ajustar uma imagem sem recompor a seção, indique o nome do bloco entre
 aspas e descreva a apresentação desejada. Na composição autoral é possível
 retirar a moldura e o fundo do box, mostrar a imagem inteira na largura
