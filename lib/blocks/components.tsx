@@ -815,7 +815,8 @@ export function FeatureBento({
   title,
   items,
   layout = 'mosaic',
-}: FeatureBentoProps) {
+  ctx,
+}: FeatureBentoProps & { ctx: RenderContext }) {
   const text = textAttrs(textStyles, editing);
   return (
     <section className={section}>
@@ -829,40 +830,71 @@ export function FeatureBento({
           </h2>
         </div>
         <div className={`site-bento site-bento-${layout} mt-12 grid gap-5`}>
-          {items.map((item, index) => (
-            <article
-              key={item.title}
-              className={`site-bento-item ${index === 0 ? 'site-bento-featured' : ''}`}
-            >
-              {item.image ? (
-                <img
-                  src={item.image}
-                  alt={item.imageAlt ?? ''}
-                  width={960}
-                  height={640}
-                  loading="lazy"
-                  decoding="async"
-                  className="aspect-[3/2] w-full object-cover"
-                />
-              ) : null}
-              <div className="flex flex-col gap-3 p-7 md:p-9">
-                <h3 className="site-item-heading text-[1.3rem] font-semibold leading-tight tracking-[-0.02em]">
-                  {item.icon && !item.image ? (
-                    <SiteIcon name={item.icon} vibe={vibe} />
-                  ) : null}
-                  <span {...text.mark(`items.${index}.title`)}>
-                    {text.content(`items.${index}.title`, item.title)}
-                  </span>
-                </h3>
-                <p
-                  className="max-w-[52ch] text-base leading-relaxed text-[var(--muted)]"
-                  {...text.mark(`items.${index}.body`)}
-                >
-                  {text.content(`items.${index}.body`, item.body)}
-                </p>
-              </div>
-            </article>
-          ))}
+          {items.map((item, index) => {
+            const content = (
+              <>
+                {item.image ? (
+                  <img
+                    src={item.image}
+                    alt={item.imageAlt ?? ''}
+                    width={960}
+                    height={640}
+                    loading="lazy"
+                    decoding="async"
+                    className="aspect-[3/2] w-full object-cover"
+                  />
+                ) : null}
+                <div className="flex flex-col gap-3 p-7 md:p-9">
+                  <h3 className="site-item-heading text-[1.3rem] font-semibold leading-tight tracking-[-0.02em]">
+                    {item.icon && !item.image ? (
+                      <SiteIcon name={item.icon} vibe={vibe} />
+                    ) : null}
+                    <span {...text.mark(`items.${index}.title`)}>
+                      {text.content(`items.${index}.title`, item.title)}
+                    </span>
+                    {item.href ? (
+                      <SiteIcon
+                        name="arrow-up-right"
+                        vibe={vibe}
+                        size={18}
+                        className="site-bento-link-icon"
+                      />
+                    ) : null}
+                  </h3>
+                  <p
+                    className="max-w-[52ch] text-base leading-relaxed text-[var(--muted)]"
+                    {...text.mark(`items.${index}.body`)}
+                  >
+                    {text.content(`items.${index}.body`, item.body)}
+                  </p>
+                </div>
+              </>
+            );
+            return (
+              <article
+                key={item.title}
+                className={`site-bento-item ${index === 0 ? 'site-bento-featured' : ''}`}
+              >
+                {item.href ? (
+                  <MotionLink
+                    href={previewHref(item.href, ctx)}
+                    className="site-bento-link"
+                    {...(item.href.startsWith('http') ||
+                    item.href.startsWith('/go/')
+                      ? { rel: 'noreferrer' }
+                      : {})}
+                    data-track={
+                      item.href.startsWith('/go/wa') ? 'whatsapp' : undefined
+                    }
+                  >
+                    {content}
+                  </MotionLink>
+                ) : (
+                  content
+                )}
+              </article>
+            );
+          })}
         </div>
       </div>
     </section>
@@ -973,6 +1005,7 @@ export function CtaBand({
   whatsapp,
   image,
   imageAlt,
+  items,
   layout = 'band',
   ctx,
 }: CtaBandProps & { ctx: RenderContext }) {
@@ -1014,6 +1047,43 @@ export function CtaBand({
             >
               {text.content('body', body)}
             </p>
+          ) : null}
+          {items?.length ? (
+            <ul className="site-cta-items" aria-label="Contatos e localização">
+              {items.map((item, index) => {
+                const content = (
+                  <>
+                    <SiteIcon name={item.icon} vibe={vibe} size={20} />
+                    <span {...text.mark(`items.${index}.label`)}>
+                      {text.content(`items.${index}.label`, item.label)}
+                    </span>
+                  </>
+                );
+                return (
+                  <li key={`${item.icon}-${item.label}-${index}`}>
+                    {item.href ? (
+                      <MotionLink
+                        href={previewHref(item.href, ctx)}
+                        className="site-cta-item site-cta-item-link"
+                        data-track={
+                          item.href.startsWith('/go/wa')
+                            ? 'whatsapp'
+                            : undefined
+                        }
+                        {...(item.href.startsWith('http') ||
+                        item.href.startsWith('/go/')
+                          ? { rel: 'noreferrer' }
+                          : {})}
+                      >
+                        {content}
+                      </MotionLink>
+                    ) : (
+                      <span className="site-cta-item">{content}</span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
           ) : null}
         </div>
         <MotionLink

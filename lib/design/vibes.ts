@@ -349,7 +349,11 @@ export const VIBE_GRAMMAR: Record<Vibe, VibeGrammar> = {
   },
   comercial: {
     openings: openingsOf('comercial'),
-    protagonists: ['feature.explorer:showroom', 'feature.bento:gallery'],
+    protagonists: [
+      'feature.explorer:showroom',
+      'feature.bento:gallery',
+      'feature.bento:featured-masonry',
+    ],
     innerOpenings: ['hero.statement:framed', 'hero.split:split'],
     closings: [
       'cta.band:band',
@@ -649,7 +653,7 @@ export const VIBE_DIRECTION: Record<Vibe, string> = {
 - Display humanist ou slab com corpo humanist/source. Navegação bar, imagem framed e superfície flat.
 - motif wash ou none. A cor de marca aparece como brilho radial que nasce na borda e some no papel antes do texto; nunca degradê reto entre duas cores, nunca escurecendo para o preto. O brilho ocupa o hero e uma seção intermediária; sem linha, textura, repetição ou grade.
 - A home abre com benefício, foto documental e CTA visível, e o miolo alterna oferta, aplicações reais, dúvidas e contato. Não transforme tudo em cartões.
-- feature.numbered layout ledger para serviços, proof.testimonial só com depoimento real, faq.accordion layout split.
+- feature.numbered layout ledger para serviços, proof.testimonial só com depoimento real, faq.accordion layout split. Quando uma categoria precisa dominar a seção, feature.bento featured-masonry dá largura integral ao primeiro item e mantém os demais em colunas abaixo.
 - Ícones regulares e semânticos só onde aceleram leitura. Cantos discretos, movimento funcional e hierarquia de conversão clara.`,
   moderno: `Vibe moderno: papel quase preto e liso, fios de 1px entre capítulos, rótulos em mono e muito respiro, como linear.app e resend.com.
 - paper e surface quase pretos, ink quase branco, radius sm ou md, motif none. Não existe grade nem textura de fundo: os capítulos se separam por um fio de 1px.

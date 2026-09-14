@@ -517,6 +517,168 @@ await test('schema e contexto oferecem revisão atual sem uma leitura redundante
   );
 });
 
+await test('mensagem real fica na edição da faixa e recebe limite e alternativa executáveis', async () => {
+  const text =
+    'inserir uma imagem de fundo na parte que cita o telefone e o endereço. Adicionar ícones nessa parte também. corrigir';
+  const f = await pageEditFixture(text, { publication: true });
+  assert.equal(f.tools.repair_publication, undefined);
+  assert.ok(f.tools.edit_page);
+  assert.doesNotMatch(f.instructions, /Reparo disponível: repair_publication/);
+  assert.match(
+    f.instructions,
+    /cta\.band aceita layout cover com image e imageAlt obrigatórios/,
+  );
+  assert.match(
+    f.instructions,
+    /não houver foto disponível, explique a limitação e ofereça uma alternativa que o sistema realmente aplica/,
+  );
+});
+
+await test('pedido real liga o card da home à página criada sem trocar a seção', async () => {
+  const pages = editPages();
+  pages[1].slug = 'padaria-e-confeitaria';
+  pages[1].title = 'Padaria e Confeitaria';
+  pages[0].blocks.splice(4, 0, {
+    id: 'produtos',
+    type: 'feature.bento',
+    props: {
+      title: 'Produtos da loja',
+      items: [
+        {
+          title: 'Padaria e Confeitaria',
+          body: 'Pães frescos, bolos e fornadas ao longo do dia.',
+        },
+        {
+          title: 'Hortifruti',
+          body: 'Frutas, verduras e legumes selecionados.',
+        },
+      ],
+    },
+  });
+  const text =
+    'adicionar navegacao para pagina padaria na pagina inicial nos itens de padaria como card';
+  const f = await pageEditFixture(text, { initialPages: pages });
+  const result = await f.tools.edit_page.execute(
+    input(f.pages[0], [
+      {
+        op: 'set',
+        block: 'produtos',
+        path: 'items.0.href',
+        value: '/padaria-e-confeitaria',
+      },
+    ]),
+  );
+  assert.equal(result.ok, true, JSON.stringify(result));
+  assert.equal(
+    f.pages[0].blocks.find((block) => block.id === 'produtos').props.items[0]
+      .href,
+    '/padaria-e-confeitaria',
+  );
+  assert.deepEqual(result.summary, [
+    'Em “Produtos da loja”: navegação do card atualizada.',
+  ]);
+  assert.equal(f.tools.repair_publication, undefined);
+  assert.equal(f.writes.length, 1);
+  assert.match(f.instructions, /feature\.bento aceita href em cada item/);
+});
+
+await test('pedido real remove a parte indicada e aplica destaque integral com masonry', async () => {
+  const pages = editPages();
+  pages[0].blocks.splice(4, 0, {
+    id: 'variedade',
+    type: 'feature.bento',
+    props: {
+      title: 'Variedade para o seu lar',
+      layout: 'mosaic',
+      items: [
+        {
+          title: 'Seleção diária de hortifrúti fresco',
+          body: 'Frutas, verduras e legumes selecionados todos os dias.',
+          image: 'https://assets.test/hortifruti.svg',
+          imageAlt: 'Seleção de frutas e verduras frescas',
+        },
+        {
+          title: 'Parte indicada no anexo',
+          body: 'Conteúdo visual que o operador pediu para retirar.',
+        },
+        {
+          title: 'Padaria',
+          body: 'Pães e bolos preparados para diferentes momentos.',
+        },
+        {
+          title: 'Mercearia',
+          body: 'Itens essenciais para completar as compras da casa.',
+        },
+      ],
+    },
+  });
+  const text =
+    'no bloco "Variedade para o seu lar", quero que remova essa parte que anexei como referencia, o bloco "Seleção diária de hortifrúti fresco" deve pegar 100% do width do container e os itens devem estar alinhados em mansory logo abaixo.';
+  const f = await pageEditFixture(text, { initialPages: pages });
+  const result = await f.tools.edit_page.execute(
+    input(f.pages[0], [
+      {
+        op: 'remove_item',
+        block: 'variedade',
+        path: 'items',
+        index: 1,
+      },
+      {
+        op: 'set',
+        block: 'variedade',
+        path: 'layout',
+        value: 'featured-masonry',
+      },
+    ]),
+  );
+  assert.equal(result.ok, true, JSON.stringify(result));
+  const block = f.pages[0].blocks.find((item) => item.id === 'variedade');
+  assert.equal(block.props.layout, 'featured-masonry');
+  assert.deepEqual(
+    block.props.items.map((item) => item.title),
+    ['Seleção diária de hortifrúti fresco', 'Padaria', 'Mercearia'],
+  );
+  assert.deepEqual(result.summary, [
+    'Em “Variedade para o seu lar”: item indicado removido.',
+    'Em “Variedade para o seu lar”: primeiro card em largura total e demais em masonry.',
+  ]);
+  assert.equal(f.tools.repair_publication, undefined);
+  assert.equal(f.writes.length, 1);
+  assert.match(f.instructions, /feature\.bento aceita layout featured-masonry/);
+  assert.match(
+    f.instructions,
+    /Não substitua o bloco por signature\.composition/,
+  );
+});
+
+await test('remove_item exige que o pedido atual autorize remoção', async () => {
+  const pages = editPages();
+  pages[0].blocks.splice(4, 0, {
+    id: 'variedade',
+    type: 'feature.bento',
+    props: {
+      title: 'Variedade para o seu lar',
+      items: [
+        { title: 'Hortifrúti', body: 'Seleção fresca para a casa.' },
+        { title: 'Padaria', body: 'Pães e bolos preparados no dia.' },
+      ],
+    },
+  });
+  const f = await pageEditFixture('organize os cards', { initialPages: pages });
+  const result = await f.tools.edit_page.execute(
+    input(f.pages[0], [
+      {
+        op: 'remove_item',
+        block: 'variedade',
+        path: 'items',
+        index: 1,
+      },
+    ]),
+  );
+  assert.match(result.error, /não autoriza remover itens/);
+  assert.equal(f.writes.length, 0);
+});
+
 await test('troca de tipo preserva ID e recusa um schema incompleto sem remover o original', async () => {
   const f = await pageEditFixture();
   const original = structuredClone(f.pages[0].blocks[1]);

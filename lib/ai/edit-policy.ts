@@ -268,16 +268,21 @@ const VISUAL_EDIT_TOOLS = new Set([
 ]);
 
 /** Remove capacidades do runtime, além do catálogo exposto ao modelo. */
-export function editTools<T extends ToolSet>(tools: T, policy?: EditPolicy): T {
-  if (!policy) return tools;
+export function editTools<T extends ToolSet>(
+  tools: T,
+  policy?: EditPolicy,
+  repairPublication = false,
+): T {
   return Object.fromEntries(
-    Object.entries(tools).filter(([name]) =>
-      policy.kind === 'navigation-style'
+    Object.entries(tools).filter(([name]) => {
+      if (name === 'repair_publication' && !repairPublication) return false;
+      if (!policy) return true;
+      return policy.kind === 'navigation-style'
         ? NAVIGATION_TOOLS.has(name)
         : policy.visualOnly
           ? VISUAL_EDIT_TOOLS.has(name)
-          : !REBUILD_TOOLS.has(name) && !LEGACY_EDIT_TOOLS.has(name),
-    ),
+          : !REBUILD_TOOLS.has(name) && !LEGACY_EDIT_TOOLS.has(name);
+    }),
   ) as T;
 }
 

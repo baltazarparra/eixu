@@ -15,6 +15,9 @@ const { systemPrompt } = await j.import('../../lib/taste/prompt.ts');
 const { publicationPlan, pendenciasContext, evidenceContext } = await j.import(
   '../../lib/taste/pendencias.ts',
 );
+const { isPublicationRepairRequest } = await j.import(
+  '../../lib/sites/publication-request.ts',
+);
 
 export const editTenant = {
   id: 'edit-fixture',
@@ -280,6 +283,8 @@ export async function pageEditFixture(
                   brief: tenant.brief,
                   operatorText: text,
                 }),
+                20,
+                isPublicationRepairRequest(text),
               ),
               evidencia: evidenceContext(tenant.brief),
             }

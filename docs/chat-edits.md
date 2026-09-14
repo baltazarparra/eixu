@@ -225,13 +225,38 @@ bloqueio. `lint_page` soma as regras de site daquela página e usa a mesma
 classificação de publicação do painel. O painel oferece **Resolver pelo chat**, que preenche o
 pedido sem enviar.
 
-Um pedido atual para resolver pendências inicia `repair_publication`. O reparo
+Um pedido atual e explícito para resolver pendências inicia `repair_publication`.
+O mesmo filtro determinístico que inicia o fluxo controla a presença da
+ferramenta no runtime; um pedido visual que termina em “corrigir” continua
+vendo `edit_page`, mas nunca recebe `repair_publication`. O executor repete a
+validação antes da escrita. Quando autorizado, o reparo
 alinha referências com fatos existentes, retira alegações sem confirmação e
 remove fotos de depoimentos que não são envios reais. Se uma lista fica abaixo
 do mínimo do componente, preserva os fatos confirmados em texto; destinos de
 âncora são mantidos. Não altera o cadastro, imagens ou snapshots publicados,
 nem dá autorização de remoção livre ao `edit_page`. A escrita continua validada
 e compara a revisão do rascunho. O recibo descreve as mudanças efetivas.
+
+`cta.band` aceita `layout: cover` quando a faixa precisa usar uma foto como
+fundo. Nesse modo, `image` e `imageAlt` são obrigatórios e o renderer aplica uma
+camada de contraste sem transformar base64 ou CSS em dados do tenant. `items`
+recebe de um a quatro pares `{icon, label, href?}` para contatos e localização;
+o ícone vem do enum compartilhado. Sem uma foto inequívoca na biblioteca, o
+agente pergunta qual usar. Sem foto disponível, explica o limite e oferece um
+layout com imagem separada ou `media.image`, que são alternativas executáveis.
+
+Cards de `feature.bento` aceitam `items.N.href`. Um pedido para ligar o card de
+Padaria à página já criada usa um único `set` no item correspondente e preserva
+foto, título, texto, bloco e layout. O renderer torna o conteúdo inteiro do card
+navegável e mantém os itens sem `href` inalterados; o agente não deve sugerir a
+troca da seção para contornar esse caso.
+
+O mesmo bloco aceita `layout: featured-masonry`: o primeiro item ocupa a largura
+inteira do container e os seguintes são distribuídos em colunas masonry, com uma
+coluna no celular. `remove_item` retira somente o índice apontado em uma lista e
+só é aceito quando o pedido atual menciona remoção. Assim, uma referência visual
+pode indicar o trecho a retirar sem obrigar o agente a reconstruir `items` ou
+substituir o bloco por uma composição diferente.
 
 **Publicar** e pedidos diretos como **“publicar, eu autorizo”** promovem o conteúdo
 atual. O comando direto roda no servidor sem chamada ao modelo. Recomendações

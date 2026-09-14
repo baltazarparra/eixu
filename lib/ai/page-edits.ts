@@ -60,6 +60,12 @@ export const pageEditSchema = z.object({
         }),
         z.object({ op: z.literal('unset'), block: selector, path }),
         z.object({
+          op: z.literal('remove_item'),
+          block: selector,
+          path: path.describe('Caminho da lista, como items ou links.'),
+          index: z.number().int().min(0),
+        }),
+        z.object({
           op: z.literal('replace_block'),
           block: selector,
           replacement: blockInput.describe(
@@ -253,6 +259,27 @@ function writePath(
       );
     cursor = child as Record<string, unknown>;
   }
+}
+
+function removeArrayItem(
+  props: Record<string, unknown>,
+  path: string,
+  index: number,
+) {
+  const keys = segments(path);
+  let cursor: unknown = props;
+  for (const key of keys) {
+    if (!cursor || typeof cursor !== 'object' || !Object.hasOwn(cursor, key))
+      throw new PageEditError(`Lista inexistente em ${path}.`);
+    cursor = (cursor as Record<string, unknown>)[key];
+  }
+  if (!Array.isArray(cursor))
+    throw new PageEditError(`O caminho ${path} não aponta para uma lista.`);
+  if (index >= cursor.length)
+    throw new PageEditError(
+      `Item inexistente em ${path}.${index}. Releia o bloco; índices começam em zero.`,
+    );
+  cursor.splice(index, 1);
 }
 
 // Substituição textual não toca URLs, âncoras, cores, tipos ou configuração.
@@ -460,6 +487,10 @@ function positionIndex(
 }
 
 const VISUAL_SUMMARIES: Record<string, Record<string, string>> = {
+  layout: {
+    cover: 'imagem aplicada ao fundo da faixa',
+    'featured-masonry': 'primeiro card em largura total e demais em masonry',
+  },
   'presentation.background': { transparent: 'fundo da seção removido' },
   'presentation.decoration': {
     none: 'decoração da vibe removida',
@@ -479,6 +510,7 @@ const VISUAL_SUMMARIES: Record<string, Record<string, string>> = {
 };
 const OPERATION_SUMMARIES: Record<string, string> = {
   replace_text: 'texto atualizado',
+  remove_item: 'item removido',
   remove: 'bloco removido',
   insert: 'bloco inserido',
   move: 'bloco reposicionado',
@@ -665,6 +697,18 @@ export function applyPageEdit(
       const to = positionIndex(blocks, operation.position);
       blocks.splice(to, 0, block);
       changes.push({ op: operation.op, blockId: block.id, from, to });
+    } else if (operation.op === 'remove_item') {
+      if (policy && !policy.removal)
+        throw new PageEditError(
+          'O pedido atual não autoriza remover itens. Nenhuma alteração salva.',
+        );
+      removeArrayItem(block.props, operation.path, operation.index);
+      touched.add(block.id);
+      changes.push({
+        op: operation.op,
+        blockId: block.id,
+        path: `${operation.path}.${operation.index}`,
+      });
     } else {
       writePath(
         block.props,
@@ -733,7 +777,13 @@ export function applyPageEdit(
                   property.startsWith('carousel.') ||
                   (property === 'layout' && value === 'carousel')
                 ? 'carrossel ajustado'
-                : undefined) ??
+                : change.op === 'remove_item'
+                  ? 'item indicado removido'
+                  : property === 'items' && block?.type === 'cta.band'
+                    ? 'ícones e atalhos ajustados'
+                    : property === 'href' && block?.type === 'feature.bento'
+                      ? 'navegação do card atualizada'
+                      : undefined) ??
             visual ??
             OPERATION_SUMMARIES[change.op] ??
             (property === 'image' ? 'imagem atualizada' : 'ajuste salvo');

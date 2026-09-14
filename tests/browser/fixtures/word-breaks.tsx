@@ -115,7 +115,41 @@ export const wordBreakBlocks: BlockInstance[] = [
       ],
     },
   },
-  ...(['band', 'split', 'poster', 'minimal'] as const).map(
+  {
+    id: 'variedade',
+    type: 'feature.bento',
+    props: {
+      layout: 'featured-masonry',
+      title: 'Variedade para o seu lar',
+      items: [
+        {
+          title: 'Seleção diária de hortifrúti fresco',
+          body: 'Frutas, verduras e legumes organizados em uma seleção ampla para a rotina da casa.',
+          image: image('hortifruti'),
+          imageAlt: 'Frutas e verduras frescas organizadas em uma banca',
+        },
+        {
+          title: 'Padaria e confeitaria',
+          body: 'Pães frescos e bolos caseiros em fornadas ao longo do dia.',
+          image: image('padaria'),
+          imageAlt: 'Pães frescos organizados em uma padaria',
+        },
+        {
+          title: 'Mercearia',
+          body: 'Itens essenciais e escolhas práticas para completar a despensa.',
+        },
+        {
+          title: 'Cuidados para a casa',
+          body: 'Produtos de limpeza e organização reunidos para diferentes rotinas domésticas e necessidades de cada ambiente.',
+        },
+        {
+          title: 'Bebidas',
+          body: 'Opções para refeições, encontros e momentos cotidianos.',
+        },
+      ],
+    },
+  },
+  ...(['band', 'split', 'poster', 'minimal', 'cover'] as const).map(
     (layout, index): BlockInstance => ({
       id: `cta-${layout}`,
       type: 'cta.band',
@@ -128,6 +162,24 @@ export const wordBreakBlocks: BlockInstance[] = [
             ? 'Sustentabilidade operacional começa com contexto compartilhado'
             : 'Acompanhamento para decisões com mais clareza',
         body: 'Reúna as informações disponíveis e inicie uma conversa técnica sobre a operação.',
+        ...(layout === 'cover'
+          ? {
+              image: image('cta-cover'),
+              imageAlt: 'Equipe avaliando indicadores em uma sala de operação',
+              items: [
+                {
+                  icon: 'chat',
+                  label: 'WhatsApp (85) 99999-0000',
+                  href: '/go/wa?from=/',
+                },
+                {
+                  icon: 'pin',
+                  label: 'Avenida da Operação, 120 — Fortaleza',
+                  href: '#contato',
+                },
+              ],
+            }
+          : {}),
         cta: {
           label: 'Conversar sobre sustentabilidade',
           href: '#contato',

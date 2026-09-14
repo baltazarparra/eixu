@@ -202,6 +202,7 @@ export async function POST(request: Request) {
   const editPolicy = phase
     ? undefined
     : editPolicyFor(lastUserText, pages, body.page ?? '');
+  const repairPublication = !phase && isPublicationRepairRequest(lastUserText);
   context.editing = Boolean(editPolicy);
   context.editScope = editPolicy ? editScopeText(editPolicy) : undefined;
   if (editPolicy)
@@ -228,6 +229,8 @@ export async function POST(request: Request) {
         brief: tenant.brief,
         operatorText,
       }),
+      20,
+      repairPublication,
     );
     context.evidencia = evidenceContext(tenant.brief);
   }
@@ -252,7 +255,7 @@ export async function POST(request: Request) {
     tools,
     phase,
     modelRole,
-    repairPublication: !phase && isPublicationRepairRequest(lastUserText),
+    repairPublication,
     instructions: systemPrompt(
       tenant,
       summary,

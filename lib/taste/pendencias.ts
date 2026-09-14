@@ -295,7 +295,7 @@ export function publicationPlan(input: {
 
 const quote = (value: string) => `"${value}"`;
 
-function pendenciaLine(item: Pendencia): string {
+function pendenciaLine(item: Pendencia, repairPublication: boolean): string {
   const head = `- ${item.nivel === 'erro' ? 'ERRO' : 'Recomendação'} ${item.regra} em ${item.pagina}${
     item.bloco ? ` (bloco ${item.bloco})` : ''
   }: ${item.mensagem}`;
@@ -324,19 +324,29 @@ function pendenciaLine(item: Pendencia): string {
     );
   if (faltantes.length)
     parts.push(
-      `Ação confirmar: o operador ainda não escreveu ${faltantes
-        .map((fact) => quote(fact.frase))
-        .join(
-          '; ',
-        )}. Se o pedido é resolver pendências, use repair_publication para retirar a alegação sem confirmação. Não peça repetição de frases, não invente nem registre a autorização como fato.`,
+      repairPublication
+        ? `Ação confirmar: o operador ainda não escreveu ${faltantes
+            .map((fact) => quote(fact.frase))
+            .join(
+              '; ',
+            )}. Use repair_publication para retirar a alegação sem confirmação. Não peça repetição de frases, não invente nem registre a autorização como fato.`
+        : `O operador ainda não escreveu ${faltantes
+            .map((fact) => quote(fact.frase))
+            .join(
+              '; ',
+            )}. Esta pendência não pertence ao pedido atual; preserve a alegação e não peça repetição de frases.`,
     );
   if (noCadastro.length)
     parts.push(
-      `Alegações sem confirmação textual: ${noCadastro
-        .map((fact) => quote(fact.frase))
-        .join(
-          '; ',
-        )}. No pedido de resolver pendências, use repair_publication.`,
+      repairPublication
+        ? `Alegações sem confirmação textual: ${noCadastro
+            .map((fact) => quote(fact.frase))
+            .join('; ')}. Use repair_publication.`
+        : `Alegações sem confirmação textual: ${noCadastro
+            .map((fact) => quote(fact.frase))
+            .join(
+              '; ',
+            )}. Preserve-as neste pedido; o reparo exige uma solicitação explícita para resolver pendências.`,
     );
   if (item.imagem) {
     const image = item.imagem;
@@ -362,7 +372,9 @@ function pendenciaLine(item: Pendencia): string {
   if (item.nota) parts.push(item.nota);
   if (item.acao === 'reparar-prova')
     parts.push(
-      'Reparo disponível: repair_publication. Só executa mediante pedido atual para resolver pendências e preserva evidências e conteúdo confirmado.',
+      repairPublication
+        ? 'Reparo disponível: repair_publication. Preserve evidências e conteúdo confirmado.'
+        : 'Esta recomendação de prova permanece visível, mas o pedido atual não autoriza retirar ou alterar esse conteúdo.',
     );
   if (item.acao === 'editar' && !parts.length)
     parts.push(
@@ -375,15 +387,21 @@ function pendenciaLine(item: Pendencia): string {
 export function pendenciasContext(
   plan: Pendencia[],
   limit = 20,
+  repairPublication = false,
 ): string | undefined {
   if (!plan.length) return undefined;
   const ordered = [...plan].sort((a, b) =>
     a.nivel === b.nivel ? 0 : a.nivel === 'erro' ? -1 : 1,
   );
-  const lines = ordered.slice(0, limit).map(pendenciaLine);
+  const lines = ordered
+    .slice(0, limit)
+    .map((item) => pendenciaLine(item, repairPublication));
   const rest = ordered.length - lines.length;
   if (rest > 0) lines.push(`- e mais ${rest} pendência(s) no painel.`);
-  return `Validação atual do servidor, a mesma do painel. Só erros técnicos bloqueiam; recomendações editoriais não impedem a publicação autorizada. No pedido de publicar, publique sem exigir confirmação de fatos; no pedido de resolver, execute os reparos e valide.\n${lines.join('\n')}`;
+  const action = repairPublication
+    ? 'O pedido atual autoriza resolver pendências: execute os reparos e valide.'
+    : 'As pendências fora do pedido atual são apenas contexto: não as altere nem desvie da edição solicitada.';
+  return `Validação atual do servidor, a mesma do painel. Só erros técnicos bloqueiam; recomendações editoriais não impedem a publicação autorizada. No pedido de publicar, publique sem exigir confirmação de fatos. ${action}\n${lines.join('\n')}`;
 }
 
 /** Seção do prompt com as frases que a validação aceita como prova. */

@@ -218,7 +218,11 @@ function renderList(
               );
             case 'feature.bento':
               return (
-                <B.FeatureBento key={key} {...(props as B.FeatureBentoProps)} />
+                <B.FeatureBento
+                  key={key}
+                  {...(props as B.FeatureBentoProps)}
+                  ctx={ctx}
+                />
               );
             case 'narrative.steps':
               return (
