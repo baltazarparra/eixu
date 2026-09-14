@@ -558,12 +558,16 @@ palavra partida, faixa de 1 px nem falha de contraste.
   v3 ou superiores, `renderedMotif` traduz um valor persistido para `wash`; toda
   gravação nova recusa a grade mesmo com referência completa. A faixa comercial
   e a landing aceitam `none` ou `wash`.
-- **Cor mensurada.** `themeVars` mistura papel com acento em 7% e com o acento
-  alternativo em 9% para produzir `--wash` e `--wash-2`. Cada mistura volta ao
-  papel se não conservar contraste 4,5:1. `--muted-wash` e `--muted-wash-2`
-  resolvem texto de apoio em cada superfície; `--accent-deep` só é emitida quando
-  a ação continua legível nos dois extremos.
-  O CSS usa gradiente sem repetição nem `background-size` no hero e em apoios.
+- **Cor mensurada.** `glowOf` em `lib/blocks/contrast.ts` percorre misturas de
+  papel e cor de marca de 60% a 10% e devolve a primeira cuja claridade OKLCH
+  fique no piso da vibe (papel claro L ≥ 0,86; papel escuro L ≤ 0,30) e que
+  mantenha 7:1 com a tinta. Daí saem `--glow` (acento), `--glow-2` (destaque ou
+  acento alternativo) e `--glow-2-flat`, a superfície chapada das seções
+  internas. Sem mistura válida o token volta ao papel e o fundo fica plano.
+  `--muted-glow`, `--muted-glow-2` e `--muted-glow-2-flat` resolvem o texto de
+  apoio medido contra a parada mais forte, não contra a média. `--accent-glow`
+  clareia o acento para a faixa de conversão e substituiu `--accent-deep`, que
+  misturava com a tinta e sujava a cor.
 - **Palavras inteiras.** A raiz usa `overflow-wrap: break-word`; títulos, ações,
   navegação larga e declarações usam `overflow-wrap: normal` e hifenização
   manual. Somente endereços, contatos e o menu compacto podem quebrar em qualquer
@@ -575,10 +579,26 @@ palavra partida, faixa de 1 px nem falha de contraste.
   recibo visual e a crítica recebem página, viewport, seletor e termo; uma análise
   visual solicitada não pode concluir enquanto houver esse defeito.
 
-O hero comercial usa a lavagem como campo de profundidade; CTA em tom de acento
-mistura acento e acento profundo, o explorer usa `--wash-2` e faixas de prova
-ganham hierarquia tipográfica. O renderer muda a apresentação, não o rascunho nem
-o snapshot gravado de um cliente.
+O hero comercial usa o brilho como campo de profundidade; a CTA em tom de acento
+recebe um brilho claro no canto, o explorer e a faixa de prova usam
+`--glow-2-flat` chapado e ganham hierarquia tipográfica. O renderer muda a
+apresentação, não o rascunho nem o snapshot gravado de um cliente.
+
+### Degradê com técnica
+
+Todo degradê de fundo é um brilho radial: o centro nasce na borda ou fora da
+caixa, a cor perde opacidade em três a cinco paradas e chega a `transparent`
+antes da coluna de texto. Não existe degradê reto entre duas cores plenas em
+nenhuma vibe, e nenhum token de fundo mistura em direção à tinta. Os dois
+extremos de um degradê saem sempre do mesmo contexto de cor: um brilho medido
+contra o papel da marca nunca é pintado sobre o papel de uma seção de outro
+tom. `tests/site-gradient-contract.test.mjs` varre `app/(sites)/*.css` e as
+miniaturas de `app/(admin)/admin.css` e recusa esse formato, com uma lista
+explícita de exceções — véus do hero `cover`, máscaras, grade do v2, faixas
+repetidas do ousado e os fios de 1 px do painel. A cor pedida pelo operador é
+chapada: `app/(sites)/operator.css`, importado por último, apaga lavagem,
+brilho e motivo da seção. O estudo que originou o contrato está em
+[registro do plano](archive/gradient-technique-plan-2026-09-13.md).
 
 ## Refinamento da vibe artística
 

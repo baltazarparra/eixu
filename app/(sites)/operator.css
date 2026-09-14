@@ -1,0 +1,55 @@
+/* A cor escolhida pelo operador, por último na cascata.
+ *
+ * Este arquivo é importado depois de todas as folhas de vibe justamente para
+ * que nenhuma decoração de vibe repinte a seção. A regra vivia em site.css e
+ * empatava em especificidade com a lavagem da comercial v3/v4, que vinha
+ * depois e vencia: o operador pedia "vermelho chapado sem efeitos", o servidor
+ * gravava o hex, e o navegador pintava um degradê de creme a vermelho por
+ * cima. Ver docs/archive/gradient-technique-plan-2026-09-13.md, Frente 1.
+ *
+ * Não acrescente decoração aqui. Fundo de seção com cor do operador é chapado.
+ */
+.site-theme .site-block[data-block][data-tone='custom'] > * {
+  --paper: inherit;
+  --ink: inherit;
+  --muted: inherit;
+  --line: inherit;
+  --highlight-text: inherit;
+  background: transparent;
+  background-image: none;
+  color: inherit;
+}
+/* Lavagem, brilho e motivo da vibe não alcançam a seção com cor do operador,
+ * qualquer que seja o seletor que os pintou. */
+.site-theme .site-block[data-block][data-tone='custom'],
+.site-theme .site-block[data-block][data-tone='custom'] > .site-hero,
+.site-theme .site-block[data-block][data-tone='custom'] > .site-footer {
+  background-image: none;
+}
+
+/* Scrim do hero `cover` na cor da seção.
+ *
+ * A cópia do cover é branca sobre a foto, e o véu que a sustenta era preto.
+ * Com fundo escuro do operador o resultado era um cinza que negava a cor
+ * pedida; o servidor marca data-scrim="paper" e o véu passa a ser o próprio
+ * papel da seção. Com fundo claro o véu continua preto: a cópia é branca. */
+.site-theme
+  .site-block[data-scrim='paper']
+  .site-hero-cover
+  .site-hero-copy::before {
+  background: radial-gradient(
+    circle at 20% 50%,
+    color-mix(in oklab, var(--paper) 78%, transparent),
+    transparent 68%
+  );
+}
+.site-theme
+  .site-block[data-scrim='paper']
+  .site-hero-cover
+  .site-hero-media::after {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--paper) 78%, transparent),
+    color-mix(in oklab, var(--paper) 10%, transparent)
+  );
+}

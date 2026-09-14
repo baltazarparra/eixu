@@ -29,6 +29,20 @@ import {
 } from '@/lib/taste/metrics';
 import { lintCopy } from '@/lib/copy/lint';
 
+/**
+ * Contrato de superfície. A crítica lia legibilidade pela cor que o servidor
+ * conhece; o rodapé do Skinão passava porque branco sobre #b80505 dá 7:1,
+ * enquanto o navegador pintava creme na metade de cima. Estes quatro sinais
+ * são sobre o pixel. Ver docs/archive/gradient-technique-plan-2026-09-13.md.
+ */
+const SURFACE_CONTRACT = `## Superfície e degradê
+Degradê de fundo é luz sobre papel: um brilho que nasce na borda ou fora da caixa, perde cor e chega ao papel antes do texto. São erros materiais, não preferência estética:
+- transição reta entre duas cores plenas, em que se lê a direção da reta em vez de uma luz; use criterio ritmo.
+- fundo escurecendo para o preto ou para a tinta, que tira croma e suja a cor da marca; use criterio ritmo.
+- texto de apoio sobre a parte saturada do degradê; use criterio legibilidade.
+- degradê que atravessa a seção inteira sem chegar ao papel, deixando a coluna de texto sobre cor; use criterio legibilidade.
+Seção com cor pedida pelo operador é chapada: lavagem ou brilho da vibe por cima dela é erro de identidade.`;
+
 export const reviewSchema = z.object({
   findings: z
     .array(
@@ -258,6 +272,7 @@ Quando brand.design.referenceDirection existe, compare os pixels do rascunho com
 ${copyDirection(vibeOf(tenant.brand))}
 ${COPY_REVIEW}
 ${RESPONSIVE_CONTRACT}
+${SURFACE_CONTRACT}
 Cada achado precisa citar evidência observável, página e bloco existente quando identificável; use blockId null quando não conseguir localizá-lo. Error é defeito material: afirmação contradita/sem evidência, texto ilegível, conteúdo cortado, ação inacessível, imagem quebrada. Preferência estética é warn. Não invente defeitos para parecer rigoroso. Registre o que funciona para o editor preservar. Não autorize publicação e não afirme ter visto páginas ou viewports ausentes.`,
     messages: [{ role: 'user', content }],
   });

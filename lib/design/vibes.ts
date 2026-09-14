@@ -647,7 +647,7 @@ export const VIBE_DIRECTION: Record<Vibe, string> = {
   landing: `Vibe Landing Page: uma página, uma ação. Menu minimal em pílulas e âncoras; hero.landing stage com produto em moldura ou form com formulário curto. Benefício concreto, prova real, protagonista com duas fotos, passos, FAQ e fechamento sobre acento. De 6 a 11 seções de conteúdo. Repita o destino primário na abertura, no meio e no fechamento. nav.bar com stickyCta true e position fixed. A referência modula os eixos visuais, mas nunca a forma de página única.`,
   comercial: `Vibe comercial: percurso direto, acolhedor e orientado à decisão.
 - Display humanist ou slab com corpo humanist/source. Navegação bar, imagem framed e superfície flat.
-- motif wash ou none. A cor de marca ocupa no máximo 8% do papel como lavagem contínua no hero e em uma seção intermediária; sem linha, textura, repetição ou grade.
+- motif wash ou none. A cor de marca aparece como brilho radial que nasce na borda e some no papel antes do texto; nunca degradê reto entre duas cores, nunca escurecendo para o preto. O brilho ocupa o hero e uma seção intermediária; sem linha, textura, repetição ou grade.
 - A home abre com benefício, foto documental e CTA visível, e o miolo alterna oferta, aplicações reais, dúvidas e contato. Não transforme tudo em cartões.
 - feature.numbered layout ledger para serviços, proof.testimonial só com depoimento real, faq.accordion layout split.
 - Ícones regulares e semânticos só onde aceleram leitura. Cantos discretos, movimento funcional e hierarquia de conversão clara.`,
@@ -668,7 +668,7 @@ export const VIBE_DIRECTION: Record<Vibe, string> = {
 - media.gallery layout masonry aceita duas fotos: elas viram uma dupla em largura inteira. Com três ou mais, as colunas alternam alturas.
 - narrative.split layout overlap, editorial.text layout lead com presentation.align "center" nas declarações, faq.accordion layout cards em tom "soft".
 - Escolha motif rings ou corners como elemento-assinatura e realize-o nas props, não só no conceito.
-- As cores do cadastro aparecem como lavagem suave entre seções; mantenha o texto sempre sobre superfície legível.`,
+- As cores do cadastro aparecem como brilho radial que nasce na borda e some no papel antes do texto; nunca degradê reto entre duas cores, nunca escurecendo para o preto. Mantenha o texto sempre sobre superfície legível.`,
 };
 
 /** Direção de imagem por vibe, usada no briefing e na etapa de cenas. */

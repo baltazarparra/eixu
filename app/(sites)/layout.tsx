@@ -22,6 +22,8 @@ import './vibes.css';
 import './typography.css';
 import './iconography.css';
 import './navigation.css';
+// Por último: a cor do operador vence a decoração de qualquer vibe.
+import './operator.css';
 
 const sans = Geist({
   subsets: ['latin'],

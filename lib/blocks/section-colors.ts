@@ -1,6 +1,7 @@
 import {
   bestInk,
   contrastRatio,
+  isDarkSurface,
   readableHighlight,
   readableMuted,
 } from '@/lib/blocks/contrast';
@@ -60,4 +61,17 @@ export function sectionColorVars(
     backgroundColor: presentation.background,
     color: ink,
   };
+}
+
+/**
+ * Véu do hero `cover` quando a seção recebeu cor escura do operador. O véu
+ * padrão é preto e nega a cor pedida: um vermelho escuro vira cinza. Com fundo
+ * claro ele continua preto, porque a cópia do cover é branca.
+ */
+export function sectionScrim(
+  presentation: { background?: string } | undefined,
+): 'paper' | undefined {
+  const background = presentation?.background;
+  if (!background || !/^#[0-9a-f]{6}$/i.test(background)) return undefined;
+  return isDarkSurface(background) ? 'paper' : undefined;
 }

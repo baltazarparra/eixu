@@ -73,7 +73,11 @@ própria e coerente. O aceite é média 2 sem nenhum critério em 0.
 3. **Seção protagonista.** Existe uma seção que mostra o negócio em imagem e
    dá o que explorar, não uma lista de benefícios intercambiáveis.
 4. **Ritmo tonal.** A página alterna superfícies com intenção, sem faixa
-   escura por hábito nem um tom só do começo ao fim.
+   escura por hábito nem um tom só do começo ao fim. Degradê de fundo é luz
+   sobre papel, e quatro sinais reprovam: transição reta entre duas cores
+   plenas; fundo escurecendo para o preto ou para a tinta; texto de apoio
+   sobre a parte saturada; degradê que atravessa a seção sem chegar ao papel.
+   Seção com cor pedida pelo operador é chapada.
 5. **Imagens por página.** Cada página orgânica tem imagem que explica o
    assunto dela, não a mesma foto repetida.
 6. **Enquadramento.** A proporção da foto corresponde ao que o layout exibe; o

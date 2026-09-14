@@ -301,17 +301,6 @@ details[open] > summary .site-disclosure {
   background: transparent;
   color: inherit;
 }
-/* A escolha local do operador prevalece sobre o fundo padrão de cada vibe.
-   Os pares de texto e fundo continuam calculados no servidor. */
-.site-theme .site-block[data-block][data-tone='custom'] > * {
-  --paper: inherit;
-  --ink: inherit;
-  --muted: inherit;
-  --line: inherit;
-  --highlight-text: inherit;
-  background: transparent;
-  color: inherit;
-}
 .site-block[data-width='narrow'] {
   --site-max: 58rem;
 }
@@ -948,15 +937,58 @@ details[open] > summary .site-disclosure {
     linear-gradient(90deg, var(--line) 1px, transparent 1px);
   background-size: 3rem 3rem;
 }
-.site-theme[data-motif='wash'] .site-hero {
-  --muted: var(--muted-wash);
-  background-image: linear-gradient(160deg, var(--wash), var(--paper) 62%);
+/* Degradê de fundo é luz sobre papel, nunca uma reta entre duas cores plenas.
+   O brilho nasce fora da caixa, perde opacidade em quatro paradas e chega a
+   `transparent` antes da coluna de texto; o apoio é medido contra a parada
+   mais forte (--muted-glow). A lavagem anterior ligava dois pontos opacos a
+   160°, e o olho lia a direção da reta. O estudo está em
+   docs/archive/gradient-technique-plan-2026-09-13.md e o contrato em
+   tests/site-gradient-contract.test.mjs.
+
+   Herói de foto ou pôster fica de fora: o papel deles não é o papel da marca,
+   e brilho medido contra outro papel é a mistura que este contrato proíbe. */
+.site-theme[data-motif='wash']
+  main
+  > .site-block:not([data-tone])
+  .site-hero:not(.site-hero-poster, .site-hero-cover) {
+  --muted: var(--muted-glow);
+  background-image:
+    radial-gradient(
+      110% 90% at 100% 0%,
+      var(--glow) 0%,
+      color-mix(in oklab, var(--glow) 55%, transparent) 28%,
+      color-mix(in oklab, var(--glow) 18%, transparent) 52%,
+      transparent 74%
+    ),
+    radial-gradient(
+      80% 70% at 0% 100%,
+      color-mix(in oklab, var(--glow-2) 60%, transparent) 0%,
+      transparent 58%
+    );
 }
+/* Rodapé: luz subindo do chão, com o centro do círculo abaixo da caixa. */
+.site-theme[data-motif='wash'] .site-block:not([data-tone]) .site-footer {
+  --muted: var(--muted-glow);
+  background-image: radial-gradient(
+    130% 80% at 50% 125%,
+    var(--glow) 0%,
+    color-mix(in oklab, var(--glow) 60%, transparent) 38%,
+    color-mix(in oklab, var(--glow) 22%, transparent) 60%,
+    transparent 82%
+  );
+}
+/* Seção intermediária: a segunda cor entra pela borda direita e some antes
+   do miolo da coluna. */
 .site-theme[data-motif='wash']
   main
   > .site-block:not([data-tone]):nth-child(3n) {
-  --muted: var(--muted-wash-2);
-  background-image: linear-gradient(180deg, var(--paper), var(--wash-2));
+  --muted: var(--muted-glow-2);
+  background-image: radial-gradient(
+    70% 120% at 100% 50%,
+    color-mix(in oklab, var(--glow-2) 70%, transparent) 0%,
+    color-mix(in oklab, var(--glow-2) 25%, transparent) 36%,
+    transparent 62%
+  );
 }
 .site-theme[data-motif='stripes'] .site-cta::before {
   display: block;

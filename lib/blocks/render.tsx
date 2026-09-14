@@ -8,7 +8,7 @@ import { SiteLocation } from '@/lib/blocks/location';
 import { contactsOf } from '@/lib/tenant-contacts';
 import { renderingVibeOf, VIBE_LOCATION_TONE } from '@/lib/design/vibes';
 import { previewProps } from '@/lib/sites/preview';
-import { sectionColorVars } from '@/lib/blocks/section-colors';
+import { sectionColorVars, sectionScrim } from '@/lib/blocks/section-colors';
 
 export type RenderContext = {
   tenant: Tenant;
@@ -305,6 +305,7 @@ function renderList(
             data-block={block.type}
             data-block-id={block.id}
             data-tone={presentation?.background ? 'custom' : presentation?.tone}
+            data-scrim={sectionScrim(presentation)}
             style={sectionColorVars(presentation, ctx.tenant.brand)}
             data-width={presentation?.width}
             data-spacing={presentation?.spacing}

@@ -157,11 +157,19 @@
 .site-theme[data-vibe='artistico']:not([data-reference-aspects~='surface'])
   main
   > .site-block:not([data-tone]):nth-child(3n + 2) {
-  background-image: linear-gradient(
-    135deg,
-    color-mix(in oklab, var(--accent-2) 13%, var(--paper)),
-    color-mix(in oklab, var(--highlight) 9%, var(--paper))
-  );
+  --muted: var(--muted-glow-2);
+  background-image:
+    radial-gradient(
+      75% 110% at 8% 0%,
+      color-mix(in oklab, var(--glow) 65%, transparent) 0%,
+      color-mix(in oklab, var(--glow) 22%, transparent) 34%,
+      transparent 62%
+    ),
+    radial-gradient(
+      70% 100% at 100% 100%,
+      color-mix(in oklab, var(--glow-2) 55%, transparent) 0%,
+      transparent 58%
+    );
 }
 /* A lavagem soft vem de --surface em themeVars, junto dos tokens de texto
    medidos contra ela. Não substitua só o fundo depois desse cálculo. */
@@ -182,11 +190,16 @@
   ) {
   border-radius: 1.25rem;
 }
-.site-theme[data-vibe='artistico'] .site-footer {
-  background-image: linear-gradient(
-    160deg,
-    color-mix(in oklab, var(--highlight) 12%, var(--paper)),
-    var(--paper) 65%
+.site-theme[data-vibe='artistico']
+  .site-block:not([data-tone])
+  .site-footer {
+  --muted: var(--muted-glow-2);
+  background-image: radial-gradient(
+    130% 80% at 50% 125%,
+    color-mix(in oklab, var(--glow-2) 82%, transparent) 0%,
+    color-mix(in oklab, var(--glow-2) 48%, transparent) 38%,
+    color-mix(in oklab, var(--glow-2) 18%, transparent) 60%,
+    transparent 82%
   );
 }
 @media (min-width: 768px) {
@@ -285,36 +298,63 @@
   width: 2.35rem;
   height: 2.35rem;
 }
+/* A comercial v3/v4 mantém brilho no hero e no rodapé mesmo sem motif wash,
+   como no contrato atual, com uma só cor e 70% da intensidade. Com motif wash
+   a receita completa vem de site.css; sem este :not() as duas regras
+   competiriam e a mais específica apagaria o segundo brilho. */
 .site-theme:is(
     [data-design-version='3'],
     [data-design-version='4']
-  )[data-vibe='comercial']
-  .site-hero {
-  --muted: var(--muted-wash);
-  background-image: linear-gradient(160deg, var(--wash), var(--paper) 62%);
+  )[data-vibe='comercial']:not([data-motif='wash'])
+  main
+  > .site-block:not([data-tone])
+  .site-hero:not(.site-hero-poster, .site-hero-cover) {
+  --muted: var(--muted-glow);
+  background-image: radial-gradient(
+    110% 90% at 100% 0%,
+    color-mix(in oklab, var(--glow) 70%, transparent) 0%,
+    color-mix(in oklab, var(--glow) 39%, transparent) 28%,
+    color-mix(in oklab, var(--glow) 13%, transparent) 52%,
+    transparent 74%
+  );
 }
 .site-theme:is(
     [data-design-version='3'],
     [data-design-version='4']
-  )[data-vibe='comercial']
+  )[data-vibe='comercial']:not([data-motif='wash'])
+  .site-block:not([data-tone])
   .site-footer {
-  --muted: var(--muted-wash);
-  background-image: linear-gradient(160deg, var(--wash), var(--paper) 68%);
+  --muted: var(--muted-glow);
+  background-image: radial-gradient(
+    130% 80% at 50% 125%,
+    color-mix(in oklab, var(--glow) 70%, transparent) 0%,
+    color-mix(in oklab, var(--glow) 42%, transparent) 38%,
+    color-mix(in oklab, var(--glow) 15%, transparent) 60%,
+    transparent 82%
+  );
 }
+/* A faixa de conversão é acento chapado com um brilho claro no canto. O
+   degradê anterior ia do acento para o acento misturado com a tinta: o
+   amarelo da marca virava mostarda e perdia croma. Clarear preserva a cor. */
 .site-theme:is(
     [data-design-version='3'],
     [data-design-version='4']
   )[data-vibe='comercial']
   .site-block[data-block='cta.band'][data-tone='accent'] {
-  background-image: linear-gradient(135deg, var(--accent), var(--accent-deep));
+  background-color: var(--accent);
+  background-image: radial-gradient(
+    90% 140% at 100% 0%,
+    color-mix(in oklab, var(--accent-glow) 85%, transparent) 0%,
+    transparent 62%
+  );
 }
 .site-theme:is(
     [data-design-version='3'],
     [data-design-version='4']
   )[data-vibe='comercial']
   .site-explorer-panel {
-  --muted: var(--muted-wash-2);
-  background: var(--wash-2);
+  --muted: var(--muted-glow-2-flat);
+  background: var(--glow-2-flat);
   color: var(--brand-ink);
 }
 .site-theme:is(
@@ -322,8 +362,8 @@
     [data-design-version='4']
   )[data-vibe='comercial']
   .site-proof-strip-numbers {
-  --muted: var(--muted-wash);
-  background: var(--wash);
+  --muted: var(--muted-glow-2-flat);
+  background: var(--glow-2-flat);
 }
 .site-theme:is(
     [data-design-version='3'],
@@ -347,9 +387,9 @@
   )[data-vibe='comercial']
   .site-facts-ledger
   dl {
-  --muted: var(--muted-wash-2);
+  --muted: var(--muted-glow-2-flat);
   border-color: transparent;
-  background: var(--wash-2);
+  background: var(--glow-2-flat);
 }
 
 /* Moderno v3/v4: sistema tipográfico lido em 12/09/2026 em linear.app,
