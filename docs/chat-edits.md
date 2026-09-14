@@ -14,7 +14,8 @@ entrega o snapshot atual no contexto do agente, preserva posição e campos não
 alterados, permite uma paleta local e confere concorrência na gravação. A
 melhoria de latência buscada é eliminar viagens desnecessárias entre modelo e
 ferramentas; o modelo e o raciocínio `high` permanecem iguais. Não há parser de
-frases que finja entender toda linguagem natural, nem revisão visual automática.
+frases que finja entender toda linguagem natural. A edição visual ganha medição
+determinística no navegador; crítica visual por modelo continua somente a pedido.
 
 ## Contrato
 
@@ -33,11 +34,13 @@ aceitam antes/depois de um ID ou início/fim; `remove` remove o alvo indicado.
 mudança de variante exige outro schema; ajustes de layout usam `set`.
 
 A rota injeta snapshot e schemas da página em foco, lidos no servidor neste
-turno. Outra página exige `get_page`. O agente reúne as mudanças em uma chamada
+turno. Em um pedido visual por família, ela inclui também slug, ID, revisão e
+`presentation` dos alvos das outras páginas; `get_page` só é necessário se essa
+revisão faltar ou houver conflito. O agente reúne as mudanças em uma chamada
 por página e conclui usando o recibo; uma pergunta necessária de alvo continua
 sendo preferível a alterar o lugar errado. A edição geral deixa de expor os
-quatro mutadores antigos. Geração/revisão e o escopo específico de cabeçalho
-conservam seus consumidores compatíveis.
+quatro mutadores antigos. Geração/revisão e os consumidores legados permanecem
+compatíveis.
 Nos turnos que usam edição, confirmação de evidência e validação, o fechamento
 exibido e salvo no histórico vem dos recibos reais, mesmo se o modelo escrever
 outra conclusão. As ferramentas e o loop do SDK continuam ativos; somente o
@@ -75,6 +78,42 @@ O iframe informa **Atualizando prévia** e só confirma **Prévia atualizada**
 quando carrega o documento do site. Erro, redirecionamento de sessão ou espera
 maior que 20 segundos oferecem nova tentativa. A rolagem é preservada em
 edições da mesma página; escolher outra página começa uma prévia nova.
+
+## Fundo, degradê e escopo por família
+
+`presentation.background` aceita um hex local ou `transparent`.
+`backgroundEnd` junto de `gradient: down | diagonal | right` cria um degradê
+validado; ambos exigem `background` em hex. Uma única tinta precisa manter
+contraste mínimo de 4,5:1 nas duas extremidades. Sem `foreground`, o servidor
+escolhe essa tinta; com `foreground`, valida a escolha explícita. Se não houver
+par comum, o lote é recusado e, quando só o fim precisa mudar, a mensagem sugere
+a extremidade mais próxima que passa.
+
+`decoration: none` retira lavagem, degradê de CTA e motivo da vibe daquela
+seção sem escolher outra cor; `vibe` restaura a decoração. Um fundo local passa
+a prevalecer sobre qualquer decoração de vibe pelo arquivo
+`app/(sites)/operator.css`, importado por último, e não muda a paleta da marca.
+Para voltar ao padrão, remova `background`, `backgroundEnd`, `gradient` e
+`foreground` e restaure `decoration: vibe` quando aplicável.
+
+Pedidos visuais que nomeiam rodapé/footer, cabeçalho/header/menu ou
+abertura/banner/hero viram um escopo `visualOnly`. Sem página indicada, atingem
+todos os blocos daquela família; “nesta página”, home ou uma página nomeada
+restringem o conjunto. Nesse modo, `set_brand` não existe e o executor aceita
+somente `presentation.*`, `textStyles.*`, apresentação de imagem e, em
+`nav.bar`, `position`/`backgroundOpacity`. Textos, itens, tipo, layout e ordem
+continuam preservados.
+
+Depois de uma gravação que altere `presentation.*` ou `textStyles.*`, o mesmo
+Chromium da revisão abre a prévia autenticada em 1440 e 390 px. Ele localiza
+somente os `[data-block-id]` tocados, lê fundo/camada computados e mede todo
+texto visível pelo inspetor compartilhado. O retorno contém números e achados,
+sem screenshot, pixels ou crítica por modelo. Transparências são compostas com
+as superfícies ancestrais; texto diretamente sobre uma imagem, sem painel opaco,
+é declarado não mensurável em vez de receber aprovação por uma cor de fallback.
+Falha ou indisponibilidade não desfaz a gravação, mas o recibo precisa ressalvá-la. `EIXU_REVIEW_CAPTURE=0`
+desliga essa medição e isso também aparece no recibo. A prévia segue como
+revisão humana; a edição não publica nada.
 
 ## Pedido que não cabe no bloco
 
@@ -211,12 +250,14 @@ Nenhum snapshot publicado é alterado. A atomicidade vale por página, não por
 um pedido com várias páginas. Uma repetição com revisão antiga é recusada; não
 é um mecanismo de desfazer ou histórico de versões.
 
-`presentation.background` aceita hex de seis dígitos ou `transparent`.
-O renderer calcula texto, apoio e links legíveis localmente.
-`presentation.foreground` é opcional e exige fundo hex explícito e contraste de
-4,5:1. Sem essas props o comportamento anterior permanece. A ordem salva é
-respeitada após o footer, com um único `main` e localização automática antes do
-rodapé. A seção extra posterior fica fora de `main`.
+`presentation.background` aceita hex de seis dígitos ou `transparent`; degradê
+e decoração seguem o contrato acima. `sectionBackgrounds` resolve a superfície
+efetiva pela vibe renderizada, versão, família, layout, tom e escolha local. A
+tabela compartilhada em `lib/blocks/theme.ts` alimenta renderer, lint e recibo,
+que sempre medem a pior superfície. Sem essas props o comportamento anterior
+permanece. A ordem salva é respeitada após o footer, com um único `main` e
+localização automática antes do rodapé. A seção extra posterior fica fora de
+`main`.
 
 `savePageEdit` fica em `lib/sites/edits.ts` e é compartilhado pelo chat, pelos
 mutadores legados e pela rota administrativa de edição direta. A prop
@@ -238,6 +279,10 @@ O chat não muda de modelo, raciocínio ou fluxo por causa dessa prop.
   o pedido de reconhecimento, recusas, fechamento do chat e integridade dos
   fatos. `tests/browser/site-recognition-edit.test.mjs` mede quatro famílias
   com a moldura global e CSS de produção em desktop e celular.
+- `tests/browser/site-operator-colors.test.mjs`, depois do build, percorre as
+  cinco vibes, versões `2`, `4` e `reference`, 1440/390 px e as famílias hero,
+  rodapé, explorer e fatos. Confere a precedência da cor local, contraste AA,
+  `decoration: none` e paridade entre a tabela de superfícies e o CSS emitido.
 - `tests/admin-landing-frame.test.mjs` e
   `tests/browser/site-landing-frame.test.mjs` cobrem remoção da moldura do hero,
   preservação dos campos e snapshots, restauração dos padrões e as duas
@@ -245,12 +290,17 @@ O chat não muda de modelo, raciocínio ou fluxo por causa dessa prop.
 - `EIXU_TEST_POSTGRES_URL=... node --test tests/admin-page-edits-db.test.mjs`
   aceita apenas PostgreSQL local descartável `eixu_pr2_test`; força duas
   leituras da mesma versão e verifica o conflito no SQL real.
-- `npm run eval:edits -- --live` usa Gemini configurado, prompt e executores
+- `npm run eval:edits -- --live` usa o modelo de edição configurado, prompt e executores
   reais sobre páginas sintéticas em memória. Registra exatidão, chamadas,
   passos, duração, consumo e saída em `outputs/page-edits/`. Não acessa Neon,
-  Blob nem publicação. `--case=text|nested|color|insert|move|move-within|impossible-move|ambiguous|recognition-image|landing-frame` filtra.
+  Blob nem publicação. `EIXU_EDIT_MODEL` permite compará-lo sem trocar o modelo
+  de geração. Os casos `footer-gray`, `footer-gradient` e
+  `hero-decoration-off` usam uma fixture comercial v6 com referência; o filtro
+  também conserva `text|nested|color|insert|move|move-within|impossible-move|ambiguous|recognition-image|landing-frame`.
   `--attachment=fixture.png` envia os pixels de uma captura sintética ao modelo;
-  o caso `landing-frame` usa o pedido real de remover o container e deixar a imagem.
+  o caso `landing-frame` usa o pedido real de remover o container e deixar a
+  imagem. Sem `--live`, o comando apenas mostra o uso. A chamada paga exige
+  autorização explícita.
 
 Os checks atuais estão em [Verificação](verification.md); resultados medidos
 ficam no [histórico](archive/verification-2026-09-13.md). Testes determinísticos não provam que toda

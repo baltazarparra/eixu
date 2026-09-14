@@ -10,14 +10,19 @@ export const LOGO_IMAGE_MODEL =
   process.env.EIXU_LOGO_IMAGE_MODEL?.trim() || 'openai/gpt-image-2';
 
 export function productModel(
-  role: 'agent' | 'critic' | 'logo-critic' = 'agent',
+  role: 'agent' | 'edit' | 'critic' | 'logo-critic' = 'agent',
 ): string {
   return (
     (role === 'logo-critic'
       ? process.env.EIXU_LOGO_CRITIC_MODEL
+      : role === 'edit'
+        ? process.env.EIXU_EDIT_MODEL
+        : undefined
+    )?.trim() ||
+    (role === 'critic' || role === 'logo-critic'
+      ? process.env.EIXU_CRITIC_MODEL
       : undefined
     )?.trim() ||
-    (role !== 'agent' ? process.env.EIXU_CRITIC_MODEL : undefined)?.trim() ||
     process.env.EIXU_MODEL?.trim() ||
     (role === 'logo-critic' ? DEFAULT_LOGO_CRITIC_MODEL : DEFAULT_MODEL)
   );

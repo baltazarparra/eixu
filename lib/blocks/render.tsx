@@ -294,6 +294,13 @@ function renderList(
           'presentation' in parsed.data && parsed.data.presentation
             ? parsed.data.presentation
             : undefined;
+        const surfaceContext = {
+          blockType: block.type,
+          layout:
+            'layout' in parsed.data && typeof parsed.data.layout === 'string'
+              ? parsed.data.layout
+              : undefined,
+        };
         const anchor =
           requested && !usedAnchors.has(requested) ? requested : undefined;
         if (anchor) usedAnchors.add(anchor);
@@ -306,7 +313,12 @@ function renderList(
             data-block-id={block.id}
             data-tone={presentation?.background ? 'custom' : presentation?.tone}
             data-scrim={sectionScrim(presentation)}
-            style={sectionColorVars(presentation, ctx.tenant.brand)}
+            data-decoration={presentation?.decoration}
+            style={sectionColorVars(
+              presentation,
+              ctx.tenant.brand,
+              surfaceContext,
+            )}
             data-width={presentation?.width}
             data-spacing={presentation?.spacing}
             data-spacing-top={presentation?.spacingTop}

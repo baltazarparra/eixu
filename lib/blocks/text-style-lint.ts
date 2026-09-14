@@ -2,8 +2,12 @@ import type { BlockInstance, Brand } from '@/lib/types';
 import type { Finding } from '@/lib/taste/lint';
 import { blockFields } from './fields';
 import { textStylesSchema } from './text-style-schema';
-import { sectionBackgrounds, sectionColorVars } from './section-colors';
-import { surfaceOf, themeVars } from './theme';
+import {
+  sectionBackgrounds,
+  sectionColorVars,
+  type SectionPresentation,
+} from './section-colors';
+import { decoratedSurfaceColors, surfaceOf, themeVars } from './theme';
 import { contrastRatio, mixHex, mixOklabHex } from './contrast';
 import { renderingVibeOf } from '@/lib/design/vibes';
 
@@ -14,18 +18,20 @@ export function fieldBackgrounds(
   brand: Brand,
 ): string[] {
   const p = block.props;
-  const presentation = p.presentation as
-    | { background?: string; foreground?: string; tone?: string }
-    | undefined;
+  const presentation = p.presentation as SectionPresentation | undefined;
+  const surfaceContext = {
+    blockType: block.type,
+    layout: typeof p.layout === 'string' ? p.layout : undefined,
+  };
   const tokens = {
     ...themeVars(brand),
-    ...sectionColorVars(presentation, brand),
+    ...sectionColorVars(presentation, brand, surfaceContext),
   };
-  const section = sectionBackgrounds(presentation, brand);
+  const fieldContext = { ...surfaceContext, field };
+  const section = sectionBackgrounds(presentation, brand, fieldContext);
   const modern = renderingVibeOf(brand) === 'moderno';
-  const commercial = renderingVibeOf(brand) === 'comercial';
   const version = brand.design?.version ?? 1;
-  const paper = sectionBackgrounds(presentation, brand)[0];
+  const paper = section[0];
   const cardInk = presentation?.background
     ? tokens['--ink']
     : presentation?.tone === 'ink' && !modern
@@ -62,22 +68,12 @@ export function fieldBackgrounds(
     if (layout === 'poster' && !presentation?.background)
       return [tokens['--accent']];
   }
-  if (
-    commercial &&
-    version >= 3 &&
-    block.type === 'proof.strip' &&
-    p.layout === 'numbers' &&
-    !presentation?.background
-  )
-    return [tokens['--glow-2-flat']];
+  if (block.type === 'feature.explorer' && field.endsWith('.caption'))
+    return [tokens['--brand-paper']];
+  const decorated = decoratedSurfaceColors(brand, presentation, fieldContext);
+  if (decorated) return decorated;
   if (block.type === 'feature.explorer' && field.startsWith('items.'))
-    return [
-      field.endsWith('.caption')
-        ? tokens['--brand-paper']
-        : commercial && version >= 3
-          ? tokens['--glow-2-flat']
-          : tokens['--surface'],
-    ];
+    return presentation?.background ? section : [tokens['--surface']];
   if (block.type === 'editorial.resources' && field.startsWith('items.'))
     return [
       Number(field.split('.')[1]) % 2
@@ -116,14 +112,6 @@ export function fieldBackgrounds(
     !presentation?.background
   )
     return [tokens['--accent-2']];
-  if (
-    commercial &&
-    version >= 3 &&
-    block.type === 'editorial.facts' &&
-    p.layout === 'ledger' &&
-    field.startsWith('facts.')
-  )
-    return [tokens['--glow-2-flat']];
   if (
     block.type === 'proof.stats' &&
     p.layout === 'cards' &&

@@ -128,6 +128,7 @@ export function contextMessages(
               'medicoes',
               'erros',
               'visual',
+              'visualMeasurement',
               'complete',
               'review',
               'paginas',

@@ -15,7 +15,10 @@ import {
 import type { Brand } from '@/lib/types';
 import { BODY_TYPE, DISPLAY_TYPE } from '@/lib/design/typography';
 import { renderingVibeOf } from '@/lib/design/vibes';
-import { referenceAspects } from '@/lib/design/references';
+import {
+  hasReferenceDirection,
+  referenceAspects,
+} from '@/lib/design/references';
 
 const RADIUS: Record<string, string> = {
   none: '0px',
@@ -24,6 +27,139 @@ const RADIUS: Record<string, string> = {
   lg: '0.875rem',
   full: '999px',
 };
+
+export type SectionSurfaceContext = {
+  blockType?: string;
+  layout?: string;
+  field?: string;
+};
+
+type SurfaceRule = {
+  id: string;
+  vibe: string;
+  versions: readonly number[];
+  family: string;
+  layout?: string;
+  tone?: string;
+  fieldPrefix?: string;
+  tokens: readonly string[];
+  /** Seletor que pinta a mesma superfície em app/(sites)/vibes.css. */
+  selector: string;
+};
+
+/**
+ * Fonte única das decorações que alteram o papel efetivo de um bloco. O CSS
+ * continua responsável pela pintura; renderer e lints resolvem estes tokens
+ * para validar exatamente as mesmas superfícies.
+ */
+export const SECTION_SURFACE_RULES: readonly SurfaceRule[] = [
+  {
+    id: 'commercial-hero-glow',
+    vibe: 'comercial',
+    versions: [3, 4],
+    family: 'hero',
+    tokens: ['--glow', '--paper'],
+    selector:
+      "[data-vibe='comercial']:not([data-motif='wash']) main > .site-block:not([data-tone]) .site-hero",
+  },
+  {
+    id: 'commercial-footer-glow',
+    vibe: 'comercial',
+    versions: [3, 4],
+    family: 'footer',
+    tokens: ['--glow', '--paper'],
+    selector:
+      "[data-vibe='comercial']:not([data-motif='wash']) .site-block:not([data-tone]) .site-footer",
+  },
+  {
+    id: 'commercial-accent-cta',
+    vibe: 'comercial',
+    versions: [3, 4],
+    family: 'cta',
+    tone: 'accent',
+    tokens: ['--accent', '--accent-glow'],
+    selector:
+      "[data-vibe='comercial'] .site-block[data-block='cta.band'][data-tone='accent']",
+  },
+  {
+    id: 'commercial-explorer-panel',
+    vibe: 'comercial',
+    versions: [3, 4],
+    family: 'feature',
+    layout: 'explorer',
+    fieldPrefix: 'items.',
+    tokens: ['--glow-2-flat'],
+    selector: "[data-vibe='comercial'] .site-explorer-panel",
+  },
+  {
+    id: 'commercial-proof-numbers',
+    vibe: 'comercial',
+    versions: [3, 4],
+    family: 'proof',
+    layout: 'numbers',
+    tokens: ['--glow-2-flat'],
+    selector:
+      "[data-vibe='comercial'] .site-block[data-block='proof.strip'] > .site-proof-strip-numbers",
+  },
+  {
+    id: 'commercial-facts-ledger',
+    vibe: 'comercial',
+    versions: [3, 4],
+    family: 'editorial',
+    layout: 'ledger',
+    fieldPrefix: 'facts.',
+    tokens: ['--glow-2-flat'],
+    selector: "[data-vibe='comercial'] .site-facts-ledger dl",
+  },
+];
+
+/** Mesmo valor exposto em data-design-version pelo renderer. */
+export function renderedDesignVersionOf(
+  brand: Brand,
+): number | 'reference' | undefined {
+  const version = brand.design?.version;
+  const reference = hasReferenceDirection(brand);
+  if (reference && ![4, 5, 6].includes(version ?? 0)) return 'reference';
+  return version === 5 || version === 6 ? 4 : version;
+}
+
+export function decoratedSurfaceColors(
+  brand: Brand,
+  presentation:
+    | { background?: string; decoration?: string; tone?: string }
+    | undefined,
+  context: SectionSurfaceContext = {},
+): string[] | undefined {
+  if (presentation?.background || presentation?.decoration === 'none')
+    return undefined;
+  const vibe = renderingVibeOf(brand);
+  const version = renderedDesignVersionOf(brand);
+  if (version === undefined || version === 'reference') return undefined;
+  const [family, subtype] = context.blockType?.split('.') ?? [];
+  const layout =
+    context.blockType === 'feature.explorer' ? 'explorer' : context.layout;
+  const rule = SECTION_SURFACE_RULES.find(
+    (candidate) =>
+      candidate.vibe === vibe &&
+      candidate.versions.includes(version) &&
+      candidate.family === family &&
+      (!candidate.layout || candidate.layout === layout) &&
+      (!candidate.tone || candidate.tone === presentation?.tone) &&
+      (!candidate.fieldPrefix ||
+        context.field === undefined ||
+        Boolean(context.field?.startsWith(candidate.fieldPrefix))) &&
+      // Evita que uma família genérica aplique uma regra a outro subtipo.
+      (candidate.id !== 'commercial-accent-cta' || subtype === 'band'),
+  );
+  if (!rule) return undefined;
+  const vars: Record<string, string> = {
+    ...themeVars(brand),
+    ...(presentation?.tone
+      ? { '--paper': surfaceOf(brand, presentation.tone) }
+      : {}),
+  };
+  return rule.tokens.map((token) => vars[token]);
+}
 
 /** Traduz a marca do tenant em variáveis CSS aplicadas na raiz da página. */
 export function themeVars(brand: Brand): Record<string, string> {

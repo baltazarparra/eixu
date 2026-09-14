@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createJiti } from 'jiti';
 import {
+  commercialEditTenant,
   editPages,
   pageEditFixture,
 } from '../tests/helpers/page-edit-fixture.mjs';
@@ -77,6 +78,12 @@ function carouselPages(unsupported = false) {
       };
   pages[0].publishedBlocks = structuredClone(pages[0].blocks);
   return pages;
+}
+if (!process.argv.includes('--live')) {
+  console.log(
+    'Use npm run eval:edits -- --live [--case=hero-carousel|hero-carousel-unsupported|text|nested|color|footer-gray|footer-gradient|hero-decoration-off|insert|move|move-within|impossible-move|ambiguous|recognition-image|landing-frame] [--attachment=fixture.png]. Modelo de edição configurado, fixture sintética, executores reais; nenhuma gravação remota.',
+  );
+  process.exit(0);
 }
 const cases = [
   {
@@ -178,6 +185,75 @@ const cases = [
       const expected = editPages();
       expected[0].blocks[2].props.presentation.background = '#173f54';
       assert.deepEqual(pages, expected);
+    },
+  },
+  {
+    id: 'footer-gray',
+    text: 'Deixa o footer inteiro na cor cinza.',
+    initialTenant: commercialEditTenant,
+    check: (pages, result, run) => {
+      const colors = pages.map(
+        (page) =>
+          page.blocks.find((block) => block.type === 'footer.compact').props
+            .presentation?.background,
+      );
+      assert.ok(colors.every((color) => /^#[0-9a-f]{6}$/i.test(color)));
+      assert.equal(new Set(colors).size, 1);
+      assert.match(result.text, new RegExp(colors[0], 'i'));
+      assert.ok(
+        run.trace
+          .flatMap((step) => step.calls)
+          .every((call) => call.toolName !== 'set_brand'),
+      );
+    },
+  },
+  {
+    id: 'footer-gradient',
+    text: 'Quero um degradê mais elegante no rodapé.',
+    initialTenant: commercialEditTenant,
+    check: (pages, result, run) => {
+      const presentations = pages.map(
+        (page) =>
+          page.blocks.find((block) => block.type === 'footer.compact').props
+            .presentation,
+      );
+      const complete = presentations.every(
+        (presentation) =>
+          /^#[0-9a-f]{6}$/i.test(presentation?.background) &&
+          /^#[0-9a-f]{6}$/i.test(presentation?.backgroundEnd) &&
+          ['down', 'diagonal', 'right'].includes(presentation?.gradient),
+      );
+      if (complete) {
+        assert.match(result.text, /#[0-9a-f]{6}/i);
+        assert.match(result.text, /degrad/i);
+      } else {
+        assert.deepEqual(pages, editPages());
+        assert.match(result.text, /limite|não (?:consigo|foi|pode)|contraste/i);
+      }
+      assert.ok(
+        run.trace
+          .flatMap((step) => step.calls)
+          .every((call) => call.toolName !== 'set_brand'),
+      );
+    },
+  },
+  {
+    id: 'hero-decoration-off',
+    text: 'Tira o degradê da abertura e deixa o fundo liso.',
+    initialTenant: commercialEditTenant,
+    check: (pages, _result, run) => {
+      assert.ok(
+        pages.every(
+          (page) =>
+            page.blocks.find((block) => block.type.startsWith('hero.')).props
+              .presentation?.decoration === 'none',
+        ),
+      );
+      assert.ok(
+        run.trace
+          .flatMap((step) => step.calls)
+          .every((call) => call.toolName !== 'set_brand'),
+      );
     },
   },
   {
@@ -300,7 +376,7 @@ const attachment = process.argv
 const attachmentImage = attachment ? await readFile(attachment) : undefined;
 await mkdir(directory, { recursive: true });
 const report = {
-  model: productModel(),
+  model: productModel('edit'),
   scope: 'Páginas sintéticas em memória; sem autenticação/Neon/Blob reais.',
   attachment: attachment ?? null,
   runs: [],
@@ -318,6 +394,7 @@ for (const scenario of cases.filter((c) => !selected || c.id === selected)) {
     tenantId: f.tenant.id,
     tools: f.tools,
     instructions: f.instructions,
+    modelRole: 'edit',
   });
   try {
     const result = await agent.generate({

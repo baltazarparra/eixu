@@ -41,20 +41,21 @@ migrar, excluir dados ou publicar.
 
 ## Histórico
 
-| Registro                                                                    | Contexto                                                                                                               |
-| --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| [Verificações até 13/09](archive/verification-2026-09-13.md)                | Ensaios, limitações e releases anteriores, preservados como evidência datada.                                          |
-| [Revisão do admin](archive/admin-review-2026-09-10.md)                      | Diagnóstico inicial; não representa a lista atual de problemas.                                                        |
-| [Otimização do admin](archive/admin-optimization-2026-09-11.md)             | Plano e medições anteriores às entregas posteriores.                                                                   |
-| [Evolução criativa](archive/creative-upgrade-2026-09-10.md)                 | Proposta original de melhoria do gerador.                                                                              |
-| [Vibes próprias](archive/vibes-plan-2026-09-12.md)                          | Diagnóstico e fases originais, antes dos contratos v5–v7.                                                              |
-| [Edição na prévia](archive/inline-edit-plan-2026-09-12.md)                  | Proposta que antecedeu a edição por campo hoje disponível.                                                             |
-| [Landing Page](archive/landing-plan-2026-09-12.md)                          | Proposta da quinta vibe, implementada no perfil v7.                                                                    |
-| [História e referência](archive/client-story-plan-2026-09-12.md)            | Proposta original; contrato entregue e ampliado com Site atual.                                                        |
-| [Upload de imagens](archive/image-upload-plan-2026-09-12.md)                | Alternativas originais; o upload entregue tem limites documentados no manual.                                          |
-| [Vibe comercial](archive/commercial-vibe-plan-2026-09-13.md)                | Diagnóstico e plano executado para lavagem, palavras inteiras e home proporcional.                                     |
-| [Primitivos interativos](archive/primitivos-interativos-plan-2026-09-13.md) | Plano executado do carrossel progressivo em heroes e galeria, com contrato de edição e verificação.                    |
-| [Degradê com técnica](archive/gradient-technique-plan-2026-09-13.md)        | Estudo da referência e plano do brilho radial; Frentes 1 e 2 executadas, o campo de degradê do operador ficou de fora. |
+| Registro                                                                    | Contexto                                                                                            |
+| --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| [Verificações até 13/09](archive/verification-2026-09-13.md)                | Ensaios, limitações e releases anteriores, preservados como evidência datada.                       |
+| [Revisão do admin](archive/admin-review-2026-09-10.md)                      | Diagnóstico inicial; não representa a lista atual de problemas.                                     |
+| [Otimização do admin](archive/admin-optimization-2026-09-11.md)             | Plano e medições anteriores às entregas posteriores.                                                |
+| [Evolução criativa](archive/creative-upgrade-2026-09-10.md)                 | Proposta original de melhoria do gerador.                                                           |
+| [Vibes próprias](archive/vibes-plan-2026-09-12.md)                          | Diagnóstico e fases originais, antes dos contratos v5–v7.                                           |
+| [Edição na prévia](archive/inline-edit-plan-2026-09-12.md)                  | Proposta que antecedeu a edição por campo hoje disponível.                                          |
+| [Landing Page](archive/landing-plan-2026-09-12.md)                          | Proposta da quinta vibe, implementada no perfil v7.                                                 |
+| [História e referência](archive/client-story-plan-2026-09-12.md)            | Proposta original; contrato entregue e ampliado com Site atual.                                     |
+| [Upload de imagens](archive/image-upload-plan-2026-09-12.md)                | Alternativas originais; o upload entregue tem limites documentados no manual.                       |
+| [Vibe comercial](archive/commercial-vibe-plan-2026-09-13.md)                | Diagnóstico e plano executado para lavagem, palavras inteiras e home proporcional.                  |
+| [Primitivos interativos](archive/primitivos-interativos-plan-2026-09-13.md) | Plano executado do carrossel progressivo em heroes e galeria, com contrato de edição e verificação. |
+| [Degradê com técnica](archive/gradient-technique-plan-2026-09-13.md)        | Estudo da referência e plano executado do brilho radial e do contraste do `cover`.                  |
+| [Edição visual pelo chat](plano-edicao-visual-chat.md)                      | Incidente, causa raiz e plano executado para superfície local, recibo e medição.                    |
 
 Os registros preservam o estado da época, inclusive hipóteses e resultados
 superados. Arquivos em `outputs/` podem existir apenas no ambiente do ensaio.

@@ -1,38 +1,74 @@
-/* A cor escolhida pelo operador, por último na cascata.
- *
- * Este arquivo é importado depois de todas as folhas de vibe justamente para
- * que nenhuma decoração de vibe repinte a seção. A regra vivia em site.css e
- * empatava em especificidade com a lavagem da comercial v3/v4, que vinha
- * depois e vencia: o operador pedia "vermelho chapado sem efeitos", o servidor
- * gravava o hex, e o navegador pintava um degradê de creme a vermelho por
- * cima. Ver docs/archive/gradient-technique-plan-2026-09-13.md, Frente 1.
- *
- * Não acrescente decoração aqui. Fundo de seção com cor do operador é chapado.
+/*
+ * Última camada da cascata dos sites. O renderer só marca um bloco como
+ * custom depois de validar a cor e calcular seus pares de texto. A escolha
+ * explícita do operador prevalece sobre lavagens, motivos e gradientes das
+ * vibes, sem !important e sem permitir CSS arbitrário por tenant.
  */
+.site-theme .site-block[data-block][data-tone='custom'] {
+  /* Um degradê inline do operador continua vencendo esta declaração. */
+  background-image: none;
+}
 .site-theme .site-block[data-block][data-tone='custom'] > * {
   --paper: inherit;
   --ink: inherit;
   --muted: inherit;
   --line: inherit;
   --highlight-text: inherit;
-  background: transparent;
+  background-color: transparent;
   background-image: none;
   color: inherit;
 }
-/* Lavagem, brilho e motivo da vibe não alcançam a seção com cor do operador,
- * qualquer que seja o seletor que os pintou. */
-.site-theme .site-block[data-block][data-tone='custom'],
-.site-theme .site-block[data-block][data-tone='custom'] > .site-hero,
-.site-theme .site-block[data-block][data-tone='custom'] > .site-footer {
+
+/* decoration:none conserva a superfície normal e retira só o ornamento. */
+.site-theme
+  .site-block[data-block][data-decoration='none']:not([data-tone='custom']),
+.site-theme .site-block[data-block][data-decoration='none'] > * {
   background-image: none;
 }
 
-/* Scrim do hero `cover` na cor da seção.
- *
- * A cópia do cover é branca sobre a foto, e o véu que a sustenta era preto.
- * Quando a composição da cor, do véu a 78% e do apoio branco a 78% sustenta
- * AA, o servidor marca data-scrim="paper" e o véu usa o papel da seção.
- * Tons sem contraste suficiente conservam o véu preto. */
+/* As regras de motif incluem a classe do filho e têm maior especificidade. */
+.site-theme
+  .site-block[data-block][data-decoration='none']
+  > :is(.site-hero, .site-footer, .site-cta),
+.site-theme
+  .site-block[data-block][data-decoration='none']
+  :is(
+    .site-explorer-panel,
+    .site-proof-strip-numbers,
+    .site-facts-ledger,
+    .site-facts-ledger dl
+  ) {
+  background-image: none;
+}
+
+.site-theme .site-block[data-block][data-decoration='none'] {
+  clip-path: none;
+}
+
+.site-theme
+  .site-block[data-block][data-decoration='none']
+  > :is(.site-hero, .site-cta)::before,
+.site-theme
+  .site-block[data-block][data-decoration='none']
+  > :is(.site-hero, .site-cta)::after {
+  display: none;
+}
+
+/* Algumas famílias pintam um painel interno em vez do filho direto. */
+.site-theme
+  .site-block[data-block][data-tone='custom']
+  :is(.site-explorer-panel, .site-facts-ledger, .site-facts-ledger dl) {
+  --paper: inherit;
+  --ink: inherit;
+  --muted: inherit;
+  --line: inherit;
+  --highlight-text: inherit;
+  background-color: transparent;
+  background-image: none;
+  color: inherit;
+}
+
+/* Scrim do hero `cover` na cor da seção quando o contraste calculado permite. */
 .site-theme
   .site-block[data-scrim='paper']
   .site-hero-cover

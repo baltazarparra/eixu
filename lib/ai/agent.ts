@@ -21,13 +21,15 @@ export function siteAgent(input: {
   instructions: string;
   tools: SiteTools;
   phase?: Phase;
+  /** Edição pode testar um modelo próprio sem alterar a geração. */
+  modelRole?: 'agent' | 'edit';
   repairPublication?: boolean;
   /** Pausa pedida pelo operador: encerra depois do passo atual. */
   shouldStop?: () => boolean;
 }) {
   const { tenantId, instructions, tools, phase, shouldStop } = input;
   return new ToolLoopAgent({
-    model: productModel(),
+    model: productModel(input.modelRole),
     ...modelSettings(phase ?? 'livre'),
     instructions,
     tools: serialTools(tools),

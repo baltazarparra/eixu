@@ -68,6 +68,13 @@ contraste, referências, teclado e movimento reduzido. Elas não comprovam latê
 do modelo, persistência no Neon ou comportamento em aparelhos físicos/Safari.
 Sem Chrome, os casos dependentes são pulados; informe isso no resultado.
 
+`tests/browser/site-operator-colors.test.mjs` é a regressão específica de
+edição visual. Em 1440 e 390 px, percorre cinco vibes, versões `2`, `4` e
+`reference`, e hero/rodapé/explorer/fatos com fundo custom. Exige cor computada
+igual ao hex, nenhuma imagem de fundo herdada e contraste mínimo 4,5:1 em todo
+texto visível. No mesmo processo, confere `decoration: none`, degradê local e a
+paridade de cada entrada de `SECTION_SURFACE_RULES` com o CSS do build.
+
 `test:admin` também tem dois testes de captura que dependem de Chrome;
 `test:sites` também cobre captura de referência e renderização do Site atual. A revisão solicitada do produto usa
 1440 e 390 px. A matriz de navegação dos testes inclui 320, 390, 768, 1024 e
@@ -80,6 +87,16 @@ caracteres, palavra de 16 letras, `service-lens` e quatro variantes de CTA. Em
 captura, além de overflow, contraste, gradiente sem repetição e ausência de faixa
 de 1 px. As capturas ficam em `outputs/word-breaks/` para inspeção manual e não
 devem ser tratadas como evidência de conteúdo gerado pelo modelo.
+
+Uma edição salva que toque `presentation.*` ou `textStyles.*` faz uma medição
+menor nesses mesmos 1440/390 px: somente os blocos alterados, fundo/camada
+computados e contraste, sem screenshot nem chamada de modelo. Para testar o
+caminho desativado, use `EIXU_REVIEW_CAPTURE=0`; o resultado e o recibo precisam
+declarar que a medição não ocorreu. Não confunda essa checagem com
+`review_pages`, que continua sendo crítica visual opcional solicitada pelo
+operador. O inspetor compõe fundos transparentes sobre seus ancestrais; se o
+texto ficar diretamente sobre uma imagem sem painel opaco, a medição precisa
+falhar de forma explícita porque esse caminho não lê pixels.
 
 `build:vercel` executa [tests/build-runtime.test.mjs](../tests/build-runtime.test.mjs)
 após compilar. Três checks exigem `SOUL.md` e os binários do Chromium nos manifestos serverless de `/api/chat`, `/api/admin/[tenant]/generation/step` e `/api/queues/generation`; o quarto confere os controles de apresentação no CSS compilado. O pacote instalado sozinho não comprova empacotamento.
@@ -101,6 +118,13 @@ produção como substituto. Migração, seed e requantização não são checks.
 recebem `--live`; os ensaios usam I/O editorial em memória. `eval:harness` usa
 fotos de fixture e executa uma revisão visual como parte do experimento, mesmo
 que a geração do produto termine antes dessa revisão. `eval:site-sources` usa fontes sintéticas, Chromium e modelo reais para comparar ausência de links, Site atual, referência e ambos, sem Neon/Blob/publicação.
+
+`eval:edits` usa `productModel('edit')`: `EIXU_EDIT_MODEL` permite testar outro
+modelo sem trocar a geração. Os casos `footer-gray`, `footer-gradient` e
+`hero-decoration-off` usam fixture comercial v6 com referência e nunca acessam
+Neon, Blob ou publicação. Sem `--live`, o script apenas imprime instruções. Uma
+comparação real tem custo e exige autorização explícita; checks de código não a
+substituem nem autorizam.
 
 `eval:site` chama modelos e escreve no banco mesmo sem `--generate`; essa flag
 acrescenta geração de fotos. `--fresh` exclui o tenant `eval-*` do caso. Confira

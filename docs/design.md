@@ -209,11 +209,14 @@ preservar o contraste medido. `data-field` e `data-part` só existem na edição
 
 `sectionBackgrounds` e `fieldBackgrounds` compartilham tokens com o renderer,
 incluindo tons, fundos locais, cartões, painéis, superfícies modernas e
-legendas translúcidas. Seções sem tom consideram papel e superfície alternada.
-O servidor exige 4,5:1 no salvamento e na publicação. A ilha também mede o
-fundo calculado pelo navegador, incluindo transparência e `color-mix`. Texto
-sobre foto sem um painel uniforme só permite cor automática; tamanho segue
-editável. Não se presume uma cor de fundo a partir da imagem.
+legendas translúcidas. A tabela `SECTION_SURFACE_RULES` acrescenta as
+superfícies que o CSS da vibe realmente pinta, por vibe renderizada, versão,
+família, layout, tom e campo; cada entrada aponta o seletor correspondente em
+`vibes.css`. Seções sem tom consideram papel e superfície alternada. O servidor
+exige 4,5:1 no salvamento e na publicação contra a pior superfície. A ilha
+também mede o fundo calculado pelo navegador, incluindo transparência e
+`color-mix`. Texto sobre foto sem um painel uniforme só permite cor automática;
+tamanho segue editável. Não se presume uma cor de fundo a partir da imagem.
 
 ## Direção e qualidade
 
@@ -238,14 +241,24 @@ Esconder essa informação fazia o agente ignorar `feature.explorer` e
 ## Piso de composição
 
 Edições pontuais aceitam `presentation.background` em hex e `foreground`
-opcional, com contraste validado. São cores locais da seção e prevalecem
-sobre o tom padrão da vibe sem mudar a marca. O renderer respeita a ordem
-salva inclusive para uma seção inserida depois do rodapé; a localização
-automática continua antes dele. Veja o [contrato de edição](chat-edits.md).
+opcional, com contraste validado. `backgroundEnd` mais `gradient` (`down`,
+`diagonal` ou `right`) forma um degradê local; uma única tinta automática ou
+explícita precisa passar em 4,5:1 nas duas extremidades. `decoration: none`
+desliga lavagem, degradê e motivo herdados da vibe sem inventar outro fundo;
+`vibe` restaura o padrão. São decisões locais da seção e prevalecem sobre o tom
+e a decoração da vibe sem mudar a marca. O renderer respeita a ordem salva
+inclusive para uma seção inserida depois do rodapé; a localização automática
+continua antes dele. Veja o [contrato de edição](chat-edits.md).
 
 `background: transparent` remove o fundo local e usa as cores legíveis da
 marca; nesse caso, omita `foreground`. `edge: none` remove a borda/sombra da
 seção e `spacingTop: none` retira somente o respiro superior.
+`operator.css` é a última importação dos sites e limpa fundos de filhos e
+painéis internos quando o wrapper tem `data-tone="custom"`. A cascata resolve
+por ordem, sem `!important`; um degradê local inline continua prevalecendo.
+Essa correção também afeta sites já publicados: uma seção comercial que já
+tenha fundo custom passa a exibir o hex gravado, sem a lavagem da vibe sobre
+ele. O snapshot não é reescrito.
 Em `signature.composition`, `items.N.imagePresentation` controla a moldura,
 a proporção natural, a largura do box e o respiro superior de uma única imagem.
 As quatro famílias usam os mesmos controles, com precedência sobre a moldura
@@ -582,7 +595,11 @@ palavra partida, faixa de 1 px nem falha de contraste.
 O hero comercial usa o brilho como campo de profundidade; a CTA em tom de acento
 recebe um brilho claro no canto, o explorer e a faixa de prova usam
 `--glow-2-flat` chapado e ganham hierarquia tipográfica. O renderer muda a
-apresentação, não o rascunho nem o snapshot gravado de um cliente.
+apresentação, não o rascunho nem o snapshot gravado de um cliente. Hero, rodapé,
+CTA, explorer, prova numérica e ledger de fatos estão espelhados em
+`SECTION_SURFACE_RULES`; fundo custom e `decoration: none` excluem essas pinturas.
+O teste de navegador percorre a matriz em desktop e celular e compara os fundos
+computados com essa tabela.
 
 ### Degradê com técnica
 
@@ -595,9 +612,10 @@ contra o papel da marca nunca é pintado sobre o papel de uma seção de outro
 tom. `tests/site-gradient-contract.test.mjs` varre `app/(sites)/*.css` e as
 miniaturas de `app/(admin)/admin.css` e recusa esse formato, com uma lista
 explícita de exceções — véus do hero `cover`, máscaras, grade do v2, faixas
-repetidas do ousado e os fios de 1 px do painel. A cor pedida pelo operador é
-chapada: `app/(sites)/operator.css`, importado por último, apaga lavagem,
-brilho e motivo da seção. O estudo que originou o contrato está em
+repetidas do ousado e os fios de 1 px do painel. A camada
+`app/(sites)/operator.css`, importada por último, apaga lavagem, brilho e motivo
+quando o operador escolhe fundo local ou `decoration: none`; um degradê local
+explícito permanece inline e usa duas extremidades medidas. O estudo que originou o contrato está em
 [registro do plano](archive/gradient-technique-plan-2026-09-13.md).
 
 No hero `cover`, a cor local só substitui o véu preto se o extremo de 78% do
@@ -898,18 +916,18 @@ apresentação atual até uma recomposição explícita e nova publicação.
 
 ## Contrato visual versionado
 
-| Recurso              | Comportamento                                                                                                                                                                                                                                                                                                                                                  |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Perfil persistido    | `brand.design` guarda conceito, elemento-assinatura, estrutura, justificativa e oito eixos. Sem referência nova grava v5; com referência verificada grava v6 e `referenceDirection`. Landing Page grava v7 sem estrutura multipágina. A leitura aceita v2-v7 para preservar sites existentes. `tenant.brief` guarda também plano editorial e cenas semânticas. |
-| Tipografia           | 14 famílias, dez opções de display e sete de corpo, descritas acima. `next/font` auto-hospeda os arquivos; o navegador carrega somente as famílias usadas. Escala, peso, entrelinha, medida, legendas e números têm papéis consistentes.                                                                                                                       |
-| Vibe e referência    | Sem referência, `brand.vibe` define gramática, eixos, raio, luminância e dials. No v6, a referência escolhe entre as doze estruturas e pode definir todos esses valores; a vibe continua como voz e fallback. Ausente significa `comercial`.                                                                                                                   |
-| Paleta               | O cadastro oferece uma sugestão por vibe. Enquanto `paletteSource` for `sugerida`, a direção pode adaptá-la ao negócio; editar qualquer cor muda a origem para `operador` e trava `accent`, `accentAlt` e `highlight`. `ink`, `paper` e `surface` continuam com a direção. Contraste AA e diferença entre primária/secundária permanecem gates.                |
-| Composição global    | Três estruturas por vibe combinam abertura, ordem mínima, assinatura e fechamento. V5 escolhe dentro da vibe; v6 escolhe a mais próxima da referência entre as doze. Seis heroes, quatro navegações, quatro ritmos, quatro tratamentos de imagem, quatro superfícies e cinco motivos modulam o resultado.                                                      |
-| Apresentação local   | Todo bloco aceita `presentation`: tom (incluindo a cor secundária), largura, respiro, alinhamento, borda e motion (`none`, `reveal`, `stagger`, `image`). Use um a três momentos de movimento coerentes com a narrativa.                                                                                                                                       |
-| Exploração e inbound | `feature.explorer` oferece seleção de aplicações com imagem, texto, fatos e CTA por aba; suporta teclado. `editorial.resources` conecta páginas com hierarquia editorial e imagem ou símbolo. Ambos oferecem layouts próprios.                                                                                                                                 |
-| Imagens              | Hero aceita posição, `cover`/`contain`, ponto focal e legendas; atelier aceita imagem secundária. A home exige duas fotos disponíveis distintas da biblioteca do tenant. Imagens geradas chegam ao agente com número e URL para uso imediato, sem aprovação.                                                                                                   |
-| Navegação e FAQ      | Menu mobile usa diálogo modal com foco, Escape e restauração da rolagem; há fallback sem JavaScript. FAQ usa `details`/`summary` nativos.                                                                                                                                                                                                                      |
-| Âncoras              | Todo bloco aceita `anchor` opcional, começando com letra minúscula, seguido de letras/números/hífens, até 64 caracteres. Link usa `#anchor`. Duplicação bloqueia publicação. Formulário sem âncora mantém `contato`.                                                                                                                                           |
+| Recurso              | Comportamento                                                                                                                                                                                                                                                                                                                                                                   |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Perfil persistido    | `brand.design` guarda conceito, elemento-assinatura, estrutura, justificativa e oito eixos. Sem referência nova grava v5; com referência verificada grava v6 e `referenceDirection`. Landing Page grava v7 sem estrutura multipágina. A leitura aceita v2-v7 para preservar sites existentes. `tenant.brief` guarda também plano editorial e cenas semânticas.                  |
+| Tipografia           | 14 famílias, dez opções de display e sete de corpo, descritas acima. `next/font` auto-hospeda os arquivos; o navegador carrega somente as famílias usadas. Escala, peso, entrelinha, medida, legendas e números têm papéis consistentes.                                                                                                                                        |
+| Vibe e referência    | Sem referência, `brand.vibe` define gramática, eixos, raio, luminância e dials. No v6, a referência escolhe entre as doze estruturas e pode definir todos esses valores; a vibe continua como voz e fallback. Ausente significa `comercial`.                                                                                                                                    |
+| Paleta               | O cadastro oferece uma sugestão por vibe. Enquanto `paletteSource` for `sugerida`, a direção pode adaptá-la ao negócio; editar qualquer cor muda a origem para `operador` e trava `accent`, `accentAlt` e `highlight`. `ink`, `paper` e `surface` continuam com a direção. Contraste AA e diferença entre primária/secundária permanecem gates.                                 |
+| Composição global    | Três estruturas por vibe combinam abertura, ordem mínima, assinatura e fechamento. V5 escolhe dentro da vibe; v6 escolhe a mais próxima da referência entre as doze. Seis heroes, quatro navegações, quatro ritmos, quatro tratamentos de imagem, quatro superfícies e cinco motivos modulam o resultado.                                                                       |
+| Apresentação local   | Todo bloco aceita `presentation`: tom, fundo hex ou transparente, degradê de duas pontas/direção, decoração da vibe ligada/desligada, largura, respiro, alinhamento, borda e motion (`none`, `reveal`, `stagger`, `image`). Fundo local sempre vence a vibe; a mesma tinta precisa passar AA em todas as pontas. Use um a três momentos de movimento coerentes com a narrativa. |
+| Exploração e inbound | `feature.explorer` oferece seleção de aplicações com imagem, texto, fatos e CTA por aba; suporta teclado. `editorial.resources` conecta páginas com hierarquia editorial e imagem ou símbolo. Ambos oferecem layouts próprios.                                                                                                                                                  |
+| Imagens              | Hero aceita posição, `cover`/`contain`, ponto focal e legendas; atelier aceita imagem secundária. A home exige duas fotos disponíveis distintas da biblioteca do tenant. Imagens geradas chegam ao agente com número e URL para uso imediato, sem aprovação.                                                                                                                    |
+| Navegação e FAQ      | Menu mobile usa diálogo modal com foco, Escape e restauração da rolagem; há fallback sem JavaScript. FAQ usa `details`/`summary` nativos.                                                                                                                                                                                                                                       |
+| Âncoras              | Todo bloco aceita `anchor` opcional, começando com letra minúscula, seguido de letras/números/hífens, até 64 caracteres. Link usa `#anchor`. Duplicação bloqueia publicação. Formulário sem âncora mantém `contato`.                                                                                                                                                            |
 
 ## Unicidade e coerência
 

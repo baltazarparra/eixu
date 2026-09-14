@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { textStylesSchema } from './text-style-schema';
-import { contrastRatio } from './contrast';
+import { contrastRatio, gradientContrast } from './contrast';
 import { ICON_NAMES } from '@/lib/design/iconography';
 import { structureGrammar, type Vibe } from '@/lib/design/vibes';
 import { SIGNATURE_LAYOUTS, type StructureKey } from '@/lib/design/structures';
@@ -69,6 +69,12 @@ const logoHeight = z
 const presentation = z
   .object({
     tone: z.enum(['paper', 'soft', 'ink', 'accent', 'secondary']).optional(),
+    decoration: z
+      .enum(['vibe', 'none'])
+      .optional()
+      .describe(
+        'vibe mantém a decoração da direção; none remove lavagem, degradê e motivo desta seção sem escolher uma cor. Exemplo: {"decoration":"none"}.',
+      ),
     background: z
       .union([z.string().regex(/^#[0-9a-fA-F]{6}$/), z.literal('transparent')])
       .optional()
@@ -81,6 +87,19 @@ const presentation = z
       .optional()
       .describe(
         'Cor do texto desta seção; exige background hex explícito e contraste mínimo de 4,5:1. Omita para contraste automático, inclusive com fundo transparente.',
+      ),
+    backgroundEnd: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .optional()
+      .describe(
+        'Segunda cor de um degradê local. Exige background hex e gradient; as duas extremidades precisam aceitar a mesma cor de texto em 4,5:1. Exemplo: {"background":"#27272a","backgroundEnd":"#3f3f46","gradient":"diagonal"}.',
+      ),
+    gradient: z
+      .enum(['down', 'diagonal', 'right'])
+      .optional()
+      .describe(
+        'Direção do degradê entre background e backgroundEnd: down, diagonal ou right.',
       ),
     motion: z.enum(['none', 'reveal', 'stagger', 'image']).optional(),
     width: z.enum(['narrow', 'normal', 'wide', 'full']).optional(),
@@ -95,11 +114,27 @@ const presentation = z
     edge: z.enum(['none', 'line', 'panel', 'bleed']).optional(),
   })
   .superRefine((value, ctx) => {
+    const backgroundHex =
+      typeof value.background === 'string' &&
+      /^#[0-9a-fA-F]{6}$/.test(value.background);
+    if ((value.backgroundEnd || value.gradient) && !backgroundHex)
+      ctx.addIssue({
+        code: 'custom',
+        path: ['background'],
+        message:
+          'backgroundEnd e gradient exigem background em hexadecimal; transparent não forma degradê.',
+      });
+    if (Boolean(value.backgroundEnd) !== Boolean(value.gradient))
+      ctx.addIssue({
+        code: 'custom',
+        path: [value.backgroundEnd ? 'gradient' : 'backgroundEnd'],
+        message:
+          'Informe backgroundEnd e gradient juntos para formar o degradê.',
+      });
     if (
       value.foreground &&
-      (!value.background ||
-        value.background === 'transparent' ||
-        contrastRatio(value.foreground, value.background) < 4.5)
+      (!backgroundHex ||
+        contrastRatio(value.foreground, value.background!) < 4.5)
     )
       ctx.addIssue({
         code: 'custom',
@@ -107,6 +142,21 @@ const presentation = z
         message:
           'Informe background e foreground com contraste mínimo de 4,5:1; ou omita foreground para usar contraste automático.',
       });
+    if (backgroundHex && value.backgroundEnd && value.gradient) {
+      const measured = gradientContrast(
+        value.background!,
+        value.backgroundEnd,
+        value.foreground,
+      );
+      if (!measured.passesAA)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['backgroundEnd'],
+          message: value.foreground
+            ? `foreground precisa manter contraste mínimo de 4,5:1 nas duas extremidades; menor razão ${measured.ratio.toFixed(2)}:1.${measured.suggestedEnd ? ` Use backgroundEnd ${measured.suggestedEnd} ou retire foreground para cálculo automático.` : ''}`
+            : `As extremidades não aceitam a mesma cor de texto em 4,5:1; menor razão ${measured.ratio.toFixed(2)}:1. Use backgroundEnd ${measured.suggestedEnd ?? value.background}.`,
+        });
+    }
   })
   .optional();
 
@@ -1192,7 +1242,7 @@ export function catalogForPrompt(
 ): string {
   const { vibe, design, expansions = [] } = options;
   return (
-    `Comum a todos: anchor?; textStyles? [{field, size?: -2|-1|0|1|2, color?: #RRGGBB}] (até 40, por campo de texto; contraste ≥4,5:1); presentation? { ${summarize(z.toJSONSchema(presentation.unwrap()) as Record<string, unknown>, 1)} }. ? = opcional; ≤ = máximo de caracteres.\n` +
+    `Comum a todos: anchor?; textStyles? [{field, size?: -2|-1|0|1|2, color?: #RRGGBB}] (até 40, por campo de texto; contraste ≥4,5:1); presentation? { ${summarize(z.toJSONSchema(presentation.unwrap()) as Record<string, unknown>, 1)} }. Exemplos locais: {"decoration":"none"}; {"background":"#27272a","backgroundEnd":"#3f3f46","gradient":"diagonal"}. ? = opcional; ≤ = máximo de caracteres.\n` +
     [...BLOCK_TYPES]
       .sort((a, b) => {
         if (vibe !== 'landing') return 0;

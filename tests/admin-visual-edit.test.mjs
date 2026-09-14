@@ -15,6 +15,7 @@ const { editPolicyFor, asksRemoval } = await j.import(
   '../lib/ai/edit-policy.ts',
 );
 const { createEditReceipt } = await j.import('../lib/ai/edit-receipt.ts');
+const { describeTool } = await j.import('../lib/generation/labels.ts');
 const { completeChatStream } = await j.import('../lib/ai/chat-stream.ts');
 const { readUIMessageStream } = await import('ai');
 
@@ -108,6 +109,28 @@ await test('restrição de escopo e remoção de decoração não autorizam apag
   ])
     assert.equal(asksRemoval(request), false, request);
   assert.equal(asksRemoval('Remova os selos sem mexer no restante'), true);
+});
+
+await test('atividade nomeia a família quando o lote tem um único alvo', () => {
+  assert.equal(
+    describeTool(
+      'edit_page',
+      {
+        page: 'sobre',
+        operations: [
+          {
+            op: 'set',
+            block: 'footer.compact',
+            path: 'presentation.background',
+            value: '#27272a',
+          },
+        ],
+      },
+      undefined,
+      'input-streaming',
+    ),
+    'Aplicando alterações no rodapé de /sobre',
+  );
 });
 
 await test('o stream e o histórico exibem o recibo real mesmo quando o modelo inventa sincronização ou sucesso', async () => {
@@ -218,6 +241,89 @@ await test('recibo não esconde resultados de pedidos mistos e invalida consulta
   assert.doesNotMatch(receipt.text(), /não encontrou bloqueios/);
   receipt.observe('publish_site', {}, { published: ['/'], blocked: [] });
   assert.equal(receipt.text(), undefined);
+});
+
+await test('recibo agrega o mesmo ajuste familiar e inclui a medição renderizada', () => {
+  const receipt = createEditReceipt();
+  const summary = [
+    'Em “rodapé”: fundo #27272a, texto #ffffff, contraste 14,9:1.',
+  ];
+  for (const page of ['', 'materiais'])
+    receipt.observe(
+      'edit_page',
+      { page },
+      {
+        ok: true,
+        changed: true,
+        summary,
+        visualMeasurement: {
+          status: 'complete',
+          ok: true,
+          issues: [],
+          viewports: [
+            {
+              width: 1440,
+              blocks: [
+                {
+                  backgroundColor: 'rgb(39, 39, 42)',
+                  backgroundImage: 'none',
+                  minimumContrast: 14.89,
+                },
+              ],
+            },
+            {
+              width: 390,
+              blocks: [
+                {
+                  backgroundColor: 'rgb(39, 39, 42)',
+                  backgroundImage: 'none',
+                  minimumContrast: 14.89,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    );
+  const text = receipt.text();
+  assert.match(
+    text,
+    /Rodapé com fundo #27272a, texto #ffffff, contraste 14,9:1 nas 2 páginas: \/, \/materiais\./,
+  );
+  assert.match(
+    text,
+    /Medição renderizada de \/ em 1440 e 390 px: rgb\(39, 39, 42\), sem imagem de fundo; contraste mínimo 14,9:1\./,
+  );
+  assert.match(text, /Medição renderizada de \/materiais/);
+  assert.doesNotMatch(text, /Em “seção”|ajuste salvo/);
+});
+
+await test('recibo ressalva medição desativada uma única vez', () => {
+  const receipt = createEditReceipt();
+  for (const page of ['', 'materiais'])
+    receipt.observe(
+      'edit_page',
+      { page },
+      {
+        ok: true,
+        changed: true,
+        summary: ['Em “rodapé”: decoração da vibe removida.'],
+        visualMeasurement: {
+          status: 'disabled',
+          ok: false,
+          issues: [
+            'A medição renderizada automática está desativada por EIXU_REVIEW_CAPTURE=0.',
+          ],
+          viewports: [],
+        },
+      },
+    );
+  const text = receipt.text();
+  assert.equal(
+    text.match(/medição renderizada automática não ocorreu/gi)?.length,
+    1,
+  );
+  assert.match(text, /EIXU_REVIEW_CAPTURE=0/);
 });
 
 await test('erro fatal não exibe nem persiste sucesso que ficou no buffer', async () => {

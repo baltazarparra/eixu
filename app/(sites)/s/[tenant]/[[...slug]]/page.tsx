@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { RenderBlocks } from '@/lib/blocks/render';
-import { themeVars } from '@/lib/blocks/theme';
+import { renderedDesignVersionOf, themeVars } from '@/lib/blocks/theme';
 import {
   getPage,
   getTenantBySlug,
@@ -206,13 +206,7 @@ export default async function TenantPage({ params, searchParams }: Props) {
       }
       // O seletor continua no contrato CSS v4; data-profile-version expõe a
       // versão persistida, e v5/v6 acrescentam estrutura sem duplicar CSS.
-      data-design-version={
-        referenceDirected && !modulated
-          ? 'reference'
-          : designVersion === 5 || designVersion === 6
-            ? 4
-            : designVersion
-      }
+      data-design-version={renderedDesignVersionOf(renderedTenant.brand)}
       data-profile-version={designVersion}
       data-structure={renderedTenant.brand.design?.structure}
       data-reference-aspects={aspects || undefined}
