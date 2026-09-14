@@ -16,7 +16,12 @@ const { designProfileInputSchema, completeDesignProfile } = await jiti.import(
   '../lib/design/profile.ts',
 );
 const { laneIssues, VIBE_LANE } = await jiti.import('../lib/design/vibes.ts');
-const { themeVars } = await jiti.import('../lib/blocks/theme.ts');
+const { SECTION_SURFACE_RULES, themeVars } = await jiti.import(
+  '../lib/blocks/theme.ts',
+);
+const { sectionBackgrounds, sectionColorVars } = await jiti.import(
+  '../lib/blocks/section-colors.ts',
+);
 const {
   contrastRatio,
   mixOklabHex,
@@ -25,7 +30,9 @@ const {
   GLOW_DARK_CEILING,
   GLOW_CONTRAST,
 } = await jiti.import('../lib/blocks/contrast.ts');
-const { blockSchemas } = await jiti.import('../lib/blocks/registry.ts');
+const { blockSchemas, catalogForPrompt } = await jiti.import(
+  '../lib/blocks/registry.ts',
+);
 const { lintPage } = await jiti.import('../lib/taste/lint.ts');
 const { VisualSystemFixture, visualBlocks, visualTenant } = await jiti.import(
   './browser/fixtures/visual-system.tsx',
@@ -99,9 +106,7 @@ await test('brilhos de fundo saem resolvidos, claros e medidos contra a tinta', 
     skinao['--glow-2-flat'],
     mixOklabHex('#ffffff', skinao['--glow-2'], 0.4),
   );
-  assert.ok(
-    contrastRatio(skinao['--muted-glow-2'], skinao['--glow-2']) >= 4.5,
-  );
+  assert.ok(contrastRatio(skinao['--muted-glow-2'], skinao['--glow-2']) >= 4.5);
   assert.ok(
     contrastRatio(skinao['--muted-glow-2-flat'], skinao['--glow-2-flat']) >=
       4.5,
@@ -143,8 +148,7 @@ await test('brilhos de fundo saem resolvidos, claros e medidos contra a tinta', 
   for (const accent of ['#ffdd00', '#b80505', '#1f6feb', '#c45c26']) {
     const vars = themeVars({ ink, paper: '#ffffff', accent });
     assert.ok(
-      oklchLightness(vars['--accent-glow']) >=
-        oklchLightness(vars['--accent']),
+      oklchLightness(vars['--accent-glow']) >= oklchLightness(vars['--accent']),
       `--accent-glow escureceu com ${accent}`,
     );
   }
@@ -154,6 +158,88 @@ await test('brilhos de fundo saem resolvidos, claros e medidos contra a tinta', 
         oklchLightness(vars[token]) >= GLOW_LIGHT_FLOOR,
         `${token} abaixo do piso de claridade`,
       );
+});
+
+await test('tabela de superfícies e catálogo expõem o mesmo contrato de decoração local', () => {
+  assert.deepEqual(
+    SECTION_SURFACE_RULES.map((rule) => rule.id),
+    [
+      'commercial-hero-glow',
+      'commercial-footer-glow',
+      'commercial-accent-cta',
+      'commercial-explorer-panel',
+      'commercial-proof-numbers',
+      'commercial-facts-ledger',
+    ],
+  );
+  const tenant = visualTenant('comercial');
+  const vars = themeVars(tenant.brand);
+  for (const [presentation, context, expected] of [
+    [{}, { blockType: 'hero.statement' }, [vars['--glow'], vars['--paper']]],
+    [{}, { blockType: 'footer.compact' }, [vars['--glow'], vars['--paper']]],
+    [
+      { tone: 'accent' },
+      { blockType: 'cta.band' },
+      [vars['--accent'], vars['--accent-glow']],
+    ],
+    [{}, { blockType: 'feature.explorer' }, [vars['--glow-2-flat']]],
+    [
+      {},
+      { blockType: 'proof.strip', layout: 'numbers' },
+      [vars['--glow-2-flat']],
+    ],
+    [
+      {},
+      {
+        blockType: 'editorial.facts',
+        layout: 'ledger',
+      },
+      [vars['--glow-2-flat']],
+    ],
+  ])
+    assert.deepEqual(
+      sectionBackgrounds(presentation, tenant.brand, context),
+      expected,
+      JSON.stringify(context),
+    );
+  assert.deepEqual(
+    sectionBackgrounds({ background: '#27272a' }, tenant.brand, {
+      blockType: 'footer.compact',
+    }),
+    ['#27272a'],
+  );
+  const heroColors = sectionColorVars({}, tenant.brand, {
+    blockType: 'hero.statement',
+  });
+  assert.equal(heroColors.color, vars['--brand-ink']);
+  for (const surface of [vars['--glow'], vars['--paper']])
+    assert.ok(contrastRatio(heroColors.color, surface) >= 4.5);
+  const catalog = catalogForPrompt();
+  assert.match(catalog, /decoration/);
+  assert.match(catalog, /backgroundEnd/);
+  assert.match(catalog, /gradient/);
+  assert.match(catalog, /#27272a/);
+});
+
+await test('renderer emite direção de degradê e desativação de decoração como dados', () => {
+  const footer = structuredClone(
+    visualBlocks.find((block) => block.type === 'footer.compact'),
+  );
+  footer.props.presentation = {
+    background: '#27272a',
+    backgroundEnd: '#3f3f46',
+    gradient: 'right',
+    decoration: 'none',
+  };
+  const html = renderToStaticMarkup(
+    createElement(VisualSystemFixture, { blocks: [footer] }),
+  );
+  assert.match(html, /data-decoration="none"/);
+  assert.match(
+    html,
+    /background-image:linear-gradient\(90deg, #27272a, #3f3f46\)/,
+  );
+  assert.match(html, /data-tone="custom"/);
 });
 
 await test('novos pares pertencem às vibes sem liberar serifas no moderno ou display no corpo', () => {

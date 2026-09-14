@@ -22,7 +22,7 @@ import './vibes.css';
 import './typography.css';
 import './iconography.css';
 import './navigation.css';
-// Por último: a cor do operador vence a decoração de qualquer vibe.
+// Por último: escolhas explícitas do operador vencem a decoração da vibe.
 import './operator.css';
 
 const sans = Geist({

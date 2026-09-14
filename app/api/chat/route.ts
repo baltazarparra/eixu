@@ -204,7 +204,8 @@ export async function POST(request: Request) {
     : editPolicyFor(lastUserText, pages, body.page ?? '');
   context.editing = Boolean(editPolicy);
   context.editScope = editPolicy ? editScopeText(editPolicy) : undefined;
-  if (editPolicy) context.editPage = editingPageContext(focusedPage);
+  if (editPolicy)
+    context.editPage = editingPageContext(focusedPage, pages, editPolicy);
   // Tudo que o operador escreveu nesta conversa; confirm_evidence só aceita
   // fatos que ele mesmo digitou, não os que o modelo deduziu da página.
   const operatorText = body.messages
@@ -240,7 +241,8 @@ export async function POST(request: Request) {
   });
   if (phase) await markPhase(tenant.id, phase);
 
-  const model = productModel();
+  const modelRole = editPolicy ? 'edit' : 'agent';
+  const model = productModel(modelRole);
   const started = Date.now();
   let completedSteps = 0;
   const editReceipt = editPolicy ? createEditReceipt() : undefined;
@@ -249,6 +251,7 @@ export async function POST(request: Request) {
     tenantId: tenant.id,
     tools,
     phase,
+    modelRole,
     repairPublication: !phase && isPublicationRepairRequest(lastUserText),
     instructions: systemPrompt(
       tenant,

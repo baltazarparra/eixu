@@ -98,6 +98,10 @@ prompt sozinho não garante.
 `lib/ai/models.ts` é a fonte única dos modelos e limites. O chat, o crítico de
 foto, a descrição de avatar, a crítica do site renderizado e os runners usam
 `google/gemini-3.8-flash`. `EIXU_MODEL` permite configuração explícita do agente;
+`EIXU_EDIT_MODEL` prevalece somente nos turnos que a rota classificou como
+edição, depois cai em `EIXU_MODEL` e no mesmo padrão, sem alterar briefing,
+composição ou revisão. Esse override é mecanismo de avaliação/configuração, não
+evidência de que outro modelo é melhor.
 `EIXU_CRITIC_MODEL` prevalece para os críticos, depois cai em `EIXU_MODEL` e no
 padrão. Antes de publicar, confira os valores do ambiente de destino.
 
@@ -404,6 +408,15 @@ ou itens. O schema oferece controles locais de imagem em
 a seção. O recorte textual e os pedidos que seguem o fluxo geral estão no
 contrato de edição.
 
+Pedidos de fundo, cor, degradê, lavagem ou texto claro/escuro que nomeiam
+rodapé/footer, cabeçalho/header/menu ou abertura/banner/hero recebem a mesma
+guarda por família. Sem página explícita, a política enumera todos os alvos das
+páginas; com página atual, home ou nome, restringe o conjunto. `set_brand` fica
+fora desse turno. Além de `presentation.*`, `textStyles.*` e apresentação de
+imagem, somente `nav.bar` pode usar `position` e `backgroundOpacity` como estilo.
+Slug, ID, revisão e apresentação dos alvos fora da página em foco entram como
+snapshots compactos, evitando releituras sem abrir escrita em lote entre páginas.
+
 Remover o container decorativo de uma foto do hero usa `imagePresentation`
 no bloco existente. O prompt e o catálogo informam essa capacidade; o pedido
 de preservar a imagem enquanto se retira a caixa não libera apagar conteúdo.
@@ -445,11 +458,15 @@ Pedidos mistos com outros blocos seguem a edição geral, sem essa garantia de
 campos. O prompt instrui a relatar achados da crítica fora do pedido atual.
 
 O [fluxo de edição pós-geração](chat-edits.md) usa `edit_page`, com snapshot e
-schemas da página em foco já presentes no turno. Texto literal, caminhos de
-props e posições relativas formam um lote por página, validado antes da escrita.
-A comparação de `blocks` em JSONB recusa conflito entre abas; o recibo inclui
-mudanças, revisão e pre-flight. A edição geral não expõe os quatro mutadores
-antigos. Geração e o escopo restrito de cabeçalho conservam compatibilidade.
+schemas da página em foco já presentes no turno e os alvos compactos das outras
+páginas quando a intenção é visual por família. Texto literal, caminhos de props
+e posições relativas formam um lote por página, validado antes da escrita. A
+comparação de `blocks` em JSONB recusa conflito entre abas; o recibo inclui
+mudanças, revisão, pre-flight e, para `presentation.*`/`textStyles.*`, medição
+renderizada em 1440 e 390 px. Essa medição reutiliza o Chromium, não captura
+pixels nem chama crítico; somente fundos computados, contraste e problemas
+voltam ao agente. `EIXU_REVIEW_CAPTURE=0` a desliga com indisponibilidade
+explícita. A edição geral não expõe os quatro mutadores antigos.
 
 Nos consumidores legados, `update_block` combina parcialmente `presentation`, preservando seus campos
 omitidos, e valida o bloco completo com schema estrito antes de escrever.
@@ -526,8 +543,14 @@ usa `EIXU_CHROME_PATH`. Esses testes não chamam modelos pagos.
 `npm run eval:edits` valida em memória os casos `hero-carousel` e
 `hero-carousel-unsupported`: o primeiro preserva a foto principal, grava os
 slides em uma única `edit_page` e não insere galeria; o segundo mantém um hero
-`cover` intacto e devolve a alternativa. `--live` usa o modelo configurado,
-exige autorização por envolver chamada paga e não é um check local obrigatório.
+`cover` intacto e devolve a alternativa. Também inclui `footer-gray`,
+`footer-gradient` e `hero-decoration-off`, que exercitam uma estrutura comercial
+v6 dirigida por referência, escopo em várias páginas, ausência de `set_brand` e
+fechamento fiel. Sem `--live`, o comando apenas mostra o uso. Com `--live`, usa
+`productModel('edit')`, prompt e executores reais sobre páginas sintéticas em
+memória. Para comparar modelos, altere `EIXU_EDIT_MODEL`, conserve os mesmos
+casos/repetições e registre custo e variância. É um ensaio pago e não deve ser
+executado sem autorização explícita; não é um check local obrigatório.
 
 `npm run eval:harness` explica o ensaio. Com `--live`, usa o modelo, os schemas,
 os executores e o renderer reais; substitui I/O editorial por memória, com fotos

@@ -1,5 +1,6 @@
 import { loadModule } from './load-module.mjs';
 import { createJiti } from 'jiti';
+import { referenceDirection } from './reference-fixture.mjs';
 const j = createJiti(import.meta.url, {
   alias: { '@': process.cwd() },
   fsCache: false,
@@ -29,6 +30,35 @@ export const editTenant = {
   dials: { variance: 5, density: 5, motion: 1 },
   imageGuide: {},
   whatsapp: null,
+};
+
+/** Caso do eval: vibe cadastrada moderna, mas referência v6 escolhe a faixa comercial. */
+export const commercialEditTenant = {
+  ...structuredClone(editTenant),
+  brand: {
+    ...editTenant.brand,
+    vibe: 'moderno',
+    accentAlt: '#64748b',
+    surface: '#f4f4f5',
+    design: {
+      version: 6,
+      structure: 'comercial-atendimento',
+      structureRationale:
+        'A estrutura comercial organiza orientação, comparação e contato em uma jornada objetiva.',
+      referenceDirection,
+      concept: 'Materiais comparados com clareza editorial',
+      signature: 'Linhas de comparação entre escolhas',
+      definedAt: '2026-09-13T00:00:00.000Z',
+      displayFont: 'slab',
+      bodyFont: 'source',
+      heroComposition: 'split',
+      navigation: 'bar',
+      rhythm: 'chapters',
+      imageTreatment: 'framed',
+      surfaceStyle: 'flat',
+      motif: 'wash',
+    },
+  },
 };
 /** `hero: 'bullets'` troca a abertura por um hero.split com selos, o caso que
  * motivou a guarda de remoção e o campo de posição. */
@@ -142,6 +172,13 @@ export async function pageEditFixture(
     initialTenant,
     images = [],
     publication = false,
+    toolContext = {},
+    measureEditedBlocks = async () => ({
+      status: 'complete',
+      ok: true,
+      issues: [],
+      viewports: [],
+    }),
   } = {},
 ) {
   const tenant = structuredClone(initialTenant ?? editTenant);
@@ -186,10 +223,15 @@ export async function pageEditFixture(
         structuredClone(pages.filter((p) => p.tenantId === tenantId)),
     },
     '@/lib/images/queries': { listImages: async () => images },
+    '@/lib/review/capture': {
+      capturePages: async () => [],
+      measureEditedBlocks,
+    },
   };
   mocks['@/lib/sites/edits'] = await loadModule('lib/sites/edits.ts', mocks);
   const { buildTools } = await loadModule('lib/ai/tools.ts', mocks);
   const tools = buildTools(tenant, {
+    ...toolContext,
     lastUserText: text,
     operatorText: text,
     editPolicy: policy,
@@ -227,7 +269,7 @@ export async function pageEditFixture(
       {
         editing: true,
         editScope: editScopeText(policy),
-        editPage: editingPageContext(pages[0]),
+        editPage: editingPageContext(pages[0], pages, policy),
         ...(publication
           ? {
               pendencias: pendenciasContext(

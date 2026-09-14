@@ -30,6 +30,7 @@ const phrases = (list: string[]) =>
 export function createEditReceipt() {
   const saved = new Map<string, string[]>();
   const failures = new Map<string, string>();
+  const visualMeasurements = new Map<string, Record<string, unknown>>();
   const facts = new Set<string>();
   const images: string[] = [];
   let plan: Record<string, unknown>[] | undefined;
@@ -101,6 +102,11 @@ export function createEditReceipt() {
         return;
       }
       failures.delete(key);
+      if (name === 'edit_page') {
+        const measurement = record(out.visualMeasurement);
+        if (Object.keys(measurement).length)
+          visualMeasurements.set(page, measurement);
+      }
       if (
         ['edit_page', 'repair_publication'].includes(name) &&
         out.ok === true
@@ -121,10 +127,100 @@ export function createEditReceipt() {
     text(): string | undefined {
       if (!attempted || !complete) return undefined;
       const lines: string[] = [];
-      for (const [page, details] of saved) {
-        lines.push(`Alterações salvas no rascunho de ${page}.`);
-        lines.push(...new Set(details));
+      const pagesByDetail = new Map<string, string[]>();
+      for (const [page, details] of saved)
+        for (const detail of new Set(details))
+          pagesByDetail.set(detail, [
+            ...(pagesByDetail.get(detail) ?? []),
+            page,
+          ]);
+      const grouped = new Set<string>();
+      for (const [detail, pages] of pagesByDetail) {
+        if (pages.length < 2) continue;
+        const match = detail.match(/^Em “(.+)”: (.+)\.$/);
+        if (!match) continue;
+        grouped.add(detail);
+        const name = match[1][0].toUpperCase() + match[1].slice(1);
+        lines.push(
+          `${name} com ${match[2]} nas ${pages.length} páginas: ${pages.join(', ')}.`,
+        );
       }
+      for (const [page, details] of saved) {
+        const remaining = [...new Set(details)].filter(
+          (detail) => !grouped.has(detail),
+        );
+        if (!remaining.length) continue;
+        lines.push(`Alterações salvas no rascunho de ${page}.`);
+        lines.push(...remaining);
+      }
+      const visualLines = new Set<string>();
+      for (const [page, measurement] of visualMeasurements) {
+        const status = measurement.status;
+        const issues = strings(measurement.issues);
+        if (status === 'disabled') {
+          visualLines.add(
+            'A medição renderizada automática não ocorreu porque EIXU_REVIEW_CAPTURE=0.',
+          );
+          continue;
+        }
+        if (status !== 'complete') {
+          visualLines.add(
+            `A alteração de ${page} foi salva, mas a medição renderizada não ocorreu${issues[0] ? `: ${issues[0]}` : '.'}`,
+          );
+          continue;
+        }
+        if (measurement.ok !== true) {
+          visualLines.add(
+            `A alteração de ${page} foi salva, mas a medição renderizada encontrou problemas: ${issues.slice(0, 4).join(' ')}${issues.length > 4 ? ' Veja os demais no painel.' : ''}`,
+          );
+          continue;
+        }
+        const viewports = Array.isArray(measurement.viewports)
+          ? measurement.viewports.map(record)
+          : [];
+        const widths = [
+          ...new Set(
+            viewports
+              .map((viewport) => viewport.width)
+              .filter((width): width is number => typeof width === 'number'),
+          ),
+        ];
+        const blocks = viewports.flatMap((viewport) =>
+          Array.isArray(viewport.blocks) ? viewport.blocks.map(record) : [],
+        );
+        const backgrounds = [
+          ...new Set(
+            blocks
+              .map((block) => {
+                const color =
+                  typeof block.backgroundColor === 'string'
+                    ? block.backgroundColor
+                    : '';
+                const image =
+                  typeof block.backgroundImage === 'string'
+                    ? block.backgroundImage
+                    : 'none';
+                return color
+                  ? `${color}${image === 'none' ? ', sem imagem de fundo' : ', com degradê renderizado'}`
+                  : '';
+              })
+              .filter(Boolean),
+          ),
+        ];
+        const ratios = blocks
+          .map((block) => block.minimumContrast)
+          .filter((ratio): ratio is number => typeof ratio === 'number');
+        visualLines.add(
+          `Medição renderizada de ${page} em ${widths.join(' e ')} px: ${backgrounds.join('; ') || 'superfície computada'}${
+            ratios.length
+              ? `; contraste mínimo ${Math.min(...ratios)
+                  .toFixed(1)
+                  .replace('.', ',')}:1`
+              : '; nenhum texto visível para medir'
+          }.`,
+        );
+      }
+      lines.push(...visualLines);
       if (facts.size)
         lines.push(`Fatos registrados: ${[...facts].join('; ')}.`);
       lines.push(...images);

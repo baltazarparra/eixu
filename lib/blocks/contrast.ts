@@ -57,6 +57,84 @@ export function bestInk(background: string): {
   return { ink, ratio, passesAA: ratio >= AA_NORMAL };
 }
 
+/** Uma única tinta que precisa permanecer legível em todas as superfícies. */
+export function bestInkFor(backgrounds: string[]): {
+  ink: string;
+  ratio: number;
+  passesAA: boolean;
+} {
+  const candidates = [NEAR_BLACK, NEAR_WHITE, '#000000'];
+  const ranked = candidates.map((ink) => ({
+    ink,
+    ratio: Math.min(
+      ...backgrounds.map((background) => contrastRatio(ink, background)),
+    ),
+  }));
+  const best = ranked.sort((a, b) => b.ratio - a.ratio)[0] ?? {
+    ink: NEAR_BLACK,
+    ratio: 1,
+  };
+  return { ...best, passesAA: best.ratio >= AA_NORMAL };
+}
+
+export type GradientContrast = {
+  ink: string;
+  ratio: number;
+  passesAA: boolean;
+  suggestedEnd?: string;
+};
+
+/**
+ * Valida as duas extremidades do degradê. Quando elas não compartilham uma
+ * tinta AA, aproxima somente o segundo ponto do primeiro e devolve a alteração
+ * mínima em passos de 4%, no mesmo espírito de accessibleAccent.
+ */
+export function gradientContrast(
+  background: string,
+  backgroundEnd: string,
+  foreground?: string,
+): GradientContrast {
+  const startInk = foreground
+    ? {
+        ink: foreground,
+        ratio: contrastRatio(foreground, background),
+        passesAA: contrastRatio(foreground, background) >= AA_NORMAL,
+      }
+    : bestInkFor([background]);
+  const direct = foreground
+    ? {
+        ink: foreground,
+        ratio: Math.min(
+          contrastRatio(foreground, background),
+          contrastRatio(foreground, backgroundEnd),
+        ),
+      }
+    : bestInkFor([background, backgroundEnd]);
+  if (direct.ratio >= AA_NORMAL) return { ...direct, passesAA: true };
+  if (!startInk.passesAA) return { ...direct, passesAA: false };
+
+  for (let step = 1; step <= 25; step += 1) {
+    const candidate = mix(backgroundEnd, background, step / 25);
+    const ratio = Math.min(
+      contrastRatio(startInk.ink, background),
+      contrastRatio(startInk.ink, candidate),
+    );
+    if (ratio >= AA_NORMAL)
+      return {
+        ink: startInk.ink,
+        ratio: direct.ratio,
+        passesAA: false,
+        suggestedEnd: candidate,
+      };
+  }
+  return {
+    ink: startInk.ink,
+    ratio: direct.ratio,
+    passesAA: false,
+    suggestedEnd: background,
+  };
+}
+
 function toRgb(hex: string): [number, number, number] {
   const value = hex.replace('#', '');
   return [0, 2, 4].map((i) => parseInt(value.slice(i, i + 2), 16)) as [

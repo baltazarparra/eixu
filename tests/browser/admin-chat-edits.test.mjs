@@ -95,7 +95,7 @@ await test(
         null,
       );
       footer.understanding.resolve();
-      await activity('Aplicando alterações em /');
+      await activity('Aplicando alterações no rodapé de /');
       const preview = fixture.holdPreview();
       footer.apply.resolve();
       await page.waitForSelector('[data-preview-state="loading"]');

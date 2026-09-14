@@ -807,7 +807,8 @@ await test(
                 requestAnimationFrame(() => requestAnimationFrame(resolve)),
               ),
           );
-          await page.click('.admin-usage summary');
+          if (!(await page.$eval('.admin-usage', (node) => node.open)))
+            await page.click('.admin-usage summary');
           await page
             .waitForFunction(
               () => {
@@ -893,7 +894,11 @@ await test(
             fullPage: true,
           });
 
-          await page.click('.admin-usage summary');
+          if (await page.$eval('.admin-usage', (node) => node.open))
+            await page.click('.admin-usage summary');
+          await page.waitForFunction(
+            () => !document.querySelector('.admin-usage').open,
+          );
           await page.$eval('.admin-conversation', (node) =>
             node.scrollTo({ top: 0 }),
           );

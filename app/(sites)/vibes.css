@@ -190,9 +190,7 @@
   ) {
   border-radius: 1.25rem;
 }
-.site-theme[data-vibe='artistico']
-  .site-block:not([data-tone])
-  .site-footer {
+.site-theme[data-vibe='artistico'] .site-block:not([data-tone]) .site-footer {
   --muted: var(--muted-glow-2);
   background-image: radial-gradient(
     130% 80% at 50% 125%,
@@ -307,7 +305,7 @@
     [data-design-version='4']
   )[data-vibe='comercial']:not([data-motif='wash'])
   main
-  > .site-block:not([data-tone])
+  > .site-block:not([data-tone]):not([data-decoration='none'])
   .site-hero:not(.site-hero-poster, .site-hero-cover) {
   --muted: var(--muted-glow);
   background-image: radial-gradient(
@@ -322,7 +320,7 @@
     [data-design-version='3'],
     [data-design-version='4']
   )[data-vibe='comercial']:not([data-motif='wash'])
-  .site-block:not([data-tone])
+  .site-block:not([data-tone]):not([data-decoration='none'])
   .site-footer {
   --muted: var(--muted-glow);
   background-image: radial-gradient(
@@ -340,7 +338,9 @@
     [data-design-version='3'],
     [data-design-version='4']
   )[data-vibe='comercial']
-  .site-block[data-block='cta.band'][data-tone='accent'] {
+  .site-block[data-block='cta.band'][data-tone='accent']:not(
+    [data-decoration='none']
+  ) {
   background-color: var(--accent);
   background-image: radial-gradient(
     90% 140% at 100% 0%,
@@ -352,6 +352,7 @@
     [data-design-version='3'],
     [data-design-version='4']
   )[data-vibe='comercial']
+  .site-block:not([data-tone='custom']):not([data-decoration='none'])
   .site-explorer-panel {
   --muted: var(--muted-glow-2-flat);
   background: var(--glow-2-flat);
@@ -361,7 +362,10 @@
     [data-design-version='3'],
     [data-design-version='4']
   )[data-vibe='comercial']
-  .site-proof-strip-numbers {
+  .site-block[data-block='proof.strip']:not([data-tone='custom']):not(
+    [data-decoration='none']
+  )
+  > .site-proof-strip-numbers {
   --muted: var(--muted-glow-2-flat);
   background: var(--glow-2-flat);
 }
@@ -385,6 +389,7 @@
     [data-design-version='3'],
     [data-design-version='4']
   )[data-vibe='comercial']
+  .site-block:not([data-tone='custom']):not([data-decoration='none'])
   .site-facts-ledger
   dl {
   --muted: var(--muted-glow-2-flat);

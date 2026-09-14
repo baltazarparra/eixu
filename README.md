@@ -13,7 +13,7 @@ O modelo interno é **Gemini 3.8 Flash**, com raciocínio `high`. O harness prio
 - Institucional com home, oferta de passagem de vibe coding para produção e cases de SaldoPix e NaiaCRM.
 - Painel com login de operador, busca e filtros de clientes, cadastro compacto com cinco direções visuais comparáveis, geração em Preparar/Criar, chat com histórico recente, prévia em desktop/mobile, dados e briefing editáveis e publicação.
 - Páginas orgânicas, landing pages pagas, posts e páginas de agradecimento compostas por blocos com schemas Zod. O agente edita conteúdo por ferramentas; o painel também permite ajustar dados do cliente e gerenciar imagens.
-- Edição direta na prévia de clientes publicados: texto, tamanho e cor por campo, com contraste validado. Salvar altera o rascunho; Publicar leva as mudanças ao site no ar.
+- Edição direta e pelo chat: texto, tamanho e cor por campo, fundo/degradê local e decoração da vibe, com contraste validado e medição renderizada após ajustes visuais. Salvar altera o rascunho; Publicar leva as mudanças ao site no ar.
 - Imagens geradas na conversa ou enviadas pelo painel, disponíveis no mesmo acervo sem aprovação. O upload aceita várias fotos JPG, PNG, WebP ou AVIF de até 4 MB cada; a geração usa o guia do cliente e a crítica. A biblioteca em `/admin/[tenant]/imagens` mantém números para pedir alterações, como “atualize a imagem #5 com outro carro”. A nova versão substitui a anterior nos rascunhos e ambas ficam salvas.
 - Estúdio de logo durante o briefing: limpa fundo e margens, prepara altura, SVG quando fiel, ícones e imagem de compartilhamento. A modernização fiel aprovada pelos gates pode entrar no rascunho automaticamente, com original numerado e reversão pelo chat. Outras aplicações exigem pedido; o site público só muda ao publicar.
 - Contatos do cadastro renderizados sozinhos no site: telefones, e-mail e redes sociais no rodapé, e uma seção de localização com mapa acima dele quando há endereço.
@@ -33,21 +33,22 @@ npm run dev:vercel
 
 O institucional e a tela de login abrem sem banco. Para usar o painel e os sites, configure `.env.local` com recursos de desenvolvimento:
 
-| Variável                 | Uso                                                                                                        |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`           | Conexão Postgres/Neon das rotas dinâmicas e scripts de banco.                                              |
-| `ADMIN_USER`             | Usuário do operador; fallback `admin`.                                                                     |
-| `ADMIN_PASSWORD`         | Senha do operador. Produção recusa login se estiver ausente.                                               |
-| `ADMIN_SESSION_SECRET`   | Segredo de assinatura da sessão; configure um valor próprio. O código usa a senha como fallback.           |
-| `AI_GATEWAY_API_KEY`     | Autenticação explícita do AI Gateway, útil localmente. O SDK também aceita OIDC da Vercel.                 |
-| `EIXU_MODEL`             | Modelo do chat do site; fallback no código: `google/gemini-3.8-flash`.                                     |
-| `EIXU_CRITIC_MODEL`      | Modelo da crítica visual e leitura de avatar social; fallback em `EIXU_MODEL`, depois Gemini 3.8 Flash.    |
-| `EIXU_LOGO_CRITIC_MODEL` | Modelo de leitura e crítica do logo; prevalece sobre os fallbacks descritos em [Harness](docs/harness.md). |
-| `EIXU_LOGO_IMAGE_MODEL`  | Gerador de logos; padrão `openai/gpt-image-2`.                                                             |
-| `EIXU_LOGO_AUTO_APPLY`   | `0` desativa a aplicação automática do estúdio; as propostas continuam disponíveis.                        |
-| `BLOB_READ_WRITE_TOKEN`  | Upload, geração e remoção de imagens no Vercel Blob.                                                       |
-| `EIXU_REVIEW_CAPTURE`    | Captura e crítica visual ligadas por padrão; `0` permite só diagnóstico estrutural, sem conclusão visual.  |
-| `EIXU_CHROME_PATH`       | Caminho do Chrome local para a captura em desenvolvimento.                                                 |
+| Variável                 | Uso                                                                                                         |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`           | Conexão Postgres/Neon das rotas dinâmicas e scripts de banco.                                               |
+| `ADMIN_USER`             | Usuário do operador; fallback `admin`.                                                                      |
+| `ADMIN_PASSWORD`         | Senha do operador. Produção recusa login se estiver ausente.                                                |
+| `ADMIN_SESSION_SECRET`   | Segredo de assinatura da sessão; configure um valor próprio. O código usa a senha como fallback.            |
+| `AI_GATEWAY_API_KEY`     | Autenticação explícita do AI Gateway, útil localmente. O SDK também aceita OIDC da Vercel.                  |
+| `EIXU_MODEL`             | Modelo do chat do site; fallback no código: `google/gemini-3.8-flash`.                                      |
+| `EIXU_EDIT_MODEL`        | Override opcional só para edições; sem ele, usa `EIXU_MODEL` e o mesmo fallback.                            |
+| `EIXU_CRITIC_MODEL`      | Modelo da crítica visual e leitura de avatar social; fallback em `EIXU_MODEL`, depois Gemini 3.8 Flash.     |
+| `EIXU_LOGO_CRITIC_MODEL` | Modelo de leitura e crítica do logo; prevalece sobre os fallbacks descritos em [Harness](docs/harness.md).  |
+| `EIXU_LOGO_IMAGE_MODEL`  | Gerador de logos; padrão `openai/gpt-image-2`.                                                              |
+| `EIXU_LOGO_AUTO_APPLY`   | `0` desativa a aplicação automática do estúdio; as propostas continuam disponíveis.                         |
+| `BLOB_READ_WRITE_TOKEN`  | Upload, geração e remoção de imagens no Vercel Blob.                                                        |
+| `EIXU_REVIEW_CAPTURE`    | Chromium e crítica visual ligados por padrão; `0` desliga também a medição pós-edição e declara a ausência. |
+| `EIXU_CHROME_PATH`       | Caminho do Chrome local para a captura em desenvolvimento.                                                  |
 
 Crie o arquivo localmente, sem versionar credenciais. Se já tiver acesso ao projeto Vercel, `vercel link --project eixu` e `vercel env pull .env.local --environment=development` são uma alternativa; confira o destino de `DATABASE_URL` antes de qualquer escrita. O nome do ambiente Vercel não garante que o banco conectado seja de desenvolvimento.
 

@@ -7,6 +7,27 @@ const str = (value: unknown): string =>
   typeof value === 'string' ? value : '';
 const num = (value: unknown): number => (typeof value === 'number' ? value : 0);
 
+function editTarget(input: Record<string, unknown>): string | undefined {
+  const operations = Array.isArray(input.operations)
+    ? (input.operations as Record<string, unknown>[])
+    : [];
+  const targets = [
+    ...new Set(
+      operations
+        .map((operation) => str(operation.block).toLowerCase())
+        .filter(Boolean),
+    ),
+  ];
+  if (targets.length !== 1) return undefined;
+  const target = targets[0];
+  if (/footer|rodape/.test(target)) return 'no rodapé';
+  if (/^(?:nav|header|menu)/.test(target)) return 'no menu superior';
+  if (/hero|abertura|banner/.test(target)) return 'na abertura';
+  if (/form/.test(target)) return 'no formulário';
+  if (/cta|chamada/.test(target)) return 'na chamada';
+  return undefined;
+}
+
 /** Cobre o agente de sites e o de imagens: o progresso é lido do mesmo jeito. */
 export function describeTool(
   name: string,
@@ -167,7 +188,9 @@ export function describeTool(
         : `Ajustou um bloco em ${page}`;
     case 'edit_page':
       return pending
-        ? `Aplicando alterações em ${page}`
+        ? editTarget(inp)
+          ? `Aplicando alterações ${editTarget(inp)} de ${page}`
+          : `Aplicando alterações em ${page}`
         : out.ok !== true
           ? `Alterações em ${page} não foram salvas`
           : out.changed === false

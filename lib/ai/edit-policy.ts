@@ -9,6 +9,8 @@ export type EditPolicy = {
   removal?: boolean;
   /** Pedido visual em um bloco nomeado: preserva conteúdo, tipo e ordem. */
   visualOnly?: boolean;
+  /** Famílias nomeadas pelo operador, aplicadas nas páginas selecionadas. */
+  visualFamilies?: string[];
 };
 
 function normalized(text: string) {
@@ -93,6 +95,66 @@ function namedVisualScope(text: string, pages: Page[], pageSlug?: string) {
   return targets.length === 1 ? targets : [];
 }
 
+const VISUAL_FAMILIES = [
+  { family: 'footer', pattern: /\b(?:rodape|footer)\b/ },
+  { family: 'nav', pattern: /\b(?:cabecalho|header|navbar|menu)\b/ },
+  { family: 'hero', pattern: /\b(?:abertura|banner|hero)\b/ },
+] as const;
+
+function explicitPageScope(text: string, pages: Page[], pageSlug?: string) {
+  const request = normalized(text);
+  if (/\b(?:nesta|nessa|esta|essa)\s+pagina\b|\bpagina\s+atual\b/.test(request))
+    return pages.filter((page) => page.slug === (pageSlug ?? ''));
+  if (/\b(?:home|pagina\s+inicial)\b/.test(request))
+    return pages.filter((page) => page.slug === '');
+  const named = pages.filter((page) => {
+    if (!page.slug) return false;
+    const slug = normalized(page.slug);
+    const title = normalized(page.title ?? '');
+    return (
+      request.includes(`/${slug}`) ||
+      new RegExp(
+        `\\bpagina\\s+(?:de\\s+)?${slug.replaceAll('-', '[ -]')}\\b`,
+      ).test(request) ||
+      (title.length >= 4 &&
+        new RegExp(
+          `\\bpagina\\s+(?:de\\s+)?${title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`,
+        ).test(request))
+    );
+  });
+  return named.length ? named : pages;
+}
+
+function familyVisualScope(text: string, pages: Page[], pageSlug?: string) {
+  const request = normalized(text);
+  if (
+    !/\b(?:bg|background|fundo|cor(?:es)?|cinza|gray|preto|branco|clar\w*|escur\w*|degrade|gradiente|lavagem|liso|solido|transparen\w*)\b/.test(
+      request,
+    )
+  )
+    return undefined;
+  if (
+    /\b(?:reescrev\w*|renome\w*|substitu\w*|troc\w*)\s+(?:(?:o|a)\s+)?(?:texto|titulo|copy|conteudo|link)\b/.test(
+      request,
+    )
+  )
+    return undefined;
+  const families = VISUAL_FAMILIES.filter(({ pattern }) =>
+    pattern.test(request),
+  ).map(({ family }) => family);
+  if (!families.length) return undefined;
+  const familySet = new Set<string>(families);
+  const scope = explicitPageScope(text, pages, pageSlug);
+  return {
+    families,
+    targets: scope.flatMap((page) =>
+      page.blocks
+        .filter((block) => familySet.has(block.type.split('.')[0]))
+        .map((block) => ({ page: page.slug, block: block.id })),
+    ),
+  };
+}
+
 /** Política do turno atual: uma edição não herda autorização de reconstruções antigas. */
 export function editPolicyFor(
   text: string,
@@ -122,6 +184,43 @@ export function editPolicyFor(
     /\b(bg|fundo|background|dark\w*|escur\w*|transparen\w*|opaci\w*|solid\w*)\b/.test(
       request,
     );
+  if (header && !other && (position || background)) {
+    const selected = explicitPageScope(text, pages, pageSlug);
+    return {
+      kind: 'navigation-style',
+      visualOnly: true,
+      visualFamilies: ['nav'],
+      removal: asksRemoval(text),
+      targets: selected.flatMap((page) =>
+        page.blocks
+          .filter((block) => block.type === 'nav.bar')
+          .map((block) => ({ page: page.slug, block: block.id })),
+      ),
+      paths: [
+        ...(position ? ['position'] : []),
+        ...(background
+          ? [
+              'backgroundOpacity',
+              'presentation.tone',
+              'presentation.background',
+              'presentation.backgroundEnd',
+              'presentation.gradient',
+              'presentation.decoration',
+              'presentation.foreground',
+            ]
+          : []),
+      ],
+    };
+  }
+  const familyVisual = familyVisualScope(text, pages, pageSlug);
+  if (familyVisual)
+    return {
+      kind: 'edit',
+      visualOnly: true,
+      visualFamilies: familyVisual.families,
+      targets: familyVisual.targets,
+      removal: false,
+    };
   if (!header || other || (!position && !background)) {
     // Só o pedido atual, direto e sem negação abre reconstrução de um site existente.
     if (
@@ -133,28 +232,7 @@ export function editPolicyFor(
       return undefined;
     return { kind: 'edit', removal: asksRemoval(text) };
   }
-  const homeOnly = /\b(home|pagina inicial|inicio)\b/.test(request);
-  const selected = pages.filter((page) => !homeOnly || page.slug === '');
-  return {
-    kind: 'navigation-style',
-    removal: asksRemoval(text),
-    targets: selected.flatMap((page) =>
-      page.blocks
-        .filter((block) => block.type === 'nav.bar')
-        .map((block) => ({ page: page.slug, block: block.id })),
-    ),
-    paths: [
-      ...(position ? ['position'] : []),
-      ...(background
-        ? [
-            'backgroundOpacity',
-            'presentation.tone',
-            'presentation.background',
-            'presentation.foreground',
-          ]
-        : []),
-    ],
-  };
+  return { kind: 'edit', removal: asksRemoval(text) };
 }
 
 const REBUILD_TOOLS = new Set([
@@ -194,10 +272,10 @@ export function editTools<T extends ToolSet>(tools: T, policy?: EditPolicy): T {
   if (!policy) return tools;
   return Object.fromEntries(
     Object.entries(tools).filter(([name]) =>
-      policy.visualOnly
-        ? VISUAL_EDIT_TOOLS.has(name)
-        : policy.kind === 'navigation-style'
-          ? NAVIGATION_TOOLS.has(name)
+      policy.kind === 'navigation-style'
+        ? NAVIGATION_TOOLS.has(name)
+        : policy.visualOnly
+          ? VISUAL_EDIT_TOOLS.has(name)
           : !REBUILD_TOOLS.has(name) && !LEGACY_EDIT_TOOLS.has(name),
     ),
   ) as T;
@@ -229,18 +307,39 @@ export function scopedUpdateError(
   props: Record<string, unknown>,
   type?: string,
 ): string | null {
+  if (policy?.kind === 'navigation-style') {
+    if (
+      block.type !== 'nav.bar' ||
+      (type && type !== block.type) ||
+      !policy.targets?.some(
+        (target) => target.page === page && target.block === block.id,
+      )
+    )
+      return 'Este pedido permite alterar somente os cabeçalhos identificados. Preserve os demais blocos e relate pendências externas ao pedido.';
+    const outside = changedPaths(block.props, props).filter(
+      (path) => !policy.paths?.includes(path),
+    );
+    return outside.length
+      ? `Campos fora do pedido: ${outside.join(', ')}. Altere somente ${policy.paths?.join(', ')}.`
+      : null;
+  }
   if (policy?.visualOnly) {
     if (
       !policy.targets?.some(
         (target) => target.page === page && target.block === block.id,
       )
     )
-      return 'Este pedido visual permite alterar somente o bloco nomeado. Preserve as outras seções.';
+      return 'Este pedido visual permite alterar somente os blocos identificados. Preserve as outras seções.';
     if (type && type !== block.type)
       return 'Um ajuste visual não autoriza trocar o tipo do bloco. Use os controles do schema atual; se faltarem, explique o limite.';
     const outside = changedPaths(block.props, props).filter(
       (path) =>
         !/^presentation(?:\.|$)/.test(path) &&
+        !/^textStyles(?:\.|$)/.test(path) &&
+        !(
+          block.type === 'nav.bar' &&
+          /^(?:position|backgroundOpacity)$/.test(path)
+        ) &&
         !/^(?:items\.\d+\.)?imagePresentation(?:\.|$)/.test(path) &&
         !/^slides(?:\.|$)/.test(path) &&
         !/^carousel(?:\.|$)/.test(path) &&
@@ -252,27 +351,13 @@ export function scopedUpdateError(
       ? `O pedido é visual. Estes campos mudariam conteúdo ou estrutura: ${outside.join(', ')}. Nenhuma alteração salva. Preserve layout, itens, textos e ações; ajuste a imagem e sua apresentação no bloco atual.`
       : null;
   }
-  if (policy?.kind !== 'navigation-style') return null;
-  if (
-    block.type !== 'nav.bar' ||
-    (type && type !== block.type) ||
-    !policy.targets?.some(
-      (target) => target.page === page && target.block === block.id,
-    )
-  )
-    return 'Este pedido permite alterar somente os cabeçalhos identificados. Preserve os demais blocos e relate pendências externas ao pedido.';
-  const outside = changedPaths(block.props, props).filter(
-    (path) => !policy.paths?.includes(path),
-  );
-  return outside.length
-    ? `Campos fora do pedido: ${outside.join(', ')}. Altere somente ${policy.paths?.join(', ')}.`
-    : null;
+  return null;
 }
 
 export function editScopeText(policy?: EditPolicy): string {
+  if (policy?.kind === 'navigation-style')
+    return `Pedido visual restrito aos cabeçalhos. Alvos: ${JSON.stringify(policy.targets)}. Campos permitidos: ${policy.paths?.join(', ')}. Preserve marca, textos, links, imagens, outros campos e todos os outros blocos. Achados da revisão fora desses alvos devem ser relatados, nunca corrigidos neste turno.`;
   if (policy?.visualOnly)
-    return `Ajuste visual no bloco nomeado. Alvos: ${JSON.stringify(policy.targets)}. Preserve tipo, layout, ordem, textos e ações. Use presentation, imagePresentation, imageFit, slides e carousel do schema, sem reconstruir a seção ou a página. Em slides, preserve a ordem e altere apenas a mídia pedida. Trocar a imagem não altera outros itens. Se o alvo não foi encontrado ou o schema não atende, explique o limite sem gravar.`;
-  return policy?.kind === 'navigation-style'
-    ? `Pedido restrito ao estilo do cabeçalho. Alvos: ${JSON.stringify(policy.targets)}. Campos permitidos: ${policy.paths?.join(', ')}. Preserve marca, textos, links, imagens, outros campos e todos os outros blocos. Achados da revisão fora desses alvos devem ser relatados, nunca corrigidos neste turno.`
-    : 'Edição de site existente. Preserve a direção e os blocos fora do pedido atual. Reconstrução completa não está disponível neste turno; não tente contorná-la com várias edições pequenas. Uma revisão não autoriza corrigir achados fora do pedido.';
+    return `Ajuste visual ${policy.visualFamilies?.length ? `nas famílias ${policy.visualFamilies.join(', ')}` : 'no bloco nomeado'}. Alvos: ${JSON.stringify(policy.targets)}. Preserve tipo, layout, ordem, itens, textos e ações. Use presentation, textStyles, imagePresentation, imageFit, slides e carousel do schema; em nav.bar, position e backgroundOpacity também são controles de estilo. Em slides, preserve a ordem e altere apenas a mídia pedida. Não reconstrua a seção ou a página. Trocar a imagem não altera outros itens. Se o alvo não foi encontrado ou o schema não atende, explique o limite sem gravar.`;
+  return 'Edição de site existente. Preserve a direção e os blocos fora do pedido atual. Reconstrução completa não está disponível neste turno; não tente contorná-la com várias edições pequenas. Uma revisão não autoriza corrigir achados fora do pedido.';
 }

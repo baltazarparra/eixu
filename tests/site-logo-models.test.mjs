@@ -7,6 +7,7 @@ await test('upgrade de leitura/crítica de logo preserva o agente e os overrides
     loadModule('lib/ai/models.ts', {}, { process: { env } });
   const defaults = await policy({});
   assert.equal(defaults.productModel(), 'google/gemini-3.8-flash');
+  assert.equal(defaults.productModel('edit'), 'google/gemini-3.8-flash');
   assert.equal(defaults.productModel('critic'), 'google/gemini-3.8-flash');
   assert.equal(
     defaults.productModel('logo-critic'),
@@ -28,4 +29,11 @@ await test('upgrade de leitura/crítica de logo preserva o agente e os overrides
     ],
   ])
     assert.equal((await policy(env)).productModel('logo-critic'), expected);
+  const edit = await policy({
+    EIXU_MODEL: 'operator/agent',
+    EIXU_EDIT_MODEL: 'operator/edit',
+    EIXU_CRITIC_MODEL: 'operator/critic',
+  });
+  assert.equal(edit.productModel('edit'), 'operator/edit');
+  assert.equal(edit.productModel(), 'operator/agent');
 });

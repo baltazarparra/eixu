@@ -103,7 +103,12 @@ import {
   type CurrentSiteReceipt,
   CURRENT_SITE_IMAGE_MODEL,
 } from '@/lib/current-site/schema';
-import { capturePages, type Shot } from '@/lib/review/capture';
+import {
+  capturePages,
+  measureEditedBlocks,
+  type Shot,
+  type VisualEditMeasurement,
+} from '@/lib/review/capture';
 import { critiquePages } from '@/lib/review/critic';
 import {
   captureEnabled,
@@ -1789,7 +1794,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
 
     edit_page: tool({
       description:
-        'Aplica em uma única gravação todas as edições pedidas na página: replace_text literal, set/unset por caminho (inclusive items.0.title), insert/move antes ou depois de um ID e remove. Prefira para sites existentes. Exige a revisão do contexto atual/get_page; ambiguidade, conflito ou erro recusa o lote inteiro. Preserva os demais campos e o publicado. Cor local: presentation.background em hex ou transparent; foreground só com hex. A cor do operador é chapada e remove lavagem, brilho e motivo da vibe naquela seção; não existe campo de degradê, então um pedido de degradê recebe a alternativa real sem gravar nada. hero.landing permite imagePresentation; signature.composition permite items.N.imagePresentation. frame none retira o box decorativo e a moldura herdada; fit natural elimina a proporção fixa; width container e spacingTop none ajustam largura e espaço superior. Preserve layout, conteúdo e itens. Para tamanho e cor de texto, use textStyles por caminho, size de -2 a 2 e color hex com contraste mínimo de 4,5:1. Recusa operações que apaguem texto que o pedido atual não mandou remover. O retorno já inclui o pre-flight: não revise ou leia novamente sem necessidade.',
+        'Aplica em uma única gravação todas as edições pedidas na página: replace_text literal, set/unset por caminho (inclusive items.0.title), insert/move antes ou depois de um ID e remove. Prefira para sites existentes. Exige a revisão do contexto atual/get_page; ambiguidade, conflito ou erro recusa o lote inteiro. Preserva os demais campos e o publicado. Cor local: presentation.background em hex ou transparent; use backgroundEnd com gradient down, diagonal ou right para degradê, e decoration none para retirar a decoração da vibe. foreground só com fundo hex e precisa passar em todas as extremidades. hero.landing permite imagePresentation; signature.composition permite items.N.imagePresentation. frame none retira o box decorativo e a moldura herdada; fit natural elimina a proporção fixa; width container e spacingTop none ajustam largura e espaço superior. Preserve layout, conteúdo e itens. Para tamanho e cor de texto, use textStyles por caminho, size de -2 a 2 e color hex com contraste mínimo de 4,5:1. Recusa operações que apaguem texto que o pedido atual não mandou remover. Uma edição visual salva é medida em 1440 e 390 px sem chamada de modelo; o retorno declara falha ou indisponibilidade. O retorno já inclui o pre-flight: não revise ou leia novamente sem necessidade.',
       inputSchema: pageEditSchema,
       execute: safe(async (input) => {
         const page = await requirePage(tenant.id, input.page);
@@ -1798,13 +1803,74 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           page,
         );
         if (clarification) throw new PageEditError(clarification);
-        const edited = applyPageEdit(page, input, context.editPolicy);
+        const edited = applyPageEdit(
+          page,
+          input,
+          context.editPolicy,
+          activeBrand,
+        );
         const saved = await savePageEdit({
           tenant,
           page,
           blocks: edited.blocks,
           brand: activeBrand,
         });
+        const visualBlockIds = [
+          ...new Set(
+            edited.changes
+              .filter(
+                (change) =>
+                  change.path === 'presentation' ||
+                  change.path?.startsWith('presentation.') ||
+                  change.path === 'textStyles' ||
+                  change.path?.startsWith('textStyles.'),
+              )
+              .map((change) => change.blockId),
+          ),
+        ];
+        let visualMeasurement: VisualEditMeasurement | undefined;
+        if (saved.changed && visualBlockIds.length) {
+          if (!captureEnabled())
+            visualMeasurement = {
+              status: 'disabled',
+              ok: false,
+              issues: [
+                'A medição renderizada automática está desativada por EIXU_REVIEW_CAPTURE=0.',
+              ],
+              viewports: [],
+            };
+          else if (!context.origin)
+            visualMeasurement = {
+              status: 'unavailable',
+              ok: false,
+              issues: [
+                'A medição renderizada não ocorreu porque a origem da prévia não está disponível.',
+              ],
+              viewports: [],
+            };
+          else {
+            try {
+              visualMeasurement = await measureEditedBlocks(
+                context.origin,
+                tenant.slug,
+                page.slug,
+                visualBlockIds,
+                { cookie: context.cookie },
+              );
+            } catch (error) {
+              visualMeasurement = {
+                status: 'unavailable',
+                ok: false,
+                issues: [
+                  error instanceof Error
+                    ? error.message.slice(0, 240)
+                    : 'A medição renderizada falhou por um erro inesperado.',
+                ],
+                viewports: [],
+              };
+            }
+          }
+        }
         // O recibo da edição já traz a validação de publicação atualizada:
         // evita um lint_site extra e mostra o que a edição resolveu.
         const { findings, plano } = await publication();
@@ -1812,6 +1878,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           ...saved,
           changes: edited.changes,
           summary: edited.summary,
+          visualMeasurement,
           publicationPending: findings,
           plano,
         };

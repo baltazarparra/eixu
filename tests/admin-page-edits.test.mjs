@@ -1,18 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createJiti } from 'jiti';
-import { editPages, pageEditFixture } from './helpers/page-edit-fixture.mjs';
+import {
+  editPages,
+  editTenant,
+  pageEditFixture,
+} from './helpers/page-edit-fixture.mjs';
 const j = createJiti(import.meta.url, {
   alias: { '@': process.cwd() },
   fsCache: false,
 });
-const { applyPageEdit, pageRevision, pageEditSchema } = await j.import(
-  '../lib/ai/page-edits.ts',
-);
+const { applyPageEdit, editingPageContext, pageRevision, pageEditSchema } =
+  await j.import('../lib/ai/page-edits.ts');
 const { editPolicyFor } = await j.import('../lib/ai/edit-policy.ts');
 const { createEditReceipt } = await j.import('../lib/ai/edit-receipt.ts');
-const { sectionColorVars } = await j.import('../lib/blocks/section-colors.ts');
+const { sectionBackgrounds, sectionColorVars } = await j.import(
+  '../lib/blocks/section-colors.ts',
+);
 const { contrastRatio } = await j.import('../lib/blocks/contrast.ts');
+const { blockSchemas } = await j.import('../lib/blocks/registry.ts');
 const input = (page, operations) => ({
   page: page.slug,
   revision: pageRevision(page),
@@ -270,7 +276,6 @@ await test('paleta local preserva o hex pedido e fornece texto e apoio legíveis
 });
 
 await test('fundo transparente mantém superfícies internas e exige contraste automático', async () => {
-  const { blockSchemas } = await j.import('../lib/blocks/registry.ts');
   const { themeVars, surfaceOf, logoFor } = await j.import(
     '../lib/blocks/theme.ts',
   );
@@ -302,6 +307,201 @@ await test('fundo transparente mantém superfícies internas e exige contraste a
     }).success,
     false,
   );
+});
+
+await test('degradê exige duas extremidades compatíveis e calcula uma única tinta AA', () => {
+  const props = editPages()[0].blocks[2].props;
+  const schema = blockSchemas['editorial.text'];
+  const valid = schema.safeParse({
+    ...props,
+    presentation: {
+      background: '#27272a',
+      backgroundEnd: '#3f3f46',
+      gradient: 'diagonal',
+      decoration: 'none',
+    },
+  });
+  assert.equal(valid.success, true, JSON.stringify(valid.error));
+  const presentation = valid.data.presentation;
+  const backgrounds = sectionBackgrounds(presentation, editTenant.brand);
+  const vars = sectionColorVars(presentation, editTenant.brand);
+  assert.deepEqual(backgrounds, ['#27272a', '#3f3f46']);
+  assert.match(vars.backgroundImage, /^linear-gradient\(160deg,/);
+  for (const background of backgrounds)
+    assert.ok(contrastRatio(vars.color, background) >= 4.5);
+
+  for (const presentation of [
+    { backgroundEnd: '#3f3f46', gradient: 'diagonal' },
+    { background: '#27272a', backgroundEnd: '#3f3f46' },
+    {
+      background: 'transparent',
+      backgroundEnd: '#3f3f46',
+      gradient: 'right',
+    },
+  ])
+    assert.equal(
+      schema.safeParse({ ...props, presentation }).success,
+      false,
+      JSON.stringify(presentation),
+    );
+
+  const incompatible = schema.safeParse({
+    ...props,
+    presentation: {
+      background: '#000000',
+      backgroundEnd: '#ffffff',
+      gradient: 'down',
+    },
+  });
+  assert.equal(incompatible.success, false);
+  assert.match(
+    incompatible.error.issues.map((issue) => issue.message).join(' '),
+    /mesma cor de texto.*Use backgroundEnd #[0-9a-f]{6}/i,
+  );
+
+  const explicit = schema.safeParse({
+    ...props,
+    presentation: {
+      background: '#27272a',
+      backgroundEnd: '#f4f4f5',
+      gradient: 'right',
+      foreground: '#ffffff',
+    },
+  });
+  assert.equal(explicit.success, false);
+  assert.match(
+    explicit.error.issues.map((issue) => issue.message).join(' '),
+    /duas extremidades/,
+  );
+});
+
+await test('pedido visual por família alcança todas as páginas, salvo página explícita', async () => {
+  const pages = editPages();
+  for (const [request, family, block] of [
+    ['Deixa o footer inteiro na cor cinza', 'footer', 'footer'],
+    ['Quero um degradê mais elegante no rodapé', 'footer', 'footer'],
+    ['Tira a lavagem do hero', 'hero', 'hero'],
+    ['Deixa o texto do cabeçalho claro', 'nav', 'nav'],
+  ]) {
+    const policy = editPolicyFor(request, pages);
+    assert.equal(policy.visualOnly, true, request);
+    assert.deepEqual(policy.visualFamilies, [family], request);
+    assert.deepEqual(
+      policy.targets,
+      pages.map((page) => ({ page: page.slug, block })),
+      request,
+    );
+    const context = editingPageContext(pages[0], pages, policy);
+    assert.match(context, /Alvos visuais de outras páginas/);
+    assert.match(context, new RegExp(pageRevision(pages[1])));
+    assert.match(context, new RegExp(`"id":"${block}"`));
+    const fixture = await pageEditFixture(request);
+    assert.equal(fixture.tools.set_brand, undefined, request);
+  }
+  const local = editPolicyFor(
+    'Na página Materiais, deixa o footer inteiro na cor cinza',
+    pages,
+  );
+  assert.deepEqual(local.targets, [{ page: 'materiais', block: 'footer' }]);
+});
+
+await test('edição visual salva dispara medição dos blocos tocados e declara desativação', async () => {
+  const calls = [];
+  const measurement = {
+    status: 'complete',
+    ok: true,
+    issues: [],
+    viewports: [
+      {
+        viewport: 'desktop',
+        width: 1440,
+        blocks: [
+          {
+            blockId: 'intro',
+            found: true,
+            backgroundColor: 'rgb(39, 39, 42)',
+            backgroundImage: 'none',
+            minimumContrast: 14.89,
+            visibleTexts: 2,
+          },
+        ],
+      },
+      {
+        viewport: 'mobile',
+        width: 390,
+        blocks: [
+          {
+            blockId: 'intro',
+            found: true,
+            backgroundColor: 'rgb(39, 39, 42)',
+            backgroundImage: 'none',
+            minimumContrast: 14.89,
+            visibleTexts: 2,
+          },
+        ],
+      },
+    ],
+  };
+  const f = await pageEditFixture(
+    'Altere só o fundo do bloco "Como escolher" para #27272a.',
+    {
+      toolContext: {
+        origin: 'http://preview.test',
+        cookie: 'eixu_admin=sessao-de-teste',
+      },
+      measureEditedBlocks: async (...args) => {
+        calls.push(args);
+        return measurement;
+      },
+    },
+  );
+  const result = await f.tools.edit_page.execute(
+    input(f.pages[0], [
+      {
+        op: 'set',
+        block: 'intro',
+        path: 'presentation.background',
+        value: '#27272a',
+      },
+    ]),
+  );
+  assert.equal(result.ok, true, JSON.stringify(result));
+  assert.deepEqual(result.visualMeasurement, measurement);
+  assert.equal(calls.length, 1);
+  assert.equal(
+    JSON.stringify(calls[0].slice(0, 4)),
+    JSON.stringify(['http://preview.test', 'edit-fixture', '', ['intro']]),
+  );
+  assert.equal(calls[0][4].cookie, 'eixu_admin=sessao-de-teste');
+
+  const previous = process.env.EIXU_REVIEW_CAPTURE;
+  process.env.EIXU_REVIEW_CAPTURE = '0';
+  try {
+    const disabled = await pageEditFixture(
+      'Altere só o fundo do bloco "Como escolher" para #27272a.',
+      {
+        toolContext: { origin: 'http://preview.test' },
+        measureEditedBlocks: async () => assert.fail('Não deve abrir browser'),
+      },
+    );
+    const output = await disabled.tools.edit_page.execute(
+      input(disabled.pages[0], [
+        {
+          op: 'set',
+          block: 'intro',
+          path: 'presentation.background',
+          value: '#27272a',
+        },
+      ]),
+    );
+    assert.equal(output.ok, true);
+    assert.equal(output.visualMeasurement.status, 'disabled');
+    assert.equal(output.visualMeasurement.ok, false);
+    assert.match(output.visualMeasurement.issues[0], /EIXU_REVIEW_CAPTURE=0/);
+  } finally {
+    if (previous === undefined) delete process.env.EIXU_REVIEW_CAPTURE;
+    else process.env.EIXU_REVIEW_CAPTURE = previous;
+  }
 });
 
 await test('schema e contexto oferecem revisão atual sem uma leitura redundante', async () => {
@@ -495,7 +695,7 @@ await test('set slides preserva a primeira foto e entrega recibo determinístico
   assert.equal(hero.props.headline, before.headline);
   assert.deepEqual(hero.props.imagePresentation, before.imagePresentation);
   assert.deepEqual(hero.props.slides, carouselSlides);
-  assert.deepEqual(edited.summary, ['Em “seção”: carrossel com 4 fotos.']);
+  assert.deepEqual(edited.summary, ['Em “abertura”: carrossel com 4 fotos.']);
 
   const receipt = createEditReceipt();
   receipt.observe(
