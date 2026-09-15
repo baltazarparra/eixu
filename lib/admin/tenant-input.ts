@@ -10,6 +10,7 @@ export const RESERVED_TENANTS = new Set([
   'api',
   'app',
   'kanban',
+  'atividade',
   's',
   'go',
 ]);

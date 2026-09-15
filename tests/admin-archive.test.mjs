@@ -8,7 +8,14 @@ async function fixture(status) {
   const { setTenantArchivedAction } = await loadModule(
     'app/(admin)/admin/actions.ts',
     {
-      '@/lib/auth': { isAuthenticated: async () => true },
+      '@/lib/auth': {
+        currentUser: async () => ({
+          id: 'user-1',
+          name: 'Operador',
+          login: 'operador@eixu',
+        }),
+      },
+      '@/lib/admin/activity': { recordActivity: async () => undefined },
       '@/lib/db': {
         db:
           () =>

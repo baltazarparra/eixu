@@ -61,7 +61,7 @@ await test(
       await page.$$('.admin-client-row').then((rows) => rows.length),
       5,
     );
-    await page.click('.admin-client-table li:nth-child(2) .admin-client-row');
+    await page.click('.admin-client-table li:nth-child(2) .admin-client-name');
     await page.waitForFunction(
       () => location.pathname === '/admin/clinica-vertice',
     );

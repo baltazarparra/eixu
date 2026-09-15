@@ -77,7 +77,8 @@ Somente evidência atual comprova essa análise. Preserve erros e gates de publi
   liderança não deve virar alegação de cliente da EIXU.
 - Rotas administrativas e chats exigem sessão. Resolva o tenant no servidor e
   escopo de leitura/escrita pelo seu ID; UUID ou slug recebido não prova acesso.
-  O admin atual é global, sem autorização individual por tenant.
+  Cada operador tem login e PIN próprios, mas o admin continua global, sem
+  autorização individual por tenant. Preserve a autoria das ações.
 - Novo bloco exige schema/catálogo, renderizador, componente e pre-flight coerentes
   em `lib/blocks/` e `lib/taste/`. Não afrouxe validação para aceitar uma geração.
 - Primitivos interativos dos sites vivem em `lib/blocks/ui/`, entregam HTML útil

@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-import { createHmac } from 'node:crypto';
 import { convertToModelMessages } from 'ai';
 import { createJiti } from 'jiti';
 import { loadModule } from './helpers/load-module.mjs';
@@ -52,8 +51,14 @@ const { deleteTenantBlobs, tenantBlobPrefix } = await j.import(
 const { defaultPeriod, periodSchema, spendSchema, mergeCampaigns } =
   await j.import('../lib/admin/traffic.ts');
 const { attributionScript } = await j.import('../lib/tracking.ts');
-const { createSessionToken, verifySessionToken } =
-  await j.import('../lib/auth.ts');
+const {
+  hashAdminPin,
+  newSessionToken,
+  normalizeAdminLogin,
+  sessionTokenHash,
+  validAdminPin,
+  verifyAdminPin,
+} = await j.import('../lib/auth-crypto.ts');
 
 const tenant = {
   id: 'fixture',
@@ -696,36 +701,24 @@ await test('vibe ausente vira comercial e a faixa recusa direção fora dela', (
     /escuro demais/,
   );
 });
-await test('sessões válidas, expiradas, malformadas e ambiente sem segredo', async () => {
-  const env = {
-    NODE_ENV: process.env.NODE_ENV,
-    ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
-    ADMIN_SESSION_SECRET: process.env.ADMIN_SESSION_SECRET,
-  };
-  try {
-    process.env.ADMIN_SESSION_SECRET = 'fixture-only-secret';
-    process.env.NODE_ENV = 'test';
-    assert.equal(await verifySessionToken(await createSessionToken()), true);
-    const token = (payload) =>
-      `${payload}.${createHmac('sha256', 'fixture-only-secret').update(payload).digest('base64url')}`;
-    for (const payload of [
-      'admin.NaN',
-      'admin.1',
-      `outro.${Date.now() + 60000}`,
-      'admin.Infinity',
-    ])
-      assert.equal(await verifySessionToken(token(payload)), false);
-    delete process.env.ADMIN_PASSWORD;
-    delete process.env.ADMIN_SESSION_SECRET;
-    process.env.NODE_ENV = 'production';
-    assert.equal(await verifySessionToken('admin.9999999999999.forged'), false);
-    await assert.rejects(() => createSessionToken(), /não configurada/);
-  } finally {
-    for (const [key, value] of Object.entries(env)) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
-    }
-  }
+await test('PIN usa hash com sal e pepper; login e token têm formato estrito', async () => {
+  assert.equal(normalizeAdminLogin('  Baltz@EIXU '), 'baltz@eixu');
+  assert.equal(validAdminPin('0000'), true);
+  for (const pin of ['000', '00000', '00a0', ' 0000 '])
+    assert.equal(validAdminPin(pin), false);
+  const hash = await hashAdminPin('0000', 'fixture-pepper');
+  assert.match(hash, /^scrypt\$32768\$8\$1\$/);
+  assert.equal(await verifyAdminPin('0000', hash, 'fixture-pepper'), true);
+  assert.equal(await verifyAdminPin('0001', hash, 'fixture-pepper'), false);
+  assert.equal(await verifyAdminPin('0000', hash, 'other-pepper'), false);
+  assert.equal(
+    await verifyAdminPin('0000', 'malformed', 'fixture-pepper'),
+    false,
+  );
+  const token = newSessionToken();
+  assert.equal(token.length >= 40, true);
+  assert.equal(sessionTokenHash(token), sessionTokenHash(token));
+  assert.notEqual(sessionTokenHash(token), token);
 });
 await test('períodos e dinheiro são validados sem datas impossíveis ou valores negativos', () => {
   assert.deepEqual(defaultPeriod(new Date('2026-09-10T15:00:00Z')), {

@@ -2,6 +2,8 @@ import { kanbanCommandSchema } from '@/lib/kanban/schema';
 import { executeKanbanCommand, KanbanError } from '@/lib/kanban/service';
 import { guardKanbanRequest } from '@/app/api/admin/kanban/guard';
 import { kanbanFailure, privateJson } from '@/app/api/admin/kanban/responses';
+import { currentUser } from '@/lib/auth';
+import { recordActivity } from '@/lib/admin/activity';
 
 const MAX_BODY_BYTES = 32 * 1024;
 
@@ -41,6 +43,12 @@ class BodyTooLarge extends Error {}
 export async function POST(request: Request): Promise<Response> {
   const denied = await guardKanbanRequest(request, true);
   if (denied) return denied;
+  const user = await currentUser();
+  if (!user)
+    return privateJson(
+      { error: 'Sua sessão expirou.', code: 'SESSION_EXPIRED' },
+      401,
+    );
 
   let body: unknown;
   try {
@@ -81,6 +89,14 @@ export async function POST(request: Request): Promise<Response> {
       type: parsed.data.type,
       durationMs: Date.now() - startedAt,
       result: 'ok',
+    });
+    await recordActivity({
+      actor: user,
+      actorType: 'user',
+      action: `kanban.${parsed.data.type}`,
+      resourceType: 'kanban',
+      operationId: `kanban:${requestId}`,
+      summary: `${user.name} executou ${parsed.data.type} no Kanban`,
     });
     return privateJson(result);
   } catch (error) {

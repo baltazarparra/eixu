@@ -39,7 +39,14 @@ await test(
     const { POST } = await loadModule(
       'app/api/admin/[tenant]/publish/route.ts',
       {
-        '@/lib/auth': { isAuthenticated: async () => true },
+        '@/lib/auth': {
+          currentUser: async () => ({
+            id: 'user-1',
+            name: 'Operador',
+            login: 'operador@eixu',
+          }),
+        },
+        '@/lib/admin/activity': { recordActivity: async () => undefined },
         '@/lib/tenant-queries': {
           getTenantBySlug: async (slug) =>
             slug === f.tenant.slug ? f.tenant : null,

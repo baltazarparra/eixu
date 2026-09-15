@@ -82,6 +82,7 @@ createRoot(document.getElementById('root')!).render(
   ) : (
     <AdminShell
       operator="Operação"
+      login="operacao@eixu"
       logout={
         <button
           type="button"

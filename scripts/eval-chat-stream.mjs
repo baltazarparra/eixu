@@ -59,7 +59,17 @@ state.pages.push({
 const before = structuredClone(state.pages);
 const persisted = [];
 const { POST } = await loadModule('app/api/chat/route.ts', {
-  '@/lib/auth': { isAuthenticated: async () => true },
+  '@/lib/auth': {
+    currentUser: async () => ({
+      id: 'eval-user',
+      name: 'Avaliação',
+      login: 'avaliacao@eixu',
+    }),
+  },
+  '@/lib/admin/activity': {
+    recordActivity: async () => undefined,
+    recordAgentTool: async () => undefined,
+  },
   '@/lib/db': {
     db:
       () =>

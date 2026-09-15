@@ -230,7 +230,7 @@ export async function handoffFixture({ port = 0, imageUpload, publish } = {}) {
         },
         transform(_source, id) {
           if (id.endsWith('/app/(admin)/admin/actions.ts'))
-            return `export async function createTenantAction(){return 'Cadastro simulado para teste.'} export async function deleteTenantAction(){return {ok:false,message:'Exclusão simulada para teste.'}} export async function loginAction(){return 'Usuário ou senha incorretos.'} export async function logoutAction(){}`;
+            return `export async function createTenantAction(){return 'Cadastro simulado para teste.'} export async function deleteTenantAction(){return {ok:false,message:'Exclusão simulada para teste.'}} export async function setTenantArchivedAction(){return {ok:true,message:'Arquivamento simulado para teste.'}} export async function loginAction(){return 'Usuário ou PIN incorretos.'} export async function logoutAction(){}`;
         },
         configureServer(vite) {
           vite.middlewares.use(async (req, res, next) => {

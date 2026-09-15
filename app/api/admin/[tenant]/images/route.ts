@@ -1,7 +1,8 @@
 import { logoStudioSummary } from '@/lib/images/logo-studio-state';
 import { del } from '@vercel/blob';
 import { z } from 'zod';
-import { isAuthenticated } from '@/lib/auth';
+import { currentUser } from '@/lib/auth';
+import { recordActivity } from '@/lib/admin/activity';
 import { UploadError } from '@/lib/blob/tenant-files';
 import { TenantRemovedError } from '@/lib/tenant-lock';
 import { uploadLibraryImage } from '@/lib/images/upload';
@@ -21,13 +22,13 @@ import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
 export const dynamic = 'force-dynamic';
 
 async function resolve(params: Promise<{ tenant: string }>) {
-  if (!(await isAuthenticated()))
-    return { error: new Response('Não autorizado', { status: 401 }) };
+  const user = await currentUser();
+  if (!user) return { error: new Response('Não autorizado', { status: 401 }) };
   const { tenant: slug } = await params;
   const tenant = await getTenantBySlug(slug);
   if (!tenant)
     return { error: new Response('Cliente não encontrado', { status: 404 }) };
-  return { tenant };
+  return { tenant, user };
 }
 
 const statuses = z.enum(['disponivel', 'aprovada', 'rejeitada', 'candidata']);
@@ -56,6 +57,15 @@ export async function POST(
     );
   try {
     const image = await uploadLibraryImage(resolved.tenant.id, files[0]);
+    await recordActivity({
+      actor: resolved.user,
+      actorType: 'user',
+      tenant: resolved.tenant,
+      action: 'image.upload',
+      resourceType: 'image',
+      resourceId: image.id,
+      summary: `${resolved.user.name} enviou a imagem ${image.seq} para o acervo`,
+    });
     return Response.json({ image }, { status: 201 });
   } catch (error) {
     if (error instanceof UploadError)
@@ -123,6 +133,15 @@ export async function PATCH(
   );
   if (!image)
     return Response.json({ error: 'Imagem não encontrada.' }, { status: 404 });
+  await recordActivity({
+    actor: resolved.user,
+    actorType: 'user',
+    tenant: resolved.tenant,
+    action: 'image.update',
+    resourceType: 'image',
+    resourceId: image.id,
+    summary: `${resolved.user.name} atualizou a descrição da imagem ${image.seq}`,
+  });
   return Response.json({ ok: true, image });
 }
 
@@ -157,5 +176,14 @@ export async function DELETE(
     );
   }
   await deleteImage(resolved.tenant.id, id);
+  await recordActivity({
+    actor: resolved.user,
+    actorType: 'user',
+    tenant: resolved.tenant,
+    action: 'image.delete',
+    resourceType: 'image',
+    resourceId: image.id,
+    summary: `${resolved.user.name} excluiu a imagem ${image.seq}`,
+  });
   return Response.json({ ok: true });
 }

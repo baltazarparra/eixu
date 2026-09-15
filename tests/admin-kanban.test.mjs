@@ -500,7 +500,13 @@ await test('Kanban: autenticação, host, Origin, validação e limite do POST',
   let authenticated = false;
   let executed = 0;
   let reads = 0;
-  const auth = { isAuthenticated: async () => authenticated };
+  const auth = {
+    isAuthenticated: async () => authenticated,
+    currentUser: async () =>
+      authenticated
+        ? { id: 'user-1', name: 'Operador', login: 'operador@eixu' }
+        : null,
+  };
   const host = await loadModule('lib/tenant-host.ts');
   const guard = await loadModule('app/api/admin/kanban/guard.ts', {
     '@/lib/auth': auth,
@@ -517,6 +523,8 @@ await test('Kanban: autenticação, host, Origin, validação e limite do POST',
     'app/api/admin/kanban/responses.ts',
     {
       '@/lib/kanban/service': service,
+      '@/lib/auth': auth,
+      '@/lib/admin/activity': { recordActivity: async () => undefined },
       '@/app/api/admin/kanban/guard': guard,
     },
     { crypto: globalThis.crypto },
@@ -525,6 +533,8 @@ await test('Kanban: autenticação, host, Origin, validação e limite do POST',
     'app/api/admin/kanban/commands/route.ts',
     {
       '@/lib/kanban/service': service,
+      '@/lib/auth': auth,
+      '@/lib/admin/activity': { recordActivity: async () => undefined },
       '@/app/api/admin/kanban/guard': guard,
       '@/app/api/admin/kanban/responses': responses,
     },

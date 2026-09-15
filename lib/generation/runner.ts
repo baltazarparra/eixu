@@ -9,7 +9,12 @@ import {
 import { buildTools } from '@/lib/ai/tools';
 import { sumGatewayCosts, usageRecord } from '@/lib/ai/usage';
 import { workspaceState } from '@/lib/admin/state';
-import { createSessionToken } from '@/lib/auth';
+import {
+  createPreviewToken,
+  PREVIEW_SESSION_COOKIE,
+  type AdminUser,
+} from '@/lib/auth';
+import { recordActivity, recordAgentTool } from '@/lib/admin/activity';
 import { db } from '@/lib/db';
 import { describeTool } from '@/lib/generation/labels';
 import {
@@ -92,10 +97,17 @@ async function persistMessage(
   tenantId: string,
   role: 'user' | 'assistant',
   content: string,
+  requestedBy: AdminUser | null,
 ): Promise<void> {
   await db()`
-    insert into chat_messages (tenant_id, role, content, channel)
-    values (${tenantId}, ${role}, ${content}, 'site')
+    insert into chat_messages (
+      tenant_id, role, content, channel,
+      admin_user_id, actor_type, actor_name, actor_login
+    ) values (
+      ${tenantId}, ${role}, ${content}, 'site',
+      ${requestedBy?.id ?? null}, ${requestedBy ? 'agent' : 'legacy'},
+      ${requestedBy?.name ?? null}, ${requestedBy?.login ?? null}
+    )
   `;
 }
 
@@ -330,7 +342,7 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
   try {
     const tools = buildTools(ready, {
       origin: run.origin,
-      cookie: `eixu_admin=${await createSessionToken()}`,
+      cookie: `${PREVIEW_SESSION_COOKIE}=${await createPreviewToken(tenant.id)}`,
       phase,
       onCurrentSiteProgress: async (progress) => {
         await recordEvent({
@@ -397,6 +409,14 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
             : { durationMs: Date.now() - toolStarted }),
         },
       }).catch(() => undefined);
+      if (run.requestedBy)
+        await recordAgentTool({
+          requestedBy: run.requestedBy,
+          tenant,
+          tool: name,
+          callId,
+          output: failed ? { error: 'A ferramenta falhou.' } : output,
+        }).catch(() => undefined);
     };
 
     if (sceneBatch) {
@@ -456,7 +476,7 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
             AbortSignal.timeout(LOGO_STUDIO_TIMEOUT_MS),
           ]),
           persistReceipt: (text) =>
-            persistMessage(tenant.id, 'assistant', text),
+            persistMessage(tenant.id, 'assistant', text, run.requestedBy),
           onEvent: (event) =>
             recordEvent({
               runId: run.id,
@@ -624,7 +644,7 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
   ]
     .filter(Boolean)
     .join('\n\n');
-  await persistMessage(tenant.id, 'assistant', text);
+  await persistMessage(tenant.id, 'assistant', text, run.requestedBy);
   await recordEvent({
     runId: run.id,
     tenantId: tenant.id,
@@ -654,6 +674,28 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
       phase,
       kind: 'error',
       label: outcome.error,
+    });
+  if (run.requestedBy && outcome.kind !== 'continue')
+    await recordActivity({
+      requestedBy: run.requestedBy,
+      actorType: 'agent',
+      tenant,
+      action: `generation.${outcome.kind}`,
+      summary:
+        outcome.kind === 'done'
+          ? `Agente concluiu a geração de ${tenant.name}, a pedido de ${run.requestedBy.name}`
+          : outcome.kind === 'paused'
+            ? `Agente pausou a geração de ${tenant.name}, iniciada por ${run.requestedBy.name}`
+            : `Agente não concluiu a geração de ${tenant.name}, iniciada por ${run.requestedBy.name}`,
+      result:
+        outcome.kind === 'done'
+          ? 'success'
+          : outcome.kind === 'paused'
+            ? 'partial'
+            : 'failed',
+      resourceType: 'generation_run',
+      resourceId: run.id,
+      operationId: `generation:${outcome.kind}:${run.id}`,
     });
   return outcome;
 }

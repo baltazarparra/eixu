@@ -2,7 +2,7 @@
 
 Site institucional da EIXU e MVP de uma plataforma operada por agentes para criar sites de clientes, captar contatos e acompanhar tráfego. O operador trabalha em `/admin`; cada cliente tem conteúdo e imagens próprios no mesmo banco e aplicação, com endereço previsto em `cliente.eixu.com.br`.
 
-O [índice da documentação](docs/README.md) reúne os guias vigentes, as evoluções propostas e o histórico de entregas. A revisão de 13/09/2026 parte de `main` `f9d5918` (PR #60) e inclui as alterações descritas no checkout. Evidência de cada release exige conferir o deployment do mesmo commit.
+O [índice da documentação](docs/README.md) reúne os guias vigentes, as evoluções propostas e o histórico de entregas. A documentação descreve o estado de `main` e as alterações presentes no checkout. Evidência de cada release exige conferir o deployment do mesmo commit.
 
 ## Qualidade dos agentes
 
@@ -11,8 +11,8 @@ O modelo interno é **Gemini 3.8 Flash**, com raciocínio `high`. O harness prio
 ## O que já existe
 
 - Institucional com home, oferta de passagem de vibe coding para produção e cases de SaldoPix e NaiaCRM.
-- Painel com login de operador, busca e filtros de clientes, cadastro compacto com cinco direções visuais comparáveis, geração em Preparar/Criar, chat com histórico recente, prévia em desktop/mobile, dados e briefing editáveis e publicação.
-- Kanban interno global em `/admin/kanban`: cartões com cliente opcional, prioridade, prazo, descrição e arquivo; colunas e ordem persistidas, com movimentação por arrasto ou ações acessíveis. Usa a sessão do operador; não cria contas ou permissões individuais.
+- Painel com login e PIN individual por operador, atividade com autoria, busca e filtros de clientes, cadastro compacto com cinco direções visuais comparáveis, geração em Preparar/Criar, chat com histórico recente, prévia em desktop/mobile, dados e briefing editáveis e publicação.
+- Kanban interno global em `/admin/kanban`: cartões com cliente opcional, prioridade, prazo, descrição e arquivo; colunas e ordem persistidas, com movimentação por arrasto ou ações acessíveis. Cada comando fica associado ao operador autenticado.
 - Páginas orgânicas, landing pages pagas, posts e páginas de agradecimento compostas por blocos com schemas Zod. O agente edita conteúdo por ferramentas; o painel também permite ajustar dados do cliente e gerenciar imagens.
 - Edição direta e pelo chat: texto, tamanho e cor por campo, fundo/degradê local e decoração da vibe, com contraste validado e medição renderizada após ajustes visuais. Salvar altera o rascunho; Publicar leva as mudanças ao site no ar.
 - Imagens geradas na conversa ou enviadas pelo painel, disponíveis no mesmo acervo sem aprovação. O upload aceita várias fotos JPG, PNG, WebP ou AVIF de até 4 MB cada; a geração usa o guia do cliente e a crítica. A biblioteca em `/admin/[tenant]/imagens` mantém números para pedir alterações, como “atualize a imagem #5 com outro carro”. A nova versão substitui a anterior nos rascunhos e ambas ficam salvas.
@@ -21,7 +21,7 @@ O modelo interno é **Gemini 3.8 Flash**, com raciocínio `high`. O harness prio
 - Cinco vibes com contratos próprios de tipografia, abertura, navegação, ritmo, superfície, iconografia, imagem e [voz de escrita](docs/copy.md). As quatro vibes multipágina oferecem três estruturas cada e uma composição autoral. Landing Page usa perfil v7, uma home indexável e uma página de obrigado, com ação única, prova confirmada e formulário curto. Referências visuais verificadas prevalecem na direção visual; a voz continua usando a vibe e linguagem simples.
 - Formulários, WhatsApp rastreado, atribuição de campanhas, exportação de contatos em CSV e painel de tráfego com gastos informados à mão.
 
-É um MVP de operação centralizada: há uma credencial administrativa compartilhada, sem contas ou permissões por cliente, cobrança ou integração automática com plataformas de anúncios. Os [limites atuais](docs/architecture.md#limites-atuais) fazem parte do contrato de desenvolvimento.
+É um MVP de operação centralizada: há contas administrativas individuais, todas com acesso global aos clientes, sem papéis ou permissões por cliente, cobrança ou integração automática com plataformas de anúncios. Os [limites atuais](docs/architecture.md#limites-atuais) fazem parte do contrato de desenvolvimento.
 
 ## Rodar localmente
 
@@ -37,9 +37,9 @@ O institucional e a tela de login abrem sem banco. Para usar o painel e os sites
 | Variável                 | Uso                                                                                                         |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------- |
 | `DATABASE_URL`           | Conexão Postgres/Neon das rotas dinâmicas e scripts de banco.                                               |
-| `ADMIN_USER`             | Usuário do operador; fallback `admin`.                                                                      |
-| `ADMIN_PASSWORD`         | Senha do operador. Produção recusa login se estiver ausente.                                                |
-| `ADMIN_SESSION_SECRET`   | Segredo de assinatura da sessão; configure um valor próprio. O código usa a senha como fallback.            |
+| `DATABASE_URL_UNPOOLED`  | Conexão direta preferida pelos scripts de migração e provisionamento.                                       |
+| `ADMIN_PIN_PEPPER`       | Segredo adicional usado no hash dos PINs; obrigatório em produção e estável entre provisionamento e login.  |
+| `ADMIN_SESSION_SECRET`   | Segredo dos tokens internos de prévia; obrigatório em produção.                                             |
 | `AI_GATEWAY_API_KEY`     | Autenticação explícita do AI Gateway, útil localmente. O SDK também aceita OIDC da Vercel.                  |
 | `EIXU_MODEL`             | Modelo do chat do site; fallback no código: `google/gemini-3.8-flash`.                                      |
 | `EIXU_EDIT_MODEL`        | Override opcional só para edições; sem ele, usa `EIXU_MODEL` e o mesmo fallback.                            |
@@ -53,14 +53,15 @@ O institucional e a tela de login abrem sem banco. Para usar o painel e os sites
 
 Crie o arquivo localmente, sem versionar credenciais. Se já tiver acesso ao projeto Vercel, `vercel link --project eixu` e `vercel env pull .env.local --environment=development` são uma alternativa; confira o destino de `DATABASE_URL` antes de qualquer escrita. O nome do ambiente Vercel não garante que o banco conectado seja de desenvolvimento.
 
-No banco de desenvolvimento escolhido, aplique o schema e inicie o servidor:
+No banco de desenvolvimento escolhido, aplique o schema, provisione os usuários autorizados e inicie o servidor. `ADMIN_INITIAL_PIN` existe apenas durante o comando de provisionamento e não deve ser versionado:
 
 ```bash
 npm run db:migrate
+ADMIN_INITIAL_PIN='<pin-inicial>' npm run db:provision-admins
 npm run dev:vercel
 ```
 
-Entre em [localhost:3000/admin](http://localhost:3000/admin) com as credenciais configuradas. Apenas em desenvolvimento, sem `ADMIN_PASSWORD`, o código permite a senha `1234` para `ADMIN_USER` (ou `admin`); esse fallback não serve para ambientes compartilhados.
+Entre em [localhost:3000/admin](http://localhost:3000/admin) com o login e o PIN provisionados. O script cria apenas contas ausentes e preserva contas já existentes.
 
 Após criar o tenant, veja seu rascunho em `http://localhost:3000/s/cliente?preview=1&__tenant=cliente`. A versão publicada fica em `http://cliente.localhost:3000` ou `http://localhost:3000/s/cliente?__tenant=cliente`. `__tenant` resolve o cliente; `preview=1` seleciona o rascunho. O rascunho exige uma sessão administrativa válida e recebe `noindex`; as flags sozinhas não dão acesso. A prévia mantém os links internos no cliente e desativa formulários e tracking.
 
@@ -73,7 +74,7 @@ Na Vercel, as etapas da geração são entregues pela fila `eixu-generation-step
 | Área                  | Entrada                                                                                      |
 | --------------------- | -------------------------------------------------------------------------------------------- |
 | Institucional         | `app/(main)/`, `components/eixu.tsx`, `lib/site.ts`                                          |
-| Painel e autenticação | `app/(admin)/`, `lib/auth.ts`, `app/api/admin/`                                              |
+| Painel e autenticação | `app/(admin)/`, `lib/auth.ts`, `lib/admin/activity.ts`, `app/api/admin/`                     |
 | Kanban interno        | `app/(admin)/admin/kanban/`, `app/api/admin/kanban/`, `lib/kanban/`                          |
 | Sites por tenant      | `proxy.ts`, `app/(sites)/`, `lib/tenant-queries.ts`                                          |
 | Blocos e qualidade    | `lib/blocks/`, `lib/taste/`                                                                  |
@@ -102,6 +103,7 @@ Os três grupos de rotas têm layouts e CSS próprios. A geração valida págin
 | `npm run eval:site -- <caso>`                                | Chama modelos e escreve em um tenant `eval-*`, sem publicar; `--generate` acrescenta fotos e `--fresh` exclui o tenant do caso. Requer recurso e escopo autorizados.   |
 | `npm run format -- --check README.md AGENTS.md SOUL.md docs` | Confere a formatação da documentação sem reescrever arquivos.                                                                                                          |
 | `npm run db:migrate`                                         | Aplica statements idempotentes de `db/schema.sql`; escreve no banco. Coluna nova exige rodar antes do deploy do código que a usa.                                      |
+| `npm run db:provision-admins`                                | Cria somente os operadores iniciais ausentes; exige banco, `ADMIN_PIN_PEPPER` e `ADMIN_INITIAL_PIN`.                                                                   |
 | `npm run db:seed-demo`                                       | Sobrescreve e publica home/obrigado do tenant `vertice` já existente; altera marca e dials. Use só em demo descartável.                                                |
 | `npm run db:requantize-logos`                                | Recomprime logos de todos os tenants do banco conectado, sobrescrevendo arquivos no Blob.                                                                              |
 | `npm run db:prepare-logo-assets -- --slug=cliente`           | Diagnóstico sem escrita por padrão. `--apply` prepara assets só do rascunho, com crítica da versão branca; exige escopo autorizado. `--all` seleciona todos.           |
@@ -117,6 +119,6 @@ GPT-6 Astra e Claude Fable 5.1 são os modelos de trabalho considerados pelo [ha
 
 ## Publicação
 
-O destino conferido em 13/09/2026 é o repositório [baltazarparra/eixu](https://github.com/baltazarparra/eixu), projeto `eixu` da equipe `rvnn` na Vercel e branch `main`. `vercel.json` define `npm run build:vercel`; vínculo, branch e ambiente remoto devem ser reconfirmados quando houver release. Publique pelo fluxo Git autorizado e confira o deployment do mesmo SHA até `READY`, seguido de smoke, conforme o [procedimento](docs/verification.md#publicação).
+O destino conferido em 15/09/2026 é o repositório [baltazarparra/eixu](https://github.com/baltazarparra/eixu), projeto `eixu` da equipe `rvnn` na Vercel e branch `main`. `vercel.json` define `npm run build:vercel`; vínculo, branch e ambiente remoto devem ser reconfirmados quando houver release. Publique pelo fluxo Git autorizado e confira o deployment do mesmo SHA até `READY`, seguido de smoke, conforme o [procedimento](docs/verification.md#publicação).
 
 Publicar código na Vercel e publicar páginas de clientes são operações distintas. O deploy não executa migrações, não roda o seed e não publica rascunhos. Subdomínios dependem de domínio, DNS e certificado configurados na Vercel.

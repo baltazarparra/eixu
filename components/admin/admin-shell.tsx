@@ -6,15 +6,20 @@ import { AdminSession } from './session';
 
 export function AdminShell({
   operator,
+  login,
   logout,
   children,
 }: {
   operator: string;
+  login: string;
   logout: ReactNode;
   children: ReactNode;
 }) {
   const pathname = usePathname();
-  const session = useMemo(() => ({ operator, logout }), [operator, logout]);
+  const session = useMemo(
+    () => ({ operator, login, logout }),
+    [operator, login, logout],
+  );
   const shellRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const shell = shellRef.current;

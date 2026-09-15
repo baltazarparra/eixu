@@ -16,9 +16,10 @@ a divergência deve ser corrigida na documentação.
 EIXU reúne um site institucional e um gerador multi-tenant operado em `/admin`.
 Cada cliente tem cadastro, briefing, marca, direção visual, biblioteca de
 imagens, conversa, páginas em rascunho, métricas e um snapshot publicado. A
-sessão administrativa é global: o operador autenticado enxerga todos os
-clientes; o produto ainda não oferece usuário ou permissão individual por
-tenant.
+sessão administrativa identifica o operador por login e PIN. Todos os
+operadores autenticados enxergam todos os clientes; o produto ainda não oferece
+papéis ou permissão individual por tenant. Mensagens, gerações e ações mutáveis
+guardam a autoria e aparecem em `/admin/atividade`.
 
 O gerador atende dois formatos:
 
@@ -539,8 +540,8 @@ fora do escopo são removidos do runtime.
 
 ## Limites atuais
 
-- Admin global, sem usuários por cliente, papéis individuais ou portal do
-  cliente final.
+- Admin global, com operadores individuais, sem usuários por cliente, papéis
+  individuais ou portal do cliente final.
 - Até 12 páginas por projeto e 20 blocos por página; multipágina exige três
   orgânicas e Landing Page aceita somente home mais obrigado.
 - Um Site atual e uma Referência visual por cliente; leitura externa é melhor

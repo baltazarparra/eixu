@@ -171,6 +171,9 @@ um registro antigo.
 
 O smoke mínimo cobre `/`, os dois cases, `/vibe-coding-para-producao`,
 `/admin/login`, redirecionamento de `/admin` sem sessão e recusas das APIs/chat.
+Mudanças de autenticação exigem ainda entrar com cada conta provisionada,
+confirmar nome/login no cabeçalho, executar uma ação reversível, conferir sua
+autoria em `/admin/atividade`, sair e verificar que a sessão revogada não volta.
 Para servir o build local, use `npx next start --hostname 127.0.0.1 --port 3100`.
 O host numérico não resolve tenant; use `cliente.localhost` ou a rota de prévia
 autenticada com `__tenant` para verificar um cliente.

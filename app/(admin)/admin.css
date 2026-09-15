@@ -1334,6 +1334,91 @@ textarea.admin-input {
   margin-bottom: 14px;
 }
 
+.admin-current-user,
+.admin-activity-link {
+  color: var(--admin-muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.admin-activity-link:hover {
+  color: var(--admin-ink);
+}
+
+.admin-audit-list {
+  display: grid;
+  gap: 0;
+  list-style: none;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  border: 1px solid var(--admin-border);
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--admin-surface);
+}
+
+.admin-audit-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  padding: 1rem 1.125rem;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.admin-audit-list li:last-child {
+  border-bottom: 0;
+}
+
+.admin-audit-list li > div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.admin-audit-list li > div:last-child {
+  justify-items: end;
+  color: var(--admin-muted);
+  font-size: 0.78rem;
+}
+
+.admin-audit-list strong {
+  font-size: 0.9rem;
+}
+
+.admin-audit-list span,
+.admin-audit-list a,
+.admin-audit-list time {
+  color: var(--admin-muted);
+  font-size: 0.78rem;
+}
+
+.admin-audit-list a:hover {
+  color: var(--admin-ink);
+}
+
+.admin-audit-list li[data-result='failed'],
+.admin-audit-list li[data-result='denied'] {
+  border-left: 3px solid var(--admin-danger);
+}
+
+.admin-audit-empty {
+  margin-top: 1.5rem;
+  padding: 3rem 1.25rem;
+  text-align: center;
+  border: 1px dashed var(--admin-border);
+  border-radius: 18px;
+}
+
+@media (max-width: 640px) {
+  .admin-audit-list li {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-audit-list li > div:last-child {
+    justify-items: start;
+  }
+}
+
 /* Histórico e consumo preservam o fluxo de stream e rolagem. */
 .admin-usage {
   flex-shrink: 0;
@@ -2086,6 +2171,17 @@ textarea.admin-input {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.admin-run-actor {
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: 0.75rem;
+}
+
+.admin-run-actor strong {
+  color: var(--admin-ink);
+  font-weight: 650;
 }
 .admin-run-meta {
   flex: none;

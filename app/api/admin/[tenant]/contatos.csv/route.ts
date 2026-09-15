@@ -1,4 +1,5 @@
-import { isAuthenticated } from '@/lib/auth';
+import { currentUser } from '@/lib/auth';
+import { recordActivity } from '@/lib/admin/activity';
 import { db } from '@/lib/db';
 import { getTenantBySlug } from '@/lib/tenant-queries';
 import { csvCell as cell } from '@/lib/admin/csv';
@@ -10,8 +11,8 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ tenant: string }> },
 ) {
-  if (!(await isAuthenticated()))
-    return new Response('Não autorizado', { status: 401 });
+  const user = await currentUser();
+  if (!user) return new Response('Não autorizado', { status: 401 });
   const { tenant: slug } = await params;
   const tenant = await getTenantBySlug(slug);
   if (!tenant) return new Response('Cliente não encontrado', { status: 404 });
@@ -68,6 +69,15 @@ export async function GET(
       .join(','),
   );
   const csv = `﻿${[header.map(cell).join(','), ...lines].join('\r\n')}`;
+  await recordActivity({
+    actor: user,
+    actorType: 'user',
+    tenant,
+    action: 'contacts.export',
+    resourceType: 'leads',
+    summary: `${user.name} exportou ${rows.length} contato${rows.length === 1 ? '' : 's'} em CSV`,
+    detail: { count: rows.length },
+  });
   return new Response(csv, {
     headers: {
       'content-type': 'text/csv; charset=utf-8',

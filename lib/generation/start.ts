@@ -14,6 +14,8 @@ import { generationState } from '@/lib/sites/generation';
 import { PHASE_LABEL } from '@/lib/taste/phases';
 import { listPages } from '@/lib/tenant-queries';
 import type { Tenant } from '@/lib/types';
+import type { AdminUser } from '@/lib/auth';
+import { recordActivity } from '@/lib/admin/activity';
 
 export type StartResult =
   | { ok: true; run: GenerationRun; phase: string }
@@ -27,8 +29,9 @@ export type StartResult =
 export async function startGeneration(input: {
   tenant: Tenant;
   origin: string;
+  requestedBy: AdminUser;
 }): Promise<StartResult> {
-  const { tenant, origin } = input;
+  const { tenant, origin, requestedBy } = input;
   const existing = await expireStaleRun(await activeRun(tenant.id));
   if (existing && ACTIVE_STATUS.includes(existing.status))
     return {
@@ -54,6 +57,7 @@ export async function startGeneration(input: {
     tenantId: tenant.id,
     origin,
     phase: state.next,
+    requestedBy,
   });
   if (!run)
     return {
@@ -68,6 +72,16 @@ export async function startGeneration(input: {
     phase: state.next,
     kind: 'note',
     label: `Geração iniciada em ${PHASE_LABEL[state.next]}`,
+  });
+  await recordActivity({
+    actor: requestedBy,
+    tenant,
+    action: 'generation.start',
+    summary: `${requestedBy.name} iniciou a geração de ${tenant.name}`,
+    result: 'started',
+    resourceType: 'generation_run',
+    resourceId: run.id,
+    operationId: `generation:start:${run.id}`,
   });
 
   try {
