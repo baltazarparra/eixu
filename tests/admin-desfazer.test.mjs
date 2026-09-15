@@ -106,7 +106,10 @@ await test('histórico acompanha a ordem de duas edições concorrentes', async 
   });
   releaseFirst();
   const saved = await Promise.all([firstSave, secondSave]);
-  assert.equal(saved.every((result) => result.undoAvailable), true);
+  assert.equal(
+    saved.every((result) => result.undoAvailable),
+    true,
+  );
 
   const current = structuredClone(fixture.pages[0]);
   assert.equal(current.blocks[2].props.title, 'Segunda alteração');
@@ -116,6 +119,34 @@ await test('histórico acompanha a ordem de duas edições concorrentes', async 
     brand: fixture.tenant.brand,
   });
   assert.equal(fixture.pages[0].blocks[2].props.title, 'Primeira alteração');
+});
+
+await test('desfazer resolve a última página alterada, mesmo com outra página em foco', async () => {
+  const fixture = await pageEditFixture('ajuste visual na home');
+  const edits = fixture.mocks['@/lib/sites/edits'];
+  const revisions = fixture.mocks['@/lib/sites/revisions'];
+  const homeBefore = structuredClone(fixture.pages[0].blocks);
+  const home = structuredClone(fixture.pages[0]);
+  const changed = structuredClone(home.blocks);
+  changed[1].props.presentation = { textAlign: 'right' };
+  await edits.savePageEdit({
+    tenant: fixture.tenant,
+    page: home,
+    blocks: changed,
+    brand: fixture.tenant.brand,
+  });
+
+  // O painel poderia estar em /materiais; o histórico, não o foco, decide.
+  assert.equal(await revisions.latestUndoPage(fixture.tenant.id), '');
+  const target = structuredClone(
+    fixture.pages.find((page) => page.slug === ''),
+  );
+  await edits.undoPageEdit({
+    tenant: fixture.tenant,
+    page: target,
+    brand: fixture.tenant.brand,
+  });
+  assert.deepEqual(fixture.pages[0].blocks, homeBefore);
 });
 
 await test('sem versão guardada, o desfazer explica em vez de inventar', async () => {

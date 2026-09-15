@@ -172,3 +172,68 @@ for (const mode of ['model', 'receipt', 'ambiguous'])
     );
     assert.equal(persisted.length, 2);
   });
+
+await test('rota desfaz a última página editada mesmo quando o painel mudou de foco', async () => {
+  const f = await pageEditFixture('alinhe o hero da home à direita');
+  const before = structuredClone(f.pages[0].blocks);
+  const home = structuredClone(f.pages[0]);
+  const changed = structuredClone(home.blocks);
+  changed[1].props.presentation = { textAlign: 'right' };
+  await f.mocks['@/lib/sites/edits'].savePageEdit({
+    tenant: f.tenant,
+    page: home,
+    blocks: changed,
+    brand: f.tenant.brand,
+  });
+
+  const persisted = [];
+  const { POST } = await loadModule('app/api/chat/route.ts', {
+    '@/lib/auth': { isAuthenticated: async () => true },
+    '@/lib/db': {
+      db:
+        () =>
+        async (_parts, ...values) => {
+          persisted.push(values[1]);
+          return [];
+        },
+    },
+    '@/lib/tenant-queries': {
+      getTenantBySlug: async () => f.tenant,
+      listPages: async () => structuredClone(f.pages),
+    },
+    '@/lib/images/queries': { listImages: async () => [] },
+    '@/lib/generation/runs': {
+      activeRun: async () => null,
+      expireStaleRun: async () => null,
+    },
+    '@/lib/sites/revisions': f.mocks['@/lib/sites/revisions'],
+    '@/lib/sites/edits': f.mocks['@/lib/sites/edits'],
+    '@/lib/ai/agent': {
+      siteAgent: () => assert.fail('Desfazer direto não chama o modelo.'),
+    },
+  });
+  const response = await POST(
+    new Request('http://localhost/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenant: f.tenant.slug,
+        page: 'materiais',
+        messages: [
+          {
+            id: 'undo-home-from-materials',
+            role: 'user',
+            parts: [{ type: 'text', text: 'desfaz' }],
+          },
+        ],
+      }),
+    }),
+  );
+  assert.equal(response.status, 200);
+  const stream = await response.text();
+  assert.match(stream, /Desfeito: o rascunho de \/ voltou/);
+  assert.match(stream, /data-preview-update/);
+  assert.deepEqual(f.pages[0].blocks, before);
+  assert.deepEqual(f.pages[1], editPages()[1]);
+  assert.equal(persisted.length, 2);
+});

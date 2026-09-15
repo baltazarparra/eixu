@@ -281,7 +281,7 @@ Gastos de todos os canais da mesma campanha são somados, incluindo campanhas se
 
 ## Limites atuais
 
-- **Edição direta:** disponível para clientes publicados, por campo inteiro; sem posts, marcação inline ou mescla de conflitos. O desfazer alcança a última escrita do rascunho de cada página, não o site publicado nem imagens. Controles conservam seus estilos e cores sobre fotos sem superfície uniforme ficam automáticas.
+- **Edição direta:** disponível para clientes publicados, por campo inteiro; sem posts, marcação inline ou mescla de conflitos. Tamanho, cor e alinhamento ficam em `textStyles`. No chat, “desfaz” alcança a página da revisão mais recente; o botão da prévia alcança a última escrita daquela página. Nenhum dos dois muda o publicado ou as imagens. Controles conservam seus estilos e cores sobre fotos sem superfície uniforme ficam automáticas.
 - **Conversa simultânea:** o run impede um turno de chat durante a geração, mas duas abas ainda podem abrir dois turnos livres para o mesmo cliente.
 - **Classificação de conversa:** o filtro é conservador e baseado em linguagem explícita, não uma compreensão universal de intenção. Uma frase ambígua pode ficar somente em leitura; reformular como ordem direta libera a ação sem alterar nada no primeiro turno.
 - **Exclusão:** definitiva, sem lixeira. O CDN pode servir um arquivo apagado por cerca de um minuto, e uma exclusão durante geração ativa derruba as ferramentas daquele turno por chave estrangeira.

@@ -58,6 +58,7 @@ migrar, excluir dados ou publicar.
 | [Degradê com técnica](archive/gradient-technique-plan-2026-09-13.md)        | Estudo da referência e plano executado do brilho radial e do contraste do `cover`.                  |
 | [Edição visual pelo chat](plano-edicao-visual-chat.md)                      | Incidente, causa raiz e plano executado para superfície local, recibo e medição.                    |
 | [Conversa e conhecimento do Eixu](plano-chat-eixu.md)                       | Diagnóstico, arquitetura, etapas e validação do manual, soul e compositor refinado.                 |
+| [Edição completa pelo chat](plano-edicao-completa-chat.md)                  | Plano reconciliado e execução do alinhamento fiel e do desfazer independente do foco.               |
 
 Os registros preservam o estado da época, inclusive hipóteses e resultados
 superados. Arquivos em `outputs/` podem existir apenas no ambiente do ensaio.

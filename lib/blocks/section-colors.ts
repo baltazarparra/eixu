@@ -19,6 +19,8 @@ export type SectionPresentation = {
   foreground?: string;
   gradient?: 'down' | 'diagonal' | 'right';
   tone?: string;
+  textAlign?: 'left' | 'center' | 'right' | 'justify';
+  contentAlign?: 'start' | 'center' | 'end';
 };
 
 const GRADIENT_ANGLES: Record<

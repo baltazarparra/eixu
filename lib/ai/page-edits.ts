@@ -181,6 +181,9 @@ export function editingPageContext(
         !Array.isArray(block.props.presentation)
           ? block.props.presentation
           : undefined,
+      textStyles: Array.isArray(block.props.textStyles)
+        ? block.props.textStyles
+        : undefined,
     });
     grouped.set(targetPage.slug, current);
   }
@@ -547,6 +550,17 @@ const VISUAL_SUMMARIES: Record<string, Record<string, string>> = {
   },
   'presentation.edge': { none: 'borda da seção removida' },
   'presentation.spacingTop': { none: 'espaço acima da seção removido' },
+  'presentation.textAlign': {
+    left: 'texto alinhado à esquerda',
+    center: 'texto centralizado',
+    right: 'texto alinhado à direita',
+    justify: 'texto justificado',
+  },
+  'presentation.contentAlign': {
+    start: 'grupo de conteúdo alinhado ao início',
+    center: 'grupo de conteúdo centralizado',
+    end: 'grupo de conteúdo alinhado ao fim',
+  },
   'imagePresentation.frame': { none: 'moldura da imagem removida' },
   'imagePresentation.fit': { natural: 'imagem inteira na proporção original' },
   'imagePresentation.width': { container: 'imagem na largura do próprio box' },
@@ -588,6 +602,29 @@ function visualChangeSummary(
   brand: Brand,
 ): string | undefined {
   if (!block) return undefined;
+  if (property === 'textStyles' && Array.isArray(value)) {
+    const aligned = value.filter(
+      (entry): entry is { field: string; align: string } =>
+        Boolean(
+          entry &&
+          typeof entry === 'object' &&
+          typeof (entry as { field?: unknown }).field === 'string' &&
+          typeof (entry as { align?: unknown }).align === 'string',
+        ),
+    );
+    if (aligned.length)
+      return `${aligned.length === 1 ? aligned[0].field : `${aligned.length} campos`} com alinhamento ${aligned.length === 1 ? aligned[0].align : 'atualizado'}`;
+  }
+  if (
+    /^textStyles(?:\.\d+)?\.align$/.test(property) &&
+    typeof value === 'string'
+  )
+    return {
+      left: 'campo de texto alinhado à esquerda',
+      center: 'campo de texto centralizado',
+      right: 'campo de texto alinhado à direita',
+      justify: 'campo de texto justificado',
+    }[value];
   if (!property.startsWith('presentation.'))
     return typeof value === 'string'
       ? VISUAL_SUMMARIES[property]?.[value]

@@ -117,3 +117,27 @@ export async function pagesWithUndo(tenantId: string): Promise<string[]> {
     return [];
   }
 }
+
+/**
+ * Página da última alteração reversível do cliente, independente da página
+ * aberta no painel. O chat do admin é único por tenant; portanto esta ordem é
+ * também a ordem durável da conversa depois de recarregar ou trocar o foco.
+ */
+export async function latestUndoPage(
+  tenantId: string,
+): Promise<string | undefined> {
+  try {
+    const rows = await db()`
+      select p.slug
+      from page_revisions r
+      join pages p on p.id = r.page_id
+      where r.tenant_id = ${tenantId}
+      order by r.created_at desc, r.id desc
+      limit 1
+    `;
+    const [row] = rows as { slug: string }[];
+    return row?.slug;
+  } catch {
+    return undefined;
+  }
+}

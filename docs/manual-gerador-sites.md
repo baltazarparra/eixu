@@ -292,8 +292,8 @@ pre-flight e documentação coerentes.
 
 Todos os blocos relevantes aceitam `presentation`: tom, decoração, cor local,
 degradê controlado, cor de texto validada, movimento, largura, espaçamento,
-alinhamento e borda/bleed. Cor de texto e fundo precisam manter contraste de
-4,5:1. `textStyles` ajusta tamanho, peso, estilo, transformação, alinhamento e
+alinhamento do texto, alinhamento do grupo e borda/bleed. Cor de texto e fundo
+precisam manter contraste de 4,5:1. `textStyles` ajusta tamanho, alinhamento e
 cor por campo dentro de limites. Imagens compatíveis aceitam fit, foco e, em
 alguns blocos, `imagePresentation` para retirar moldura, manter proporção
 natural, ocupar o box e remover espaço superior.

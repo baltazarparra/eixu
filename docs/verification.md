@@ -75,6 +75,12 @@ igual ao hex, nenhuma imagem de fundo herdada e contraste mínimo 4,5:1 em todo
 texto visível. No mesmo processo, confere `decoration: none`, degradê local e a
 paridade de cada entrada de `SECTION_SURFACE_RULES` com o CSS do build.
 
+`tests/browser/site-hero-placement.test.mjs` cobre o alinhamento da abertura no
+CSS de produção. Em 1440 e 390 px, prova texto à direita, grupo/ações/lista no
+fim, exceção de um único campo à esquerda, mídia preservada e ausência de
+overflow. `tests/admin-page-edit-chat.test.mjs` cobre o “desfaz” da home com
+outra página em foco, sem chamada de modelo.
+
 `test:admin` também tem dois testes de captura que dependem de Chrome;
 `test:sites` também cobre captura de referência e renderização do Site atual. A revisão solicitada do produto usa
 1440 e 390 px. A matriz de navegação dos testes inclui 320, 390, 768, 1024 e

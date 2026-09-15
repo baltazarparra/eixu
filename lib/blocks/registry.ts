@@ -111,6 +111,18 @@ const presentation = z
         'Remove somente o espaço acima da seção, sem reordenar conteúdo nem mudar o respiro inferior.',
       ),
     align: z.enum(['left', 'center', 'offset']).optional(),
+    textAlign: z
+      .enum(['left', 'center', 'right', 'justify'])
+      .optional()
+      .describe(
+        'Alinhamento de todo o texto da seção. Não muda colunas, ordem, mídia nem posição do grupo.',
+      ),
+    contentAlign: z
+      .enum(['start', 'center', 'end'])
+      .optional()
+      .describe(
+        'Alinha o grupo de conteúdo e seus controles no início, centro ou fim da região disponível. Não muda a ordem de leitura.',
+      ),
     edge: z.enum(['none', 'line', 'panel', 'bleed']).optional(),
   })
   .superRefine((value, ctx) => {
@@ -1311,7 +1323,7 @@ export function catalogForPrompt(
 ): string {
   const { vibe, design, expansions = [] } = options;
   return (
-    `Comum a todos: anchor?; textStyles? [{field, size?: -2|-1|0|1|2, color?: #RRGGBB}] (até 40, por campo de texto; contraste ≥4,5:1); presentation? { ${summarize(z.toJSONSchema(presentation.unwrap()) as Record<string, unknown>, 1)} }. Exemplos locais: {"decoration":"none"}; {"background":"#27272a","backgroundEnd":"#3f3f46","gradient":"diagonal"}. ? = opcional; ≤ = máximo de caracteres.\n` +
+    `Comum a todos: anchor?; textStyles? [{field, size?: -2|-1|0|1|2, color?: #RRGGBB, align?: left|center|right|justify}] (até 40, por campo de texto; contraste ≥4,5:1); presentation? { ${summarize(z.toJSONSchema(presentation.unwrap()) as Record<string, unknown>, 1)} }. Exemplos locais: {"decoration":"none"}; {"background":"#27272a","backgroundEnd":"#3f3f46","gradient":"diagonal"}; {"textAlign":"right","contentAlign":"end"}. ? = opcional; ≤ = máximo de caracteres.\n` +
     [...BLOCK_TYPES]
       .sort((a, b) => {
         if (vibe !== 'landing') return 0;

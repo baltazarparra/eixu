@@ -493,9 +493,15 @@ e posições relativas formam um lote por página, validado antes da escrita. A
 comparação de `blocks` em JSONB recusa conflito entre abas; o recibo inclui
 mudanças, revisão, pre-flight e, para `presentation.*`/`textStyles.*`, medição
 renderizada em 1440 e 390 px. Essa medição reutiliza o Chromium, não captura
-pixels nem chama crítico; somente fundos computados, contraste e problemas
+pixels nem chama crítico; somente fundos e alinhamentos computados, contraste e problemas
 voltam ao agente. `EIXU_REVIEW_CAPTURE=0` a desliga com indisponibilidade
 explícita. A edição geral não expõe os quatro mutadores antigos.
+
+Alinhamento tem três caminhos semânticos no schema: campo
+(`textStyles.align`), textos da seção (`presentation.textAlign`) e
+grupo/controles (`presentation.contentAlign`). O prompt proíbe usar centro,
+inversão de foto ou troca de layout como substituto para direita. A página
+explicitamente nomeada vence o foco atual.
 
 Nos consumidores legados, `update_block` combina parcialmente `presentation`, preservando seus campos
 omitidos, e valida o bloco completo com schema estrito antes de escrever.

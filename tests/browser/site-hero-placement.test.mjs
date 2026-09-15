@@ -45,6 +45,13 @@ const hero = (placement) => ({
   },
 });
 
+const rightAlignedHero = () => {
+  const block = hero('cta');
+  block.props.presentation = { textAlign: 'right', contentAlign: 'end' };
+  block.props.textStyles = [{ field: 'subtext', align: 'left' }];
+  return block;
+};
+
 await test(
   'os selos do hero mudam de lugar com o CSS de produção, sem perder a coluna nem o toque',
   { skip: !process.env.EIXU_CHROME_PATH },
@@ -76,9 +83,29 @@ await test(
       }),
     )}</div></body></html>`;
 
-    const pages = { cta: html('cta'), headline: html('headline') };
+    const pages = {
+      cta: html('cta'),
+      headline: html('headline'),
+      right: `<!doctype html><html lang="pt-BR"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<style>${css}</style></head><body><div class="site-theme" data-variance="expressive" data-density="normal" data-motion="still" style="${Object.entries(
+        themeVars(tenant.brand),
+      )
+        .map(([key, value]) => `${key}:${value}`)
+        .join(';')}">${renderToStaticMarkup(
+        createElement(RenderBlocks, {
+          blocks: [rightAlignedHero()],
+          ctx: { tenant, pagePath: '/' },
+        }),
+      )}</div></body></html>`,
+    };
     const server = createServer((request, response) => {
-      const key = request.url === '/headline' ? 'headline' : 'cta';
+      const key =
+        request.url === '/headline'
+          ? 'headline'
+          : request.url === '/right'
+            ? 'right'
+            : 'cta';
       response.setHeader('Content-Type', 'text/html; charset=utf-8');
       response.end(pages[key]);
     });
@@ -109,6 +136,7 @@ await test(
             bullets: box('.site-hero-bullets'),
             actions: box('.site-hero-copy .flex.flex-wrap.gap-3'),
             subtext: box('.site-hero-copy p'),
+            media: box('.site-hero-media'),
             overflow:
               document.documentElement.scrollWidth >
               document.documentElement.clientWidth,
@@ -149,6 +177,43 @@ await test(
         }
         await page.screenshot({
           path: `outputs/hero-placement/headline-${width}.png`,
+        });
+
+        await page.goto(`${origin}/right`, { waitUntil: 'load' });
+        const aligned = await page.evaluate(() => {
+          const copy = document.querySelector('.site-hero-copy');
+          const headline = document.querySelector('.site-headline');
+          const subtext = document.querySelector(
+            '.site-hero-copy > p:not(.site-eyebrow)',
+          );
+          const actions = document.querySelector('.site-actions');
+          const bullets = document.querySelector('.site-hero-bullets');
+          const media = document.querySelector('.site-hero-media');
+          return {
+            copyItems: getComputedStyle(copy).alignItems,
+            headline: getComputedStyle(headline).textAlign,
+            subtext: getComputedStyle(subtext).textAlign,
+            actions: getComputedStyle(actions).justifyContent,
+            bullets: getComputedStyle(bullets).justifyContent,
+            copyLeft: copy.getBoundingClientRect().left,
+            mediaLeft: media.getBoundingClientRect().left,
+            overflow:
+              document.documentElement.scrollWidth >
+              document.documentElement.clientWidth,
+          };
+        });
+        assert.equal(aligned.copyItems, 'flex-end', `grupo ${width}`);
+        assert.equal(aligned.headline, 'right', `título ${width}`);
+        assert.equal(aligned.subtext, 'left', `campo isolado ${width}`);
+        assert.equal(aligned.actions, 'flex-end', `ações ${width}`);
+        assert.equal(aligned.bullets, 'flex-end', `selos ${width}`);
+        assert.equal(aligned.overflow, false, `direita ${width}`);
+        assert.ok(
+          Math.abs(aligned.mediaLeft - cta.media.left) < 2,
+          `a posição da imagem foi preservada: ${JSON.stringify({ aligned, original: cta.media })}`,
+        );
+        await page.screenshot({
+          path: `outputs/hero-placement/right-${width}.png`,
         });
       }
       assert.deepEqual(errors, []);

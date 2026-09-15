@@ -318,7 +318,7 @@ export function HeroSplit({
               {text.content('subtext', subtext)}
             </p>
           ) : null}
-          <div className="flex flex-wrap gap-3 pt-2">
+          <div className="site-actions flex flex-wrap gap-3 pt-2">
             <Action
               editing={editing}
               vibe={vibe}
@@ -434,12 +434,14 @@ export function HeroStatement({
               {text.content('subtext', subtext)}
             </p>
           ) : null}
-          <Action
-            editing={editing}
-            vibe={vibe}
-            href={cta.href}
-            label={cta.label}
-          />
+          <div className="site-actions">
+            <Action
+              editing={editing}
+              vibe={vibe}
+              href={cta.href}
+              label={cta.label}
+            />
+          </div>
         </div>
       </div>
     </section>

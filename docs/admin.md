@@ -261,11 +261,12 @@ quando a remoção deixaria a home sem a seção de fotos que a sustenta. Se o
 formato exigir um mínimo de itens, o chat explica o limite em vez de apagar a
 seção.
 
-Se uma alteração não era para ter acontecido, escreva **“desfaz”** ou use o
-ícone de desfazer acima da prévia: o rascunho daquela página volta ao estado
-anterior, com os mesmos textos, fotos e posições. O desfazer alcança a última
-alteração salva de cada página e pode ser repetido para voltar ao estado
-desfeito. Ele não muda o site publicado nem a biblioteca de imagens.
+Se uma alteração não era para ter acontecido, escreva **“desfaz”**: o chat volta
+à última página realmente alterada, mesmo que você tenha aberto outra página
+depois. O ícone acima da prévia age somente na página aberta. Nos dois casos o
+rascunho volta ao estado anterior, com os mesmos textos, fotos e posições, e um
+segundo desfazer recupera o estado que saiu. O site publicado e a biblioteca de
+imagens não mudam.
 
 Para ajustar uma imagem sem recompor a seção, indique o nome do bloco entre
 aspas e descreva a apresentação desejada. Na composição autoral é possível
@@ -333,6 +334,8 @@ da marca ou digite um hexadecimal. Cores precisam de contraste mínimo de
 4,5:1; **Automático** recupera a cor do layout. Texto sobre foto sem fundo
 uniforme mantém a cor automática. Rótulos de links, botões, abas e formulários
 podem ser reescritos, mas conservam tamanho e cor do controle.
+Os botões **Esquerda**, **Centro**, **Direita** e **Justificar** mudam o
+alinhamento apenas do campo selecionado.
 
 O texto colado perde a formatação. Em blocos de texto editorial, Enter cria um
 parágrafo e Backspace no início o une ao anterior. Nos demais campos, Enter

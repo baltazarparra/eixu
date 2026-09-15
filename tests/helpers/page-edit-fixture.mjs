@@ -228,11 +228,17 @@ export async function pageEditFixture(
         ]
           .filter((slug) => slug !== undefined)
           .map((slug) => ({ slug }));
+      if (sql.includes('join pages') && sql.includes('order by r.created_at')) {
+        const [tenantId] = values;
+        const latest = revisions
+          .filter((row) => row.tenant_id === tenantId)
+          .sort((a, b) => b.created_at - a.created_at)[0];
+        const slug = pages.find((page) => page.id === latest?.page_id)?.slug;
+        return slug === undefined ? [] : [{ slug }];
+      }
       const [pageId, tenantId] = values;
       const found = revisions
-        .filter(
-          (row) => row.page_id === pageId && row.tenant_id === tenantId,
-        )
+        .filter((row) => row.page_id === pageId && row.tenant_id === tenantId)
         .sort((a, b) => b.created_at - a.created_at);
       return found.slice(0, 1);
     }
@@ -266,8 +272,7 @@ export async function pageEditFixture(
       if (sql.includes('returning id')) {
         race?.(page);
         if (
-          pageRevision(page) !==
-          pageRevision({ blocks: JSON.parse(expected) })
+          pageRevision(page) !== pageRevision({ blocks: JSON.parse(expected) })
         )
           return [];
       }

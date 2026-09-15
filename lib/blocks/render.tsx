@@ -327,6 +327,8 @@ function renderList(
             data-spacing={presentation?.spacing}
             data-spacing-top={presentation?.spacingTop}
             data-align={presentation?.align}
+            data-text-align={presentation?.textAlign}
+            data-content-align={presentation?.contentAlign}
             data-edge={presentation?.edge}
             data-animation={presentation?.motion}
           >

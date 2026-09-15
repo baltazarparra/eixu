@@ -53,6 +53,8 @@ export async function editBrowserFixture({
       expireStaleRun: async () => null,
     },
     '@/lib/ai/tools': { buildTools: () => fixture.tools },
+    '@/lib/sites/revisions': fixture.mocks['@/lib/sites/revisions'],
+    '@/lib/sites/edits': fixture.mocks['@/lib/sites/edits'],
     '@/lib/ai/agent': {
       siteAgent: ({ tools }) => {
         let step = 0;
@@ -214,7 +216,9 @@ export async function editBrowserFixture({
                 const target = fixture.pages.find((p) => p.slug === slug);
                 response.setHeader('Content-Type', 'application/json');
                 try {
-                  const undone = await fixture.mocks['@/lib/sites/edits'].undoPageEdit({
+                  const undone = await fixture.mocks[
+                    '@/lib/sites/edits'
+                  ].undoPageEdit({
                     tenant: fixture.tenant,
                     page: structuredClone(target),
                     brand: fixture.tenant.brand,

@@ -54,6 +54,7 @@ import {
 import { systemPrompt, type PromptContext } from '@/lib/taste/prompt';
 import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
 import { undoPageEdit } from '@/lib/sites/edits';
+import { latestUndoPage } from '@/lib/sites/revisions';
 import { publicationMessage, publishSite } from '@/lib/sites/publish';
 import {
   isDirectPublicationRequest,
@@ -216,10 +217,12 @@ export async function POST(request: Request) {
   // Sem isso, "não era pra remover" virava um bloco novo, com outro ID e outro
   // texto, anunciado como se fosse a seção de volta.
   if (!phase && isUndoRequest(lastUserText)) {
-    const text = focusedPage
+    const undoSlug = await latestUndoPage(tenant.id);
+    const undoPage = pages.find((page) => page.slug === undoSlug);
+    const text = undoPage
       ? await undoPageEdit({
           tenant,
-          page: focusedPage,
+          page: undoPage,
           brand: tenant.brand,
         })
           .then(
@@ -231,7 +234,7 @@ export async function POST(request: Request) {
               ? error.message
               : 'Não consegui desfazer agora. Nada foi alterado.',
           )
-      : 'Escolha primeiro a página no painel; o desfazer age sobre o rascunho da página em foco.';
+      : 'Não há alteração anterior guardada para desfazer neste rascunho. Nada foi alterado.';
     await persistAssistant(text);
     return textResponse(text, text.startsWith('Desfeito'));
   }

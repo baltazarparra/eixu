@@ -69,7 +69,7 @@ await test('rota salva texto e estilo no rascunho, mantendo snapshot e outra pá
           title: 'Texto revisado',
           body: 'Compare as opções conforme o uso e as referências do ambiente.',
         },
-        textStyles: [{ field: 'title', size: 1 }],
+        textStyles: [{ field: 'title', size: 1, align: 'right' }],
       },
       { id: 'faq', text: { 'items.1.q': 'Como cuidar dos acabamentos?' } },
     ],
@@ -82,6 +82,9 @@ await test('rota salva texto e estilo no rascunho, mantendo snapshot e outra pá
   assert.equal(receipt.changes.length, 4);
   assert.equal(f.writes.length, 1);
   assert.equal(f.pages[0].blocks[2].props.title, 'Texto revisado');
+  assert.deepEqual(f.pages[0].blocks[2].props.textStyles, [
+    { field: 'title', size: 1, align: 'right' },
+  ]);
   assert.deepEqual(f.pages[0].publishedBlocks, before[0].publishedBlocks);
   assert.deepEqual(f.pages[1], before[1]);
   const noOp = await f.call();

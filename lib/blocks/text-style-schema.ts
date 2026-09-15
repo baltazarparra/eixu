@@ -32,11 +32,15 @@ export const textStylesSchema = z
           .string()
           .regex(/^#[0-9a-fA-F]{6}$/)
           .optional(),
+        align: z.enum(['left', 'center', 'right', 'justify']).optional(),
       })
       .strict()
       .refine(
-        (entry) => entry.size !== undefined || entry.color !== undefined,
-        'Informe tamanho ou cor.',
+        (entry) =>
+          entry.size !== undefined ||
+          entry.color !== undefined ||
+          entry.align !== undefined,
+        'Informe tamanho, cor ou alinhamento.',
       ),
   )
   .max(40)

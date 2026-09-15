@@ -30,6 +30,19 @@ function normalized(text: string) {
     .toLowerCase();
 }
 
+function containsExactText(value: unknown, target: string): boolean {
+  if (typeof value === 'string') return normalized(value).trim() === target;
+  if (Array.isArray(value))
+    return value.some((item) => containsExactText(item, target));
+  if (value && typeof value === 'object')
+    return Object.entries(value).some(
+      ([key, child]) =>
+        !['href', 'image', 'url'].includes(key) &&
+        containsExactText(child, target),
+    );
+  return false;
+}
+
 /** Uma restrição como "apenas mova" ou "sem apagar" não autoriza remoção.
  * Tirar decoração também não dá permissão para apagar o conteúdo do bloco. */
 export function asksRemoval(text: string): boolean {
@@ -117,13 +130,13 @@ function namedVisualScope(text: string, pages: Page[], pageSlug?: string) {
   if (!quoted) return undefined;
   const request = normalized(text.replace(quoted, ''));
   if (
-    !/\b(imagem|imagens|foto|fotos|carrossel|carousel|slider|slides?|autoplay|bg|background|borda|border|padding|margin|margem|width|largura|espaco|espacamento|clean|moldura)\b/.test(
+    !/\b(imagem|imagens|foto|fotos|carrossel|carousel|slider|slides?|autoplay|bg|background|borda|border|padding|margin|margem|width|largura|espaco|espacamento|clean|moldura|alinh\w*|text[ -]?align|direita|esquerda|centraliz\w*|centro|disposi[cç][aã]o|posicion\w*)\b/.test(
       request,
     )
   )
     return undefined;
   if (
-    /\b(texto|titulo|copy|reescreva|conteudo|remova|apague|exclua|insira|adicione|reordene|substitua|troque|analise|revise|revisao|confira)\b/.test(
+    /\b(reescreva|remova|apague|exclua|insira|adicione|reordene|substitua|troque|analise|revise|revisao|confira)\b/.test(
       request,
     )
   )
@@ -134,11 +147,10 @@ function namedVisualScope(text: string, pages: Page[], pageSlug?: string) {
   const target = normalized(quoted).trim();
   const targets = scope.flatMap((page) =>
     page.blocks
-      .filter((block) =>
-        [block.id, block.props.title, block.props.eyebrow].some(
-          (value) =>
-            typeof value === 'string' && normalized(value).trim() === target,
-        ),
+      .filter(
+        (block) =>
+          normalized(block.id).trim() === target ||
+          containsExactText(block.props, target),
       )
       .map((block) => ({ page: page.slug, block: block.id })),
   );
@@ -155,7 +167,7 @@ function explicitPageScope(text: string, pages: Page[], pageSlug?: string) {
   const request = normalized(text);
   if (/\b(?:nesta|nessa|esta|essa)\s+pagina\b|\bpagina\s+atual\b/.test(request))
     return pages.filter((page) => page.slug === (pageSlug ?? ''));
-  if (/\b(?:home|pagina\s+inicial)\b/.test(request))
+  if (/\b(?:home|pagina\s+(?:inicial|["“]?inicio["”]?))\b/.test(request))
     return pages.filter((page) => page.slug === '');
   const named = pages.filter((page) => {
     if (!page.slug) return false;
@@ -178,7 +190,7 @@ function explicitPageScope(text: string, pages: Page[], pageSlug?: string) {
 function familyVisualScope(text: string, pages: Page[], pageSlug?: string) {
   const request = normalized(text);
   if (
-    !/\b(?:bg|background|fundo|cor(?:es)?|cinza|gray|preto|branco|clar\w*|escur\w*|degrade|gradiente|lavagem|liso|solido|transparen\w*)\b/.test(
+    !/\b(?:bg|background|fundo|cor(?:es)?|cinza|gray|preto|branco|clar\w*|escur\w*|degrade|gradiente|lavagem|liso|solido|transparen\w*|alinh\w*|text[ -]?align|direita|esquerda|centraliz\w*|centro|disposi[cç][aã]o|posicion\w*)\b/.test(
       request,
     )
   )
@@ -436,6 +448,6 @@ export function editScopeText(policy?: EditPolicy): string {
   if (policy?.kind === 'navigation-style')
     return `Pedido visual restrito aos cabeçalhos. Alvos: ${JSON.stringify(policy.targets)}. Campos permitidos: ${policy.paths?.join(', ')}. Preserve marca, textos, links, imagens, outros campos e todos os outros blocos. Achados da revisão fora desses alvos devem ser relatados, nunca corrigidos neste turno.`;
   if (policy?.visualOnly)
-    return `Ajuste visual ${policy.visualFamilies?.length ? `nas famílias ${policy.visualFamilies.join(', ')}` : 'no bloco nomeado'}. Alvos: ${JSON.stringify(policy.targets)}. Preserve tipo, layout, ordem, itens, textos e ações. Use presentation, textStyles, imagePresentation, imageFit, slides e carousel do schema; em nav.bar, position e backgroundOpacity também são controles de estilo. Em slides, preserve a ordem e altere apenas a mídia pedida. Não reconstrua a seção ou a página. Trocar a imagem não altera outros itens. Se o alvo não foi encontrado ou o schema não atende, explique o limite sem gravar.`;
+    return `Ajuste visual ${policy.visualFamilies?.length ? `nas famílias ${policy.visualFamilies.join(', ')}` : 'no bloco nomeado'}. Alvos: ${JSON.stringify(policy.targets)}. Preserve tipo, layout, ordem, itens, textos e ações. Use presentation, textStyles, imagePresentation, imageFit, slides e carousel do schema; em nav.bar, position e backgroundOpacity também são controles de estilo. Para um campo isolado, use textStyles.align. Para todo o texto, use presentation.textAlign. Só quando o pedido também incluir o grupo, botões, listas ou layout, use presentation.contentAlign. Em slides, preserve a ordem e altere apenas a mídia pedida. Não reconstrua a seção ou a página. Trocar a imagem não altera outros itens. Se o alvo não foi encontrado ou o schema não atende, explique o limite sem gravar.`;
   return 'Edição de site existente. Preserve a direção e os blocos fora do pedido atual. Reconstrução completa não está disponível neste turno; não tente contorná-la com várias edições pequenas. Uma revisão não autoriza corrigir achados fora do pedido.';
 }

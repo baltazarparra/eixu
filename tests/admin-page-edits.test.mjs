@@ -25,6 +25,74 @@ const input = (page, operations) => ({
   operations,
 });
 
+await test('alinhamento distingue campo, texto da seção e grupo sem mudar o layout', async () => {
+  const pages = editPages({ hero: 'bullets' });
+  const request =
+    'Na página Início, no componente Banner Hero, mude o text-align do texto para direita.';
+  const policy = editPolicyFor(request, pages, 'materiais');
+  assert.equal(policy.visualOnly, true);
+  assert.deepEqual(policy.targets, [{ page: '', block: 'hero' }]);
+  const context = editingPageContext(pages[1], pages, policy);
+  assert.match(context, /"slug":"\/"/);
+  assert.match(context, /"block":"hero"|"id":"hero"/);
+
+  const before = structuredClone(pages[0]);
+  const whole = applyPageEdit(
+    pages[0],
+    input(pages[0], [
+      {
+        op: 'set',
+        block: 'hero',
+        path: 'presentation.textAlign',
+        value: 'right',
+      },
+      {
+        op: 'set',
+        block: 'hero',
+        path: 'presentation.contentAlign',
+        value: 'end',
+      },
+    ]),
+    policy,
+    editTenant.brand,
+  );
+  assert.equal(whole.blocks[1].props.presentation.textAlign, 'right');
+  assert.equal(whole.blocks[1].props.presentation.contentAlign, 'end');
+  assert.equal(whole.blocks[1].props.layout, before.blocks[1].props.layout);
+  assert.equal(
+    JSON.stringify({ ...whole.blocks[1].props, presentation: undefined }),
+    JSON.stringify({ ...before.blocks[1].props, presentation: undefined }),
+  );
+  assert.match(whole.summary.join(' '), /texto alinhado à direita/);
+  assert.match(whole.summary.join(' '), /grupo de conteúdo alinhado ao fim/);
+
+  const field = applyPageEdit(
+    pages[0],
+    input(pages[0], [
+      {
+        op: 'set',
+        block: 'hero',
+        path: 'textStyles',
+        value: [{ field: 'subtext', align: 'right' }],
+      },
+    ]),
+    policy,
+    editTenant.brand,
+  );
+  assert.deepEqual(field.blocks[1].props.textStyles, [
+    { field: 'subtext', align: 'right' },
+  ]);
+  assert.equal(field.blocks[1].props.headline, before.blocks[1].props.headline);
+
+  const quoted = editPolicyFor(
+    'Alinha o bloco "Materiais para cada ambiente" de texto, alinhado à direita no texto e no layout, todo conteúdo.',
+    pages,
+    '',
+  );
+  assert.equal(quoted.visualOnly, true);
+  assert.deepEqual(quoted.targets, [{ page: '', block: 'hero' }]);
+});
+
 await test('troca literal, campo de lista e cor em um lote preservam o restante e o publicado', async () => {
   const f = await pageEditFixture();
   const expected = structuredClone(f.pages);
@@ -651,7 +719,10 @@ await test('pedido real remove a parte indicada e aplica destaque integral com m
     f.instructions,
     /signature\.composition aceita arrangement focus-full/,
   );
-  assert.match(f.instructions, /Não troque o tipo do bloco para obter o arranjo/);
+  assert.match(
+    f.instructions,
+    /Não troque o tipo do bloco para obter o arranjo/,
+  );
 });
 
 await test('remove_item exige que o pedido atual autorize remoção', async () => {

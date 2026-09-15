@@ -115,9 +115,17 @@ somente `presentation.*`, `textStyles.*`, apresentação de imagem e, em
 `nav.bar`, `position`/`backgroundOpacity`. Textos, itens, tipo, layout e ordem
 continuam preservados.
 
+Alinhamento tem três alcances. `textStyles.align` muda um campo, como apenas o
+subtexto. `presentation.textAlign` muda todos os textos da seção.
+`presentation.contentAlign` posiciona o grupo e seus controles em `start`,
+`center` ou `end`; ele só entra quando o pedido inclui o conteúdo, os botões, a
+lista ou o layout do grupo. A página Início explicitamente nomeada resolve para
+`/` mesmo quando outra página está aberta. O CSS do operador é a última camada:
+um campo com alinhamento próprio vence a regra da seção sem usar `!important`.
+
 Depois de uma gravação que altere `presentation.*` ou `textStyles.*`, o mesmo
 Chromium da revisão abre a prévia autenticada em 1440 e 390 px. Ele localiza
-somente os `[data-block-id]` tocados, lê fundo/camada computados e mede todo
+somente os `[data-block-id]` tocados, lê fundo/camada e alinhamentos computados e mede todo
 texto visível pelo inspetor compartilhado. O retorno contém números e achados,
 sem screenshot, pixels ou crítica por modelo. Transparências são compostas com
 as superfícies ancestrais; texto diretamente sobre uma imagem, sem painel opaco,
@@ -302,7 +310,10 @@ retenção das vinte últimas versões por página. `undo_page_edit` e o botão
 Desfazer do painel restauram essa versão com os mesmos blocos, IDs, textos e
 posições, e guardam o estado atual antes de restaurar, de modo que um segundo
 desfazer devolve o que estava ali. Um pedido curto e direto de reverter é
-resolvido pelo servidor, sem chamar o modelo. O histórico é melhor esforço: se
+resolvido pelo servidor, sem chamar o modelo. No chat, a revisão mais recente do
+cliente decide a página; trocar o foco depois de editar não muda o alvo do
+“desfaz”. O botão acima da prévia continua deliberadamente restrito à página
+aberta. O histórico é melhor esforço: se
 a gravação falhar, a edição continua valendo e o recibo não oferece desfazer.
 Atualização da página, inserção da revisão e retenção usam a mesma transação e
 mantêm o lock da página até o commit. Assim duas edições aceitas não conseguem
@@ -347,8 +358,9 @@ localização automática antes do rodapé. A seção extra posterior fica fora 
 
 `savePageEdit` fica em `lib/sites/edits.ts` e é compartilhado pelo chat, pelos
 mutadores legados e pela rota administrativa de edição direta. A prop
-`textStyles` permite pedidos de tamanho e cor pelo mesmo `edit_page`, por
-exemplo `set` de `textStyles` com `[{"field":"headline","size":1}]`. Os
+`textStyles` permite pedidos de tamanho, cor e alinhamento pelo mesmo
+`edit_page`, por exemplo `set` com
+`[{"field":"headline","size":1,"align":"right"}]`. Os
 limites e o contraste são os do [contrato visual](design.md#texto-por-campo).
 O chat não muda de modelo, raciocínio ou fluxo por causa dessa prop.
 

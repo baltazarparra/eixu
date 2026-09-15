@@ -52,6 +52,9 @@ export type EditedBlockSurface = {
   minimumContrast?: number;
   unmeasurableTexts: number;
   visibleTexts: number;
+  textAlignments?: string[];
+  contentAlignments?: string[];
+  alignmentMismatches?: string[];
 };
 
 export type VisualEditMeasurement = {
@@ -193,6 +196,58 @@ export async function measureEditedBlocks(
                 );
               }) ?? root;
             const style = getComputedStyle(surface);
+            const alignmentMismatches: string[] = [];
+            const textAlignments = new Set<string>();
+            const blockTextAlign = root.dataset.textAlign;
+            const textNodes = blockTextAlign
+              ? [
+                  ...root.querySelectorAll<HTMLElement>(
+                    'h1, h2, h3, h4, p, blockquote, figcaption, dt, dd, summary, li',
+                  ),
+                ].filter((node) => node.closest('[data-text-align]') === root)
+              : [];
+            const fieldNodes = [
+              ...root.querySelectorAll<HTMLElement>('[data-text-align]'),
+            ];
+            for (const node of [...textNodes, ...fieldNodes]) {
+              const expected = node.dataset.textAlign ?? blockTextAlign;
+              if (!expected) continue;
+              const actual = getComputedStyle(node).textAlign;
+              textAlignments.add(actual);
+              if (actual !== expected)
+                alignmentMismatches.push(
+                  `texto esperado ${expected}, renderizado ${actual}`,
+                );
+            }
+            const contentAlignments = new Set<string>();
+            const contentAlign = root.dataset.contentAlign;
+            if (contentAlign) {
+              const expected = {
+                start: 'flex-start',
+                center: 'center',
+                end: 'flex-end',
+              }[contentAlign];
+              for (const node of root.querySelectorAll<HTMLElement>(
+                '.site-hero-copy, .site-landing-hero-copy, .site-signature-copy, .site-cta-copy, .site-resource-copy, .site-showcase-copy',
+              )) {
+                const actual = getComputedStyle(node).alignItems;
+                contentAlignments.add(`items:${actual}`);
+                if (expected && actual !== expected)
+                  alignmentMismatches.push(
+                    `grupo esperado ${expected}, renderizado ${actual}`,
+                  );
+              }
+              for (const node of root.querySelectorAll<HTMLElement>(
+                '.site-actions, .site-landing-actions, .site-hero-bullets, .site-landing-badges',
+              )) {
+                const actual = getComputedStyle(node).justifyContent;
+                contentAlignments.add(`controls:${actual}`);
+                if (expected && actual !== expected)
+                  alignmentMismatches.push(
+                    `controles esperados ${expected}, renderizados ${actual}`,
+                  );
+              }
+            }
             return {
               blockId,
               found: true,
@@ -200,6 +255,9 @@ export async function measureEditedBlocks(
               backgroundImage: style.backgroundImage,
               visibleTexts: 0,
               unmeasurableTexts: 0,
+              textAlignments: [...textAlignments],
+              contentAlignments: [...contentAlignments],
+              alignmentMismatches: [...new Set(alignmentMismatches)],
             };
           });
         }, targets)) as EditedBlockSurface[];
@@ -221,6 +279,10 @@ export async function measureEditedBlocks(
           if (!surface.found)
             issues.push(
               `Bloco ${surface.blockId} não encontrado na prévia em ${viewport.width} px.`,
+            );
+          for (const mismatch of surface.alignmentMismatches ?? [])
+            issues.push(
+              `Alinhamento divergente em ${viewport.width} px no bloco ${surface.blockId}: ${mismatch}.`,
             );
           for (const sample of samples.filter(
             (item) => item.measurable && item.ratio < 4.5,

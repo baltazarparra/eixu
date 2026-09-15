@@ -179,7 +179,7 @@ export function lintTextStyles(
       return [
         fail(
           'textStyles',
-          'Estilos de texto inválidos: informe campos únicos, tamanho de -2 a 2 e cor hexadecimal.',
+          'Estilos de texto inválidos: informe campos únicos, tamanho de -2 a 2, cor hexadecimal e/ou alinhamento válido.',
         ),
       ];
     const fields = blockFields(block, brand);

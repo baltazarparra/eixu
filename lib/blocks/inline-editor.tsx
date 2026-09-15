@@ -24,7 +24,8 @@ const keyOf = (field: { block: string; path: string }) =>
   `${field.block}:${field.path}`;
 const sameStyle = (a?: TextStyle, b?: TextStyle) =>
   (a?.size ?? 0) === (b?.size ?? 0) &&
-  (a?.color ?? '').toLowerCase() === (b?.color ?? '').toLowerCase();
+  (a?.color ?? '').toLowerCase() === (b?.color ?? '').toLowerCase() &&
+  (a?.align ?? '') === (b?.align ?? '');
 const changedText = (entry: Entry) =>
   normalizeFieldText(entry.current, entry.multiline) !==
   normalizeFieldText(entry.value, entry.multiline);
@@ -217,6 +218,8 @@ export function InlineEditor({
       }
       if (style?.color) node.dataset.textColor = 'true';
       else delete node.dataset.textColor;
+      if (style?.align) node.dataset.textAlign = style.align;
+      else delete node.dataset.textAlign;
       if (node.hasAttribute('data-length')) {
         const attributes = headlineAttributes(value);
         node.dataset.length = attributes['data-length'];
@@ -480,7 +483,8 @@ export function InlineEditor({
         const entry = entryOf(focused);
         if (!entry || !entry.stylable || paused) return;
         const next = { ...entry.currentStyle, ...style, field: entry.path };
-        entry.currentStyle = !next.color && !next.size ? undefined : next;
+        entry.currentStyle =
+          !next.color && !next.size && !next.align ? undefined : next;
         clearErrors(entry);
         sync();
         announce();
@@ -609,6 +613,32 @@ export function InlineEditor({
               >
                 <i aria-hidden="true" />
                 {color.label}
+              </button>
+            ))}
+          </div>
+          <div className="site-inline-row">
+            <span>Alinhar</span>
+            {(
+              [
+                ['left', 'Esquerda'],
+                ['center', 'Centro'],
+                ['right', 'Direita'],
+                ['justify', 'Justificar'],
+              ] as const
+            ).map(([align, label]) => (
+              <button
+                type="button"
+                key={align}
+                aria-label={`Alinhar à ${label.toLowerCase()}`}
+                aria-pressed={field.currentStyle?.align === align}
+                onClick={() =>
+                  commands.current?.style({
+                    align:
+                      field.currentStyle?.align === align ? undefined : align,
+                  })
+                }
+              >
+                {label}
               </button>
             ))}
           </div>
