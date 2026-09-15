@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import { MAX_CARD_DESCRIPTION } from '@/lib/kanban/constraints';
+
+export { MAX_CARD_DESCRIPTION } from '@/lib/kanban/constraints';
 
 export const MAX_COLUMNS = 8;
 export const MAX_CARDS = 500;
@@ -9,7 +12,7 @@ const expectedCardVersion = z.number().int().min(1).max(2_147_483_647);
 const title = (maximum: number) => z.string().trim().min(1).max(maximum);
 export const kanbanPrioritySchema = z.enum(['low', 'medium', 'high', 'urgent']);
 const optionalCardFields = {
-  description: z.string().max(5000).optional(),
+  description: z.string().max(MAX_CARD_DESCRIPTION).optional(),
   tenantId: id.nullable().optional(),
   priority: kanbanPrioritySchema.nullable().optional(),
   dueDate: z.iso.date().nullable().optional(),
@@ -56,7 +59,7 @@ export const kanbanCommandSchema = z.discriminatedUnion('type', [
     type: z.literal('update_card'),
     cardId: id,
     title: title(160),
-    description: z.string().max(5000),
+    description: z.string().max(MAX_CARD_DESCRIPTION),
     tenantId: id.nullable().optional(),
     priority: kanbanPrioritySchema.nullable().optional(),
     dueDate: z.iso.date().nullable().optional(),

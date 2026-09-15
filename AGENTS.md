@@ -14,8 +14,9 @@ Não concorde com uma decisão apenas por conveniência. Verifique o código e o
 
 Comunique-se em português do Brasil, com objetividade. EIXU reúne o institucional
 e um gerador de sites multi-tenant operado em `/admin`. O [README](README.md)
-apresenta produto, setup e comandos. Leia [SOUL.md](SOUL.md) para identidade e critérios de qualidade. Este contrato é compartilhado por
-Codex/GPT-6 Astra e Claude Code/Fable 5.1; `CLAUDE.md` o importa.
+apresenta produto, setup e comandos. Leia [SOUL.md](SOUL.md) para identidade e critérios de qualidade. Este contrato é compartilhado pelo
+Codex com GPT-6 Astra e GPT-5.6 Sol; `CLAUDE.md` continua importando-o como
+adaptador compatível.
 
 ## Contexto sob demanda
 
@@ -25,6 +26,7 @@ Codex/GPT-6 Astra e Claude Code/Fable 5.1; `CLAUDE.md` o importa.
 | Frontend e composição visual               | [Design e aplicação das duas skills](docs/design.md)                                                          |
 | Prompts, ferramentas, modelos ou contexto  | [SOUL.md](SOUL.md), [Harness e modelos](docs/harness.md)                                                      |
 | Validação e release                        | [Verificação](docs/verification.md)                                                                           |
+| Cards, execução e revisão de PR            | [Fluxo AI Native](docs/ai-native-development.md) e a skill da fase em `.agents/skills/kanban-*`               |
 | Neon ou schema                             | `db/schema.sql`, `lib/db.ts` e a skill relevante em `.agents/skills/neon/` ou `.agents/skills/neon-postgres/` |
 | APIs do Next.js                            | Guia correspondente em `node_modules/next/dist/docs/`, na versão instalada                                    |
 
@@ -53,6 +55,21 @@ com uma divisão que evite edição concorrente. Não há obrigação de delegar
 Em trabalho longo, dê atualizações breves. Ao retomar após compactação, preserve
 objetivo, decisões, autorização, arquivos alterados e verificações pendentes.
 
+## Fluxo AI Native pelo Kanban
+
+Quando o pedido envolver um card de desenvolvimento, use a skill da fase:
+`$kanban-spec` com GPT-6 Astra para especificar, `$kanban-delivery` com GPT-5.6
+Sol para planejar e entregar a PR e `$kanban-pr-review` com GPT-6 Astra para a
+revisão independente. A seleção do modelo ocorre no Codex; não afirme o modelo
+usado sem evidência da execução.
+
+O card é o contrato persistido entre conversas. Preserve seus critérios de
+aceite durante a implementação e registre PR, HEAD e validações antes de mover
+para **Em revisão**. Commit novo invalida o parecer anterior. Só mova para
+**Concluído** depois do merge e dos requisitos de release descritos no card.
+Use `npm run kanban` para ler e alterar o quadro pelas rotas; não escreva nas
+tabelas diretamente.
+
 ## Qualidade do harness
 
 O modelo interno é Gemini 3.8 Flash; a política em `lib/ai/models.ts` usa raciocínio
@@ -75,10 +92,12 @@ Somente evidência atual comprova essa análise. Preserve erros e gates de publi
 - Mantenha separados os layouts e CSS de `app/(main)`, `app/(admin)` e
   `app/(sites)`. Conteúdo comercial deve usar fatos verificáveis; experiência da
   liderança não deve virar alegação de cliente da EIXU.
-- Rotas administrativas e chats exigem sessão. Resolva o tenant no servidor e
-  escopo de leitura/escrita pelo seu ID; UUID ou slug recebido não prova acesso.
-  Cada operador tem login e PIN próprios, mas o admin continua global, sem
-  autorização individual por tenant. Preserve a autoria das ações.
+- Rotas administrativas e chats exigem sessão. A única exceção são os handlers
+  do Kanban, que aceitam o bearer dedicado `KANBAN_AGENT_TOKEN`, restringem esse
+  acesso ao quadro e registram suas mutações como agente. Resolva o tenant no
+  servidor e escopo de leitura/escrita pelo seu ID; UUID ou slug recebido não
+  prova acesso. Cada operador tem login e PIN próprios, mas o admin continua
+  global, sem autorização individual por tenant. Preserve a autoria das ações.
 - Novo bloco exige schema/catálogo, renderizador, componente e pre-flight coerentes
   em `lib/blocks/` e `lib/taste/`. Não afrouxe validação para aceitar uma geração.
 - Primitivos interativos dos sites vivem em `lib/blocks/ui/`, entregam HTML útil
