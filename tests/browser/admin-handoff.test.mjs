@@ -35,6 +35,18 @@ await test(
       }, text);
       assert.equal(found, true, `Botão ${text}`);
     };
+    const clickFolder = async (text) => {
+      const found = await page.evaluate((text) => {
+        const node = [...document.querySelectorAll('.admin-folder-link')].find(
+          (node) =>
+            node.querySelector('span:nth-child(2)')?.textContent.trim() ===
+            text,
+        );
+        node?.click();
+        return !!node;
+      }, text);
+      assert.equal(found, true, `Pasta ${text}`);
+    };
     await mkdir('outputs/admin-handoff', { recursive: true });
     await page.setViewport({ width: 1440, height: 900 });
     await open('/admin');
@@ -61,6 +73,57 @@ await test(
       await page.$$('.admin-client-row').then((rows) => rows.length),
       5,
     );
+    assert.match(
+      await page.$eval('.admin-folder-sidebar', (node) => node.textContent),
+      /Baltz\s*2.*David\s*1/s,
+    );
+    await clickFolder('Sem pasta');
+    assert.equal(
+      await page.$$('.admin-client-row').then((rows) => rows.length),
+      2,
+    );
+    await page.evaluate(() => {
+      const handle = document.querySelector(
+        '.admin-client-row .admin-client-drag',
+      );
+      const destination = document.querySelector(
+        '[data-folder-id="22222222-2222-4222-8222-222222222222"]',
+      );
+      const transfer = new DataTransfer();
+      handle.dispatchEvent(
+        new DragEvent('dragstart', {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer: transfer,
+        }),
+      );
+      destination.dispatchEvent(
+        new DragEvent('dragover', {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer: transfer,
+        }),
+      );
+      destination.dispatchEvent(
+        new DragEvent('drop', {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer: transfer,
+        }),
+      );
+    });
+    await page.waitForFunction(
+      () => document.querySelectorAll('.admin-client-row').length === 1,
+    );
+    assert.match(
+      await page.$eval('.admin-sites-toast', (node) => node.textContent),
+      /Site movido para David/,
+    );
+    await clickText('Desfazer');
+    await page.waitForFunction(
+      () => document.querySelectorAll('.admin-client-row').length === 2,
+    );
+    await clickFolder('Todos os sites');
     await page.click('.admin-client-table li:nth-child(2) .admin-client-name');
     await page.waitForFunction(
       () => location.pathname === '/admin/clinica-vertice',
@@ -233,7 +296,7 @@ await test(
       true,
     );
     for (const [route, title] of [
-      ['/admin?empty', 'Nenhum cliente cadastrado'],
+      ['/admin?empty', 'Nenhum site cadastrado'],
       [
         '/admin/marcenaria-horizonte/imagens?empty',
         'O acervo ainda está vazio',
@@ -247,7 +310,7 @@ await test(
       );
     }
     await open('/admin?empty');
-    await clickText('Cadastrar cliente');
+    await clickText('Criar site aqui');
     await page.waitForSelector('#new-client');
     assert.deepEqual(
       await page.$eval('[name="story"]', (node) => ({

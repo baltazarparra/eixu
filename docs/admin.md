@@ -50,8 +50,18 @@ ajustados pela edição direta ou pelo chat.
 
 Entre em `/admin` com a credencial do operador. Ao abrir o painel, a lista já
 mostra os sites publicados. A busca procura nome ou endereço; os filtros
-permitem consultar todos os clientes, rascunhos e arquivados. Abra
-**Novo cliente** e informe nome, endereço, **História do cliente** e vibe. A
+permitem consultar todos os sites, rascunhos e arquivados.
+
+As pastas da lateral são compartilhadas por toda a equipe. Crie uma pasta com o
+botão **+**, arraste um site para ela ou selecione vários sites e use **Mover
+para**. O menu de cada site oferece a mesma ação para teclado e celular. **Sem
+pasta** reúne o que ainda não foi organizado. Excluir uma pasta mantém seus
+sites e os devolve para **Sem pasta**. Depois de uma movimentação, **Desfazer**
+restaura a pasta anterior. Busca, filtro e pasta ativa são preservados ao abrir
+um site e voltar à lista.
+
+Abra **Novo site** e informe nome, endereço, **História do cliente** e vibe. Se
+uma pasta estiver aberta, o novo site já nasce nela. A
 história é obrigatória e deve reunir o que a empresa faz, para quem vende, onde
 atende, sua trajetória, diferenciais, provas e o próximo passo esperado. Um
 **Site atual** e um único link de referência visual ficam à vista e são
@@ -95,7 +105,8 @@ ações executadas pelo agente aparecem como “Agente · a pedido de” quem in
 o turno ou a geração. A geração também mostra quem a iniciou e quem pediu a
 pausa. Registros antigos, anteriores à autoria, aparecem como legado.
 
-A lista de clientes é a base da navegação: busque por nome/endereço ou filtre
+A lista de sites é a base da navegação: escolha uma pasta compartilhada, busque
+por nome/endereço ou filtre
 publicados, rascunhos e arquivados. **Arquivar** tira a URL pública do ar sem
 apagar páginas, imagens, contatos ou conversas; o editor e a prévia autenticada
 continuam disponíveis. **Reativar** recoloca no ar a última versão publicada ou

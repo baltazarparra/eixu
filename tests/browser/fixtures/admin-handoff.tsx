@@ -18,6 +18,7 @@ const content = isClients ? (
   <main className="admin-page admin-clients-page">
     <Clients
       tenants={data.empty ? [] : data.clients}
+      folders={data.empty ? [] : data.folders}
       summary={data.empty ? { leads30d: 0, running: 0 } : data.summary}
     />
   </main>

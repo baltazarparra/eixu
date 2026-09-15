@@ -21,6 +21,17 @@ create table if not exists tenants (
   updated_at    timestamptz not null default now()
 );
 
+-- Organização compartilhada da biblioteca administrativa. Pastas não alteram
+-- publicação, domínio ou conteúdo; ao excluir uma pasta, os sites permanecem.
+create table if not exists site_folders (
+  id         uuid primary key default gen_random_uuid(),
+  name       text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table tenants add column if not exists folder_id uuid references site_folders(id) on delete set null;
+
 -- Operadores internos. O PIN nunca é persistido; somente o hash com salt.
 create table if not exists admin_users (
   id         uuid primary key default gen_random_uuid(),
@@ -208,6 +219,8 @@ where published_blocks is not null
     or published_nav_order is null);
 
 create index if not exists pages_tenant_idx        on pages (tenant_id);
+create unique index if not exists site_folders_name_unique_idx on site_folders (lower(btrim(name)));
+create index if not exists tenants_folder_idx       on tenants (folder_id);
 create index if not exists images_tenant_time_idx  on images (tenant_id, created_at desc);
 create index if not exists images_batch_idx        on images (batch_id);
 create index if not exists leads_tenant_time_idx   on leads (tenant_id, created_at desc);

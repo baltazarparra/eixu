@@ -11,7 +11,7 @@ O modelo interno é **Gemini 3.8 Flash**, com raciocínio `high`. O harness prio
 ## O que já existe
 
 - Institucional com home, oferta de passagem de vibe coding para produção e cases de SaldoPix e NaiaCRM.
-- Painel com login e PIN individual por operador, atividade com autoria, busca e filtros de clientes, cadastro compacto com cinco direções visuais comparáveis, geração em Preparar/Criar, chat com histórico recente, prévia em desktop/mobile, dados e briefing editáveis e publicação.
+- Painel com login e PIN individual por operador, atividade com autoria, pastas compartilhadas para organizar e mover sites, busca e filtros, cadastro compacto com cinco direções visuais comparáveis, geração em Preparar/Criar, chat com histórico recente, prévia em desktop/mobile, dados e briefing editáveis e publicação.
 - Kanban interno global em `/admin/kanban`: cartões com cliente opcional, prioridade, prazo, descrição e arquivo; colunas e ordem persistidas, com movimentação por arrasto, ações acessíveis ou `npm run kanban`. As skills de desenvolvimento usam o card como contrato entre Astra, Sol e a revisão da PR. Cada mutação fica associada ao operador autenticado ou identificada como ação de agente quando usa o token dedicado.
 - Páginas orgânicas, landing pages pagas, posts e páginas de agradecimento compostas por blocos com schemas Zod. O agente edita conteúdo por ferramentas; o painel também permite ajustar dados do cliente e gerenciar imagens.
 - Edição direta e pelo chat: texto, tamanho e cor por campo, fundo/degradê local e decoração da vibe, com contraste validado e medição renderizada após ajustes visuais. Salvar altera o rascunho; Publicar leva as mudanças ao site no ar.
