@@ -35,8 +35,9 @@ ajustados pela edição direta ou pelo chat.
 
 ## Encontrar ou cadastrar um cliente
 
-Entre em `/admin` com a credencial do operador. A busca procura nome ou
-endereço; os filtros separam rascunhos e clientes com site publicado. Abra
+Entre em `/admin` com a credencial do operador. Ao abrir o painel, a lista já
+mostra os sites publicados. A busca procura nome ou endereço; os filtros
+permitem consultar todos os clientes, rascunhos e arquivados. Abra
 **Novo cliente** e informe nome, endereço, **História do cliente** e vibe. A
 história é obrigatória e deve reunir o que a empresa faz, para quem vende, onde
 atende, sua trajetória, diferenciais, provas e o próximo passo esperado. Um

@@ -95,7 +95,7 @@ export function Clients({
 }) {
   const session = useAdminSession();
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState('todos');
+  const [filter, setFilter] = useState('published');
   const [creating, setCreating] = useState(false);
   const [error, formAction, pending] = useActionState(createTenantAction, null);
   const published = tenants.filter(

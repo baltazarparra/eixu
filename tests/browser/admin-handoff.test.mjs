@@ -38,6 +38,17 @@ await test(
     await mkdir('outputs/admin-handoff', { recursive: true });
     await page.setViewport({ width: 1440, height: 900 });
     await open('/admin');
+    assert.equal(
+      await page.$eval(
+        '[aria-label="Filtrar clientes"] button[aria-pressed="true"]',
+        (node) => node.textContent.trim(),
+      ),
+      'Publicados',
+    );
+    assert.equal(
+      await page.$$('.admin-client-row').then((rows) => rows.length),
+      3,
+    );
     await clickText('Rascunhos');
     assert.equal(
       await page.$$('.admin-client-row').then((rows) => rows.length),
