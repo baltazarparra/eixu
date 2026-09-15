@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import puppeteer from 'puppeteer-core';
 import { kanbanFixture } from '../helpers/admin-kanban-fixture.mjs';
@@ -226,5 +227,92 @@ await test(
       () => !document.querySelector('p[role="alert"]'),
     );
     assert.deepEqual(errors, []);
+  },
+);
+
+await test(
+  'Kanban real: reconhece o próprio salvamento e conserva texto digitado enquanto salva',
+  { skip: !process.env.EIXU_CHROME_PATH, timeout: 30_000 },
+  async (t) => {
+    const fixture = await kanbanFixture();
+    const cardId = randomUUID();
+    fixture.state.cards.push({
+      id: cardId,
+      columnId: fixture.state.columns[0].id,
+      title: 'Conferir site',
+      position: 0,
+      hasDescription: false,
+    });
+    fixture.descriptions.set(cardId, '');
+    const browser = await puppeteer.launch({
+      executablePath: process.env.EIXU_CHROME_PATH,
+      headless: true,
+      args: ['--no-sandbox', '--disable-dev-shm-usage'],
+    });
+    t.after(async () => {
+      await browser.close();
+      await fixture.server.close();
+    });
+    const page = await browser.newPage();
+    await page.goto(fixture.base + '/admin/app/kanban');
+    await page.click(`[data-card-id="${cardId}"] button[class*="cardOpen"]`);
+    await page.waitForSelector('#card-description');
+
+    fixture.delayBoardRead(900);
+    await page.type('#card-description', 'Texto salvo');
+    await page.click('dialog button.admin-primary');
+    await page.waitForFunction(
+      () =>
+        document.querySelector('output')?.textContent.includes('Cartão salvo.') &&
+        document.querySelector('dialog button.admin-primary')?.disabled === false,
+    );
+    assert.equal(fixture.descriptions.get(cardId), 'Texto salvo');
+    assert.equal(await page.$('dialog [role="alert"]'), null);
+
+    fixture.delayCommandResponse(900);
+    await page.type('#card-description', ' antes do pedido');
+    await page.click('dialog button.admin-primary');
+    await page.waitForFunction(() =>
+      document.querySelector('output')?.textContent.includes('Salvando'),
+    );
+    await page.type('#card-description', ' depois do pedido');
+    await page.waitForFunction(
+      () =>
+        document.querySelector('output')?.textContent.includes('Cartão salvo.') &&
+        document.querySelector('dialog button.admin-primary')?.disabled === false,
+    );
+    assert.equal(fixture.descriptions.get(cardId), 'Texto salvo antes do pedido');
+    assert.match(
+      await page.$eval('output', (element) => element.textContent),
+      /ainda precisa ser salvo/,
+    );
+    assert.equal(
+      await page.$eval('#card-description', (element) => element.value),
+      'Texto salvo antes do pedido depois do pedido',
+    );
+
+    await page.evaluate(() => {
+      window.confirmCalls = [];
+      window.confirm = (message) => {
+        window.confirmCalls.push(message);
+        return false;
+      };
+    });
+    await page.click('button[aria-label="Fechar cartão"]');
+    assert.equal((await page.evaluate(() => window.confirmCalls)).length, 1);
+    assert.notEqual(await page.$('dialog'), null);
+
+    await page.click('dialog button.admin-primary');
+    await page.waitForFunction(
+      () =>
+        document.querySelector('output')?.textContent.includes('Cartão salvo.') &&
+        document.querySelector('dialog button.admin-primary')?.disabled === false,
+    );
+    assert.equal(
+      fixture.descriptions.get(cardId),
+      'Texto salvo antes do pedido depois do pedido',
+    );
+    await page.click('button[aria-label="Fechar cartão"]');
+    assert.equal(await page.$('dialog'), null);
   },
 );

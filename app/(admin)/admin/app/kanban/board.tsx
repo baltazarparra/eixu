@@ -101,6 +101,14 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
   const [editorStale, setEditorStale] = useState(false);
   const [detailRequestVersion, setDetailRequestVersion] = useState(0);
   const editorDirtyRef = useRef(false);
+  const editorInputVersionRef = useRef(0);
+  const editorSaveRef = useRef<{
+    cardId: string;
+    title: string;
+    description: string;
+    columnId: string;
+    position: number;
+  } | null>(null);
   const editorStaleRef = useRef(false);
   const detailRevisionRef = useRef<number | null>(null);
   const serverDetailRef = useRef<KanbanCardDetail | null>(null);
@@ -158,6 +166,7 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
   const commit = async (
     mutation: Mutation,
     success: string,
+    onApplied?: (result: CommandResponse) => void,
   ): Promise<CommandResponse | null> => {
     if (busyRef.current) return null;
     busyRef.current = true;
@@ -175,6 +184,7 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ ...mutation, expectedRevision }),
       });
+      onApplied?.(result);
       applySnapshot(result);
       setNotice(success);
     } catch (error) {
@@ -231,6 +241,7 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
   };
 
   function openCard(id: string) {
+    if (busyRef.current) return;
     if (editorDirtyRef.current && selectedCardId !== id) {
       if (!window.confirm('Descartar as alterações deste cartão?')) return;
     }
@@ -243,9 +254,11 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
     setDetailRevision(null);
     serverDetailRef.current = null;
     editorDirtyRef.current = false;
+    editorSaveRef.current = null;
   }
 
   const closeEditor = useCallback(() => {
+    if (busyRef.current) return;
     if (
       editorDirtyRef.current &&
       !window.confirm('Descartar as alterações deste cartão?')
@@ -261,6 +274,7 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
     setDetailRevision(null);
     serverDetailRef.current = null;
     editorDirtyRef.current = false;
+    editorSaveRef.current = null;
     requestAnimationFrame(() => {
       document
         .querySelector<HTMLElement>(
@@ -279,11 +293,20 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
     )
       .then(({ card, revision }) => {
         if (!current) return;
+        if (revision < snapshotRef.current.revision) return;
         setEditorError('');
+        const saving = editorSaveRef.current;
+        const matchesOwnSave =
+          saving?.cardId === card.id &&
+          saving.title === card.title &&
+          saving.description === card.description &&
+          saving.columnId === card.columnId &&
+          saving.position === card.position;
         if (
-          editorStaleRef.current ||
+          (!matchesOwnSave && editorStaleRef.current) ||
           (editorDirtyRef.current &&
             serverDetailRef.current &&
+            !matchesOwnSave &&
             detailChanged(serverDetailRef.current, card))
         ) {
           editorStaleRef.current = true;
@@ -364,7 +387,7 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
 
   async function saveEditor(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!detail) return;
+    if (!detail || busyRef.current) return;
     if (
       editorStale ||
       editorError ||
@@ -380,27 +403,53 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
       setFailure('Informe um título para o cartão.');
       return;
     }
-    const result = await commit(
-      {
-        type: 'update_card',
-        cardId: detail.id,
-        title,
-        description: editorDescription,
-      },
-      'Cartão salvo.',
-    );
+    const submittedDescription = editorDescription;
+    const submittedInputVersion = editorInputVersionRef.current;
+    editorSaveRef.current = {
+      cardId: detail.id,
+      title,
+      description: submittedDescription,
+      columnId: detail.columnId,
+      position: detail.position,
+    };
+    let result: CommandResponse | null;
+    try {
+      result = await commit(
+        {
+          type: 'update_card',
+          cardId: detail.id,
+          title,
+          description: submittedDescription,
+        },
+        'Cartão salvo.',
+        (applied) => {
+          if (applied.card) {
+            serverDetailRef.current = applied.card;
+            detailRevisionRef.current = applied.revision;
+          }
+        },
+      );
+    } finally {
+      editorSaveRef.current = null;
+    }
     if (result) {
       setDetail(
-        result.card ?? { ...detail, title, description: editorDescription },
+        result.card ?? { ...detail, title, description: submittedDescription },
       );
       serverDetailRef.current = result.card ?? {
         ...detail,
         title,
-        description: editorDescription,
+        description: submittedDescription,
       };
       detailRevisionRef.current = result.revision;
       setDetailRevision(result.revision);
-      editorDirtyRef.current = false;
+      const editedWhileSaving =
+        editorInputVersionRef.current !== submittedInputVersion;
+      editorDirtyRef.current = editedWhileSaving;
+      if (editedWhileSaving)
+        setNotice(
+          'Cartão salvo. O texto digitado durante o salvamento ainda precisa ser salvo.',
+        );
       editorStaleRef.current = false;
     }
   }
@@ -699,6 +748,7 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
                 className={styles.iconButton}
                 onClick={closeEditor}
                 aria-label="Fechar cartão"
+                disabled={busy}
               >
                 ×
               </button>
@@ -736,6 +786,7 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
                   onChange={(event) => {
                     setEditorTitle(event.target.value);
                     editorDirtyRef.current = true;
+                    editorInputVersionRef.current += 1;
                   }}
                 />
                 {failedMutation?.type === 'update_card' && fieldErrors.title ? (
@@ -759,6 +810,7 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
                   onChange={(event) => {
                     setEditorDescription(event.target.value);
                     editorDirtyRef.current = true;
+                    editorInputVersionRef.current += 1;
                   }}
                 />
                 {failedMutation?.type === 'update_card' &&
@@ -789,6 +841,7 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
                     type="button"
                     className="admin-secondary"
                     onClick={closeEditor}
+                    disabled={busy}
                   >
                     Fechar
                   </button>
@@ -978,7 +1031,9 @@ function BoardColumn({
             <button
               type="button"
               disabled={busy}
-              onClick={() => {
+              onClick={(event) => {
+                const menu = event.currentTarget.closest('details');
+                if (menu) menu.open = false;
                 setColumnTitle(column.title);
                 setRenameBaseTitle(column.title);
                 setRenaming(true);

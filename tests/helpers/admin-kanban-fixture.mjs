@@ -22,6 +22,8 @@ export async function kanbanFixture() {
   const descriptions = new Map();
   let loseNextResponse = false;
   let failNextBoardRead = false;
+  let nextBoardReadDelayMs = 0;
+  let nextCommandResponseDelayMs = 0;
 
   function normalizeCards(columnId) {
     state.cards
@@ -227,6 +229,11 @@ export async function kanbanFixture() {
               return;
             }
             if (url.pathname === '/api/admin/kanban' && req.method === 'GET') {
+              if (nextBoardReadDelayMs) {
+                const delay = nextBoardReadDelayMs;
+                nextBoardReadDelayMs = 0;
+                await new Promise((resolve) => setTimeout(resolve, delay));
+              }
               if (failNextBoardRead) {
                 failNextBoardRead = false;
                 reply(res, 503, {
@@ -268,6 +275,11 @@ export async function kanbanFixture() {
               const outcome = apply(
                 JSON.parse(Buffer.concat(chunks).toString('utf8')),
               );
+              if (nextCommandResponseDelayMs) {
+                const delay = nextCommandResponseDelayMs;
+                nextCommandResponseDelayMs = 0;
+                await new Promise((resolve) => setTimeout(resolve, delay));
+              }
               if (loseNextResponse) {
                 loseNextResponse = false;
                 req.socket.destroy();
@@ -300,6 +312,12 @@ export async function kanbanFixture() {
     },
     failRead: () => {
       failNextBoardRead = true;
+    },
+    delayBoardRead: (milliseconds) => {
+      nextBoardReadDelayMs = milliseconds;
+    },
+    delayCommandResponse: (milliseconds) => {
+      nextCommandResponseDelayMs = milliseconds;
     },
   };
 }
