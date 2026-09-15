@@ -73,6 +73,14 @@ não restaura colunas que o operador removeu depois. O GET do quadro devolve
 metadados compactos, cartões ativos e arquivados e a lista de clientes; a
 descrição completa é lida só ao abrir um cartão.
 
+`kanban_cards.card_number` é um inteiro positivo único, gerado por sequência no
+banco e exposto como `number`. O UUID `id` continua sendo a identidade interna.
+A migração atribui números aos cartões existentes (inclusive arquivados) por
+`created_at, id`, preserva os demais campos e nunca reinicia a sequência.
+Reaplicar não renumera cartões. Aplique o schema antes de publicar o código que
+consulta essa coluna. As leituras de detalhe aceitam número ou UUID, sob a mesma
+autorização; comandos de escrita continuam usando UUID e revisão/versão.
+
 O cliente interno `scripts/kanban.mjs` consome esses handlers para o fluxo de
 desenvolvimento. Ele usa apenas o bearer restrito e não acessa as tabelas
 diretamente. Em worktrees, localiza também o `.env.local` do checkout principal.

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { randomUUID } from 'node:crypto';
+import { parseCardNumber } from '../lib/kanban/card-reference.mjs';
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
@@ -212,6 +213,7 @@ function printHelp() {
   npm run kanban -- update-card <id> [--title <texto>] [--description-file <arquivo> | --append-description-file <arquivo>] [--tenant <slug|none>] [--priority <valor|none>] [--due-date <data|none>]
   npm run kanban -- move-card <id> --column <nome>
 
+ID: número (0001, 1 ou #0001) ou UUID.
 Variáveis: KANBAN_AGENT_TOKEN; EIXU_KANBAN_URL é opcional.
 `);
 }
@@ -297,14 +299,17 @@ export async function updateCard(client, id, values) {
 export async function moveCard(client, id, columnSelector) {
   if (!columnSelector) throw new Error('--column é obrigatório.');
   const board = await client.board();
-  const card = board.cards.find((candidate) => candidate.id === id);
+  const number = parseCardNumber(id);
+  const card = board.cards.find((candidate) =>
+    number === null ? candidate.id === id : candidate.number === number,
+  );
   if (!card) throw new Error(`Cartão ativo não encontrado: ${id}`);
   const target = resolveColumn(board, columnSelector);
   if (card.columnId === target.id) return board;
   return client.command({
     type: 'move_card',
     expectedRevision: board.revision,
-    cardId: id,
+    cardId: card.id,
     targetColumnId: target.id,
     beforeCardId: null,
   });

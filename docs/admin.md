@@ -15,6 +15,12 @@ também funcionam com teclado e no celular. Colunas podem ser criadas, renomeada
 e reordenadas. Uma coluna só pode ser excluída quando não possui cartões ativos
 nem arquivados, e o quadro conserva pelo menos uma coluna.
 
+Cada cartão tem um número permanente, como **#0001**, visível no quadro, no
+editor e nos arquivados. Busque por `0001`, `1` ou `#0001` para encontrar esse
+cartão. O número não muda ao editar, mover ou arquivar e não é reaproveitado
+após exclusão. Ele também identifica tarefas nas conversas com agentes, por
+exemplo: “revise o card 0001 e crie um plano de implementação”.
+
 **Arquivar cartão** retira a tarefa das colunas sem apagá-la. Abra
 **Arquivados** para consultar, editar, restaurar ou excluir definitivamente. Se
 o cliente vinculado for excluído, o cartão permanece sem cliente.

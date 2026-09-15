@@ -69,11 +69,24 @@ defina `EIXU_KANBAN_URL=http://localhost:3000`. Exemplos:
 
 ```bash
 npm run kanban -- board
-npm run kanban -- card <id>
+npm run kanban -- card 0001
 npm run kanban -- create-card --title "Corrigir retorno do login" --column "A fazer" --description-file /tmp/spec.md --priority high
-npm run kanban -- update-card <id> --append-description-file /tmp/entrega.md
-npm run kanban -- move-card <id> --column "Em revisão"
+npm run kanban -- update-card 0001 --append-description-file /tmp/entrega.md
+npm run kanban -- move-card 0001 --column "Em revisão"
 ```
+
+Cada card tem um número permanente e global, mostrado como `#0001` no quadro,
+no editor e no arquivo. `card`, `update-card` e `move-card` aceitam `0001`, `1`,
+`'#0001'` ou o UUID legado. Nas respostas, `number` é o número e `id` continua
+sendo o UUID usado nas mutações da API. Números acima de 9999 crescem normalmente;
+a largura de quatro dígitos é apenas apresentação. Exclusões e tentativas que
+falham podem deixar lacunas; números nunca são reutilizados.
+
+Para um pedido como **“revise o card 0001 e crie um plano de implementação”**,
+leia `npm run kanban -- card 0001`, confira o código atual e entregue a análise
+e o plano. Esse pedido sozinho não autoriza implementar, mudar a coluna ou
+gravar um recibo no card. A revisão de uma spec e a revisão de uma PR são fases
+diferentes; use `$kanban-pr-review` quando houver uma PR para revisar.
 
 Cliente e prazo são opcionais: `--tenant <slug>` e `--due-date YYYY-MM-DD`.
 Prioridades aceitas são `low`, `medium`, `high` e `urgent`. Em atualizações,
@@ -109,7 +122,7 @@ nem marca o próprio trabalho como concluído.
 Exemplo:
 
 ```text
-$kanban-delivery Execute o card <id> até uma PR validada.
+$kanban-delivery Execute o card 0001 até uma PR validada.
 ```
 
 ## Revisão com Astra
@@ -127,7 +140,7 @@ publicados quando pedidos; o recibo do card continua obrigatório.
 Exemplo:
 
 ```text
-$kanban-pr-review Revise a PR <url> contra o card <id> antes do merge.
+$kanban-pr-review Revise a PR <url> contra o card 0001 antes do merge.
 ```
 
 Depois do merge, mova para **Concluído** somente quando a PR e, se exigido pela

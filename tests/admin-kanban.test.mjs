@@ -56,7 +56,7 @@ await test(
     const extraId = randomUUID();
     board = await run('create_column', 0, { id: extraId, title: 'Revisão' });
     assert.equal(board.revision, 1);
-    assert.equal(board.columns.length, 4);
+    assert.equal(board.columns.length, 5);
     board = await run('rename_column', 1, {
       columnId: extraId,
       title: 'Revisão',
@@ -78,6 +78,13 @@ await test(
     });
     assert.equal(board.revision, 3);
     assert.equal(board.cards.length, 2);
+    const firstNumber = board.cards.find(
+      (card) => card.id === firstCard,
+    ).number;
+    assert.ok(firstNumber > 0);
+    assert.ok(
+      board.cards.find((card) => card.id === secondCard).number > firstNumber,
+    );
     assert.equal(Object.hasOwn(board.cards[0], 'description'), false);
     const updated = await run('update_card', 3, {
       cardId: firstCard,
@@ -85,6 +92,7 @@ await test(
       description: 'Texto privado completo',
     });
     assert.equal(updated.card.description, 'Texto privado completo');
+    assert.equal(updated.card.number, firstNumber);
     assert.equal(updated.cards[0].hasDescription, true);
     assert.equal(
       (await queries.readKanbanCard(firstCard)).card.description,
@@ -399,6 +407,8 @@ await test(
     assert.equal(board.cards[0].priority, 'high');
     assert.equal(board.cards[0].dueDate, '2026-10-15');
     assert.equal(board.cards[0].version, 1);
+    const firstNumber = board.cards[0].number;
+    assert.equal(board.card.number, firstNumber);
     assert.equal(
       board.tenants.some((tenant) => tenant.id === tenantId),
       true,
@@ -443,6 +453,7 @@ await test(
       false,
     );
     assert.equal(board.archivedCards[0].id, firstCard);
+    assert.equal(board.archivedCards[0].number, firstNumber);
     assert.equal(board.archivedCards[0].position, 500);
     assert.equal(
       board.columns.find((column) => column.id === firstColumn)
@@ -456,6 +467,10 @@ await test(
     board = await run('restore_card', 4, { cardId: firstCard });
     assert.equal(board.revision, 5);
     assert.equal(board.archivedCards.length, 0);
+    assert.equal(
+      board.cards.find((card) => card.id === firstCard).number,
+      firstNumber,
+    );
     assert.equal(board.cards.find((card) => card.id === firstCard).version, 4);
 
     await database.query('delete from tenants where id = $1', [tenantId]);
@@ -803,4 +818,167 @@ await test('endereço legado do Kanban redireciona para a rota canônica', async
   });
   legacy.default();
   assert.equal(destination, '/admin/kanban');
+});
+
+await test(
+  'Kanban: migração numérica preserva histórico, não reutiliza números e resolve referência',
+  { skip: !localUrl, timeout: 60_000 },
+  async (t) => {
+    const database = await localPostgres(localUrl);
+    t.after(async () => {
+      await database.query('delete from kanban_cards');
+      await database.close();
+    });
+    const ddl = await readFile('db/schema.sql', 'utf8');
+    await database.query(ddl);
+    await database.query('delete from kanban_cards');
+    await database.query(
+      'alter table kanban_cards drop column card_number cascade',
+    );
+    const column = (
+      await database.query(
+        'select id from kanban_columns order by position limit 1',
+      )
+    ).rows[0].id;
+    const ids = [randomUUID(), randomUUID(), randomUUID()];
+    for (const [index, id] of ids.entries()) {
+      await database.query(
+        `insert into kanban_cards (id, column_id, title, description, position, created_at, archived_at)
+         values ($1, $2, 'Legado', 'Preservar conteúdo', $3, $4, $5)`,
+        [
+          id,
+          column,
+          index,
+          `2026-09-0${3 - index}`,
+          index === 1 ? '2026-09-10' : null,
+        ],
+      );
+    }
+    const before = (
+      await database.query('select * from kanban_cards order by id')
+    ).rows;
+    // Usa a mesma divisão do script de produção, que aplica statements isolados.
+    const statements = ddl
+      .split(/;\s*$/m)
+      .map((s) =>
+        s
+          .split('\n')
+          .filter((line) => !line.trim().startsWith('--'))
+          .join('\n')
+          .trim(),
+      )
+      .filter(Boolean);
+    for (const statement of statements) await database.query(statement);
+    const after = (
+      await database.query('select * from kanban_cards order by id')
+    ).rows;
+    assert.deepEqual(
+      after.map(({ card_number: _number, ...card }) => card),
+      before,
+    );
+    const numbered = (
+      await database.query(
+        'select id, card_number from kanban_cards order by card_number',
+      )
+    ).rows;
+    assert.deepEqual(
+      numbered.map((card) => card.id),
+      ids.toReversed(),
+    );
+    assert.deepEqual(
+      numbered.map((card) => card.card_number),
+      [1, 2, 3],
+    );
+    const queries = await loadModule('lib/kanban/queries.ts', {
+      '@/lib/db': {
+        db: () => ({
+          query: async (sql, params) =>
+            (await database.query(sql, params)).rows,
+        }),
+      },
+    });
+    for (const ref of ['0001', '1', '#0001', ids[2]]) {
+      const detail = await queries.readKanbanCard(ref);
+      assert.equal(detail.card.id, ids[2]);
+      assert.equal(detail.card.number, 1);
+    }
+    assert.equal(
+      (await queries.readKanbanCard('0002')).card.archivedAt !== null,
+      true,
+    );
+    assert.equal((await queries.readKanbanBoard()).archivedCards[0].number, 2);
+    assert.equal(await queries.readKanbanCard('9999'), null);
+    await database.query(ddl);
+    assert.deepEqual(
+      (await database.query('select * from kanban_cards order by id')).rows,
+      after,
+    );
+    await assert.rejects(
+      database.query(
+        'update kanban_cards set card_number = 1 where card_number = 2',
+      ),
+      { code: '23505' },
+    );
+    await assert.rejects(
+      database.query(
+        'update kanban_cards set card_number = 0 where card_number = 2',
+      ),
+      { code: '23514' },
+    );
+    await database.query('delete from kanban_cards where card_number = 3');
+    await database.query(ddl);
+    const created = await Promise.all(
+      [10, 11].map((position) =>
+        database.transaction(async (connection) => {
+          const result = await connection.query(
+            'insert into kanban_cards (id, column_id, title, position) values ($1, $2, $3, $4) returning card_number',
+            [randomUUID(), column, 'Concorrente', position],
+          );
+          return result.rows[0].card_number;
+        }),
+      ),
+    );
+    assert.deepEqual(
+      created.toSorted((a, b) => a - b),
+      [4, 5],
+    );
+  },
+);
+
+await test('detalhe numérico mantém autenticação, validação e 404', async () => {
+  let denied = true;
+  let reads = 0;
+  const { GET } = await loadModule('app/api/admin/kanban/cards/[id]/route.ts', {
+    '@/app/api/admin/kanban/guard': {
+      guardKanbanRequest: async () =>
+        denied ? Response.json({}, { status: 401 }) : null,
+    },
+    '@/app/api/admin/kanban/responses': {
+      privateJson: (body, status = 200) => Response.json(body, { status }),
+      kanbanFailure: () => Response.json({}, { status: 500 }),
+    },
+    '@/lib/kanban/queries': {
+      readKanbanCard: async (id) => {
+        reads += 1;
+        return id === '9999' ? null : { card: { number: 1 } };
+      },
+    },
+  });
+  const get = (id) =>
+    GET(
+      new Request(
+        `https://eixu.com.br/api/admin/kanban/cards/${encodeURIComponent(id)}`,
+      ),
+      { params: Promise.resolve({ id }) },
+    );
+  assert.equal((await get('0001')).status, 401);
+  assert.equal(reads, 0);
+  denied = false;
+  for (const ref of ['0001', '1', '#0001', randomUUID()])
+    assert.equal((await get(ref)).status, 200);
+  assert.equal((await get('9999')).status, 404);
+  const previousReads = reads;
+  for (const ref of ['0', '-1', '1e3', '1abc', '2147483648'])
+    assert.equal((await get(ref)).status, 400);
+  assert.equal(reads, previousReads);
 });

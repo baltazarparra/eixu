@@ -53,6 +53,10 @@ await test(
     );
     const cardId = fixture.state.cards[0].id;
     await page.waitForSelector('#card-description');
+    assert.equal(
+      await page.$eval('dialog strong', (node) => node.textContent),
+      'Cartão #0001',
+    );
     await page.type('#card-description', 'Descrição completa');
     await page.select('#card-tenant', fixture.state.tenants[0].id);
     await page.select('#card-priority', 'high');
@@ -75,6 +79,36 @@ await test(
     assert.equal(fixture.state.cards[0].priority, 'high');
     assert.equal(fixture.state.cards[0].dueDate, '2026-10-15');
     await page.click('button[aria-label="Fechar cartão"]');
+
+    for (const query of ['0001', '#0001', '1', '0002']) {
+      await page.$eval('input[type="search"]', (input) => {
+        Object.getOwnPropertyDescriptor(
+          HTMLInputElement.prototype,
+          'value',
+        ).set.call(input, '');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      await page.type('input[type="search"]', query);
+      await page.waitForFunction(
+        (count) =>
+          document.querySelectorAll('section[data-active] li[data-card-id]')
+            .length === count,
+        {},
+        query === '0002' ? 0 : 1,
+      );
+    }
+    await page.evaluate(() =>
+      [...document.querySelectorAll('button')]
+        .find((button) => button.textContent.trim() === 'Limpar filtros')
+        ?.click(),
+    );
+    assert.equal(
+      await page.$eval(
+        `[data-card-id="${cardId}"] button[class*="cardOpen"]`,
+        (node) => node.textContent.includes('#0001'),
+      ),
+      true,
+    );
 
     await page.select(
       'section[aria-label="Filtros do Kanban"] select',
@@ -107,6 +141,13 @@ await test(
       cardId,
     );
     assert.equal(fixture.state.archivedCards[0].id, cardId);
+    assert.equal(
+      await page.$eval(
+        `section[class*="archived"] [data-card-id="${cardId}"]`,
+        (node) => node.textContent.includes('#0001'),
+      ),
+      true,
+    );
     await page.click(
       `section[class*="archived"] [data-card-id="${cardId}"] button`,
     );
@@ -325,6 +366,7 @@ await test(
     const fixture = await kanbanFixture();
     const cardId = randomUUID();
     fixture.state.cards.push({
+      number: 10000,
       id: cardId,
       columnId: fixture.state.columns[0].id,
       title: 'Conferir site',

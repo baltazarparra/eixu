@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  parseCardNumber,
+  formatCardNumber,
+} from '../lib/kanban/card-reference.mjs';
+import {
   KanbanClient,
   KanbanHttpError,
   createCard,
@@ -178,4 +182,78 @@ await test('cliente recusa descrição acima do contrato antes de escrever', asy
     /limite é 12000/,
   );
   assert.equal(reads, 0);
+});
+
+await test('números de cartão: zeros, prefixo, limites e ausência de truncamento', () => {
+  for (const value of ['0001', '1', '#0001', ' #1 '])
+    assert.equal(parseCardNumber(value), 1);
+  for (const value of [
+    '0',
+    '0000',
+    '-1',
+    '1.0',
+    '1e3',
+    '1abc',
+    '',
+    '2147483648',
+  ])
+    assert.equal(parseCardNumber(value), null);
+  assert.equal(formatCardNumber(1), '0001');
+  assert.equal(formatCardNumber(10000), '10000');
+});
+
+await test('referência numérica lê o detalhe e escreve pelo UUID com versão', async () => {
+  let requested;
+  let submitted;
+  const client = {
+    card: async (id) => {
+      requested = id;
+      return {
+        revision: 8,
+        card: {
+          id: 'uuid-card',
+          number: 1,
+          title: 'Atual',
+          description: '',
+          priority: null,
+          dueDate: null,
+          version: 3,
+        },
+      };
+    },
+    board: async () => ({
+      revision: 8,
+      columns,
+      cards: [{ id: 'uuid-card', number: 1, columnId: 'todo-id' }],
+    }),
+    command: async (command) => {
+      submitted = command;
+      return command;
+    },
+  };
+  await updateCard(client, '0001', { title: 'Novo' });
+  assert.equal(requested, '0001');
+  assert.equal(submitted.cardId, 'uuid-card');
+  assert.equal(submitted.expectedCardVersion, 3);
+  for (const value of ['1', '0001', '#0001']) {
+    await moveCard(client, value, 'Em revisão');
+    assert.equal(submitted.cardId, 'uuid-card');
+    assert.equal(submitted.expectedRevision, 8);
+  }
+  await assert.rejects(
+    moveCard(client, '0002', 'Em revisão'),
+    /não encontrado/,
+  );
+});
+
+await test('transporte preserva referência com # no caminho da consulta', async () => {
+  const client = new KanbanClient({
+    token: 'teste',
+    fetchImpl: async (url) => {
+      assert.equal(url.pathname, '/api/admin/kanban/cards/%230001');
+      assert.equal(url.hash, '');
+      return Response.json({ card: { number: 1 } });
+    },
+  });
+  assert.equal((await client.card('#0001')).card.number, 1);
 });

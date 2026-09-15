@@ -88,8 +88,10 @@ do modelo, persistência no Neon ou comportamento em aparelhos físicos/Safari.
 Sem Chrome, os casos dependentes são pulados; informe isso no resultado.
 
 O Kanban tem um teste SQL com o driver Neon ligado apenas a um banco Postgres
-descartável. Ele cobre upgrade e reaplicação do schema, vínculo opcional com
-cliente, prioridade, prazo, arquivo/restauração, ordem e concorrência. Execute
+descartável. Ele cobre upgrade e reaplicação do schema, numeração permanente dos cards
+existentes, consulta por número/UUID, criação concorrente sem colisão, exclusão
+sem reutilizar número, vínculo opcional com cliente, prioridade, prazo,
+arquivo/restauração, ordem e concorrência. Execute
 com
 `EIXU_TEST_POSTGRES_URL=postgresql://127.0.0.1/eixu_pr2_test node --test tests/admin-kanban.test.mjs`.
 O teste de navegador `tests/browser/admin-kanban.test.mjs` usa o componente real

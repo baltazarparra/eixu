@@ -31,6 +31,7 @@ export async function kanbanFixture() {
     archivedCards: [],
     tenants,
   };
+  let nextCardNumber = 1;
   const descriptions = new Map();
   let loseNextResponse = false;
   let failNextBoardRead = false;
@@ -130,6 +131,7 @@ export async function kanbanFixture() {
       case 'create_card':
         state.cards.push({
           id: command.id,
+          number: nextCardNumber++,
           columnId: command.columnId,
           title: command.title,
           position: state.cards.filter(

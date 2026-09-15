@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { parseCardNumber } from '@/lib/kanban/card-reference.mjs';
 import { readKanbanCard } from '@/lib/kanban/queries';
 import { guardKanbanRequest } from '@/app/api/admin/kanban/guard';
 import { kanbanFailure, privateJson } from '@/app/api/admin/kanban/responses';
@@ -12,7 +13,7 @@ export async function GET(
   const denied = await guardKanbanRequest(request);
   if (denied) return denied;
   const { id } = await params;
-  if (!z.uuid().safeParse(id).success)
+  if (parseCardNumber(id) === null && !z.uuid().safeParse(id).success)
     return privateJson(
       { error: 'Cartão inválido.', code: 'VALIDATION_ERROR' },
       400,

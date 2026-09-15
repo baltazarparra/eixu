@@ -1,3 +1,4 @@
+import { parseCardNumber } from '@/lib/kanban/card-reference.mjs';
 import type { Client } from '@neondatabase/serverless';
 import { db } from '@/lib/db';
 import type { KanbanCardDetail, KanbanSnapshot } from '@/lib/kanban/schema';
@@ -18,7 +19,7 @@ const BOARD_SQL = `
     ), '[]'::json) as columns,
     coalesce((
       select json_agg(json_build_object(
-        'id', k.id, 'columnId', k.column_id, 'title', k.title,
+        'id', k.id, 'number', k.card_number, 'columnId', k.column_id, 'title', k.title,
         'position', k.position, 'hasDescription', k.description <> '',
         'tenantId', k.tenant_id, 'tenantSlug', t.slug, 'tenantName', t.name,
         'priority', k.priority, 'dueDate', k.due_date,
@@ -31,7 +32,7 @@ const BOARD_SQL = `
     ), '[]'::json) as cards,
     coalesce((
       select json_agg(json_build_object(
-        'id', k.id, 'columnId', k.column_id, 'title', k.title,
+        'id', k.id, 'number', k.card_number, 'columnId', k.column_id, 'title', k.title,
         'position', k.position, 'hasDescription', k.description <> '',
         'tenantId', k.tenant_id, 'tenantSlug', t.slug, 'tenantName', t.name,
         'priority', k.priority, 'dueDate', k.due_date,
@@ -95,18 +96,19 @@ export async function readKanbanBoardWith(
 }
 
 const CARD_SQL = `
-  select b.revision::text as revision, k.id, k.title, k.description,
+  select b.revision::text as revision, k.id, k.card_number, k.title, k.description,
     k.position, c.id as column_id, k.tenant_id, k.priority,
     k.due_date::text as due_date,
     k.version, k.archived_at
   from kanban_boards b
   join kanban_columns c on c.board_id = b.id
   join kanban_cards k on k.column_id = c.id
-  where b.key = $1 and k.id = $2
+  where b.key = $1
 `;
 
 type CardRow = {
   revision: string;
+  card_number: number;
   id: string;
   title: string;
   description: string;
@@ -122,12 +124,18 @@ type CardRow = {
 export async function readKanbanCard(
   id: string,
 ): Promise<{ card: KanbanCardDetail; revision: number } | null> {
-  const rows = (await db().query(CARD_SQL, [BOARD_KEY, id])) as CardRow[];
+  const number = parseCardNumber(id);
+  const predicate = number === null ? 'k.id = $2' : 'k.card_number = $2';
+  const rows = (await db().query(`${CARD_SQL} and ${predicate}`, [
+    BOARD_KEY,
+    number ?? id,
+  ])) as CardRow[];
   const row = rows[0];
   if (!row) return null;
   return {
     card: {
       id: row.id,
+      number: row.card_number,
       columnId: row.column_id,
       title: row.title,
       description: row.description,

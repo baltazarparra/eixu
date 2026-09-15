@@ -108,6 +108,7 @@ export type KanbanColumn = {
 
 export type KanbanCardSummary = {
   id: string;
+  number: number;
   columnId: string;
   title: string;
   position: number;
@@ -123,6 +124,7 @@ export type KanbanCardSummary = {
 
 export type KanbanCardDetail = {
   id: string;
+  number: number;
   columnId: string;
   title: string;
   description: string;
