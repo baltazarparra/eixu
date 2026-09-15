@@ -11,7 +11,7 @@ O modelo interno é **Gemini 3.8 Flash**, com raciocínio `high`. O harness prio
 ## O que já existe
 
 - Institucional com home, oferta de passagem de vibe coding para produção e cases de SaldoPix e NaiaCRM.
-- Painel com login e PIN individual por operador, atividade com autoria, pastas compartilhadas para organizar e mover sites, busca e filtros, cadastro compacto com cinco direções visuais comparáveis, geração em Preparar/Criar, chat com histórico recente, prévia em desktop/mobile, dados e briefing editáveis e publicação.
+- Painel com login e PIN individual por operador, atividade com autoria, pastas compartilhadas para organizar e mover sites, busca e filtros, cadastro compacto com cinco direções visuais comparáveis, geração em Preparar/Criar, chat com histórico recente, prévia em desktop/mobile, dados e briefing editáveis, histórico consolidado de tokens/custos por cliente e publicação.
 - Kanban interno global em `/admin/kanban`: cartões com cliente opcional, prioridade, prazo, descrição e arquivo; colunas e ordem persistidas, com movimentação por arrasto, ações acessíveis ou `npm run kanban`. As skills de desenvolvimento usam o card como contrato entre Astra, Sol e a revisão da PR. Cada mutação fica associada ao operador autenticado ou identificada como ação de agente quando usa o token dedicado.
 - Páginas orgânicas, landing pages pagas, posts e páginas de agradecimento compostas por blocos com schemas Zod. O agente edita conteúdo por ferramentas; o painel também permite ajustar dados do cliente e gerenciar imagens.
 - Edição direta e pelo chat: texto, tamanho e cor por campo, fundo/degradê local e decoração da vibe, com contraste validado e medição renderizada após ajustes visuais. Salvar altera o rascunho; Publicar leva as mudanças ao site no ar.
@@ -72,44 +72,44 @@ Produção usa Next.js 16.3.3, React 19.2.6, TypeScript, Tailwind 4, AI SDK 7, A
 
 Na Vercel, as etapas da geração são entregues pela fila `eixu-generation-steps`, com autenticação OIDC automática. O trigger de `vercel.json` registra o consumidor privado em `/api/queues/generation`. No servidor local, o despacho continua por HTTP assinado, sem acessar a fila remota. O banco mantém o estado e a reserva de cada etapa; a fila cuida da entrega.
 
-| Área                  | Entrada                                                                                      |
-| --------------------- | -------------------------------------------------------------------------------------------- |
-| Institucional         | `app/(main)/`, `components/eixu.tsx`, `lib/site.ts`                                          |
-| Painel e autenticação | `app/(admin)/`, `lib/auth.ts`, `lib/admin/activity.ts`, `app/api/admin/`                     |
-| Kanban interno        | `app/(admin)/admin/kanban/`, `app/api/admin/kanban/`, `lib/kanban/`                          |
-| Sites por tenant      | `proxy.ts`, `app/(sites)/`, `lib/tenant-queries.ts`                                          |
-| Blocos e qualidade    | `lib/blocks/`, `lib/taste/`                                                                  |
-| Agentes do produto    | `app/api/chat/`, `lib/ai/`, `lib/images/`                                                    |
-| Dados e atribuição    | `db/schema.sql`, `lib/db.ts`, `lib/tracking.ts`, `app/api/form/`, `app/api/e/`, `app/go/wa/` |
+| Área                  | Entrada                                                                                                                |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Institucional         | `app/(main)/`, `components/eixu.tsx`, `lib/site.ts`                                                                    |
+| Painel e autenticação | `app/(admin)/`, `lib/auth.ts`, `lib/admin/activity.ts`, `app/api/admin/`                                               |
+| Kanban interno        | `app/(admin)/admin/kanban/`, `app/api/admin/kanban/`, `lib/kanban/`                                                    |
+| Sites por tenant      | `proxy.ts`, `app/(sites)/`, `lib/tenant-queries.ts`                                                                    |
+| Blocos e qualidade    | `lib/blocks/`, `lib/taste/`                                                                                            |
+| Agentes do produto    | `app/api/chat/`, `lib/ai/`, `lib/images/`                                                                              |
+| Dados e atribuição    | `db/schema.sql`, `lib/db.ts`, `lib/tracking.ts`, `lib/ai/usage-ledger.ts`, `app/api/form/`, `app/api/e/`, `app/go/wa/` |
 
 Os três grupos de rotas têm layouts e CSS próprios. A geração valida páginas e projeto por `lintPage` e `lintSite`. Na publicação solicitada, `publication-policy.ts` converte achados editoriais em recomendações; erros técnicos preservam a versão anterior. O serviço promove conteúdo, SEO, dados editoriais e apresentação global para um snapshot coerente na mesma transação. Veja o [mapa de arquitetura](docs/architecture.md).
 
 ## Comandos e validação
 
-| Comando                                                      | Efeito                                                                                                                                                                 |
-| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run dev:vercel`                                         | Desenvolvimento em Next.js, caminho usado para este MVP.                                                                                                               |
-| `npm run build:vercel`                                       | Build de produção e verificação dos arquivos de identidade/Chromium no artefato serverless. Configurado em `vercel.json`.                                              |
-| `npx next start`                                             | Serve o build Next.js local já gerado.                                                                                                                                 |
-| `npx next typegen && npx tsc --noEmit`                       | Gera tipos das rotas e verifica TypeScript.                                                                                                                            |
-| `npm run lint`                                               | Analisa código com oxlint; não executa o pre-flight dos sites.                                                                                                         |
-| `npm run kanban -- <comando>`                                | Lê e altera o Kanban pelas rotas autenticadas; `board`, `card`, `create-card`, `update-card` e `move-card` atendem às skills de desenvolvimento.                       |
-| `npm run test:sites`                                         | Testa o contrato de páginas, imagens, alterações por número e links sem banco ou chamadas pagas.                                                                       |
-| `npm run test:sites:browser`                                 | Depois do build Next.js, verifica contraste, contatos, hidratação, teclado, carrossel e preferências do navegador. Requer `EIXU_CHROME_PATH`.                          |
-| `npm run test:admin`                                         | Testa contexto, estado editorial, autenticação, logos, datas, custos, CSV e tracking. Suítes opcionais exigem PostgreSQL local ou Chrome; não chama modelos pagos.     |
-| `npm run test:admin:browser`                                 | Depois do build Next.js, exercita o painel real no Chrome: andamento da geração, início automático, conversa e consumo. Requer `EIXU_CHROME_PATH`.                     |
-| `npm run eval:harness`                                       | Orienta o ensaio de qualidade; `--live --case=... --assets=... --repeat=2` chama modelos reais com ferramentas em memória e capturas do renderer. Não grava Neon/Blob. |
-| `npm run eval:admin-cost`                                    | Compara o payload de histórico em memória; `-- --live` executa três chamadas pagas controladas, sem escrever no banco/Blob.                                            |
-| `npm run eval:edits`                                         | Orienta o ensaio de edições pontuais; `-- --live` faz chamadas pagas com executores em memória.                                                                        |
-| `npm run eval:site-sources`                                  | Orienta a comparação entre história, Site atual e referência; `-- --live --assets=arquivo.json` usa modelo e Chromium reais, sem Neon/Blob.                            |
-| `npm run eval:site -- <caso>`                                | Chama modelos e escreve em um tenant `eval-*`, sem publicar; `--generate` acrescenta fotos e `--fresh` exclui o tenant do caso. Requer recurso e escopo autorizados.   |
-| `npm run format -- --check README.md AGENTS.md SOUL.md docs` | Confere a formatação da documentação sem reescrever arquivos.                                                                                                          |
-| `npm run db:migrate`                                         | Aplica statements idempotentes de `db/schema.sql`; escreve no banco. Coluna nova exige rodar antes do deploy do código que a usa.                                      |
-| `npm run db:provision-admins`                                | Cria somente os operadores iniciais ausentes; exige banco, `ADMIN_PIN_PEPPER` e `ADMIN_INITIAL_PIN`.                                                                   |
-| `npm run db:seed-demo`                                       | Sobrescreve e publica home/obrigado do tenant `vertice` já existente; altera marca e dials. Use só em demo descartável.                                                |
-| `npm run db:requantize-logos`                                | Recomprime logos de todos os tenants do banco conectado, sobrescrevendo arquivos no Blob.                                                                              |
-| `npm run db:prepare-logo-assets -- --slug=cliente`           | Diagnóstico sem escrita por padrão. `--apply` prepara assets só do rascunho, com crítica da versão branca; exige escopo autorizado. `--all` seleciona todos.           |
-| `npm run dev` / `npm run build` / `npm start`                | Caminho Vinext/Cloudflare herdado; não valida o deploy Next.js da Vercel.                                                                                              |
+| Comando                                                      | Efeito                                                                                                                                                                            |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev:vercel`                                         | Desenvolvimento em Next.js, caminho usado para este MVP.                                                                                                                          |
+| `npm run build:vercel`                                       | Build de produção e verificação dos arquivos de identidade/Chromium no artefato serverless. Configurado em `vercel.json`.                                                         |
+| `npx next start`                                             | Serve o build Next.js local já gerado.                                                                                                                                            |
+| `npx next typegen && npx tsc --noEmit`                       | Gera tipos das rotas e verifica TypeScript.                                                                                                                                       |
+| `npm run lint`                                               | Analisa código com oxlint; não executa o pre-flight dos sites.                                                                                                                    |
+| `npm run kanban -- <comando>`                                | Lê e altera o Kanban pelas rotas autenticadas; `board`, `card`, `create-card`, `update-card` e `move-card` atendem às skills de desenvolvimento.                                  |
+| `npm run test:sites`                                         | Testa o contrato de páginas, imagens, alterações por número e links sem banco ou chamadas pagas.                                                                                  |
+| `npm run test:sites:browser`                                 | Depois do build Next.js, verifica contraste, contatos, hidratação, teclado, carrossel e preferências do navegador. Requer `EIXU_CHROME_PATH`.                                     |
+| `npm run test:admin`                                         | Testa contexto, estado editorial, autenticação, logos, histórico de consumo, custos, CSV e tracking. Suítes opcionais exigem PostgreSQL local ou Chrome; não chama modelos pagos. |
+| `npm run test:admin:browser`                                 | Depois do build Next.js, exercita o painel real no Chrome: andamento da geração, início automático, conversa e consumo. Requer `EIXU_CHROME_PATH`.                                |
+| `npm run eval:harness`                                       | Orienta o ensaio de qualidade; `--live --case=... --assets=... --repeat=2` chama modelos reais com ferramentas em memória e capturas do renderer. Não grava Neon/Blob.            |
+| `npm run eval:admin-cost`                                    | Compara o payload de histórico em memória; `-- --live` executa três chamadas pagas controladas, sem escrever no banco/Blob.                                                       |
+| `npm run eval:edits`                                         | Orienta o ensaio de edições pontuais; `-- --live` faz chamadas pagas com executores em memória.                                                                                   |
+| `npm run eval:site-sources`                                  | Orienta a comparação entre história, Site atual e referência; `-- --live --assets=arquivo.json` usa modelo e Chromium reais, sem Neon/Blob.                                       |
+| `npm run eval:site -- <caso>`                                | Chama modelos e escreve em um tenant `eval-*`, sem publicar; `--generate` acrescenta fotos e `--fresh` exclui o tenant do caso. Requer recurso e escopo autorizados.              |
+| `npm run format -- --check README.md AGENTS.md SOUL.md docs` | Confere a formatação da documentação sem reescrever arquivos.                                                                                                                     |
+| `npm run db:migrate`                                         | Aplica statements idempotentes de `db/schema.sql`; escreve no banco. Coluna nova exige rodar antes do deploy do código que a usa.                                                 |
+| `npm run db:provision-admins`                                | Cria somente os operadores iniciais ausentes; exige banco, `ADMIN_PIN_PEPPER` e `ADMIN_INITIAL_PIN`.                                                                              |
+| `npm run db:seed-demo`                                       | Sobrescreve e publica home/obrigado do tenant `vertice` já existente; altera marca e dials. Use só em demo descartável.                                                           |
+| `npm run db:requantize-logos`                                | Recomprime logos de todos os tenants do banco conectado, sobrescrevendo arquivos no Blob.                                                                                         |
+| `npm run db:prepare-logo-assets -- --slug=cliente`           | Diagnóstico sem escrita por padrão. `--apply` prepara assets só do rascunho, com crítica da versão branca; exige escopo autorizado. `--all` seleciona todos.                      |
+| `npm run dev` / `npm run build` / `npm start`                | Caminho Vinext/Cloudflare herdado; não valida o deploy Next.js da Vercel.                                                                                                         |
 
 Há testes dos contratos de sites e admin; não há workflow de CI versionado. O lint global deve passar. O [guia de validação](docs/verification.md) registra as referências e os checks por tipo de mudança, incluindo integração em PostgreSQL descartável. Build aprovado não equivale a fluxo com banco ou IA testado.
 

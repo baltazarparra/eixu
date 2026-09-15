@@ -14,6 +14,7 @@ nova execução. Os scripts e dependências vêm de [package.json](../package.js
 | Auth, tenant ou proxy              | Sessão ausente/expirada, tenant incorreto, host reservado, acesso a `/s/*`, query de prévia e conteúdo público.                                                     |
 | Formulário ou tracking             | Em ambiente de teste autorizado, envio, atribuição, consentimento, gravação e destino; duplicação de clique.                                                        |
 | Imagens ou ferramentas             | Falha parcial, disponibilidade, alteração por número, isolamento, aplicação de logo e recusa de exclusão em uso.                                                    |
+| Tokens e custos de IA              | SDK real com modelo simulado, idempotência, ausências, falhas, isolamento por cliente, datas de Brasília, paginação, migração repetível e UI responsiva.            |
 | Schema                             | Aplicação e reaplicação em PostgreSQL descartável, com verificação dos consumidores.                                                                                |
 | Pastas de sites                    | CRUD, nomes únicos, preservação ao excluir, lote atômico, conflito entre sessões, desfazer, arrasto, teclado e celular.                                             |
 | Kanban interno                     | Sessão, rota canônica e redirecionamento, host de cliente, origem, upgrade idempotente, vínculo, filtros, arquivo, ordem, concorrência por cartão, teclado e toque. |
@@ -141,8 +142,12 @@ após compilar. Três checks exigem `SOUL.md` e os binários do Chromium nos man
 
 ## Integração em PostgreSQL local
 
-`EIXU_TEST_POSTGRES_URL` habilita cinco suítes opcionais em `test:admin`:
-`admin-concurrency`, `admin-generation-db`, `admin-handoff`, `admin-page-edits-db` e `admin-logo-state-db`. Elas aplicam o schema e escrevem em um banco descartável.
+`EIXU_TEST_POSTGRES_URL` habilita seis suítes opcionais em `test:admin`:
+`admin-concurrency`, `admin-generation-db`, `admin-handoff`,
+`admin-page-edits-db`, `admin-logo-state-db` e `admin-usage-history`. Elas
+aplicam o schema e escrevem em um banco descartável. O histórico de consumo
+também exercita callbacks reais do AI SDK com modelos simulados, custo ausente
+e zero, operações em várias etapas e backfill idempotente.
 O helper [local-postgres.mjs](../tests/helpers/local-postgres.mjs) exige nome
 `eixu_pr2_test` e host local; usa o driver Neon por um proxy WebSocket local.
 Banco remoto não é aceito. Blob, rede social e modelo são simulados.

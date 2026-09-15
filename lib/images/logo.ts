@@ -6,6 +6,7 @@ import { insertImage } from '@/lib/images/queries';
 import { safeLogoSvg } from '@/lib/images/logo-trace';
 import { cleanLogo, prepareLogoRendition } from '@/lib/images/logo-asset';
 import { LOGO_IMAGE_MODEL } from '@/lib/ai/models';
+import { trackImageUsage } from '@/lib/ai/usage-ledger';
 import { dimensionsFor } from '@/lib/images/ratios';
 import type { ImageGuide, Tenant, TenantImage } from '@/lib/types';
 
@@ -179,16 +180,26 @@ export async function generateLogoCandidates(input: {
       const text = input.revision
         ? `${basePrompt} Alteração solicitada: ${input.revision}. Este pedido prevalece sobre a preservação do original; mantenha apenas o que não foi solicitado mudar.`
         : basePrompt;
-      const result = await generateImage({
-        model: LOGO_IMAGE_MODEL,
-        prompt: input.reference ? { text, images: [input.reference] } : text,
-        ...logoDimensions(input.wordmark),
-        providerOptions: {
-          openai: { background: 'transparent', output_format: 'png' },
+      const result = await trackImageUsage(
+        {
+          tenantId: input.tenant.id,
+          kind: 'logo',
+          model: LOGO_IMAGE_MODEL,
         },
-        maxRetries: 1,
-        abortSignal: input.signal,
-      });
+        () =>
+          generateImage({
+            model: LOGO_IMAGE_MODEL,
+            prompt: input.reference
+              ? { text, images: [input.reference] }
+              : text,
+            ...logoDimensions(input.wordmark),
+            providerOptions: {
+              openai: { background: 'transparent', output_format: 'png' },
+            },
+            maxRetries: 1,
+            abortSignal: input.signal,
+          }),
+      );
       if (result.warnings.length) {
         console.warn(
           `[logo] ${LOGO_IMAGE_MODEL} ignorou parâmetros:`,

@@ -11,6 +11,7 @@ import {
 } from '../taste/phases';
 import { modelSettings, productModel, TURN_TIMEOUT_MS } from './models';
 import { gatewayOptions } from './usage';
+import { usageTracking, type UsageContext } from '@/lib/ai/usage-ledger';
 import { serialTools } from './serial-tools';
 
 /** Mesmo loop, limites e modelo no chat e no runner de qualidade. */
@@ -23,13 +24,15 @@ export function siteAgent(input: {
   phase?: Phase;
   /** Edição pode testar um modelo próprio sem alterar a geração. */
   modelRole?: 'agent' | 'edit';
+  usageContext?: Pick<UsageContext, 'kind' | 'runId'>;
   repairPublication?: boolean;
   /** Pausa pedida pelo operador: encerra depois do passo atual. */
   shouldStop?: () => boolean;
 }) {
   const { tenantId, instructions, tools, phase, shouldStop } = input;
+  const model = productModel(input.modelRole);
   return new ToolLoopAgent({
-    model: productModel(input.modelRole),
+    model,
     ...modelSettings(phase ?? 'livre'),
     instructions,
     tools: serialTools(tools),
@@ -41,6 +44,14 @@ export function siteAgent(input: {
         }
       : {}),
     providerOptions: gatewayOptions(tenantId, 'site', phase),
+    ...(input.usageContext
+      ? usageTracking({
+          tenantId,
+          model,
+          phase,
+          ...input.usageContext,
+        })
+      : {}),
     stopWhen: [
       isStepCount(phase ? PHASE_STEPS[phase] : 32),
       // Abortar no meio desperdiçaria a chamada paga em andamento; a pausa

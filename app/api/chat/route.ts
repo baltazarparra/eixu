@@ -372,6 +372,7 @@ export async function POST(request: Request) {
     tools,
     phase,
     modelRole,
+    usageContext: { kind: phase ? 'geracao' : 'conversa' },
     repairPublication,
     instructions: systemPrompt(
       tenant,

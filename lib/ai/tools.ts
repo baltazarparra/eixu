@@ -847,6 +847,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         const critiques = await Promise.all(
           images.map((image) =>
             critiqueLogo({
+              tenantId: tenant.id,
               id: image.id,
               bytes: image.bytes,
               variant: image.variant,

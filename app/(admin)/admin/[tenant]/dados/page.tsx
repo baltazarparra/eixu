@@ -3,6 +3,8 @@ import {
   currentDarkLogoAsset,
 } from '@/lib/images/logo-schema';
 import { logoStudioSummary } from '@/lib/images/logo-studio-state';
+import { usageFilters, usageHistory } from '@/lib/admin/usage-history';
+import { UsageHistoryPanel } from '@/components/admin/usage-history';
 import { adminTenant } from '@/lib/admin/queries';
 import { notFound, redirect } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
@@ -16,8 +18,10 @@ import { SettingsForm } from './settings-form';
 export const dynamic = 'force-dynamic';
 export default async function SettingsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ tenant: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { tenant: slug } = await params;
   if (!(await isAuthenticated()))
@@ -27,7 +31,11 @@ export default async function SettingsPage({
   const tenant = await adminTenant(slug);
   if (!tenant) notFound();
   const intake = intakeForForm(tenant.brief.intake);
-  const counts = await countTenantData(tenant.id);
+  const filters = usageFilters(await searchParams);
+  const [counts, consumption] = await Promise.all([
+    countTenantData(tenant.id),
+    usageHistory(tenant.id, filters),
+  ]);
   return (
     <>
       <main className="admin-page admin-settings-page">
@@ -35,11 +43,16 @@ export default async function SettingsPage({
           <div>
             <h1>Dados do cliente</h1>
             <p className="mt-3 mb-8 max-w-2xl text-sm text-[var(--color-muted)]">
-              Mantenha contatos e história atualizados. O agente usa essas
-              informações nas próximas edições.
+              Acompanhe o consumo de IA e mantenha contatos e história
+              atualizados para as próximas edições.
             </p>
           </div>
         </div>
+        <UsageHistoryPanel
+          data={consumption}
+          filters={filters}
+          slug={tenant.slug}
+        />
         <SettingsForm
           key={tenant.slug}
           tenant={{
