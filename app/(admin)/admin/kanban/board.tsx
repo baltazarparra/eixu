@@ -1,6 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import {
+  formatCardNumber,
+  parseCardNumber,
+} from '@/lib/kanban/card-reference.mjs';
 import { DragDropProvider, useDroppable } from '@dnd-kit/react';
 import { Accessibility } from '@dnd-kit/dom';
 import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/dom';
@@ -58,12 +62,13 @@ function matchesFilters(
   tenantId: string,
   priority: string,
 ) {
+  const number = parseCardNumber(query);
   const searchable =
     `${card.title} ${card.tenantName ?? ''} ${card.tenantSlug ?? ''}`.toLocaleLowerCase(
       'pt-BR',
     );
   return (
-    searchable.includes(query) &&
+    (number === null ? searchable.includes(query) : card.number === number) &&
     (!tenantId || card.tenantId === tenantId) &&
     (!priority || card.priority === priority)
   );
@@ -824,7 +829,7 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
           <input
             type="search"
             className="admin-input"
-            placeholder="Título ou cliente"
+            placeholder="Número, título ou cliente"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -946,6 +951,7 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
                     className={styles.archivedCard}
                     onClick={() => openCard(card.id)}
                   >
+                    <small>#{formatCardNumber(card.number)}</small>
                     <span className={styles.cardTitle}>{card.title}</span>
                     <CardMeta card={card} />
                     <small>
@@ -982,7 +988,9 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
             aria-label="Editar cartão"
           >
             <div className={styles.editorHead}>
-              <strong>Cartão</strong>
+              <strong>
+                Cartão{detail ? ` #${formatCardNumber(detail.number)}` : ''}
+              </strong>
               <button
                 className={styles.iconButton}
                 onClick={closeEditor}
@@ -1639,6 +1647,7 @@ function BoardCard({
       data-card-id={card.id}
     >
       <button className={styles.cardOpen} onClick={() => onOpenCard(card.id)}>
+        <small>#{formatCardNumber(card.number)}</small>
         <span className={styles.cardTitle}>{card.title}</span>
         <CardMeta card={card} />
         {card.hasDescription ? <small>Com descrição</small> : null}

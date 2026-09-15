@@ -451,6 +451,26 @@ alter table kanban_cards
   add column if not exists version integer not null default 1 check (version > 0);
 alter table kanban_cards add column if not exists archived_at timestamptz;
 
+-- Referência humana global e permanente. A sequência nunca é reiniciada na
+-- reaplicação, nem ao excluir cartões; lacunas são permitidas.
+create sequence if not exists kanban_card_number_seq as integer;
+alter table kanban_cards
+  add column if not exists card_number integer check (card_number > 0);
+alter sequence kanban_card_number_seq owned by kanban_cards.card_number;
+alter table kanban_cards
+  alter column card_number set default nextval('kanban_card_number_seq');
+with numbered as materialized (
+  select id, nextval('kanban_card_number_seq') as card_number
+  from (
+    select id from kanban_cards where card_number is null order by created_at, id
+  ) existing
+)
+update kanban_cards k set card_number = numbered.card_number
+from numbered where k.id = numbered.id and k.card_number is null;
+alter table kanban_cards alter column card_number set not null;
+create unique index if not exists kanban_cards_number_idx
+  on kanban_cards (card_number);
+
 create index if not exists kanban_cards_tenant_idx
   on kanban_cards (tenant_id) where tenant_id is not null;
 create index if not exists kanban_cards_archived_idx

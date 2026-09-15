@@ -29,6 +29,7 @@ type Board = { id: string; revision: string };
 type Column = { id: string; title: string; position: number };
 type Card = {
   id: string;
+  card_number: number;
   column_id: string;
   title: string;
   description: string;
@@ -52,6 +53,7 @@ function missing(kind: 'Cartão' | 'Coluna'): never {
 function cardDetail(card: Card): KanbanCardDetail {
   return {
     id: card.id,
+    number: card.card_number,
     columnId: card.column_id,
     title: card.title,
     description: card.description,
@@ -103,7 +105,7 @@ async function loadState(connection: Client, boardId: string) {
     [boardId],
   );
   const cardsResult = await connection.query(
-    `select k.id, k.column_id, k.title, k.position, k.tenant_id, k.priority,
+    `select k.id, k.card_number, k.column_id, k.title, k.position, k.tenant_id, k.priority,
         k.due_date::text as due_date, k.version, k.archived_at
        from kanban_cards k join kanban_columns c on c.id = k.column_id
        where c.board_id = $1 order by c.position, k.position, k.id`,
@@ -239,10 +241,10 @@ async function applyCommand(
           409,
           'Este cartão já foi criado.',
         );
-      await connection.query(
+      const inserted = await connection.query<{ card_number: number }>(
         `insert into kanban_cards
           (id, column_id, title, description, tenant_id, priority, due_date, position)
-         values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+         values ($1, $2, $3, $4, $5, $6, $7, $8) returning card_number`,
         [
           command.id,
           command.columnId,
@@ -258,6 +260,7 @@ async function applyCommand(
         changed: true,
         card: {
           id: command.id,
+          number: inserted.rows[0].card_number,
           columnId: command.columnId,
           title: command.title,
           description: command.description ?? '',
