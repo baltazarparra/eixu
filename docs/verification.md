@@ -15,6 +15,7 @@ nova execução. Os scripts e dependências vêm de [package.json](../package.js
 | Formulário ou tracking             | Em ambiente de teste autorizado, envio, atribuição, consentimento, gravação e destino; duplicação de clique.                                                        |
 | Imagens ou ferramentas             | Falha parcial, disponibilidade, alteração por número, isolamento, aplicação de logo e recusa de exclusão em uso.                                                    |
 | Schema                             | Aplicação e reaplicação em PostgreSQL descartável, com verificação dos consumidores.                                                                                |
+| Pastas de sites                    | CRUD, nomes únicos, preservação ao excluir, lote atômico, conflito entre sessões, desfazer, arrasto, teclado e celular.                                             |
 | Kanban interno                     | Sessão, rota canônica e redirecionamento, host de cliente, origem, upgrade idempotente, vínculo, filtros, arquivo, ordem, concorrência por cartão, teclado e toque. |
 | Skills e cliente do Kanban         | Validação estrutural das skills, bearer restrito, sessão humana/Origin, host de cliente, parser, payloads/versionamento e leitura real sem escrita no destino.      |
 | Modelo ou prompt                   | Contratos e [avaliação reproduzível](harness.md#avaliação-reproduzível), com chamadas reais autorizadas e limitações registradas.                                   |
@@ -80,7 +81,8 @@ npm run test:sites:browser
 
 As suítes usam componentes reais e CSS emitido pelo Next.js, com dados e serviços
 simulados. Cobrem o editor, geração, conversa, atualização da prévia, navegação,
-contraste, referências, teclado e movimento reduzido. Elas não comprovam latência
+pastas compartilhadas, arrasto, desfazer, contraste, referências, teclado e
+movimento reduzido. Elas não comprovam latência
 do modelo, persistência no Neon ou comportamento em aparelhos físicos/Safari.
 Sem Chrome, os casos dependentes são pulados; informe isso no resultado.
 

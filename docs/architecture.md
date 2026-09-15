@@ -47,6 +47,15 @@ O [contrato visual](design.md) descreve variantes, dials, âncoras e a aplicaç�
 
 ## Composição administrativa
 
+A listagem em `/admin` consulta `tenants` e `site_folders` no servidor. As
+pastas têm um nível e são globais para a equipe; `tenants.folder_id` guarda a
+associação e usa `ON DELETE SET NULL` para preservar o site quando a pasta é
+excluída. O cliente aplica a movimentação de forma otimista e permite desfazer.
+A Server Action recebe a pasta anterior observada por site e só grava o lote
+completo quando todas as associações ainda coincidem, evitando sobrescrever uma
+mudança feita em outra sessão. Criação, renomeação, exclusão e movimentação
+entram em `admin_activity` com o operador autenticado.
+
 O Kanban da operação é uma página global em `/admin/kanban`, fora das abas de
 cliente. O endereço inicial `/admin/app/kanban` redireciona permanentemente para
 a rota canônica. `kanban` e o legado `app` são slugs reservados no cadastro. A
@@ -302,6 +311,7 @@ Uploads manuais em `/api/admin/[tenant]/upload` aceitam PNG, JPEG, WebP, GIF e S
 | Tabela              | Responsabilidade                                                        |
 | ------------------- | ----------------------------------------------------------------------- |
 | `tenants`           | Identidade, rascunho e snapshot da apresentação global                  |
+| `site_folders`      | Pastas compartilhadas que organizam os tenants no painel                |
 | `admin_users`       | Operadores globais, estado da conta e hash do PIN                       |
 | `admin_sessions`    | Sessões opacas, expiração e revogação                                   |
 | `admin_activity`    | Autoria, resultado e snapshots das ações administrativas                |
