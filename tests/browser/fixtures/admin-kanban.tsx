@@ -1,7 +1,7 @@
 import { createRoot } from 'react-dom/client';
-import { KanbanBoard } from '@/app/(admin)/admin/app/kanban/board';
+import { KanbanBoard } from '@/app/(admin)/admin/kanban/board';
 import type { KanbanSnapshot } from '@/lib/kanban/schema';
-import styles from '@/app/(admin)/admin/app/kanban/kanban.module.css';
+import styles from '@/app/(admin)/admin/kanban/kanban.module.css';
 import '@/app/(admin)/admin.css';
 
 const initial = JSON.parse(

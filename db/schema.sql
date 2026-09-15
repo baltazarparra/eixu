@@ -247,15 +247,22 @@ create table if not exists page_revisions (
 create index if not exists page_revisions_page_time_idx
   on page_revisions (page_id, created_at desc);
 
--- Quadro interno da operação. Não pertence a um tenant nem ao site publicado.
+-- Quadro interno da operação. É global; cada cartão pode referenciar um tenant.
 create table if not exists kanban_boards (
   id         uuid primary key default gen_random_uuid(),
   key        text not null unique,
   title      text not null,
   revision   bigint not null default 0 check (revision >= 0),
+  schema_version integer not null default 2 check (schema_version > 0),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Tabelas do primeiro piloto não tinham versão de schema. O valor 1 permite
+-- acrescentar a quarta etapa uma única vez sem recriá-la após uma exclusão.
+alter table kanban_boards
+  add column if not exists schema_version integer not null default 1
+  check (schema_version > 0);
 
 create table if not exists kanban_columns (
   id         uuid primary key,
@@ -272,11 +279,32 @@ create table if not exists kanban_cards (
   column_id   uuid not null references kanban_columns(id) on delete restrict,
   title       text not null check (char_length(btrim(title)) between 1 and 160),
   description text not null default '' check (char_length(description) <= 5000),
+  tenant_id   uuid references tenants(id) on delete set null,
+  priority    text check (priority in ('low', 'medium', 'high', 'urgent')),
+  due_date    date,
+  version     integer not null default 1 check (version > 0),
+  archived_at timestamptz,
   position    integer not null check (position >= 0),
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now(),
   unique (column_id, position) deferrable initially deferred
 );
+
+-- Evolução aditiva para instalações que já receberam o primeiro piloto.
+alter table kanban_cards
+  add column if not exists tenant_id uuid references tenants(id) on delete set null;
+alter table kanban_cards
+  add column if not exists priority text
+  check (priority in ('low', 'medium', 'high', 'urgent'));
+alter table kanban_cards add column if not exists due_date date;
+alter table kanban_cards
+  add column if not exists version integer not null default 1 check (version > 0);
+alter table kanban_cards add column if not exists archived_at timestamptz;
+
+create index if not exists kanban_cards_tenant_idx
+  on kanban_cards (tenant_id) where tenant_id is not null;
+create index if not exists kanban_cards_archived_idx
+  on kanban_cards (archived_at desc) where archived_at is not null;
 
 -- Um statement para a primeira criação: migrate.mjs executa statements isolados.
 -- Reaplicar o schema não restaura colunas que já foram alteradas ou excluídas.
@@ -284,8 +312,42 @@ with inserted_board as (
   insert into kanban_boards (key, title) values ('operations', 'Kanban')
   on conflict (key) do nothing returning id
 ), defaults(title, position) as (
-  values ('A fazer', 0), ('Em andamento', 1), ('Concluído', 2)
+  values
+    ('A fazer', 0),
+    ('Em andamento', 1),
+    ('Em revisão', 2),
+    ('Concluído', 3)
 )
 insert into kanban_columns (id, board_id, title, position)
 select gen_random_uuid(), inserted_board.id, defaults.title, defaults.position
 from inserted_board cross join defaults;
+
+-- Acrescenta "Em revisão" uma vez aos quadros criados pelo piloto v1. O CTE
+-- desloca as posições na mesma instrução para preservar a restrição deferida.
+with upgraded_board as (
+  update kanban_boards
+  set schema_version = 2, updated_at = now()
+  where key = 'operations' and schema_version < 2
+  returning id
+), target as (
+  select upgraded_board.id,
+    least(2, count(kanban_columns.id))::integer as insert_position,
+    coalesce(bool_or(kanban_columns.title = 'Em revisão'), false) as has_review
+  from upgraded_board
+  left join kanban_columns on kanban_columns.board_id = upgraded_board.id
+  group by upgraded_board.id
+), shifted as (
+  update kanban_columns
+  set position = kanban_columns.position + 1, updated_at = now()
+  from target
+  where kanban_columns.board_id = target.id
+    and not target.has_review
+    and kanban_columns.position >= target.insert_position
+  returning kanban_columns.id
+)
+insert into kanban_columns (id, board_id, title, position)
+select gen_random_uuid(), target.id, 'Em revisão', target.insert_position
+from target
+where not target.has_review;
+
+alter table kanban_boards alter column schema_version set default 2;

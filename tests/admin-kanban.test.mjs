@@ -48,10 +48,10 @@ await test(
     assert.equal(board.revision, 0);
     assert.deepEqual(
       board.columns.map((column) => column.title),
-      ['A fazer', 'Em andamento', 'Concluído'],
+      ['A fazer', 'Em andamento', 'Em revisão', 'Concluído'],
     );
     await database.query(ddl);
-    assert.equal((await queries.readKanbanBoard()).columns.length, 3);
+    assert.equal((await queries.readKanbanBoard()).columns.length, 4);
 
     const extraId = randomUUID();
     board = await run('create_column', 0, { id: extraId, title: 'Revisão' });
@@ -63,7 +63,7 @@ await test(
     });
     assert.equal(board.revision, 1, 'operação idêntica não aumenta revisão');
     const firstColumn = board.columns[0].id;
-    const secondColumn = board.columns[1].id;
+    const secondColumn = board.columns[2].id;
     const firstCard = randomUUID();
     const secondCard = randomUUID();
     board = await run('create_card', 1, {
@@ -273,7 +273,7 @@ await test(
     assert.equal(await queries.readKanbanCard(firstCard), null);
     board = await run('delete_column', 9, { columnId: secondColumn });
     assert.equal(board.revision, 10);
-    assert.equal(board.columns.length, 3);
+    assert.equal(board.columns.length, 4);
     board = await run('rename_column', 10, {
       columnId: firstColumn,
       title: 'Entrada',
@@ -281,13 +281,13 @@ await test(
     assert.equal(board.revision, 11);
     await database.query(ddl);
     const reapplied = await queries.readKanbanBoard();
-    assert.equal(reapplied.columns.length, 3);
+    assert.equal(reapplied.columns.length, 4);
     assert.equal(
       reapplied.columns.find((column) => column.id === firstColumn).title,
       'Entrada',
     );
     assert.equal(
-      reapplied.columns.some((column) => column.title === 'Em andamento'),
+      reapplied.columns.some((column) => column.title === 'Em revisão'),
       false,
     );
     const ids = reapplied.columns.map((column) => column.id);
@@ -319,7 +319,7 @@ await test(
     await database.query(
       `insert into kanban_columns (id, board_id, title, position)
        select gen_random_uuid(), $1, 'Extra ' || series, series
-       from generate_series(3, 7) series`,
+       from generate_series(4, 7) series`,
       [board.board.id],
     );
     await assert.rejects(
@@ -333,6 +333,165 @@ await test(
     await assert.rejects(
       run('delete_column', 12, { columnId: firstColumn }),
       (error) => error.code === 'LAST_COLUMN' && error.status === 409,
+    );
+  },
+);
+
+await test(
+  'Kanban: cliente, prioridade, prazo, arquivo e versão isolada do cartão',
+  { skip: !localUrl, timeout: 60_000 },
+  async (t) => {
+    const database = await localPostgres(localUrl);
+    const tenantId = randomUUID();
+    t.after(async () => {
+      try {
+        await database.query('delete from kanban_cards');
+        await database.query('delete from kanban_columns');
+        await database.query(
+          "delete from kanban_boards where key = 'operations'",
+        );
+        await database.query('delete from tenants where id = $1', [tenantId]);
+      } finally {
+        await database.close();
+      }
+    });
+    await database.query('delete from kanban_cards');
+    await database.query('delete from kanban_columns');
+    await database.query("delete from kanban_boards where key = 'operations'");
+    const ddl = await readFile('db/schema.sql', 'utf8');
+    await database.query(ddl);
+    await database.query(
+      'insert into tenants (id, slug, name) values ($1, $2, $3)',
+      [tenantId, `kanban-${tenantId}`, 'Cliente do Kanban'],
+    );
+    const dataSource = {
+      transaction: database.transaction,
+      db: () => ({
+        query: async (sql, params) => (await database.query(sql, params)).rows,
+      }),
+    };
+    const queries = await loadModule('lib/kanban/queries.ts', {
+      '@/lib/db': dataSource,
+    });
+    const service = await loadModule('lib/kanban/service.ts', {
+      '@/lib/db': dataSource,
+      '@/lib/kanban/queries': queries,
+    });
+    const run = (type, expectedRevision, fields) =>
+      service.executeKanbanCommand({ type, expectedRevision, ...fields });
+
+    let board = await queries.readKanbanBoard();
+    const firstColumn = board.columns[0].id;
+    const secondColumn = board.columns[1].id;
+    const reviewColumn = board.columns[2].id;
+    const firstCard = randomUUID();
+    const secondCard = randomUUID();
+    board = await run('create_card', 0, {
+      id: firstCard,
+      columnId: firstColumn,
+      title: 'Publicar landing page',
+      description: 'Conferir a prévia antes do deploy.',
+      tenantId,
+      priority: 'high',
+      dueDate: '2026-10-15',
+    });
+    assert.equal(board.cards[0].tenantName, 'Cliente do Kanban');
+    assert.equal(board.cards[0].priority, 'high');
+    assert.equal(board.cards[0].dueDate, '2026-10-15');
+    assert.equal(board.cards[0].version, 1);
+    assert.equal(
+      board.tenants.some((tenant) => tenant.id === tenantId),
+      true,
+    );
+    assert.equal(
+      (await queries.readKanbanCard(firstCard)).card.description,
+      'Conferir a prévia antes do deploy.',
+    );
+
+    board = await run('create_card', 1, {
+      id: secondCard,
+      columnId: secondColumn,
+      title: 'Mudança independente',
+    });
+    const updated = await run('update_card', 1, {
+      cardId: firstCard,
+      title: 'Publicar landing page',
+      description: 'Pronta para publicar.',
+      tenantId,
+      priority: 'urgent',
+      dueDate: null,
+      expectedCardVersion: 1,
+    });
+    assert.equal(updated.revision, 3);
+    assert.equal(updated.card.version, 2);
+    assert.equal(updated.card.priority, 'urgent');
+    assert.equal(updated.card.dueDate, null);
+    await assert.rejects(
+      run('update_card', 3, {
+        cardId: firstCard,
+        title: 'Versão antiga',
+        description: '',
+        expectedCardVersion: 1,
+      }),
+      (error) => error.code === 'CARD_VERSION_CONFLICT' && error.status === 409,
+    );
+
+    board = await run('archive_card', 3, { cardId: firstCard });
+    assert.equal(board.revision, 4);
+    assert.equal(
+      board.cards.some((card) => card.id === firstCard),
+      false,
+    );
+    assert.equal(board.archivedCards[0].id, firstCard);
+    assert.equal(board.archivedCards[0].position, 500);
+    assert.equal(
+      board.columns.find((column) => column.id === firstColumn)
+        .archivedCardCount,
+      1,
+    );
+    await assert.rejects(
+      run('delete_column', 4, { columnId: firstColumn }),
+      (error) => error.code === 'COLUMN_NOT_EMPTY' && error.status === 409,
+    );
+    board = await run('restore_card', 4, { cardId: firstCard });
+    assert.equal(board.revision, 5);
+    assert.equal(board.archivedCards.length, 0);
+    assert.equal(board.cards.find((card) => card.id === firstCard).version, 4);
+
+    await database.query('delete from tenants where id = $1', [tenantId]);
+    board = await queries.readKanbanBoard();
+    assert.equal(
+      board.cards.find((card) => card.id === firstCard).tenantId,
+      null,
+    );
+    assert.equal(
+      board.tenants.some((tenant) => tenant.id === tenantId),
+      false,
+    );
+
+    board = await run('delete_column', 5, { columnId: reviewColumn });
+    assert.equal(board.revision, 6);
+    await database.query(
+      "update kanban_boards set schema_version = 1 where key = 'operations'",
+    );
+    await database.query(ddl);
+    board = await queries.readKanbanBoard();
+    assert.deepEqual(
+      board.columns.map((column) => column.title),
+      ['A fazer', 'Em andamento', 'Em revisão', 'Concluído'],
+    );
+    const upgradedReview = board.columns.find(
+      (column) => column.title === 'Em revisão',
+    ).id;
+    board = await run('delete_column', 6, { columnId: upgradedReview });
+    assert.equal(board.revision, 7);
+    await database.query(ddl);
+    assert.equal(
+      (await queries.readKanbanBoard()).columns.some(
+        (column) => column.title === 'Em revisão',
+      ),
+      false,
+      'reaplicar o schema não restaura uma etapa removida após o upgrade',
     );
   },
 );
@@ -541,4 +700,17 @@ await test('transporte administrativo preserva code, fields e revisão do confli
       error.code === 'REVISION_CONFLICT' &&
       error.currentRevision === 12,
   );
+});
+
+await test('endereço legado do Kanban redireciona para a rota canônica', async () => {
+  let destination = '';
+  const legacy = await loadModule('app/(admin)/admin/app/kanban/page.tsx', {
+    'next/navigation': {
+      permanentRedirect: (path) => {
+        destination = path;
+      },
+    },
+  });
+  legacy.default();
+  assert.equal(destination, '/admin/kanban');
 });

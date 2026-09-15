@@ -6,18 +6,30 @@ import react from '@vitejs/plugin-react';
 const root = process.cwd();
 
 export async function kanbanFixture() {
-  const columns = ['A fazer', 'Em andamento', 'Concluído'].map(
+  const columns = ['A fazer', 'Em andamento', 'Em revisão', 'Concluído'].map(
     (title, position) => ({
       id: randomUUID(),
       title,
       position,
+      archivedCardCount: 0,
     }),
   );
+  const tenants = [
+    { id: randomUUID(), slug: 'acme', name: 'Acme', status: 'published' },
+    {
+      id: randomUUID(),
+      slug: 'oficina-sol',
+      name: 'Oficina Sol',
+      status: 'draft',
+    },
+  ];
   const state = {
     board: { id: randomUUID(), title: 'Kanban' },
     revision: 0,
     columns,
     cards: [],
+    archivedCards: [],
+    tenants,
   };
   const descriptions = new Map();
   let loseNextResponse = false;
@@ -35,6 +47,22 @@ export async function kanbanFixture() {
       });
   }
 
+  function findCard(id) {
+    return (
+      state.cards.find((card) => card.id === id) ??
+      state.archivedCards.find((card) => card.id === id)
+    );
+  }
+
+  function tenantFields(tenantId) {
+    const tenant = state.tenants.find((item) => item.id === tenantId);
+    return {
+      tenantId: tenant?.id ?? null,
+      tenantSlug: tenant?.slug ?? null,
+      tenantName: tenant?.name ?? null,
+    };
+  }
+
   function reply(res, status, body) {
     res.statusCode = status;
     res.setHeader('content-type', 'application/json');
@@ -43,7 +71,10 @@ export async function kanbanFixture() {
   }
 
   function apply(command) {
-    if (command.expectedRevision !== state.revision)
+    if (
+      command.expectedRevision !== state.revision &&
+      !(command.type === 'update_card' && command.expectedCardVersion)
+    )
       return {
         status: 409,
         body: {
@@ -61,6 +92,7 @@ export async function kanbanFixture() {
           id: command.id,
           title: command.title,
           position: state.columns.length,
+          archivedCardCount: 0,
         });
         break;
       case 'rename_column': {
@@ -103,22 +135,51 @@ export async function kanbanFixture() {
           position: state.cards.filter(
             (item) => item.columnId === command.columnId,
           ).length,
-          hasDescription: false,
+          hasDescription: Boolean(command.description),
+          ...tenantFields(command.tenantId),
+          priority: command.priority ?? null,
+          dueDate: command.dueDate ?? null,
+          version: 1,
+          archivedAt: null,
         });
-        descriptions.set(command.id, '');
+        descriptions.set(command.id, command.description ?? '');
         break;
       case 'update_card': {
-        const item = state.cards.find((entry) => entry.id === command.cardId);
+        const item = findCard(command.cardId);
         if (!item)
           return {
             status: 404,
             body: { error: 'Cartão não encontrado.', code: 'NOT_FOUND' },
           };
+        if (
+          command.expectedCardVersion &&
+          command.expectedCardVersion !== item.version
+        )
+          return {
+            status: 409,
+            body: {
+              error: 'Este cartão mudou em outra aba.',
+              code: 'CARD_VERSION_CONFLICT',
+            },
+          };
+        const nextTenant =
+          command.tenantId === undefined ? item.tenantId : command.tenantId;
+        const nextPriority =
+          command.priority === undefined ? item.priority : command.priority;
+        const nextDueDate =
+          command.dueDate === undefined ? item.dueDate : command.dueDate;
         changed =
           item.title !== command.title ||
-          descriptions.get(item.id) !== command.description;
+          descriptions.get(item.id) !== command.description ||
+          item.tenantId !== nextTenant ||
+          item.priority !== nextPriority ||
+          item.dueDate !== nextDueDate;
         item.title = command.title;
         item.hasDescription = Boolean(command.description);
+        Object.assign(item, tenantFields(nextTenant));
+        item.priority = nextPriority;
+        item.dueDate = nextDueDate;
+        if (changed) item.version += 1;
         descriptions.set(item.id, command.description);
         card = { ...item, description: command.description };
         break;
@@ -154,20 +215,75 @@ export async function kanbanFixture() {
           entry.position = position;
         });
         normalizeCards(source);
+        item.version += 1;
         break;
       }
-      case 'delete_card': {
+      case 'archive_card': {
         const index = state.cards.findIndex(
           (entry) => entry.id === command.cardId,
         );
+        if (index < 0) {
+          changed = false;
+          break;
+        }
+        const [item] = state.cards.splice(index, 1);
+        item.archivedAt = new Date().toISOString();
+        item.position =
+          Math.max(
+            499,
+            ...state.archivedCards
+              .filter((entry) => entry.columnId === item.columnId)
+              .map((entry) => entry.position),
+          ) + 1;
+        item.version += 1;
+        state.archivedCards.unshift(item);
+        state.columns.find(
+          (column) => column.id === item.columnId,
+        ).archivedCardCount += 1;
+        normalizeCards(item.columnId);
+        break;
+      }
+      case 'restore_card': {
+        const index = state.archivedCards.findIndex(
+          (entry) => entry.id === command.cardId,
+        );
+        if (index < 0) {
+          changed = false;
+          break;
+        }
+        const [item] = state.archivedCards.splice(index, 1);
+        item.archivedAt = null;
+        item.position = state.cards.filter(
+          (entry) => entry.columnId === item.columnId,
+        ).length;
+        item.version += 1;
+        state.cards.push(item);
+        state.columns.find(
+          (column) => column.id === item.columnId,
+        ).archivedCardCount -= 1;
+        break;
+      }
+      case 'delete_card': {
+        let collection = state.cards;
+        let index = collection.findIndex(
+          (entry) => entry.id === command.cardId,
+        );
+        if (index < 0) {
+          collection = state.archivedCards;
+          index = collection.findIndex((entry) => entry.id === command.cardId);
+        }
         if (index < 0)
           return {
             status: 404,
             body: { error: 'Cartão não encontrado.', code: 'NOT_FOUND' },
           };
-        const [removed] = state.cards.splice(index, 1);
+        const [removed] = collection.splice(index, 1);
         descriptions.delete(removed.id);
-        normalizeCards(removed.columnId);
+        if (removed.archivedAt)
+          state.columns.find(
+            (column) => column.id === removed.columnId,
+          ).archivedCardCount -= 1;
+        else normalizeCards(removed.columnId);
         break;
       }
       default:
@@ -217,13 +333,14 @@ export async function kanbanFixture() {
               const chunks = [];
               for await (const chunk of req) chunks.push(chunk);
               const edit = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-              const item = state.cards.find((entry) => entry.id === edit.id);
+              const item = findCard(edit.id);
               if (!item) {
                 reply(res, 404, { error: 'Cartão não encontrado.' });
                 return;
               }
               item.title = edit.title;
               item.hasDescription = Boolean(edit.description);
+              item.version += 1;
               descriptions.set(item.id, edit.description);
               state.revision += 1;
               reply(res, 200, state);
@@ -252,11 +369,13 @@ export async function kanbanFixture() {
             ) {
               if (failNextCardRead) {
                 failNextCardRead = false;
-                reply(res, 503, { error: 'Falha temporária na leitura do cartão.' });
+                reply(res, 503, {
+                  error: 'Falha temporária na leitura do cartão.',
+                });
                 return;
               }
               const id = url.pathname.split('/').at(-1);
-              const item = state.cards.find((entry) => entry.id === id);
+              const item = findCard(id);
               reply(
                 res,
                 item ? 200 : 404,
@@ -294,7 +413,7 @@ export async function kanbanFixture() {
               reply(res, outcome.status, outcome.body);
               return;
             }
-            if (url.pathname === '/admin/app/kanban') {
+            if (url.pathname === '/admin/kanban') {
               res.setHeader('content-type', 'text/html; charset=utf-8');
               const html = `<!doctype html><html lang="pt-BR"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script id="fixture-state" type="application/json">${JSON.stringify(state).replaceAll('<', '\\u003c')}</script><script type="module" src="/tests/browser/fixtures/admin-kanban.tsx"></script></body></html>`;
               res.end(await vite.transformIndexHtml(url.pathname, html));

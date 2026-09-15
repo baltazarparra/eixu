@@ -7,6 +7,7 @@ import {
   MAX_COLUMNS,
   type KanbanCardDetail,
   type KanbanCommand,
+  type KanbanPriority,
 } from '@/lib/kanban/schema';
 
 const BOARD_KEY = 'operations';
@@ -32,6 +33,11 @@ type Card = {
   title: string;
   description: string;
   position: number;
+  tenant_id: string | null;
+  priority: KanbanPriority | null;
+  due_date: string | null;
+  version: number;
+  archived_at: Date | string | null;
 };
 type CardSummaryRow = Omit<Card, 'description'>;
 
@@ -50,13 +56,35 @@ function cardDetail(card: Card): KanbanCardDetail {
     title: card.title,
     description: card.description,
     position: card.position,
+    tenantId: card.tenant_id,
+    priority: card.priority,
+    dueDate: card.due_date,
+    version: card.version,
+    archivedAt:
+      card.archived_at instanceof Date
+        ? card.archived_at.toISOString()
+        : card.archived_at,
   };
 }
 
 function cardsIn(cards: CardSummaryRow[], columnId: string) {
   return cards
-    .filter((card) => card.column_id === columnId)
+    .filter((card) => card.column_id === columnId && !card.archived_at)
     .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id));
+}
+
+async function requireTenant(connection: Client, tenantId: string | null) {
+  if (tenantId === null) return;
+  const result = await connection.query('select 1 from tenants where id = $1', [
+    tenantId,
+  ]);
+  if (!result.rows.length)
+    throw new KanbanError(
+      'VALIDATION_ERROR',
+      400,
+      'O cliente selecionado não existe mais.',
+      { tenantId: 'Escolha outro cliente ou deixe o campo vazio.' },
+    );
 }
 
 async function lockBoard(connection: Client): Promise<Board> {
@@ -75,7 +103,8 @@ async function loadState(connection: Client, boardId: string) {
     [boardId],
   );
   const cardsResult = await connection.query(
-    `select k.id, k.column_id, k.title, k.position
+    `select k.id, k.column_id, k.title, k.position, k.tenant_id, k.priority,
+        k.due_date::text as due_date, k.version, k.archived_at
        from kanban_cards k join kanban_columns c on c.id = k.column_id
        where c.board_id = $1 order by c.position, k.position, k.id`,
     [boardId],
@@ -183,7 +212,7 @@ async function applyCommand(
         throw new KanbanError(
           'COLUMN_NOT_EMPTY',
           409,
-          'Mova ou exclua os cartões antes de excluir esta coluna.',
+          'Mova, restaure ou exclua os cartões desta coluna antes de excluí-la.',
         );
       await connection.query(
         'delete from kanban_columns where id = $1 and board_id = $2',
@@ -197,6 +226,7 @@ async function applyCommand(
     }
     case 'create_card': {
       column(command.columnId);
+      await requireTenant(connection, command.tenantId ?? null);
       if (cards.length >= MAX_CARDS)
         throw new KanbanError(
           'VALIDATION_ERROR',
@@ -210,18 +240,47 @@ async function applyCommand(
           'Este cartão já foi criado.',
         );
       await connection.query(
-        'insert into kanban_cards (id, column_id, title, position) values ($1, $2, $3, $4)',
+        `insert into kanban_cards
+          (id, column_id, title, description, tenant_id, priority, due_date, position)
+         values ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [
           command.id,
           command.columnId,
           command.title,
+          command.description ?? '',
+          command.tenantId ?? null,
+          command.priority ?? null,
+          command.dueDate ?? null,
           cardsIn(cards, command.columnId).length,
         ],
       );
-      return { changed: true };
+      return {
+        changed: true,
+        card: {
+          id: command.id,
+          columnId: command.columnId,
+          title: command.title,
+          description: command.description ?? '',
+          tenantId: command.tenantId ?? null,
+          priority: command.priority ?? null,
+          dueDate: command.dueDate ?? null,
+          position: cardsIn(cards, command.columnId).length,
+          version: 1,
+          archivedAt: null,
+        },
+      };
     }
     case 'update_card': {
       const found = card(command.cardId);
+      if (
+        command.expectedCardVersion !== undefined &&
+        command.expectedCardVersion !== found.version
+      )
+        throw new KanbanError(
+          'CARD_VERSION_CONFLICT',
+          409,
+          'Este cartão mudou em outra aba. Confira a versão atual antes de salvar.',
+        );
       const descriptionResult = await connection.query(
         'select description from kanban_cards where id = $1 and column_id = $2',
         [found.id, found.column_id],
@@ -231,15 +290,35 @@ async function applyCommand(
       )?.description;
       if (currentDescription === undefined) missing('Cartão');
       const fullCard = { ...found, description: currentDescription };
+      const tenantId =
+        command.tenantId === undefined ? found.tenant_id : command.tenantId;
+      const priority =
+        command.priority === undefined ? found.priority : command.priority;
+      const dueDate =
+        command.dueDate === undefined ? found.due_date : command.dueDate;
+      await requireTenant(connection, tenantId);
       if (
         found.title === command.title &&
-        currentDescription === command.description
+        currentDescription === command.description &&
+        found.tenant_id === tenantId &&
+        found.priority === priority &&
+        found.due_date === dueDate
       )
         return { changed: false, card: cardDetail(fullCard) };
       await connection.query(
-        `update kanban_cards set title = $2, description = $3, updated_at = now()
-         where id = $1 and column_id = $4`,
-        [found.id, command.title, command.description, found.column_id],
+        `update kanban_cards
+         set title = $2, description = $3, tenant_id = $4, priority = $5,
+           due_date = $6, version = version + 1, updated_at = now()
+         where id = $1 and column_id = $7`,
+        [
+          found.id,
+          command.title,
+          command.description,
+          tenantId,
+          priority,
+          dueDate,
+          found.column_id,
+        ],
       );
       return {
         changed: true,
@@ -247,11 +326,21 @@ async function applyCommand(
           ...fullCard,
           title: command.title,
           description: command.description,
+          tenant_id: tenantId,
+          priority,
+          due_date: dueDate,
+          version: found.version + 1,
         }),
       };
     }
     case 'move_card': {
       const found = card(command.cardId);
+      if (found.archived_at)
+        throw new KanbanError(
+          'CARD_ARCHIVED',
+          409,
+          'Restaure o cartão antes de movê-lo.',
+        );
       column(command.targetColumnId);
       const source = cardsIn(cards, found.column_id).map((item) => item.id);
       const withoutMoved = source.filter((id) => id !== found.id);
@@ -270,6 +359,10 @@ async function applyCommand(
           );
         if (sameOrder(source, reordered)) return { changed: false };
         await setCardOrder(connection, reordered);
+        await connection.query(
+          'update kanban_cards set version = version + 1 where id = $1',
+          [found.id],
+        );
         return { changed: true };
       }
 
@@ -288,11 +381,54 @@ async function applyCommand(
           'Posição de destino não encontrada.',
         );
       await connection.query(
-        'update kanban_cards set column_id = $2, position = $3, updated_at = now() where id = $1',
+        `update kanban_cards
+         set column_id = $2, position = $3, version = version + 1,
+           updated_at = now()
+         where id = $1`,
         [found.id, command.targetColumnId, reordered.indexOf(found.id)],
       );
       await setCardOrder(connection, withoutMoved);
       await setCardOrder(connection, reordered);
+      return { changed: true };
+    }
+    case 'archive_card': {
+      const found = card(command.cardId);
+      if (found.archived_at) return { changed: false };
+      const archivePosition =
+        Math.max(
+          MAX_CARDS - 1,
+          ...cards
+            .filter(
+              (item) => item.column_id === found.column_id && item.archived_at,
+            )
+            .map((item) => item.position),
+        ) + 1;
+      await connection.query(
+        `update kanban_cards
+         set archived_at = now(), position = $2, version = version + 1,
+           updated_at = now()
+         where id = $1`,
+        [found.id, archivePosition],
+      );
+      await setCardOrder(
+        connection,
+        cardsIn(cards, found.column_id)
+          .map((item) => item.id)
+          .filter((id) => id !== found.id),
+      );
+      return { changed: true };
+    }
+    case 'restore_card': {
+      const found = card(command.cardId);
+      if (!found.archived_at) return { changed: false };
+      const position = cardsIn(cards, found.column_id).length;
+      await connection.query(
+        `update kanban_cards
+         set archived_at = null, position = $2, version = version + 1,
+           updated_at = now()
+         where id = $1`,
+        [found.id, position],
+      );
       return { changed: true };
     }
     case 'delete_card': {
@@ -319,7 +455,10 @@ export async function executeKanbanCommand(command: KanbanCommand) {
       const revision = Number(board.revision);
       if (!Number.isSafeInteger(revision))
         throw new Error('Revisão do quadro fora do contrato JSON.');
-      if (command.expectedRevision !== revision)
+      const cardVersionProtectsUpdate =
+        command.type === 'update_card' &&
+        command.expectedCardVersion !== undefined;
+      if (command.expectedRevision !== revision && !cardVersionProtectsUpdate)
         throw new KanbanError(
           'REVISION_CONFLICT',
           409,

@@ -47,24 +47,29 @@ O [contrato visual](design.md) descreve variantes, dials, âncoras e a aplicaç�
 
 ## Composição administrativa
 
-O Kanban da operação é uma página global em `/admin/app/kanban`, fora das abas de
-cliente. `app` é um slug reservado no cadastro, e o release verifica um eventual
-cliente legado com esse nome. A página e os handlers conferem a sessão; os
-handlers também recusam hosts de clientes, pois `proxy.ts` deixa `/api/*` passar
-nesses subdomínios. As mutações verificam a origem do navegador.
+O Kanban da operação é uma página global em `/admin/kanban`, fora das abas de
+cliente. O endereço inicial `/admin/app/kanban` redireciona permanentemente para
+a rota canônica. `kanban` e o legado `app` são slugs reservados no cadastro. A
+página e os handlers conferem a sessão; os handlers também recusam hosts de
+clientes, pois `proxy.ts` deixa `/api/*` passar nesses subdomínios. As mutações
+verificam a origem do navegador.
 
 `kanban_boards`, `kanban_columns` e `kanban_cards` guardam o quadro único, as
-etapas e as tarefas, separados de `tenants` e `pages`. A primeira migração cria
-o quadro e três colunas em uma instrução atômica; reaplicá-la não restaura
-colunas que o operador já alterou. O GET devolve título, etapa e posição dos
-cartões; a descrição completa é lida só ao abrir um cartão.
+etapas e as tarefas. Um cartão pode referenciar um cliente por `tenant_id`; ao
+excluir esse cliente, a tarefa permanece e só perde o vínculo. Uma instalação
+nova recebe **A fazer**, **Em andamento**, **Em revisão** e **Concluído**. O
+upgrade do piloto acrescenta **Em revisão** uma única vez, e reaplicar o schema
+não restaura colunas que o operador removeu depois. O GET do quadro devolve
+metadados compactos, cartões ativos e arquivados e a lista de clientes; a
+descrição completa é lida só ao abrir um cartão.
 
 Cada comando trava a linha do quadro, compara a revisão recebida e reordena as
-posições em uma transação. Uma aba com revisão antiga recebe conflito em vez de
-sobrescrever outra mudança. Como a revisão é global, alterações simultâneas em
-cartões independentes também podem conflitar; o cliente relê o quadro e preserva
-texto não salvo. Não há histórico de atividades, autoria individual ou
-sincronização imediata entre operadores.
+posições em uma transação. Comandos estruturais e movimentos ainda exigem a
+revisão global atual. A edição de conteúdo também envia a versão do próprio
+cartão: uma mudança independente no quadro não bloqueia o salvamento, mas duas
+edições concorrentes no mesmo cartão recebem conflito. O cliente relê o quadro
+e preserva texto não salvo. Não há histórico de atividades, autoria individual
+ou sincronização imediata entre operadores.
 
 O layout raiz consulta a sessão antes de montar a casca e entrega identidade do
 operador e formulário de saída por contexto, desenhados nos cabeçalhos.

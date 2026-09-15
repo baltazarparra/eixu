@@ -6,17 +6,17 @@ nova execução. Os scripts e dependências vêm de [package.json](../package.js
 
 ## Verificação pelo impacto
 
-| Mudança                            | Evidência necessária                                                                                                              |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| README, AGENTS e docs              | Links e âncoras locais, comandos existentes, fatos conferidos no código e formatação. Não exige geração, banco ou testes novos.   |
-| Institucional ou CSS               | Tipos, lint, build Next.js e navegador em desktop/celular; navegação, CTA, metadados e aparência.                                 |
-| Blocos, lint, edição ou publicação | Contratos válidos e inválidos; recusas sem escrita; concorrência; rascunho e snapshot preservados; render e fluxo no navegador.   |
-| Auth, tenant ou proxy              | Sessão ausente/expirada, tenant incorreto, host reservado, acesso a `/s/*`, query de prévia e conteúdo público.                   |
-| Formulário ou tracking             | Em ambiente de teste autorizado, envio, atribuição, consentimento, gravação e destino; duplicação de clique.                      |
-| Imagens ou ferramentas             | Falha parcial, disponibilidade, alteração por número, isolamento, aplicação de logo e recusa de exclusão em uso.                  |
-| Schema                             | Aplicação e reaplicação em PostgreSQL descartável, com verificação dos consumidores.                                              |
-| Kanban interno                     | Sessão, host de cliente, origem, migração atômica, ordem, duas abas, texto não salvo, teclado e toque.                            |
-| Modelo ou prompt                   | Contratos e [avaliação reproduzível](harness.md#avaliação-reproduzível), com chamadas reais autorizadas e limitações registradas. |
+| Mudança                            | Evidência necessária                                                                                                                                                |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| README, AGENTS e docs              | Links e âncoras locais, comandos existentes, fatos conferidos no código e formatação. Não exige geração, banco ou testes novos.                                     |
+| Institucional ou CSS               | Tipos, lint, build Next.js e navegador em desktop/celular; navegação, CTA, metadados e aparência.                                                                   |
+| Blocos, lint, edição ou publicação | Contratos válidos e inválidos; recusas sem escrita; concorrência; rascunho e snapshot preservados; render e fluxo no navegador.                                     |
+| Auth, tenant ou proxy              | Sessão ausente/expirada, tenant incorreto, host reservado, acesso a `/s/*`, query de prévia e conteúdo público.                                                     |
+| Formulário ou tracking             | Em ambiente de teste autorizado, envio, atribuição, consentimento, gravação e destino; duplicação de clique.                                                        |
+| Imagens ou ferramentas             | Falha parcial, disponibilidade, alteração por número, isolamento, aplicação de logo e recusa de exclusão em uso.                                                    |
+| Schema                             | Aplicação e reaplicação em PostgreSQL descartável, com verificação dos consumidores.                                                                                |
+| Kanban interno                     | Sessão, rota canônica e redirecionamento, host de cliente, origem, upgrade idempotente, vínculo, filtros, arquivo, ordem, concorrência por cartão, teclado e toque. |
+| Modelo ou prompt                   | Contratos e [avaliação reproduzível](harness.md#avaliação-reproduzível), com chamadas reais autorizadas e limitações registradas.                                   |
 
 O lint de código e o pre-flight `lintPage` são verificações diferentes.
 Compilação, fixtures e crítica de IA não substituem a validação do fluxo afetado.
@@ -69,8 +69,10 @@ contraste, referências, teclado e movimento reduzido. Elas não comprovam latê
 do modelo, persistência no Neon ou comportamento em aparelhos físicos/Safari.
 Sem Chrome, os casos dependentes são pulados; informe isso no resultado.
 
-O Kanban tem um teste SQL com o driver Neon ligado apenas ao banco local
-descartável `eixu_pr2_test`. Execute com
+O Kanban tem um teste SQL com o driver Neon ligado apenas a um banco Postgres
+descartável. Ele cobre upgrade e reaplicação do schema, vínculo opcional com
+cliente, prioridade, prazo, arquivo/restauração, ordem e concorrência. Execute
+com
 `EIXU_TEST_POSTGRES_URL=postgresql://127.0.0.1/eixu_pr2_test node --test tests/admin-kanban.test.mjs`.
 O teste de navegador `tests/browser/admin-kanban.test.mjs` usa o componente real
 e o CSS fonte compilado pelo Vite em uma fixture isolada; o build Next.js valida

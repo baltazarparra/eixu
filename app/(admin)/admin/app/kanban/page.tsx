@@ -1,18 +1,6 @@
-import { redirect } from 'next/navigation';
-import { isAuthenticated } from '@/lib/auth';
-import { readKanbanBoard } from '@/lib/kanban/queries';
-import { KanbanBoard } from './board';
-import styles from './kanban.module.css';
+import { permanentRedirect } from 'next/navigation';
 
-export const dynamic = 'force-dynamic';
-
-export default async function KanbanPage() {
-  if (!(await isAuthenticated()))
-    redirect('/admin/login?returnTo=/admin/app/kanban');
-  const initial = await readKanbanBoard();
-  return (
-    <main className={styles.page}>
-      <KanbanBoard initial={initial} />
-    </main>
-  );
+/** Compatibilidade com o endereço publicado no primeiro piloto. */
+export default function LegacyKanbanPage() {
+  permanentRedirect('/admin/kanban');
 }
