@@ -1,5 +1,23 @@
 # Manual do operador
 
+## Organizar tarefas no Kanban
+
+Na lista de clientes, abra **Kanban** para usar o quadro interno da operação. O
+quadro é compartilhado por todas as pessoas que usam a credencial administrativa;
+ele não separa tarefas por cliente nem registra um responsável individual.
+
+O primeiro quadro tem **A fazer**, **Em andamento** e **Concluído**. Use o botão
+**+ Cartão** na coluna para registrar uma tarefa com um título. Abra o cartão
+para editar título e descrição. Mova o cartão arrastando sua alça ou pelo menu
+**Mover para**, **Subir** e **Descer**; esses comandos também funcionam com teclado e no
+celular. Colunas podem ser criadas, renomeadas e reordenadas. Uma coluna só pode
+ser excluída quando está vazia, e o quadro conserva pelo menos uma coluna.
+
+O painel confirma cada salvamento antes de anunciar sucesso. Se outra aba mudar
+o quadro, a operação antiga pode ser recusada: atualize a versão exibida e tente
+novamente. Texto que ainda não foi salvo continua no editor para conferência. A
+exclusão de cartões é definitiva e exige confirmação.
+
 ## Escolher Landing Page
 
 O cadastro oferece cinco vibes. **Landing Page** concentra a oferta em uma home

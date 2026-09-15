@@ -30,6 +30,8 @@
   "dependencies": {
     "@ai-sdk/react": "^4.0.100",
     "@base-ui/react": "1.7.0",
+    "@dnd-kit/dom": "^0.5.0",
+    "@dnd-kit/react": "0.5.0",
     "@neondatabase/serverless": "^1.1.0",
     "@phosphor-icons/react": "^2.1.10",
     "@shadcn/react": "0.3.0",
