@@ -12,7 +12,13 @@ async function fixture(options = {}) {
   const f = await pageEditFixture(undefined, options);
   const { POST } = await loadModule('app/api/admin/[tenant]/edit/route.ts', {
     ...f.mocks,
-    '@/lib/auth': { isAuthenticated: async () => options.auth !== false },
+    '@/lib/auth': {
+      currentUser: async () =>
+        options.auth === false
+          ? null
+          : { id: 'user-1', name: 'Operador', login: 'operador@eixu' },
+    },
+    '@/lib/admin/activity': { recordActivity: async () => undefined },
     '@/lib/tenant-queries': {
       ...f.mocks['@/lib/tenant-queries'],
       getTenantBySlug: async (slug) =>

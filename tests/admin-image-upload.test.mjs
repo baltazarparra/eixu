@@ -156,7 +156,13 @@ async function route({
 } = {}) {
   const calls = [];
   const api = await loadModule('app/api/admin/[tenant]/images/route.ts', {
-    '@/lib/auth': { isAuthenticated: async () => authenticated },
+    '@/lib/auth': {
+      currentUser: async () =>
+        authenticated
+          ? { id: 'user-1', name: 'Operador', login: 'operador@eixu' }
+          : null,
+    },
+    '@/lib/admin/activity': { recordActivity: async () => undefined },
     '@/lib/tenant-queries': {
       getTenantBySlug: async (slug) => {
         calls.push(['resolve', slug]);

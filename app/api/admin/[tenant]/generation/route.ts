@@ -1,5 +1,5 @@
 import { workspaceState } from '@/lib/admin/state';
-import { isAuthenticated } from '@/lib/auth';
+import { currentUser } from '@/lib/auth';
 import { hasChatHistory, messageCursor, messagesAfter } from '@/lib/ai/history';
 import {
   activeRun,
@@ -23,7 +23,7 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ tenant: string }> },
 ) {
-  if (!(await isAuthenticated()))
+  if (!(await currentUser()))
     return new Response('Não autorizado', { status: 401 });
   const { tenant: slug } = await params;
   const tenant = await getTenantBySlug(slug);
@@ -79,8 +79,8 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ tenant: string }> },
 ) {
-  if (!(await isAuthenticated()))
-    return new Response('Não autorizado', { status: 401 });
+  const user = await currentUser();
+  if (!user) return new Response('Não autorizado', { status: 401 });
   const { tenant: slug } = await params;
   const tenant = await getTenantBySlug(slug);
   if (!tenant) return new Response('Cliente não encontrado', { status: 404 });
@@ -88,6 +88,7 @@ export async function POST(
   const result = await startGeneration({
     tenant,
     origin: new URL(request.url).origin,
+    requestedBy: user,
   });
   if (!result.ok)
     return Response.json(

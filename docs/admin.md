@@ -81,7 +81,13 @@ negócio. Ao editar uma cor, a paleta vira uma decisão confirmada do operador e
 é preservada. Primária e secundária precisam ser diferentes; o site ajusta o
 uso quando uma combinação não alcança contraste mínimo.
 
-O painel é uma operação administrativa global: quem tem a credencial pode acessar todos os clientes. Não compartilhe essa sessão com clientes finais.
+O painel é uma operação administrativa global: cada operador entra com seu login e PIN, e todos podem acessar todos os clientes. O nome e o login ativos aparecem no cabeçalho. Não compartilhe a sessão com clientes finais.
+
+**Atividade** reúne as ações administrativas mais recentes, com data, cliente,
+resultado e o operador responsável. Mensagens do chat mostram quem escreveu;
+ações executadas pelo agente aparecem como “Agente · a pedido de” quem iniciou
+o turno ou a geração. A geração também mostra quem a iniciou e quem pediu a
+pausa. Registros antigos, anteriores à autoria, aparecem como legado.
 
 A lista de clientes é a base da navegação: busque por nome/endereço ou filtre
 publicados, rascunhos e arquivados. **Arquivar** tira a URL pública do ar sem

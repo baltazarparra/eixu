@@ -46,7 +46,13 @@ await test(
         const { GET } = await loadModule(
           'app/api/admin/[tenant]/generation/route.ts',
           {
-            '@/lib/auth': { isAuthenticated: async () => true },
+            '@/lib/auth': {
+              currentUser: async () => ({
+                id: 'user-1',
+                name: 'Operador',
+                login: 'operador@eixu',
+              }),
+            },
             '@/lib/ai/history': history,
             '@/lib/tenant-queries': tenants,
             '@/lib/images/queries': { listImages: async () => [] },
@@ -190,7 +196,13 @@ await test(
         const { GET } = await loadModule(
           'app/api/admin/[tenant]/generation/route.ts',
           {
-            '@/lib/auth': { isAuthenticated: async () => true },
+            '@/lib/auth': {
+              currentUser: async () => ({
+                id: 'user-1',
+                name: 'Operador',
+                login: 'operador@eixu',
+              }),
+            },
             '@/lib/ai/history': {
               ...history,
               messagesAfter: async (...args) => {
@@ -321,7 +333,13 @@ await test(
         const { POST } = await loadModule(
           'app/api/admin/[tenant]/generation/stop/route.ts',
           {
-            '@/lib/auth': { isAuthenticated: async () => true },
+            '@/lib/auth': {
+              currentUser: async () => ({
+                id: 'user-1',
+                name: 'Operador',
+                login: 'operador@eixu',
+              }),
+            },
             '@/lib/tenant-queries': {
               getTenantBySlug: async () => ({ id: legacyId }),
             },

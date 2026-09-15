@@ -115,7 +115,17 @@ export async function chatFixture({
     }),
   };
   const { POST } = await loadModule('app/api/chat/route.ts', {
-    '@/lib/auth': { isAuthenticated: async () => authenticated },
+    '@/lib/auth': {
+      currentUser: async () =>
+        authenticated
+          ? { id: 'user-1', name: 'Operador', login: 'operador@eixu' }
+          : null,
+      isAuthenticated: async () => authenticated,
+    },
+    '@/lib/admin/activity': {
+      recordActivity: async () => undefined,
+      recordAgentTool: async () => undefined,
+    },
     '@/lib/sites/publish': {
       publicationMessage,
       publishSite: async (target, page) => {

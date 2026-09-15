@@ -43,7 +43,9 @@ await test('site arquivado responde 404 no público e mantém a prévia autentic
         getTenantBySlug: async () => tenant,
         getPage: async () => page,
       },
-      '@/lib/auth': { isAuthenticated: async () => true },
+      '@/lib/auth': {
+        isPreviewAuthorized: async () => true,
+      },
       '@/lib/blocks/render': { RenderBlocks: () => null },
       '@/lib/blocks/inline-editor-loader': { InlineEditorLoader: () => null },
       'next/headers': {

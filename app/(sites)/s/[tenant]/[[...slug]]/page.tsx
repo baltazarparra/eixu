@@ -10,7 +10,7 @@ import {
   listPublishedPosts,
 } from '@/lib/tenant-queries';
 import { attributionScript } from '@/lib/tracking';
-import { isAuthenticated } from '@/lib/auth';
+import { isPreviewAuthorized } from '@/lib/auth';
 import { structuredData } from '@/lib/sites/structured-data';
 import { renderedMotif, renderingVibeOf } from '@/lib/design/vibes';
 import {
@@ -48,11 +48,11 @@ export async function generateMetadata({
   searchParams,
 }: Props): Promise<Metadata> {
   const preview = (await searchParams).preview === '1';
-  if (preview && !(await isAuthenticated())) notFound();
   const { tenant: tenantSlug, slug } = await params;
   const resolved = await resolve(tenantSlug, slug ?? []);
   if (!resolved) return { title: 'Página não encontrada' };
   const { tenant, page } = resolved;
+  if (preview && !(await isPreviewAuthorized(tenant.id))) notFound();
   if (!preview && !isTenantPublic(tenant)) notFound();
   if (!preview && !page.publishedBlocks) notFound();
   const renderedTenant = preview ? tenant : publicTenant(tenant);
@@ -133,10 +133,10 @@ export async function generateViewport({
   searchParams,
 }: Props): Promise<Viewport> {
   const preview = (await searchParams).preview === '1';
-  if (preview && !(await isAuthenticated())) notFound();
   const { tenant: slug, slug: parts } = await params;
   const resolved = await resolve(slug, parts ?? []);
   if (!resolved) return {};
+  if (preview && !(await isPreviewAuthorized(resolved.tenant.id))) notFound();
   if (!preview && !isTenantPublic(resolved.tenant)) notFound();
   if (!preview && !resolved.page.publishedBlocks) notFound();
   const tenant = preview ? resolved.tenant : publicTenant(resolved.tenant);
@@ -151,13 +151,13 @@ export default async function TenantPage({ params, searchParams }: Props) {
   const query = await searchParams;
   const isPreview = query.preview === '1';
   const editing = isPreview && query.edit === '1';
-  if (isPreview && !(await isAuthenticated())) notFound();
   const resolved = await resolve(
     resolvedParams.tenant,
     resolvedParams.slug ?? [],
   );
   if (!resolved) notFound();
   const { tenant, page } = resolved;
+  if (isPreview && !(await isPreviewAuthorized(tenant.id))) notFound();
   if (!isPreview && !isTenantPublic(tenant)) notFound();
   const renderedTenant = isPreview ? tenant : publicTenant(tenant);
   const renderedPage = isPreview ? page : publicPage(page);

@@ -21,7 +21,13 @@ export async function generationFeedFixture({
   const { GET } = await loadModule(
     'app/api/admin/[tenant]/generation/route.ts',
     {
-      '@/lib/auth': { isAuthenticated: async () => true },
+      '@/lib/auth': {
+        currentUser: async () => ({
+          id: 'user-1',
+          name: 'Operador',
+          login: 'operador@eixu',
+        }),
+      },
       '@/lib/tenant-queries': {
         getTenantBySlug: async () => tenant,
         listPages: async () => [],

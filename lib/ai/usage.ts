@@ -17,9 +17,14 @@ export type ChatUsage = {
   durationMs: number;
   costUsd?: number;
 };
+export type ChatAuthor = {
+  type: 'user' | 'agent' | 'legacy';
+  name?: string;
+  login?: string;
+};
 export type ChatMessage = InferAgentUIMessage<
   ReturnType<typeof siteAgent>,
-  { usage?: ChatUsage }
+  { usage?: ChatUsage; author?: ChatAuthor }
 >;
 
 export function usageRecord(

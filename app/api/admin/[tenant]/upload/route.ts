@@ -4,7 +4,8 @@ import {
   putTenantBlob,
   uploadFileName,
 } from '@/lib/blob/tenant-files';
-import { isAuthenticated } from '@/lib/auth';
+import { currentUser } from '@/lib/auth';
+import { recordActivity } from '@/lib/admin/activity';
 import { getTenantBySlug } from '@/lib/tenant-queries';
 
 /**
@@ -15,8 +16,8 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ tenant: string }> },
 ) {
-  if (!(await isAuthenticated()))
-    return new Response('Não autorizado', { status: 401 });
+  const user = await currentUser();
+  if (!user) return new Response('Não autorizado', { status: 401 });
   const { tenant: slug } = await params;
   const tenant = await getTenantBySlug(slug);
   if (!tenant) return new Response('Cliente não encontrado', { status: 404 });
@@ -44,6 +45,16 @@ export async function POST(
       contentType: file.type,
     },
   );
+
+  await recordActivity({
+    actor: user,
+    actorType: 'user',
+    tenant,
+    action: 'asset.upload',
+    resourceType: kind,
+    resourceId: blob.url,
+    summary: `${user.name} enviou um arquivo de ${kind === 'logo' ? 'logo' : 'mídia'}`,
+  });
 
   return Response.json({
     url: blob.url,

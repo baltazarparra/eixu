@@ -33,7 +33,8 @@ import {
   editingPageContext,
   literalEditClarification,
 } from '@/lib/ai/page-edits';
-import { isAuthenticated } from '@/lib/auth';
+import { currentUser } from '@/lib/auth';
+import { recordActivity, recordAgentTool } from '@/lib/admin/activity';
 import { buildTools } from '@/lib/ai/tools';
 import { db } from '@/lib/db';
 import {
@@ -91,7 +92,8 @@ function textResponse(text: string, changedDraft = false) {
 }
 
 export async function POST(request: Request) {
-  if (!(await isAuthenticated())) {
+  const user = await currentUser();
+  if (!user) {
     return new Response('Não autorizado', { status: 401 });
   }
 
@@ -158,16 +160,35 @@ export async function POST(request: Request) {
     .map((part) => (part as { text: string }).text)
     .join(' ');
   if (lastUserText) {
-    await db()`
-      insert into chat_messages (tenant_id, role, content, channel)
-      values (${tenant.id}, 'user', ${lastUserText}, 'site')
-    `;
+    const rows = (await db()`
+      insert into chat_messages (
+        tenant_id, role, content, channel,
+        admin_user_id, actor_type, actor_name, actor_login
+      ) values (
+        ${tenant.id}, 'user', ${lastUserText}, 'site',
+        ${user.id}, 'user', ${user.name}, ${user.login}
+      ) returning id
+    `) as { id: number }[];
+    await recordActivity({
+      actor: user,
+      tenant,
+      action: 'chat.message',
+      summary: `${user.name} enviou uma mensagem ao agente`,
+      resourceType: 'chat_message',
+      resourceId: String(rows[0]?.id ?? ''),
+      operationId: rows[0] ? `chat:${rows[0].id}` : undefined,
+    });
   }
 
   const persistAssistant = async (text: string) => {
     await db()`
-      insert into chat_messages (tenant_id, role, content, channel)
-      values (${tenant.id}, 'assistant', ${text}, 'site')
+      insert into chat_messages (
+        tenant_id, role, content, channel,
+        admin_user_id, actor_type, actor_name, actor_login
+      ) values (
+        ${tenant.id}, 'assistant', ${text}, 'site',
+        ${user.id}, 'agent', ${user.name}, ${user.login}
+      )
     `;
   };
 
@@ -175,7 +196,20 @@ export async function POST(request: Request) {
   // A ordem explícita é executada pelo servidor: o modelo não veta a decisão
   // editorial nem transforma autorização de publicação em confirmação de fatos.
   if (!phase && !hasFile && isDirectPublicationRequest(lastUserText)) {
-    const text = publicationMessage(await publishSite(tenant));
+    const publication = await publishSite(tenant);
+    const text = publicationMessage(publication);
+    await recordActivity({
+      actor: user,
+      tenant,
+      action: 'site.publish',
+      summary:
+        publication.blocked.length === 0
+          ? `${user.name} publicou ${tenant.name} pelo chat`
+          : `${user.name} tentou publicar ${tenant.name} pelo chat`,
+      result: publication.blocked.length === 0 ? 'success' : 'denied',
+      resourceType: 'tenant',
+      resourceId: tenant.id,
+    });
     await persistAssistant(text);
     return textResponse(text);
   }
@@ -210,6 +244,7 @@ export async function POST(request: Request) {
     const started = await startGeneration({
       tenant,
       origin: new URL(request.url).origin,
+      requestedBy: user,
     });
     const text = started.ok
       ? `Retomando a geração pela etapa "${started.phase}". Acompanhe o andamento no painel; pode fechar esta aba sem perder nada.`
@@ -241,6 +276,15 @@ export async function POST(request: Request) {
           )
       : 'Não há alteração anterior guardada para desfazer neste rascunho. Nada foi alterado.';
     await persistAssistant(text);
+    if (text.startsWith('Desfeito'))
+      await recordActivity({
+        actor: user,
+        tenant,
+        action: 'page.undo',
+        summary: `${user.name} desfez a última edição em ${tenant.name}`,
+        resourceType: 'page',
+        resourceId: undoPage?.id,
+      });
     return textResponse(text, text.startsWith('Desfeito'));
   }
 
@@ -370,7 +414,7 @@ export async function POST(request: Request) {
         tools,
         stream: result.stream.pipeThrough(
           new TransformStream({
-            transform(part, controller) {
+            async transform(part, controller) {
               if (part.type === 'finish-step') completedSteps += 1;
               if (part.type === 'tool-result' || part.type === 'tool-error')
                 editReceipt?.observe(
@@ -380,6 +424,20 @@ export async function POST(request: Request) {
                     ? part.output
                     : { error: 'A tentativa foi recusada pelo servidor.' },
                 );
+              if (part.type === 'tool-result' || part.type === 'tool-error') {
+                const callId = (part as { toolCallId?: string }).toolCallId;
+                if (callId)
+                  await recordAgentTool({
+                    requestedBy: user,
+                    tenant,
+                    tool: part.toolName,
+                    callId,
+                    output:
+                      part.type === 'tool-result'
+                        ? part.output
+                        : { error: 'A ferramenta falhou.' },
+                  });
+              }
               if (
                 (part.type === 'tool-result' || part.type === 'tool-error') &&
                 part.toolName === 'edit_page'
@@ -431,7 +489,10 @@ export async function POST(request: Request) {
           }),
         ),
         onError: () => CHAT_INTERRUPTED,
-        messageMetadata: usageMetadata(model, phase ?? 'livre', started),
+        messageMetadata: ({ part }) => ({
+          author: { type: 'agent', name: user.name, login: user.login },
+          ...usageMetadata(model, phase ?? 'livre', started)({ part }),
+        }),
       }),
       {
         receipt: editReceipt ? () => editReceipt.text() : undefined,

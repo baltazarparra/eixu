@@ -20,7 +20,8 @@ const { siteAgent } = await jiti.import('../lib/ai/agent.ts');
 const { productModel, TURN_TIMEOUT_MS } = await jiti.import(
   '../lib/ai/models.ts',
 );
-const { createSessionToken } = await jiti.import('../lib/auth.ts');
+const { createPreviewToken, PREVIEW_SESSION_COOKIE } =
+  await jiti.import('../lib/auth.ts');
 const { db } = await jiti.import('../lib/db.ts');
 const { buildTools } = await jiti.import('../lib/ai/tools.ts');
 const { sourceContextText } = await jiti.import('../lib/ai/source-context.ts');
@@ -151,7 +152,7 @@ async function runPhase(tenant, phase, images) {
   }
   const tools = buildTools(tenant, {
     origin: process.env.EIXU_EVAL_ORIGIN,
-    cookie: `eixu_admin=${await createSessionToken()}`,
+    cookie: `${PREVIEW_SESSION_COOKIE}=${await createPreviewToken(tenant.id)}`,
     phase,
   });
   const started = Date.now();

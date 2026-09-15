@@ -107,6 +107,13 @@ function TenantHeader({
       {preview}
       <div className="admin-bar-decide">
         {decision}
+        <Link
+          className="admin-activity-link"
+          href={`/admin/atividade?tenant=${encodeURIComponent(tenant.slug)}`}
+          title={`Atividade · ${session?.operator ?? 'operação'}`}
+        >
+          {session?.operator ?? 'Atividade'}
+        </Link>
         <div className="admin-bar-logout">{session?.logout}</div>
       </div>
       <MobileMenu
@@ -114,7 +121,14 @@ function TenantHeader({
         status={tenant.status}
         logout={session?.logout}
       >
-        <nav aria-label="Áreas do cliente no celular">{links}</nav>
+        <nav aria-label="Áreas do cliente no celular">
+          {links}
+          <Link
+            href={`/admin/atividade?tenant=${encodeURIComponent(tenant.slug)}`}
+          >
+            Atividade · {session?.operator ?? 'operação'}
+          </Link>
+        </nav>
       </MobileMenu>
     </header>
   );

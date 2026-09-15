@@ -220,6 +220,19 @@ export function GenerationPanel({
         {action}
       </div>
 
+      {run?.requestedBy ? (
+        <p className="admin-run-actor">
+          Iniciada por <strong>{run.requestedBy.name}</strong> ·{' '}
+          {run.requestedBy.login}
+          {run.stopRequestedBy ? (
+            <>
+              {' '}
+              · pausa solicitada por <strong>{run.stopRequestedBy.name}</strong>
+            </>
+          ) : null}
+        </p>
+      ) : null}
+
       {finished ? (
         usage.rows.length ? (
           <p className="admin-run-cost">

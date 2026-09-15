@@ -1,4 +1,5 @@
-import { isAuthenticated } from '@/lib/auth';
+import { currentUser } from '@/lib/auth';
+import { recordActivity } from '@/lib/admin/activity';
 import { getPage, getTenantBySlug } from '@/lib/tenant-queries';
 import { PageEditError } from '@/lib/ai/page-edits';
 import { inlineEditSchema, applyInlineEdit } from '@/lib/sites/inline-edits';
@@ -8,8 +9,8 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ tenant: string }> },
 ) {
-  if (!(await isAuthenticated()))
-    return new Response('Não autorizado', { status: 401 });
+  const user = await currentUser();
+  if (!user) return new Response('Não autorizado', { status: 401 });
   const origin = request.headers.get('origin');
   if (origin && origin !== new URL(request.url).origin)
     return new Response('Origem inválida', { status: 403 });
@@ -40,6 +41,16 @@ export async function POST(
       page,
       blocks: edited.blocks,
       brand: tenant.brand,
+    });
+    await recordActivity({
+      actor: user,
+      actorType: 'user',
+      tenant,
+      action: 'page.inline_edit',
+      resourceType: 'page',
+      resourceId: page.id,
+      summary: `${user.name} editou /${page.slug || ''} pela prévia`,
+      operationId: `page-edit:${receipt.revision}`,
     });
     return Response.json({ ...receipt, changes: edited.changes });
   } catch (error) {

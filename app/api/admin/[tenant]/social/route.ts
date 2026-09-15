@@ -1,4 +1,5 @@
-import { isAuthenticated } from '@/lib/auth';
+import { currentUser } from '@/lib/auth';
+import { recordActivity } from '@/lib/admin/activity';
 import { getTenantBySlug } from '@/lib/tenant-queries';
 import { intakeSchema } from '@/lib/tenant-intake';
 import { normalizeSocialUrl, parseSocialRecord } from '@/lib/social-profile';
@@ -9,13 +10,13 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 180;
 
 async function resolve(params: Promise<{ tenant: string }>) {
-  if (!(await isAuthenticated()))
-    return { error: new Response('Não autorizado', { status: 401 }) };
+  const user = await currentUser();
+  if (!user) return { error: new Response('Não autorizado', { status: 401 }) };
   const { tenant: slug } = await params;
   const tenant = await getTenantBySlug(slug);
   if (!tenant)
     return { error: new Response('Cliente não encontrado', { status: 404 }) };
-  return { tenant };
+  return { tenant, user };
 }
 
 /** Estado da última leitura, usado pelo card enquanto ela ainda corre. */
@@ -58,5 +59,14 @@ export async function POST(
       },
       { status: 409 },
     );
+  await recordActivity({
+    actor: resolved.user,
+    actorType: 'user',
+    tenant,
+    action: 'social.refresh',
+    resourceType: 'tenant',
+    resourceId: tenant.id,
+    summary: `${resolved.user.name} releu o perfil social de ${tenant.name}`,
+  });
   return Response.json({ social });
 }

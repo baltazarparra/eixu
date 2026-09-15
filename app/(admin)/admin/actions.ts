@@ -5,7 +5,8 @@ import { redirect } from 'next/navigation';
 import { after } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { del } from '@vercel/blob';
-import { isAuthenticated, signIn, signOut } from '@/lib/auth';
+import { currentUser, signIn, signOut, type AdminUser } from '@/lib/auth';
+import { recordActivity } from '@/lib/admin/activity';
 import { db } from '@/lib/db';
 import { text } from '@/lib/form-data';
 import {
@@ -31,8 +32,10 @@ import { markSocialReading, syncSocialProfile } from '@/lib/ai/social';
 import { deriveLogoAssets } from '@/lib/images/logo-apply';
 import type { Brand } from '@/lib/types';
 
-async function guard() {
-  if (!(await isAuthenticated())) redirect('/admin/login');
+async function guard(): Promise<AdminUser> {
+  const user = await currentUser();
+  if (!user) redirect('/admin/login');
+  return user;
 }
 
 export async function loginAction(
@@ -40,10 +43,19 @@ export async function loginAction(
   formData: FormData,
 ): Promise<string | null> {
   const user = text(formData, 'user');
-  const password = text(formData, 'password');
+  const pin = text(formData, 'pin');
   // Atraso fixo para desencorajar tentativa em massa contra uma senha curta.
   await new Promise((resolve) => setTimeout(resolve, 400));
-  if (!(await signIn(user, password))) return 'Usuário ou senha incorretos.';
+  const result = await signIn(user, pin);
+  if (!result.ok)
+    return result.blocked
+      ? 'Muitas tentativas. Aguarde 15 minutos e tente novamente.'
+      : 'Usuário ou PIN incorretos.';
+  await recordActivity({
+    actor: result.user,
+    action: 'auth.login',
+    summary: `${result.user.name} entrou no painel`,
+  });
   const returnTo = text(formData, 'returnTo');
   redirect(
     returnTo.startsWith('/admin') &&
@@ -55,6 +67,13 @@ export async function loginAction(
 }
 
 export async function logoutAction() {
+  const user = await currentUser();
+  if (user)
+    await recordActivity({
+      actor: user,
+      action: 'auth.logout',
+      summary: `${user.name} saiu do painel`,
+    });
   await signOut();
   redirect('/admin/login');
 }
@@ -63,7 +82,7 @@ export async function createTenantAction(
   _prev: string | null,
   formData: FormData,
 ): Promise<string | null> {
-  await guard();
+  const actor = await guard();
   const details = tenantDetailsSchema.safeParse(Object.fromEntries(formData));
   const slugResult = tenantSlugSchema.safeParse(text(formData, 'slug'));
   const intake = intakeFromForm(formData);
@@ -159,6 +178,14 @@ export async function createTenantAction(
       );
     }
   }
+  await recordActivity({
+    actor,
+    tenant: { id: tenantId, slug, name },
+    action: 'tenant.create',
+    summary: `${actor.name} criou o cliente ${name}`,
+    resourceType: 'tenant',
+    resourceId: tenantId,
+  });
   revalidatePath('/admin');
   redirect(`/admin/${slug}`);
 }
@@ -182,7 +209,7 @@ export async function setTenantArchivedAction(
   _prev: ArchiveTenantResult | null,
   formData: FormData,
 ): Promise<ArchiveTenantResult> {
-  await guard();
+  const actor = await guard();
   const slugResult = tenantSlugSchema.safeParse(text(formData, 'slug'));
   if (!slugResult.success)
     return { ok: false, message: 'Endereço de cliente inválido.' };
@@ -203,10 +230,26 @@ export async function setTenantArchivedAction(
           end,
           updated_at = now()
       where t.slug = ${slugResult.data}
-      returning t.name, t.status
-    `) as { name: string; status: 'draft' | 'published' | 'archived' }[];
+      returning t.id, t.name, t.status
+    `) as {
+      id?: string;
+      name: string;
+      status: 'draft' | 'published' | 'archived';
+    }[];
     const changed = rows[0];
     if (!changed) return { ok: false, message: 'Cliente não encontrado.' };
+    await recordActivity({
+      actor,
+      tenant: { id: changed.id, slug: slugResult.data, name: changed.name },
+      action:
+        changed.status === 'archived' ? 'tenant.archive' : 'tenant.restore',
+      summary:
+        changed.status === 'archived'
+          ? `${actor.name} arquivou ${changed.name}`
+          : `${actor.name} reativou ${changed.name}`,
+      resourceType: 'tenant',
+      resourceId: slugResult.data,
+    });
     revalidatePath('/admin');
     revalidatePath(`/admin/${slugResult.data}`);
     return {
@@ -237,7 +280,7 @@ export async function deleteTenantAction(
   _prev: DeleteTenantResult | null,
   formData: FormData,
 ): Promise<DeleteTenantResult> {
-  await guard();
+  const actor = await guard();
   const slugResult = tenantSlugSchema.safeParse(text(formData, 'slug'));
   if (!slugResult.success)
     return { ok: false, message: 'Endereço de cliente inválido.' };
@@ -275,7 +318,17 @@ export async function deleteTenantAction(
         };
       },
     );
-    if (result.ok) revalidatePath('/admin');
+    if (result.ok) {
+      await recordActivity({
+        actor,
+        tenant: { slug: tenant.slug, name: tenant.name },
+        action: 'tenant.delete',
+        summary: `${actor.name} excluiu ${tenant.name}`,
+        resourceType: 'tenant',
+        resourceId: tenant.id,
+      });
+      revalidatePath('/admin');
+    }
     return result;
   } catch (error) {
     const messages = {
@@ -299,7 +352,7 @@ export async function saveSpendAction(
   _prev: SpendResult | null,
   formData: FormData,
 ): Promise<SpendResult> {
-  await guard();
+  const actor = await guard();
   const tenantSlug = text(formData, 'tenant');
   const parsed = spendSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success)
@@ -316,6 +369,14 @@ export async function saveSpendAction(
       insert into campaign_spend (tenant_id, campaign, channel, spend_cents, period_start, period_end)
       values (${tenant.id}, ${campaign}, ${channel}, ${spend}, ${start}, ${end})
     `;
+    await recordActivity({
+      actor,
+      tenant,
+      action: 'traffic.spend.create',
+      summary: `${actor.name} adicionou um gasto em ${tenant.name}`,
+      resourceType: 'campaign_spend',
+      detail: { campaign, channel, start, end },
+    });
   } catch {
     return {
       ok: false,

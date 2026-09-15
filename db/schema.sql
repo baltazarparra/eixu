@@ -21,6 +21,35 @@ create table if not exists tenants (
   updated_at    timestamptz not null default now()
 );
 
+-- Operadores internos. O PIN nunca é persistido; somente o hash com salt.
+create table if not exists admin_users (
+  id         uuid primary key default gen_random_uuid(),
+  login      text not null unique check (login = lower(btrim(login))),
+  name       text not null check (char_length(btrim(name)) between 1 and 80),
+  pin_hash   text not null,
+  active     boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- O navegador recebe um token aleatório; somente seu SHA-256 fica no banco.
+create table if not exists admin_sessions (
+  token_hash text primary key,
+  user_id    uuid not null references admin_users(id) on delete cascade,
+  expires_at timestamptz not null,
+  revoked_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+-- Limite compartilhado entre instâncias para proteger o PIN curto.
+create table if not exists admin_login_attempts (
+  login              text primary key,
+  failures           integer not null default 0,
+  window_started_at  timestamptz not null default now(),
+  blocked_until      timestamptz,
+  updated_at         timestamptz not null default now()
+);
+
 create table if not exists pages (
   id               uuid primary key default gen_random_uuid(),
   tenant_id        uuid not null references tenants(id) on delete cascade,
@@ -112,6 +141,10 @@ create table if not exists images (
 -- Colunas acrescentadas depois da primeira versão do schema.
 alter table tenants       add column if not exists image_guide jsonb not null default '{}'::jsonb;
 alter table chat_messages add column if not exists channel text not null default 'site';
+alter table chat_messages add column if not exists admin_user_id uuid references admin_users(id) on delete set null;
+alter table chat_messages add column if not exists actor_type text not null default 'legacy';
+alter table chat_messages add column if not exists actor_name text;
+alter table chat_messages add column if not exists actor_login text;
 -- 'foto' ou 'logo'. Coluna própria porque target_block é enum de blocos do site.
 alter table images        add column if not exists kind text not null default 'foto';
 -- Telefones, endereços e redes do cliente. Coluna própria porque brand é
@@ -182,6 +215,8 @@ create index if not exists events_tenant_time_idx  on events (tenant_id, created
 create index if not exists events_tenant_type_idx  on events (tenant_id, type);
 create index if not exists chat_tenant_time_idx    on chat_messages (tenant_id, created_at);
 create index if not exists spend_tenant_idx        on campaign_spend (tenant_id);
+create index if not exists admin_sessions_user_idx on admin_sessions (user_id, expires_at desc);
+create index if not exists admin_sessions_expiry_idx on admin_sessions (expires_at);
 
 -- Execução da geração em etapas. O laço vivia no navegador: fechar a aba ou
 -- recarregar matava a sequência sem deixar rastro, e o painel voltava
@@ -221,12 +256,44 @@ create table if not exists generation_events (
   created_at timestamptz not null default now()
 );
 
+alter table generation_runs add column if not exists requested_by uuid references admin_users(id) on delete set null;
+alter table generation_runs add column if not exists requester_name text;
+alter table generation_runs add column if not exists requester_login text;
+alter table generation_runs add column if not exists stop_requested_by uuid references admin_users(id) on delete set null;
+alter table generation_runs add column if not exists stop_requester_name text;
+alter table generation_runs add column if not exists stop_requester_login text;
+
 -- Um run ativo por cliente. O índice parcial é a garantia real contra duas
 -- gerações simultâneas; a checagem na rota é só a mensagem amigável.
 create unique index if not exists generation_runs_active_idx
   on generation_runs (tenant_id) where status in ('queued', 'running', 'stopping');
 create index if not exists generation_runs_tenant_time_idx on generation_runs (tenant_id, created_at desc);
 create index if not exists generation_events_run_idx on generation_events (run_id, id);
+
+-- Linha do tempo administrativa. O snapshot de nome/login e o SET NULL
+-- preservam a autoria mesmo depois de desativar uma conta ou excluir um cliente.
+create table if not exists admin_activity (
+  id             bigserial primary key,
+  user_id        uuid references admin_users(id) on delete set null,
+  actor_type     text not null default 'user',
+  actor_name     text,
+  actor_login    text,
+  tenant_id      uuid references tenants(id) on delete set null,
+  tenant_slug    text,
+  tenant_name    text,
+  action         text not null,
+  resource_type  text,
+  resource_id    text,
+  result         text not null default 'success',
+  summary        text not null,
+  operation_id   text unique,
+  detail         jsonb not null default '{}'::jsonb,
+  created_at     timestamptz not null default now()
+);
+
+create index if not exists admin_activity_time_idx on admin_activity (created_at desc, id desc);
+create index if not exists admin_activity_tenant_idx on admin_activity (tenant_id, created_at desc, id desc);
+create index if not exists admin_activity_user_idx on admin_activity (user_id, created_at desc, id desc);
 
 -- Histórico curto do rascunho de cada página. Uma edição pontual sobrescrevia
 -- `pages.blocks` sem deixar cópia: quando o agente removia a seção errada, não

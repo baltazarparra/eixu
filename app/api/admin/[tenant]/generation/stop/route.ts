@@ -1,4 +1,5 @@
-import { isAuthenticated } from '@/lib/auth';
+import { currentUser } from '@/lib/auth';
+import { recordActivity } from '@/lib/admin/activity';
 import {
   ACTIVE_STATUS,
   activeRun,
@@ -16,8 +17,8 @@ export async function POST(
   _request: Request,
   { params }: { params: Promise<{ tenant: string }> },
 ) {
-  if (!(await isAuthenticated()))
-    return new Response('Não autorizado', { status: 401 });
+  const user = await currentUser();
+  if (!user) return new Response('Não autorizado', { status: 401 });
   const { tenant: slug } = await params;
   const tenant = await getTenantBySlug(slug);
   if (!tenant) return new Response('Cliente não encontrado', { status: 404 });
@@ -29,7 +30,7 @@ export async function POST(
       { status: 409 },
     );
 
-  await requestStop(run.id);
+  await requestStop(run.id, user);
   await recordEvent({
     runId: run.id,
     tenantId: tenant.id,
@@ -37,6 +38,15 @@ export async function POST(
     kind: 'note',
     workerHeartbeat: false,
     label: 'Pausa pedida: a etapa atual termina e a próxima não começa',
+  });
+  await recordActivity({
+    actor: user,
+    tenant,
+    action: 'generation.stop',
+    summary: `${user.name} pediu a pausa da geração de ${tenant.name}`,
+    resourceType: 'generation_run',
+    resourceId: run.id,
+    operationId: `generation:stop:${run.id}:${user.id}`,
   });
   return Response.json({ ok: true });
 }

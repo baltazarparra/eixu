@@ -127,6 +127,12 @@ export function Clients({
           <p>Seus sites, os contatos que chegaram e o trabalho em andamento.</p>
         </div>
         <div className="admin-page-actions">
+          <span className="admin-current-user" title={session?.login}>
+            {session?.operator}
+          </span>
+          <Link className="admin-secondary" href="/admin/atividade">
+            Atividade
+          </Link>
           <Link className="admin-secondary" href="/admin/kanban">
             Kanban
           </Link>
