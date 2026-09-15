@@ -229,7 +229,11 @@ await test(
     await page.waitForFunction(
       () => document.querySelectorAll('[name="phone"]').length === 2,
     );
-    assert.match(await dirty(), /3 alterações/);
+    await page.waitForFunction(() =>
+      document
+        .querySelector('.admin-save-bar output')
+        .textContent.startsWith('3 alterações'),
+    );
     await page.click('[aria-label="Remover fato: Oficina própria"]');
     await page.waitForFunction(
       () =>
@@ -250,7 +254,7 @@ await test(
       await page.$eval('[name="evidence"]', (node) => node.value),
       'Oficina própria\n12 anos de atuação',
     );
-    assert.match(await dirty(), /Dados salvos/);
+    assert.match(await dirty(), /Tudo salvo/);
     await page.type('input[name="name"]', ' atualizada');
     fixture.failSave(true);
     await clickText('Salvar dados');
@@ -262,8 +266,9 @@ await test(
     await clickText('Salvar dados');
     await page.waitForFunction(
       () =>
-        document.querySelector('.admin-save-bar output').textContent ===
-        'Dados salvos',
+        document
+          .querySelector('.admin-save-bar output')
+          .textContent.startsWith('Tudo salvo'),
     );
     assert.equal(fixture.writes.at(-1).name, 'Marcenaria Horizonte atualizada');
     assert.equal(fixture.writes.at(-1).contacts.phones.length, 1);
@@ -273,7 +278,8 @@ await test(
       await page.$eval('[name="name"]', (node) => node.value),
       'Marcenaria Horizonte atualizada',
     );
-    const trigger = await page.$('.admin-risk button');
+    await page.click('.admin-risk-drawer summary');
+    const trigger = await page.$('.admin-risk-drawer button');
     await trigger.click();
     await page.waitForSelector('dialog[open]');
     assert.equal(
@@ -291,7 +297,7 @@ await test(
       await page.evaluate(
         () =>
           document.activeElement ===
-          document.querySelector('.admin-risk button'),
+          document.querySelector('.admin-risk-drawer button'),
       ),
       true,
     );

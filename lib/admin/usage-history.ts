@@ -16,12 +16,51 @@ export const USAGE_LABELS: Record<UsageKind, string> = {
   avatar: 'Leitura de avatar',
 };
 
+/** Etapa da geração escrita como o operador lê no painel, não como no banco. */
+const PHASE_LABELS: Record<string, string> = {
+  briefing: 'briefing',
+  cenas: 'cenas',
+  composicao: 'composição',
+  revisao: 'revisão',
+};
+
+export function phaseLabel(phase: string | null): string | null {
+  return phase ? (PHASE_LABELS[phase] ?? phase) : null;
+}
+
+/** Nome da operação: a etapa distingue as fases de uma mesma geração. */
+export function usageLabel(kind: UsageKind, phase: string | null): string {
+  const step = phaseLabel(phase);
+  const base = USAGE_LABELS[kind] ?? kind;
+  return step ? `${base} · ${step}` : base;
+}
+
+export const USAGE_PERIODS = ['7', '30', '90', 'tudo'] as const;
+export type UsagePeriod = (typeof USAGE_PERIODS)[number];
+export const USAGE_PERIOD_LABELS: Record<UsagePeriod, string> = {
+  '7': '7 dias',
+  '30': '30 dias',
+  '90': '90 dias',
+  tudo: 'Tudo',
+};
+
 export type UsageFilters = {
   start?: string;
   end?: string;
   page: number;
   error?: string;
+  /** Segmento aceso no seletor; 'livre' quando as datas não batem com nenhum. */
+  periodo: UsagePeriod | 'livre';
 };
+
+function presetOf(range: { start: string; end: string }): UsagePeriod | 'livre' {
+  const now = new Date();
+  for (const days of ['7', '30', '90'] as const) {
+    const preset = defaultPeriod(now, Number(days));
+    if (preset.start === range.start && preset.end === range.end) return days;
+  }
+  return 'livre';
+}
 
 export function usageFilters(
   query: Record<string, string | string[] | undefined>,
@@ -32,17 +71,28 @@ export function usageFilters(
     Number.isSafeInteger(rawPage) && rawPage > 0
       ? Math.min(rawPage, 1_000_000)
       : 1;
-  if (query.period === 'all') return { page };
+  // O seletor novo manda ?periodo=; links antigos com start/end e period=all
+  // continuam válidos e acendem o segmento correspondente.
+  const chosen =
+    typeof query.periodo === 'string' &&
+    (USAGE_PERIODS as readonly string[]).includes(query.periodo)
+      ? (query.periodo as UsagePeriod)
+      : null;
+  if (chosen === 'tudo' || (!chosen && query.period === 'all'))
+    return { page, periodo: 'tudo' };
+  if (chosen)
+    return { ...defaultPeriod(new Date(), Number(chosen)), page, periodo: chosen };
   const fallback = defaultPeriod();
   const parsed = periodSchema.safeParse({
     start: query.start ?? fallback.start,
     end: query.end ?? fallback.end,
   });
   return parsed.success
-    ? { ...parsed.data, page }
+    ? { ...parsed.data, page, periodo: presetOf(parsed.data) }
     : {
         ...fallback,
         page: 1,
+        periodo: '30',
         error:
           'Confira as datas: início até o fim, em um período de até 366 dias. Exibindo os últimos 30 dias.',
       };
@@ -78,9 +128,16 @@ export type UsageHistoryRow = UsageNumbers & {
   createdAt: string;
 };
 
+/** Uma barra do gráfico: a etapa, não a chamada nem o dia. */
+export type UsageOperationTotals = UsageNumbers & {
+  kind: UsageKind;
+  phase: string | null;
+};
+
 export type UsageHistory = {
   totals: UsageNumbers;
   rows: UsageHistoryRow[];
+  byOperation: UsageOperationTotals[];
   daily: (UsageNumbers & { day: string })[];
   totalRows: number;
   page: number;
@@ -137,6 +194,11 @@ export async function usageHistory(
           limit 20 offset (select (page - 1) * 20 from pagination)
         ) t), '[]'::json) as rows,
         coalesce((select json_agg(t) from (
+          select kind, phase, ${aggregates}
+          from filtered group by kind, phase
+          order by sum(total_tokens) desc nulls last, kind
+        ) t), '[]'::json) as "byOperation",
+        coalesce((select json_agg(t) from (
           select (created_at at time zone 'America/Sao_Paulo')::date::text as day,
             ${aggregates}
           from filtered group by 1 order by 1 desc
@@ -147,4 +209,36 @@ export async function usageHistory(
     [tenantId, filters.start ?? null, filters.end ?? null, filters.page],
   );
   return (result as UsageHistory[])[0];
+}
+
+export type UsageCardSummary = {
+  days: number;
+  costUsd: number | null;
+  totalTokens: number | null;
+};
+
+/**
+ * Resumo do cartão em Dados: só custo e tokens do período curto. O histórico
+ * inteiro não é carregado numa tela que deixou de mostrá-lo.
+ */
+export async function usageSummary(
+  tenantId: string,
+  days = 30,
+): Promise<UsageCardSummary> {
+  const { start, end } = defaultPeriod(new Date(), days);
+  const result = (await db().query(
+    `select sum(cost_usd) as "costUsd", sum(total_tokens) as "totalTokens"
+       from ai_usage where tenant_id = $1
+        and created_at >= ($2::date::timestamp at time zone 'America/Sao_Paulo')
+        and created_at < (($3::date + 1)::timestamp at time zone 'America/Sao_Paulo')`,
+    [tenantId, start, end],
+  )) as { costUsd: number | string | null; totalTokens: number | string | null }[];
+  const row = result[0];
+  const number = (value: number | string | null | undefined) =>
+    value === null || value === undefined ? null : Number(value);
+  return {
+    days,
+    costUsd: number(row?.costUsd),
+    totalTokens: number(row?.totalTokens),
+  };
 }

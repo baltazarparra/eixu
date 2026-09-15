@@ -8,26 +8,52 @@ import {
   useState,
 } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { TriangleAlert, Upload } from 'lucide-react';
 import { text } from '@/lib/form-data';
 import { formSnapshot, changedFields } from '@/lib/admin/form-changes';
-import { StatusDot } from '@/components/admin/primitives';
+import { FormSection, StatusDot } from '@/components/admin/primitives';
+import { HelpArea, HelpButton, HelpHint, HelpNote } from '@/components/admin/help';
 import { TenantFields } from '@/components/admin/tenant-fields';
 import { VibePreview } from '@/components/admin/brand-fields';
 import { DeleteTenantDialog } from '@/components/admin/delete-tenant-dialog';
 import { SocialProfileCard } from './social-card';
 import { adminFetch } from '@/lib/admin/http';
 import { contactsFromForm, intakeFromForm } from '@/lib/admin/tenant-input';
+import { formatTokens } from '@/lib/admin/usage-summary';
+import type { UsageCardSummary } from '@/lib/admin/usage-history';
 import type { Intake } from '@/lib/tenant-intake';
 import type { Contacts } from '@/lib/tenant-contacts';
 import { VIBES, VIBE_HINT, VIBE_LABEL, type Vibe } from '@/lib/design/vibes';
 import type { SocialProfile } from '@/lib/social-profile';
+
+const SECTIONS = [
+  ['identificacao', '01', 'Identificação'],
+  ['contato', '02', 'Contato'],
+  ['historia', '03', 'História'],
+  ['direcao', '04', 'Direção visual'],
+  ['logo', '05', 'Logo'],
+] as const;
+
+const cardMoney = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'USD',
+  maximumFractionDigits: 2,
+});
+const savedClock = new Intl.DateTimeFormat('pt-BR', {
+  day: '2-digit',
+  month: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+});
 
 export function SettingsForm({
   tenant,
   intake,
   contacts,
   social,
+  usage,
 }: {
   tenant: {
     slug: string;
@@ -51,12 +77,15 @@ export function SettingsForm({
   intake: Partial<Intake>;
   contacts: Contacts;
   social: SocialProfile | null;
+  /** Só o resumo curto: o histórico inteiro mora em /consumo. */
+  usage: UsageCardSummary;
 }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [saved, setSaved] = useState({ tenant, intake, contacts });
   const [version, setVersion] = useState(0);
   const [dirty, setDirty] = useState(0);
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [section, setSection] = useState('identificacao');
   useLayoutEffect(() => {
     const form = formRef.current;
@@ -182,6 +211,7 @@ export function SettingsForm({
         contacts: nextContacts.data,
       });
       setVersion((value) => value + 1);
+      setSavedAt(new Date());
       router.refresh();
       setProfile(next);
       setSocialUrl(parsed.data.socialUrl);
@@ -232,251 +262,294 @@ export function SettingsForm({
     }
   }
   return (
-    <div className="admin-settings-layout">
-      <nav className="admin-settings-nav" aria-label="Seções dos dados">
-        {[
-          ['identificacao', 'Identificação'],
-          ['contato', 'Contato'],
-          ['briefing', 'História'],
-          ['direcao', 'Direção visual'],
-          ['marca', 'Logo'],
-          ['risco', 'Zona de risco'],
-        ].map(([id, label]) => (
-          <a
-            key={id}
-            href={`#${id}`}
-            aria-current={section === id ? 'location' : undefined}
-            onClick={() => setSection(id)}
-          >
-            {label}
-          </a>
-        ))}
-      </nav>
-      <div className="admin-settings-body">
-        <form
-          ref={formRef}
-          id="tenant-settings"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void save(new FormData(event.currentTarget));
-          }}
-        >
-          <fieldset disabled={saving}>
-            <TenantFields
-              key={version}
-              values={saved.tenant}
-              intake={saved.intake}
-              contacts={saved.contacts}
-            />
-            <section id="direcao" className="admin-form-section">
-              <h2 className="text-base font-semibold">Direção visual</h2>
-              <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
-                Uma troca abre uma nova direção no rascunho e preserva a versão
-                publicada. Depois de salvar, volte ao Site e peça “Refaça o
-                site” pelo chat para aplicar a nova direção. Landing Page usa
-                uma única página. Ao trocar de um site com páginas internas,
-                elas continuam salvas e impedem a publicação da landing até você
-                pedir a remoção ou voltar à direção anterior.
-              </p>
-              <div className="admin-vibe-grid">
-                {VIBES.map((vibe) => (
-                  <label key={vibe} className="admin-vibe-card">
-                    <VibePreview vibe={vibe} />
-                    <span className="admin-vibe-choice">
-                      <input
-                        type="radio"
-                        name="vibe"
-                        value={vibe}
-                        defaultChecked={saved.tenant.vibe === vibe}
-                      />
-                      <strong>{VIBE_LABEL[vibe]}</strong>
-                    </span>
-                    <small>{VIBE_HINT[vibe]}</small>
-                  </label>
-                ))}
-              </div>
-            </section>
-            <p className="mt-5 text-xs leading-relaxed text-[var(--color-muted)]">
-              Nome, contatos, logo e direção alteram o rascunho. O site no ar
-              continua no snapshot anterior até Publicar. Alterar a história ou
-              a referência orienta uma reconstrução; não reescreve páginas
-              automaticamente. A referência visual verificada tem prioridade na
-              geração; na ausência dela, vale o contrato da vibe escolhida.
-            </p>
-          </fieldset>
-        </form>
-        <section id="marca" className="admin-form-section admin-brand-section">
-          {logoUrl ? (
-            // Duas prévias: sobre o papel da marca e sobre um papel escuro. A
-            // placa branca de um PNG sem alfa só aparece na segunda.
-            <div className="admin-logo-previews">
-              <Image
-                src={
-                  logoUrl === tenant.logoUrl
-                    ? (tenant.logoPreviewUrl ?? logoUrl)
-                    : logoUrl
-                }
-                alt={`Logo de ${tenant.name} sobre o papel da marca`}
-                width={112}
-                height={80}
-                unoptimized
-                className="h-20 w-28 rounded-lg border p-3 object-contain"
-                style={{ background: tenant.paper ?? '#ffffff' }}
-              />
-              <Image
-                src={
-                  logoDarkUrl === tenant.logoDarkUrl && logoDarkUrl
-                    ? (tenant.logoDarkPreviewUrl ?? logoDarkUrl)
-                    : (logoDarkUrl ??
-                      (logoUrl === tenant.logoUrl
-                        ? (tenant.logoPreviewUrl ?? logoUrl)
-                        : logoUrl))
-                }
-                alt={`Logo de ${tenant.name} sobre fundo escuro`}
-                width={112}
-                height={80}
-                unoptimized
-                className="h-20 w-28 rounded-lg border p-3 object-contain"
-                style={{ background: '#0b0e14' }}
-              />
-            </div>
-          ) : (
-            <div className="admin-logo-placeholder">Sem logo</div>
-          )}
-          <div className="min-w-0 flex-1">
-            <h2 className="text-base font-semibold">Logo do site</h2>
-            <p className="mt-1 text-sm text-[var(--color-muted)]">
-              Envie o arquivo final ou escolha um logo na biblioteca. Ao
-              aplicar, as margens são recortadas e o fundo uniforme é removido
-              quando possível. A versão para fundo escuro, os ícones e a imagem
-              de compartilhamento são preparados em seguida.
-            </p>
-            {tenant.logoStudioSummary ? (
-              <p className="mt-2 text-sm">
-                {tenant.logoStudioSummary}.{' '}
-                <a className="underline" href={`/admin/${tenant.slug}/imagens`}>
-                  Escolher ou voltar ao original
-                </a>
-              </p>
-            ) : null}
-            {tenant.logoSvgUrl && logoUrl === tenant.logoUrl ? (
-              <a
-                className="mt-2 inline-block text-sm underline"
-                href={tenant.logoSvgUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Abrir logo em SVG
-              </a>
-            ) : null}
-            {logoDarkUrl ? (
-              <p className="mt-2 text-sm text-[var(--color-muted)]">
-                Versão para fundo escuro aplicada.{' '}
-                <button
-                  type="button"
-                  className="underline"
-                  disabled={saving}
-                  onClick={() => void setDarkLogo(null)}
-                >
-                  Remover
-                </button>
-              </p>
-            ) : tenant.logoIssue ? (
-              <p className="mt-2 text-sm" data-tone="warn">
-                Sobre o papel da marca, {tenant.logoIssue}. Envie um PNG com
-                fundo transparente ou escolha a versão para fundo escuro na
-                biblioteca.
-              </p>
-            ) : null}
-            <label className="admin-field mt-4">
-              <span>Enviar e aplicar logo</span>
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                disabled={saving}
-                onChange={(event) => {
-                  void upload(event.target.files?.[0]);
-                  event.target.value = '';
-                }}
-                className="admin-input"
-              />
-            </label>
-          </div>
-        </section>
-        <SocialProfileCard
-          slug={tenant.slug}
-          social={profile}
-          hasSocialUrl={Boolean(socialUrl)}
-          onChange={setProfile}
-        />
-        <section id="risco" className="admin-form-section admin-risk">
-          <h2>Zona de risco</h2>
-          <p className="mt-1 max-w-2xl text-sm text-[var(--color-muted)]">
-            Apaga o cadastro, as páginas, os contatos recebidos, as conversas e
-            todos os arquivos deste cliente. Não há como desfazer.
+    <>
+      <div className="admin-page-heading admin-settings-heading">
+        <div>
+          <p className="admin-eyebrow">Cadastro do cliente</p>
+          <h1>Dados</h1>
+          <p>
+            O que você grava aqui alimenta as próximas edições do site. O
+            rascunho muda ao salvar; o site no ar só muda ao publicar.
           </p>
-          <button
-            type="button"
-            className="admin-danger mt-4"
-            onClick={() => setDeleting(true)}
+        </div>
+        <HelpButton />
+      </div>
+      <div className="admin-settings-layout">
+        <div className="admin-settings-rail">
+          <nav className="admin-settings-nav" aria-label="Seções do cadastro">
+            {SECTIONS.map(([id, ordinal, label]) => (
+              <a
+                key={id}
+                href={`#${id}`}
+                aria-current={section === id ? 'location' : undefined}
+                onClick={() => setSection(id)}
+              >
+                <span>{ordinal}</span>
+                {label}
+              </a>
+            ))}
+          </nav>
+          <Link
+            className="admin-consumo-card"
+            href={`/admin/${tenant.slug}/consumo`}
           >
-            Excluir {tenant.name}
-          </button>
-        </section>
-        {notice ? (
-          <output
-            aria-live="polite"
-            className="mt-6 block rounded-lg border px-4 py-3 text-sm"
-          >
-            {notice}
-          </output>
-        ) : null}
-        <div className="admin-save-bar">
-          <output>
-            <StatusDot tone={dirty ? 'warn' : 'ok'} />
-            {dirty
-              ? `${dirty} ${dirty === 1 ? 'alteração não salva' : 'alterações não salvas'}`
-              : 'Dados salvos'}
-          </output>
-          <div>
-            <button
-              className="admin-secondary"
-              type="button"
-              disabled={!dirty || saving}
-              onClick={() => {
-                setVersion((value) => value + 1);
-                setNotice('Alterações descartadas.');
+            <span>
+              Consumo · {usage.days} dias <span aria-hidden="true">→</span>
+            </span>
+            <span>
+              <strong>
+                {usage.costUsd === null ? '—' : cardMoney.format(usage.costUsd)}
+              </strong>
+              <span>{formatTokens(usage.totalTokens ?? undefined)}</span>
+            </span>
+          </Link>
+        </div>
+        <HelpArea>
+          <div className="admin-settings-body">
+            <form
+              ref={formRef}
+              id="tenant-settings"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void save(new FormData(event.currentTarget));
               }}
             >
-              Descartar
-            </button>
-            <button
-              className="admin-primary"
-              type="submit"
-              form="tenant-settings"
-              disabled={!dirty || saving}
-            >
-              {saving ? 'Salvando…' : 'Salvar dados'}
-            </button>
+              <fieldset disabled={saving}>
+                <TenantFields
+                  key={version}
+                  values={saved.tenant}
+                  intake={saved.intake}
+                  contacts={saved.contacts}
+                  socialCard={
+                    <SocialProfileCard
+                      slug={tenant.slug}
+                      social={profile}
+                      hasSocialUrl={Boolean(socialUrl)}
+                      onChange={setProfile}
+                    />
+                  }
+                />
+                <FormSection
+                  id="direcao"
+                  ordinal="04"
+                  title="Direção visual"
+                  status={VIBE_LABEL[saved.tenant.vibe]}
+                  tone="accent"
+                >
+                  <HelpNote>
+                    Trocar abre uma nova direção no rascunho e preserva a versão
+                    publicada. Depois de salvar, volte ao Site e peça “Refaça o
+                    site” no chat. Landing Page usa uma única página: páginas
+                    internas existentes continuam salvas e impedem a publicação
+                    até você pedir a remoção ou voltar à direção anterior.
+                  </HelpNote>
+                  <div className="admin-vibe-grid">
+                    {VIBES.map((vibe) => (
+                      <label key={vibe} className="admin-vibe-card">
+                        <VibePreview vibe={vibe} />
+                        <span className="admin-vibe-choice">
+                          <input
+                            type="radio"
+                            name="vibe"
+                            value={vibe}
+                            defaultChecked={saved.tenant.vibe === vibe}
+                          />
+                          <strong>{VIBE_LABEL[vibe]}</strong>
+                        </span>
+                        <HelpHint>{VIBE_HINT[vibe]}</HelpHint>
+                      </label>
+                    ))}
+                  </div>
+                </FormSection>
+                <FormSection
+                  id="logo"
+                  ordinal="05"
+                  title="Logo"
+                  status={logoUrl ? undefined : 'sem logo aplicado'}
+                  tone="warn"
+                >
+                  <div className="admin-logo-row">
+                    {logoUrl ? (
+                      // Duas prévias: sobre o papel da marca e sobre um papel
+                      // escuro. A placa branca de um PNG sem alfa só aparece na
+                      // segunda.
+                      <div className="admin-logo-previews">
+                        <Image
+                          src={
+                            logoUrl === tenant.logoUrl
+                              ? (tenant.logoPreviewUrl ?? logoUrl)
+                              : logoUrl
+                          }
+                          alt={`Logo de ${tenant.name} sobre o papel da marca`}
+                          width={124}
+                          height={74}
+                          unoptimized
+                          style={{ background: tenant.paper ?? '#ffffff' }}
+                        />
+                        <Image
+                          src={
+                            logoDarkUrl === tenant.logoDarkUrl && logoDarkUrl
+                              ? (tenant.logoDarkPreviewUrl ?? logoDarkUrl)
+                              : (logoDarkUrl ??
+                                (logoUrl === tenant.logoUrl
+                                  ? (tenant.logoPreviewUrl ?? logoUrl)
+                                  : logoUrl))
+                          }
+                          alt={`Logo de ${tenant.name} sobre fundo escuro`}
+                          width={124}
+                          height={74}
+                          unoptimized
+                          style={{ background: '#0b0e14' }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="admin-logo-placeholder">Sem logo</div>
+                    )}
+                    <div className="admin-logo-actions">
+                      <label className="admin-file-button">
+                        <Upload size={14} aria-hidden="true" />
+                        Enviar arquivo
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                          disabled={saving}
+                          onChange={(event) => {
+                            void upload(event.target.files?.[0]);
+                            event.target.value = '';
+                          }}
+                        />
+                      </label>
+                      <Link
+                        className="admin-compact-button"
+                        href={`/admin/${tenant.slug}/imagens`}
+                      >
+                        Escolher na biblioteca
+                      </Link>
+                    </div>
+                  </div>
+                  {tenant.logoStudioSummary ? (
+                    <p className="admin-logo-line">
+                      {tenant.logoStudioSummary}.
+                    </p>
+                  ) : null}
+                  {tenant.logoSvgUrl && logoUrl === tenant.logoUrl ? (
+                    <p className="admin-logo-line">
+                      <a href={tenant.logoSvgUrl} target="_blank" rel="noreferrer">
+                        Abrir logo em SVG
+                      </a>
+                    </p>
+                  ) : null}
+                  {logoDarkUrl ? (
+                    <p className="admin-logo-line">
+                      Versão para fundo escuro aplicada.{' '}
+                      <button
+                        type="button"
+                        className="admin-inline-action"
+                        disabled={saving}
+                        onClick={() => void setDarkLogo(null)}
+                      >
+                        Remover
+                      </button>
+                    </p>
+                  ) : tenant.logoIssue ? (
+                    <p className="admin-logo-line" data-tone="warn">
+                      Sobre o papel da marca, {tenant.logoIssue}. Envie um PNG
+                      com fundo transparente ou escolha a versão para fundo
+                      escuro na biblioteca.
+                    </p>
+                  ) : null}
+                  <HelpNote>
+                    Ao aplicar, as margens são recortadas e o fundo uniforme é
+                    removido quando possível. A versão para fundo escuro, os
+                    ícones e a imagem de compartilhamento são preparados em
+                    seguida.
+                  </HelpNote>
+                </FormSection>
+              </fieldset>
+            </form>
+            <div className="admin-settings-footer">
+              <p>
+                Nome, contatos, logo e direção alteram o rascunho. Alterar a
+                história ou a referência orienta uma reconstrução; não reescreve
+                páginas automaticamente.
+              </p>
+              <details className="admin-risk-drawer">
+                <summary>
+                  <TriangleAlert size={14} aria-hidden="true" />
+                  Zona de risco
+                </summary>
+                <div>
+                  <p>
+                    Apaga o cadastro, as páginas, os contatos recebidos, as
+                    conversas e todos os arquivos deste cliente. Não há como
+                    desfazer.
+                  </p>
+                  <button
+                    type="button"
+                    className="admin-danger"
+                    onClick={() => setDeleting(true)}
+                  >
+                    Excluir {tenant.name}
+                  </button>
+                </div>
+              </details>
+            </div>
+            {notice ? (
+              <output
+                aria-live="polite"
+                className="mt-2 block rounded-lg border px-4 py-3 text-sm"
+              >
+                {notice}
+              </output>
+            ) : null}
+            <div className="admin-save-bar">
+              <output>
+                <StatusDot tone={dirty ? 'warn' : 'ok'} />
+                {dirty
+                  ? `${dirty} ${dirty === 1 ? 'alteração não salva' : 'alterações não salvas'}`
+                  : `Tudo salvo${savedAt ? ` · ${savedClock.format(savedAt)}` : ''}`}
+              </output>
+              <div>
+                <button
+                  className="admin-secondary"
+                  type="button"
+                  disabled={!dirty || saving}
+                  onClick={() => {
+                    setVersion((value) => value + 1);
+                    setNotice('Alterações descartadas.');
+                  }}
+                >
+                  Descartar
+                </button>
+                <button
+                  className="admin-primary"
+                  type="submit"
+                  form="tenant-settings"
+                  disabled={!dirty || saving}
+                >
+                  {saving ? 'Salvando…' : 'Salvar dados'}
+                </button>
+              </div>
+            </div>
+            <DeleteTenantDialog
+              tenant={
+                deleting
+                  ? {
+                      slug: tenant.slug,
+                      name: tenant.name,
+                      status: tenant.status,
+                      pageCount: tenant.pageCount,
+                      leadCount: tenant.leadCount,
+                      imageCount: tenant.imageCount,
+                    }
+                  : null
+              }
+              onClose={closeDialog}
+              onDeleted={afterDelete}
+            />
           </div>
-        </div>
-        <DeleteTenantDialog
-          tenant={
-            deleting
-              ? {
-                  slug: tenant.slug,
-                  name: tenant.name,
-                  status: tenant.status,
-                  pageCount: tenant.pageCount,
-                  leadCount: tenant.leadCount,
-                  imageCount: tenant.imageCount,
-                }
-              : null
-          }
-          onClose={closeDialog}
-          onDeleted={afterDelete}
-        />
+        </HelpArea>
       </div>
-    </div>
+    </>
   );
 }

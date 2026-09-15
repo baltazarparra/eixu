@@ -96,88 +96,77 @@ export function SocialProfileCard({
 
   if (!hasSocialUrl && !current) return null;
 
+  const identity =
+    current?.status === 'ok'
+      ? [
+          current.handle ? `@${current.handle}` : (current.name ?? current.url),
+          current.followers ? `${current.followers} seguidores` : '',
+        ]
+          .filter(Boolean)
+          .join(' · ')
+      : null;
+
   return (
-    <section className="admin-form-section">
-      <div className="flex flex-wrap items-start gap-5">
-        {current?.avatarUrl ? (
-          <Image
-            src={current.avatarUrl}
-            alt={`Foto de perfil de ${current.name ?? slug}`}
-            width={80}
-            height={80}
-            unoptimized
-            className="size-20 rounded-lg border object-cover"
-          />
+    <div className="admin-social-card">
+      {current?.avatarUrl ? (
+        <Image
+          src={current.avatarUrl}
+          alt={`Foto de perfil de ${current.name ?? slug}`}
+          width={40}
+          height={40}
+          unoptimized
+          className="admin-social-avatar"
+        />
+      ) : null}
+      <div className="admin-social-identity">
+        {!current ? (
+          <span>Salve o briefing com um perfil para lermos nome, bio e foto.</span>
+        ) : reading ? (
+          <span>Lendo o perfil…</span>
+        ) : pending ? (
+          <span>
+            A leitura não terminou. Tente novamente ou siga pelo briefing.
+          </span>
+        ) : current.status === 'ok' ? (
+          <span>{identity}</span>
+        ) : (
+          <span>
+            Perfil bloqueado para consumo
+            {current.motivo ? `: ${current.motivo}` : '.'} O agente vai usar só
+            o briefing e as referências. Cole a bio em Fatos confirmados e envie
+            a foto ou o logo abaixo.
+          </span>
+        )}
+        {current && !reading ? (
+          <small>
+            {NETWORK_LABEL[current.network]} · perfil lido em{' '}
+            {readableDate(current.lidoEm)}
+          </small>
         ) : null}
-        <div className="min-w-0 flex-1">
-          <h2 className="text-base font-semibold">
-            Perfil na rede social
-            {current ? ` · ${NETWORK_LABEL[current.network]}` : ''}
-          </h2>
-          {!current ? (
-            <p className="mt-1 text-sm text-[var(--color-muted)]">
-              Salve o briefing com um perfil para lermos nome, bio e foto.
-            </p>
-          ) : reading ? (
-            <p className="mt-1 text-sm text-[var(--color-muted)]">
-              Lendo o perfil…
-            </p>
-          ) : pending ? (
-            <p className="mt-1 text-sm text-[var(--color-muted)]">
-              A leitura não terminou. Tente novamente ou siga pelo briefing.
-            </p>
-          ) : current.status === 'ok' ? (
-            <>
-              <p className="mt-1 text-sm">
-                {current.name ?? current.url}
-                {current.handle ? ` · @${current.handle}` : ''}
-                {current.followers ? ` · ${current.followers}` : ''}
-              </p>
-              {current.bio ? (
-                <p className="mt-2 text-sm text-[var(--color-muted)]">
-                  {current.bio}
-                </p>
-              ) : null}
-              {current.avatarNotes ? (
-                <p className="mt-2 text-xs text-[var(--color-muted)]">
-                  Avatar: {current.avatarNotes}
-                </p>
-              ) : null}
-            </>
-          ) : (
-            <p className="mt-1 text-sm text-[var(--color-muted)]">
-              Perfil bloqueado para consumo
-              {current.motivo ? `: ${current.motivo}` : '.'} O agente vai usar
-              só o briefing e as referências. Cole a bio em Fatos confirmados e
-              envie a foto ou o logo abaixo.
-            </p>
-          )}
-          {current && !reading ? (
-            <p className="mt-2 text-xs text-[var(--color-muted)]">
-              Lido em {readableDate(current.lidoEm)}
-            </p>
-          ) : null}
-          {hasSocialUrl ? (
-            <button
-              type="button"
-              className="admin-secondary mt-4"
-              onClick={() => void reload()}
-              disabled={busy}
-            >
-              <RefreshCw size={15} />
-              {busy ? 'Lendo…' : 'Ler perfil novamente'}
-            </button>
-          ) : null}
-          {notice ? (
-            <p
-              aria-live="polite"
-              className="mt-3 text-sm text-[var(--color-err)]"
-            >
-              {notice}
-            </p>
-          ) : null}
-        </div>
       </div>
-    </section>
+      {hasSocialUrl ? (
+        <button
+          type="button"
+          className="admin-compact-button"
+          onClick={() => void reload()}
+          disabled={busy}
+        >
+          <RefreshCw size={13} aria-hidden="true" />
+          {busy ? 'Lendo…' : 'Ler de novo'}
+        </button>
+      ) : null}
+      {current?.status === 'ok' && (current.bio || current.avatarNotes) ? (
+        <p className="admin-social-detail">
+          {current.bio}
+          {current.bio && current.avatarNotes ? ' ' : ''}
+          {current.avatarNotes ? `Avatar: ${current.avatarNotes}` : ''}
+        </p>
+      ) : null}
+      {notice ? (
+        <p aria-live="polite" className="admin-social-detail" data-tone="err">
+          {notice}
+        </p>
+      ) : null}
+    </div>
   );
 }

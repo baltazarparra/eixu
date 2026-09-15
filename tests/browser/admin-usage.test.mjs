@@ -8,7 +8,7 @@ import { createJiti } from 'jiti';
 import puppeteer from 'puppeteer-core';
 
 await test(
-  'Dados: consumo em desktop/mobile, filtros, paginação e estados sem valor',
+  'Consumo: manchete de custo, gráfico por operação, linhas expansíveis e período',
   { skip: !process.env.EIXU_CHROME_PATH },
   async (t) => {
     const jiti = createJiti(import.meta.url, {
@@ -32,9 +32,9 @@ await test(
           .map((name) => readFile(`${chunks}/${name}`, 'utf8')),
       )
     )
-      .filter((text) => text.includes('.admin-consumption'))
+      .filter((text) => text.includes('.admin-consumo-totals'))
       .join('\n');
-    assert.ok(css.includes('.admin-consumption'));
+    assert.ok(css.includes('.admin-consumo-totals'));
     const numbers = {
       calls: 2,
       inputTokens: 150_020,
@@ -72,7 +72,7 @@ await test(
       const data = {
         totals: empty
           ? { ...numbers, calls: 0 }
-          : { ...numbers, missingCost: 1, calls: 4 },
+          : { ...numbers, missingCost: 1, missingInput: 1, calls: 4 },
         totalRows: empty ? 0 : 21,
         page,
         pages: 2,
@@ -110,11 +110,31 @@ await test(
                 createdAt: '2026-09-15T14:30:00Z',
               },
             ],
+        byOperation: empty
+          ? []
+          : [
+              { ...numbers, kind: 'geracao', phase: 'composicao' },
+              {
+                ...numbers,
+                kind: 'geracao',
+                phase: 'briefing',
+                inputTokens: 70_000,
+                outputTokens: 6_000,
+                totalTokens: 76_000,
+              },
+            ],
         daily: [{ ...numbers, day: '2026-09-15' }],
       };
       response.setHeader('content-type', 'text/html; charset=utf-8');
       response.end(
-        `<!doctype html><html lang="pt-BR"><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style></head><body><main class="admin-page admin-settings-page">${renderToStaticMarkup(createElement(UsageHistoryPanel, { data, filters: usageFilters(Object.fromEntries(url.searchParams)), slug: 'fixture' }))}</main></body></html>`,
+        `<!doctype html><html lang="pt-BR"><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style></head><body><main class="admin-page admin-consumption-page">${renderToStaticMarkup(
+          createElement(UsageHistoryPanel, {
+            data,
+            filters: usageFilters(Object.fromEntries(url.searchParams)),
+            slug: 'fixture',
+            name: 'Marcenaria Horizonte',
+          }),
+        )}</main></body></html>`,
       );
     });
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -126,7 +146,7 @@ await test(
     });
     t.after(() => browser.close());
     const page = await browser.newPage();
-    const base = `http://127.0.0.1:${server.address().port}/admin/fixture/dados`;
+    const base = `http://127.0.0.1:${server.address().port}/admin/fixture/consumo`;
     await mkdir('outputs/usage-history', { recursive: true });
     for (const [width, height] of [
       [1440, 1000],
@@ -143,42 +163,53 @@ await test(
         false,
         `overflow em ${width}x${height}`,
       );
-      assert.ok(
-        (await page.$eval('body', (element) => element.innerText)).includes(
-          'Parcial',
-        ),
+      const body = await page.$eval('body', (element) => element.innerText);
+      // Ausência continua declarada, e o custo é a manchete do período.
+      assert.ok(body.includes('Parcial ·'), `sem parcial em ${width}`);
+      assert.ok(body.includes('Não informado'), `sem ausência em ${width}`);
+      // Intl usa espaço inseparável depois de US$; normalize antes de casar.
+      const headline = (
+        await page.$eval(
+          '.admin-consumo-headline',
+          (element) => element.innerText,
+        )
+      ).replace(/\s+/g, ' ');
+      assert.match(
+        headline,
+        /US\$ 0,12 .*exato: US\$ 0,123456 .*por milhão de tokens .*parcial, 1 sem informação/,
       );
-      const summary = await page.$('.admin-consumption-details summary');
-      await summary.focus();
+      // Entrada e saída saem da linha em tela estreita, mas não do detalhe.
+      const columns = await page.$$eval(
+        '.admin-consumo-columns > span',
+        (spans) =>
+          spans.filter((span) => getComputedStyle(span).display !== 'none')
+            .length,
+      );
+      assert.equal(columns, width > 899 ? 5 : 3, `colunas em ${width}`);
+      const operation = await page.$('.admin-consumo-operation summary');
+      await operation.focus();
       await page.keyboard.press('Enter');
       assert.equal(
-        await page.$eval(
-          '.admin-consumption-details',
-          (element) => element.open,
-        ),
+        await page.$eval('.admin-consumo-operation', (element) => element.open),
         true,
       );
-      assert.ok(
-        (
-          await page.$eval(
-            '.admin-consumption-details',
-            (element) => element.innerText,
-          )
-        ).includes('operation-conversa-123'),
+      const detail = await page.$eval(
+        '.admin-consumo-operation',
+        (element) => element.innerText,
       );
-      await page.click('.admin-consumption-daily summary');
+      assert.ok(detail.includes('operation-conversa-123'));
+      assert.ok(detail.includes('Cache lido'));
+      if (width <= 899) assert.ok(detail.includes('Entrada'));
+      await page.click('.admin-consumo-daily summary');
       assert.equal(
-        await page.$eval('.admin-consumption-daily', (element) => element.open),
+        await page.$eval('.admin-consumo-daily', (element) => element.open),
         true,
       );
-      const target = await page.$eval(
-        '.admin-consumption-presets a',
-        (element) => {
-          const rect = element.getBoundingClientRect();
-          return { height: rect.height, width: rect.width };
-        },
-      );
-      assert.ok(target.height >= 40 && target.width >= 40);
+      const target = await page.$eval('.admin-consumo-periods a', (element) => {
+        const rect = element.getBoundingClientRect();
+        return { height: rect.height, width: rect.width };
+      });
+      assert.ok(target.height >= 34 && target.width >= 34);
       if (width === 1440 || width === 390)
         await page.screenshot({
           path: `outputs/usage-history/${width}.png`,
@@ -187,11 +218,30 @@ await test(
     }
     await page.setViewport({ width: 1440, height: 1000 });
     await page.goto(base);
+    // O gráfico escala pelo maior total entre as etapas, não pelo período.
+    const bars = await page.$$eval('.admin-consumo-bar', (nodes) =>
+      nodes.map((node) =>
+        [...node.children].map((child) => child.style.width),
+      ),
+    );
+    assert.equal(bars.length, 2);
+    const widths = bars.map((pair) => pair.map((value) => parseFloat(value)));
+    const scale = (value) => (value / 162_820) * 100;
+    assert.ok(Math.abs(widths[0][0] - scale(150_020)) < 0.01);
+    assert.ok(Math.abs(widths[1][0] - scale(70_000)) < 0.01);
+    assert.ok(Math.abs(widths[1][1] - scale(6_000)) < 0.01);
     await Promise.all([
       page.waitForNavigation(),
-      page.click('a[href*="period=all"]'),
+      page.click('a[href*="periodo=tudo"]'),
     ]);
-    assert.ok(page.url().includes('period=all'));
+    assert.ok(page.url().includes('periodo=tudo'));
+    assert.equal(
+      await page.$eval(
+        '.admin-consumo-periods a[aria-current]',
+        (element) => element.textContent,
+      ),
+      'Tudo',
+    );
     await Promise.all([
       page.waitForNavigation(),
       page.click('a[href*="usagePage=2"]'),
@@ -201,28 +251,27 @@ await test(
         'Página 2 de 2',
       ),
     );
-    assert.ok(page.url().includes('period=all'));
-    await page.$eval('input[name=start]', (element) => {
-      element.value = '2020-01-01';
-    });
-    await page.$eval('input[name=end]', (element) => {
-      element.value = '2020-01-02';
-    });
-    await Promise.all([
-      page.waitForNavigation(),
-      page.click('button[type=submit]'),
-    ]);
+    assert.ok(page.url().includes('periodo=tudo'));
+    await page.goto(`${base}?start=2020-01-01&end=2020-01-02`);
     assert.ok(
       (await page.$eval('body', (element) => element.innerText)).includes(
         'Nenhum consumo registrado',
       ),
     );
-    assert.ok(!page.url().includes('usagePage'));
     await page.goto(`${base}?start=2026-02-30&end=2026-03-01`);
     assert.ok(
       (
         await page.$eval('[role=alert]', (element) => element.innerText)
       ).includes('Confira as datas'),
+    );
+    // Links antigos continuam acendendo o segmento correspondente.
+    await page.goto(`${base}?period=all`);
+    assert.equal(
+      await page.$eval(
+        '.admin-consumo-periods a[aria-current]',
+        (element) => element.textContent,
+      ),
+      'Tudo',
     );
   },
 );

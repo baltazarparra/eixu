@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { HelpHint } from '@/components/admin/help';
 
 export function EvidenceFields({ initial = [] }: { initial?: string[] }) {
   const [items, setItems] = useState(initial);
@@ -16,7 +17,7 @@ export function EvidenceFields({ initial = [] }: { initial?: string[] }) {
   return (
     <div className="admin-field admin-evidence">
       <span>
-        Fatos confirmados <em>opcional</em>
+        Fatos confirmados <em>· até 8, opcional</em>
       </span>
       <input type="hidden" name="evidence" value={items.join('\n')} />
       <ul>
@@ -71,10 +72,9 @@ export function EvidenceFields({ initial = [] }: { initial?: string[] }) {
           </button>
         </div>
       ) : null}
-      <small>
-        Inclua apenas o que a empresa comprova. Até 8 fatos, com 160 caracteres
-        cada.
-      </small>
+      <HelpHint>
+        Inclua apenas o que a empresa comprova. 160 caracteres cada.
+      </HelpHint>
     </div>
   );
 }

@@ -43,6 +43,7 @@ As superfícies principais são:
 | `/admin/[tenant]/imagens` | Acervo numerado de fotos, cenas e logos                                     |
 | `/admin/[tenant]/trafego` | Visitas, origem, campanhas, eventos e leads                                 |
 | `/admin/[tenant]/dados`   | História, fontes, provas, restrições, contatos, vibe, marca e zona de risco |
+| `/admin/[tenant]/consumo` | Custo e tokens do período, por operação, com o detalhe de cada chamada      |
 | `/s/[tenant]/...`         | Prévia autenticada do rascunho; query de preview não é controle de acesso   |
 | Host público do tenant    | Páginas e assets do último snapshot publicado                               |
 

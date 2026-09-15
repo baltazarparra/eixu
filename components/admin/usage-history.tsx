@@ -1,11 +1,17 @@
 import Link from 'next/link';
+import { ArrowLeft, ChevronDown, RefreshCw } from 'lucide-react';
 import type {
   UsageFilters,
   UsageHistory,
   UsageNumbers,
+  UsageOperationTotals,
 } from '@/lib/admin/usage-history';
-import { USAGE_LABELS } from '@/lib/admin/usage-history';
-import { defaultPeriod } from '@/lib/admin/traffic';
+import {
+  USAGE_PERIODS,
+  USAGE_PERIOD_LABELS,
+  phaseLabel,
+  usageLabel,
+} from '@/lib/admin/usage-history';
 import { formatCount } from '@/lib/admin/usage-summary';
 
 const money = new Intl.NumberFormat('pt-BR', {
@@ -13,7 +19,29 @@ const money = new Intl.NumberFormat('pt-BR', {
   currency: 'USD',
   maximumFractionDigits: 6,
 });
+const headline = new Intl.NumberFormat('pt-BR', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+const rowMoney = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 4,
+  maximumFractionDigits: 4,
+});
+const perMillion = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'USD',
+  maximumFractionDigits: 2,
+});
 const date = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: 'America/Sao_Paulo',
+  day: '2-digit',
+  month: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+const fullDate = new Intl.DateTimeFormat('pt-BR', {
   timeZone: 'America/Sao_Paulo',
   day: '2-digit',
   month: '2-digit',
@@ -22,6 +50,7 @@ const date = new Intl.DateTimeFormat('pt-BR', {
   minute: '2-digit',
 });
 
+/** Ausência é declarada; parcial continua dizendo quanto falta. */
 function Metric({
   value,
   missing,
@@ -50,38 +79,124 @@ function Metric({
   );
 }
 
+function callsText(row: UsageNumbers & { legacy: number }) {
+  return [
+    row.legacy
+      ? 'Recibo antigo de etapa'
+      : `${row.calls} chamada${row.calls === 1 ? '' : 's'}`,
+    row.pending ? 'Sem recibo final' : '',
+    row.failed ? 'Falha' : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+/** Custo vira manchete; entrada, saída e total ficam na mesma faixa. */
 function Totals({ totals }: { totals: UsageNumbers }) {
+  const rate =
+    totals.costUsd !== null && totals.totalTokens
+      ? (totals.costUsd / totals.totalTokens) * 1_000_000
+      : null;
   return (
-    <dl className="admin-consumption-totals">
-      <div>
-        <dt>Tokens de entrada</dt>
-        <dd>
-          <Metric value={totals.inputTokens} missing={totals.missingInput} />
-        </dd>
+    <section className="admin-consumo-totals" aria-label="Totais do período">
+      <div className="admin-consumo-headline">
+        <p className="admin-label">Custo informado no período</p>
+        {totals.costUsd === null ? (
+          <p className="admin-consumo-absent">Não informado</p>
+        ) : (
+          <p className="admin-consumo-amount">
+            <span>US$</span>
+            <strong>{headline.format(totals.costUsd)}</strong>
+          </p>
+        )}
+        <p className="admin-consumo-exact">
+          {totals.costUsd === null
+            ? `${formatCount(totals.missingCost)} operações sem custo informado`
+            : `exato: ${money.format(totals.costUsd)}${
+                rate === null
+                  ? ''
+                  : ` · ≈ ${perMillion.format(rate)} por milhão de tokens`
+              }`}
+          {totals.costUsd !== null && totals.missingCost > 0
+            ? ` · parcial, ${formatCount(totals.missingCost)} sem informação`
+            : ''}
+        </p>
       </div>
-      <div>
-        <dt>Tokens de saída</dt>
-        <dd>
-          <Metric value={totals.outputTokens} missing={totals.missingOutput} />
-        </dd>
+      <dl className="admin-consumo-breakdown">
+        <div>
+          <dt>Entrada</dt>
+          <dd>
+            <Metric value={totals.inputTokens} missing={totals.missingInput} />
+          </dd>
+        </div>
+        <div>
+          <dt>Saída</dt>
+          <dd>
+            <Metric
+              value={totals.outputTokens}
+              missing={totals.missingOutput}
+            />
+          </dd>
+        </div>
+        <div data-total="">
+          <dt>Total</dt>
+          <dd>
+            <Metric value={totals.totalTokens} missing={totals.missingTotal} />
+          </dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
+
+/**
+ * Barra por etapa, não por dia: o operador procura a operação cara, e a
+ * pergunta "qual etapa gastou isso" é a que o gráfico responde.
+ */
+function ByOperation({ rows }: { rows: UsageOperationTotals[] }) {
+  const drawable = rows.filter((row) => (row.totalTokens ?? 0) > 0);
+  if (drawable.length < 2) return null;
+  const largest = Math.max(...drawable.map((row) => row.totalTokens ?? 0));
+  return (
+    <section className="admin-consumo-chart" aria-label="Consumo por operação">
+      <div className="admin-consumo-chart-head">
+        <h2>Por operação</h2>
+        <p>
+          <span>
+            <i data-part="entrada" />
+            entrada
+          </span>
+          <span>
+            <i data-part="saida" />
+            saída
+          </span>
+        </p>
       </div>
-      <div>
-        <dt>Total de tokens</dt>
-        <dd>
-          <Metric value={totals.totalTokens} missing={totals.missingTotal} />
-        </dd>
+      <div className="admin-consumo-bars">
+        {drawable.map((row) => (
+          <div key={`${row.kind}-${row.phase ?? ''}`}>
+            <span>{phaseLabel(row.phase) ?? usageLabel(row.kind, null)}</span>
+            <span className="admin-consumo-bar">
+              <span
+                data-part="entrada"
+                style={{
+                  width: `${((row.inputTokens ?? 0) / largest) * 100}%`,
+                }}
+              />
+              <span
+                data-part="saida"
+                style={{
+                  width: `${((row.outputTokens ?? 0) / largest) * 100}%`,
+                }}
+              />
+            </span>
+            <span className="admin-numeric">
+              {formatCount(row.totalTokens ?? undefined)}
+            </span>
+          </div>
+        ))}
       </div>
-      <div>
-        <dt>Custo informado · USD</dt>
-        <dd>
-          <Metric
-            value={totals.costUsd}
-            missing={totals.missingCost}
-            currency
-          />
-        </dd>
-      </div>
-    </dl>
+    </section>
   );
 }
 
@@ -89,143 +204,115 @@ export function UsageHistoryPanel({
   data,
   filters,
   slug,
+  name,
 }: {
   data: UsageHistory;
   filters: UsageFilters;
   slug: string;
+  name: string;
 }) {
-  const base = `/admin/${encodeURIComponent(slug)}/dados`;
-  const url = (period: { start?: string; end?: string }, page = 1) => {
-    const query = new URLSearchParams(
-      period.start && period.end
-        ? { start: period.start, end: period.end }
-        : { period: 'all' },
-    );
+  const base = `/admin/${encodeURIComponent(slug)}/consumo`;
+  const url = (periodo: UsageFilters['periodo'], page = 1) => {
+    const query = new URLSearchParams();
+    if (periodo === 'livre') {
+      if (filters.start) query.set('start', filters.start);
+      if (filters.end) query.set('end', filters.end);
+    } else query.set('periodo', periodo);
     if (page > 1) query.set('usagePage', String(page));
-    return `${base}?${query}#consumo`;
+    return `${base}?${query}`;
   };
 
   return (
-    <section
-      id="consumo"
-      className="admin-consumption"
-      aria-labelledby="consumption-heading"
-    >
-      <div className="admin-page-heading">
+    <>
+      <div className="admin-page-heading admin-consumo-heading">
         <div>
-          <h2 id="consumption-heading">Consumo de IA</h2>
-          <p>
-            Histórico deste cliente, por conversa, geração e chamada de apoio.
-          </p>
+          <p className="admin-eyebrow">{name}</p>
+          <h1>Consumo de IA</h1>
         </div>
-        <Link className="admin-secondary" href={url(filters, data.page)}>
-          Atualizar histórico
-        </Link>
+        <nav className="admin-consumo-periods" aria-label="Período">
+          {USAGE_PERIODS.map((periodo) => (
+            <Link
+              key={periodo}
+              href={url(periodo)}
+              aria-current={filters.periodo === periodo ? 'page' : undefined}
+            >
+              {USAGE_PERIOD_LABELS[periodo]}
+            </Link>
+          ))}
+        </nav>
       </div>
 
-      <nav
-        className="admin-consumption-presets"
-        aria-label="Período do consumo"
-      >
-        {[7, 30, 90].map((days) => {
-          const period = defaultPeriod(new Date(), days);
-          return (
-            <Link
-              key={days}
-              className="admin-secondary"
-              href={url(period)}
-              aria-current={
-                filters.start === period.start && filters.end === period.end
-                  ? 'page'
-                  : undefined
-              }
-            >
-              {days} dias
-            </Link>
-          );
-        })}
-        <Link
-          className="admin-secondary"
-          href={url({})}
-          aria-current={!filters.start ? 'page' : undefined}
-        >
-          Todo o histórico
-        </Link>
-      </nav>
+      {filters.error ? (
+        <p className="admin-consumo-alert" role="alert">
+          {filters.error}
+        </p>
+      ) : null}
 
-      <form action={`${base}#consumo`} className="admin-consumption-filter">
-        <label className="admin-field">
-          <span>De</span>
-          <input
-            className="admin-input"
-            type="date"
-            name="start"
-            defaultValue={filters.start ?? ''}
-            required
-          />
-        </label>
-        <label className="admin-field">
-          <span>Até</span>
-          <input
-            className="admin-input"
-            type="date"
-            name="end"
-            defaultValue={filters.end ?? ''}
-            required
-          />
-        </label>
-        <button className="admin-primary" type="submit">
-          Aplicar período
-        </button>
-        <span>Horário de Brasília</span>
-      </form>
-
-      {filters.error ? <p role="alert">{filters.error}</p> : null}
       {!data.totals.calls ? (
-        <p className="admin-consumption-empty">
+        <p className="admin-consumo-empty">
           Nenhum consumo registrado neste período. O histórico aparecerá
           conforme o cliente usar a IA.
         </p>
       ) : (
         <>
           <Totals totals={data.totals} />
-          <p className="admin-consumption-note">
-            {formatCount(data.totalRows)} operações ·{' '}
-            {formatCount(data.totals.calls)} registros de chamadas
-            {data.totals.pending
-              ? ` · ${formatCount(data.totals.pending)} aguardando recibo ou interrompidos`
-              : ''}
-            {data.totals.failed
-              ? ` · ${formatCount(data.totals.failed)} com falha`
-              : ''}
-            .
-          </p>
+          <ByOperation rows={data.byOperation} />
 
-          <div className="admin-consumption-list">
+          <section className="admin-consumo-list" aria-label="Operações do período">
+            <div className="admin-consumo-list-head">
+              <h2>Operações</h2>
+              <p>
+                {formatCount(data.totalRows)} operações ·{' '}
+                {formatCount(data.totals.calls)} registros de chamadas
+                {data.totals.pending
+                  ? ` · ${formatCount(data.totals.pending)} aguardando recibo`
+                  : ''}
+                {data.totals.failed
+                  ? ` · ${formatCount(data.totals.failed)} com falha`
+                  : ''}{' '}
+                · horário de Brasília
+              </p>
+            </div>
+            <div className="admin-consumo-columns" aria-hidden="true">
+              <span>Operação</span>
+              <span>Entrada</span>
+              <span>Saída</span>
+              <span>Custo</span>
+              <span />
+            </div>
             {data.rows.map((row) => (
-              <article
+              <details
                 key={`${row.operationId}-${row.model}`}
-                className="admin-consumption-row"
+                className="admin-consumo-operation"
               >
-                <div className="admin-consumption-operation">
-                  <h3>{USAGE_LABELS[row.kind] ?? row.kind}</h3>
-                  <time dateTime={row.createdAt}>
-                    {date.format(new Date(row.createdAt))}
-                  </time>
-                  <span>
-                    {row.model}
-                    {row.phase ? ` · ${row.phase}` : ''}
+                <summary>
+                  <span className="admin-consumo-operation-name">
+                    <span>{usageLabel(row.kind, row.phase)}</span>
+                    <small>
+                      {date.format(new Date(row.createdAt))} · {row.model}
+                    </small>
                   </span>
-                  <span>
-                    {row.legacy
-                      ? 'Recibo antigo de etapa'
-                      : `${row.calls} chamada${row.calls === 1 ? '' : 's'}`}
-                    {row.pending ? ' · Sem recibo final' : ''}
-                    {row.failed ? ' · Falha' : ''}
+                  <span className="admin-numeric">
+                    <Metric
+                      value={row.inputTokens}
+                      missing={row.missingInput}
+                    />
                   </span>
-                </div>
-                <dl className="admin-consumption-values">
-                  <div>
+                  <span className="admin-numeric">
+                    <Metric
+                      value={row.outputTokens}
+                      missing={row.missingOutput}
+                    />
+                  </span>
+                  <span className="admin-numeric">
+                    {row.costUsd === null
+                      ? 'Não informado'
+                      : rowMoney.format(row.costUsd)}
+                  </span>
+                  <ChevronDown size={14} aria-hidden="true" />
+                </summary>
+                <dl>
+                  <div data-narrow="">
                     <dt>Entrada</dt>
                     <dd>
                       <Metric
@@ -234,7 +321,7 @@ export function UsageHistoryPanel({
                       />
                     </dd>
                   </div>
-                  <div>
+                  <div data-narrow="">
                     <dt>Saída</dt>
                     <dd>
                       <Metric
@@ -244,16 +331,34 @@ export function UsageHistoryPanel({
                     </dd>
                   </div>
                   <div>
-                    <dt>Total</dt>
+                    <dt>Cache lido</dt>
                     <dd>
                       <Metric
-                        value={row.totalTokens}
-                        missing={row.missingTotal}
+                        value={row.cacheReadTokens}
+                        missing={row.missingCache}
                       />
                     </dd>
                   </div>
                   <div>
-                    <dt>Custo · USD</dt>
+                    <dt>Cache gravado</dt>
+                    <dd>
+                      <Metric
+                        value={row.cacheWriteTokens}
+                        missing={row.missingCacheWrite}
+                      />
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Raciocínio na saída</dt>
+                    <dd>
+                      <Metric
+                        value={row.reasoningTokens}
+                        missing={row.missingReasoning}
+                      />
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Custo exato · USD</dt>
                     <dd>
                       <Metric
                         value={row.costUsd}
@@ -262,84 +367,84 @@ export function UsageHistoryPanel({
                       />
                     </dd>
                   </div>
+                  <div>
+                    <dt>Chamadas</dt>
+                    <dd>{callsText(row)}</dd>
+                  </div>
+                  <div>
+                    <dt>Identificador da operação</dt>
+                    <dd data-id="">{row.operationId}</dd>
+                  </div>
+                  {row.runId ? (
+                    <div>
+                      <dt>Identificador da geração</dt>
+                      <dd data-id="">{row.runId}</dd>
+                    </div>
+                  ) : null}
                 </dl>
-                <details className="admin-consumption-details">
-                  <summary>Detalhes da operação</summary>
-                  <dl>
-                    <div>
-                      <dt>Tokens de entrada lidos do cache</dt>
-                      <dd>
-                        <Metric
-                          value={row.cacheReadTokens}
-                          missing={row.missingCache}
-                        />
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Tokens gravados no cache</dt>
-                      <dd>
-                        <Metric
-                          value={row.cacheWriteTokens}
-                          missing={row.missingCacheWrite}
-                        />
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Tokens de raciocínio na saída</dt>
-                      <dd>
-                        <Metric
-                          value={row.reasoningTokens}
-                          missing={row.missingReasoning}
-                        />
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Identificador da operação</dt>
-                      <dd>{row.operationId}</dd>
-                    </div>
-                    {row.runId ? (
-                      <div>
-                        <dt>Identificador da geração</dt>
-                        <dd>{row.runId}</dd>
-                      </div>
-                    ) : null}
-                  </dl>
-                </details>
-              </article>
+              </details>
             ))}
-          </div>
+            <div className="admin-consumo-list-foot">
+              <span>
+                Página {data.page} de {data.pages}
+              </span>
+              <span className="admin-consumo-pager">
+                {data.page > 1 ? (
+                  <Link
+                    className="admin-compact-button"
+                    href={url(filters.periodo, data.page - 1)}
+                  >
+                    Anterior
+                  </Link>
+                ) : null}
+                {data.page < data.pages ? (
+                  <Link
+                    className="admin-compact-button"
+                    href={url(filters.periodo, data.page + 1)}
+                  >
+                    Próxima
+                  </Link>
+                ) : null}
+                <Link
+                  className="admin-compact-button"
+                  href={url(filters.periodo, data.page)}
+                >
+                  <RefreshCw size={13} aria-hidden="true" />
+                  Atualizar histórico
+                </Link>
+              </span>
+            </div>
+          </section>
+        </>
+      )}
 
-          <nav
-            className="admin-consumption-pagination"
-            aria-label="Páginas do histórico"
-          >
-            {data.page > 1 ? (
-              <Link
-                className="admin-secondary"
-                href={url(filters, data.page - 1)}
-              >
-                Anterior
-              </Link>
-            ) : null}
-            <span>
-              Página {data.page} de {data.pages}
-            </span>
-            {data.page < data.pages ? (
-              <Link
-                className="admin-secondary"
-                href={url(filters, data.page + 1)}
-              >
-                Próxima
-              </Link>
-            ) : null}
-          </nav>
-
-          <details className="admin-consumption-daily">
+      <div className="admin-consumo-caveats">
+        <details>
+          <summary>Como estes números são apurados</summary>
+          <p>
+            Valores informados pelo provedor, em dólar, sem conversão para
+            reais. Cache e raciocínio já fazem parte da entrada e da saída; não
+            são somados novamente. Ausências deixam os totais parciais. Imagens
+            podem ter custo sem contagem de tokens. Estes números não substituem
+            a fatura.
+          </p>
+        </details>
+        <details>
+          <summary>Limites do histórico antigo</summary>
+          <p>
+            Só recibos de geração salvos são recuperados. Conversas e chamadas
+            de apoio anteriores ao registro persistente não podem ser
+            reconstruídas; tentativas sem recibo e interrupções podem ter
+            consumo não informado.
+            {data.firstRecordedAt
+              ? ` Primeiro registro disponível: ${fullDate.format(new Date(data.firstRecordedAt))}.`
+              : ''}
+          </p>
+        </details>
+        {data.daily.length ? (
+          <details className="admin-consumo-daily">
             <summary>Totais por dia</summary>
-            <section
-              className="admin-consumption-table"
-              aria-label="Consumo diário"
-            >
+            <div className="admin-consumo-table">
               <table>
                 <thead>
                   <tr>
@@ -385,27 +490,17 @@ export function UsageHistoryPanel({
                   ))}
                 </tbody>
               </table>
-            </section>
+            </div>
           </details>
-        </>
-      )}
+        ) : null}
+      </div>
 
-      <p className="admin-consumption-note">
-        Valores informados pelo provedor, em dólar, sem conversão para reais.
-        Cache e raciocínio já fazem parte da entrada e saída; não são somados
-        novamente. Ausências deixam os totais parciais. Imagens podem ter custo
-        sem contagem de tokens.
+      <p className="admin-consumo-back">
+        <Link className="admin-compact-button" href={`/admin/${slug}/dados`}>
+          <ArrowLeft size={13} aria-hidden="true" />
+          Voltar ao cadastro
+        </Link>
       </p>
-      <p className="admin-consumption-note">
-        O histórico antigo recupera apenas recibos de geração que foram salvos.
-        Conversas e chamadas de apoio anteriores ao registro persistente não
-        podem ser reconstruídas. Tentativas do provedor sem recibo e
-        interrupções podem ter consumo não informado; estes números não
-        substituem a fatura.
-        {data.firstRecordedAt
-          ? ` Primeiro registro disponível: ${date.format(new Date(data.firstRecordedAt))}.`
-          : ''}
-      </p>
-    </section>
+    </>
   );
 }

@@ -133,3 +133,41 @@ export function SegmentedControl<T extends string>({
     </fieldset>
   );
 }
+
+/**
+ * Seção numerada do cadastro. O ordinal amarra o cartão ao índice lateral e o
+ * status à direita diz o que a seção exige sem gastar uma linha de texto.
+ */
+export function FormSection({
+  id,
+  ordinal,
+  title,
+  status,
+  tone,
+  children,
+}: {
+  id: string;
+  /** Ausente no cadastro novo, onde não há índice numerado para amarrar. */
+  ordinal?: string;
+  title: string;
+  status?: ReactNode;
+  tone?: 'warn' | 'accent';
+  children: ReactNode;
+}) {
+  return (
+    <section id={id} className="admin-form-section">
+      <div className="admin-section-head">
+        {ordinal ? (
+          <span className="admin-section-ordinal">{ordinal}</span>
+        ) : null}
+        <h2>{title}</h2>
+        {status ? (
+          <span className="admin-section-status" data-tone={tone}>
+            {status}
+          </span>
+        ) : null}
+      </div>
+      {children}
+    </section>
+  );
+}

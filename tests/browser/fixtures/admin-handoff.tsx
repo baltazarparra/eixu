@@ -24,17 +24,12 @@ const content = isClients ? (
   </main>
 ) : area === 'dados' ? (
   <main className="admin-page admin-settings-page">
-    <div className="admin-page-heading">
-      <div>
-        <h1>Dados do cliente</h1>
-        <p>Contatos, história e marca em um só lugar.</p>
-      </div>
-    </div>
     <SettingsForm
       tenant={tenant}
       intake={data.intake}
       contacts={data.contacts}
       social={null}
+      usage={data.usage ?? { days: 30, costUsd: 0.410472, totalTokens: 593297 }}
     />
   </main>
 ) : area === 'imagens' ? (

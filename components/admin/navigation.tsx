@@ -16,7 +16,7 @@ import { useAdminSession } from './session';
 import { MobileMenu } from './mobile-menu';
 
 type TenantIdentity = { slug: string; name: string; status?: string };
-type Area = 'site' | 'imagens' | 'trafego' | 'dados';
+type Area = 'site' | 'imagens' | 'trafego' | 'dados' | 'consumo';
 /** Pontos de montagem na barra para os controles vivos do editor. */
 type HeaderSlots = {
   conversation: HTMLDivElement | null;
@@ -35,6 +35,7 @@ const AREAS = [
   ['imagens', '/imagens', 'Imagens'],
   ['trafego', '/trafego', 'Tráfego'],
   ['dados', '/dados', 'Dados'],
+  ['consumo', '/consumo', 'Consumo'],
 ] as const;
 
 function statusPresentation(status?: string) {
@@ -149,7 +150,10 @@ export function TenantFrame({
   const router = useRouter();
   const suffix = pathname?.split('/')[3];
   const active: Area =
-    suffix === 'imagens' || suffix === 'trafego' || suffix === 'dados'
+    suffix === 'imagens' ||
+    suffix === 'trafego' ||
+    suffix === 'dados' ||
+    suffix === 'consumo'
       ? suffix
       : 'site';
   const [conversation, setConversation] = useState<HTMLDivElement | null>(null);

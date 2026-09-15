@@ -24,6 +24,30 @@ await test('filtros de consumo validam datas e paginação sem aceitar arrays', 
   );
 });
 
+await test('o segmento de período vem da URL e aceita os links antigos', async () => {
+  const { usageFilters } = await loadModule('lib/admin/usage-history.ts');
+  assert.equal(usageFilters({}).periodo, '30');
+  assert.equal(usageFilters({ periodo: '7' }).periodo, '7');
+  assert.equal(usageFilters({ periodo: '90' }).periodo, '90');
+  const tudo = usageFilters({ periodo: 'tudo' });
+  assert.equal(tudo.periodo, 'tudo');
+  assert.equal(tudo.start, undefined);
+  assert.equal(tudo.end, undefined);
+  // Um valor inventado não vira intervalo: cai no padrão de 30 dias.
+  assert.equal(usageFilters({ periodo: 'ontem' }).periodo, '30');
+  assert.equal(usageFilters({ periodo: ['7'] }).periodo, '30');
+  // Links já emitidos por /dados continuam válidos e acendem o segmento certo.
+  assert.equal(usageFilters({ period: 'all' }).periodo, 'tudo');
+  assert.equal(
+    usageFilters({ start: '2026-01-01', end: '2026-01-10' }).periodo,
+    'livre',
+  );
+  assert.equal(
+    usageFilters({ start: '2026-02-30', end: '2026-03-01' }).periodo,
+    '30',
+  );
+});
+
 await test(
   'histórico de IA no PostgreSQL: recibos, isolamento, migração e SDK real',
   { skip: !process.env.EIXU_TEST_POSTGRES_URL },
@@ -279,6 +303,30 @@ await test(
             first.rows.some((other) => row.operationId === other.operationId),
           ),
         );
+      },
+    );
+
+    await t.test(
+      'gráfico agrupa por etapa e o resumo do cartão não cruza clientes',
+      async () => {
+        const history = await reports.usageHistory(a, { page: 1 });
+        const chart = history.byOperation;
+        assert.ok(chart.length > 1);
+        // Cada chamada do período aparece em exatamente uma barra.
+        assert.equal(
+          chart.reduce((total, row) => total + row.calls, 0),
+          history.totals.calls,
+        );
+        const sizes = chart.map((row) => row.totalTokens ?? 0);
+        assert.deepEqual(sizes, [...sizes].sort((one, two) => two - one));
+        assert.ok(
+          chart.some((row) => row.kind === 'imagem' && row.totalTokens === null),
+        );
+        const mine = await reports.usageSummary(a);
+        const theirs = await reports.usageSummary(b);
+        assert.equal(mine.days, 30);
+        assert.equal(theirs.costUsd, 900);
+        assert.notEqual(mine.costUsd, 900);
       },
     );
 

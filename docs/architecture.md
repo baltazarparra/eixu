@@ -37,6 +37,7 @@ Mapa do admin e da geração revisado em 13/09/2026 sobre `main` `f9d5918` (PR #
 | Edição direta      | `POST /api/admin/[tenant]/edit`; `lib/sites/inline-edits.ts` e `lib/sites/edits.ts`                                                 |
 | Imagens            | `/admin/[tenant]/imagens` (biblioteca), `/api/admin/[tenant]/images` e `/api/admin/[tenant]/upload`; a geração vive no chat do site |
 | Dados e briefing   | `/admin/[tenant]/dados`, `/api/admin/[tenant]/settings`, `/api/admin/[tenant]/social`; validação em `lib/admin/tenant-input.ts`     |
+| Consumo de IA      | `/admin/[tenant]/consumo`; leitura em `lib/admin/usage-history.ts`, com resumo leve para o cartão em Dados                          |
 | Tráfego e contatos | `/admin/[tenant]/trafego`, `/api/admin/[tenant]/contatos.csv`                                                                       |
 | Site de cliente    | Host do tenant → `proxy.ts` → `/s/[tenant]/[[...slug]]`, com sitemap e robots próprios                                              |
 | Conversão          | `/api/form`, `/api/e`, `/go/wa`; `lib/tracking.ts`                                                                                  |

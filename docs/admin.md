@@ -125,23 +125,39 @@ O botão de sair fica no fim das ações do cabeçalho, na lista e no cliente.
 
 ## Preparar os dados
 
-Dentro do cliente, a navegação reúne **Site**, **Imagens**, **Tráfego** e
-**Dados**. Em Dados, atualize diretamente contatos e briefing: a **História do
-cliente**, um Site atual, uma referência visual opcional, fatos confirmados,
-restrições,
+Dentro do cliente, a navegação reúne **Site**, **Imagens**, **Tráfego**,
+**Dados** e **Consumo**. Em Dados, atualize diretamente contatos e briefing: a
+**História do cliente**, um Site atual, uma referência visual opcional, fatos
+confirmados, restrições,
 telefones, e-mail, endereços e redes sociais. A história reúne origem, oferta,
 segmento, região atendida, público, diferenciais, provas e a ação esperada. A
 direção visual também pode ser trocada ali. A edição dos campos não usa o chat;
 a descrição de um avatar social novo pode consumir uma chamada ao modelo.
 
+A tela é um cadastro de cinco seções numeradas — Identificação, Contato,
+História, Direção visual e Logo — com índice lateral e barra de salvar fixa. O
+botão **Ajuda** liga ou desliga todo o texto de apoio de uma vez, abaixo de cada
+campo, e a preferência fica gravada no navegador do operador. A zona de risco é
+uma gaveta fechada no fim da página.
+
 ### Acompanhar tokens e custos
 
-No início de **Dados**, **Consumo de IA** reúne o histórico do cliente. Os
-atalhos mostram 7, 30 ou 90 dias, todo o histórico ou um intervalo personalizado
-de até 366 dias, sempre pelo horário de Brasília. O resumo separa tokens de
-entrada, saída e total, além do custo informado pelo provedor em USD. Cada
-operação identifica a origem, o modelo, a fase e, quando existir, a geração; os
-detalhes também mostram cache e raciocínio sem somá-los novamente aos totais.
+**Consumo** é uma tela própria, irmã de Dados, no quinto item da navegação do
+cliente. Em Dados, um cartão no índice lateral mostra custo e tokens dos últimos
+30 dias e leva até ela.
+
+O seletor de período oferece 7, 30 ou 90 dias e todo o histórico, sempre pelo
+horário de Brasília; o período fica na URL (`?periodo=30`). O custo informado
+pelo provedor em USD é a manchete, com o valor exato e a média por milhão de
+tokens ao lado; entrada, saída e total acompanham na mesma faixa. Um gráfico
+por operação compara as etapas do período pelo maior total de tokens.
+
+Cada linha da lista abre o detalhe da operação: cache lido, cache gravado,
+raciocínio na saída, custo exato, número de chamadas e os identificadores da
+operação e da geração. O cabeçalho de cada linha identifica a origem, o horário
+e o modelo. Cache e raciocínio já fazem parte da entrada e da saída e não são
+somados de novo. **Totais por dia** continua disponível, junto das ressalvas, em
+gavetas fechadas no fim da tela.
 
 Uma chamada nasce como pendente antes de chegar ao provedor. Se ela for
 interrompida ou falhar sem recibo, o painel mostra essa lacuna em vez de tratá-la

@@ -1,35 +1,47 @@
+import type { ReactNode } from 'react';
 import { EvidenceFields } from '@/components/admin/evidence-fields';
 import { ContactFields } from '@/components/admin/contact-fields';
+import { FormSection } from '@/components/admin/primitives';
+import { HelpHint, HelpNote } from '@/components/admin/help';
 import type { Intake } from '@/lib/tenant-intake';
 import type { Contacts } from '@/lib/tenant-contacts';
 
-function StoryField({ intake }: { intake: Partial<Intake> }) {
+/** No cadastro novo a nota ensina; no cadastro salvo ela só relembra. */
+type FieldProps = { intake: Partial<Intake>; compact?: boolean };
+
+function StoryField({ intake, compact }: FieldProps) {
   return (
-    <label className="admin-field sm:col-span-2">
+    <label className="admin-field">
       <span>História do cliente</span>
       <textarea
         name="story"
         className="admin-input"
-        rows={9}
+        rows={compact ? 9 : 8}
         maxLength={12000}
         required
         defaultValue={intake.story ?? ''}
         placeholder="Conte como a empresa nasceu, o que faz, para quem vende, onde atende, seus diferenciais, provas e o que espera que o visitante faça."
       />
-      <small>
-        Esta é a principal fonte factual do site. Inclua segmento, região
-        atendida e público dentro da narrativa, junto do contexto que torna o
-        cliente único.
-      </small>
+      {compact ? (
+        <HelpHint>
+          Esta é a principal fonte factual do site. Inclua segmento, região
+          atendida e público dentro da narrativa, junto do contexto que torna o
+          cliente único.
+        </HelpHint>
+      ) : null}
     </label>
   );
 }
 
-function ReferenceField({ intake }: { intake: Partial<Intake> }) {
+function ReferenceField({ intake, compact }: FieldProps) {
+  const legacy =
+    (intake.references?.length ?? 0) > 1
+      ? ` Este cadastro antigo tem ${intake.references?.length} referências; ao salvar, confirme acima qual será a única.`
+      : '';
   return (
-    <label className="admin-field sm:col-span-2">
+    <label className="admin-field">
       <span>
-        Referência visual <em>opcional</em>
+        Referência visual <em>· opcional</em>
       </span>
       <input
         name="reference"
@@ -40,25 +52,20 @@ function ReferenceField({ intake }: { intake: Partial<Intake> }) {
         defaultValue={intake.references?.[0] ?? ''}
         placeholder="https://exemplo.com"
       />
-      <small>
-        Use um site cuja aparência sirva de inspiração. Ele não fornece fatos
-        nem contatos do cliente. Quando a captura puder ser analisada, sua
-        composição, tipografia, imagens, ritmo e acabamento terão prioridade
-        sobre a vibe e os padrões do gerador, dentro dos recursos disponíveis.
-        Sem referência, seguimos a vibe escolhida.
-        {(intake.references?.length ?? 0) > 1
-          ? ` Este cadastro antigo tem ${intake.references?.length} referências; ao salvar, confirme acima qual será a única.`
-          : ''}
-      </small>
+      <HelpHint>
+        {compact
+          ? `Use um site cuja aparência sirva de inspiração. Ele não fornece fatos nem contatos do cliente. Quando a captura puder ser analisada, sua composição, tipografia, imagens, ritmo e acabamento terão prioridade sobre a vibe e os padrões do gerador, dentro dos recursos disponíveis. Sem referência, seguimos a vibe escolhida.${legacy}`
+          : `Quando verificada, sua composição, tipografia e ritmo têm prioridade sobre a vibe escolhida.${legacy}`}
+      </HelpHint>
     </label>
   );
 }
 
-function CurrentSiteField({ intake }: { intake: Partial<Intake> }) {
+function CurrentSiteField({ intake, compact }: FieldProps) {
   return (
-    <label className="admin-field sm:col-span-2">
+    <label className="admin-field">
       <span>
-        Site atual <em>opcional</em>
+        Site atual <em>· opcional</em>
       </span>
       <input
         name="currentSiteUrl"
@@ -69,36 +76,30 @@ function CurrentSiteField({ intake }: { intake: Partial<Intake> }) {
         defaultValue={intake.currentSiteUrl ?? ''}
         placeholder="https://site-atual.com.br"
       />
-      <small>
-        Informe o site que já pertence ao cliente. Vamos reunir conteúdo e fotos
-        úteis; esse link não define a aparência do novo site. A história acima
-        prevalece em conflitos. Sem site atual, a criação segue com o que você
-        contou.
-      </small>
+      <HelpHint>
+        {compact
+          ? 'Informe o site que já pertence ao cliente. Vamos reunir conteúdo e fotos úteis; esse link não define a aparência do novo site. A história acima prevalece em conflitos. Sem site atual, a criação segue com o que você contou.'
+          : 'Só para reunir conteúdo e fotos. Não define a aparência do novo site.'}
+      </HelpHint>
     </label>
   );
 }
 
-function EvidenceAndConstraints({ intake }: { intake: Partial<Intake> }) {
+function ConstraintsField({ intake }: FieldProps) {
   return (
-    <>
-      <EvidenceFields initial={intake.evidence} />
-      <label className="admin-field">
-        <span>
-          Restrições <em>opcional</em>
-        </span>
-        <textarea
-          name="constraints"
-          className="admin-input"
-          rows={4}
-          defaultValue={intake.constraints?.join('\n')}
-          placeholder="Ex.: não prometer prazo; não citar preço"
-        />
-        <small>
-          O que o site não pode prometer nem mostrar. Um item por linha.
-        </small>
-      </label>
-    </>
+    <label className="admin-field admin-constraints">
+      <span>
+        Restrições <em>· um item por linha</em>
+      </span>
+      <textarea
+        name="constraints"
+        className="admin-input"
+        rows={3}
+        defaultValue={intake.constraints?.join('\n')}
+        placeholder="Ex.: não prometer prazo; não citar preço"
+      />
+      <HelpHint>O que o site não pode prometer nem mostrar.</HelpHint>
+    </label>
   );
 }
 
@@ -109,6 +110,7 @@ export function TenantFields({
   contacts,
   withSlug = false,
   compact = false,
+  socialCard,
 }: {
   values?: {
     name?: string;
@@ -120,50 +122,102 @@ export function TenantFields({
   withSlug?: boolean;
   /** Cadastro novo: deixa à vista apenas o necessário para começar bem. */
   compact?: boolean;
+  /** Perfil social lido, renderizado dentro do grupo Redes sociais. */
+  socialCard?: ReactNode;
 }) {
-  return (
+  const identity = (
     <>
-      <section id="identificacao" className="admin-form-section">
-        <h2>Identificação</h2>
-        <p>Como o cliente aparece no painel e no site.</p>
-        <div className="grid gap-4 sm:grid-cols-2">
+      <div className="admin-field-grid">
+        <label className="admin-field">
+          <span>Nome do cliente</span>
+          <input
+            className="admin-input"
+            name="name"
+            required
+            maxLength={80}
+            defaultValue={values.name}
+            autoComplete="organization"
+          />
+        </label>
+        {withSlug ? (
           <label className="admin-field">
-            <span>Nome do cliente</span>
+            <span>Endereço do site</span>
             <input
               className="admin-input"
-              name="name"
+              name="slug"
               required
-              maxLength={80}
-              defaultValue={values.name}
-              autoComplete="organization"
+              minLength={2}
+              maxLength={63}
+              pattern="[a-z0-9]+(-[a-z0-9]+)*"
+              placeholder="nome-do-cliente"
+            />
+            <HelpHint>Seu endereço será nome-do-cliente.eixu.com.br</HelpHint>
+          </label>
+        ) : null}
+        {!compact ? (
+          <label className="admin-field">
+            <span>E-mail de contato</span>
+            <input
+              className="admin-input"
+              name="contactEmail"
+              type="email"
+              maxLength={120}
+              defaultValue={values.contactEmail ?? ''}
             />
           </label>
-          {withSlug ? (
-            <label className="admin-field">
-              <span>Endereço do site</span>
-              <input
-                className="admin-input"
-                name="slug"
-                required
-                minLength={2}
-                maxLength={63}
-                pattern="[a-z0-9]+(-[a-z0-9]+)*"
-                placeholder="nome-do-cliente"
-              />
-              <small>Seu endereço será nome-do-cliente.eixu.com.br</small>
-            </label>
-          ) : values.slug ? (
-            <label className="admin-field">
-              <span>Endereço do site</span>
-              <input
-                className="admin-input admin-numeric"
-                value={values.slug}
-                readOnly
-              />
-              <small>{values.slug}.eixu.com.br · definido no cadastro</small>
-            </label>
-          ) : null}
-          {!compact ? (
+        ) : null}
+        {!withSlug && values.slug ? (
+          // O endereço não se edita aqui: faixa informativa, não campo morto.
+          <div className="admin-domain-band">
+            <span>Endereço do site</span>
+            <strong>{values.slug}.eixu.com.br</strong>
+            <span>definido no cadastro</span>
+          </div>
+        ) : null}
+      </div>
+      <HelpNote>
+        Como o cliente aparece no painel e no site. O endereço vem do cadastro e
+        não muda por aqui.
+      </HelpNote>
+    </>
+  );
+
+  if (compact)
+    return (
+      <>
+        <FormSection id="identificacao" title="Identificação">
+          {identity}
+        </FormSection>
+        <FormSection id="briefing" title="História do cliente">
+          <HelpNote>
+            Conte a história com substância. O agente transforma essa fonte em
+            posicionamento, plano, imagens e páginas sem inventar o que não foi
+            informado.
+          </HelpNote>
+          <div className="admin-field-stack">
+            <StoryField intake={intake} compact />
+          </div>
+        </FormSection>
+        <FormSection id="site-atual" title="Site atual">
+          <HelpNote>
+            Reaproveite o conhecimento e os ativos públicos que o cliente já
+            tem.
+          </HelpNote>
+          <div className="admin-field-stack">
+            <CurrentSiteField intake={intake} compact />
+          </div>
+        </FormSection>
+        <FormSection id="referencia" title="Referência para o site">
+          <HelpNote>
+            Se houver uma referência, ela passa a comandar a direção visual.
+          </HelpNote>
+          <div className="admin-field-stack">
+            <ReferenceField intake={intake} compact />
+          </div>
+        </FormSection>
+        <details className="admin-optional-fields">
+          <summary>Mais contexto e contatos</summary>
+          <div className="admin-field-stack mt-5">
             <label className="admin-field">
               <span>E-mail de contato</span>
               <input
@@ -174,78 +228,44 @@ export function TenantFields({
                 defaultValue={values.contactEmail ?? ''}
               />
             </label>
-          ) : null}
-        </div>
-      </section>
-
-      {compact ? (
-        <>
-          <section id="briefing" className="admin-form-section">
-            <h2 className="text-base font-semibold">História do cliente</h2>
-            <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
-              Conte a história com substância. O agente transforma essa fonte em
-              posicionamento, plano, imagens e páginas sem inventar o que não
-              foi informado.
-            </p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <StoryField intake={intake} />
-            </div>
-          </section>
-          <section id="site-atual" className="admin-form-section">
-            <h2 className="text-base font-semibold">Site atual</h2>
-            <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
-              Reaproveite o conhecimento e os ativos públicos que o cliente já
-              tem.
-            </p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <CurrentSiteField intake={intake} />
-            </div>
-          </section>
-          <section id="referencia" className="admin-form-section">
-            <h2 className="text-base font-semibold">Referência para o site</h2>
-            <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
-              Se houver uma referência, ela passa a comandar a direção visual.
-            </p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <ReferenceField intake={intake} />
-            </div>
-          </section>
-          <details className="admin-optional-fields">
-            <summary>Mais contexto e contatos</summary>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <label className="admin-field">
-                <span>E-mail de contato</span>
-                <input
-                  className="admin-input"
-                  name="contactEmail"
-                  type="email"
-                  maxLength={120}
-                  defaultValue={values.contactEmail ?? ''}
-                />
-              </label>
-              <EvidenceAndConstraints intake={intake} />
-            </div>
-            <ContactFields contacts={contacts} />
-          </details>
-        </>
-      ) : (
-        <>
+            <EvidenceFields initial={intake.evidence} />
+            <ConstraintsField intake={intake} compact />
+          </div>
           <ContactFields contacts={contacts} />
-          <section id="briefing" className="admin-form-section">
-            <h2 className="text-base font-semibold">História e fontes</h2>
-            <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
-              A história sustenta o conteúdo. O site atual traz fatos e ativos.
-              Uma referência visual verificada comanda a composição.
-            </p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <StoryField intake={intake} />
-              <CurrentSiteField intake={intake} />
-              <ReferenceField intake={intake} />
-              <EvidenceAndConstraints intake={intake} />
-            </div>
-          </section>
-        </>
-      )}
+        </details>
+      </>
+    );
+
+  return (
+    <>
+      <FormSection id="identificacao" ordinal="01" title="Identificação">
+        {identity}
+      </FormSection>
+      <ContactFields
+        contacts={contacts}
+        ordinal="02"
+        socialCard={socialCard}
+      />
+      <FormSection
+        id="historia"
+        ordinal="03"
+        title="História"
+        status="fonte factual do site"
+      >
+        <HelpNote>
+          A história sustenta o conteúdo e prevalece em conflitos. Inclua
+          segmento, região atendida e público dentro da narrativa.
+        </HelpNote>
+        <div className="admin-field-stack">
+          <StoryField intake={intake} />
+          <div className="admin-field-grid">
+            <CurrentSiteField intake={intake} />
+            <ReferenceField intake={intake} />
+          </div>
+          <EvidenceFields initial={intake.evidence} />
+          <ConstraintsField intake={intake} />
+        </div>
+      </FormSection>
     </>
   );
 }
