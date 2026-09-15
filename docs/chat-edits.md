@@ -17,6 +17,15 @@ ferramentas; o modelo e o raciocínio `high` permanecem iguais. Não há parser 
 frases que finja entender toda linguagem natural. A edição visual ganha medição
 determinística no navegador; crítica visual por modelo continua somente a pedido.
 
+Antes deste contrato, a rota distingue conversa de ação. Pergunta, hipótese,
+opinião ou anexo sem comando não chega a `edit_page`: o runtime fornece somente
+leitura do manual, estado, página, catálogo, imagens e lint. Uma instrução
+direta, um resultado desejado ou a confirmação de uma proposta executável abre
+a política abaixo. A classificação é conservadora; se uma frase ambígua ficar
+em conversa, o rascunho permanece intacto e o operador pode reformular como
+ordem. O [manual completo](manual-gerador-sites.md#conversa-e-edição) traz
+exemplos e a lista de ferramentas.
+
 ## Contrato
 
 `edit_page` recebe página, revisão e operações. `set`/`unset` alteram caminhos

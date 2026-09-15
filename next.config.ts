@@ -10,15 +10,21 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     // A revisão visual roda no chat, no consumidor da fila e no transporte
     // HTTP local. Sem os binários aqui, a captura falha só em produção.
-    '/api/chat': ['./SOUL.md', './node_modules/@sparticuz/chromium/bin/**/*'],
+    '/api/chat': [
+      './SOUL.md',
+      './docs/manual-gerador-sites.md',
+      './node_modules/@sparticuz/chromium/bin/**/*',
+    ],
     // Os colchetes da rota dinâmica são classe de caracteres no glob desta
     // opção: '[tenant]' casaria uma letra só. O curinga de segmento resolve.
     '/api/admin/*/generation/step': [
       './SOUL.md',
+      './docs/manual-gerador-sites.md',
       './node_modules/@sparticuz/chromium/bin/**/*',
     ],
     '/api/queues/generation': [
       './SOUL.md',
+      './docs/manual-gerador-sites.md',
       './node_modules/@sparticuz/chromium/bin/**/*',
     ],
   },

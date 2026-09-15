@@ -61,7 +61,11 @@ for (const route of ROUTES)
       assets.length > 0,
       'O pacote Chromium precisa fornecer os binários.',
     );
-    for (const relative of ['SOUL.md', ...assets]) {
+    for (const relative of [
+      'SOUL.md',
+      'docs/manual-gerador-sites.md',
+      ...assets,
+    ]) {
       const file = path.join(root, relative);
       assert(
         files.has(file),

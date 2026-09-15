@@ -76,6 +76,18 @@ presumir página ou hero.
 
 ## Edição e publicação
 
+Antes de aplicar a política de edição, `/api/chat` classifica a última fala em
+`conversation` ou `action` por `lib/ai/interaction.ts`. Saudação, pergunta,
+hipótese, pedido de opinião, contexto solto e anexo sem instrução ficam em
+conversa. O conjunto de ferramentas é reduzido no runtime a manual, estado,
+página, catálogo, imagens e lint; não há mutador, publicação, geração, leitura
+externa, crítica visual ou registro de evidência. Verbo direto, resultado
+desejado, pedido “pode fazer…?” e confirmação de uma proposta executável do
+turno anterior seguem como ação. A confirmação determinística de remoção
+continua prevalecendo. O prompt recebe `conversationOnly`, muda o fechamento e
+omite o catálogo de escrita. `docs/manual-gerador-sites.md` é lido por seções
+por `read_generator_manual` e entra no tracing serverless junto de `SOUL.md`.
+
 A leitura em `lib/tenant-queries.ts` recupera o WhatsApp legado e a rede de
 `brief.intake.socialUrl` para clientes anteriores a `contacts`. A rede só é
 recuperada quando a chave `contacts.social` ainda não existe; uma lista vazia
@@ -271,6 +283,7 @@ Gastos de todos os canais da mesma campanha são somados, incluindo campanhas se
 
 - **Edição direta:** disponível para clientes publicados, por campo inteiro; sem posts, marcação inline ou mescla de conflitos. O desfazer alcança a última escrita do rascunho de cada página, não o site publicado nem imagens. Controles conservam seus estilos e cores sobre fotos sem superfície uniforme ficam automáticas.
 - **Conversa simultânea:** o run impede um turno de chat durante a geração, mas duas abas ainda podem abrir dois turnos livres para o mesmo cliente.
+- **Classificação de conversa:** o filtro é conservador e baseado em linguagem explícita, não uma compreensão universal de intenção. Uma frase ambígua pode ficar somente em leitura; reformular como ordem direta libera a ação sem alterar nada no primeiro turno.
 - **Exclusão:** definitiva, sem lixeira. O CDN pode servir um arquivo apagado por cerca de um minuto, e uma exclusão durante geração ativa derruba as ferramentas daquele turno por chave estrangeira.
 - **Leitura de rede social:** depende do que a rede entrega a robôs e do IP de saída; o Instagram falha com frequência a partir de datacenter. Nome, bio e avatar lidos são material público, não verificação de identidade do cliente.
 - **Acesso:** admin global, sem vínculo usuário–tenant ou RLS no schema versionado. Rotas administrativas, chats e rascunhos exigem sessão. Em produção, ausência de segredo e senha impede emissão/validação de sessão. `__tenant` continua disponível para resolver o conteúdo publicado; não autentica. Arquivos no Blob continuam públicos.

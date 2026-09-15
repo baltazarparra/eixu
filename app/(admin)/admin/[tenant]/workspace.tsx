@@ -145,7 +145,6 @@ export function Workspace({
   const [pointing, setPointing] = useState(false);
   const [anchor, setAnchor] = useState<PointedAnchor | null>(null);
 
-
   const { messages, setMessages, sendMessage, status, error, stop } =
     useChat<ChatMessage>({
       messages: history,
@@ -1173,7 +1172,7 @@ export function Workspace({
               ) : null}
               <textarea
                 ref={inputRef}
-                aria-label="Mensagem para editar o site"
+                aria-label="Mensagem para o Eixu"
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 onPaste={(event) => {
@@ -1207,8 +1206,8 @@ export function Workspace({
                     : running
                       ? 'A conversa reabre quando a geração terminar'
                       : site.pages.length
-                        ? 'Peça uma mudança'
-                        : 'Descreva o site'
+                        ? 'Pergunte, explore uma ideia ou peça um ajuste'
+                        : 'Conte a ideia do site ou pergunte ao Eixu'
                 }
                 className="admin-composer-input"
               />

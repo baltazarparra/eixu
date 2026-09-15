@@ -128,6 +128,10 @@ export function describeTool(
         return `Site atual inacessível: ${str(out.motivo) || 'sem acesso'}`;
       return `Site atual lido: ${num(out.paginas)} página(s) e ${num(out.imagensImportadas)} imagem(ns) importada(s)`;
     }
+    case 'read_generator_manual':
+      return pending
+        ? 'Consultando o manual do gerador'
+        : 'Consultou o manual do gerador';
     case 'define_image_guide':
       return pending ? 'Definindo o guia de imagem' : 'Guia de imagem definido';
     case 'review_pages': {
