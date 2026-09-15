@@ -13,6 +13,7 @@ import {
   type SubmitEvent,
 } from 'react';
 import { AdminHttpError, adminFetch } from '@/lib/admin/http';
+import { MAX_CARD_DESCRIPTION } from '@/lib/kanban/constraints';
 import type {
   KanbanCardDetail,
   KanbanCardSummary,
@@ -1050,7 +1051,7 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
                       ? 'card-description-error'
                       : undefined
                   }
-                  maxLength={5000}
+                  maxLength={MAX_CARD_DESCRIPTION}
                   rows={10}
                   value={editorDescription}
                   onChange={(event) => {

@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Revisar PR do card'
+  short_description: 'Revisa uma PR contra a spec e as evidências'
+  default_prompt: 'Use $kanban-pr-review para revisar esta PR contra o card antes do merge.'

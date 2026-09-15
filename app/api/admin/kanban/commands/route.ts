@@ -1,6 +1,9 @@
 import { kanbanCommandSchema } from '@/lib/kanban/schema';
 import { executeKanbanCommand, KanbanError } from '@/lib/kanban/service';
-import { guardKanbanRequest } from '@/app/api/admin/kanban/guard';
+import {
+  guardKanbanRequest,
+  isKanbanAgentRequest,
+} from '@/app/api/admin/kanban/guard';
 import { kanbanFailure, privateJson } from '@/app/api/admin/kanban/responses';
 import { currentUser } from '@/lib/auth';
 import { recordActivity } from '@/lib/admin/activity';
@@ -43,8 +46,9 @@ class BodyTooLarge extends Error {}
 export async function POST(request: Request): Promise<Response> {
   const denied = await guardKanbanRequest(request, true);
   if (denied) return denied;
-  const user = await currentUser();
-  if (!user)
+  const agentRequest = isKanbanAgentRequest(request);
+  const user = agentRequest ? null : await currentUser();
+  if (!agentRequest && !user)
     return privateJson(
       { error: 'Sua sessão expirou.', code: 'SESSION_EXPIRED' },
       401,
@@ -92,11 +96,13 @@ export async function POST(request: Request): Promise<Response> {
     });
     await recordActivity({
       actor: user,
-      actorType: 'user',
+      actorType: agentRequest ? 'agent' : 'user',
       action: `kanban.${parsed.data.type}`,
       resourceType: 'kanban',
       operationId: `kanban:${requestId}`,
-      summary: `${user.name} executou ${parsed.data.type} no Kanban`,
+      summary: agentRequest
+        ? `Agente de desenvolvimento executou ${parsed.data.type} no Kanban`
+        : `${user?.name} executou ${parsed.data.type} no Kanban`,
     });
     return privateJson(result);
   } catch (error) {

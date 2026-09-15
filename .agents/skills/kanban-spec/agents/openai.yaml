@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Especificar card'
+  short_description: 'Transforma contexto em uma spec executável no Kanban'
+  default_prompt: 'Use $kanban-spec para criar ou refinar este card de desenvolvimento.'

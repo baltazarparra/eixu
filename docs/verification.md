@@ -16,6 +16,7 @@ nova execução. Os scripts e dependências vêm de [package.json](../package.js
 | Imagens ou ferramentas             | Falha parcial, disponibilidade, alteração por número, isolamento, aplicação de logo e recusa de exclusão em uso.                                                    |
 | Schema                             | Aplicação e reaplicação em PostgreSQL descartável, com verificação dos consumidores.                                                                                |
 | Kanban interno                     | Sessão, rota canônica e redirecionamento, host de cliente, origem, upgrade idempotente, vínculo, filtros, arquivo, ordem, concorrência por cartão, teclado e toque. |
+| Skills e cliente do Kanban         | Validação estrutural das skills, bearer restrito, sessão humana/Origin, host de cliente, parser, payloads/versionamento e leitura real sem escrita no destino.      |
 | Modelo ou prompt                   | Contratos e [avaliação reproduzível](harness.md#avaliação-reproduzível), com chamadas reais autorizadas e limitações registradas.                                   |
 
 O lint de código e o pre-flight `lintPage` são verificações diferentes.
@@ -35,6 +36,20 @@ npm run test:admin
 npm run build:vercel
 git diff --check
 ```
+
+Para o fluxo AI Native e o cliente das rotas:
+
+```bash
+python /caminho/skill-creator/scripts/quick_validate.py .agents/skills/kanban-spec
+python /caminho/skill-creator/scripts/quick_validate.py .agents/skills/kanban-delivery
+python /caminho/skill-creator/scripts/quick_validate.py .agents/skills/kanban-pr-review
+npm run kanban -- board
+```
+
+Os três validadores conferem estrutura e metadados, não a qualidade de decisão
+dos modelos. `npm run kanban -- board` faz uma leitura autenticada do destino e
+não cria nem altera cartões; confirme `EIXU_KANBAN_URL` antes de usar comandos de
+escrita.
 
 `next typegen` prepara tipos de rotas e `next-env.d.ts`. Consulte o guia da
 versão instalada em `node_modules/next/dist/docs/01-app/03-api-reference/06-cli/next.md`

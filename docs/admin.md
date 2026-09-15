@@ -3,10 +3,9 @@
 ## Organizar tarefas no Kanban
 
 Na lista de clientes, abra **Kanban** para usar o quadro interno da operação. O
-quadro é compartilhado por todas as pessoas que usam a credencial administrativa;
-um cartão pode apontar para um cliente, mas não registra um responsável
-individual. Busque por título ou cliente e filtre o quadro por cliente e
-prioridade.
+quadro é compartilhado por todos os operadores autorizados; cada pessoa entra
+com seu login e PIN, mas os cards não registram um responsável individual.
+Busque por título ou cliente e filtre o quadro por cliente e prioridade.
 
 O primeiro quadro tem **A fazer**, **Em andamento**, **Em revisão** e
 **Concluído**. Use **+ Cartão** para registrar o título; o editor abre em seguida
@@ -24,6 +23,13 @@ O painel confirma cada salvamento antes de anunciar sucesso. Mudanças
 estruturais feitas em outra aba podem exigir atualização; edições simultâneas no
 mesmo cartão são recusadas pela versão do cartão. Texto que ainda não foi salvo
 continua no editor para conferência. A exclusão definitiva exige confirmação.
+
+Cards de desenvolvimento podem usar até 12.000 caracteres de descrição. O
+[fluxo AI Native](ai-native-development.md) usa as mesmas rotas para passar uma
+spec entre Astra, Sol e a revisão da PR; a interface e `npm run kanban` leem o
+mesmo quadro e respeitam as mesmas revisões. Para agentes, configure
+`KANBAN_AGENT_TOKEN`; esse bearer é limitado ao Kanban e não substitui a sessão
+humana do painel.
 
 ## Escolher Landing Page
 

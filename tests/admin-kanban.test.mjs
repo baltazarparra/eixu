@@ -496,10 +496,17 @@ await test(
   },
 );
 
-await test('Kanban: autenticação, host, Origin, validação e limite do POST', async () => {
+await test('Kanban: autenticação, host, Origin, validação e limite do POST', async (t) => {
+  const previousAgentToken = process.env.KANBAN_AGENT_TOKEN;
+  t.after(() => {
+    if (previousAgentToken === undefined) delete process.env.KANBAN_AGENT_TOKEN;
+    else process.env.KANBAN_AGENT_TOKEN = previousAgentToken;
+  });
+  process.env.KANBAN_AGENT_TOKEN = 'token-dedicado-de-teste';
   let authenticated = false;
   let executed = 0;
   let reads = 0;
+  const activities = [];
   const auth = {
     isAuthenticated: async () => authenticated,
     currentUser: async () =>
@@ -515,7 +522,11 @@ await test('Kanban: autenticação, host, Origin, validação e limite do POST',
   const service = {
     executeKanbanCommand: async (command) => {
       executed += 1;
-      return { revision: command.expectedRevision + 1, columns: [], cards: [] };
+      return {
+        revision: command.expectedRevision + 1,
+        columns: [],
+        cards: [],
+      };
     },
     KanbanError: class KanbanError extends Error {},
   };
@@ -524,7 +535,9 @@ await test('Kanban: autenticação, host, Origin, validação e limite do POST',
     {
       '@/lib/kanban/service': service,
       '@/lib/auth': auth,
-      '@/lib/admin/activity': { recordActivity: async () => undefined },
+      '@/lib/admin/activity': {
+        recordActivity: async (activity) => activities.push(activity),
+      },
       '@/app/api/admin/kanban/guard': guard,
     },
     { crypto: globalThis.crypto },
@@ -534,7 +547,9 @@ await test('Kanban: autenticação, host, Origin, validação e limite do POST',
     {
       '@/lib/kanban/service': service,
       '@/lib/auth': auth,
-      '@/lib/admin/activity': { recordActivity: async () => undefined },
+      '@/lib/admin/activity': {
+        recordActivity: async (activity) => activities.push(activity),
+      },
       '@/app/api/admin/kanban/guard': guard,
       '@/app/api/admin/kanban/responses': responses,
     },
@@ -593,6 +608,43 @@ await test('Kanban: autenticação, host, Origin, validação e limite do POST',
     401,
   );
   assert.equal(reads, 0);
+  response = await POST(
+    new Request('https://app.eixu.com.br/api/admin/kanban/commands', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer incorreto',
+        'content-type': 'application/json',
+      },
+      body: payload,
+    }),
+  );
+  assert.equal(response.status, 401);
+  response = await boardGet(
+    new Request('https://app.eixu.com.br/api/admin/kanban', {
+      headers: { authorization: 'Bearer token-dedicado-de-teste' },
+    }),
+  );
+  assert.equal(response.status, 200);
+  response = await POST(
+    new Request('https://app.eixu.com.br/api/admin/kanban/commands', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer token-dedicado-de-teste',
+        'content-type': 'application/json',
+      },
+      body: payload,
+    }),
+  );
+  assert.equal(response.status, 200, 'bearer dedicado não depende de Origin');
+  assert.equal(activities.length, 1);
+  assert.equal(activities[0].actorType, 'agent');
+  assert.equal(activities[0].actor, null);
+  response = await boardGet(
+    new Request('https://cliente.eixu.com.br/api/admin/kanban', {
+      headers: { authorization: 'Bearer token-dedicado-de-teste' },
+    }),
+  );
+  assert.equal(response.status, 403, 'bearer não libera host de cliente');
   authenticated = true;
   assert.equal(
     (
@@ -613,7 +665,7 @@ await test('Kanban: autenticação, host, Origin, validação e limite do POST',
     ).status,
     403,
   );
-  assert.equal(reads, 0);
+  assert.equal(reads, 1);
   response = await POST(
     request(
       'https://cliente.eixu.com.br/api/admin/kanban/commands',
@@ -654,7 +706,10 @@ await test('Kanban: autenticação, host, Origin, validação e limite do POST',
   );
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('cache-control'), 'private, no-store');
-  assert.equal(executed, 1);
+  assert.equal(executed, 2);
+  assert.equal(activities.length, 2);
+  assert.equal(activities[1].actorType, 'user');
+  assert.equal(activities[1].actor.id, 'user-1');
   response = await boardGet(
     new Request('https://app.eixu.com.br/api/admin/kanban'),
   );
@@ -667,7 +722,32 @@ await test('Kanban: autenticação, host, Origin, validação e limite do POST',
     { params: Promise.resolve({ id: randomUUID() }) },
   );
   assert.equal(response.status, 200);
-  assert.equal(reads, 2);
+  assert.equal(reads, 3);
+});
+
+await test('Kanban: descrição comporta a spec e recusa acima de 12 mil caracteres', async () => {
+  const { kanbanCommandSchema } = await loadModule('lib/kanban/schema.ts');
+  const command = {
+    type: 'create_card',
+    expectedRevision: 0,
+    id: randomUUID(),
+    columnId: randomUUID(),
+    title: 'Spec completa',
+  };
+  assert.equal(
+    kanbanCommandSchema.safeParse({
+      ...command,
+      description: 'x'.repeat(12_000),
+    }).success,
+    true,
+  );
+  assert.equal(
+    kanbanCommandSchema.safeParse({
+      ...command,
+      description: 'x'.repeat(12_001),
+    }).success,
+    false,
+  );
 });
 
 await test('transporte administrativo preserva code, fields e revisão do conflito', async () => {

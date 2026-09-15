@@ -50,9 +50,10 @@ O [contrato visual](design.md) descreve variantes, dials, âncoras e a aplicaç�
 O Kanban da operação é uma página global em `/admin/kanban`, fora das abas de
 cliente. O endereço inicial `/admin/app/kanban` redireciona permanentemente para
 a rota canônica. `kanban` e o legado `app` são slugs reservados no cadastro. A
-página e os handlers conferem a sessão; os handlers também recusam hosts de
-clientes, pois `proxy.ts` deixa `/api/*` passar nesses subdomínios. As mutações
-verificam a origem do navegador.
+página confere a sessão. Os handlers aceitam essa sessão ou o bearer dedicado
+`KANBAN_AGENT_TOKEN` e recusam ambos em hosts de clientes, pois `proxy.ts` deixa
+`/api/*` passar nesses subdomínios. Mutações feitas pela sessão verificam a
+origem do navegador; o bearer não autentica nenhuma outra rota administrativa.
 
 `kanban_boards`, `kanban_columns` e `kanban_cards` guardam o quadro único, as
 etapas e as tarefas. Um cartão pode referenciar um cliente por `tenant_id`; ao
@@ -63,13 +64,22 @@ não restaura colunas que o operador removeu depois. O GET do quadro devolve
 metadados compactos, cartões ativos e arquivados e a lista de clientes; a
 descrição completa é lida só ao abrir um cartão.
 
+O cliente interno `scripts/kanban.mjs` consome esses handlers para o fluxo de
+desenvolvimento. Ele usa apenas o bearer restrito e não acessa as tabelas
+diretamente. Em worktrees, localiza também o `.env.local` do checkout principal.
+O destino padrão é a origem de produção e pode ser trocado por
+`EIXU_KANBAN_URL` em desenvolvimento. A descrição aceita 12.000 caracteres para
+acomodar a spec e recibos de entrega e revisão, sem mudança de schema SQL porque
+o campo persistido já é `text`.
+
 Cada comando trava a linha do quadro, compara a revisão recebida e reordena as
 posições em uma transação. Comandos estruturais e movimentos ainda exigem a
 revisão global atual. A edição de conteúdo também envia a versão do próprio
 cartão: uma mudança independente no quadro não bloqueia o salvamento, mas duas
 edições concorrentes no mesmo cartão recebem conflito. O cliente relê o quadro
 e preserva texto não salvo. Os comandos bem-sucedidos entram na atividade com
-o operador responsável. Não há sincronização imediata entre operadores.
+o operador responsável ou com autoria de agente quando usam o bearer dedicado.
+Não há sincronização imediata entre operadores.
 
 O layout raiz consulta a sessão persistida antes de montar a casca e entrega
 nome, login e formulário de saída por contexto, desenhados nos cabeçalhos.

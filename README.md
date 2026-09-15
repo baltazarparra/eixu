@@ -12,7 +12,7 @@ O modelo interno é **Gemini 3.8 Flash**, com raciocínio `high`. O harness prio
 
 - Institucional com home, oferta de passagem de vibe coding para produção e cases de SaldoPix e NaiaCRM.
 - Painel com login e PIN individual por operador, atividade com autoria, busca e filtros de clientes, cadastro compacto com cinco direções visuais comparáveis, geração em Preparar/Criar, chat com histórico recente, prévia em desktop/mobile, dados e briefing editáveis e publicação.
-- Kanban interno global em `/admin/kanban`: cartões com cliente opcional, prioridade, prazo, descrição e arquivo; colunas e ordem persistidas, com movimentação por arrasto ou ações acessíveis. Cada comando fica associado ao operador autenticado.
+- Kanban interno global em `/admin/kanban`: cartões com cliente opcional, prioridade, prazo, descrição e arquivo; colunas e ordem persistidas, com movimentação por arrasto, ações acessíveis ou `npm run kanban`. As skills de desenvolvimento usam o card como contrato entre Astra, Sol e a revisão da PR. Cada mutação fica associada ao operador autenticado ou identificada como ação de agente quando usa o token dedicado.
 - Páginas orgânicas, landing pages pagas, posts e páginas de agradecimento compostas por blocos com schemas Zod. O agente edita conteúdo por ferramentas; o painel também permite ajustar dados do cliente e gerenciar imagens.
 - Edição direta e pelo chat: texto, tamanho e cor por campo, fundo/degradê local e decoração da vibe, com contraste validado e medição renderizada após ajustes visuais. Salvar altera o rascunho; Publicar leva as mudanças ao site no ar.
 - Imagens geradas na conversa ou enviadas pelo painel, disponíveis no mesmo acervo sem aprovação. O upload aceita várias fotos JPG, PNG, WebP ou AVIF de até 4 MB cada; a geração usa o guia do cliente e a crítica. A biblioteca em `/admin/[tenant]/imagens` mantém números para pedir alterações, como “atualize a imagem #5 com outro carro”. A nova versão substitui a anterior nos rascunhos e ambas ficam salvas.
@@ -40,6 +40,7 @@ O institucional e a tela de login abrem sem banco. Para usar o painel e os sites
 | `DATABASE_URL_UNPOOLED`  | Conexão direta preferida pelos scripts de migração e provisionamento.                                       |
 | `ADMIN_PIN_PEPPER`       | Segredo adicional usado no hash dos PINs; obrigatório em produção e estável entre provisionamento e login.  |
 | `ADMIN_SESSION_SECRET`   | Segredo dos tokens internos de prévia; obrigatório em produção.                                             |
+| `KANBAN_AGENT_TOKEN`     | Bearer exclusivo para agentes operarem somente as rotas do Kanban; preferível à sessão administrativa.      |
 | `AI_GATEWAY_API_KEY`     | Autenticação explícita do AI Gateway, útil localmente. O SDK também aceita OIDC da Vercel.                  |
 | `EIXU_MODEL`             | Modelo do chat do site; fallback no código: `google/gemini-3.8-flash`.                                      |
 | `EIXU_EDIT_MODEL`        | Override opcional só para edições; sem ele, usa `EIXU_MODEL` e o mesmo fallback.                            |
@@ -92,6 +93,7 @@ Os três grupos de rotas têm layouts e CSS próprios. A geração valida págin
 | `npx next start`                                             | Serve o build Next.js local já gerado.                                                                                                                                 |
 | `npx next typegen && npx tsc --noEmit`                       | Gera tipos das rotas e verifica TypeScript.                                                                                                                            |
 | `npm run lint`                                               | Analisa código com oxlint; não executa o pre-flight dos sites.                                                                                                         |
+| `npm run kanban -- <comando>`                                | Lê e altera o Kanban pelas rotas autenticadas; `board`, `card`, `create-card`, `update-card` e `move-card` atendem às skills de desenvolvimento.                       |
 | `npm run test:sites`                                         | Testa o contrato de páginas, imagens, alterações por número e links sem banco ou chamadas pagas.                                                                       |
 | `npm run test:sites:browser`                                 | Depois do build Next.js, verifica contraste, contatos, hidratação, teclado, carrossel e preferências do navegador. Requer `EIXU_CHROME_PATH`.                          |
 | `npm run test:admin`                                         | Testa contexto, estado editorial, autenticação, logos, datas, custos, CSV e tracking. Suítes opcionais exigem PostgreSQL local ou Chrome; não chama modelos pagos.     |
@@ -115,7 +117,9 @@ O [manual do operador](docs/admin.md) explica cadastro, geração, revisão huma
 
 ## Agentes e modelos de desenvolvimento
 
-GPT-6 Astra e Claude Fable 5.1 são os modelos de trabalho considerados pelo [harness de desenvolvimento](docs/harness.md). Eles seguem a identidade de [SOUL.md](SOUL.md) e o mesmo [AGENTS.md](AGENTS.md); `CLAUDE.md` importa esse arquivo, sem duplicar as regras. Selecionar um modelo no editor não altera `EIXU_MODEL` nem os geradores de imagem do produto. Os fallbacks documentados acima vêm do código, não de uma leitura das variáveis de produção.
+O [fluxo AI Native](docs/ai-native-development.md) usa conversas separadas do Codex: GPT-6 Astra cria a spec no Kanban, GPT-5.6 Sol lê o card, planeja, implementa, valida e abre a PR, e um novo Astra revisa o HEAD antes do merge. As skills `$kanban-spec`, `$kanban-delivery` e `$kanban-pr-review` vivem em `.agents/skills/`; o [AGENTS.md](AGENTS.md) preserva as invariantes entre as etapas. `CLAUDE.md` continua importando o mesmo contrato como adaptador compatível.
+
+Selecionar um modelo no Codex não altera `EIXU_MODEL`, o agente do produto nem os geradores de imagem. A skill também não consegue certificar o modelo selecionado; essa evidência pertence à tarefa que a executa.
 
 ## Publicação
 

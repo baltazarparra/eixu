@@ -17,6 +17,7 @@
     "test:admin": "node --test tests/admin-*.test.mjs",
     "test:admin:browser": "node --test --test-concurrency=1 tests/browser/admin-*.test.mjs",
     "format": "oxfmt",
+    "kanban": "node scripts/kanban.mjs",
     "db:migrate": "node --env-file=.env.local scripts/migrate.mjs",
     "db:provision-admins": "node --env-file=.env.local scripts/provision-admin-users.mjs",
     "db:seed-demo": "node --env-file=.env.local scripts/seed-demo.mjs",
