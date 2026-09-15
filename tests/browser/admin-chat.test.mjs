@@ -168,6 +168,47 @@ await test(
         }
         assert.fail(`Botão ausente: ${text}`);
       };
+      const restingComposer = await page.$eval(
+        '.admin-composer-box',
+        (node) => getComputedStyle(node).borderColor,
+      );
+      await page.focus('textarea');
+      const focusedComposer = await page.$eval(
+        '.admin-composer-box',
+        (node) => {
+          const input = node.querySelector('textarea');
+          const inputStyle = getComputedStyle(input);
+          const boxStyle = getComputedStyle(node);
+          return {
+            focusVisible: input.matches(':focus-visible'),
+            inputOutline: inputStyle.outlineStyle,
+            inputOutlineWidth: inputStyle.outlineWidth,
+            borderColor: boxStyle.borderColor,
+            boxShadow: boxStyle.boxShadow,
+          };
+        },
+      );
+      assert.equal(focusedComposer.focusVisible, true);
+      assert.ok(
+        focusedComposer.inputOutline === 'none' ||
+          focusedComposer.inputOutlineWidth === '0px',
+        'O textarea não deve desenhar um segundo retângulo de foco.',
+      );
+      assert.notEqual(focusedComposer.borderColor, restingComposer);
+      assert.notEqual(focusedComposer.boxShadow, 'none');
+      await mkdir('outputs/chat-recovery', { recursive: true });
+      await page.screenshot({
+        path: 'outputs/chat-recovery/composer-focus.png',
+        clip: await page.$eval('.admin-composer', (node) => {
+          const rect = node.getBoundingClientRect();
+          return {
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height: rect.height,
+          };
+        }),
+      });
       // O laço das etapas saiu do navegador: aqui o alvo é o chat livre —
       // atividade visível, ferramenta recusada e recibo no histórico.
       await page.type('textarea', 'Monte as páginas.');
@@ -220,7 +261,6 @@ await test(
       await page.waitForFunction(
         () => document.documentElement.scrollWidth <= innerWidth + 1,
       );
-      await mkdir('outputs/chat-recovery', { recursive: true });
       await page.screenshot({
         path: 'outputs/chat-recovery/workspace-mobile.png',
         fullPage: true,

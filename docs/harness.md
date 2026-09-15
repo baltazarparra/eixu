@@ -83,6 +83,32 @@ alegação de consciência ou memória contínua. `lib/ai/soul.ts` carrega esse 
 arquivo no prompt do produto, e `next.config.ts` o inclui no artefato do chat.
 Não há uma segunda cópia da identidade dentro do código.
 
+[Manual do gerador](manual-gerador-sites.md) reúne funcionalidades, fluxos,
+blocos, ferramentas e limites. `lib/ai/generator-manual.ts` valida as seções no
+boot; `read_generator_manual` entrega de uma a seis delas. O prompt do chat leva
+somente o índice para não repetir o documento inteiro em todo turno, e
+`next.config.ts` inclui o arquivo nos artefatos das rotas que montam o agente.
+Schemas, pre-flight e retorno atual continuam prevalecendo se uma descrição
+ficar desatualizada.
+
+### Conversa e ação
+
+`lib/ai/interaction.ts` decide o modo antes de `editPolicyFor`. A conversa é o
+padrão seguro: perguntas, hipóteses, opiniões, contexto solto e anexos sem
+comando recebem apenas `read_generator_manual`, `list_state`, `get_page`,
+`describe_block`, `list_images`, `lint_page` e `lint_site`. O modelo pode
+aconselhar e consultar, mas não tem executor de escrita, publicação, evidência,
+geração paga, fonte externa ou crítica visual. O prompt usa uma seção própria e
+não encerra como relatório de mudança.
+
+Uma ação exige formulação reconhecível: verbo direto, resultado desejado,
+convite “vamos…”, pedido “pode fazer…?” ou confirmação curta de uma proposta
+executável do assistente. Perguntas de capacidade como “o que você pode criar?”
+continuam conversa mesmo contendo um verbo de ação. Negação explícita, como
+“não mude nada”, também prevalece. Confirmação de remoção, publicação,
+andamento, retomada e desfazer mantêm seus caminhos determinísticos da rota.
+O classificador é conservador; não tenta resolver toda pragmática da linguagem.
+
 [AGENTS.md](../AGENTS.md) orienta o desenvolvimento: mapa, invariantes e entrega.
 `CLAUDE.md` importa esse contrato. A seleção do modelo no Codex ou Claude Code
 continua no cliente; não altera o modelo que atende o painel. Skills locais
@@ -227,9 +253,9 @@ página e permite tentar novamente em caso de falha. Veja o
 [contrato de edição](chat-edits.md#andamento-e-atualização-da-prévia).
 Consultas curtas como “travou?” recebem o estado salvo diretamente, sem chamar
 o modelo; “continuar” e equivalentes abrem a execução em etapas em vez de um
-turno de edição; pedidos combinados seguem para o agente. Esse recorte é
-determinístico e restrito às expressões de `lib/ai/chat-progress.ts`, não um
-classificador geral de intenção.
+turno de edição; pedidos combinados seguem para o agente. Esses atalhos usam as
+expressões de `lib/ai/chat-progress.ts`. As demais falas passam pela fronteira
+conversa/ação de `lib/ai/interaction.ts` antes de receber ferramentas.
 
 Uma parada em ferramentas pode terminar sem resposta textual. Nesse caso,
 `lib/ai/chat-stream.ts` acrescenta um recibo do estado atual ao stream e ao

@@ -22,6 +22,7 @@ import {
 } from '@/lib/ai/chat-progress';
 import { workspaceState } from '@/lib/admin/state';
 import { editPolicyFor, editScopeText } from '@/lib/ai/edit-policy';
+import { interactionModeFor } from '@/lib/ai/interaction';
 import {
   BLOCK_REMOVAL_CONFIRMATION,
   PageEditError,
@@ -243,21 +244,29 @@ export async function POST(request: Request) {
   const previousAssistant = [...body.messages]
     .filter((message) => message.role === 'assistant')
     .at(-1);
-  const askedBlockRemoval = (previousAssistant?.parts ?? [])
+  const previousAssistantText = (previousAssistant?.parts ?? [])
     .filter((part) => part.type === 'text')
-    .some((part) =>
-      (part as { text: string }).text.includes(BLOCK_REMOVAL_CONFIRMATION),
-    );
+    .map((part) => (part as { text: string }).text)
+    .join(' ');
+  const askedBlockRemoval = previousAssistantText.includes(
+    BLOCK_REMOVAL_CONFIRMATION,
+  );
   const confirmedBlockRemoval =
     askedBlockRemoval && isAffirmative(lastUserText);
-  const editPolicy = phase
-    ? undefined
-    : editPolicyFor(lastUserText, pages, body.page ?? '', {
-        confirmedBlockRemoval,
-      });
+  const conversationOnly =
+    !phase &&
+    !confirmedBlockRemoval &&
+    interactionModeFor(lastUserText, previousAssistantText) === 'conversation';
+  const editPolicy =
+    phase || conversationOnly
+      ? undefined
+      : editPolicyFor(lastUserText, pages, body.page ?? '', {
+          confirmedBlockRemoval,
+        });
   const repairPublication = !phase && isPublicationRepairRequest(lastUserText);
   const anchor = resolveAnchor(focusedPage, body.anchor);
   context.editing = Boolean(editPolicy);
+  context.conversationOnly = conversationOnly;
   context.editScope = editPolicy ? editScopeText(editPolicy) : undefined;
   context.anchor = editPolicy ? anchorContext(anchor) : undefined;
   if (editPolicy)
@@ -295,6 +304,7 @@ export async function POST(request: Request) {
     phase,
     lastUserText,
     operatorText,
+    conversationOnly,
     editPolicy,
   });
   if (phase) await markPhase(tenant.id, phase);
@@ -437,6 +447,8 @@ export async function POST(request: Request) {
               .filter(Boolean)
               .join(' ');
           }
+          if (conversationOnly)
+            return 'Não consegui concluir esta resposta. Tente enviar a pergunta novamente.';
           const current = await getTenantBySlug(body.tenant);
           if (!current) return 'O cliente não está mais disponível no painel.';
           const [currentPages, currentImages] = await Promise.all([

@@ -213,7 +213,16 @@ apenas para repetir essas instruções. As fotos são geradas em paralelo, ficam
 disponíveis com número e URL e não exigem aprovação. A crítica registra nota e
 problemas para orientar ajustes; nota baixa não abre uma fila de decisão.
 
-O chat recebe o histórico textual recente do cliente. Escreva mudanças específicas e indique a página quando necessário. Sugestões apenas preenchem a caixa; **Enviar** executa o pedido. Enter envia, Shift+Enter quebra a linha. Imagens podem ser anexadas, coladas ou arrastadas para a conversa.
+O chat recebe o histórico textual recente do cliente e também conversa sobre o
+site. Pergunte **“o que você acha desta abertura?”**, peça ideias ou tire uma
+dúvida sem receio de alterar o rascunho: perguntas, hipóteses e opiniões ficam
+em modo de leitura. Para executar, formule uma instrução direta, como **“troque
+a abertura por editorial”** ou **“pode deixar o rodapé escuro?”**. O Eixu
+consulta o manual do gerador e o estado do cliente para oferecer somente
+alternativas que o produto consegue realizar. Sugestões da interface apenas
+preenchem a caixa. Enter envia, Shift+Enter quebra a linha. Imagens podem ser
+anexadas, coladas ou arrastadas; anexo sem instrução abre uma conversa, não uma
+edição.
 
 Para editar, selecione a página na prévia e peça, por exemplo: **“troque ‘Escolha
 com calma’ por ‘Compare os acabamentos’”**, **“mude só o fundo do bloco Como

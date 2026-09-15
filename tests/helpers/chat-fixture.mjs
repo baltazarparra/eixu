@@ -70,6 +70,7 @@ export async function chatFixture({
   const turns = [];
   const writes = [];
   const modelCalls = [];
+  const toolContexts = [];
   const publicationCalls = [];
   const { publicationMessage } = await loadModule('lib/sites/publish.ts');
   let executions = 0;
@@ -160,7 +161,12 @@ export async function chatFixture({
         return 'Fixture sintética de streaming.';
       },
     },
-    '@/lib/ai/tools': { buildTools: () => tools },
+    '@/lib/ai/tools': {
+      buildTools: (_tenant, context) => {
+        toolContexts.push(context);
+        return tools;
+      },
+    },
     '@/lib/ai/agent': {
       siteAgent: ({ phase }) => {
         turns.push(phase);
@@ -235,6 +241,7 @@ export async function chatFixture({
     writes,
     turns,
     modelCalls,
+    toolContexts,
     publicationCalls,
     starts,
     prompts,

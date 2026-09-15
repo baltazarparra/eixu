@@ -51,6 +51,8 @@ import {
   type ReferenceProgress,
 } from '@/lib/references/read';
 import { guideTool } from '@/lib/ai/guide-tool';
+import { generatorManualTool } from '@/lib/ai/generator-manual-tool';
+import { conversationTools } from '@/lib/ai/interaction';
 import {
   getGuide,
   getImage,
@@ -221,6 +223,8 @@ export type ToolContext = {
   lastUserText?: string;
   /** Todo o texto escrito pelo operador nesta conversa, para confirmar fatos. */
   operatorText?: string;
+  /** Pergunta ou conversa: o runtime remove todo executor de escrita. */
+  conversationOnly?: boolean;
   editPolicy?: EditPolicy;
   onCurrentSiteProgress?: (event: CurrentSiteProgress) => Promise<void>;
   onReferenceProgress?: (event: ReferenceProgress) => Promise<void>;
@@ -523,6 +527,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
   }
 
   const tools = {
+    read_generator_manual: generatorManualTool(),
     define_image_guide: guideTool(tenant, safe),
 
     prepare_site_images: tool({
@@ -2593,9 +2598,10 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
       ),
     }),
   };
-  return editTools(
+  const scoped = editTools(
     tools,
     context.editPolicy,
     isPublicationRepairRequest(context.lastUserText ?? ''),
   );
+  return context.conversationOnly ? conversationTools(scoped) : scoped;
 }

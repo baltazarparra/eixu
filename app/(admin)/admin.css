@@ -1635,10 +1635,15 @@ textarea.admin-input {
   border: 1px solid var(--color-line);
   border-radius: 12px;
   background: var(--color-surface);
-  transition: border-color 0.15s ease;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background-color 0.16s ease;
 }
-.admin-composer-box:focus-within {
-  border-color: var(--color-accent);
+.admin-composer-box:has(.admin-composer-input:focus-visible) {
+  border-color: color-mix(in srgb, var(--color-accent) 72%, var(--color-line));
+  background: color-mix(in srgb, var(--color-surface) 97%, var(--color-accent));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 13%, transparent);
 }
 .admin-composer-files {
   display: flex;
@@ -1714,6 +1719,9 @@ textarea.admin-input {
 }
 .admin-composer-input::placeholder {
   color: var(--color-muted);
+}
+.admin-composer-input:focus-visible {
+  outline: none;
 }
 .admin-composer-input:disabled {
   cursor: not-allowed;
@@ -3303,6 +3311,13 @@ textarea.admin-input {
     display: none;
   }
 }
+@media (max-width: 359px) {
+  /* Em 320 px, a própria prévia já ocupa a tela. O atalho externo cede espaço
+     ao seletor de página e aos controles operacionais, todos com alvo de toque. */
+  .admin-content .admin-bar-open {
+    display: none;
+  }
+}
 @media (max-width: 1023px) and (max-height: 500px) {
   .admin-composer-hint {
     display: none;
@@ -3320,6 +3335,13 @@ textarea.admin-input {
   }
   .admin-mobile-views {
     padding-block: 2px;
+  }
+}
+@media (forced-colors: active) {
+  .admin-composer-box:has(.admin-composer-input:focus-visible) {
+    border-color: Highlight;
+    background: Canvas;
+    box-shadow: 0 0 0 2px Highlight;
   }
 }
 @media (prefers-reduced-motion: reduce) {

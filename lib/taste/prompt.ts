@@ -6,6 +6,7 @@ import {
 import { LANDING_COMPOSITION, LANDING_DESIGN } from './landing-prompt';
 import { catalogForPrompt } from '../blocks/registry';
 import { soul } from '../ai/soul';
+import { generatorManualIndex } from '../ai/generator-manual';
 import { copyDirection } from '../copy/policy';
 import { TYPOGRAPHY_DIRECTION } from '../design/typography';
 import { ICON_STYLE } from '../design/iconography';
@@ -38,6 +39,8 @@ import type { Tenant } from '../types';
 
 export type PromptContext = {
   phase?: Phase;
+  /** Conversa ou aconselhamento: nenhuma ferramenta de escrita está exposta. */
+  conversationOnly?: boolean;
   editing?: boolean;
   editScope?: string;
   /** Alvo apontado pelo operador na prévia, resolvido pelo servidor. */
@@ -140,6 +143,17 @@ const FREE = `## Execução com critério de qualidade
 - O catálogo abaixo traz uso, proporção e limites de cada bloco. describe_block só se restar dúvida de schema. Omita opcionais sem conteúdo.
 - Execute com o contexto disponível; pergunte só se faltar informação que mude materialmente o resultado. Nunca publique ou apague página sem pedido do operador.`;
 
+const CONVERSATION = `## Conversa atual
+- Esta mensagem pede conversa, explicação, opinião ou exploração. Responda ao assunto como designer de interfaces e frontend sênior. Não anuncie plano de execução, não faça alteração e não alegue que algo foi salvo.
+- Relacione a recomendação ao site e ao negócio quando o estado trouxer evidência. Explique hierarquia, composição, conteúdo, interação, responsividade, acessibilidade, performance ou conversão apenas quando ajudarem a decisão.
+- Para capacidade, fluxo ou limite do gerador, consulte read_generator_manual nas seções necessárias. Para uma página ou imagem específica, use as leituras disponíveis. Não transforme uma hipótese em pedido.
+- Diferencie o que já existe, o que o catálogo permite e o que exigiria desenvolvimento. Dê alternativas executáveis. Se a pessoa quiser aplicar uma delas, espere uma instrução direta.
+- Pode discordar com fundamento. O humor leve vem da identidade e só aparece quando couber; clareza e cordialidade não são negociáveis.`;
+
+const MANUAL = `## Manual do gerador
+O manual versionado é a fonte das funcionalidades, fluxos e limites do produto. Consulte de uma a seis seções com read_generator_manual quando a resposta depender desse conhecimento. O estado atual do tenant prevalece para dizer o que já foi criado.
+${generatorManualIndex()}`;
+
 const EDIT = `## Edição de um site já gerado
 - Cada operação usa os campos op e block. Exemplo de troca literal: operations: [{"op":"replace_text","block":"ID_ATUAL","from":"texto antigo","to":"texto novo"}]. Exemplo de campo: {"op":"set","block":"ID_ATUAL","path":"items.0.title","value":"Novo título"}. Exemplo de inserção: {"op":"insert","block":{"type":"editorial.text","props":{"title":"Título","body":"Texto completo com ao menos vinte caracteres."}},"position":{"relation":"after","block":"ID_DO_RODAPE"}}. No movimento, block é o ID existente; position tem esse mesmo formato. Copie revision da leitura atual.
 - Cumpra o pedido atual na página indicada pelo operador; na ausência de outra indicação, use a página em foco. A leitura atual abaixo já contém blocos, props, revisão e schemas. Não repita get_page/list_state/describe_block para dados que já estão aqui. Use get_page para outra página ou após conflito. Nunca use revisão ou ID de um turno antigo.
@@ -176,6 +190,7 @@ export function systemPrompt(
 ): string {
   const {
     phase,
+    conversationOnly,
     editing,
     editScope,
     anchor,
@@ -207,12 +222,19 @@ export function systemPrompt(
     ...brief
   } = tenant.brief as Record<string, unknown>;
   // Contexto podado por fase: catálogo só onde há blocos para escrever.
-  const wantsCatalog = !phase || phase === 'composicao' || phase === 'revisao';
+  const wantsCatalog =
+    !conversationOnly &&
+    (!phase || phase === 'composicao' || phase === 'revisao');
   const wantsDirection =
-    !editing && (!phase || phase === 'briefing' || phase === 'composicao');
-  const wantsComposition = !editing && (!phase || phase !== 'briefing');
+    !conversationOnly &&
+    !editing &&
+    (!phase || phase === 'briefing' || phase === 'composicao');
+  const wantsComposition =
+    !conversationOnly && !editing && (!phase || phase !== 'briefing');
   const wantsImageDirection =
-    !editing && (!phase || phase === 'briefing' || phase === 'cenas');
+    !conversationOnly &&
+    !editing &&
+    (!phase || phase === 'briefing' || phase === 'cenas');
   const vibe = vibeOf(tenant.brand);
   const legacy =
     tenant.brand.design?.version === 2 || tenant.brand.design?.version === 3;
@@ -262,16 +284,21 @@ export function systemPrompt(
     `## Identidade EIXU\n${soul}`,
     FACTS,
     copyDirection(vibe),
-    !editing && (visualSources.length || persistedReferenceStillConfigured)
+    !conversationOnly &&
+    !editing &&
+    (visualSources.length || persistedReferenceStillConfigured)
       ? landing
         ? 'Referência visual verificada orienta os eixos da landing; preserve página única, hero stage/form e navegação minimal. Registre as seis aplicações em referenceDirection; fonte sem pixels é lacuna.'
         : referencesDirection(legacy, referenceAuthority)
       : '',
     phase
       ? phaseBrief(phase, landing ? 'landing' : 'multi')
-      : editing
-        ? EDIT
-        : FREE,
+      : conversationOnly
+        ? CONVERSATION
+        : editing
+          ? EDIT
+          : FREE,
+    !phase ? MANUAL : '',
     editScope ? `## Escopo da edição atual\n${editScope}` : '',
     anchor ? `## Alvo apontado na prévia\n${anchor}` : '',
     evidencia ? `## Evidência confirmada\n${evidencia}` : '',
@@ -285,7 +312,7 @@ export function systemPrompt(
           homeDirection,
         )}`
       : '',
-    legacy
+    !conversationOnly && legacy
       ? `## Continuidade do perfil v${tenant.brand.design?.version}\nPreserve a composição e o plano de cenas existentes durante edição e retomada. O perfil v6 só entra numa reconstrução solicitada pelo operador; set_design cria essa nova versão.`
       : '',
     wantsDirection
@@ -356,9 +383,13 @@ ${pagesSummary || '(nenhuma)'}`,
     editPage ? `## Página em foco, versão atual\n${editPage}` : '',
   ].filter(Boolean);
 
-  return `Você é creative developer e diretor de arte dos sites EIXU. Compõe identidade, imagens, interação e conteúdo de inbound como uma experiência coerente. Português do Brasil, voz do cliente e fatos verificáveis.
+  const closing = conversationOnly
+    ? 'Responda com naturalidade e no tamanho que a pergunta pede. Não invente mudança, recibo ou pendência.'
+    : 'Termine em 2 ou 3 frases: mudança, eventual suposição e pendência real. Sem listar blocos, sem markdown.';
+
+  return `Você é o Eixu, designer de interfaces e creative developer sênior. Compõe identidade, imagens, interação e conteúdo de inbound como uma experiência coerente. Português do Brasil, voz do cliente e fatos verificáveis.
 
 ${sections.join('\n\n')}
 
-Termine em 2 ou 3 frases: mudança, eventual suposição e pendência real. Sem listar blocos, sem markdown.`;
+${closing}`;
 }

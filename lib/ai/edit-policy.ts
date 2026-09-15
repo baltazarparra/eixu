@@ -312,6 +312,7 @@ const REBUILD_TOOLS = new Set([
   'set_blocks',
 ]);
 const NAVIGATION_TOOLS = new Set([
+  'read_generator_manual',
   'list_state',
   'get_page',
   'describe_block',
@@ -328,6 +329,7 @@ const LEGACY_EDIT_TOOLS = new Set([
   'remove_block',
 ]);
 const VISUAL_EDIT_TOOLS = new Set([
+  'read_generator_manual',
   'undo_page_edit',
   'list_state',
   'get_page',
