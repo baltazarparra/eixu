@@ -525,6 +525,7 @@ await test('host numérico, domínio estranho e nome reservado não viram client
   for (const slug of [
     'admin',
     'www',
+    'kanban',
     'duas--partes',
     '-cliente',
     'a'.repeat(64),
@@ -927,6 +928,11 @@ await test('exclusão pede o endereço quando há site publicado ou contato rece
     false,
   );
   assert.ok(deletionImpact(rascunho)[0].includes('2 páginas'));
+  assert.ok(
+    deletionImpact(rascunho).some((line) =>
+      line.includes('permanecem no Kanban'),
+    ),
+  );
   assert.ok(
     deletionImpact({ ...rascunho, pageCount: 1, leadCount: 1 })[0].includes(
       '1 página',

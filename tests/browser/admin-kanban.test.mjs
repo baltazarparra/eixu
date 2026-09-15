@@ -4,6 +4,13 @@ import test from 'node:test';
 import puppeteer from 'puppeteer-core';
 import { kanbanFixture } from '../helpers/admin-kanban-fixture.mjs';
 
+async function clickEditorSave(page) {
+  await page.$eval('dialog button.admin-primary', (button) =>
+    button.scrollIntoView({ block: 'center' }),
+  );
+  await page.click('dialog button.admin-primary');
+}
+
 await test(
   'Kanban real: criar, editar, mover, reconciliar resposta perdida e operar no celular',
   { skip: !process.env.EIXU_CHROME_PATH, timeout: 90_000 },
@@ -21,41 +28,103 @@ await test(
     const page = await browser.newPage();
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
-    await page.goto(fixture.base + '/admin/app/kanban');
+    await page.goto(fixture.base + '/admin/kanban');
     await page.waitForSelector('h1');
     await page.waitForFunction(
-      () => document.querySelectorAll('section').length === 3,
+      () => document.querySelectorAll('section[data-active]').length === 4,
     );
 
     await page.click('button[aria-expanded="false"]');
     await page.type('#new-column-title', 'Revisão');
     await page.click('form:has(#new-column-title) button.admin-primary');
     await page.waitForFunction(
-      () => document.querySelectorAll('section').length === 4,
+      () => document.querySelectorAll('section[data-active]').length === 5,
     );
     assert.equal(fixture.state.columns.at(-1).title, 'Revisão');
 
-    await page.click('section:first-of-type button[class*="addCard"]');
+    await page.click('section[data-active="true"] button[class*="addCard"]');
     await page.type(
-      'section:first-of-type input[id^="new-card"]',
+      'section[data-active="true"] input[id^="new-card"]',
       'Conferir briefing',
     );
-    await page.click('section:first-of-type form button.admin-primary');
+    await page.click('section[data-active="true"] form button.admin-primary');
     await page.waitForFunction(
       () => document.querySelectorAll('li[data-card-id]').length === 1,
     );
     const cardId = fixture.state.cards[0].id;
-    await page.click('li[data-card-id] button[class*="cardOpen"]');
     await page.waitForSelector('#card-description');
     await page.type('#card-description', 'Descrição completa');
-    await page.click('dialog button.admin-primary');
+    await page.select('#card-tenant', fixture.state.tenants[0].id);
+    await page.select('#card-priority', 'high');
+    await page.$eval('#card-due-date', (input) => {
+      Object.getOwnPropertyDescriptor(
+        input.ownerDocument.defaultView.HTMLInputElement.prototype,
+        'value',
+      ).set.call(input, '2026-10-15');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await clickEditorSave(page);
     await page.waitForFunction(
       () =>
         document.querySelector('dialog button.admin-primary')?.disabled ===
         false,
     );
     assert.equal(fixture.descriptions.get(cardId), 'Descrição completa');
+    assert.equal(fixture.state.cards[0].tenantName, 'Acme');
+    assert.equal(fixture.state.cards[0].priority, 'high');
+    assert.equal(fixture.state.cards[0].dueDate, '2026-10-15');
     await page.click('button[aria-label="Fechar cartão"]');
+
+    await page.select(
+      'section[aria-label="Filtros do Kanban"] select',
+      fixture.state.tenants[0].id,
+    );
+    assert.equal(
+      await page.$eval('section[data-active="true"] [data-card-id]', (node) =>
+        node.textContent.includes('Acme'),
+      ),
+      true,
+    );
+    await page.evaluate(() => {
+      [...document.querySelectorAll('button')]
+        .find((button) => button.textContent.trim() === 'Limpar filtros')
+        ?.click();
+    });
+
+    await page.click(`[data-card-id="${cardId}"] button[class*="cardOpen"]`);
+    await page.waitForSelector('button[class*="archiveButton"]');
+    await page.click('button[class*="archiveButton"]');
+    await page.waitForFunction(
+      (id) =>
+        !document.querySelector(
+          `section[data-active] [data-card-id="${id}"]`,
+        ) &&
+        document.querySelector(
+          `section[class*="archived"] [data-card-id="${id}"]`,
+        ),
+      {},
+      cardId,
+    );
+    assert.equal(fixture.state.archivedCards[0].id, cardId);
+    await page.click(
+      `section[class*="archived"] [data-card-id="${cardId}"] button`,
+    );
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll('dialog button')].some(
+        (button) => button.textContent.trim() === 'Restaurar cartão',
+      ),
+    );
+    await page.click('button[class*="archiveButton"]');
+    await page.waitForFunction(
+      (id) =>
+        Boolean(
+          document.querySelector(`section[data-active] [data-card-id="${id}"]`),
+        ),
+      {},
+      cardId,
+    );
+    assert.equal(fixture.state.archivedCards.length, 0);
 
     await page.click('li[data-card-id] summary');
     await page.evaluate(() => {
@@ -112,6 +181,8 @@ await test(
         .length,
       1,
     );
+    if (await page.$('#card-description'))
+      await page.click('button[aria-label="Fechar cartão"]');
 
     await page.click(`[data-card-id="${cardId}"] button[class*="cardOpen"]`);
     await page.waitForSelector('#card-description');
@@ -175,15 +246,19 @@ await test(
     const page = await browser.newPage();
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
-    await page.goto(fixture.base + '/admin/app/kanban');
+    await page.goto(fixture.base + '/admin/kanban');
     await page.waitForFunction(
-      () => document.querySelectorAll('section').length === 3,
+      () => document.querySelectorAll('section[data-active]').length === 4,
     );
 
     const columnId = fixture.state.columns[0].id;
-    await page.click('section:first-of-type summary');
+    await page.click('section[data-active="true"] summary');
     await page.evaluate(() => {
-      [...document.querySelectorAll('section:first-of-type details button')]
+      [
+        ...document.querySelectorAll(
+          'section[data-active="true"] details button',
+        ),
+      ]
         .find((button) => button.textContent.trim() === 'Renomear')
         ?.click();
     });
@@ -212,13 +287,13 @@ await test(
     );
     assert.equal(
       await page.$eval(
-        'section:first-of-type form button.admin-primary',
+        'section[data-active="true"] form button.admin-primary',
         (node) => node.disabled,
       ),
       true,
     );
     assert.equal(fixture.state.columns[0].title, 'A fazer remoto');
-    await page.click('section:first-of-type form button[type="button"]');
+    await page.click('section[data-active="true"] form button[type="button"]');
 
     fixture.failRead();
     await page.evaluate(() => {
@@ -255,6 +330,13 @@ await test(
       title: 'Conferir site',
       position: 0,
       hasDescription: false,
+      tenantId: null,
+      tenantSlug: null,
+      tenantName: null,
+      priority: null,
+      dueDate: null,
+      version: 1,
+      archivedAt: null,
     });
     fixture.descriptions.set(cardId, '');
     const browser = await puppeteer.launch({
@@ -267,7 +349,7 @@ await test(
       await fixture.server.close();
     });
     const page = await browser.newPage();
-    await page.goto(fixture.base + '/admin/app/kanban');
+    await page.goto(fixture.base + '/admin/kanban');
     fixture.failCardRead();
     await page.click(`[data-card-id="${cardId}"] button[class*="cardOpen"]`);
     await page.waitForSelector('dialog [role="alert"] button');
@@ -276,28 +358,37 @@ await test(
 
     fixture.delayBoardRead(900);
     await page.type('#card-description', 'Texto salvo');
-    await page.click('dialog button.admin-primary');
+    await clickEditorSave(page);
     await page.waitForFunction(
       () =>
-        document.querySelector('output')?.textContent.includes('Cartão salvo.') &&
-        document.querySelector('dialog button.admin-primary')?.disabled === false,
+        document
+          .querySelector('output')
+          ?.textContent.includes('Cartão salvo.') &&
+        document.querySelector('dialog button.admin-primary')?.disabled ===
+          false,
     );
     assert.equal(fixture.descriptions.get(cardId), 'Texto salvo');
     assert.equal(await page.$('dialog [role="alert"]'), null);
 
     fixture.delayCommandResponse(900);
     await page.type('#card-description', ' antes do pedido');
-    await page.click('dialog button.admin-primary');
+    await clickEditorSave(page);
     await page.waitForFunction(() =>
       document.querySelector('output')?.textContent.includes('Salvando'),
     );
     await page.type('#card-description', ' depois do pedido');
     await page.waitForFunction(
       () =>
-        document.querySelector('output')?.textContent.includes('Cartão salvo.') &&
-        document.querySelector('dialog button.admin-primary')?.disabled === false,
+        document
+          .querySelector('output')
+          ?.textContent.includes('Cartão salvo.') &&
+        document.querySelector('dialog button.admin-primary')?.disabled ===
+          false,
     );
-    assert.equal(fixture.descriptions.get(cardId), 'Texto salvo antes do pedido');
+    assert.equal(
+      fixture.descriptions.get(cardId),
+      'Texto salvo antes do pedido',
+    );
     assert.match(
       await page.$eval('output', (element) => element.textContent),
       /ainda precisa ser salvo/,
@@ -318,11 +409,14 @@ await test(
     assert.equal((await page.evaluate(() => window.confirmCalls)).length, 1);
     assert.notEqual(await page.$('dialog'), null);
 
-    await page.click('dialog button.admin-primary');
+    await clickEditorSave(page);
     await page.waitForFunction(
       () =>
-        document.querySelector('output')?.textContent.includes('Cartão salvo.') &&
-        document.querySelector('dialog button.admin-primary')?.disabled === false,
+        document
+          .querySelector('output')
+          ?.textContent.includes('Cartão salvo.') &&
+        document.querySelector('dialog button.admin-primary')?.disabled ===
+          false,
     );
     assert.equal(
       fixture.descriptions.get(cardId),

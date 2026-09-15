@@ -18,6 +18,7 @@ import type {
   KanbanCardSummary,
   KanbanColumn,
   KanbanCommand,
+  KanbanPriority,
   KanbanSnapshot,
 } from '@/lib/kanban/schema';
 import styles from './kanban.module.css';
@@ -34,6 +35,38 @@ type CommandResponse = KanbanSnapshot & { card?: KanbanCardDetail };
 const numbers = new Intl.NumberFormat('pt-BR');
 const STALE_EDITOR_MESSAGE =
   'Este cartão mudou em outra aba. Copie seu texto antes de fechar e abra o cartão novamente para editar a versão atual.';
+const priorityLabels: Record<KanbanPriority, string> = {
+  low: 'Baixa',
+  medium: 'Média',
+  high: 'Alta',
+  urgent: 'Urgente',
+};
+const dueDate = new Intl.DateTimeFormat('pt-BR', {
+  day: '2-digit',
+  month: 'short',
+  timeZone: 'UTC',
+});
+
+function formatDueDate(value: string) {
+  return dueDate.format(new Date(`${value}T12:00:00Z`));
+}
+
+function matchesFilters(
+  card: KanbanCardSummary,
+  query: string,
+  tenantId: string,
+  priority: string,
+) {
+  const searchable =
+    `${card.title} ${card.tenantName ?? ''} ${card.tenantSlug ?? ''}`.toLocaleLowerCase(
+      'pt-BR',
+    );
+  return (
+    searchable.includes(query) &&
+    (!tenantId || card.tenantId === tenantId) &&
+    (!priority || card.priority === priority)
+  );
+}
 
 function sortCards(cards: KanbanCardSummary[], columnId: string) {
   return cards
@@ -62,7 +95,11 @@ function detailChanged(a: KanbanCardDetail, b: KanbanCardDetail) {
     a.title !== b.title ||
     a.description !== b.description ||
     a.columnId !== b.columnId ||
-    a.position !== b.position
+    a.tenantId !== b.tenantId ||
+    a.priority !== b.priority ||
+    a.dueDate !== b.dueDate ||
+    a.version !== b.version ||
+    a.archivedAt !== b.archivedAt
   );
 }
 
@@ -86,6 +123,10 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [failedMutation, setFailedMutation] = useState<Mutation | null>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [query, setQuery] = useState('');
+  const [tenantFilter, setTenantFilter] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
   const [selectedColumnId, setSelectedColumnId] = useState(
     initial.columns[0]?.id ?? '',
   );
@@ -94,9 +135,11 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
   const columnCreateIdRef = useRef<string | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [detail, setDetail] = useState<KanbanCardDetail | null>(null);
-  const [detailRevision, setDetailRevision] = useState<number | null>(null);
   const [editorTitle, setEditorTitle] = useState('');
   const [editorDescription, setEditorDescription] = useState('');
+  const [editorTenantId, setEditorTenantId] = useState('');
+  const [editorPriority, setEditorPriority] = useState('');
+  const [editorDueDate, setEditorDueDate] = useState('');
   const [editorError, setEditorError] = useState('');
   const [editorStale, setEditorStale] = useState(false);
   const [detailRequestVersion, setDetailRequestVersion] = useState(0);
@@ -106,13 +149,15 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
     cardId: string;
     title: string;
     description: string;
+    tenantId: string | null;
+    priority: KanbanPriority | null;
+    dueDate: string | null;
     columnId: string;
-    position: number;
   } | null>(null);
   const editorStaleRef = useRef(false);
-  const detailRevisionRef = useRef<number | null>(null);
   const serverDetailRef = useRef<KanbanCardDetail | null>(null);
   const panelRef = useRef<HTMLDialogElement | null>(null);
+  const archiveToggleRef = useRef<HTMLButtonElement | null>(null);
 
   const applySnapshot = useCallback((next: KanbanSnapshot) => {
     if (next.revision < snapshotRef.current.revision) return;
@@ -206,7 +251,13 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
                     : mutation.type === 'update_card'
                       ? field === 'description'
                         ? '#card-description'
-                        : '#card-title'
+                        : field === 'tenantId'
+                          ? '#card-tenant'
+                          : field === 'priority'
+                            ? '#card-priority'
+                            : field === 'dueDate'
+                              ? '#card-due-date'
+                              : '#card-title'
                       : null;
             if (selector)
               document.querySelector<HTMLElement>(selector)?.focus();
@@ -250,8 +301,6 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
     setEditorError('');
     setEditorStale(false);
     editorStaleRef.current = false;
-    detailRevisionRef.current = null;
-    setDetailRevision(null);
     serverDetailRef.current = null;
     editorDirtyRef.current = false;
     editorSaveRef.current = null;
@@ -270,15 +319,13 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
     setEditorError('');
     setEditorStale(false);
     editorStaleRef.current = false;
-    detailRevisionRef.current = null;
-    setDetailRevision(null);
     serverDetailRef.current = null;
     editorDirtyRef.current = false;
     editorSaveRef.current = null;
     requestAnimationFrame(() => {
       document
         .querySelector<HTMLElement>(
-          `[data-card-id="${id}"] .${styles.cardOpen}`,
+          `[data-card-id="${id}"] .${styles.cardOpen}, [data-card-id="${id}"] .${styles.archivedCard}`,
         )
         ?.focus();
     });
@@ -300,8 +347,10 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
           saving?.cardId === card.id &&
           saving.title === card.title &&
           saving.description === card.description &&
-          saving.columnId === card.columnId &&
-          saving.position === card.position;
+          saving.tenantId === card.tenantId &&
+          saving.priority === card.priority &&
+          saving.dueDate === card.dueDate &&
+          saving.columnId === card.columnId;
         if (
           (!matchesOwnSave && editorStaleRef.current) ||
           (editorDirtyRef.current &&
@@ -317,10 +366,11 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
           setDetail(card);
           setEditorTitle(card.title);
           setEditorDescription(card.description);
+          setEditorTenantId(card.tenantId ?? '');
+          setEditorPriority(card.priority ?? '');
+          setEditorDueDate(card.dueDate ?? '');
         }
         serverDetailRef.current = card;
-        detailRevisionRef.current = revision;
-        setDetailRevision(revision);
         if (revision > snapshotRef.current.revision) void refresh();
       })
       .catch((error) => {
@@ -350,7 +400,7 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
       if (event.key !== 'Tab' || !panel) return;
       const focusable = [
         ...panel.querySelectorAll<HTMLElement>(
-          'button:not(:disabled), input:not(:disabled), textarea:not(:disabled), a[href]',
+          'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]',
         ),
       ];
       if (!focusable.length) return;
@@ -388,11 +438,7 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
   async function saveEditor(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!detail || busyRef.current) return;
-    if (
-      editorStale ||
-      editorError ||
-      detailRevisionRef.current !== snapshotRef.current.revision
-    ) {
+    if (editorStale || editorError) {
       setEditorError(
         'Confira a versão atual deste cartão antes de salvar. Seu texto continua nesta aba.',
       );
@@ -404,13 +450,18 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
       return;
     }
     const submittedDescription = editorDescription;
+    const submittedTenantId = editorTenantId || null;
+    const submittedPriority = (editorPriority || null) as KanbanPriority | null;
+    const submittedDueDate = editorDueDate || null;
     const submittedInputVersion = editorInputVersionRef.current;
     editorSaveRef.current = {
       cardId: detail.id,
       title,
       description: submittedDescription,
+      tenantId: submittedTenantId,
+      priority: submittedPriority,
+      dueDate: submittedDueDate,
       columnId: detail.columnId,
-      position: detail.position,
     };
     let result: CommandResponse | null;
     try {
@@ -420,12 +471,15 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
           cardId: detail.id,
           title,
           description: submittedDescription,
+          tenantId: submittedTenantId,
+          priority: submittedPriority,
+          dueDate: submittedDueDate,
+          expectedCardVersion: detail.version,
         },
         'Cartão salvo.',
         (applied) => {
           if (applied.card) {
             serverDetailRef.current = applied.card;
-            detailRevisionRef.current = applied.revision;
           }
         },
       );
@@ -434,15 +488,23 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
     }
     if (result) {
       setDetail(
-        result.card ?? { ...detail, title, description: submittedDescription },
+        result.card ?? {
+          ...detail,
+          title,
+          description: submittedDescription,
+          tenantId: submittedTenantId,
+          priority: submittedPriority,
+          dueDate: submittedDueDate,
+        },
       );
       serverDetailRef.current = result.card ?? {
         ...detail,
         title,
         description: submittedDescription,
+        tenantId: submittedTenantId,
+        priority: submittedPriority,
+        dueDate: submittedDueDate,
       };
-      detailRevisionRef.current = result.revision;
-      setDetailRevision(result.revision);
       const editedWhileSaving =
         editorInputVersionRef.current !== submittedInputVersion;
       editorDirtyRef.current = editedWhileSaving;
@@ -459,7 +521,6 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
       !detail ||
       editorStale ||
       editorError ||
-      detailRevisionRef.current !== snapshotRef.current.revision ||
       !window.confirm(`Excluir definitivamente “${detail.title}”?`)
     )
       return;
@@ -471,11 +532,52 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
       editorDirtyRef.current = false;
       setSelectedCardId(null);
       setDetail(null);
-      detailRevisionRef.current = null;
-      setDetailRevision(null);
       serverDetailRef.current = null;
       editorStaleRef.current = false;
+      requestAnimationFrame(() => archiveToggleRef.current?.focus());
     }
+  }
+
+  async function archiveEditor() {
+    if (!detail || detail.archivedAt || editorStale || editorError) return;
+    if (
+      editorDirtyRef.current &&
+      !window.confirm('Arquivar e descartar as alterações ainda não salvas?')
+    )
+      return;
+    const result = await commit(
+      { type: 'archive_card', cardId: detail.id },
+      'Cartão arquivado.',
+    );
+    if (!result) return;
+    editorDirtyRef.current = false;
+    setSelectedCardId(null);
+    setDetail(null);
+    serverDetailRef.current = null;
+    editorStaleRef.current = false;
+    setShowArchived(true);
+    requestAnimationFrame(() => archiveToggleRef.current?.focus());
+  }
+
+  async function restoreEditor() {
+    if (!detail || !detail.archivedAt || editorStale || editorError) return;
+    if (
+      editorDirtyRef.current &&
+      !window.confirm('Restaurar e descartar as alterações ainda não salvas?')
+    )
+      return;
+    const cardId = detail.id;
+    const result = await commit(
+      { type: 'restore_card', cardId },
+      'Cartão restaurado.',
+    );
+    if (!result) return;
+    editorDirtyRef.current = false;
+    setSelectedCardId(null);
+    setDetail(null);
+    serverDetailRef.current = null;
+    editorStaleRef.current = false;
+    focusCard(cardId);
   }
 
   async function onDrop(
@@ -553,8 +655,23 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
     }
   }
 
+  const normalizedQuery = query.trim().toLocaleLowerCase('pt-BR');
+  const filtersActive = Boolean(
+    normalizedQuery || tenantFilter || priorityFilter,
+  );
+  const visibleCards = snapshot.cards.filter((card) =>
+    matchesFilters(card, normalizedQuery, tenantFilter, priorityFilter),
+  );
+  const visibleArchivedCards = snapshot.archivedCards.filter((card) =>
+    matchesFilters(card, normalizedQuery, tenantFilter, priorityFilter),
+  );
   const cardCount = snapshot.cards.length;
-  const canCreateCard = cardCount < 500;
+  const archivedCardCount = snapshot.archivedCards.length;
+  const totalCardCount = cardCount + archivedCardCount;
+  const canCreateCard = totalCardCount < 500;
+  const editorTenant = snapshot.tenants.find(
+    (tenant) => tenant.id === editorTenantId,
+  );
   const dragLabel = (id: string | number) => {
     const value = String(id);
     const card = snapshotRef.current.cards.find((item) => item.id === value);
@@ -616,7 +733,13 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
           </Link>
           <div>
             <h1>Kanban</h1>
-            <p>{numbers.format(cardCount)} cartões · quadro da operação</p>
+            <p>
+              {numbers.format(cardCount)} ativos
+              {archivedCardCount
+                ? ` · ${numbers.format(archivedCardCount)} arquivados`
+                : ''}{' '}
+              · quadro da operação
+            </p>
           </div>
         </div>
         <div className={styles.headerActions}>
@@ -642,7 +765,7 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
         <p className={styles.alert} role="alert">
           Sua sessão expirou. O texto não salvo continua nesta aba.{' '}
           <Link
-            href="/admin/login?returnTo=/admin/app/kanban"
+            href="/admin/login?returnTo=/admin/kanban"
             target="_blank"
             rel="noreferrer"
           >
@@ -694,6 +817,73 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
         </form>
       ) : null}
 
+      <section className={styles.filters} aria-label="Filtros do Kanban">
+        <label className={styles.searchField}>
+          <span>Buscar</span>
+          <input
+            type="search"
+            className="admin-input"
+            placeholder="Título ou cliente"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+        <label className={styles.filterField}>
+          <span>Cliente</span>
+          <select
+            className="admin-input"
+            value={tenantFilter}
+            onChange={(event) => setTenantFilter(event.target.value)}
+          >
+            <option value="">Todos</option>
+            {snapshot.tenants.map((tenant) => (
+              <option key={tenant.id} value={tenant.id}>
+                {tenant.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={styles.filterField}>
+          <span>Prioridade</span>
+          <select
+            className="admin-input"
+            value={priorityFilter}
+            onChange={(event) => setPriorityFilter(event.target.value)}
+          >
+            <option value="">Todas</option>
+            {Object.entries(priorityLabels).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className={styles.filterActions}>
+          <button
+            ref={archiveToggleRef}
+            type="button"
+            className={styles.archiveToggle}
+            aria-pressed={showArchived}
+            onClick={() => setShowArchived((visible) => !visible)}
+          >
+            Arquivados ({numbers.format(archivedCardCount)})
+          </button>
+          {filtersActive ? (
+            <button
+              type="button"
+              className={styles.clearFilters}
+              onClick={() => {
+                setQuery('');
+                setTenantFilter('');
+                setPriorityFilter('');
+              }}
+            >
+              Limpar filtros
+            </button>
+          ) : null}
+        </div>
+      </section>
+
       <label className={styles.mobilePicker}>
         <span>Etapa</span>
         <select
@@ -702,7 +892,7 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
         >
           {snapshot.columns.map((column) => (
             <option key={column.id} value={column.id}>
-              {column.title} ({sortCards(snapshot.cards, column.id).length})
+              {column.title} ({sortCards(visibleCards, column.id).length})
             </option>
           ))}
         </select>
@@ -714,12 +904,14 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
             key={column.id}
             column={column}
             index={index}
-            cards={sortCards(snapshot.cards, column.id)}
+            cards={sortCards(visibleCards, column.id)}
+            allCards={sortCards(snapshot.cards, column.id)}
             columns={snapshot.columns}
             active={column.id === selectedColumnId}
             busy={busy}
             dragging={dragging}
             canCreateCard={canCreateCard}
+            filtersActive={filtersActive}
             fieldErrors={fieldErrors}
             failedMutation={failedMutation}
             onCommit={commit}
@@ -727,6 +919,52 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
           />
         ))}
       </div>
+
+      {showArchived ? (
+        <section className={styles.archived} aria-labelledby="archived-title">
+          <div className={styles.archivedHead}>
+            <div>
+              <h2 id="archived-title">Arquivados</h2>
+              <p>
+                Saem do quadro, mas podem ser consultados, editados e
+                restaurados.
+              </p>
+            </div>
+            <span className={styles.count}>
+              {filtersActive
+                ? `${visibleArchivedCards.length} de ${archivedCardCount}`
+                : archivedCardCount}
+            </span>
+          </div>
+          {visibleArchivedCards.length ? (
+            <ol className={styles.archivedList}>
+              {visibleArchivedCards.map((card) => (
+                <li key={card.id} data-card-id={card.id}>
+                  <button
+                    type="button"
+                    className={styles.archivedCard}
+                    onClick={() => openCard(card.id)}
+                  >
+                    <span className={styles.cardTitle}>{card.title}</span>
+                    <CardMeta card={card} />
+                    <small>
+                      {snapshot.columns.find(
+                        (column) => column.id === card.columnId,
+                      )?.title ?? 'Etapa removida'}
+                    </small>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className={styles.archivedEmpty}>
+              {filtersActive
+                ? 'Nenhum cartão arquivado corresponde aos filtros.'
+                : 'Ainda não há cartões arquivados.'}
+            </p>
+          )}
+        </section>
+      ) : null}
 
       {selectedCardId ? (
         <>
@@ -774,6 +1012,12 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
                 onSubmit={(event) => void saveEditor(event)}
                 className={styles.editorForm}
               >
+                {detail.archivedAt ? (
+                  <p className={styles.archivedNotice}>
+                    Este cartão está arquivado. Você pode editá-lo ou
+                    restaurá-lo para a etapa atual.
+                  </p>
+                ) : null}
                 <label htmlFor="card-title">Título</label>
                 <input
                   id="card-title"
@@ -821,6 +1065,109 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
                     {fieldErrors.description}
                   </p>
                 ) : null}
+                <div className={styles.editorGrid}>
+                  <label htmlFor="card-tenant">
+                    <span>Cliente</span>
+                    <select
+                      id="card-tenant"
+                      className="admin-input"
+                      aria-describedby={
+                        failedMutation?.type === 'update_card' &&
+                        fieldErrors.tenantId
+                          ? 'card-tenant-error'
+                          : undefined
+                      }
+                      value={editorTenantId}
+                      onChange={(event) => {
+                        setEditorTenantId(event.target.value);
+                        editorDirtyRef.current = true;
+                        editorInputVersionRef.current += 1;
+                      }}
+                    >
+                      <option value="">Sem cliente</option>
+                      {snapshot.tenants.map((tenant) => (
+                        <option key={tenant.id} value={tenant.id}>
+                          {tenant.name}
+                          {tenant.status === 'archived' ? ' (arquivado)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label htmlFor="card-priority">
+                    <span>Prioridade</span>
+                    <select
+                      id="card-priority"
+                      className="admin-input"
+                      aria-describedby={
+                        failedMutation?.type === 'update_card' &&
+                        fieldErrors.priority
+                          ? 'card-priority-error'
+                          : undefined
+                      }
+                      value={editorPriority}
+                      onChange={(event) => {
+                        setEditorPriority(event.target.value);
+                        editorDirtyRef.current = true;
+                        editorInputVersionRef.current += 1;
+                      }}
+                    >
+                      <option value="">Sem prioridade</option>
+                      {Object.entries(priorityLabels).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label htmlFor="card-due-date">
+                    <span>Prazo</span>
+                    <input
+                      id="card-due-date"
+                      type="date"
+                      className="admin-input"
+                      aria-describedby={
+                        failedMutation?.type === 'update_card' &&
+                        fieldErrors.dueDate
+                          ? 'card-due-date-error'
+                          : undefined
+                      }
+                      value={editorDueDate}
+                      onChange={(event) => {
+                        setEditorDueDate(event.target.value);
+                        editorDirtyRef.current = true;
+                        editorInputVersionRef.current += 1;
+                      }}
+                    />
+                  </label>
+                </div>
+                {failedMutation?.type === 'update_card' &&
+                fieldErrors.tenantId ? (
+                  <p id="card-tenant-error" className={styles.fieldError}>
+                    {fieldErrors.tenantId}
+                  </p>
+                ) : null}
+                {failedMutation?.type === 'update_card' &&
+                fieldErrors.priority ? (
+                  <p id="card-priority-error" className={styles.fieldError}>
+                    {fieldErrors.priority}
+                  </p>
+                ) : null}
+                {failedMutation?.type === 'update_card' &&
+                fieldErrors.dueDate ? (
+                  <p id="card-due-date-error" className={styles.fieldError}>
+                    {fieldErrors.dueDate}
+                  </p>
+                ) : null}
+                {editorTenant ? (
+                  <Link
+                    href={`/admin/${editorTenant.slug}`}
+                    className={styles.editorTenantLink}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Abrir {editorTenant.name} em outra aba ↗
+                  </Link>
+                ) : null}
                 <p className={styles.editorMeta}>
                   {snapshot.columns.find(
                     (column) => column.id === detail.columnId,
@@ -833,8 +1180,7 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
                       busy ||
                       !editorTitle.trim() ||
                       editorStale ||
-                      Boolean(editorError) ||
-                      detailRevision !== snapshot.revision
+                      Boolean(editorError)
                     }
                   >
                     Salvar
@@ -850,16 +1196,21 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
                 </div>
                 <button
                   type="button"
-                  className={styles.deleteButton}
-                  disabled={
-                    busy ||
-                    editorStale ||
-                    Boolean(editorError) ||
-                    detailRevision !== snapshot.revision
+                  className={styles.archiveButton}
+                  disabled={busy || editorStale || Boolean(editorError)}
+                  onClick={() =>
+                    void (detail.archivedAt ? restoreEditor() : archiveEditor())
                   }
+                >
+                  {detail.archivedAt ? 'Restaurar cartão' : 'Arquivar cartão'}
+                </button>
+                <button
+                  type="button"
+                  className={styles.deleteButton}
+                  disabled={busy || editorStale || Boolean(editorError)}
                   onClick={() => void deleteEditor()}
                 >
-                  Excluir cartão
+                  Excluir definitivamente
                 </button>
               </form>
             ) : (
@@ -903,11 +1254,13 @@ function BoardColumn({
   column,
   index,
   cards,
+  allCards,
   columns,
   active,
   busy,
   dragging,
   canCreateCard,
+  filtersActive,
   fieldErrors,
   failedMutation,
   onCommit,
@@ -916,11 +1269,13 @@ function BoardColumn({
   column: KanbanColumn;
   index: number;
   cards: KanbanCardSummary[];
+  allCards: KanbanCardSummary[];
   columns: KanbanColumn[];
   active: boolean;
   busy: boolean;
   dragging: boolean;
   canCreateCard: boolean;
+  filtersActive: boolean;
   fieldErrors: Record<string, string>;
   failedMutation: Mutation | null;
   onCommit: (
@@ -973,6 +1328,8 @@ function BoardColumn({
     if (result) {
       cardCreateIdRef.current = null;
       setNewTitle('');
+      setAdding(false);
+      onOpenCard(id);
     }
   }
 
@@ -999,7 +1356,8 @@ function BoardColumn({
   }
 
   function deleteColumn() {
-    if (cards.length || columns.length === 1) return;
+    if (allCards.length || column.archivedCardCount || columns.length === 1)
+      return;
     if (!window.confirm(`Excluir definitivamente a coluna “${column.title}”?`))
       return;
     void onCommit(
@@ -1026,7 +1384,9 @@ function BoardColumn({
           ⋮⋮
         </button>
         <h2 id={`column-${column.id}`}>{column.title}</h2>
-        <span className={styles.count}>{cards.length}</span>
+        <span className={styles.count}>
+          {filtersActive ? `${cards.length}/${allCards.length}` : cards.length}
+        </span>
         <details className={styles.actions}>
           <summary aria-label={`Ações da coluna ${column.title}`}>···</summary>
           <div className={styles.actionList}>
@@ -1059,10 +1419,17 @@ function BoardColumn({
             </button>
             <button
               type="button"
-              disabled={busy || cards.length > 0 || columns.length === 1}
+              disabled={
+                busy ||
+                allCards.length > 0 ||
+                column.archivedCardCount > 0 ||
+                columns.length === 1
+              }
               onClick={deleteColumn}
               title={
-                cards.length ? 'Mova os cartões antes de excluir.' : undefined
+                allCards.length || column.archivedCardCount
+                  ? 'Mova, restaure ou exclua os cartões antes de excluir.'
+                  : undefined
               }
             >
               Excluir coluna
@@ -1129,12 +1496,12 @@ function BoardColumn({
         </form>
       ) : null}
       <ol className={styles.cardList} aria-label={`Cartões em ${column.title}`}>
-        {cards.map((card, cardIndex) => (
+        {cards.map((card) => (
           <BoardCard
             key={card.id}
             card={card}
-            index={cardIndex}
-            cards={cards}
+            index={allCards.findIndex((item) => item.id === card.id)}
+            cards={allCards}
             columns={columns}
             busy={busy}
             onCommit={onCommit}
@@ -1143,7 +1510,11 @@ function BoardColumn({
         ))}
       </ol>
       {!cards.length ? (
-        <p className={styles.empty}>Adicione a primeira tarefa.</p>
+        <p className={styles.empty}>
+          {filtersActive
+            ? 'Nenhum cartão corresponde aos filtros.'
+            : 'Adicione a primeira tarefa.'}
+        </p>
       ) : null}
       <ColumnEnd columnId={column.id} disabled={busy || !dragging} />
       {adding ? (
@@ -1267,7 +1638,8 @@ function BoardCard({
       data-card-id={card.id}
     >
       <button className={styles.cardOpen} onClick={() => onOpenCard(card.id)}>
-        <span>{card.title}</span>
+        <span className={styles.cardTitle}>{card.title}</span>
+        <CardMeta card={card} />
         {card.hasDescription ? <small>Com descrição</small> : null}
       </button>
       <div className={styles.cardControls}>
@@ -1312,5 +1684,26 @@ function BoardCard({
         </details>
       </div>
     </li>
+  );
+}
+
+function CardMeta({ card }: { card: KanbanCardSummary }) {
+  if (!card.tenantName && !card.priority && !card.dueDate) return null;
+  return (
+    <span className={styles.cardMeta}>
+      {card.tenantName ? (
+        <span className={styles.metaTag}>{card.tenantName}</span>
+      ) : null}
+      {card.priority ? (
+        <span className={styles.priorityTag} data-priority={card.priority}>
+          {priorityLabels[card.priority]}
+        </span>
+      ) : null}
+      {card.dueDate ? (
+        <span className={styles.metaTag}>
+          Prazo {formatDueDate(card.dueDate)}
+        </span>
+      ) : null}
+    </span>
   );
 }
