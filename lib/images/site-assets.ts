@@ -43,6 +43,7 @@ export async function prepareSiteImages(tenant: Tenant, scenes: SiteScene[]) {
     const reviewed = await Promise.all(
       result.images.map(async (image) => {
         const review = await critique({
+          tenantId: tenant.id,
           id: image.id,
           bytes: image.bytes,
           guide,

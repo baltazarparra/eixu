@@ -9,6 +9,7 @@ import { del } from '@vercel/blob';
 import { generateText } from 'ai';
 import sharp from 'sharp';
 import { db } from '@/lib/db';
+import { usageTracking } from '@/lib/ai/usage-ledger';
 import { putTenantBlob } from '@/lib/blob/tenant-files';
 import {
   decode,
@@ -229,11 +230,14 @@ async function downloadAvatar(
 /** Descrição curta do avatar, para marca e guia de imagem. */
 export async function describeAvatar(
   png: Uint8Array,
+  tenantId?: string,
 ): Promise<string | undefined> {
   try {
+    const model = productModel('critic');
     const { text } = await generateText({
-      model: productModel('critic'),
+      model,
       ...modelSettings('avatar'),
+      ...(tenantId ? usageTracking({ tenantId, kind: 'avatar', model }) : {}),
       maxRetries: 1,
       timeout: { totalMs: CRITIC_TIMEOUT_MS },
       instructions:
@@ -380,7 +384,7 @@ export async function syncSocialProfile(
           uploadedUrl = blob.url;
           const notes = deps.describe
             ? await deps.describe(png)
-            : await describeAvatar(png);
+            : await describeAvatar(png, tenant.id);
           social = {
             ...social,
             avatarUrl: blob.url,

@@ -13,6 +13,7 @@ import {
   usageRecord,
   type ChatUsage,
 } from '@/lib/ai/usage';
+import { usageTracking } from '@/lib/ai/usage-ledger';
 import {
   visualReadingSchema,
   type VisualReading,
@@ -45,6 +46,7 @@ export async function readReferenceVisual(
       signal: AbortSignal,
     ) => ReturnType<typeof captureReference>;
     onProgress?: (progress: ReferenceProgress) => void | Promise<void>;
+    trackUsage?: boolean;
   } = {},
 ): Promise<ReferenceVisual> {
   const capturedAt = new Date().toISOString();
@@ -97,6 +99,14 @@ export async function readReferenceVisual(
         model,
         ...modelSettings('critic'),
         providerOptions: gatewayOptions(tenantId, 'reference', 'briefing'),
+        ...(options.trackUsage === false
+          ? {}
+          : usageTracking({
+              tenantId,
+              kind: 'referencia',
+              model,
+              phase: 'briefing',
+            })),
         timeout: { totalMs: CRITIC_TIMEOUT_MS },
         abortSignal: signal,
         maxRetries: 1,

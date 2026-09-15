@@ -6,6 +6,7 @@ import {
 import { Output, generateText } from 'ai';
 import { z } from 'zod';
 import { saveCritique } from '@/lib/images/queries';
+import { usageTracking } from '@/lib/ai/usage-ledger';
 import type { Critique, ImageGuide } from '@/lib/types';
 
 const score = z.number().min(0).max(10);
@@ -46,6 +47,7 @@ export const critiqueSchema = z.object({
  * etapa de aprovação nem impedir a disponibilidade da imagem.
  */
 export async function critique(input: {
+  tenantId: string;
   id: string;
   bytes: Uint8Array;
   request: string;
@@ -69,9 +71,15 @@ export async function critique(input: {
     .join('; ');
 
   try {
+    const model = productModel('critic');
     const { output } = await generateText({
-      model: productModel('critic'),
+      model,
       ...modelSettings('critic'),
+      ...usageTracking({
+        tenantId: input.tenantId,
+        kind: 'critica-imagem',
+        model,
+      }),
       output: Output.object({ schema: critiqueSchema }),
       maxRetries: 1,
       timeout: { totalMs: CRITIC_TIMEOUT_MS },

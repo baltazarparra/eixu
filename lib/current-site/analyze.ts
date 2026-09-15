@@ -6,6 +6,7 @@ import {
   CRITIC_TIMEOUT_MS,
 } from '@/lib/ai/models';
 import { gatewayOptions, sumGatewayCosts, usageRecord } from '@/lib/ai/usage';
+import { usageTracking } from '@/lib/ai/usage-ledger';
 import type { CurrentSiteAnalysis } from '@/lib/current-site/schema';
 import { currentSiteOutputSchema } from '@/lib/current-site/output-schema';
 import type { CurrentSiteCrawl } from '@/lib/current-site/crawl';
@@ -46,6 +47,7 @@ export async function analyzeCurrentSite(
   tenantId: string,
   tenantName: string,
   operatorStory: string,
+  options: { trackUsage?: boolean } = {},
 ) {
   const model = productModel();
   const started = Date.now();
@@ -91,6 +93,14 @@ export async function analyzeCurrentSite(
       model,
       ...modelSettings('site-read'),
       providerOptions: gatewayOptions(tenantId, 'current-site', 'briefing'),
+      ...(options.trackUsage === false
+        ? {}
+        : usageTracking({
+            tenantId,
+            kind: 'site-atual',
+            model,
+            phase: 'briefing',
+          })),
       timeout: { totalMs: CRITIC_TIMEOUT_MS },
       abortSignal: signal,
       maxRetries: 1,

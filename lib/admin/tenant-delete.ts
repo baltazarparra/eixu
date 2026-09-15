@@ -47,7 +47,9 @@ export function deletionImpact(tenant: DeletableTenant): string[] {
       ? 'Biblioteca de imagens, logo e arquivos enviados.'
       : `${plural(tenant.imageCount, 'imagem', 'imagens')} da biblioteca, o logo e os arquivos enviados.`,
   );
-  impact.push('Histórico das conversas do site e do estúdio de imagens.');
+  impact.push(
+    'Histórico das conversas, do estúdio de imagens e do consumo de IA.',
+  );
   impact.push(
     'Cartões vinculados permanecem no Kanban, mas deixam de apontar para este cliente.',
   );

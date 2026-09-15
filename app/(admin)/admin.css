@@ -1809,6 +1809,178 @@ textarea.admin-input {
   background: var(--admin-surface);
 }
 
+/* Dados: histórico financeiro e técnico de cada chamada de IA do cliente. */
+.admin-consumption {
+  margin-bottom: 48px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--color-line);
+  scroll-margin-top: 100px;
+}
+.admin-consumption :is(.admin-primary, .admin-secondary) {
+  min-height: 44px;
+}
+.admin-consumption h2 {
+  font-size: 22px;
+  font-weight: 600;
+}
+.admin-consumption .admin-page-heading p {
+  margin-top: 8px;
+  color: var(--color-muted);
+}
+.admin-consumption-presets,
+.admin-consumption-filter,
+.admin-consumption-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+}
+.admin-consumption-presets a[aria-current] {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.admin-consumption-filter {
+  align-items: end;
+}
+.admin-consumption-filter > span {
+  padding-bottom: 12px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.admin-consumption-filter .admin-field {
+  min-width: 0;
+}
+.admin-consumption-filter input {
+  width: 100%;
+  min-width: 0;
+}
+.admin-consumption-totals {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+  padding: 24px 0;
+}
+.admin-consumption dt {
+  margin-bottom: 8px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.admin-consumption dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.admin-consumption-totals dd {
+  font-size: clamp(18px, 2vw, 26px);
+}
+.admin-consumption small {
+  display: block;
+  margin-top: 5px;
+  color: var(--color-support);
+  font-size: 11px;
+  font-weight: 400;
+}
+.admin-consumption-note,
+.admin-consumption-empty {
+  margin: 16px 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.admin-consumption-empty {
+  padding: 24px 0;
+}
+.admin-consumption-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 2fr;
+  gap: 20px;
+  padding: 24px 0;
+  border-top: 1px solid var(--color-line);
+}
+.admin-consumption-operation {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+  overflow-wrap: anywhere;
+}
+.admin-consumption-operation h3 {
+  font-size: 14px;
+  font-weight: 600;
+}
+.admin-consumption-operation span,
+.admin-consumption-operation time {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.admin-consumption-values {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+.admin-consumption-values dd {
+  font-size: 14px;
+}
+.admin-consumption-details {
+  grid-column: 1 / -1;
+  font-size: 12px;
+}
+.admin-consumption summary {
+  min-height: 44px;
+  align-content: center;
+  cursor: pointer;
+}
+.admin-consumption-details dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+.admin-consumption-pagination {
+  justify-content: flex-end;
+  font-size: 13px;
+}
+.admin-consumption-table {
+  overflow-x: auto;
+}
+.admin-consumption table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.admin-consumption th,
+.admin-consumption td {
+  padding: 12px;
+  border-bottom: 1px solid var(--color-line);
+  text-align: left;
+}
+.admin-consumption-daily > summary {
+  font-size: 14px;
+}
+
+@media (max-width: 900px) {
+  .admin-consumption-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .admin-consumption-totals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-consumption-values,
+  .admin-consumption-details dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-consumption-filter .admin-field {
+    flex: 1 1 100%;
+  }
+  .admin-consumption-presets {
+    gap: 8px;
+  }
+}
+
 .admin-audit-list li {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

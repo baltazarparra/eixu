@@ -504,6 +504,7 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
         tenantId: tenant.id,
         tools,
         phase,
+        usageContext: { kind: 'geracao', runId: run.id },
         shouldStop: () => stopRequested,
         instructions: phaseInstructions({
           tenant: ready,
@@ -655,7 +656,7 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
       steps,
       next: after.next,
       ...(logoResult ? { logoStudio: logoResult.status } : {}),
-      ...(usage ? { usage } : {}),
+      ...(usage ? { usage, usageLedger: true } : {}),
       ...(timedOut ? { timeout: true } : {}),
       flowVersion: GENERATION_FLOW_VERSION,
       stopReason: outcome.kind,

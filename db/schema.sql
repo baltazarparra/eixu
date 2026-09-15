@@ -283,6 +283,76 @@ create unique index if not exists generation_runs_active_idx
 create index if not exists generation_runs_tenant_time_idx on generation_runs (tenant_id, created_at desc);
 create index if not exists generation_events_run_idx on generation_events (run_id, id);
 
+-- Consumo por chamada: guarda apenas contadores e identificadores, nunca
+-- prompts, conteúdo do cliente ou credenciais. O recibo nasce antes da chamada;
+-- uma interrupção pode deixá-lo pendente, em vez de fingir custo zero.
+create table if not exists ai_usage (
+  id                 bigserial primary key,
+  tenant_id          uuid not null references tenants(id) on delete cascade,
+  operation_id       text not null,
+  step               int not null check (step >= 0),
+  kind               text not null,
+  model              text not null,
+  phase              text,
+  run_id             uuid references generation_runs(id) on delete set null,
+  status             text not null default 'pending'
+    check (status in ('pending', 'recorded', 'failed')),
+  input_tokens       bigint check (input_tokens >= 0),
+  output_tokens      bigint check (output_tokens >= 0),
+  total_tokens       bigint check (total_tokens >= 0),
+  cache_read_tokens  bigint check (cache_read_tokens >= 0),
+  cache_write_tokens bigint check (cache_write_tokens >= 0),
+  reasoning_tokens   bigint check (reasoning_tokens >= 0),
+  cost_usd           numeric(20, 10) check (cost_usd >= 0),
+  legacy             boolean not null default false,
+  created_at         timestamptz not null default now(),
+  finished_at        timestamptz,
+  unique (tenant_id, operation_id, step)
+);
+
+create index if not exists ai_usage_tenant_time_idx
+  on ai_usage (tenant_id, created_at desc, id desc);
+
+-- Recupera somente recibos antigos que já existem. Chamadas novas são medidas
+-- por passo e marcam usageLedger no resumo da fase para impedir dupla contagem.
+insert into ai_usage (
+  tenant_id, operation_id, step, kind, model, phase, run_id, status,
+  input_tokens, output_tokens, total_tokens, cache_read_tokens,
+  cache_write_tokens, reasoning_tokens, cost_usd, legacy,
+  created_at, finished_at
+)
+select
+  tenant_id, 'legacy-generation-' || id, 0, 'geracao',
+  coalesce(payload #>> '{usage,model}', 'Não informado'), phase, run_id,
+  'recorded',
+  case when jsonb_typeof(payload #> '{usage,inputTokens}') = 'number'
+    and (payload #>> '{usage,inputTokens}')::numeric >= 0
+    then (payload #>> '{usage,inputTokens}')::bigint end,
+  case when jsonb_typeof(payload #> '{usage,outputTokens}') = 'number'
+    and (payload #>> '{usage,outputTokens}')::numeric >= 0
+    then (payload #>> '{usage,outputTokens}')::bigint end,
+  case when jsonb_typeof(payload #> '{usage,totalTokens}') = 'number'
+    and (payload #>> '{usage,totalTokens}')::numeric >= 0
+    then (payload #>> '{usage,totalTokens}')::bigint end,
+  case when jsonb_typeof(payload #> '{usage,cacheReadTokens}') = 'number'
+    and (payload #>> '{usage,cacheReadTokens}')::numeric >= 0
+    then (payload #>> '{usage,cacheReadTokens}')::bigint end,
+  case when jsonb_typeof(payload #> '{usage,cacheWriteTokens}') = 'number'
+    and (payload #>> '{usage,cacheWriteTokens}')::numeric >= 0
+    then (payload #>> '{usage,cacheWriteTokens}')::bigint end,
+  case when jsonb_typeof(payload #> '{usage,reasoningTokens}') = 'number'
+    and (payload #>> '{usage,reasoningTokens}')::numeric >= 0
+    then (payload #>> '{usage,reasoningTokens}')::bigint end,
+  case when jsonb_typeof(payload #> '{usage,costUsd}') = 'number'
+    and (payload #>> '{usage,costUsd}')::numeric >= 0
+    then (payload #>> '{usage,costUsd}')::numeric end,
+  true, created_at, created_at
+from generation_events
+where kind = 'phase_end'
+  and jsonb_typeof(payload -> 'usage') = 'object'
+  and coalesce(payload ->> 'usageLedger', 'false') <> 'true'
+on conflict (tenant_id, operation_id, step) do nothing;
+
 -- Linha do tempo administrativa. O snapshot de nome/login e o SET NULL
 -- preservam a autoria mesmo depois de desativar uma conta ou excluir um cliente.
 create table if not exists admin_activity (

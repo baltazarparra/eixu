@@ -94,6 +94,9 @@ export async function memoryHarness(tenant, images, review = {}) {
   const { guideTool } = await loadModule('lib/ai/guide-tool.ts', {
     '@/lib/images/queries': imageQueries,
   });
+  const critic = await loadModule('lib/review/critic.ts', {
+    '@/lib/ai/usage-ledger': { usageTracking: () => ({}) },
+  });
   const { buildTools } = await loadModule('lib/ai/tools.ts', {
     '@/lib/db': { db: () => sql },
     '@/lib/tenant-queries': {
@@ -135,6 +138,7 @@ export async function memoryHarness(tenant, images, review = {}) {
         throw new Error('Publicação proibida no ensaio');
       },
     },
+    '@/lib/review/critic': critic,
     ...review,
   });
   return {

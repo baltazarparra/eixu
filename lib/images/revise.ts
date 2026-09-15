@@ -59,6 +59,7 @@ export async function reviseImage(
         result.failures.join(' | ') || 'Não foi possível alterar o logo.',
       );
     review = await critiqueLogo({
+      tenantId: tenant.id,
       id: generated.id,
       bytes: generated.bytes,
       variant: generated.variant,
@@ -85,6 +86,7 @@ export async function reviseImage(
         result.failures.join(' | ') || 'Não foi possível alterar a imagem.',
       );
     review = await critique({
+      tenantId: tenant.id,
       id: generated.id,
       bytes: generated.bytes,
       guide,

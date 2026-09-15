@@ -5,6 +5,7 @@ import {
   modelSettings,
   productModel,
 } from '@/lib/ai/models';
+import { usageTracking } from '@/lib/ai/usage-ledger';
 
 export const logoReadingSchema = z.object({
   nome_lido: z.string().max(120),
@@ -23,14 +24,23 @@ export async function readLogo(
   bytes: Buffer,
   options: {
     model?: string;
+    tenantId?: string;
     signal?: AbortSignal;
     onError?: (error: unknown) => void;
   } = {},
 ): Promise<LogoReading | null> {
   try {
+    const model = options.model ?? productModel('logo-critic');
     const { output } = await generateText({
-      model: options.model ?? productModel('logo-critic'),
+      model,
       ...modelSettings('logo-read'),
+      ...(options.tenantId
+        ? usageTracking({
+            tenantId: options.tenantId,
+            kind: 'leitura-logo',
+            model,
+          })
+        : {}),
       maxRetries: 0,
       timeout: { totalMs: LOGO_READ_TIMEOUT_MS },
       abortSignal: options.signal,

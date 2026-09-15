@@ -4,6 +4,7 @@ import { putTenantBlob } from '@/lib/blob/tenant-files';
 import sharp from 'sharp';
 import { FRAMING, dimensionsFor, type Ratio } from '@/lib/images/ratios';
 import { insertImage } from '@/lib/images/queries';
+import { trackImageUsage } from '@/lib/ai/usage-ledger';
 import type { ImageGuide, Tenant, TenantImage } from '@/lib/types';
 
 const ESTILO: Record<string, string> = {
@@ -87,14 +88,18 @@ export async function generateCandidates(input: {
 
   const settled = await Promise.allSettled(
     input.models.map(async (model) => {
-      const result = await generateImage({
-        model,
-        prompt: input.reference
-          ? { text: prompt, images: [input.reference] }
-          : prompt,
-        ...dimensionsFor(model, input.ratio),
-        maxRetries: 1,
-      });
+      const result = await trackImageUsage(
+        { tenantId: input.tenant.id, kind: 'imagem', model },
+        () =>
+          generateImage({
+            model,
+            prompt: input.reference
+              ? { text: prompt, images: [input.reference] }
+              : prompt,
+            ...dimensionsFor(model, input.ratio),
+            maxRetries: 1,
+          }),
+      );
       // Aviso do gateway significa parâmetro ignorado: a imagem pode ter saído
       // na proporção errada, e é melhor descobrir pelo log do que pelo site.
       if (result.warnings.length) {

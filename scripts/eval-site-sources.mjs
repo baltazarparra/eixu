@@ -142,6 +142,7 @@ for (const [name, current, visual, vibe] of [
     '@/lib/references/read': {
       readReferenceVisual: async () => {
         visualReceipt ??= await readReferenceVisual(visualUrl, tenant.id, {
+          trackUsage: false,
           capture: async (_url, signal) =>
             captureReference(visualUrl, visualRequest, { signal }),
         });
@@ -159,7 +160,10 @@ for (const [name, current, visual, vibe] of [
                 crawlCurrentSite: async () =>
                   crawlCurrentSite(currentUrl, { request: currentRequest }),
               },
-              './analyze': { analyzeCurrentSite },
+              './analyze': {
+                analyzeCurrentSite: (...args) =>
+                  analyzeCurrentSite(...args, { trackUsage: false }),
+              },
               './schema': schema,
               './import-image': {
                 importCurrentSiteImages: async () => {

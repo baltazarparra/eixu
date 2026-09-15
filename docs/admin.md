@@ -128,6 +128,23 @@ segmento, região atendida, público, diferenciais, provas e a ação esperada. 
 direção visual também pode ser trocada ali. A edição dos campos não usa o chat;
 a descrição de um avatar social novo pode consumir uma chamada ao modelo.
 
+### Acompanhar tokens e custos
+
+No início de **Dados**, **Consumo de IA** reúne o histórico do cliente. Os
+atalhos mostram 7, 30 ou 90 dias, todo o histórico ou um intervalo personalizado
+de até 366 dias, sempre pelo horário de Brasília. O resumo separa tokens de
+entrada, saída e total, além do custo informado pelo provedor em USD. Cada
+operação identifica a origem, o modelo, a fase e, quando existir, a geração; os
+detalhes também mostram cache e raciocínio sem somá-los novamente aos totais.
+
+Uma chamada nasce como pendente antes de chegar ao provedor. Se ela for
+interrompida ou falhar sem recibo, o painel mostra essa lacuna em vez de tratá-la
+como custo zero. Imagens podem ter custo sem informar tokens. Valores ausentes
+deixam o total como parcial e o histórico não substitui a fatura do Gateway.
+Recibos antigos de fases de geração são recuperados pela migração; conversas,
+imagens e críticas anteriores que não foram persistidas não podem ser
+reconstruídas.
+
 A barra inferior conta alterações não salvas. **Salvar dados** confirma os
 campos; **Descartar** restaura o último salvamento, incluindo listas de contatos
 e fatos. Se salvar falhar, os valores continuam no formulário. Adicione fatos
