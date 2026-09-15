@@ -37,6 +37,14 @@ const AREAS = [
   ['dados', '/dados', 'Dados'],
 ] as const;
 
+function statusPresentation(status?: string) {
+  if (status === 'published')
+    return { label: 'Publicado', tone: 'ok' as const };
+  if (status === 'archived')
+    return { label: 'Arquivado', tone: 'neutral' as const };
+  return { label: 'Rascunho', tone: 'warn' as const };
+}
+
 /**
  * Barra única de 64 px: identidade, áreas do cliente, controles da prévia e a
  * decisão de publicação na mesma régua. Três cabeçalhos empilhados somavam
@@ -57,6 +65,7 @@ function TenantHeader({
 }) {
   const root = `/admin/${tenant.slug}`;
   const session = useAdminSession();
+  const status = statusPresentation(tenant.status);
   const links = AREAS.map(([key, suffix, label]) => (
     <Link
       key={key}
@@ -81,9 +90,7 @@ function TenantHeader({
         <div>
           <div>
             <strong>{tenant.name}</strong>
-            <StatusPill tone={tenant.status === 'published' ? 'ok' : 'warn'}>
-              {tenant.status === 'published' ? 'Publicado' : 'Rascunho'}
-            </StatusPill>
+            <StatusPill tone={status.tone}>{status.label}</StatusPill>
           </div>
           <a
             href={`https://${tenant.slug}.eixu.com.br`}
@@ -104,7 +111,7 @@ function TenantHeader({
       </div>
       <MobileMenu
         name={tenant.name}
-        published={tenant.status === 'published'}
+        status={tenant.status}
         logout={session?.logout}
       >
         <nav aria-label="Áreas do cliente no celular">{links}</nav>

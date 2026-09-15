@@ -397,6 +397,7 @@ export function Workspace({
       site.warnings.length > 0 ||
       site.pages.some((item) => item.warnings.length > 0));
   const publishable =
+    site.tenant.status !== 'archived' &&
     site.pages.length > 0 &&
     totalErrors === 0 &&
     !locked &&
@@ -975,9 +976,11 @@ export function Workspace({
                   onClick={publishAll}
                   disabled={!publishable || publishing}
                   title={
-                    totalErrors
-                      ? `${totalErrors} pendências bloqueiam a publicação`
-                      : 'Publicar as alterações revisadas'
+                    site.tenant.status === 'archived'
+                      ? 'Reative o site na lista de clientes antes de publicar'
+                      : totalErrors
+                        ? `${totalErrors} pendências bloqueiam a publicação`
+                        : 'Publicar as alterações revisadas'
                   }
                   className="admin-primary"
                 >

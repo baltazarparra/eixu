@@ -11,8 +11,9 @@ import {
   SegmentedControl,
   StatusDot,
   StatusPill,
+  type StatusTone,
 } from '@/components/admin/primitives';
-import { createTenantAction } from './actions';
+import { createTenantAction, setTenantArchivedAction } from './actions';
 
 export type ClientSummary = {
   slug: string;
@@ -28,6 +29,62 @@ const date = new Intl.DateTimeFormat('pt-BR', {
   month: 'short',
   timeZone: 'America/Sao_Paulo',
 });
+
+function statusPresentation(status: string): {
+  label: string;
+  tone: StatusTone;
+} {
+  if (status === 'published') return { label: 'Publicado', tone: 'ok' };
+  if (status === 'archived') return { label: 'Arquivado', tone: 'neutral' };
+  return { label: 'Rascunho', tone: 'warn' };
+}
+
+function ArchiveSiteButton({ tenant }: { tenant: ClientSummary }) {
+  const archived = tenant.status === 'archived';
+  const [result, action, pending] = useActionState(
+    setTenantArchivedAction,
+    null,
+  );
+  return (
+    <form
+      className="admin-client-archive"
+      action={action}
+      onSubmit={(event) => {
+        if (
+          !archived &&
+          !window.confirm(
+            `Arquivar ${tenant.name}? A URL pública sairá do ar, mas o conteúdo e a prévia serão preservados.`,
+          )
+        )
+          event.preventDefault();
+      }}
+    >
+      <input type="hidden" name="slug" value={tenant.slug} />
+      <input
+        type="hidden"
+        name="intent"
+        value={archived ? 'restore' : 'archive'}
+      />
+      <button
+        type="submit"
+        className="admin-secondary"
+        disabled={pending}
+        title={
+          archived
+            ? 'Colocar novamente no ar a última versão publicada'
+            : 'Tirar a URL pública do ar sem apagar o site'
+        }
+      >
+        {pending ? 'Salvando…' : archived ? 'Reativar' : 'Arquivar'}
+      </button>
+      {result && !result.ok ? (
+        <span className="admin-client-action-error" role="alert">
+          {result.message}
+        </span>
+      ) : null}
+    </form>
+  );
+}
 
 export function Clients({
   tenants,
@@ -156,6 +213,7 @@ export function Clients({
             ['todos', 'Todos'],
             ['published', 'Publicados'],
             ['draft', 'Rascunhos'],
+            ['archived', 'Arquivados'],
           ]}
         />
       </div>
@@ -170,48 +228,52 @@ export function Clients({
             <span>Páginas</span>
             <span>Leads</span>
             <span>Atualizado</span>
+            <span>Ação</span>
             <span />
           </div>
           <ul>
             {visible.map((tenant) => (
-              <li key={tenant.slug}>
+              <li className="admin-client-row" key={tenant.slug}>
                 <Link
-                  className="admin-client-row"
+                  className="admin-client-name"
                   href={`/admin/${tenant.slug}`}
                 >
-                  <span className="admin-client-name">
-                    <span className="admin-avatar">
-                      {tenant.name
-                        .split(/\s+/)
-                        .slice(0, 2)
-                        .map((word) => word[0])
-                        .join('')}
-                    </span>
-                    <span>
-                      <strong>{tenant.name}</strong>
-                      <small>{tenant.slug}.eixu.com.br</small>
-                    </span>
+                  <span className="admin-avatar">
+                    {tenant.name
+                      .split(/\s+/)
+                      .slice(0, 2)
+                      .map((word) => word[0])
+                      .join('')}
                   </span>
-                  <StatusPill
-                    tone={tenant.status === 'published' ? 'ok' : 'warn'}
-                  >
-                    {tenant.status === 'published' ? 'Publicado' : 'Rascunho'}
-                  </StatusPill>
-                  <span
-                    className="admin-numeric"
-                    aria-label={`${tenant.pageCount} páginas`}
-                  >
-                    {String(tenant.pageCount).padStart(2, '0')}
+                  <span>
+                    <strong>{tenant.name}</strong>
+                    <small>{tenant.slug}.eixu.com.br</small>
                   </span>
-                  <span
-                    className="admin-numeric"
-                    aria-label={`${tenant.leadCount} leads`}
-                  >
-                    {tenant.leadCount ? num.format(tenant.leadCount) : '—'}
-                  </span>
-                  <time dateTime={tenant.updatedAt}>
-                    {date.format(new Date(tenant.updatedAt))}
-                  </time>
+                </Link>
+                <StatusPill tone={statusPresentation(tenant.status).tone}>
+                  {statusPresentation(tenant.status).label}
+                </StatusPill>
+                <span
+                  className="admin-numeric"
+                  aria-label={`${tenant.pageCount} páginas`}
+                >
+                  {String(tenant.pageCount).padStart(2, '0')}
+                </span>
+                <span
+                  className="admin-numeric"
+                  aria-label={`${tenant.leadCount} leads`}
+                >
+                  {tenant.leadCount ? num.format(tenant.leadCount) : '—'}
+                </span>
+                <time dateTime={tenant.updatedAt}>
+                  {date.format(new Date(tenant.updatedAt))}
+                </time>
+                <ArchiveSiteButton tenant={tenant} />
+                <Link
+                  className="admin-client-open"
+                  href={`/admin/${tenant.slug}`}
+                  aria-label={`Abrir ${tenant.name}`}
+                >
                   <span aria-hidden="true">›</span>
                 </Link>
               </li>

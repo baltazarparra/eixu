@@ -23,6 +23,7 @@ const tenant = {
   id: 'tenant-1',
   slug: 'demo',
   name: 'Rascunho',
+  status: 'published',
   locale: 'pt-BR',
   brand,
   brief: {},

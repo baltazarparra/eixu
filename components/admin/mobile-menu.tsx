@@ -7,12 +7,12 @@ import { StatusPill } from './primitives';
 
 export function MobileMenu({
   name,
-  published,
+  status,
   children,
   logout,
 }: {
   name: string;
-  published: boolean;
+  status?: string;
   children: ReactNode;
   logout?: ReactNode;
 }) {
@@ -108,8 +108,20 @@ export function MobileMenu({
         <div className="admin-mobile-menu-heading">
           <div>
             <h2 id={id}>{name}</h2>
-            <StatusPill tone={published ? 'ok' : 'warn'}>
-              {published ? 'Publicado' : 'Rascunho'}
+            <StatusPill
+              tone={
+                status === 'published'
+                  ? 'ok'
+                  : status === 'archived'
+                    ? 'neutral'
+                    : 'warn'
+              }
+            >
+              {status === 'published'
+                ? 'Publicado'
+                : status === 'archived'
+                  ? 'Arquivado'
+                  : 'Rascunho'}
             </StatusPill>
           </div>
           <button

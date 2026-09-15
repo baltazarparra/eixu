@@ -26,6 +26,19 @@ export async function publishSite(
   tenant: Tenant,
   slug?: string,
 ): Promise<PublishResult> {
+  const url = `https://${tenant.slug}.eixu.com.br`;
+  if (tenant.status === 'archived')
+    return {
+      published: [],
+      blocked: [
+        {
+          page: '/',
+          preflight:
+            'O site está arquivado. Reative-o na lista de clientes antes de publicar.',
+        },
+      ],
+      url,
+    };
   const [pages, images] = await Promise.all([
     listPages(tenant.id),
     listImages(tenant.id),
@@ -90,7 +103,6 @@ export async function publishSite(
         message: compositionConflictMessage(conflict),
       });
   }
-  const url = `https://${tenant.slug}.eixu.com.br`;
   const blocked = [...reasons].map(([page, lines]) => ({
     page,
     preflight: lines.join('\n'),
@@ -100,8 +112,8 @@ export async function publishSite(
   const updateTenant = promotesTenant
     ? sql`update tenants set status = 'published', published_snapshot = ${JSON.stringify(
         tenantDraftSnapshot(tenant),
-      )}::jsonb, updated_at = now() where id = ${tenant.id}`
-    : sql`update tenants set status = 'published', updated_at = now() where id = ${tenant.id}`;
+      )}::jsonb, updated_at = now() where id = ${tenant.id} and status <> 'archived'`
+    : sql`update tenants set status = 'published', updated_at = now() where id = ${tenant.id} and status <> 'archived'`;
   // Publica exatamente os valores validados, mesmo se um rascunho mudar durante a consulta.
   await sql.transaction([
     ...targets.map(

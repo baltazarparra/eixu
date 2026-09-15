@@ -25,6 +25,7 @@ import { PreviewPointer } from '@/lib/blocks/preview-pointer';
 import { blockFields } from '@/lib/blocks/fields';
 import { fieldBackgrounds } from '@/lib/blocks/text-style-lint';
 import { pageRevision } from '@/lib/ai/page-edits';
+import { isTenantPublic } from '@/lib/sites/availability';
 
 type Params = { tenant: string; slug?: string[] };
 type Props = {
@@ -52,6 +53,7 @@ export async function generateMetadata({
   const resolved = await resolve(tenantSlug, slug ?? []);
   if (!resolved) return { title: 'Página não encontrada' };
   const { tenant, page } = resolved;
+  if (!preview && !isTenantPublic(tenant)) notFound();
   if (!preview && !page.publishedBlocks) notFound();
   const renderedTenant = preview ? tenant : publicTenant(tenant);
   const renderedPage = preview ? page : publicPage(page);
@@ -135,6 +137,7 @@ export async function generateViewport({
   const { tenant: slug, slug: parts } = await params;
   const resolved = await resolve(slug, parts ?? []);
   if (!resolved) return {};
+  if (!preview && !isTenantPublic(resolved.tenant)) notFound();
   if (!preview && !resolved.page.publishedBlocks) notFound();
   const tenant = preview ? resolved.tenant : publicTenant(resolved.tenant);
   const blocks = preview
@@ -155,6 +158,7 @@ export default async function TenantPage({ params, searchParams }: Props) {
   );
   if (!resolved) notFound();
   const { tenant, page } = resolved;
+  if (!isPreview && !isTenantPublic(tenant)) notFound();
   const renderedTenant = isPreview ? tenant : publicTenant(tenant);
   const renderedPage = isPreview ? page : publicPage(page);
   const referenceDirected = hasReferenceDirection(renderedTenant.brand);

@@ -169,6 +169,66 @@ export type DeleteTenantResult = {
   slug?: string;
 };
 
+export type ArchiveTenantResult = {
+  ok: boolean;
+  message: string;
+};
+
+/**
+ * Arquivar só muda a disponibilidade pública. Rascunho, snapshot publicado,
+ * arquivos e dados operacionais permanecem no tenant e na prévia autenticada.
+ */
+export async function setTenantArchivedAction(
+  _prev: ArchiveTenantResult | null,
+  formData: FormData,
+): Promise<ArchiveTenantResult> {
+  await guard();
+  const slugResult = tenantSlugSchema.safeParse(text(formData, 'slug'));
+  if (!slugResult.success)
+    return { ok: false, message: 'Endereço de cliente inválido.' };
+  const intent = text(formData, 'intent');
+  if (intent !== 'archive' && intent !== 'restore')
+    return { ok: false, message: 'Ação de arquivamento inválida.' };
+
+  try {
+    const rows = (await db()`
+      update tenants t
+      set status = case
+            when ${intent === 'archive'}::boolean then 'archived'
+            when exists (
+              select 1 from pages p
+              where p.tenant_id = t.id and p.published_blocks is not null
+            ) then 'published'
+            else 'draft'
+          end,
+          updated_at = now()
+      where t.slug = ${slugResult.data}
+      returning t.name, t.status
+    `) as { name: string; status: 'draft' | 'published' | 'archived' }[];
+    const changed = rows[0];
+    if (!changed) return { ok: false, message: 'Cliente não encontrado.' };
+    revalidatePath('/admin');
+    revalidatePath(`/admin/${slugResult.data}`);
+    return {
+      ok: true,
+      message:
+        changed.status === 'archived'
+          ? `${changed.name} foi arquivado. A URL pública está fora do ar e a prévia continua disponível.`
+          : changed.status === 'published'
+            ? `${changed.name} foi reativado com a última versão publicada.`
+            : `${changed.name} voltou como rascunho.`,
+    };
+  } catch {
+    return {
+      ok: false,
+      message:
+        intent === 'archive'
+          ? 'Não foi possível arquivar o site. Tente novamente.'
+          : 'Não foi possível reativar o site. Tente novamente.',
+    };
+  }
+}
+
 /**
  * Exclusão do cliente. O lock aguarda uploads em curso, impede novos e só é
  * liberado depois de limpar os arquivos e remover o cadastro na transação.

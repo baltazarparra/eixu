@@ -1,6 +1,7 @@
 import { getPage, getTenantBySlug } from '@/lib/tenant-queries';
 import { publicTenant } from '@/lib/sites/snapshot';
 import { currentLogoAsset } from '@/lib/images/logo-schema';
+import { isTenantPublic } from '@/lib/sites/availability';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,11 @@ export async function GET(
 ) {
   const { tenant: slug } = await params;
   const tenant = await getTenantBySlug(slug);
+  if (!isTenantPublic(tenant))
+    return new Response('Not Found', {
+      status: 404,
+      headers: { 'x-robots-tag': 'noindex', 'cache-control': 'no-store' },
+    });
   const home = tenant ? await getPage(tenant.id, '') : null;
   const asset =
     tenant && home?.publishedBlocks

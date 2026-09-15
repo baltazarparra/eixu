@@ -15,7 +15,7 @@ export type DeletableTenant = {
 export function requiresSlugConfirmation(
   tenant: Pick<DeletableTenant, 'status' | 'leadCount'>,
 ): boolean {
-  return tenant.status === 'published' || tenant.leadCount > 0;
+  return tenant.status !== 'draft' || tenant.leadCount > 0;
 }
 
 export function confirmationAccepted(

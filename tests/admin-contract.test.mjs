@@ -20,6 +20,7 @@ const { usageFromEvent, phaseRecords, currentActivity, reviewProgress } =
 const { structuredData } = await j.import('../lib/sites/structured-data.ts');
 const { csvCell } = await j.import('../lib/admin/csv.ts');
 const { previewHref, previewProps } = await j.import('../lib/sites/preview.ts');
+const { isTenantPublic } = await j.import('../lib/sites/availability.ts');
 const { canApplyLogo } = await j.import('../lib/images/logo-access.ts');
 const { tenantFromHost } = await j.import('../lib/tenant-host.ts');
 const {
@@ -906,9 +907,11 @@ await test('exclusão pede o endereço quando há site publicado ou contato rece
     leadCount: 0,
   };
   const publicado = { ...rascunho, status: 'published' };
+  const arquivado = { ...rascunho, status: 'archived' };
   const comContato = { ...rascunho, leadCount: 3 };
   assert.equal(requiresSlugConfirmation(rascunho), false);
   assert.equal(requiresSlugConfirmation(publicado), true);
+  assert.equal(requiresSlugConfirmation(arquivado), true);
   assert.equal(requiresSlugConfirmation(comContato), true);
   assert.equal(confirmationAccepted(rascunho, ''), true);
   assert.equal(confirmationAccepted(publicado, ''), false);
@@ -929,6 +932,13 @@ await test('exclusão pede o endereço quando há site publicado ou contato rece
       '1 página',
     ),
   );
+});
+
+await test('somente site publicado fica disponível nas superfícies públicas', () => {
+  assert.equal(isTenantPublic({ status: 'published' }), true);
+  assert.equal(isTenantPublic({ status: 'draft' }), false);
+  assert.equal(isTenantPublic({ status: 'archived' }), false);
+  assert.equal(isTenantPublic(null), false);
 });
 
 await test('limpeza do Blob pagina por cursor, respeita o prefixo e é idempotente', async () => {
@@ -1022,6 +1032,7 @@ await test('o redirecionador aceita um segundo WhatsApp do cadastro', async () =
       getTenantBySlug: async () => ({
         id: 'fixture',
         slug: 'fixture',
+        status: 'published',
         whatsapp: '5511999990000',
         contacts,
       }),

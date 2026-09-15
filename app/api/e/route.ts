@@ -1,7 +1,14 @@
 import { db } from '@/lib/db';
 import { getTenantBySlug } from '@/lib/tenant-queries';
+import { isTenantPublic } from '@/lib/sites/availability';
 
-const TYPES = new Set(['page_view', 'form_submit', 'whatsapp_click', 'phone_click', 'booking']);
+const TYPES = new Set([
+  'page_view',
+  'form_submit',
+  'whatsapp_click',
+  'phone_click',
+  'booking',
+]);
 
 /** Coleta de eventos de primeira parte. Sem cookies de terceiros. */
 export async function POST(request: Request) {
@@ -17,7 +24,7 @@ export async function POST(request: Request) {
       return new Response(null, { status: 204 });
     }
     const tenant = await getTenantBySlug(body.tenant);
-    if (!tenant) return new Response(null, { status: 204 });
+    if (!isTenantPublic(tenant)) return new Response(null, { status: 204 });
 
     await db()`
       insert into events (tenant_id, type, path, session_id, source)

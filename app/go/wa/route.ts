@@ -2,6 +2,7 @@ import { db } from '@/lib/db';
 import { getTenantBySlug } from '@/lib/tenant-queries';
 import { tenantFromHost } from '@/lib/tenant-host';
 import { whatsappAt } from '@/lib/tenant-contacts';
+import { isTenantPublic } from '@/lib/sites/availability';
 
 /**
  * Redirecionador de WhatsApp rastreado. Registra o clique e injeta a origem
@@ -14,7 +15,13 @@ export async function GET(request: Request) {
   if (!slug) return Response.redirect(new URL('/', request.url), 302);
   const tenant = await getTenantBySlug(slug);
 
-  if (!tenant?.whatsapp) {
+  if (!isTenantPublic(tenant))
+    return new Response('Site indisponível.', {
+      status: 404,
+      headers: { 'x-robots-tag': 'noindex' },
+    });
+
+  if (!tenant.whatsapp) {
     return Response.redirect(new URL('/', request.url), 302);
   }
 

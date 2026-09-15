@@ -3,6 +3,7 @@ import { publicTenant } from '@/lib/sites/snapshot';
 import { currentLogoAsset } from '@/lib/images/logo-schema';
 import { logoThemeColor } from '@/lib/sites/logo-metadata';
 import { surfaceOf } from '@/lib/blocks/theme';
+import { isTenantPublic } from '@/lib/sites/availability';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +13,11 @@ export async function GET(
 ) {
   const { tenant: slug } = await params;
   const draft = await getTenantBySlug(slug);
+  if (!isTenantPublic(draft))
+    return new Response('Not Found', {
+      status: 404,
+      headers: { 'x-robots-tag': 'noindex', 'cache-control': 'no-store' },
+    });
   const home = draft ? await getPage(draft.id, '') : null;
   if (!draft || !home?.publishedBlocks)
     return new Response('Not Found', {
