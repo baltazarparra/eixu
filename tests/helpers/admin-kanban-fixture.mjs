@@ -22,6 +22,7 @@ export async function kanbanFixture() {
   const descriptions = new Map();
   let loseNextResponse = false;
   let failNextBoardRead = false;
+  let failNextCardRead = false;
   let nextBoardReadDelayMs = 0;
   let nextCommandResponseDelayMs = 0;
 
@@ -249,6 +250,11 @@ export async function kanbanFixture() {
               url.pathname.startsWith('/api/admin/kanban/cards/') &&
               req.method === 'GET'
             ) {
+              if (failNextCardRead) {
+                failNextCardRead = false;
+                reply(res, 503, { error: 'Falha temporária na leitura do cartão.' });
+                return;
+              }
               const id = url.pathname.split('/').at(-1);
               const item = state.cards.find((entry) => entry.id === id);
               reply(
@@ -312,6 +318,9 @@ export async function kanbanFixture() {
     },
     failRead: () => {
       failNextBoardRead = true;
+    },
+    failCardRead: () => {
+      failNextCardRead = true;
     },
     delayBoardRead: (milliseconds) => {
       nextBoardReadDelayMs = milliseconds;

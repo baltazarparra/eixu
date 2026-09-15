@@ -141,6 +141,19 @@ await test(
       await page.$eval('dialog button.admin-primary', (node) => node.disabled),
       true,
     );
+    assert.equal(await page.$('dialog [role="alert"] button'), null);
+    page.once('dialog', (dialog) => void dialog.accept());
+    await page.click('button[aria-label="Fechar cartão"]');
+    await page.click(`[data-card-id="${cardId}"] button[class*="cardOpen"]`);
+    await page.waitForSelector('#card-description');
+    assert.equal(
+      await page.$eval('#card-description', (node) => node.value),
+      'Texto de outra aba',
+    );
+    assert.equal(
+      await page.$eval('dialog button.admin-primary', (node) => node.disabled),
+      false,
+    );
     assert.deepEqual(errors, []);
   },
 );
@@ -255,7 +268,10 @@ await test(
     });
     const page = await browser.newPage();
     await page.goto(fixture.base + '/admin/app/kanban');
+    fixture.failCardRead();
     await page.click(`[data-card-id="${cardId}"] button[class*="cardOpen"]`);
+    await page.waitForSelector('dialog [role="alert"] button');
+    await page.click('dialog [role="alert"] button');
     await page.waitForSelector('#card-description');
 
     fixture.delayBoardRead(900);

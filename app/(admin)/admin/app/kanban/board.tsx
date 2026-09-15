@@ -756,15 +756,17 @@ export function KanbanBoard({ initial }: { initial: KanbanSnapshot }) {
             {editorError ? (
               <div className={styles.editorAlert} role="alert">
                 <p>{editorError}</p>
-                <button
-                  type="button"
-                  className="admin-secondary"
-                  onClick={() =>
-                    setDetailRequestVersion((version) => version + 1)
-                  }
-                >
-                  Tentar atualizar
-                </button>
+                {!editorStale ? (
+                  <button
+                    type="button"
+                    className="admin-secondary"
+                    onClick={() =>
+                      setDetailRequestVersion((version) => version + 1)
+                    }
+                  >
+                    Tentar atualizar
+                  </button>
+                ) : null}
               </div>
             ) : null}
             {detail ? (
