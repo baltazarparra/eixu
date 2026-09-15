@@ -119,6 +119,7 @@ await test('avisos do contrato de projeto não recusam a publicação', async ()
   assert.equal(writes.length, 4);
   const tenantWrite = writes.at(-1);
   assert.match(tenantWrite.sql, /published_snapshot/);
+  assert.match(tenantWrite.sql, /status <> 'archived'/);
   const snapshot = JSON.parse(tenantWrite.values[0]);
   assert.equal(snapshot.name, tenant.name);
   assert.equal(snapshot.brand.vibe, 'comercial');
@@ -211,4 +212,12 @@ await test('publicação pontual de slug inexistente responde com o caminho pedi
   assert.deepEqual(result.blocked, [
     { page: '/nada', preflight: 'Nenhuma página encontrada para publicar.' },
   ]);
+});
+
+await test('site arquivado não pode ser publicado sem reativação explícita', async () => {
+  const { publishSite, writes } = await gate();
+  const result = plain(await publishSite({ ...tenant, status: 'archived' }));
+  assert.deepEqual(result.published, []);
+  assert.match(result.blocked[0].preflight, /arquivado/i);
+  assert.equal(writes.length, 0);
 });

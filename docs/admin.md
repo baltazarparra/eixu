@@ -58,8 +58,13 @@ uso quando uma combinação não alcança contraste mínimo.
 O painel é uma operação administrativa global: quem tem a credencial pode acessar todos os clientes. Não compartilhe essa sessão com clientes finais.
 
 A lista de clientes é a base da navegação: busque por nome/endereço ou filtre
-publicados e rascunhos. Os números mostram clientes, leads recebidos nos últimos
-30 dias e execuções em fila, rodando ou encerrando uma etapa. Dentro de um
+publicados, rascunhos e arquivados. **Arquivar** tira a URL pública do ar sem
+apagar páginas, imagens, contatos ou conversas; o editor e a prévia autenticada
+continuam disponíveis. **Reativar** recoloca no ar a última versão publicada ou
+devolve o cliente a rascunho quando ainda não havia publicação. Um site
+arquivado precisa ser reativado antes de publicar novas alterações. Os números
+mostram clientes, leads recebidos nos últimos 30 dias e execuções em fila,
+rodando ou encerrando uma etapa. Dentro de um
 cliente, a seta no canto do cabeçalho volta para a lista, em qualquer aparelho.
 O botão de sair fica no fim das ações do cabeçalho, na lista e no cliente.
 

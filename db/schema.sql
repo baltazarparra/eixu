@@ -7,6 +7,7 @@ create table if not exists tenants (
   id            uuid primary key default gen_random_uuid(),
   slug          text not null unique,
   name          text not null,
+  -- draft, published ou archived; arquivar preserva os snapshots publicados.
   status        text not null default 'draft',
   brief         jsonb not null default '{}'::jsonb,
   brand         jsonb not null default '{}'::jsonb,

@@ -212,7 +212,7 @@ export type Tenant = {
   id: string;
   slug: string;
   name: string;
-  status: 'draft' | 'published';
+  status: 'draft' | 'published' | 'archived';
   brief: Record<string, unknown>;
   brand: Brand;
   dials: Dials;

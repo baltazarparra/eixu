@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { checked, text } from '@/lib/form-data';
 import { getPage, getTenantBySlug } from '@/lib/tenant-queries';
+import { isTenantPublic } from '@/lib/sites/availability';
 
 const RESERVED = new Set([
   'tenant',
@@ -41,7 +42,8 @@ export async function POST(request: Request) {
   }
 
   const tenant = await getTenantBySlug(slug);
-  if (!tenant) return Response.redirect(`${origin}/`, 303);
+  if (!isTenantPublic(tenant))
+    return new Response('Site indisponível.', { status: 404 });
 
   const fields: Record<string, string> = {};
   for (const [key, value] of form.entries()) {

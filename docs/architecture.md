@@ -299,3 +299,12 @@ Gastos de todos os canais da mesma campanha são somados, incluindo campanhas se
 O [guia de verificação](verification.md) define os checks atuais; a [revisão do admin de 10/09](archive/admin-review-2026-09-10.md) conserva apenas a evidência daquela entrega. Testes de contrato e ensaio controlado não constituem pentest, benchmark universal de qualidade ou geração completa em todos os modelos.
 
 A política atual de identidade, raciocínio, contexto e revisão está em [Harness](harness.md). O recibo continua no JSONB existente; o snapshot completo exige reaplicar `db/schema.sql` antes do código que lê as novas colunas.
+
+## Arquivamento
+
+O estado `archived` em `tenants.status` preserva rascunho e snapshots, mas
+recusa a página pública, `robots.txt`, sitemap, manifesto, favicon, formulário,
+telemetria e o redirecionador de WhatsApp. A sessão administrativa continua
+resolvendo o tenant e acessa a prévia com `preview=1`. A reativação recupera
+`published` quando existe ao menos uma página publicada; caso contrário,
+recupera `draft`. Publicar não reativa um tenant arquivado implicitamente.
