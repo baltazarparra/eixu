@@ -38,14 +38,16 @@ executor repete essa proteção para que IDs escolhidos pelo modelo não a
 contornem. Esse reconhecimento é restrito; pedidos compostos ou com alvo
 explícito continuam sendo interpretados pelo agente.
 URLs, âncoras e configuração não entram na busca textual. `insert` e `move`
-aceitam antes/depois de um ID ou início/fim. `remove_item` tira um elemento de
-uma lista pelo caminho e índice; `remove` apaga o bloco inteiro e só é aceito
-quando o pedido autoriza esse tamanho.
+aceitam antes/depois de um ID ou início/fim. Em listas, `insert_item` acrescenta
+um valor na posição indicada, `move_item` reposiciona um valor existente e
+`remove_item` tira um elemento pelo caminho e índice. `remove` apaga o bloco
+inteiro e só é aceito quando o pedido autoriza esse tamanho.
 `replace_block` troca o tipo e as props completas mantendo o ID, quando a
 mudança de variante exige outro schema; ajustes de layout usam `set`.
 
-A rota injeta snapshot e schemas da página em foco, lidos no servidor neste
-turno. Em um pedido visual por família, ela inclui também slug, ID, revisão e
+A rota resolve página ou conteúdo explicitamente nomeado antes do foco e injeta
+o snapshot e os schemas dessa página, lidos no servidor neste turno. Em um
+pedido visual por família, ela inclui também slug, ID, revisão e
 `presentation` dos alvos das outras páginas; `get_page` só é necessário se essa
 revisão faltar ou houver conflito. O agente reúne as mudanças em uma chamada
 por página e conclui usando o recibo; uma pergunta necessária de alvo continua
@@ -123,10 +125,19 @@ lista ou o layout do grupo. A página Início explicitamente nomeada resolve par
 `/` mesmo quando outra página está aberta. O CSS do operador é a última camada:
 um campo com alinhamento próprio vence a regra da seção sem usar `!important`.
 
+`presentation.elements` cobre ajustes internos que não têm uma prop dedicada.
+Cada entrada escolhe seção, container, conteúdo, título, corpo, ações, lista,
+item por índice, mídia, imagem, formulário, ação ou campo e pode valer sempre,
+somente no mobile ou somente no desktop. Flex, grid, posição, dimensões,
+espaçamento, ordem, deslocamento, raio, opacidade, cor, borda e sombra são
+valores tipados. O renderer converte esses valores em CSS escopado ao bloco; o
+agente nunca fornece seletor nem CSS livre.
+
 Depois de uma gravação que altere `presentation.*` ou `textStyles.*`, o mesmo
 Chromium da revisão abre a prévia autenticada em 1440 e 390 px. Ele localiza
-somente os `[data-block-id]` tocados, lê fundo/camada e alinhamentos computados e mede todo
-texto visível pelo inspetor compartilhado. O retorno contém números e achados,
+somente os `[data-block-id]` tocados, lê fundo/camada, tipografia, regras
+internas e alinhamentos computados e mede todo texto visível pelo inspetor
+compartilhado. O retorno contém números e achados,
 sem screenshot, pixels ou crítica por modelo. Transparências são compostas com
 as superfícies ancestrais; texto diretamente sobre uma imagem, sem painel opaco,
 é declarado não mensurável em vez de receber aprovação por uma cor de fallback.
@@ -134,23 +145,22 @@ Falha ou indisponibilidade não desfaz a gravação, mas o recibo precisa ressal
 desliga essa medição e isso também aparece no recibo. A prévia segue como
 revisão humana; a edição não publica nada.
 
-## Pedido que não cabe no bloco
+## Ajuste sem campo dedicado
 
-Reposicionar um elemento dentro de um bloco só existe quando há campo para
-isso. Os selos do hero ganharam `bulletsPlacement` em `hero.split` e
+O agente usa primeiro o campo semântico próprio porque ele preserva acessibilidade
+e ordem do DOM. Os selos do hero usam `bulletsPlacement` em `hero.split` e
 `badgesPlacement` em `hero.landing`, com `cta` (sob os botões, padrão) e
 `headline` (logo abaixo do título). A ordem muda no DOM, não por CSS, para o
 teclado e o leitor de tela encontrarem os selos onde eles aparecem; no layout
 `editorial` os selos pedidos sob o título acompanham a coluna dele.
 
-Degradê é um desses pedidos. `presentation.background` grava uma cor chapada e
-remove lavagem, brilho e motivo da vibe naquela seção; não existe campo para um
-degradê local. O agente explica isso e oferece o que o bloco permite — a cor
-chapada, ou o tom da marca, que devolve a seção ao brilho da vibe. Ver
-[Design](design.md), "Degradê com técnica".
+Quando não há campo próprio, `presentation.elements` posiciona e estiliza a
+parte interna por alvo semântico e viewport. Inserir ou mover um card usa
+`insert_item` ou `move_item`; trocar a própria composição usa o layout ou o
+tipo registrado. O agente executa o pedido claro e não oferece centralização,
+inversão de mídia ou outra composição como substituto.
 
-Sem um campo assim, o agente não grava: explica o limite e oferece a
-alternativa real. `contentLossError` garante isso em código, não só no prompt.
+`contentLossError` garante em código que essa liberdade não apaga conteúdo.
 Quando o pedido atual não menciona remoção, uma operação que apague texto é
 recusada com o lote inteiro: campo de copy que some ou fica vazio, lista que
 encolhe, bloco com texto removido e troca de tipo que não migra o texto.

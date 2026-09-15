@@ -1,139 +1,150 @@
 # Plano de implementação: edição completa e precisa pelo chat
 
-**Data:** 14/09/2026. **Base reconciliada:** `origin/main` em `80aea87`.
-**Branch de execução:** `codex/chat-complete`.
+**Data:** 15/09/2026. **Base reconciliada:** `origin/main` em `69ce09c`.
+**Branch de execução:** `codex/chat-complete`. **Estado:** implementado e
+validado localmente.
 
-## Objetivo
+## Problema
 
-Um pedido simples deve gerar uma mutação simples, fiel e verificável. O chat
-precisa alterar texto, apresentação, mídia, ordem e estrutura de um site
-existente sem regenerar a página, inventar conteúdo ou propor uma alternativa
-diferente quando a intenção já está clara.
+O chat trata alguns ajustes simples como se fossem pedidos de recomposição. No
+caso do Supermercado Ravagio, o operador pediu `text-align: right` no Hero da
+página Início. O agente encontrou o bloco, mas recusou a alteração e ofereceu
+centralizar o texto ou inverter foto e conteúdo. Antes disso, uma tentativa
+gravou um resultado impreciso e o comando “desfaz” restaurou outra página.
 
-“Qualquer coisa no site” significa toda superfície editorial e funcional que o
-renderer versionado consegue publicar com segurança. Isso não autoriza CSS,
-JavaScript, React ou SQL arbitrário produzido pelo modelo dentro do ambiente
-multi-tenant. Capacidade realmente nova continua sendo trabalho de engenharia
-com schema, renderer, teste e release; o chat deve identificar essa dependência
-com precisão e nunca fingir que a executou.
+Há quatro causas no contrato atual:
 
-## Incidente reproduzido
+1. alguns controles visuais internos não têm uma prop dedicada;
+2. o agente confunde alinhamento do texto, alinhamento do grupo e variante do
+   layout;
+3. a página aberta prevalecia sobre a página e o conteúdo nomeados no pedido;
+4. listas aceitam editar ou remover itens, mas não inserir e mover um item de
+   maneira pontual.
 
-O caso do Supermercado Ravagio expôs dois defeitos independentes:
+## Resultado esperado
 
-1. o catálogo oferecia `presentation.align` apenas como escolha de silhueta
-   (`left`, `center`, `offset`), sem `text-align: right` e sem um controle próprio
-   para alinhar o grupo, as ações e os selos;
-2. o atalho de “desfaz” usava a página em foco. Depois de editar `/` e abrir
-   `/nossa-historia`, ele tentava restaurar a página errada.
+Todo estado publicável do site fica editável pelo chat: textos, tipografia,
+cores, espaçamento, alinhamento, dimensões, bordas, sombras, disposição interna,
+ordem, listas, blocos, páginas, imagens, links, formulários, navegação, SEO e
+marca. Um pedido claro gera a menor mutação capaz de cumpri-lo, preserva o que
+não foi citado, mede o resultado em desktop e celular e mantém o publicado
+intacto até um pedido de publicação.
 
-A URL administrativa fornecida não foi usada para escrita. A reprodução usa
-dados sintéticos equivalentes e os mesmos schemas, executores, rota e CSS de
-produção.
+Essa liberdade usa dados declarativos validados. O modelo não grava seletores,
+CSS, HTML, JavaScript, React ou SQL livres em um tenant. O schema aceita as
+intenções visuais e o renderer produz o CSS escopado. Assim o agente consegue
+alterar a apresentação completa sem abrir execução de código ou permitir que um
+site afete outro.
 
-## Contrato implementado
+## Arquitetura da solução
 
-### Alinhamento
+### 1. Resolver o alvo antes de editar
 
-| Intenção                      | Caminho                                                | Efeito                                                             |
-| ----------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------ |
-| Só um título ou parágrafo     | `textStyles[].align`                                   | Alinha somente o campo identificado.                               |
-| Todo o texto da seção         | `presentation.textAlign`                               | Alinha títulos, parágrafos, listas e legendas, sem mover mídia.    |
-| Texto e todo o conteúdo/grupo | `presentation.textAlign` + `presentation.contentAlign` | Também alinha grupo, ações e listas em `start`, `center` ou `end`. |
+- página explicitamente nomeada vence a página em foco;
+- “Início”, “home” e “página inicial” resolvem para `/`;
+- um trecho entre aspas procura texto concatenado em todos os campos do bloco;
+- uma correspondência única em outra página vence o foco;
+- ambiguidade comprovada não grava;
+- a mesma regra vale para conteúdo, estrutura e apresentação.
 
-Os controles são opcionais e aceitam `unset`; sites existentes mantêm o visual
-anterior. A camada `operator.css`, importada por último, faz a escolha explícita
-vencer a vibe. Um campo com alinhamento próprio vence a escolha da seção.
+A rota injeta o snapshot, a revisão e os schemas da página resolvida no prompt.
+O agente não precisa fazer uma leitura redundante antes de uma mutação simples.
 
-O renderer expõe os valores como atributos validados. A captura determinística
-mede o `text-align`, `align-items` e `justify-content` computados em 1440 e 390
-px. Uma divergência vira problema no recibo; contraste continua sendo medido
-separadamente.
+### 2. Escolher o menor alcance
 
-### Resolução do alvo
+| Pedido                           | Operação declarativa                                   |
+| -------------------------------- | ------------------------------------------------------ |
+| Trocar uma frase                 | `replace_text` ou `set` no campo                       |
+| Mudar só um texto                | `textStyles` no caminho exato                          |
+| Alinhar todos os textos do bloco | `presentation.textAlign`                               |
+| Alinhar texto, botões e grupo    | `presentation.textAlign` + `presentation.contentAlign` |
+| Ajustar um elemento interno      | `presentation.elements` com alvo semântico             |
+| Inserir ou mover um card         | `insert_item` ou `move_item`                           |
+| Inserir ou mover uma seção       | `insert` ou `move` por ID relativo                     |
+| Trocar a natureza da seção       | `replace_block`, com props completas válidas           |
 
-- página explicitamente nomeada vence a página aberta;
-- “Início”, “página inicial” e “home” resolvem para `/`;
-- Hero/banner/abertura restringe o escopo à família `hero`;
-- texto entre aspas pode identificar o bloco por qualquer campo textual, não
-  apenas `title` ou `eyebrow`;
-- o snapshot e a revisão já carregados entram no contexto, inclusive os alvos
-  compactos de outra página, sem uma leitura redundante;
-- a política visual permite somente caminhos de apresentação do alvo encontrado.
+O agente preserva o restante das props e agrupa as mudanças de uma página em
+uma gravação atômica.
 
-### Desfazer
+### 3. Cobrir qualquer elemento visual sem CSS livre
 
-O chat consulta a revisão reversível mais recente do tenant e restaura sua
-página, independentemente do foco atual. A restauração continua transacional e
-otimista: trava a página, compara o rascunho, restaura os mesmos blocos, IDs,
-textos e posições e preserva o snapshot publicado. Um segundo “desfaz” retorna
-ao estado que saiu.
+`presentation.elements` aceita até trinta regras por bloco. Cada regra escolhe
+um alvo validado — seção, container, conteúdo, título, corpo, grupo de ações,
+lista, item, mídia, imagem, formulário, ação ou campo — e um viewport `all`,
+`mobile` ou `desktop`. `item` aceita índice para alcançar um box específico.
 
-O botão acima da prévia permanece deliberadamente local à página aberta. O chat
-e o botão têm descrições diferentes na interface e na documentação.
+As propriedades cobrem:
 
-## Cobertura do gerador atual
+- flex e grid, direção, quebra, distribuição e alinhamento;
+- colunas, posição e span em grid, ordem e deslocamento;
+- largura, altura mínima, espaçamento interno e externo e gap;
+- alinhamento de texto, raio, opacidade, fundo, tinta, borda e sombra.
 
-O executor `edit_page` continua sendo o caminho comum para sites existentes. Em
-uma única gravação por página ele oferece:
+Enums, números limitados e cores hex formam o CSS. O schema rejeita chaves
+desconhecidas, seletores, regras duplicadas e combinações de cor abaixo de
+4,5:1. Todas as regras recebem um escopo gerado pelo renderer e não atravessam o
+bloco.
 
-- substituição literal e `set`/`unset` de qualquer prop aceita pelo schema;
-- inserção, troca, remoção e movimentação de blocos por ID;
-- remoção e edição de itens por caminho;
-- layouts, mídia, carrossel, fit, foco, apresentação local e SEO já registrados;
-- edição por campo na prévia com texto, tamanho, cor e alinhamento;
-- comparação de revisão, pre-flight, histórico e atualização imediata da prévia.
+### 4. Dar precisão tipográfica ao campo
 
-O catálogo usado pelo modelo é derivado de `blockSchemas`. Assim uma prop nova
-só é anunciada depois de existir no schema; `validateEditedBlock` impede gravar
-um valor que o renderer não conhece. Contatos, localização, marca e SEO seguem
-suas ferramentas próprias porque não pertencem a `pages.blocks`.
+Além da escala relativa, `textStyles` aceita tamanho em pixels, peso, altura de
+linha, espaçamento de letras, transformação, itálico, cor e alinhamento. O
+caminho identifica exatamente o título, parágrafo, legenda, botão ou item. O
+alinhamento do campo prevalece sobre o alinhamento geral da seção.
 
-## Sequência executada
+### 5. Inserir e mover itens sem reenviar a lista
 
-1. **Reconciliação:** worktree limpo criado a partir de `origin/main`; as
-   implementações atuais de edição, carrossel, composição de assinatura,
-   histórico e medição foram reaproveitadas.
-2. **Reprodução:** fixtures cobrem os dois pedidos de alinhamento e “desfaz” com
-   outra página em foco.
-3. **Contrato:** schema, catálogo, prompt, executor, renderer, CSS, editor direto
-   e recibos receberam os três alcances de alinhamento.
-4. **Alvo:** política reconhece alinhamento, página Início e texto citado.
-5. **Reversão:** a rota direta resolve a última página realmente editada antes
-   de restaurar.
-6. **Verificação:** tipos, lint, suites de contrato, build Vercel e navegador com
-   CSS de produção são os gates obrigatórios desta entrega.
-7. **Documentação:** arquitetura, design, harness, admin, manual, edição e
-   verificação descrevem o comportamento realmente disponível.
+`insert_item` recebe caminho, índice e valor; `move_item` recebe caminho,
+origem e destino. O executor trabalha sobre uma cópia, valida o bloco completo e
+só grava se todas as operações do lote passarem. Índices inexistentes recusam o
+lote. A guarda de perda de conteúdo continua impedindo que um pedido de mover
+seja convertido em remoção.
+
+### 6. Desfazer a mudança realmente mais recente
+
+O atalho de chat procura a revisão reversível mais recente do tenant, identifica
+a página dessa revisão e restaura os mesmos blocos, IDs, textos e posições. O
+foco atual não interfere. O botão da prévia continua local à página aberta.
+Nenhum dos dois altera o snapshot publicado.
+
+### 7. Verificar o efeito renderizado
+
+Depois de editar apresentação ou tipografia, o Chromium abre a prévia em 1440 e
+390 px. A medição compara o CSS computado com as propriedades solicitadas,
+confere presença do alvo, colunas, largura percentual, tipografia, alinhamentos,
+contraste e overflow. Divergência aparece no recibo; captura indisponível é
+relatada sem inventar sucesso visual.
 
 ## Matriz de aceite
 
-| Cenário                                                          | Resultado obrigatório                                                                     |
-| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| “Na página Início, text-align à direita” com outra página aberta | Só os textos do Hero de `/` ficam à direita; mídia, conteúdo e demais páginas permanecem. |
-| “Todo o bloco à direita, texto e layout, todo conteúdo”          | Texto, grupo, botões e lista ficam no fim da região sem trocar a ordem de leitura.        |
-| “Só esse parágrafo à direita”                                    | Apenas o campo recebe `textStyles.align`; título e controles permanecem.                  |
-| Campo à esquerda dentro de seção à direita                       | A escolha do campo prevalece no CSS computado.                                            |
-| “Desfaz” depois de abrir outra página                            | A página da última revisão é restaurada; a página em foco não é tocada.                   |
-| Estado já satisfaz o pedido                                      | Nenhuma escrita nem histórico fictício.                                                   |
-| CSS da vibe vence uma escolha explícita                          | A medição reprova o resultado.                                                            |
-| Captura indisponível                                             | O recibo informa somente a gravação, sem alegar efeito medido.                            |
-| Publicado seguido de edição                                      | Apenas o rascunho muda.                                                                   |
+| Cenário                                        | Resultado obrigatório                                                |
+| ---------------------------------------------- | -------------------------------------------------------------------- |
+| Hero da Início nomeado com outra página aberta | A home recebe a edição e a página aberta permanece igual.            |
+| “Alinhe esse texto à direita”                  | Apenas o campo recebe `text-align: right`.                           |
+| “Todo o conteúdo à direita”                    | Texto, grupo e controles vão para o fim sem inverter mídia ou DOM.   |
+| “Segundo box à direita, menor e com sombra”    | Somente o item 2 recebe largura, margem e sombra no viewport pedido. |
+| “No celular, uma coluna”                       | A regra mobile vence a regra desktop sem overflow.                   |
+| “Mova o terceiro card para primeiro”           | `move_item` conserva o card e o restante da lista.                   |
+| “Insira este card depois do primeiro”          | `insert_item` acrescenta um item válido sem reenviar os existentes.  |
+| Campo à esquerda dentro da seção à direita     | O estilo do campo prevalece.                                         |
+| Propriedade desconhecida ou seletor livre      | O schema recusa o lote inteiro.                                      |
+| CSS da vibe vence a escolha explícita          | A medição reprova o recibo.                                          |
+| “Desfaz” após trocar de página                 | A página da última revisão é restaurada.                             |
+| Estado já satisfaz o pedido                    | Não há escrita nem histórico fictício.                               |
+| Site já publicado recebe edição                | Só o rascunho muda.                                                  |
 
-## Limites e próximos incrementos
+## Entregas
 
-A edição é ampla dentro do catálogo executável, mas não é correto prometer que
-um modelo consegue criar qualquer primitiva inédita em produção durante um
-turno de cliente. Uma árvore universal ou um serviço de engenharia autônomo
-precisaria de isolamento, versionamento, rollout e autorização próprios. Esse
-trabalho não deve ser embutido no chat multi-tenant como execução de código
-arbitrário.
-
-Pedidos entre várias páginas ainda são atômicos por página. O mesmo turno
-preserva resultados individuais e informa falhas; uma transação agrupada exige
-um identificador durável da operação e migração anterior ao deploy. Essa
-evolução deve ser feita quando houver requisito de reversão conjunta, sem mudar
-o comportamento verificado deste incidente.
+1. schemas comuns de tipografia e apresentação interna;
+2. geração de CSS escopado e renderer para todos os blocos;
+3. `insert_item` e `move_item` no contrato atômico de `edit_page`;
+4. resolução de página e conteúdo nomeados para qualquer edição;
+5. prompt e catálogo instruindo execução fiel, sem alternativas inventadas;
+6. medição determinística dos estilos computados;
+7. restauração global da última página editada pelo chat;
+8. testes unitários, de integração e navegador em desktop e celular;
+9. atualização dos manuais de edição, design, arquitetura, harness e
+   verificação.
 
 ## Gates
 
@@ -144,12 +155,30 @@ npm run test:sites
 npm run test:admin
 npm run build:vercel
 EIXU_CHROME_PATH=/usr/bin/google-chrome node --test \
+  tests/browser/site-element-styles.test.mjs \
   tests/browser/site-hero-placement.test.mjs \
   tests/browser/site-inline-edit.test.mjs \
   tests/browser/admin-desfazer-apontar.test.mjs
 git diff --check
 ```
 
-Teste PostgreSQL usa `EIXU_TEST_POSTGRES_URL`; sem essa variável ele é pulado e
-não deve ser declarado como executado. Nenhuma validação local autoriza migrar
-banco, alterar o cliente de referência, publicar páginas ou fazer deploy.
+O teste PostgreSQL usa `EIXU_TEST_POSTGRES_URL`; sem essa variável, o runner o
+marca como pulado. Validação local não autoriza migração, mutação no tenant de
+referência, publicação, push ou deploy.
+
+### Resultado em 15/09/2026
+
+- tipos, lint, formato e `git diff --check`: aprovados;
+- sites: 308 aprovados e 2 dependentes de ambiente pulados;
+- admin: 303 aprovados e 8 dependentes de Chrome/PostgreSQL pulados;
+- matriz afetada com Chrome: 7 aprovados, incluindo CSS de produção em 1440 e
+  390 px;
+- build Vercel: aprovado, com 4 verificações de artefatos serverless aprovadas.
+
+## Referência e limite de reprodução
+
+`https://eixu.com.br/admin/supermercadoravagio` redireciona uma sessão anônima
+para o login. A implementação não depende de credencial nem de dados do cliente:
+o caso é reproduzido com fixtures equivalentes, a rota real, os mesmos schemas e
+o CSS de produção. A validação remota autenticada fica fora deste plano porque o
+pedido não autorizou credenciais, escrita no tenant ou publicação.

@@ -5,12 +5,14 @@ import { MockLanguageModelV4 } from 'ai/test';
 import { pageEditFixture, editPages } from './helpers/page-edit-fixture.mjs';
 import { loadModule } from './helpers/load-module.mjs';
 
-for (const mode of ['model', 'receipt', 'ambiguous'])
+for (const mode of ['model', 'receipt', 'ambiguous', 'explicit-home'])
   await test(`rota de edição: ${mode}`, async () => {
     const withFinal = mode === 'model';
-    const f = await pageEditFixture(
-      'Troque o título Como escolher para Escolhas do projeto',
-    );
+    const requestText =
+      mode === 'explicit-home'
+        ? 'Na página Início, deixe o segundo box de dúvidas à direita.'
+        : 'Troque o título Como escolher para Escolhas do projeto';
+    const f = await pageEditFixture(requestText);
     const persisted = [];
     let calls = 0;
     const { POST } = await loadModule('app/api/chat/route.ts', {
@@ -41,13 +43,16 @@ for (const mode of ['model', 'receipt', 'ambiguous'])
             'ambiguous',
             'Ambiguidade literal deve perguntar sem chamar o modelo',
           );
-          // A página enviada no pedido é a interna, não a home: não pode editar
-          // o mesmo texto na página errada nem precisar de uma nova leitura.
+          // A página nomeada no pedido vence a aba aberta; sem nome explícito,
+          // a página em foco continua sendo o alvo.
           const snapshotText = instructions
             .split('Leitura feita pelo servidor neste turno.')[1]
             .split('\n')[1];
           const snapshot = JSON.parse(snapshotText);
-          assert.equal(snapshot.slug, '/materiais');
+          assert.equal(
+            snapshot.slug,
+            mode === 'explicit-home' ? '/' : '/materiais',
+          );
           return new ToolLoopAgent({
             tools,
             instructions,
@@ -61,18 +66,41 @@ for (const mode of ['model', 'receipt', 'ambiguous'])
                         type: 'tool-call',
                         toolCallId: 'edit-1',
                         toolName: 'edit_page',
-                        input: JSON.stringify({
-                          page: 'materiais',
-                          revision: snapshot.revision,
-                          operations: [
-                            {
-                              op: 'replace_text',
-                              from: 'Como escolher',
-                              to: 'Escolhas do projeto',
-                              block: 'intro',
-                            },
-                          ],
-                        }),
+                        input: JSON.stringify(
+                          mode === 'explicit-home'
+                            ? {
+                                page: '',
+                                revision: snapshot.revision,
+                                operations: [
+                                  {
+                                    op: 'set',
+                                    block: 'faq',
+                                    path: 'presentation.elements',
+                                    value: [
+                                      {
+                                        target: 'item',
+                                        index: 1,
+                                        viewport: 'desktop',
+                                        widthPercent: 70,
+                                        marginInline: 'end',
+                                      },
+                                    ],
+                                  },
+                                ],
+                              }
+                            : {
+                                page: 'materiais',
+                                revision: snapshot.revision,
+                                operations: [
+                                  {
+                                    op: 'replace_text',
+                                    from: 'Como escolher',
+                                    to: 'Escolhas do projeto',
+                                    block: 'intro',
+                                  },
+                                ],
+                              },
+                        ),
                       },
                     ]
                   : [
@@ -136,7 +164,7 @@ for (const mode of ['model', 'receipt', 'ambiguous'])
                   text:
                     mode === 'ambiguous'
                       ? 'Troque "Ver materiais" por "Ver opções".'
-                      : 'Troque o título Como escolher para Escolhas do projeto',
+                      : requestText,
                 },
               ],
             },
@@ -160,16 +188,29 @@ for (const mode of ['model', 'receipt', 'ambiguous'])
         stream.indexOf('tool-output-available'),
     );
     assert.match(stream, /Alterações salvas no rascunho de/);
-    assert.match(stream, /texto atualizado/);
+    assert.match(
+      stream,
+      mode === 'explicit-home'
+        ? /apresentação interna ajustada/
+        : /texto atualizado/,
+    );
     assert.match(stream, /"saved":"draft"/);
     assert.equal(f.writes.length, 1);
     assert.equal(calls, withFinal ? 2 : 1);
-    assert.deepEqual(f.pages[0], editPages()[0]);
-    assert.equal(f.pages[1].blocks[2].props.title, 'Escolhas do projeto');
-    assert.deepEqual(
-      f.pages[1].publishedBlocks,
-      editPages()[1].publishedBlocks,
-    );
+    if (mode === 'explicit-home') {
+      assert.equal(
+        f.pages[0].blocks[3].props.presentation.elements[0].index,
+        1,
+      );
+      assert.deepEqual(f.pages[1], editPages()[1]);
+    } else {
+      assert.deepEqual(f.pages[0], editPages()[0]);
+      assert.equal(f.pages[1].blocks[2].props.title, 'Escolhas do projeto');
+      assert.deepEqual(
+        f.pages[1].publishedBlocks,
+        editPages()[1].publishedBlocks,
+      );
+    }
     assert.equal(persisted.length, 2);
   });
 

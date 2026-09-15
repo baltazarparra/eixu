@@ -25,7 +25,13 @@ const keyOf = (field: { block: string; path: string }) =>
 const sameStyle = (a?: TextStyle, b?: TextStyle) =>
   (a?.size ?? 0) === (b?.size ?? 0) &&
   (a?.color ?? '').toLowerCase() === (b?.color ?? '').toLowerCase() &&
-  (a?.align ?? '') === (b?.align ?? '');
+  (a?.align ?? '') === (b?.align ?? '') &&
+  (a?.fontSize ?? 0) === (b?.fontSize ?? 0) &&
+  (a?.fontWeight ?? 0) === (b?.fontWeight ?? 0) &&
+  (a?.lineHeight ?? 0) === (b?.lineHeight ?? 0) &&
+  (a?.letterSpacing ?? 0) === (b?.letterSpacing ?? 0) &&
+  (a?.transform ?? '') === (b?.transform ?? '') &&
+  (a?.fontStyle ?? '') === (b?.fontStyle ?? '');
 const changedText = (entry: Entry) =>
   normalizeFieldText(entry.current, entry.multiline) !==
   normalizeFieldText(entry.value, entry.multiline);
@@ -190,7 +196,17 @@ export function InlineEditor({
       const offset = document.activeElement === node ? caretOffset(node) : null;
       const style = entry.currentStyle;
       const span = node.firstElementChild as HTMLElement | null;
-      const needsStyle = Boolean(style && (style.size || style.color));
+      const needsStyle = Boolean(
+        style &&
+        (style.size !== undefined ||
+          style.color ||
+          style.fontSize !== undefined ||
+          style.fontWeight !== undefined ||
+          style.lineHeight !== undefined ||
+          style.letterSpacing !== undefined ||
+          style.transform !== undefined ||
+          style.fontStyle !== undefined),
+      );
       let replaced = false;
       if (
         node.textContent !== value ||
@@ -215,6 +231,17 @@ export function InlineEditor({
         child.style.color = /^#[0-9a-f]{6}$/i.test(style?.color ?? '')
           ? style!.color!
           : '';
+        child.style.fontSize = style?.fontSize ? `${style.fontSize}px` : '';
+        child.style.fontWeight = style?.fontWeight
+          ? String(style.fontWeight)
+          : '';
+        child.style.lineHeight = style?.lineHeight
+          ? String(style.lineHeight)
+          : '';
+        child.style.letterSpacing =
+          style?.letterSpacing !== undefined ? `${style.letterSpacing}px` : '';
+        child.style.textTransform = style?.transform ?? '';
+        child.style.fontStyle = style?.fontStyle ?? '';
       }
       if (style?.color) node.dataset.textColor = 'true';
       else delete node.dataset.textColor;
@@ -484,7 +511,17 @@ export function InlineEditor({
         if (!entry || !entry.stylable || paused) return;
         const next = { ...entry.currentStyle, ...style, field: entry.path };
         entry.currentStyle =
-          !next.color && !next.size && !next.align ? undefined : next;
+          !next.color &&
+          !next.size &&
+          !next.align &&
+          !next.fontSize &&
+          !next.fontWeight &&
+          !next.lineHeight &&
+          !next.letterSpacing &&
+          !next.transform &&
+          !next.fontStyle
+            ? undefined
+            : next;
         clearErrors(entry);
         sync();
         announce();

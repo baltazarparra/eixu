@@ -9,6 +9,10 @@ import { contactsOf } from '@/lib/tenant-contacts';
 import { renderingVibeOf, VIBE_LOCATION_TONE } from '@/lib/design/vibes';
 import { previewProps } from '@/lib/sites/preview';
 import { sectionColorVars, sectionScrim } from '@/lib/blocks/section-colors';
+import {
+  elementStyleCss,
+  elementStyleMeasurements,
+} from '@/lib/blocks/element-style';
 
 export type RenderContext = {
   tenant: Tenant;
@@ -71,9 +75,9 @@ export function RenderBlocks({
   if (showLocation) usedAnchors.add('onde-estamos');
   return (
     <SiteMotion intensity={ctx.editing ? 0 : ctx.tenant.dials.motion}>
-      {renderList(leading, ctx, usedAnchors)}
+      {renderList(leading, ctx, usedAnchors, 0)}
       <main>
-        {renderList(content, ctx, usedAnchors)}
+        {renderList(content, ctx, usedAnchors, start)}
         {showLocation ? (
           <div
             id="onde-estamos"
@@ -88,7 +92,7 @@ export function RenderBlocks({
           </div>
         ) : null}
       </main>
-      {renderList(trailing, ctx, usedAnchors)}
+      {renderList(trailing, ctx, usedAnchors, end)}
       {sticky?.success && sticky.data.cta && (
         <LandingStickyCta href={sticky.data.cta.href}>
           {sticky.data.cta.label}
@@ -103,10 +107,11 @@ function renderList(
   blocks: BlockInstance[],
   ctx: RenderContext,
   usedAnchors: Set<string>,
+  offset: number,
 ) {
   return (
     <>
-      {blocks.map((block) => {
+      {blocks.map((block, index) => {
         if (!isBlockType(block.type)) return null;
         const parsed = blockSchemas[block.type].safeParse(block.props);
         if (!parsed.success) return null;
@@ -298,6 +303,11 @@ function renderList(
           'presentation' in parsed.data && parsed.data.presentation
             ? parsed.data.presentation
             : undefined;
+        const elementScope = `b${offset + index}`;
+        const elementCss = elementStyleCss(
+          elementScope,
+          presentation?.elements,
+        );
         const surfaceContext = {
           blockType: block.type,
           layout:
@@ -329,10 +339,21 @@ function renderList(
             data-align={presentation?.align}
             data-text-align={presentation?.textAlign}
             data-content-align={presentation?.contentAlign}
+            data-element-style-scope={elementCss ? elementScope : undefined}
+            data-element-style-spec={
+              elementCss
+                ? JSON.stringify(
+                    elementStyleMeasurements(presentation?.elements),
+                  )
+                : undefined
+            }
             data-edge={presentation?.edge}
             data-animation={presentation?.motion}
           >
             {render()}
+            {elementCss ? (
+              <style data-element-style-rules>{elementCss}</style>
+            ) : null}
           </div>
         );
       })}

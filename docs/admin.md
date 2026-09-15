@@ -337,6 +337,11 @@ podem ser reescritos, mas conservam tamanho e cor do controle.
 Os botões **Esquerda**, **Centro**, **Direita** e **Justificar** mudam o
 alinhamento apenas do campo selecionado.
 
+Pelo chat, o mesmo campo também aceita tamanho exato, peso, altura de linha,
+espaçamento de letras, transformação e itálico. Pedidos de disposição interna
+podem alcançar container, grupo, lista, box, mídia, ação ou formulário no
+desktop e no celular, preservando o conteúdo que não foi citado.
+
 O texto colado perde a formatação. Em blocos de texto editorial, Enter cria um
 parágrafo e Backspace no início o une ao anterior. Nos demais campos, Enter
 não cria linha. Tab percorre os campos; Esc fecha a barra e Ctrl+S ou Cmd+S

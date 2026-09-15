@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { textStylesSchema } from './text-style-schema';
+import { elementStylesSchema } from './element-style';
 import { contrastRatio, gradientContrast } from './contrast';
 import { ICON_NAMES } from '@/lib/design/iconography';
 import { structureGrammar, type Vibe } from '@/lib/design/vibes';
@@ -122,6 +123,11 @@ const presentation = z
       .optional()
       .describe(
         'Alinha o grupo de conteúdo e seus controles no início, centro ou fim da região disponível. Não muda a ordem de leitura.',
+      ),
+    elements: elementStylesSchema
+      .optional()
+      .describe(
+        'Ajustes precisos e responsivos em partes internas do bloco: container, conteúdo, títulos, textos, ações, listas, cards, mídia, imagens e formulário. Use quando o pedido não cabe em um campo dedicado do bloco.',
       ),
     edge: z.enum(['none', 'line', 'panel', 'bleed']).optional(),
   })
@@ -1323,7 +1329,7 @@ export function catalogForPrompt(
 ): string {
   const { vibe, design, expansions = [] } = options;
   return (
-    `Comum a todos: anchor?; textStyles? [{field, size?: -2|-1|0|1|2, color?: #RRGGBB, align?: left|center|right|justify}] (até 40, por campo de texto; contraste ≥4,5:1); presentation? { ${summarize(z.toJSONSchema(presentation.unwrap()) as Record<string, unknown>, 1)} }. Exemplos locais: {"decoration":"none"}; {"background":"#27272a","backgroundEnd":"#3f3f46","gradient":"diagonal"}; {"textAlign":"right","contentAlign":"end"}. ? = opcional; ≤ = máximo de caracteres.\n` +
+    `Comum a todos: anchor?; textStyles? [{field, size?: -2|-1|0|1|2, color?: #RRGGBB, align?: left|center|right|justify, fontSize?: 10..160, fontWeight?: 300..900, lineHeight?: 0.8..2.2, letterSpacing?: -4..16, transform?, fontStyle?}] (até 40, por campo; contraste ≥4,5:1); presentation? { ${summarize(z.toJSONSchema(presentation.unwrap()) as Record<string, unknown>, 1)} }. presentation.elements ajusta partes internas com target semântico, viewport e propriedades visuais seguras. Exemplos: {"decoration":"none"}; {"background":"#27272a","backgroundEnd":"#3f3f46","gradient":"diagonal"}; {"textAlign":"right","contentAlign":"end"}; {"elements":[{"target":"item","index":1,"viewport":"desktop","order":-1,"widthPercent":50}]}. ? = opcional; ≤ = máximo de caracteres.\n` +
     [...BLOCK_TYPES]
       .sort((a, b) => {
         if (vibe !== 'landing') return 0;

@@ -293,8 +293,11 @@ pre-flight e documentação coerentes.
 Todos os blocos relevantes aceitam `presentation`: tom, decoração, cor local,
 degradê controlado, cor de texto validada, movimento, largura, espaçamento,
 alinhamento do texto, alinhamento do grupo e borda/bleed. Cor de texto e fundo
-precisam manter contraste de 4,5:1. `textStyles` ajusta tamanho, alinhamento e
-cor por campo dentro de limites. Imagens compatíveis aceitam fit, foco e, em
+precisam manter contraste de 4,5:1. `presentation.elements` ajusta seção,
+container, conteúdo, títulos, textos, ações, listas, itens, mídia, imagens e
+formulários com regras independentes por viewport. `textStyles` ajusta escala
+ou tamanho exato, peso, altura de linha, letras, transformação, itálico,
+alinhamento e cor por campo dentro de limites. Imagens compatíveis aceitam fit, foco e, em
 alguns blocos, `imagePresentation` para retirar moldura, manter proporção
 natural, ocupar o box e remover espaço superior.
 
@@ -370,17 +373,20 @@ Em modo de conversa, o runtime oferece somente `read_generator_manual`,
 mutadores, publicação, geração paga, captura visual ou registro de evidência.
 
 Em uma ação sobre site existente, a página em foco e seu snapshot entram no
-turno. `edit_page` reúne operações atômicas por página: substituir texto, gravar
-ou remover campo opcional, inserir, mover, retirar item, remover ou substituir
-bloco. A revisão do rascunho evita que duas abas sobrescrevam trabalho. O
+turno. `edit_page` reúne operações atômicas por página: substituir texto,
+gravar ou remover campo opcional, inserir, mover ou retirar um item, e inserir,
+mover, remover ou substituir um bloco. A revisão do rascunho evita que duas abas
+sobrescrevam trabalho. O
 executor valida schema, perda de conteúdo, escopo de remoção, piso de
 composição, contraste e pre-flight antes de gravar.
 
 Pedidos visuais nomeados ficam restritos à família ou ao bloco identificado.
 Nesse escopo, o agente pode mudar apresentação, estilos de texto, mídia e os
-controles visuais permitidos, mas não texto, tipo, ordem ou outra seção. Se uma
-ideia não cabe no schema atual, ele explica o limite e oferece uma alternativa
-existente; não apaga conteúdo para fingir que reposicionou algo.
+controles visuais permitidos, mas não texto, tipo, ordem ou outra seção. Quando
+não há um campo próprio, ele usa `presentation.elements` para executar a
+disposição pedida sem trocar o layout ou inventar uma alternativa. O schema
+recusa seletores e CSS livres, e a guarda não deixa apagar conteúdo para fingir
+que reposicionou algo.
 
 Apontar na prévia envia o ID do bloco e o texto visível pelo protocolo interno.
 O servidor confere o alvo contra as props. Um print anexado ajuda o modelo a

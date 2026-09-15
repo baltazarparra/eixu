@@ -199,14 +199,15 @@ navegação ficam suspensos, e o cabeçalho troca Publicar por Salvar/Cancelar.
 
 ## Texto por campo
 
-A prop comum `textStyles` aceita até 40 entradas únicas com `field`, `size`
-entre -2 e 2, `color` em hex de seis dígitos e/ou `align` em `left`, `center`,
-`right` ou `justify`. Não aceita CSS livre.
+A prop comum `textStyles` aceita até 40 entradas únicas com `field`, escala
+relativa ou `fontSize` de 10 a 160 px, `fontWeight`, `lineHeight`,
+`letterSpacing`, transformação, itálico, `color` em hex e `align` em
+`left`, `center`, `right` ou `justify`. Não aceita CSS livre.
 `lib/blocks/fields.ts` deriva o inventário do catálogo, incluindo limites e
 piso de leitura. Textos de controles, inclusive os títulos das abas do
 explorador, são editáveis sem estilo individual.
 
-`textAttrs` insere `.site-styled` apenas em campos com tamanho ou cor; alinhamento
+`textAttrs` insere `.site-styled` apenas em campos com tipografia ou cor; alinhamento
 fica no elemento sem criar uma caixa tipográfica concorrente. O span usa 80, 90,
 100, 115 ou 130% sobre a tipografia fluida existente. Cor explícita remove a
 opacidade decorativa do texto para preservar o contraste medido. `data-field` e
@@ -217,6 +218,13 @@ quando o operador escolheu um alinhamento.
 `presentation.contentAlign` posiciona o grupo, ações e listas em `start`, `center`
 ou `end`. Um `textStyles.align` mais específico prevalece sobre o alinhamento da
 seção. Esses controles não trocam layout, ordem de leitura ou posição da mídia.
+
+Todo bloco também aceita `presentation.elements` para ajustar sua composição
+interna. Os alvos são semânticos e fechados: seção, container, conteúdo, título,
+corpo, ações, lista, item indexado, mídia, imagem, formulário, ação e campo.
+Regras independentes para mobile e desktop controlam flex, grid, dimensões,
+espaçamento, ordem, posição e acabamento. O schema recebe somente enums, números
+limitados e cores validadas; o renderer produz CSS escopado ao bloco.
 
 `sectionBackgrounds` e `fieldBackgrounds` compartilham tokens com o renderer,
 incluindo tons, fundos locais, cartões, painéis, superfícies modernas e

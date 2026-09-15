@@ -487,13 +487,14 @@ Pedidos mistos com outros blocos seguem a edição geral, sem essa garantia de
 campos. O prompt instrui a relatar achados da crítica fora do pedido atual.
 
 O [fluxo de edição pós-geração](chat-edits.md) usa `edit_page`, com snapshot e
-schemas da página em foco já presentes no turno e os alvos compactos das outras
+schemas da página resolvida já presentes no turno e os alvos compactos das outras
 páginas quando a intenção é visual por família. Texto literal, caminhos de props
 e posições relativas formam um lote por página, validado antes da escrita. A
 comparação de `blocks` em JSONB recusa conflito entre abas; o recibo inclui
 mudanças, revisão, pre-flight e, para `presentation.*`/`textStyles.*`, medição
 renderizada em 1440 e 390 px. Essa medição reutiliza o Chromium, não captura
-pixels nem chama crítico; somente fundos e alinhamentos computados, contraste e problemas
+pixels nem chama crítico; somente fundos, tipografia, composição interna,
+alinhamentos computados, contraste e problemas
 voltam ao agente. `EIXU_REVIEW_CAPTURE=0` a desliga com indisponibilidade
 explícita. A edição geral não expõe os quatro mutadores antigos.
 
@@ -502,6 +503,12 @@ Alinhamento tem três caminhos semânticos no schema: campo
 grupo/controles (`presentation.contentAlign`). O prompt proíbe usar centro,
 inversão de foto ou troca de layout como substituto para direita. A página
 explicitamente nomeada vence o foco atual.
+
+Quando uma disposição não tem prop própria, `presentation.elements` oferece
+alvos internos e propriedades tipadas para flex, grid, dimensões, espaçamento,
+ordem e acabamento por viewport. `insert_item` e `move_item` alteram listas
+sem reenviá-las. O schema estrito não aceita seletor, CSS ou chave desconhecida;
+o renderer gera regras confinadas ao bloco correspondente.
 
 Nos consumidores legados, `update_block` combina parcialmente `presentation`, preservando seus campos
 omitidos, e valida o bloco completo com schema estrito antes de escrever.

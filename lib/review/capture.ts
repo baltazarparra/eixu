@@ -55,6 +55,8 @@ export type EditedBlockSurface = {
   textAlignments?: string[];
   contentAlignments?: string[];
   alignmentMismatches?: string[];
+  elementStyleMismatches?: string[];
+  textStyleMismatches?: string[];
 };
 
 export type VisualEditMeasurement = {
@@ -248,6 +250,96 @@ export async function measureEditedBlocks(
                   );
               }
             }
+            const elementStyleMismatches: string[] = [];
+            const rawElementStyles = root.dataset.elementStyleSpec;
+            if (rawElementStyles) {
+              try {
+                const entries = JSON.parse(rawElementStyles) as {
+                  target: string;
+                  index?: number;
+                  viewport: 'all' | 'mobile' | 'desktop';
+                  selectors: string[];
+                  declarations: { property: string; value: string }[];
+                  columns?: number;
+                }[];
+                for (const entry of entries.filter(
+                  (candidate) =>
+                    candidate.viewport === 'all' ||
+                    (candidate.viewport === 'mobile' && innerWidth <= 767) ||
+                    (candidate.viewport === 'desktop' && innerWidth >= 768),
+                )) {
+                  const nodes = entry.selectors.flatMap((selector) => [
+                    ...root.querySelectorAll<HTMLElement>(
+                      selector.startsWith('>')
+                        ? `:scope ${selector}`
+                        : selector,
+                    ),
+                  ]);
+                  if (!nodes.length) {
+                    elementStyleMismatches.push(
+                      `${entry.target}${entry.index === undefined ? '' : ` ${entry.index + 1}`} não encontrado`,
+                    );
+                    continue;
+                  }
+                  for (const node of nodes) {
+                    const computed = getComputedStyle(node);
+                    for (const expected of entry.declarations) {
+                      const actual = computed
+                        .getPropertyValue(expected.property)
+                        .trim();
+                      if (actual !== expected.value)
+                        elementStyleMismatches.push(
+                          `${entry.target} ${expected.property} esperado ${expected.value}, renderizado ${actual || 'vazio'}`,
+                        );
+                    }
+                    if (entry.columns !== undefined) {
+                      const actual = computed.gridTemplateColumns
+                        .split(/\s+/)
+                        .filter(Boolean).length;
+                      if (actual !== entry.columns)
+                        elementStyleMismatches.push(
+                          `${entry.target} esperado com ${entry.columns} coluna(s), renderizado com ${actual}`,
+                        );
+                    }
+                  }
+                }
+              } catch {
+                elementStyleMismatches.push(
+                  'especificação interna de elementos inválida',
+                );
+              }
+            }
+            const textStyleMismatches: string[] = [];
+            for (const node of root.querySelectorAll<HTMLElement>(
+              '.site-styled',
+            )) {
+              const computed = getComputedStyle(node);
+              const exact = [
+                ['fontSize', node.dataset.fontSize, 'px'],
+                ['fontWeight', node.dataset.fontWeight, ''],
+                ['letterSpacing', node.dataset.letterSpacing, 'px'],
+                ['textTransform', node.dataset.textTransform, ''],
+                ['fontStyle', node.dataset.fontStyle, ''],
+              ] as const;
+              for (const [property, expected, suffix] of exact) {
+                if (expected === undefined) continue;
+                const actual = computed[property];
+                if (actual !== `${expected}${suffix}`)
+                  textStyleMismatches.push(
+                    `${property} esperado ${expected}${suffix}, renderizado ${actual}`,
+                  );
+              }
+              if (node.dataset.lineHeight !== undefined) {
+                const expected =
+                  Number.parseFloat(computed.fontSize) *
+                  Number(node.dataset.lineHeight);
+                const actual = Number.parseFloat(computed.lineHeight);
+                if (Math.abs(actual - expected) > 0.6)
+                  textStyleMismatches.push(
+                    `lineHeight esperado ${expected.toFixed(1)}px, renderizado ${actual.toFixed(1)}px`,
+                  );
+              }
+            }
             return {
               blockId,
               found: true,
@@ -258,6 +350,8 @@ export async function measureEditedBlocks(
               textAlignments: [...textAlignments],
               contentAlignments: [...contentAlignments],
               alignmentMismatches: [...new Set(alignmentMismatches)],
+              elementStyleMismatches: [...new Set(elementStyleMismatches)],
+              textStyleMismatches: [...new Set(textStyleMismatches)],
             };
           });
         }, targets)) as EditedBlockSurface[];
@@ -283,6 +377,14 @@ export async function measureEditedBlocks(
           for (const mismatch of surface.alignmentMismatches ?? [])
             issues.push(
               `Alinhamento divergente em ${viewport.width} px no bloco ${surface.blockId}: ${mismatch}.`,
+            );
+          for (const mismatch of surface.elementStyleMismatches ?? [])
+            issues.push(
+              `Apresentação interna divergente em ${viewport.width} px no bloco ${surface.blockId}: ${mismatch}.`,
+            );
+          for (const mismatch of surface.textStyleMismatches ?? [])
+            issues.push(
+              `Tipografia divergente em ${viewport.width} px no bloco ${surface.blockId}: ${mismatch}.`,
             );
           for (const sample of samples.filter(
             (item) => item.measurable && item.ratio < 4.5,

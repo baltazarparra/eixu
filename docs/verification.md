@@ -81,6 +81,11 @@ fim, exceção de um único campo à esquerda, mídia preservada e ausência de
 overflow. `tests/admin-page-edit-chat.test.mjs` cobre o “desfaz” da home com
 outra página em foco, sem chamada de modelo.
 
+`tests/browser/site-element-styles.test.mjs` cobre a superfície interna
+declarativa. Ele prova todos os treze alvos semânticos em Hero, FAQ e formulário,
+grade e box específicos no desktop, retorno para uma coluna no mobile,
+tipografia exata, regras escopadas e ausência de overflow.
+
 `test:admin` também tem dois testes de captura que dependem de Chrome;
 `test:sites` também cobre captura de referência e renderização do Site atual. A revisão solicitada do produto usa
 1440 e 390 px. A matriz de navegação dos testes inclui 320, 390, 768, 1024 e

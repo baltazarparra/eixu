@@ -33,14 +33,42 @@ export const textStylesSchema = z
           .regex(/^#[0-9a-fA-F]{6}$/)
           .optional(),
         align: z.enum(['left', 'center', 'right', 'justify']).optional(),
+        fontSize: z.number().int().min(10).max(160).optional(),
+        fontWeight: z
+          .union([
+            z.literal(300),
+            z.literal(400),
+            z.literal(500),
+            z.literal(600),
+            z.literal(700),
+            z.literal(800),
+            z.literal(900),
+          ])
+          .optional(),
+        lineHeight: z.number().min(0.8).max(2.2).optional(),
+        letterSpacing: z.number().min(-4).max(16).optional(),
+        transform: z
+          .enum(['none', 'uppercase', 'lowercase', 'capitalize'])
+          .optional(),
+        fontStyle: z.enum(['normal', 'italic']).optional(),
       })
       .strict()
       .refine(
         (entry) =>
           entry.size !== undefined ||
           entry.color !== undefined ||
-          entry.align !== undefined,
-        'Informe tamanho, cor ou alinhamento.',
+          entry.align !== undefined ||
+          entry.fontSize !== undefined ||
+          entry.fontWeight !== undefined ||
+          entry.lineHeight !== undefined ||
+          entry.letterSpacing !== undefined ||
+          entry.transform !== undefined ||
+          entry.fontStyle !== undefined,
+        'Informe ao menos uma propriedade de texto.',
+      )
+      .refine(
+        (entry) => entry.size === undefined || entry.fontSize === undefined,
+        'Use size ou fontSize, não os dois.',
       ),
   )
   .max(40)

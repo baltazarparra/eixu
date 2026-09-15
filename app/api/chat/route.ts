@@ -21,7 +21,11 @@ import {
   savedProgressMessage,
 } from '@/lib/ai/chat-progress';
 import { workspaceState } from '@/lib/admin/state';
-import { editPolicyFor, editScopeText } from '@/lib/ai/edit-policy';
+import {
+  editPolicyFor,
+  editScopeText,
+  requestedEditingPage,
+} from '@/lib/ai/edit-policy';
 import { interactionModeFor } from '@/lib/ai/interaction';
 import {
   BLOCK_REMOVAL_CONFIRMATION,
@@ -179,9 +183,10 @@ export async function POST(request: Request) {
   const focusedPage = pages.find(
     (page) => page.slug === (body.page ?? '').replace(/^\/+|\/+$/g, ''),
   );
+  const editingPage = requestedEditingPage(lastUserText, pages, focusedPage);
   const clarification =
     !phase && !hasFile
-      ? literalEditClarification(lastUserText, focusedPage)
+      ? literalEditClarification(lastUserText, editingPage)
       : undefined;
   if (clarification) {
     await persistAssistant(clarification);
@@ -267,13 +272,13 @@ export async function POST(request: Request) {
           confirmedBlockRemoval,
         });
   const repairPublication = !phase && isPublicationRepairRequest(lastUserText);
-  const anchor = resolveAnchor(focusedPage, body.anchor);
+  const anchor = resolveAnchor(editingPage, body.anchor);
   context.editing = Boolean(editPolicy);
   context.conversationOnly = conversationOnly;
   context.editScope = editPolicy ? editScopeText(editPolicy) : undefined;
   context.anchor = editPolicy ? anchorContext(anchor) : undefined;
   if (editPolicy)
-    context.editPage = editingPageContext(focusedPage, pages, editPolicy);
+    context.editPage = editingPageContext(editingPage, pages, editPolicy);
   // Tudo que o operador escreveu nesta conversa; confirm_evidence só aceita
   // fatos que ele mesmo digitou, não os que o modelo deduziu da página.
   const operatorText = body.messages
@@ -327,7 +332,11 @@ export async function POST(request: Request) {
     instructions: systemPrompt(
       tenant,
       summary,
-      body.page ? `/${body.page}` : '/',
+      editPolicy && editingPage
+        ? `/${editingPage.slug}`
+        : body.page
+          ? `/${body.page}`
+          : '/',
       imagesText,
       context,
     ),

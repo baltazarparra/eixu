@@ -12,7 +12,9 @@ const j = createJiti(import.meta.url, {
 });
 const { applyPageEdit, editingPageContext, pageRevision, pageEditSchema } =
   await j.import('../lib/ai/page-edits.ts');
-const { editPolicyFor } = await j.import('../lib/ai/edit-policy.ts');
+const { editPolicyFor, requestedEditingPage } = await j.import(
+  '../lib/ai/edit-policy.ts',
+);
 const { createEditReceipt } = await j.import('../lib/ai/edit-receipt.ts');
 const { sectionBackgrounds, sectionColorVars } = await j.import(
   '../lib/blocks/section-colors.ts',
@@ -91,6 +93,218 @@ await test('alinhamento distingue campo, texto da seção e grupo sem mudar o la
   );
   assert.equal(quoted.visualOnly, true);
   assert.deepEqual(quoted.targets, [{ page: '', block: 'hero' }]);
+});
+
+await test('página e conteúdo nomeados vencem o foco em qualquer edição', () => {
+  const pages = editPages({ hero: 'bullets' });
+  assert.equal(
+    requestedEditingPage(
+      'Na página Início, troque o segundo box de posição.',
+      pages,
+      pages[1],
+    ).slug,
+    '',
+  );
+  assert.equal(
+    requestedEditingPage(
+      'Na página Materiais, altere o título.',
+      pages,
+      pages[0],
+    ).slug,
+    'materiais',
+  );
+  assert.equal(
+    requestedEditingPage(
+      'No bloco "Materiais para cada ambiente Considere o uso e as referências do projeto antes da escolha.", aumente o espaçamento.',
+      pages,
+      pages[1],
+    ).slug,
+    pages[1].slug,
+    'o conteúdo existe nas duas páginas e conserva o foco em vez de adivinhar',
+  );
+  pages[0].blocks[1].props.headline = 'Tradição familiar em Igaraçu do Tietê';
+  assert.equal(
+    requestedEditingPage(
+      'No bloco "Tradição familiar em Igaraçu do Tietê", mude a disposição.',
+      pages,
+      pages[1],
+    ).slug,
+    '',
+  );
+  assert.equal(
+    requestedEditingPage(
+      'No componente Banner Hero com o texto "Tradição familiar em Igaraçu do Tietê Considere o uso e as referências do projeto antes da escolha. Conferir opções Amostras enviadas em 48 horas Orientação por ambiente Acabamentos comparados lado a lado", alinhe à direita.',
+      pages,
+      pages[1],
+    ).slug,
+    '',
+    'a sequência visível completa também identifica o bloco fora do foco',
+  );
+  pages[1].blocks[2].props.title = 'Título novo';
+  pages[1].blocks[3].props.title = 'Outras dúvidas';
+  assert.equal(
+    requestedEditingPage(
+      'Troque "Dúvidas sobre materiais" por "Título novo".',
+      pages,
+      pages[1],
+    ).slug,
+    '',
+    'a primeira frase da troca identifica a origem; o texto novo não redireciona',
+  );
+});
+
+await test('apresentação interna e tipografia exata passam pelo schema sem CSS livre', () => {
+  const pages = editPages();
+  const request =
+    'No bloco "Dúvidas sobre materiais", deixe o segundo box à direita com menos espaço e sombra.';
+  const policy = editPolicyFor(request, pages, '');
+  assert.equal(policy.visualOnly, true);
+  assert.deepEqual(policy.targets, [{ page: '', block: 'faq' }]);
+  const result = applyPageEdit(
+    pages[0],
+    input(pages[0], [
+      {
+        op: 'set',
+        block: 'faq',
+        path: 'presentation.elements',
+        value: [
+          {
+            target: 'list',
+            viewport: 'desktop',
+            display: 'grid',
+            columns: 2,
+            gap: 20,
+          },
+          {
+            target: 'item',
+            index: 1,
+            viewport: 'desktop',
+            widthPercent: 70,
+            marginInline: 'end',
+            order: -1,
+            radius: 18,
+            shadow: 'soft',
+          },
+        ],
+      },
+      {
+        op: 'set',
+        block: 'faq',
+        path: 'textStyles',
+        value: [
+          {
+            field: 'title',
+            fontSize: 42,
+            fontWeight: 700,
+            lineHeight: 1.1,
+            letterSpacing: -1,
+            align: 'right',
+          },
+        ],
+      },
+    ]),
+    policy,
+    editTenant.brand,
+  );
+  assert.equal(
+    result.blocks[3].props.presentation.elements[1].widthPercent,
+    70,
+  );
+  assert.equal(result.blocks[3].props.textStyles[0].fontSize, 42);
+  assert.match(result.summary.join(' '), /apresentação interna ajustada/);
+
+  const invalid = structuredClone(result.blocks[3]);
+  invalid.props.presentation.elements = [
+    { target: 'heading', index: 1, gap: 10 },
+  ];
+  assert.throws(
+    () => blockSchemas['faq.accordion'].parse(invalid.props),
+    /index existe somente para target item/,
+  );
+
+  for (const unsafe of [
+    [{ target: 'item', selector: 'body{display:none}', gap: 10 }],
+    [
+      { target: 'item', index: 0, viewport: 'mobile', gap: 10 },
+      { target: 'item', index: 0, viewport: 'mobile', radius: 10 },
+    ],
+    [
+      {
+        target: 'item',
+        background: '#ffffff',
+        foreground: '#f8f8f8',
+      },
+    ],
+    [{ target: 'item', foreground: '#111111' }],
+  ]) {
+    const guarded = structuredClone(result.blocks[3]);
+    guarded.props.presentation.elements = unsafe;
+    assert.equal(
+      blockSchemas['faq.accordion'].safeParse(guarded.props).success,
+      false,
+    );
+  }
+});
+
+await test('itens podem ser inseridos e movidos sem reenviar nem perder a lista', () => {
+  const page = editPages()[0];
+  const original = structuredClone(page);
+  const operations = pageEditSchema.parse(
+    input(page, [
+      {
+        op: 'insert_item',
+        block: 'faq',
+        path: 'items',
+        index: 1,
+        value: {
+          q: 'Como receber uma amostra?',
+          a: 'Converse com a equipe para comparar as opções disponíveis.',
+        },
+      },
+      {
+        op: 'move_item',
+        block: 'faq',
+        path: 'items',
+        from: 2,
+        to: 0,
+      },
+    ]),
+  );
+  const inserted = applyPageEdit(
+    page,
+    operations,
+    { kind: 'edit' },
+    editTenant.brand,
+  );
+  assert.deepEqual(
+    inserted.blocks[3].props.items.map((item) => item.q),
+    [
+      original.blocks[3].props.items[1].q,
+      original.blocks[3].props.items[0].q,
+      'Como receber uma amostra?',
+    ],
+  );
+  assert.deepEqual(page.publishedBlocks, original.publishedBlocks);
+  assert.match(inserted.summary.join(' '), /item (inserido|reposicionado)/);
+
+  assert.throws(
+    () =>
+      applyPageEdit(
+        page,
+        input(page, [
+          {
+            op: 'insert_item',
+            block: 'faq',
+            path: 'items',
+            index: 9,
+            value: { q: 'Inválida', a: 'Não deve entrar.' },
+          },
+        ]),
+        { kind: 'edit' },
+        editTenant.brand,
+      ),
+    /Posição inexistente/,
+  );
 });
 
 await test('troca literal, campo de lista e cor em um lote preservam o restante e o publicado', async () => {

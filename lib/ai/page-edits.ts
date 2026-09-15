@@ -66,6 +66,26 @@ export const pageEditSchema = z.object({
           index: z.number().int().min(0),
         }),
         z.object({
+          op: z.literal('insert_item'),
+          block: selector,
+          path: path.describe('Caminho da lista, como items ou links.'),
+          index: z
+            .number()
+            .int()
+            .min(0)
+            .describe(
+              'Posição zero-based; pode ser igual ao tamanho da lista.',
+            ),
+          value: z.unknown().refine((value) => value !== undefined),
+        }),
+        z.object({
+          op: z.literal('move_item'),
+          block: selector,
+          path: path.describe('Caminho da lista, como items ou links.'),
+          from: z.number().int().min(0),
+          to: z.number().int().min(0),
+        }),
+        z.object({
           op: z.literal('replace_block'),
           block: selector,
           replacement: blockInput.describe(
@@ -283,6 +303,49 @@ function removeArrayItem(
       `Item inexistente em ${path}.${index}. Releia o bloco; índices começam em zero.`,
     );
   cursor.splice(index, 1);
+}
+
+function arrayAt(props: Record<string, unknown>, path: string): unknown[] {
+  const keys = segments(path);
+  let cursor: unknown = props;
+  for (const key of keys) {
+    if (!cursor || typeof cursor !== 'object' || !Object.hasOwn(cursor, key))
+      throw new PageEditError(`Lista inexistente em ${path}.`);
+    cursor = (cursor as Record<string, unknown>)[key];
+  }
+  if (!Array.isArray(cursor))
+    throw new PageEditError(`O caminho ${path} não aponta para uma lista.`);
+  return cursor;
+}
+
+function insertArrayItem(
+  props: Record<string, unknown>,
+  path: string,
+  index: number,
+  value: unknown,
+) {
+  const list = arrayAt(props, path);
+  if (index > list.length)
+    throw new PageEditError(
+      `Posição inexistente em ${path}.${index}; a lista tem ${list.length} item(ns).`,
+    );
+  list.splice(index, 0, JSON.parse(JSON.stringify(value)));
+}
+
+function moveArrayItem(
+  props: Record<string, unknown>,
+  path: string,
+  from: number,
+  to: number,
+) {
+  const list = arrayAt(props, path);
+  if (from >= list.length || to >= list.length)
+    throw new PageEditError(
+      `Item inexistente em ${path}; a lista tem ${list.length} item(ns).`,
+    );
+  if (from === to) return;
+  const [item] = list.splice(from, 1);
+  list.splice(to, 0, item);
 }
 
 // Substituição textual não toca URLs, âncoras, cores, tipos ou configuração.
@@ -569,6 +632,8 @@ const VISUAL_SUMMARIES: Record<string, Record<string, string>> = {
 const OPERATION_SUMMARIES: Record<string, string> = {
   replace_text: 'texto atualizado',
   remove_item: 'item removido',
+  insert_item: 'item inserido',
+  move_item: 'item reposicionado',
   remove: 'seção removida',
   // "bloco inserido" logo depois de uma remoção era lido como reversão, e o
   // bloco novo tinha ID e conteúdo diferentes do que havia sido apagado.
@@ -602,6 +667,25 @@ function visualChangeSummary(
   brand: Brand,
 ): string | undefined {
   if (!block) return undefined;
+  if (property === 'presentation.elements' && Array.isArray(value)) {
+    const labels = value
+      .filter(
+        (
+          entry,
+        ): entry is { target: string; index?: number; viewport?: string } =>
+          Boolean(
+            entry &&
+            typeof entry === 'object' &&
+            typeof (entry as { target?: unknown }).target === 'string',
+          ),
+      )
+      .map(
+        (entry) =>
+          `${entry.target}${entry.index === undefined ? '' : ` ${entry.index + 1}`}${entry.viewport && entry.viewport !== 'all' ? ` em ${entry.viewport}` : ''}`,
+      );
+    if (labels.length)
+      return `apresentação interna ajustada em ${labels.join(', ')}`;
+  }
   if (property === 'textStyles' && Array.isArray(value)) {
     const aligned = value.filter(
       (entry): entry is { field: string; align: string } =>
@@ -803,6 +887,30 @@ export function applyPageEdit(
         op: operation.op,
         blockId: block.id,
         path: `${operation.path}.${operation.index}`,
+      });
+    } else if (operation.op === 'insert_item') {
+      insertArrayItem(
+        block.props,
+        operation.path,
+        operation.index,
+        operation.value,
+      );
+      touched.add(block.id);
+      changes.push({
+        op: operation.op,
+        blockId: block.id,
+        path: `${operation.path}.${operation.index}`,
+        to: operation.index,
+      });
+    } else if (operation.op === 'move_item') {
+      moveArrayItem(block.props, operation.path, operation.from, operation.to);
+      touched.add(block.id);
+      changes.push({
+        op: operation.op,
+        blockId: block.id,
+        path: operation.path,
+        from: operation.from,
+        to: operation.to,
       });
     } else {
       writePath(
