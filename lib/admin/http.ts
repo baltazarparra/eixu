@@ -3,6 +3,9 @@ export class AdminHttpError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly code?: string,
+    readonly fields?: Record<string, string>,
+    readonly currentRevision?: number,
   ) {
     super(message);
   }
@@ -20,12 +23,20 @@ export async function adminFetch<T>(
       401,
     );
   const body = (await response.json().catch(() => null)) as
-    | (T & { error?: string })
+    | (T & {
+        error?: string;
+        code?: string;
+        fields?: Record<string, string>;
+        currentRevision?: number;
+      })
     | null;
   if (!response.ok)
     throw new AdminHttpError(
       body?.error || 'Não foi possível concluir. Tente novamente.',
       response.status,
+      body?.code,
+      body?.fields,
+      body?.currentRevision,
     );
   if (body === null)
     throw new Error(

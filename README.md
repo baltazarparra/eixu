@@ -12,6 +12,7 @@ O modelo interno é **Gemini 3.8 Flash**, com raciocínio `high`. O harness prio
 
 - Institucional com home, oferta de passagem de vibe coding para produção e cases de SaldoPix e NaiaCRM.
 - Painel com login de operador, busca e filtros de clientes, cadastro compacto com cinco direções visuais comparáveis, geração em Preparar/Criar, chat com histórico recente, prévia em desktop/mobile, dados e briefing editáveis e publicação.
+- Kanban interno global em `/admin/app/kanban`: colunas e cartões editáveis, ordem persistida e movimentação por arrasto ou por ações acessíveis no menu. Usa a sessão do operador; não cria contas ou permissões individuais.
 - Páginas orgânicas, landing pages pagas, posts e páginas de agradecimento compostas por blocos com schemas Zod. O agente edita conteúdo por ferramentas; o painel também permite ajustar dados do cliente e gerenciar imagens.
 - Edição direta e pelo chat: texto, tamanho e cor por campo, fundo/degradê local e decoração da vibe, com contraste validado e medição renderizada após ajustes visuais. Salvar altera o rascunho; Publicar leva as mudanças ao site no ar.
 - Imagens geradas na conversa ou enviadas pelo painel, disponíveis no mesmo acervo sem aprovação. O upload aceita várias fotos JPG, PNG, WebP ou AVIF de até 4 MB cada; a geração usa o guia do cliente e a crítica. A biblioteca em `/admin/[tenant]/imagens` mantém números para pedir alterações, como “atualize a imagem #5 com outro carro”. A nova versão substitui a anterior nos rascunhos e ambas ficam salvas.
@@ -73,6 +74,7 @@ Na Vercel, as etapas da geração são entregues pela fila `eixu-generation-step
 | --------------------- | -------------------------------------------------------------------------------------------- |
 | Institucional         | `app/(main)/`, `components/eixu.tsx`, `lib/site.ts`                                          |
 | Painel e autenticação | `app/(admin)/`, `lib/auth.ts`, `app/api/admin/`                                              |
+| Kanban interno        | `app/(admin)/admin/app/kanban/`, `app/api/admin/kanban/`, `lib/kanban/`                      |
 | Sites por tenant      | `proxy.ts`, `app/(sites)/`, `lib/tenant-queries.ts`                                          |
 | Blocos e qualidade    | `lib/blocks/`, `lib/taste/`                                                                  |
 | Agentes do produto    | `app/api/chat/`, `lib/ai/`, `lib/images/`                                                    |

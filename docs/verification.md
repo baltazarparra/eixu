@@ -15,6 +15,7 @@ nova execução. Os scripts e dependências vêm de [package.json](../package.js
 | Formulário ou tracking             | Em ambiente de teste autorizado, envio, atribuição, consentimento, gravação e destino; duplicação de clique.                      |
 | Imagens ou ferramentas             | Falha parcial, disponibilidade, alteração por número, isolamento, aplicação de logo e recusa de exclusão em uso.                  |
 | Schema                             | Aplicação e reaplicação em PostgreSQL descartável, com verificação dos consumidores.                                              |
+| Kanban interno                     | Sessão, host de cliente, origem, migração atômica, ordem, duas abas, texto não salvo, teclado e toque.                            |
 | Modelo ou prompt                   | Contratos e [avaliação reproduzível](harness.md#avaliação-reproduzível), com chamadas reais autorizadas e limitações registradas. |
 
 O lint de código e o pre-flight `lintPage` são verificações diferentes.
@@ -67,6 +68,13 @@ simulados. Cobrem o editor, geração, conversa, atualização da prévia, naveg
 contraste, referências, teclado e movimento reduzido. Elas não comprovam latência
 do modelo, persistência no Neon ou comportamento em aparelhos físicos/Safari.
 Sem Chrome, os casos dependentes são pulados; informe isso no resultado.
+
+O Kanban tem um teste SQL com o driver Neon ligado apenas ao banco local
+descartável `eixu_pr2_test`. Execute com
+`EIXU_TEST_POSTGRES_URL=postgresql://127.0.0.1/eixu_pr2_test node --test tests/admin-kanban.test.mjs`.
+O teste de navegador `tests/browser/admin-kanban.test.mjs` usa o componente real
+e o CSS fonte compilado pelo Vite em uma fixture isolada; o build Next.js valida
+separadamente a compilação do CSS de produção.
 
 `tests/browser/site-operator-colors.test.mjs` é a regressão específica de
 edição visual. Em 1440 e 390 px, percorre cinco vibes, versões `2`, `4` e

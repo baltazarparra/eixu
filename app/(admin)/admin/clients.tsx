@@ -127,6 +127,9 @@ export function Clients({
           <p>Seus sites, os contatos que chegaram e o trabalho em andamento.</p>
         </div>
         <div className="admin-page-actions">
+          <Link className="admin-secondary" href="/admin/app/kanban">
+            Kanban
+          </Link>
           {newClient}
           {session?.logout}
         </div>

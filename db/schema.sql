@@ -246,3 +246,46 @@ create table if not exists page_revisions (
 
 create index if not exists page_revisions_page_time_idx
   on page_revisions (page_id, created_at desc);
+
+-- Quadro interno da operação. Não pertence a um tenant nem ao site publicado.
+create table if not exists kanban_boards (
+  id         uuid primary key default gen_random_uuid(),
+  key        text not null unique,
+  title      text not null,
+  revision   bigint not null default 0 check (revision >= 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists kanban_columns (
+  id         uuid primary key,
+  board_id   uuid not null references kanban_boards(id) on delete restrict,
+  title      text not null check (char_length(btrim(title)) between 1 and 40),
+  position   integer not null check (position >= 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (board_id, position) deferrable initially deferred
+);
+
+create table if not exists kanban_cards (
+  id          uuid primary key,
+  column_id   uuid not null references kanban_columns(id) on delete restrict,
+  title       text not null check (char_length(btrim(title)) between 1 and 160),
+  description text not null default '' check (char_length(description) <= 5000),
+  position    integer not null check (position >= 0),
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  unique (column_id, position) deferrable initially deferred
+);
+
+-- Um statement para a primeira criação: migrate.mjs executa statements isolados.
+-- Reaplicar o schema não restaura colunas que já foram alteradas ou excluídas.
+with inserted_board as (
+  insert into kanban_boards (key, title) values ('operations', 'Kanban')
+  on conflict (key) do nothing returning id
+), defaults(title, position) as (
+  values ('A fazer', 0), ('Em andamento', 1), ('Concluído', 2)
+)
+insert into kanban_columns (id, board_id, title, position)
+select gen_random_uuid(), inserted_board.id, defaults.title, defaults.position
+from inserted_board cross join defaults;
