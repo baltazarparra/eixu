@@ -162,8 +162,8 @@ borda anterior sem qualquer migração.
 ## Registro da execução
 
 - Branch: `codex/chat-manual-soul`, criada a partir da `origin/main` em
-  `85af97b`. O SHA da entrega e a PR são registrados depois do primeiro push,
-  pois ainda não existem antes de este documento entrar no Git.
+  `85af97b`; implementação principal no commit `3f94ca3`; entrega aberta na
+  [PR #66](https://github.com/baltazarparra/eixu/pull/66).
 - `npx next typegen && npx tsc --noEmit`: passou.
 - `npm run lint`: passou.
 - `npx oxfmt --check` nos 24 arquivos desta entrega: passou. O check global
