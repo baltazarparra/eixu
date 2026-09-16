@@ -88,25 +88,14 @@ export async function getTenantBySlug(slug: string): Promise<Tenant | null> {
 }
 
 export async function listTenants(): Promise<
-  (Tenant & {
-    folderId: string | null;
-    pageCount: number;
-    leadCount: number;
-    updatedAt: string;
-  })[]
+  (Tenant & { folderId: string | null; updatedAt: string })[]
 > {
   const rows = (await db()`
-    select t.*,
-      (select count(*) from pages p where p.tenant_id = t.id) as page_count,
-      (select count(*) from leads l where l.tenant_id = t.id) as lead_count
-    from tenants t
-    order by t.created_at desc
+    select * from tenants order by created_at desc
   `) as Row[];
   return rows.map((row) => ({
     ...toTenant(row),
     folderId: row.folder_id ? str(row.folder_id) : null,
-    pageCount: Number(row.page_count ?? 0),
-    leadCount: Number(row.lead_count ?? 0),
     updatedAt: str(row.updated_at),
   }));
 }

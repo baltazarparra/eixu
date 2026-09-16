@@ -19,7 +19,12 @@ const content = isClients ? (
     <Clients
       tenants={data.empty ? [] : data.clients}
       folders={data.empty ? [] : data.folders}
-      summary={data.empty ? { leads30d: 0, running: 0 } : data.summary}
+      summary={data.empty ? { running: 0, current: null } : data.summary}
+      usage={
+        data.empty
+          ? { days: 30, costUsd: null, totalTokens: null, rows: [] }
+          : data.sitesUsage
+      }
     />
   </main>
 ) : area === 'dados' ? (

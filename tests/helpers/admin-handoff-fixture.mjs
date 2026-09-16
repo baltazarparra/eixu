@@ -36,6 +36,14 @@ export function handoffData() {
     pageCount,
     leadCount,
     updatedAt: '2026-09-11T12:00:00Z',
+    lastAction: {
+      action: index % 2 ? 'agent.edit_page' : 'agent.publish_site',
+      actorType: 'agent',
+      actorName: 'Operação',
+      summary: 'Agente executou a ferramenta, a pedido de Operação',
+      // Datas decrescentes: a lista chega ordenada pela última ação.
+      at: `2026-09-1${5 - index}T12:00:00Z`,
+    },
   }));
   const tenant = {
     ...clients[0],
@@ -52,7 +60,28 @@ export function handoffData() {
     clients,
     folders,
     tenant,
-    summary: { leads30d: 147, running: 1 },
+    summary: { running: 1, current: { stage: 'Criar', site: 'Studio Corda' } },
+    sitesUsage: {
+      days: 30,
+      costUsd: 96.3412,
+      totalTokens: 4100000,
+      rows: [
+        {
+          tenantId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          slug: 'marcenaria-horizonte',
+          name: 'Marcenaria Horizonte',
+          costUsd: 14.8102,
+          totalTokens: 900000,
+        },
+        {
+          tenantId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+          slug: 'clinica-vertice',
+          name: 'Clínica Vértice',
+          costUsd: 11.264,
+          totalTokens: 700000,
+        },
+      ],
+    },
     intake: {
       story:
         'A Marcenaria Horizonte nasceu em Campinas e há 12 anos cria móveis planejados sob medida para arquitetos e moradores da região. A oficina própria acompanha cada projeto e o site deve facilitar pedidos de orçamento.',
