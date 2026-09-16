@@ -143,6 +143,10 @@ await test('pedido de remoção da assinatura é distinto do rodapé do cliente'
     'Remova a assinatura EIXU do site.',
     'Tire a faixa Desenvolvido e hospedado por eixu.com.br.',
     'Apague o link da eixu.com.br no rodapé.',
+    'Remova o texto eixu.com.br.',
+    'Remova a frase “Desenvolvido e hospedado por eixu.com.br”.',
+    'Mantenha a FAQ e remova a assinatura EIXU.',
+    'Não remova a FAQ; tire a assinatura EIXU.',
   ])
     assert.equal(attributionRemovalRequested(request), true, request);
   for (const request of [
@@ -150,6 +154,12 @@ await test('pedido de remoção da assinatura é distinto do rodapé do cliente'
     'Não remova a assinatura da EIXU.',
     'Troque a cor da assinatura da EIXU.',
     'Remova EIXU do texto da proposta.',
+    'Remova a FAQ. Mantenha a assinatura da EIXU.',
+    'Remova o rodapé do cliente, preservando a assinatura da EIXU.',
+    'Remova a FAQ e mantenha a assinatura da EIXU.',
+    'Mantenha a assinatura da EIXU e remova a FAQ.',
+    'Remova a FAQ sem remover a assinatura da EIXU.',
+    'Remova a FAQ e não remova a assinatura da EIXU.',
   ])
     assert.equal(attributionRemovalRequested(request), false, request);
 });
