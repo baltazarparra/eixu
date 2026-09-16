@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { readFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { tmpdir } from 'node:os';
@@ -218,6 +218,38 @@ await test('exportador materializa um workspace isolado sem conteúdo de rascunh
     assert.match(sitemap, /publishedAt/);
     assert.match(nextConfig, /favicon\.ico/);
     assert.match(nextConfig, /png32/);
+
+    await Promise.all([
+      mkdir(join(project, '.next'), { recursive: true }),
+      mkdir(join(project, 'node_modules/example'), { recursive: true }),
+    ]);
+    await Promise.all([
+      writeFile(
+        join(project, '.next/cache.json'),
+        'https://assets.test/nao-incluir-next.webp',
+      ),
+      writeFile(
+        join(project, 'node_modules/example/package.json'),
+        'https://assets.test/nao-incluir-dependencia.webp',
+      ),
+    ]);
+    const release = await execFileAsync(
+      process.execPath,
+      [
+        join(process.cwd(), 'scripts/premium/release-manifest.mjs'),
+        '--project',
+        'apps/premium/projeto-premium',
+      ],
+      { cwd: root },
+    );
+    const releaseManifest = JSON.parse(release.stdout);
+    assert.equal(releaseManifest.project.projectKey, 'projeto-premium');
+    assert.ok(releaseManifest.assets.includes('https://assets.test/foto.webp'));
+    assert.ok(releaseManifest.assets.includes('https://assets.test/logo.svg'));
+    assert.equal(
+      releaseManifest.assets.some((url) => url.includes('nao-incluir')),
+      false,
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }

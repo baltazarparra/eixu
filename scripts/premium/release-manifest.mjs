@@ -1,5 +1,30 @@
-import { globSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { extname, join, resolve } from 'node:path';
+
+const INCLUDED_EXTENSIONS = new Set(['.css', '.json', '.md', '.ts', '.tsx']);
+const IGNORED_DIRECTORIES = new Set([
+  '.git',
+  '.next',
+  '.vercel',
+  'node_modules',
+]);
+
+function sourceFiles(root) {
+  const files = [];
+  const visit = (directory) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        if (!IGNORED_DIRECTORIES.has(entry.name))
+          visit(join(directory, entry.name));
+        continue;
+      }
+      if (entry.isFile() && INCLUDED_EXTENSIONS.has(extname(entry.name)))
+        files.push(join(directory, entry.name));
+    }
+  };
+  visit(root);
+  return files.sort((left, right) => left.localeCompare(right));
+}
 
 const index = process.argv.indexOf('--project');
 const directory = index >= 0 ? process.argv[index + 1] : '';
@@ -9,11 +34,7 @@ const project = JSON.parse(
   readFileSync(resolve(directory, 'eixu.project.json'), 'utf8'),
 );
 const assets = new Set();
-for (const file of globSync(`${directory}/**/*.{css,json,md,ts,tsx}`, {
-  exclude: (entry) =>
-    entry.fullpath().includes('/.next/') ||
-    entry.fullpath().includes('/node_modules/'),
-})) {
+for (const file of sourceFiles(resolve(directory))) {
   const source = readFileSync(file, 'utf8');
   for (const match of source.matchAll(/https:\/\/[^\s"'<>)}\]]+/g))
     assets.add(match[0].replace(/[.,;:]$/, ''));
