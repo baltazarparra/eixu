@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "tenantId": "8fb123b4-344e-47f3-b6de-d9b6322c86bc",
+  "projectKey": "raizencard",
+  "canonicalHost": "raizencard.eixu.com.br",
+  "conversionId": "ee03f9ac-79da-49eb-bf63-aee2598ea580",
+  "sourceHash": "6acde5765f4f9bab1e692afc0dc1f32e7c3b198fc6e1ad3e2864aa8e7f0d9f3d",
+  "sourceCommit": "e6582f4c74fd0d4182b0172d5dcfc52ab8ba8759",
+  "converterVersion": "1",
+  "platformUrl": "https://eixu.com.br",
+  "assets": [
+    "https://nubank.com.br/croma/cartao-platinum",
+    "https://wa.me/5511998882277",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizencard/gerado/0560077e-35ee-4a2b-9891-b7f29866066d/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizencard/gerado/6845bf36-4184-4b6f-8615-92e79f6c4ffa/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizencard/gerado/733efb50-9137-4400-a32b-fe8c342a19d7/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizencard/gerado/7c0f4794-630f-497f-8f2c-50c522458842/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizencard/gerado/af343b21-c636-49b2-95e6-d720902a5b95/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizencard/logo/1789359930166-logo-green.svg"
+  ]
+}

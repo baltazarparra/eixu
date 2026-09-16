@@ -1,0 +1,327 @@
+/** Mínimo do WCAG AA para texto normal. */
+export const AA_NORMAL = 4.5;
+
+function channel(value: number): number {
+  const srgb = value / 255;
+  return srgb <= 0.04045 ? srgb / 12.92 : ((srgb + 0.055) / 1.055) ** 2.4;
+}
+
+/** Luminância relativa de um pixel sRGB de 0 a 255, a fórmula do WCAG. */
+export function luminanceOf(r: number, g: number, b: number): number {
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+}
+
+export function relativeLuminance(hex: string): number {
+  const value = hex.replace('#', '');
+  if (value.length !== 6) return 0;
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(value.slice(i, i + 2), 16));
+  return luminanceOf(r, g, b);
+}
+
+/**
+ * Superfície escura para efeito de logo: abaixo disso um logo de placa branca
+ * vira um retângulo e uma tinta escura some. Metade da escala de luminância
+ * separa os papéis quase pretos das vibes escuras dos papéis claros.
+ */
+export const DARK_SURFACE = 0.4;
+
+export function isDarkSurface(hex: string): boolean {
+  return relativeLuminance(hex) < DARK_SURFACE;
+}
+
+export function contrastRatio(a: string, b: string): number {
+  const first = relativeLuminance(a);
+  const second = relativeLuminance(b);
+  const light = Math.max(first, second);
+  const dark = Math.min(first, second);
+  return (light + 0.05) / (dark + 0.05);
+}
+
+const NEAR_BLACK = '#14161a';
+const NEAR_WHITE = '#ffffff';
+
+/**
+ * Escolhe a cor do texto sobre um fundo pelo contraste medido, não por um
+ * limiar de luminância. Um laranja médio como #c45c26 dá 4,28 com branco e
+ * 4,90 com preto: o chute pela luminância erra, a razão de contraste acerta.
+ */
+export function bestInk(background: string): {
+  ink: string;
+  ratio: number;
+  passesAA: boolean;
+} {
+  const onWhite = contrastRatio(background, NEAR_WHITE);
+  const onBlack = contrastRatio(background, NEAR_BLACK);
+  const ink = onBlack >= onWhite ? NEAR_BLACK : NEAR_WHITE;
+  const ratio = Math.max(onBlack, onWhite);
+  return { ink, ratio, passesAA: ratio >= AA_NORMAL };
+}
+
+/** Uma única tinta que precisa permanecer legível em todas as superfícies. */
+export function bestInkFor(backgrounds: string[]): {
+  ink: string;
+  ratio: number;
+  passesAA: boolean;
+} {
+  const candidates = [NEAR_BLACK, NEAR_WHITE, '#000000'];
+  const ranked = candidates.map((ink) => ({
+    ink,
+    ratio: Math.min(
+      ...backgrounds.map((background) => contrastRatio(ink, background)),
+    ),
+  }));
+  const best = ranked.sort((a, b) => b.ratio - a.ratio)[0] ?? {
+    ink: NEAR_BLACK,
+    ratio: 1,
+  };
+  return { ...best, passesAA: best.ratio >= AA_NORMAL };
+}
+
+export type GradientContrast = {
+  ink: string;
+  ratio: number;
+  passesAA: boolean;
+  suggestedEnd?: string;
+};
+
+/**
+ * Valida as duas extremidades do degradê. Quando elas não compartilham uma
+ * tinta AA, aproxima somente o segundo ponto do primeiro e devolve a alteração
+ * mínima em passos de 4%, no mesmo espírito de accessibleAccent.
+ */
+export function gradientContrast(
+  background: string,
+  backgroundEnd: string,
+  foreground?: string,
+): GradientContrast {
+  const startInk = foreground
+    ? {
+        ink: foreground,
+        ratio: contrastRatio(foreground, background),
+        passesAA: contrastRatio(foreground, background) >= AA_NORMAL,
+      }
+    : bestInkFor([background]);
+  const direct = foreground
+    ? {
+        ink: foreground,
+        ratio: Math.min(
+          contrastRatio(foreground, background),
+          contrastRatio(foreground, backgroundEnd),
+        ),
+      }
+    : bestInkFor([background, backgroundEnd]);
+  if (direct.ratio >= AA_NORMAL) return { ...direct, passesAA: true };
+  if (!startInk.passesAA) return { ...direct, passesAA: false };
+
+  for (let step = 1; step <= 25; step += 1) {
+    const candidate = mix(backgroundEnd, background, step / 25);
+    const ratio = Math.min(
+      contrastRatio(startInk.ink, background),
+      contrastRatio(startInk.ink, candidate),
+    );
+    if (ratio >= AA_NORMAL)
+      return {
+        ink: startInk.ink,
+        ratio: direct.ratio,
+        passesAA: false,
+        suggestedEnd: candidate,
+      };
+  }
+  return {
+    ink: startInk.ink,
+    ratio: direct.ratio,
+    passesAA: false,
+    suggestedEnd: background,
+  };
+}
+
+function toRgb(hex: string): [number, number, number] {
+  const value = hex.replace('#', '');
+  return [0, 2, 4].map((i) => parseInt(value.slice(i, i + 2), 16)) as [
+    number,
+    number,
+    number,
+  ];
+}
+
+function toHex(rgb: [number, number, number]): string {
+  return `#${rgb
+    .map((c) =>
+      Math.round(Math.min(255, Math.max(0, c)))
+        .toString(16)
+        .padStart(2, '0'),
+    )
+    .join('')}`;
+}
+
+/** Mistura sRGB entre duas cores, para tokens que precisam de hex resolvido. */
+export function mixHex(hex: string, target: string, amount: number): string {
+  return mix(hex, target, amount);
+}
+
+/**
+ * Mesma interpolação de color-mix(in oklab), resolvida em sRGB para medir o
+ * fundo sem mudar o CSS legado. Matrizes de Björn Ottosson (domínio público):
+ * https://bottosson.github.io/posts/oklab/#converting-from-linear-srgb-to-oklab
+ */
+export function mixOklabHex(
+  hex: string,
+  target: string,
+  amount: number,
+): string {
+  const cones = (color: string) => {
+    const [r, g, b] = toRgb(color).map(channel);
+    return [
+      Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b),
+      Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b),
+      Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b),
+    ];
+  };
+  const from = cones(hex);
+  const to = cones(target);
+  // A transformação seguinte para Lab é linear: pode-se interpolar antes
+  // dela e cancelar a matriz com sua inversa na volta para RGB.
+  const [l, m, s] = from.map(
+    (value, i) => (value + (to[i] - value) * amount) ** 3,
+  );
+  const linear = [
+    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+  ];
+  return toHex(
+    linear.map(
+      (value) =>
+        255 *
+        (value <= 0.0031308
+          ? 12.92 * value
+          : 1.055 * value ** (1 / 2.4) - 0.055),
+    ) as [number, number, number],
+  );
+}
+
+/**
+ * Claridade OKLCH (o L de OKLab, a mesma escala) de um hex. Serve para medir o
+ * piso de claridade de um brilho: contraste sozinho não distingue um creme de
+ * um bordô, e os dois passam com a mesma tinta.
+ */
+export function oklchLightness(hex: string): number {
+  const [r, g, b] = toRgb(hex).map(channel);
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+}
+
+/** Piso de claridade do brilho sobre papel claro e teto sobre papel escuro. */
+export const GLOW_LIGHT_FLOOR = 0.86;
+export const GLOW_DARK_CEILING = 0.3;
+/** O brilho é fundo de texto corrido: AA não basta, o piso é AAA. */
+export const GLOW_CONTRAST = 7;
+
+/**
+ * Parada mais forte de um brilho de fundo: a maior presença da cor de marca
+ * sobre o papel que ainda sustenta texto.
+ *
+ * Degradê de fundo é luz sobre papel, não transição entre duas cores. A cor
+ * entra misturada ao papel da própria seção — nunca em direção à tinta, que
+ * tira croma e suja a cor — e o CSS a dissolve em `transparent` antes de
+ * chegar ao texto. Sem mistura legível, devolve o papel e o fundo fica plano,
+ * como já acontecia com a lavagem.
+ */
+export function glowOf(paper: string, color: string, ink: string): string {
+  const dark = isDarkSurface(paper);
+  for (let amount = 0.6; amount >= 0.0999; amount -= 0.05) {
+    const candidate = mixOklabHex(paper, color, amount);
+    const lightness = oklchLightness(candidate);
+    const withinRange = dark
+      ? lightness <= GLOW_DARK_CEILING
+      : lightness >= GLOW_LIGHT_FLOOR;
+    if (withinRange && contrastRatio(candidate, ink) >= GLOW_CONTRAST)
+      return candidate;
+  }
+  return paper;
+}
+
+/** Preserva o destaque quando legível e o aproxima de preto/branco até AA. */
+export function readableHighlight(
+  highlight: string,
+  background: string,
+): string {
+  if (contrastRatio(highlight, background) >= AA_NORMAL) return highlight;
+  const target =
+    contrastRatio('#000000', background) >= contrastRatio('#ffffff', background)
+      ? '#000000'
+      : '#ffffff';
+  for (let step = 1; step <= 25; step += 1) {
+    const candidate = mix(highlight, target, step / 25);
+    if (contrastRatio(candidate, background) >= AA_NORMAL) return candidate;
+  }
+  return target;
+}
+
+function mix(hex: string, target: string, amount: number): string {
+  const from = toRgb(hex);
+  const to = toRgb(target);
+  return toHex(
+    [0, 1, 2].map((i) => from[i] + (to[i] - from[i]) * amount) as [
+      number,
+      number,
+      number,
+    ],
+  );
+}
+
+/**
+ * Cor de texto secundário: começa na mistura desejada com o fundo e volta em
+ * direção à tinta até alcançar o contraste mínimo.
+ *
+ * O texto de apoio é a maior parte do corpo da página. Uma mistura fixa passa
+ * com uma marca e reprova com a seguinte, então a proporção precisa sair de
+ * medição, não de um número escolhido a olho.
+ */
+export function readableMuted(
+  ink: string,
+  paper: string,
+  start = 0.62,
+): string {
+  for (let amount = start; amount <= 1.0001; amount += 0.04) {
+    const candidate = mix(paper, ink, Math.min(amount, 1));
+    if (contrastRatio(candidate, paper) >= AA_NORMAL) return candidate;
+  }
+  return ink;
+}
+
+/**
+ * Devolve a cor de fundo mais próxima da escolhida que passe no AA com alguma
+ * cor de texto legível, escurecendo em passos pequenos.
+ *
+ * Existe porque um laranja de marca comum, #c45c26, fica em 4,28 com branco e
+ * 4,31 com quase preto: reprova com as duas. Manter a cor crua faria o botão
+ * principal do cliente reprovar em acessibilidade e sumir no sol do celular.
+ * Escurecer alguns por cento preserva a matiz e resolve.
+ */
+export function accessibleAccent(accent: string): {
+  accent: string;
+  ink: string;
+  ratio: number;
+  adjusted: boolean;
+} {
+  const direct = bestInk(accent);
+  if (direct.passesAA)
+    return { accent, ink: direct.ink, ratio: direct.ratio, adjusted: false };
+
+  for (let step = 1; step <= 14; step += 1) {
+    const candidate = mix(accent, '#000000', step * 0.04);
+    const result = bestInk(candidate);
+    if (result.passesAA)
+      return {
+        accent: candidate,
+        ink: result.ink,
+        ratio: result.ratio,
+        adjusted: true,
+      };
+  }
+  // Nada passou: devolve o melhor par possível, e o painel avisa.
+  return { accent, ink: direct.ink, ratio: direct.ratio, adjusted: false };
+}

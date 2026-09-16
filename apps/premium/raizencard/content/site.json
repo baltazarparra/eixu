@@ -1,0 +1,667 @@
+{
+  "pages": [
+    {
+      "id": "43124aa8-ef80-404e-96ec-7385ad7d6f3b",
+      "seo": {
+        "title": "Raizen Card Platinum | Cashback no Crédito e Vantagens Reais",
+        "noindex": false,
+        "description": "Solicite o Raizen Card Platinum: 0,8% de cashback no crédito, 5% em assinaturas digitais, cartão adicional gratuito e proteção contra fraudes."
+      },
+      "meta": {
+        "inbound": {
+          "stage": "conversion",
+          "intent": "Apresentar as vantagens do Raizen Card Platinum e converter visitantes em solicitantes do cartão"
+        }
+      },
+      "slug": "",
+      "type": "page",
+      "title": "Raizen Card | Cartão Platinum com Cashback Imediato",
+      "blocks": [
+        {
+          "id": "poi0evwg",
+          "type": "nav.bar",
+          "props": {
+            "cta": {
+              "href": "#contato",
+              "label": "Pedir cartão"
+            },
+            "links": [
+              {
+                "href": "#vantagens",
+                "label": "Vantagens"
+              },
+              {
+                "href": "#beneficios",
+                "label": "Benefícios"
+              },
+              {
+                "href": "#como-funciona",
+                "label": "Como funciona"
+              },
+              {
+                "href": "#seguranca",
+                "label": "Segurança"
+              },
+              {
+                "href": "#duvidas",
+                "label": "Dúvidas"
+              }
+            ],
+            "layout": "minimal",
+            "logoText": "Raizen Card",
+            "position": "fixed",
+            "stickyCta": true,
+            "presentation": {
+              "tone": "paper"
+            }
+          }
+        },
+        {
+          "id": "28zl5as3",
+          "type": "hero.landing",
+          "props": {
+            "cta": {
+              "href": "#contato",
+              "label": "Pedir cartão"
+            },
+            "form": {
+              "body": "Preencha seus dados para pedir seu cartão com cashback imediato.",
+              "title": "Peça seu Raizen Card",
+              "fields": [
+                {
+                  "name": "nome",
+                  "type": "text",
+                  "label": "Nome completo",
+                  "required": true
+                },
+                {
+                  "name": "email",
+                  "type": "email",
+                  "label": "Seu melhor e-mail",
+                  "required": true
+                },
+                {
+                  "name": "telefone",
+                  "type": "tel",
+                  "label": "WhatsApp ou celular",
+                  "required": true
+                }
+              ],
+              "redirectTo": "/obrigado",
+              "consentText": "Concordo em ser contatado e com o uso dos meus dados conforme a política de privacidade.",
+              "submitLabel": "Solicitar cartão",
+              "whatsappOptIn": true
+            },
+            "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizencard/gerado/7c0f4794-630f-497f-8f2c-50c522458842/1.webp",
+            "badges": [
+              {
+                "label": "0,8% de cashback",
+                "evidence": "0,8% de cashback em todas as compras feitas no crédito"
+              },
+              {
+                "label": "5% de cashback em assinaturas",
+                "evidence": "5% de cashback em assinaturas em 28 plataformas (Netflix, Spotify, iFood, Uber One, Prime Video e mais)"
+              },
+              {
+                "label": "Cartão adicional sem custo",
+                "evidence": "Cartão adicional sem custo e sem anuidade ou mensalidade extra"
+              }
+            ],
+            "layout": "form",
+            "subtext": "Aproveite 0,8% de cashback no crédito, 5% em assinaturas e limite garantido que rende no Raizen Bank.",
+            "headline": "Raizen Card: cada gasto vira vantagem real",
+            "imageAlt": "Cartão de crédito metálico flutuando sobre bancada clara com smartphone e terminal ao fundo.",
+            "secondary": {
+              "href": "#beneficios",
+              "label": "Ver benefícios"
+            },
+            "formAnchor": "contato",
+            "presentation": {
+              "tone": "paper"
+            },
+            "badgesPlacement": "cta"
+          }
+        },
+        {
+          "id": "7wtuudvk",
+          "type": "proof.strip",
+          "props": {
+            "items": [
+              {
+                "label": "de cashback em todas as compras feitas no crédito",
+                "value": "0,8%",
+                "evidence": "0,8% de cashback em todas as compras feitas no crédito"
+              },
+              {
+                "label": "de cashback em assinaturas em 28 plataformas",
+                "value": "5%",
+                "evidence": "5% de cashback em assinaturas em 28 plataformas (Netflix, Spotify, iFood, Uber One, Prime Video e mais)"
+              },
+              {
+                "label": "contra fraudes e roubos",
+                "value": "R$ 15 mil",
+                "evidence": "Cobertura de até R$ 15 mil contra fraudes e roubos e R$ 2.500 para bolsa com Croma Protegido"
+              },
+              {
+                "label": "Cartão adicional",
+                "value": "sem custo",
+                "evidence": "Cartão adicional sem custo e sem anuidade ou mensalidade extra"
+              }
+            ],
+            "title": "Números comprovados do Raizen Card",
+            "layout": "numbers",
+            "presentation": {
+              "tone": "soft"
+            }
+          }
+        },
+        {
+          "id": "5rwobtqd",
+          "type": "narrative.statement",
+          "props": {
+            "title": "Um cartão pensado para valorizar o seu dinheiro em todas as compras do dia a dia.",
+            "anchor": "vantagens",
+            "layout": "center",
+            "eyebrow": "Transparência total",
+            "presentation": {
+              "tone": "paper"
+            }
+          }
+        },
+        {
+          "id": "irc6vl6c",
+          "type": "feature.bento",
+          "props": {
+            "items": [
+              {
+                "body": "Resgate seu dinheiro direto na conta ou transfira em pontos para Smiles, LATAM Pass e Azul Fidelidade sem complicação.",
+                "href": "#contato",
+                "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizencard/gerado/0560077e-35ee-4a2b-9891-b7f29866066d/1.webp",
+                "title": "Cashback liberado na hora",
+                "imageAlt": "Cartão platinado metálico com símbolo contactless flutuando sobre terminal de pagamento."
+              },
+              {
+                "body": "Economize mensalmente em plataformas como Netflix, Spotify, YouTube Premium, Clube iFood, Uber One, Disney+, Prime Video e GloboPlay.",
+                "href": "#contato",
+                "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizencard/gerado/af343b21-c636-49b2-95e6-d720902a5b95/1.webp",
+                "title": "5% em 28 plataformas de assinatura",
+                "imageAlt": "Renderização 3D de smartphone exibindo extrato financeiro ao lado de cartão de crédito metálico."
+              },
+              {
+                "body": "Pague Pix e boletos usando o limite do seu cartão, com opções práticas de parcelamento direto pelo aplicativo.",
+                "href": "#contato",
+                "icon": "lightning",
+                "title": "Tudo no crédito com Pix e boleto"
+              },
+              {
+                "body": "Aproveite serviço de concierge, assistência especializada em viagens, proteção de compras e acesso ao Mastercard Surpreenda.",
+                "href": "#contato",
+                "icon": "handshake",
+                "title": "Benefícios Mastercard Platinum"
+              }
+            ],
+            "title": "Benefícios pensados para o seu momento financeiro",
+            "anchor": "beneficios",
+            "layout": "showcase",
+            "eyebrow": "Vantagens exclusivas",
+            "presentation": {
+              "tone": "soft"
+            }
+          }
+        },
+        {
+          "id": "hmg85oua",
+          "type": "narrative.steps",
+          "props": {
+            "steps": [
+              {
+                "body": "Complete o formulário rápido nesta página com seu nome, e-mail e telefone para iniciar o atendimento.",
+                "title": "Preencha seus dados"
+              },
+              {
+                "body": "Após a análise cadastral rápida, seu Raizen Card Platinum físico é emitido com chip e tecnologia por aproximação.",
+                "title": "Receba seu cartão"
+              },
+              {
+                "body": "Ganhe cashback em todas as compras no crédito, parcele boletos no app e compartilhe o cartão adicional sem custo.",
+                "title": "Aproveite as vantagens"
+              }
+            ],
+            "title": "Como pedir e começar a usar o seu Raizen Card",
+            "anchor": "como-funciona",
+            "layout": "horizontal",
+            "eyebrow": "Passo a passo",
+            "presentation": {
+              "tone": "paper"
+            }
+          }
+        },
+        {
+          "id": "5xymbgh4",
+          "type": "cta.band",
+          "props": {
+            "cta": {
+              "href": "#contato",
+              "label": "Pedir cartão"
+            },
+            "body": "Peça seu cartão agora mesmo e aproveite todas as vantagens do Raizen Card Platinum.",
+            "title": "Pronto para ter cashback em compras e assinaturas?",
+            "layout": "minimal",
+            "whatsapp": false,
+            "presentation": {
+              "tone": "accent"
+            }
+          }
+        },
+        {
+          "id": "qgutstx1",
+          "type": "media.image",
+          "props": {
+            "alt": "Render 3D de cartão protegido por escudo de vidro translúcido ao lado de smartphone e maquininha.",
+            "src": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizencard/gerado/733efb50-9137-4400-a32b-fe8c342a19d7/1.webp",
+            "anchor": "seguranca",
+            "layout": "wide",
+            "caption": "Proteção de até R$ 15 mil contra fraudes e roubos e R$ 2.500 para bolsa ao contratar o Croma Protegido.",
+            "presentation": {
+              "tone": "paper"
+            }
+          }
+        },
+        {
+          "id": "g7p3sarx",
+          "type": "faq.accordion",
+          "props": {
+            "items": [
+              {
+                "a": "Você recebe 0,8% de cashback nas compras no crédito. Em 28 assinaturas mensais, você ganha 5% de volta. O valor fica liberado na hora para resgate ou milhas.",
+                "q": "Como funciona o cashback do Raizen Card?"
+              },
+              {
+                "a": "Não. Você pode solicitar um cartão adicional para quem quiser e compartilhar todos os benefícios do Raizen Card sem pagar nenhuma anuidade ou mensalidade a mais.",
+                "q": "O cartão adicional tem alguma mensalidade ou taxa extra?"
+              },
+              {
+                "a": "Com o Raizen Limite Garantido, você pode transformar o dinheiro guardado ou investido no Raizen Bank em limite de crédito no cartão, mantendo seu rendimento normal.",
+                "q": "Como funciona o Raizen Limite Garantido?"
+              },
+              {
+                "a": "Sim. Você pode pagar Pix e boletos utilizando o limite de crédito do seu cartão, com opções práticas de parcelamento direto pelo aplicativo.",
+                "q": "Posso pagar Pix e boletos usando o cartão?"
+              },
+              {
+                "a": "Ao contratar o seguro Croma Protegido, você conta com cobertura de até R$ 15 mil contra golpes, fraudes e roubos, além de até R$ 2.500 para sua bolsa e pertences.",
+                "q": "Quais são as coberturas do Raizen Card Protegido?"
+              },
+              {
+                "a": "O cartão conta com serviço de concierge, assistência em viagens, proteção de compras e acesso ao programa Mastercard Surpreenda sem custo adicional.",
+                "q": "Quais benefícios Mastercard Platinum acompanham o cartão?"
+              }
+            ],
+            "title": "Perguntas frequentes sobre o Raizen Card",
+            "anchor": "duvidas",
+            "layout": "stack",
+            "presentation": {
+              "tone": "soft"
+            }
+          }
+        },
+        {
+          "id": "bt3bhp4v",
+          "type": "cta.band",
+          "props": {
+            "cta": {
+              "href": "#contato",
+              "label": "Pedir cartão"
+            },
+            "body": "Aproveite cashback na hora, cartão adicional gratuito e proteção completa para você no dia a dia.",
+            "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizencard/gerado/6845bf36-4184-4b6f-8615-92e79f6c4ffa/1.webp",
+            "items": [
+              {
+                "href": "https://wa.me/5511998882277",
+                "icon": "phone",
+                "label": "WhatsApp: (11) 99888-2277"
+              },
+              {
+                "href": "mailto:mail@mail.com",
+                "icon": "mail",
+                "label": "E-mail: mail@mail.com"
+              },
+              {
+                "icon": "shield",
+                "label": "Mastercard Platinum sem custo"
+              }
+            ],
+            "title": "Peça seu Raizen Card Platinum e comece a economizar",
+            "layout": "band",
+            "imageAlt": "Cartão metálico escovado verde-petróleo suspenso sobre balcão de mármore entre celular e maquininha.",
+            "whatsapp": false,
+            "presentation": {
+              "tone": "ink"
+            }
+          }
+        },
+        {
+          "id": "jtl57ea5",
+          "type": "footer.compact",
+          "props": {
+            "legal": "© 2026 Raizen Card. Benefícios sujeitos à análise de crédito. Atendimento oficial via WhatsApp (11) 99888-2277.",
+            "links": [
+              {
+                "href": "#vantagens",
+                "label": "Vantagens"
+              },
+              {
+                "href": "#beneficios",
+                "label": "Benefícios"
+              },
+              {
+                "href": "#como-funciona",
+                "label": "Como funciona"
+              },
+              {
+                "href": "#duvidas",
+                "label": "Dúvidas"
+              },
+              {
+                "href": "#contato",
+                "label": "Pedir cartão"
+              }
+            ],
+            "layout": "minimal",
+            "tagline": "Um cartão pensado para o seu momento com cashback imediato.",
+            "logoText": "Raizen Card",
+            "presentation": {
+              "tone": "paper"
+            }
+          }
+        }
+      ],
+      "navOrder": 0,
+      "publishedAt": "2026-09-14T04:33:06.561Z"
+    },
+    {
+      "id": "52b626d2-fda5-41e6-ae6d-1d0d6ea699af",
+      "seo": {
+        "title": "Pedido Recebido | Raizen Card",
+        "noindex": true,
+        "description": "Confirmação do pedido do Raizen Card Platinum. Entraremos em contato para os próximos passos."
+      },
+      "meta": {
+        "inbound": {
+          "stage": "conversion",
+          "intent": "Confirmar o recebimento do formulário de solicitação do Raizen Card"
+        }
+      },
+      "slug": "obrigado",
+      "type": "thank_you",
+      "title": "Pedido Recebido | Raizen Card",
+      "blocks": [
+        {
+          "id": "r241b875",
+          "type": "nav.bar",
+          "props": {
+            "cta": {
+              "href": "/",
+              "label": "Voltar ao início"
+            },
+            "links": [
+              {
+                "href": "/",
+                "label": "Página inicial"
+              }
+            ],
+            "layout": "minimal",
+            "logoText": "Raizen Card",
+            "position": "fixed",
+            "stickyCta": false,
+            "presentation": {
+              "tone": "paper"
+            }
+          }
+        },
+        {
+          "id": "09nrzc1m",
+          "type": "hero.statement",
+          "props": {
+            "cta": {
+              "href": "/",
+              "label": "Voltar ao início"
+            },
+            "layout": "center",
+            "eyebrow": "Solicitação recebida com sucesso",
+            "subtext": "Nossa equipe já está analisando suas informações. Entraremos em contato pelo WhatsApp (11) 99888-2277 ou por e-mail para dar andamento.",
+            "headline": "Recebemos o seu pedido do Raizen Card",
+            "presentation": {
+              "tone": "paper"
+            }
+          }
+        },
+        {
+          "id": "b8yc8s4r",
+          "type": "footer.compact",
+          "props": {
+            "legal": "© 2026 Raizen Card. Todos os direitos reservados.",
+            "links": [
+              {
+                "href": "/",
+                "label": "Início"
+              }
+            ],
+            "layout": "minimal",
+            "tagline": "Um cartão pensado para o seu momento.",
+            "logoText": "Raizen Card",
+            "presentation": {
+              "tone": "paper"
+            }
+          }
+        }
+      ],
+      "navOrder": 0,
+      "publishedAt": "2026-09-14T04:33:06.561Z"
+    }
+  ],
+  "assets": [
+    "https://nubank.com.br/croma/cartao-platinum",
+    "https://wa.me/5511998882277",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizencard/gerado/0560077e-35ee-4a2b-9891-b7f29866066d/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizencard/gerado/6845bf36-4184-4b6f-8615-92e79f6c4ffa/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizencard/gerado/733efb50-9137-4400-a32b-fe8c342a19d7/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizencard/gerado/7c0f4794-630f-497f-8f2c-50c522458842/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizencard/gerado/af343b21-c636-49b2-95e6-d720902a5b95/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizencard/logo/1789359930166-logo-green.svg"
+  ],
+  "tenant": {
+    "id": "8fb123b4-344e-47f3-b6de-d9b6322c86bc",
+    "name": "Raizen Card",
+    "slug": "raizencard",
+    "brand": {
+      "ink": "#0a2533",
+      "font": "sans",
+      "vibe": "landing",
+      "paper": "#f8fafc",
+      "accent": "#1698a2",
+      "design": {
+        "motif": "wash",
+        "rhythm": "continuous",
+        "concept": "Precisão metálica e clareza financeira com vantagens imediatas em cada compra",
+        "version": 7,
+        "bodyFont": "sans",
+        "definedAt": "2026-09-14T04:28:26.504Z",
+        "signature": "geometric|sans|form|minimal|continuous|framed|layered|wash",
+        "navigation": "minimal",
+        "displayFont": "geometric",
+        "surfaceStyle": "layered",
+        "imageTreatment": "framed",
+        "heroComposition": "form",
+        "signatureElement": "Cards de benefícios com bordas arredondadas e badges de cashback em teal iluminado",
+        "referenceDirection": {
+          "decisions": [
+            {
+              "aspect": "layout",
+              "observed": "Abertura assimétrica com cartão físico e formulário embutido em card flutuante, seguida de grade modular e faixas contrastantes.",
+              "sourceUrl": "https://nubank.com.br/croma/cartao-platinum",
+              "application": "Hero form com visualização do produto e formulário curto, desdobrando em grade bento para benefícios e faixas contrastantes de alto impacto."
+            },
+            {
+              "aspect": "typography",
+              "observed": "Tipografia sem serifa geométrica com escala expressiva em títulos e corpo confortável com entrelinha arejada.",
+              "sourceUrl": "https://nubank.com.br/croma/cartao-platinum",
+              "application": "Space Grotesk para títulos de forte impacto visual e Geist para corpo de texto direto, claro e de leitura dinâmica."
+            },
+            {
+              "aspect": "imagery",
+              "observed": "Foco no produto renderizado em 3D com texturas metálicas escovadas, reflexos angulares e sombras suaves projetadas.",
+              "sourceUrl": "https://nubank.com.br/croma/cartao-platinum",
+              "application": "Cenas tridimensionais do cartão físico Raizen Card Platinum e interface do app bancário com acabamento metálico escovado e iluminação direcional."
+            },
+            {
+              "aspect": "rhythm",
+              "observed": "Alternância rítmica entre fundos claros tonais, cinzas metálicos e blocos escuros profundos de fechamento.",
+              "sourceUrl": "https://nubank.com.br/croma/cartao-platinum",
+              "application": "Transição contínua entre blocos de apoio neutros, cards com relevo suave e faixas em petróleo profundo para conduzir a leitura até a ação final."
+            },
+            {
+              "aspect": "surface",
+              "observed": "Cantos expressivamente arredondados em botões pílula e cards com relevo sutil sobre fundos contrastantes.",
+              "sourceUrl": "https://nubank.com.br/croma/cartao-platinum",
+              "application": "Bordas em raio grande em cartões de conteúdo, botões estilo pílula e superfícies em camadas com sombras suaves projetadas."
+            },
+            {
+              "aspect": "mobile",
+              "observed": "Adaptação estrita para coluna única, redução proporcional de títulos em 50% e empilhamento ordenado de cards e formulário.",
+              "sourceUrl": "https://nubank.com.br/croma/cartao-platinum",
+              "application": "Hierarquia mobile sem rolagem horizontal, botões de ação com alvos de toque amplos e formulário simplificado de acesso rápido."
+            }
+          ],
+          "primaryUrl": "https://nubank.com.br/croma/cartao-platinum",
+          "adaptations": "Adaptamos a sofisticação da referência visual de cartão platinum e superfícies metálicas para a paleta proprietária Raizen Card em tons teal (#1698a2) e petróleo (#0a2533), mantendo o fluxo ágil de landing page única, tipografia geométrica de alta legibilidade e experiência responsiva focada na conversão."
+        }
+      },
+      "radius": "lg",
+      "logoUrl": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizencard/logo/1789359930166-logo-green.svg",
+      "surface": "#f1f5f9",
+      "accentAlt": "#ecfdf5",
+      "highlight": "#0a2533",
+      "paletteSource": "operador"
+    },
+    "dials": {
+      "motion": 5,
+      "density": 4,
+      "variance": 7
+    },
+    "ga4Id": null,
+    "locale": "pt-BR",
+    "status": "published",
+    "contacts": {
+      "phones": [
+        {
+          "number": "11998882277",
+          "whatsapp": true
+        }
+      ],
+      "social": [
+        "https://www.instagram.com/raizen/"
+      ],
+      "addresses": []
+    },
+    "whatsapp": "11998882277",
+    "metaPixelId": null,
+    "contactEmail": "mail@mail.com",
+    "publicRuntime": "premium",
+    "maintenanceMode": "premium",
+    "publishedSnapshot": {
+      "name": "Raizen Card",
+      "brand": {
+        "ink": "#0a2533",
+        "font": "sans",
+        "vibe": "landing",
+        "paper": "#f8fafc",
+        "accent": "#1698a2",
+        "design": {
+          "motif": "wash",
+          "rhythm": "continuous",
+          "concept": "Precisão metálica e clareza financeira com vantagens imediatas em cada compra",
+          "version": 7,
+          "bodyFont": "sans",
+          "definedAt": "2026-09-14T04:28:26.504Z",
+          "signature": "geometric|sans|form|minimal|continuous|framed|layered|wash",
+          "navigation": "minimal",
+          "displayFont": "geometric",
+          "surfaceStyle": "layered",
+          "imageTreatment": "framed",
+          "heroComposition": "form",
+          "signatureElement": "Cards de benefícios com bordas arredondadas e badges de cashback em teal iluminado",
+          "referenceDirection": {
+            "decisions": [
+              {
+                "aspect": "layout",
+                "observed": "Abertura assimétrica com cartão físico e formulário embutido em card flutuante, seguida de grade modular e faixas contrastantes.",
+                "sourceUrl": "https://nubank.com.br/croma/cartao-platinum",
+                "application": "Hero form com visualização do produto e formulário curto, desdobrando em grade bento para benefícios e faixas contrastantes de alto impacto."
+              },
+              {
+                "aspect": "typography",
+                "observed": "Tipografia sem serifa geométrica com escala expressiva em títulos e corpo confortável com entrelinha arejada.",
+                "sourceUrl": "https://nubank.com.br/croma/cartao-platinum",
+                "application": "Space Grotesk para títulos de forte impacto visual e Geist para corpo de texto direto, claro e de leitura dinâmica."
+              },
+              {
+                "aspect": "imagery",
+                "observed": "Foco no produto renderizado em 3D com texturas metálicas escovadas, reflexos angulares e sombras suaves projetadas.",
+                "sourceUrl": "https://nubank.com.br/croma/cartao-platinum",
+                "application": "Cenas tridimensionais do cartão físico Raizen Card Platinum e interface do app bancário com acabamento metálico escovado e iluminação direcional."
+              },
+              {
+                "aspect": "rhythm",
+                "observed": "Alternância rítmica entre fundos claros tonais, cinzas metálicos e blocos escuros profundos de fechamento.",
+                "sourceUrl": "https://nubank.com.br/croma/cartao-platinum",
+                "application": "Transição contínua entre blocos de apoio neutros, cards com relevo suave e faixas em petróleo profundo para conduzir a leitura até a ação final."
+              },
+              {
+                "aspect": "surface",
+                "observed": "Cantos expressivamente arredondados em botões pílula e cards com relevo sutil sobre fundos contrastantes.",
+                "sourceUrl": "https://nubank.com.br/croma/cartao-platinum",
+                "application": "Bordas em raio grande em cartões de conteúdo, botões estilo pílula e superfícies em camadas com sombras suaves projetadas."
+              },
+              {
+                "aspect": "mobile",
+                "observed": "Adaptação estrita para coluna única, redução proporcional de títulos em 50% e empilhamento ordenado de cards e formulário.",
+                "sourceUrl": "https://nubank.com.br/croma/cartao-platinum",
+                "application": "Hierarquia mobile sem rolagem horizontal, botões de ação com alvos de toque amplos e formulário simplificado de acesso rápido."
+              }
+            ],
+            "primaryUrl": "https://nubank.com.br/croma/cartao-platinum",
+            "adaptations": "Adaptamos a sofisticação da referência visual de cartão platinum e superfícies metálicas para a paleta proprietária Raizen Card em tons teal (#1698a2) e petróleo (#0a2533), mantendo o fluxo ágil de landing page única, tipografia geométrica de alta legibilidade e experiência responsiva focada na conversão."
+          }
+        },
+        "radius": "lg",
+        "logoUrl": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizencard/logo/1789359930166-logo-green.svg",
+        "surface": "#f1f5f9",
+        "accentAlt": "#ecfdf5",
+        "highlight": "#0a2533",
+        "paletteSource": "operador"
+      },
+      "dials": {
+        "motion": 5,
+        "density": 4,
+        "variance": 7
+      },
+      "locale": "pt-BR",
+      "contacts": {
+        "phones": [
+          {
+            "number": "11998882277",
+            "whatsapp": true
+          }
+        ],
+        "social": [
+          "https://www.instagram.com/raizen/"
+        ],
+        "addresses": []
+      },
+      "whatsapp": "11998882277",
+      "contactEmail": "mail@mail.com"
+    }
+  },
+  "version": 1
+}
