@@ -137,6 +137,27 @@ export function asksRemoval(text: string): boolean {
     });
 }
 
+/** A assinatura da plataforma é moldura do site e não pode virar alvo de edição. */
+export function attributionRemovalRequested(text: string): boolean {
+  // Uma menção em outra oração não é o alvo da remoção. Preserve também
+  // URLs e texto entre aspas: ambos podem identificar a assinatura.
+  const preservation = '(?:manten\\w*|manter|mantendo|preserv\\w*|conserv\\w*)';
+  const clauses = normalized(text).split(
+    new RegExp(
+      `[;!?\\n,]|\\.(?=\\s|$)|\\b(?:e|mas|porem)\\s+(?=(?:(?:nao|nunca|jamais|sem)\\s+)?${REMOVAL_VERB}\\b)|\\b(?=${preservation}\\b)|\\b(?=sem\\s+${REMOVAL_VERB}\\b)`,
+    ),
+  );
+  return clauses.some(
+    (clause) =>
+      asksRemoval(clause) &&
+      (/\b(?:eixu\.com\.br|desenvolvido\s+e\s+hospedado)\b/.test(clause) ||
+        (/\beixu\b/.test(clause) &&
+          /\b(?:assinatura|faixa|creditos?|marca|link|rodape|footer)\b/.test(
+            clause,
+          ))),
+  );
+}
+
 /**
  * Até onde o pedido atual autoriza remover.
  *

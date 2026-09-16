@@ -4,6 +4,7 @@ import {
 } from '@/lib/images/logo-schema';
 import {
   accessibleAccent,
+  bestInkFor,
   contrastRatio,
   glowOf,
   isDarkSurface,
@@ -165,6 +166,11 @@ export function decoratedSurfaceColors(
 export function themeVars(brand: Brand): Record<string, string> {
   const ink = brand.ink || '#14161a';
   const paper = brand.paper || '#ffffff';
+  const mutedAttribution = readableMuted(ink, paper);
+  const attributionInk =
+    contrastRatio(mutedAttribution, paper) >= 4.5
+      ? mutedAttribution
+      : bestInkFor([paper]).ink;
   // O acento vira a cor mais próxima que passe no contraste mínimo.
   const { accent, ink: accentInk } = accessibleAccent(
     brand.accent || '#1f6feb',
@@ -232,6 +238,7 @@ export function themeVars(brand: Brand): Record<string, string> {
   return {
     '--brand-ink': ink,
     '--brand-paper': paper,
+    '--attribution-ink': attributionInk,
     '--ink': ink,
     '--paper': paper,
     '--accent': accent,

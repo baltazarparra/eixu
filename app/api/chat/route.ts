@@ -22,6 +22,7 @@ import {
 } from '@/lib/ai/chat-progress';
 import { workspaceState } from '@/lib/admin/state';
 import {
+  attributionRemovalRequested,
   editPolicyFor,
   editScopeText,
   requestedEditingPage,
@@ -290,6 +291,12 @@ export async function POST(request: Request) {
       await persistAssistant(text);
       return textResponse(text, changed);
     }
+  }
+  if (!phase && attributionRemovalRequested(lastUserText)) {
+    const text =
+      'A assinatura “Desenvolvido e hospedado por eixu.com.br” aparece em todos os sites hospedados pela EIXU e não pode ser removida pelo editor. O rodapé do seu site continua editável. Nenhuma alteração foi salva.';
+    await persistAssistant(text);
+    return textResponse(text, false);
   }
   // A ordem explícita é executada pelo servidor: o modelo não veta a decisão
   // editorial nem transforma autorização de publicação em confirmação de fatos.
