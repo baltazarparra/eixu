@@ -1,0 +1,1104 @@
+{
+  "pages": [
+    {
+      "id": "f76f5764-0b02-4878-b073-dec15486c7e3",
+      "seo": {
+        "title": "Raizen Bank | Banco de Investimentos na América Latina",
+        "noindex": false,
+        "description": "Banco de investimentos consolidado na América Latina desde 1983. Atuação em Investment Banking, crédito, patrimônio e mercados globais."
+      },
+      "meta": {
+        "inbound": {
+          "stage": "discovery",
+          "intent": "Apresentar a solidez institucional, pilares e visão geral das áreas de atuação do Raizen Bank."
+        }
+      },
+      "slug": "",
+      "type": "page",
+      "title": "Raizen Bank | Página Inicial",
+      "blocks": [
+        {
+          "id": "vg6cdti0",
+          "type": "nav.bar",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/",
+              "label": "Falar pelo WhatsApp"
+            },
+            "links": [
+              {
+                "href": "/",
+                "label": "Início"
+              },
+              {
+                "href": "/areas-de-atuacao",
+                "label": "Áreas de atuação"
+              },
+              {
+                "href": "/sobre",
+                "label": "Sobre nós"
+              },
+              {
+                "href": "/contato",
+                "label": "Contato"
+              }
+            ],
+            "logoText": "Raizen Bank"
+          }
+        },
+        {
+          "id": "kh57m0vm",
+          "type": "hero.split",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/",
+              "label": "Falar pelo WhatsApp"
+            },
+            "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizenbank/gerado/e5cb1399-59ca-4436-ac52-4e6fd71370a7/1.webp",
+            "layout": "split",
+            "subtext": "Atuação completa em investimentos com modelo de parceria e foco em longo prazo desde 1983.",
+            "headline": "Banco de investimentos para empresas e patrimônio",
+            "imageAlt": "Arranha-céu espelhado em vidro e aço em centro financeiro sob céu azul.",
+            "secondary": {
+              "href": "/areas-de-atuacao",
+              "label": "Conhecer áreas de atuação"
+            },
+            "presentation": {
+              "tone": "ink",
+              "align": "left",
+              "spacing": "airy"
+            },
+            "bulletsPlacement": "cta"
+          }
+        },
+        {
+          "id": "bwzrhqf0",
+          "type": "editorial.text",
+          "props": {
+            "body": "Nossa história teve início em 1983 com o compromisso de construir relacionamentos duradouros e seguros. Adotamos o modelo de partnership, no qual os profissionais mais dedicados tornam-se sócios do banco e compartilham responsabilidades diretas. Essa estrutura garante que cada decisão seja tomada com foco na segurança das operações e no crescimento financeiro sustentável de quem atendemos. Trabalhamos diariamente com rigor técnico e busca contínua por melhores práticas em todos os centros financeiros onde mantemos escritórios.",
+            "title": "Cultura de sociedade e foco no cliente",
+            "layout": "narrow",
+            "presentation": {
+              "tone": "paper",
+              "width": "narrow",
+              "spacing": "normal"
+            }
+          }
+        },
+        {
+          "id": "lg5kcq26",
+          "type": "faq.accordion",
+          "props": {
+            "items": [
+              {
+                "a": "Atuamos em Investment Banking com assessoria estratégica e Corporate Lending para crédito estruturado. Também operamos em Sales & Trading, Wealth Management, Asset Management e Banking corporativo.",
+                "q": "Quais são as áreas de atendimento do banco?"
+              },
+              {
+                "a": "Mantemos escritórios nos principais centros financeiros da América Latina, além de presença ativa nos Estados Unidos e em importantes mercados da Europa, com matriz em São Paulo.",
+                "q": "Onde o Raizen Bank possui escritórios?"
+              },
+              {
+                "a": "É um modelo de sociedade em que os profissionais de destaque tornam-se sócios da instituição por mérito. Isso assegura alinhamento direto e duradouro entre a equipe, o banco e cada cliente.",
+                "q": "Como funciona a cultura de partnership?"
+              },
+              {
+                "a": "Você pode iniciar uma conversa direta pelo nosso WhatsApp corporativo ou preencher o formulário para direcionarmos sua solicitação à área especializada.",
+                "q": "Como posso entrar em contato com a equipe?"
+              }
+            ],
+            "title": "Perguntas frequentes sobre o Raizen Bank",
+            "layout": "stack",
+            "presentation": {
+              "tone": "soft",
+              "spacing": "normal"
+            }
+          }
+        },
+        {
+          "id": "czg8ed9i",
+          "type": "editorial.facts",
+          "props": {
+            "body": "Desde 1983, o Raizen Bank atua como parceiro estratégico de empresas e investidores, com presença consolidada na América Latina, Estados Unidos e Europa.",
+            "dark": false,
+            "facts": [
+              {
+                "label": "Fundação",
+                "value": "1983"
+              },
+              {
+                "label": "Posição institucional",
+                "value": "Maior Banco de Investimentos da América Latina"
+              },
+              {
+                "label": "Modelo de gestão",
+                "value": "Partnership meritocrático e foco em longo prazo"
+              },
+              {
+                "label": "Cobertura global",
+                "value": "América Latina, Estados Unidos e Europa"
+              }
+            ],
+            "title": "Presença e estrutura institucional",
+            "layout": "ledger",
+            "presentation": {
+              "edge": "line",
+              "tone": "paper",
+              "spacing": "normal"
+            }
+          }
+        },
+        {
+          "id": "u44jpo3m",
+          "type": "signature.composition",
+          "props": {
+            "body": "Conheça como organizamos nossa equipe e governança para entregar soluções financeiras sólidas em cada mercado em que operamos.",
+            "items": [
+              {
+                "body": "Nossos sócios acompanham de perto cada projeto corporativo, combinando visão de longo prazo com rigor técnico na tomada de decisões estratégicas.",
+                "role": "focus",
+                "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizenbank/gerado/f86d8de9-3248-4eff-b499-2e3985825f2c/1.webp",
+                "label": "Liderança e governança",
+                "title": "Assessoria estratégica com equipe sênior",
+                "caption": "Ambiente de planejamento institucional e assessoria corporativa.",
+                "imageAlt": "Dois executivos conversando com tablet diante da janela em andar alto de edifício empresarial."
+              },
+              {
+                "body": "Desenvolvemos estratégias personalizadas para preservar e valorizar patrimônios, avaliando cenários globais com profunda disciplina de análise.",
+                "role": "support",
+                "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizenbank/gerado/ab1a4cd0-61be-47f7-820a-3d7549dc1387/1.webp",
+                "label": "Análise e disciplina",
+                "title": "Gestão patrimonial e alocação de recursos",
+                "caption": "Estrutura técnica voltada à análise de mercado e gestão de ativos.",
+                "imageAlt": "Executivo em sala de reuniões corporativa com relatórios e telas analíticas."
+              },
+              {
+                "body": "Conectamos oportunidades de negócios entre a América Latina, os Estados Unidos e a Europa com agilidade operacional e governança.",
+                "role": "detail",
+                "label": "Presença internacional",
+                "title": "Alcance nos principais centros financeiros"
+              },
+              {
+                "cta": {
+                  "href": "/go/wa?from=/",
+                  "label": "Falar pelo WhatsApp"
+                },
+                "body": "Receba orientação personalizada de nossos especialistas para as necessidades financeiras da sua empresa ou família.",
+                "role": "action",
+                "label": "Atendimento dedicado",
+                "title": "Converse com nossa equipe institucional"
+              }
+            ],
+            "title": "Estrutura corporativa e compromisso de longo prazo",
+            "layout": "proof-route",
+            "presentation": {
+              "edge": "panel",
+              "tone": "ink",
+              "spacing": "airy"
+            }
+          }
+        },
+        {
+          "id": "exdio7bn",
+          "type": "cta.band",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/",
+              "label": "Falar pelo WhatsApp"
+            },
+            "body": "Estamos prontos para atender sua empresa ou família com soluções financeiras estruturadas e atendimento ágil.",
+            "title": "Converse com a equipe do Raizen Bank",
+            "layout": "band",
+            "whatsapp": true,
+            "presentation": {
+              "tone": "accent",
+              "spacing": "normal"
+            }
+          }
+        },
+        {
+          "id": "j12tn7ua",
+          "type": "footer.compact",
+          "props": {
+            "legal": "© 2026 Raizen Bank. Todos os direitos reservados.",
+            "links": [
+              {
+                "href": "/",
+                "label": "Início"
+              },
+              {
+                "href": "/areas-de-atuacao",
+                "label": "Áreas de atuação"
+              },
+              {
+                "href": "/sobre",
+                "label": "Sobre nós"
+              },
+              {
+                "href": "/contato",
+                "label": "Contato"
+              }
+            ],
+            "tagline": "Banco de investimentos consolidado na América Latina desde 1983.",
+            "logoText": "Raizen Bank"
+          }
+        }
+      ],
+      "navOrder": 0,
+      "publishedAt": "2026-09-14T04:23:21.509Z"
+    },
+    {
+      "id": "a0c2c3eb-9136-4f53-9084-33a1aa5b9e93",
+      "seo": {
+        "title": "Áreas de Atuação Financeira | Raizen Bank",
+        "noindex": false,
+        "description": "Conheça as áreas de Investment Banking, Corporate Lending, Sales & Trading e Wealth Management do Raizen Bank na América Latina e exterior."
+      },
+      "meta": {
+        "inbound": {
+          "stage": "consideration",
+          "intent": "Detalhar as principais divisões de atendimento e soluções financeiras para empresas e investidores."
+        }
+      },
+      "slug": "areas-de-atuacao",
+      "type": "page",
+      "title": "Áreas de Atuação | Raizen Bank",
+      "blocks": [
+        {
+          "id": "fs1efw5v",
+          "type": "nav.bar",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/areas-de-atuacao",
+              "label": "Falar pelo WhatsApp"
+            },
+            "links": [
+              {
+                "href": "/",
+                "label": "Início"
+              },
+              {
+                "href": "/areas-de-atuacao",
+                "label": "Áreas de atuação"
+              },
+              {
+                "href": "/sobre",
+                "label": "Sobre nós"
+              },
+              {
+                "href": "/contato",
+                "label": "Contato"
+              }
+            ],
+            "logoText": "Raizen Bank"
+          }
+        },
+        {
+          "id": "qzsp5rom",
+          "type": "hero.statement",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/areas-de-atuacao",
+              "label": "Falar pelo WhatsApp"
+            },
+            "layout": "framed",
+            "subtext": "Conheça nossas frentes de assessoria, crédito corporativo e gestão patrimonial de longo prazo.",
+            "headline": "Soluções financeiras para empresas e investidores",
+            "presentation": {
+              "tone": "paper",
+              "align": "center",
+              "spacing": "tight"
+            }
+          }
+        },
+        {
+          "id": "pxj59hgu",
+          "type": "narrative.split",
+          "props": {
+            "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizenbank/gerado/2ca048d8-b798-4d3a-86b1-8cace6c5c28d/1.webp",
+            "items": [
+              {
+                "body": "Assessoria estratégica em fusões, aquisições e estruturação de ofertas de capital nos mercados locais e internacionais.",
+                "title": "Investment Banking"
+              },
+              {
+                "body": "Operações customizadas de financiamento e linhas de crédito desenhadas para viabilizar planos de expansão.",
+                "title": "Corporate Lending"
+              },
+              {
+                "body": "Acesso aos mercados de capitais com execução ágil, análise de liquidez e distribuição para investidores institucionais.",
+                "title": "Sales & Trading"
+              },
+              {
+                "body": "Planejamento financeiro familiar e alocação de ativos voltados à preservação e crescimento sustentável do patrimônio.",
+                "title": "Wealth & Asset Management"
+              }
+            ],
+            "title": "Estrutura dedicada a cada demanda corporativa",
+            "layout": "split",
+            "imageAlt": "Equipe de executivos e analistas reunidos em torno de mesa com computadores e relatórios técnicos.",
+            "presentation": {
+              "edge": "line",
+              "tone": "soft",
+              "spacing": "normal"
+            }
+          }
+        },
+        {
+          "id": "ejb57mvj",
+          "type": "feature.bento",
+          "props": {
+            "items": [
+              {
+                "body": "Apoiamos companhias em transações complexas de mercado, unindo profundo conhecimento de cada setor a rigorosas práticas de governança.",
+                "title": "Assessoria em Fusões e Aquisições"
+              },
+              {
+                "body": "Oferecemos soluções de crédito e antecipação de recursos para empresas que necessitam de liquidez e flexibilidade de prazos.",
+                "title": "Crédito e Liquidez Corporativa"
+              },
+              {
+                "body": "Atendimento consultivo e estruturação patrimonial para famílias e pessoas físicas que buscam segurança e governança.",
+                "title": "Gestão Patrimonial Familiar"
+              },
+              {
+                "body": "Administração disciplinada de fundos de renda fixa, ações e investimentos estruturados na América Latina, EUA e Europa.",
+                "title": "Fundos de Investimento Globais"
+              }
+            ],
+            "title": "Nossas principais frentes de atendimento",
+            "layout": "mosaic",
+            "presentation": {
+              "tone": "paper",
+              "spacing": "normal"
+            }
+          }
+        },
+        {
+          "id": "5p70bytq",
+          "type": "cta.band",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/areas-de-atuacao",
+              "label": "Falar pelo WhatsApp"
+            },
+            "body": "Nossos especialistas estão disponíveis para avaliar as demandas da sua empresa ou instituição com atendimento sob medida.",
+            "title": "Descubra a solução ideal para seu momento",
+            "layout": "band",
+            "whatsapp": true,
+            "presentation": {
+              "tone": "accent",
+              "spacing": "normal"
+            }
+          }
+        },
+        {
+          "id": "fmvuerix",
+          "type": "footer.compact",
+          "props": {
+            "legal": "© 2026 Raizen Bank. Todos os direitos reservados.",
+            "links": [
+              {
+                "href": "/",
+                "label": "Início"
+              },
+              {
+                "href": "/areas-de-atuacao",
+                "label": "Áreas de atuação"
+              },
+              {
+                "href": "/sobre",
+                "label": "Sobre nós"
+              },
+              {
+                "href": "/contato",
+                "label": "Contato"
+              }
+            ],
+            "tagline": "Soluções completas de banco de investimentos e gestão patrimonial.",
+            "logoText": "Raizen Bank"
+          }
+        }
+      ],
+      "navOrder": 0,
+      "publishedAt": "2026-09-14T04:23:21.509Z"
+    },
+    {
+      "id": "c893a867-fa9e-40fa-8b87-904a29b00337",
+      "seo": {
+        "title": "Contato e Atendimento | Raizen Bank",
+        "noindex": false,
+        "description": "Fale com os especialistas do Raizen Bank. Atendimento corporativo, gestão patrimonial e suporte institucional nos principais centros financeiros."
+      },
+      "meta": {
+        "inbound": {
+          "stage": "conversion",
+          "intent": "Oferecer canais diretos e estruturados para clientes e instituições conversarem com especialistas."
+        }
+      },
+      "slug": "contato",
+      "type": "page",
+      "title": "Contato | Raizen Bank",
+      "blocks": [
+        {
+          "id": "neazb3iu",
+          "type": "nav.bar",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/contato",
+              "label": "Falar pelo WhatsApp"
+            },
+            "links": [
+              {
+                "href": "/",
+                "label": "Início"
+              },
+              {
+                "href": "/areas-de-atuacao",
+                "label": "Áreas de atuação"
+              },
+              {
+                "href": "/sobre",
+                "label": "Sobre nós"
+              },
+              {
+                "href": "/contato",
+                "label": "Contato"
+              }
+            ],
+            "logoText": "Raizen Bank"
+          }
+        },
+        {
+          "id": "gxjiq4sy",
+          "type": "hero.split",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/contato",
+              "label": "Falar pelo WhatsApp"
+            },
+            "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizenbank/gerado/e5cb1399-59ca-4436-ac52-4e6fd71370a7/1.webp",
+            "layout": "split",
+            "subtext": "Atendimento dedicado para empresas, instituições e investidores nos principais centros financeiros.",
+            "headline": "Canais diretos para conversar com especialistas",
+            "imageAlt": "Edifício corporativo contemporâneo com fachada em vidro espelhado e linhas metálicas.",
+            "secondary": {
+              "href": "#formulario",
+              "label": "Enviar mensagem"
+            },
+            "presentation": {
+              "tone": "ink",
+              "align": "left",
+              "spacing": "airy"
+            },
+            "bulletsPlacement": "cta"
+          }
+        },
+        {
+          "id": "wu956e7x",
+          "type": "editorial.text",
+          "props": {
+            "body": "Nosso atendimento foi concebido para atender demandas complexas de empresas e famílias com discrição e agilidade. Ao enviar sua solicitação pelo formulário ou canal corporativo do WhatsApp, nossa equipe identifica a área técnica exata para responder à sua necessidade. Todas as interações seguem rigorosos procedimentos de governança e segurança de dados, garantindo tranquilidade desde o primeiro contato até a execução dos mandatos financeiros.",
+            "title": "Atendimento institucional estruturado e sigiloso",
+            "layout": "narrow",
+            "presentation": {
+              "tone": "soft",
+              "width": "narrow",
+              "spacing": "normal"
+            }
+          }
+        },
+        {
+          "id": "i2siw88q",
+          "type": "form.lead",
+          "props": {
+            "body": "Preencha o formulário abaixo para direcionarmos sua mensagem diretamente à equipe especializada da área de seu interesse.",
+            "title": "Envie uma mensagem para nossa equipe",
+            "anchor": "formulario",
+            "fields": [
+              {
+                "name": "nome",
+                "type": "text",
+                "label": "Nome completo",
+                "required": true
+              },
+              {
+                "name": "email",
+                "type": "email",
+                "label": "E-mail corporativo",
+                "required": true
+              },
+              {
+                "name": "telefone",
+                "type": "tel",
+                "label": "Telefone com DDD",
+                "required": true
+              },
+              {
+                "name": "area",
+                "type": "select",
+                "label": "Área de interesse",
+                "options": [
+                  "Investment Banking",
+                  "Corporate Lending",
+                  "Sales & Trading",
+                  "Wealth Management",
+                  "Asset Management",
+                  "Outros assuntos"
+                ],
+                "required": true
+              },
+              {
+                "name": "mensagem",
+                "type": "textarea",
+                "label": "Como podemos ajudar sua empresa?",
+                "required": false
+              }
+            ],
+            "layout": "split",
+            "redirectTo": "/obrigado",
+            "consentText": "Concordo em ser contatado e com o uso dos meus dados conforme a política de privacidade.",
+            "submitLabel": "Enviar mensagem",
+            "presentation": {
+              "tone": "paper",
+              "spacing": "normal"
+            },
+            "whatsappOptIn": false
+          }
+        },
+        {
+          "id": "53hph4ey",
+          "type": "cta.band",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/contato",
+              "label": "Falar pelo WhatsApp"
+            },
+            "body": "Se preferir atendimento imediato, inicie uma conversa com nosso time pelo WhatsApp corporativo.",
+            "title": "Atendimento direto pelo WhatsApp",
+            "layout": "band",
+            "whatsapp": true,
+            "presentation": {
+              "tone": "accent",
+              "spacing": "normal"
+            }
+          }
+        },
+        {
+          "id": "ur7vr2d7",
+          "type": "footer.compact",
+          "props": {
+            "legal": "© 2026 Raizen Bank. Todos os direitos reservados.",
+            "links": [
+              {
+                "href": "/",
+                "label": "Início"
+              },
+              {
+                "href": "/areas-de-atuacao",
+                "label": "Áreas de atuação"
+              },
+              {
+                "href": "/sobre",
+                "label": "Sobre nós"
+              },
+              {
+                "href": "/contato",
+                "label": "Contato"
+              }
+            ],
+            "tagline": "Canais dedicados para empresas, instituições e famílias.",
+            "logoText": "Raizen Bank"
+          }
+        }
+      ],
+      "navOrder": 0,
+      "publishedAt": "2026-09-14T04:23:21.509Z"
+    },
+    {
+      "id": "b3fedc85-6043-4697-8291-0a0323f6ee0a",
+      "seo": {
+        "title": "Mensagem Recebida | Raizen Bank",
+        "noindex": true,
+        "description": "Mensagem enviada com sucesso ao Raizen Bank. Nossa equipe retornará seu contato em breve."
+      },
+      "meta": {
+        "inbound": {
+          "stage": "conversion",
+          "intent": "Confirmação de recebimento da mensagem enviada no formulário de contato."
+        }
+      },
+      "slug": "obrigado",
+      "type": "thank_you",
+      "title": "Obrigado pelo Contato | Raizen Bank",
+      "blocks": [
+        {
+          "id": "4pjesmly",
+          "type": "nav.bar",
+          "props": {
+            "cta": {
+              "href": "/",
+              "label": "Ir para o início"
+            },
+            "links": [
+              {
+                "href": "/",
+                "label": "Início"
+              },
+              {
+                "href": "/areas-de-atuacao",
+                "label": "Áreas de atuação"
+              },
+              {
+                "href": "/sobre",
+                "label": "Sobre nós"
+              },
+              {
+                "href": "/contato",
+                "label": "Contato"
+              }
+            ],
+            "logoText": "Raizen Bank"
+          }
+        },
+        {
+          "id": "tbuxeve7",
+          "type": "hero.statement",
+          "props": {
+            "cta": {
+              "href": "/",
+              "label": "Voltar para o início"
+            },
+            "layout": "center",
+            "subtext": "Nossa equipe entrará em contato em breve para dar seguimento ao seu atendimento institucional.",
+            "headline": "Mensagem recebida com sucesso",
+            "presentation": {
+              "tone": "soft",
+              "spacing": "airy"
+            }
+          }
+        },
+        {
+          "id": "h8y5kf3u",
+          "type": "footer.compact",
+          "props": {
+            "legal": "© 2026 Raizen Bank. Todos os direitos reservados.",
+            "links": [
+              {
+                "href": "/",
+                "label": "Início"
+              },
+              {
+                "href": "/areas-de-atuacao",
+                "label": "Áreas de atuação"
+              },
+              {
+                "href": "/sobre",
+                "label": "Sobre nós"
+              },
+              {
+                "href": "/contato",
+                "label": "Contato"
+              }
+            ],
+            "tagline": "Raizen Bank. Solidez e compromisso de longo prazo.",
+            "logoText": "Raizen Bank"
+          }
+        }
+      ],
+      "navOrder": 0,
+      "publishedAt": "2026-09-14T04:23:21.509Z"
+    },
+    {
+      "id": "41307ae4-3c7c-4af7-aad7-5bbf5043659a",
+      "seo": {
+        "title": "Sobre o Raizen Bank | História e Valores Institucionais",
+        "noindex": false,
+        "description": "Conheça a trajetória do Raizen Bank desde 1983, nossa cultura de partnership meritocrático e a presença nos maiores centros financeiros."
+      },
+      "meta": {
+        "inbound": {
+          "stage": "consideration",
+          "intent": "Compartilhar a trajetória, valores corporativos e modelo de parceria que guiam a expansão do banco."
+        }
+      },
+      "slug": "sobre",
+      "type": "page",
+      "title": "Sobre o Raizen Bank | Nossa História",
+      "blocks": [
+        {
+          "id": "iwy0i9gm",
+          "type": "nav.bar",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/sobre",
+              "label": "Falar pelo WhatsApp"
+            },
+            "links": [
+              {
+                "href": "/",
+                "label": "Início"
+              },
+              {
+                "href": "/areas-de-atuacao",
+                "label": "Áreas de atuação"
+              },
+              {
+                "href": "/sobre",
+                "label": "Sobre nós"
+              },
+              {
+                "href": "/contato",
+                "label": "Contato"
+              }
+            ],
+            "logoText": "Raizen Bank"
+          }
+        },
+        {
+          "id": "cwdwy25n",
+          "type": "hero.split",
+          "props": {
+            "cta": {
+              "href": "/areas-de-atuacao",
+              "label": "Ver áreas de atuação"
+            },
+            "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizenbank/gerado/e5cb1399-59ca-4436-ac52-4e6fd71370a7/1.webp",
+            "layout": "split",
+            "subtext": "Conheça a cultura meritocrática de sociedade que guia nossa expansão nos principais centros financeiros.",
+            "headline": "Nossa história e visão de longo prazo desde 1983",
+            "imageAlt": "Fachada espelhada em vidro e aço de edifício corporativo em centro financeiro sob céu azul.",
+            "secondary": {
+              "href": "/go/wa?from=/sobre",
+              "label": "Falar pelo WhatsApp"
+            },
+            "presentation": {
+              "tone": "ink",
+              "align": "left",
+              "spacing": "airy"
+            },
+            "bulletsPlacement": "cta"
+          }
+        },
+        {
+          "id": "df16d4a2",
+          "type": "media.image",
+          "props": {
+            "alt": "Reunião de liderança corporativa em ampla sala de reuniões com mesa de madeira clara e vista panorâmica.",
+            "src": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizenbank/gerado/9a6ee55f-84d7-425e-afa4-8e87db058da0/1.webp",
+            "layout": "wide",
+            "caption": "Encontros estratégicos da liderança do Raizen Bank focados no planejamento institucional e decisões de longo prazo.",
+            "presentation": {
+              "tone": "paper",
+              "spacing": "normal"
+            }
+          }
+        },
+        {
+          "id": "dvlzz4io",
+          "type": "narrative.steps",
+          "props": {
+            "steps": [
+              {
+                "body": "Iniciamos nossas atividades com foco em disciplina financeira e assessoria qualificada, crescendo até nos consolidarmos como referência na América Latina.",
+                "title": "1983: Fundação e consolidação"
+              },
+              {
+                "body": "Adotamos a cultura de partnership, onde o mérito define a participação como sócio, alinhando integralmente o sucesso do banco aos objetivos de cada cliente.",
+                "title": "Cultura de sociedade meritocrática"
+              },
+              {
+                "body": "Expandimos nossa atuação para os principais mercados da América Latina, Estados Unidos e centros europeus com rigor e governança.",
+                "title": "Presença financeira internacional"
+              }
+            ],
+            "title": "Evolução construída sobre pilares sólidos",
+            "layout": "timeline",
+            "presentation": {
+              "tone": "soft",
+              "spacing": "normal"
+            }
+          }
+        },
+        {
+          "id": "fyhlt1nc",
+          "type": "editorial.text",
+          "props": {
+            "body": "Manter valores como dedicação, inconformismo e rigor técnico é o que nos permite continuar em constante expansão institucional. No Raizen Bank, acreditamos que relações sólidas dependem de transparência e visão de longo prazo. Por isso, estruturamos cada operação com cuidado minucioso, assegurando que empresas, instituições e famílias encontrem estabilidade e parceiros dedicados para suas jornadas financeiras mais relevantes.",
+            "title": "Valores que orientam cada decisão corporativa",
+            "layout": "narrow",
+            "presentation": {
+              "tone": "paper",
+              "width": "narrow",
+              "spacing": "normal"
+            }
+          }
+        },
+        {
+          "id": "my51qb8e",
+          "type": "cta.band",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/sobre",
+              "label": "Falar pelo WhatsApp"
+            },
+            "body": "Entre em contato com nossa equipe e conheça as oportunidades de relacionamento institucional com o Raizen Bank.",
+            "title": "Construa o futuro com quem tem história",
+            "layout": "band",
+            "whatsapp": true,
+            "presentation": {
+              "tone": "accent",
+              "spacing": "normal"
+            }
+          }
+        },
+        {
+          "id": "exjsan2u",
+          "type": "footer.compact",
+          "props": {
+            "legal": "© 2026 Raizen Bank. Todos os direitos reservados.",
+            "links": [
+              {
+                "href": "/",
+                "label": "Início"
+              },
+              {
+                "href": "/areas-de-atuacao",
+                "label": "Áreas de atuação"
+              },
+              {
+                "href": "/sobre",
+                "label": "Sobre nós"
+              },
+              {
+                "href": "/contato",
+                "label": "Contato"
+              }
+            ],
+            "tagline": "Tradição desde 1983, cultura de parceria e presença global.",
+            "logoText": "Raizen Bank"
+          }
+        }
+      ],
+      "navOrder": 0,
+      "publishedAt": "2026-09-14T04:23:21.509Z"
+    }
+  ],
+  "assets": [
+    "https://institucional.btgpactual.com/",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizenbank/gerado/2ca048d8-b798-4d3a-86b1-8cace6c5c28d/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizenbank/gerado/9a6ee55f-84d7-425e-afa4-8e87db058da0/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizenbank/gerado/ab1a4cd0-61be-47f7-820a-3d7549dc1387/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizenbank/gerado/e5cb1399-59ca-4436-ac52-4e6fd71370a7/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizenbank/gerado/f86d8de9-3248-4eff-b499-2e3985825f2c/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizenbank/logo/1789359038604-logo-green.svg"
+  ],
+  "tenant": {
+    "id": "ce4eef92-0be7-4c96-a171-53962e81c246",
+    "name": "Raizen Bank",
+    "slug": "raizenbank",
+    "brand": {
+      "ink": "#06172d",
+      "font": "sans",
+      "vibe": "comercial",
+      "paper": "#ffffff",
+      "accent": "#2d929f",
+      "design": {
+        "motif": "none",
+        "rhythm": "alternating",
+        "concept": "Arquitetura institucional e solidez financeira em duas colunas assimétricas e contraste corporativo profundo",
+        "version": 6,
+        "bodyFont": "sans",
+        "definedAt": "2026-09-14T04:13:59.223Z",
+        "signature": "comercial-confianca|sans|sans|split|bar|alternating|framed|contrast|none",
+        "structure": "comercial-confianca",
+        "navigation": "bar",
+        "displayFont": "sans",
+        "surfaceStyle": "contrast",
+        "imageTreatment": "framed",
+        "heroComposition": "split",
+        "signatureElement": "Marcador vertical em azul petróleo alinhado a cartões analíticos e dados estruturados",
+        "referenceDirection": {
+          "decisions": [
+            {
+              "aspect": "layout",
+              "observed": "Grade institucional de duas colunas assimétricas com margens amplas e abertura dividida entre texto em fundo azul e imagem corporativa.",
+              "sourceUrl": "https://institucional.btgpactual.com/",
+              "application": "Aplicado no hero.split com divisão nítida entre proposta de valor e fotografia arquitetônica, estendendo a grade assimétrica às seções institucionais."
+            },
+            {
+              "aspect": "typography",
+              "observed": "Tipografia sem serifa sóbria em pesos regulares, títulos moderados e corpo com entrelinha arejada para leitura executiva.",
+              "sourceUrl": "https://institucional.btgpactual.com/",
+              "application": "Uso do par tipográfico sans (Geist) para títulos e corpo, preservando hierarquia discreta, pesos balanceados e números tabulares legíveis."
+            },
+            {
+              "aspect": "imagery",
+              "observed": "Fotografia corporativa realista com arquitetura em perspectiva, interiores executivos sóbrios e enquadramentos bem definidos.",
+              "sourceUrl": "https://institucional.btgpactual.com/",
+              "application": "Direção de imagens com fachadas de centros financeiros, salas de reunião com luz diurna natural e enquadramentos em planos médios sem artificialismo."
+            },
+            {
+              "aspect": "rhythm",
+              "observed": "Ritmo pausado alternando seções claras com faixas de contraste em azul escuro para marcar temas estratégicos.",
+              "sourceUrl": "https://institucional.btgpactual.com/",
+              "application": "Alternância rítmica entre fundos brancos e blocos em azul-marinho profundo (#06172d) nas transições de abertura, assinatura e fechamento."
+            },
+            {
+              "aspect": "surface",
+              "observed": "Contraste marcante entre branco puro e azul-marinho denso, com cartões delimitados por bordas sutis e guias cromáticas verticais.",
+              "sourceUrl": "https://institucional.btgpactual.com/",
+              "application": "Superfície contrastante com cartões em fundo neutro (#f4f6f8), linhas divisórias suaves e destaque em azul petróleo (#2d929f)."
+            },
+            {
+              "aspect": "mobile",
+              "observed": "Empilhamento vertical rigoroso no mobile (390px) com imagens no topo, cartões ocupando largura total e alvos de toque generosos.",
+              "sourceUrl": "https://institucional.btgpactual.com/",
+              "application": "Composição mobile em coluna única contínua, convertendo divisões horizontais em leitura vertical confortável sem overflow lateral."
+            }
+          ],
+          "primaryUrl": "https://institucional.btgpactual.com/",
+          "adaptations": "Adaptação da paleta oficial do Raizen Bank com azul-marinho profundo (#06172d) e acento em azul petróleo (#2d929f), mantendo a sobriedade tipográfica e a composição em duas colunas sem replicar marcas, cópias comerciais ou elementos exclusivos da referência."
+        },
+        "structureRationale": "Reproduz a cadência do BTG Pactual com hero dividido, apresentação de solidez desde 1983, esclarecimento das frentes de atuação e rota de confiança institucional com contato direto."
+      },
+      "radius": "sm",
+      "logoUrl": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizenbank/logo/1789359038604-logo-green.svg",
+      "surface": "#f4f6f8",
+      "accentAlt": "#06172d",
+      "highlight": "#ffffff",
+      "paletteSource": "operador"
+    },
+    "dials": {
+      "motion": 5,
+      "density": 4,
+      "variance": 7
+    },
+    "ga4Id": null,
+    "locale": "pt-BR",
+    "status": "published",
+    "contacts": {
+      "phones": [
+        {
+          "number": "11998887766",
+          "whatsapp": true
+        }
+      ],
+      "social": [
+        "https://www.instagram.com/btgpactual/"
+      ],
+      "addresses": [
+        {
+          "text": "Salvador arruda 100",
+          "label": "Matriz"
+        }
+      ]
+    },
+    "whatsapp": "11998887766",
+    "metaPixelId": null,
+    "contactEmail": "mail@mail.com",
+    "publicRuntime": "premium",
+    "maintenanceMode": "premium",
+    "publishedSnapshot": {
+      "name": "Raizen Bank",
+      "brand": {
+        "ink": "#06172d",
+        "font": "sans",
+        "vibe": "comercial",
+        "paper": "#ffffff",
+        "accent": "#2d929f",
+        "design": {
+          "motif": "none",
+          "rhythm": "alternating",
+          "concept": "Arquitetura institucional e solidez financeira em duas colunas assimétricas e contraste corporativo profundo",
+          "version": 6,
+          "bodyFont": "sans",
+          "definedAt": "2026-09-14T04:13:59.223Z",
+          "signature": "comercial-confianca|sans|sans|split|bar|alternating|framed|contrast|none",
+          "structure": "comercial-confianca",
+          "navigation": "bar",
+          "displayFont": "sans",
+          "surfaceStyle": "contrast",
+          "imageTreatment": "framed",
+          "heroComposition": "split",
+          "signatureElement": "Marcador vertical em azul petróleo alinhado a cartões analíticos e dados estruturados",
+          "referenceDirection": {
+            "decisions": [
+              {
+                "aspect": "layout",
+                "observed": "Grade institucional de duas colunas assimétricas com margens amplas e abertura dividida entre texto em fundo azul e imagem corporativa.",
+                "sourceUrl": "https://institucional.btgpactual.com/",
+                "application": "Aplicado no hero.split com divisão nítida entre proposta de valor e fotografia arquitetônica, estendendo a grade assimétrica às seções institucionais."
+              },
+              {
+                "aspect": "typography",
+                "observed": "Tipografia sem serifa sóbria em pesos regulares, títulos moderados e corpo com entrelinha arejada para leitura executiva.",
+                "sourceUrl": "https://institucional.btgpactual.com/",
+                "application": "Uso do par tipográfico sans (Geist) para títulos e corpo, preservando hierarquia discreta, pesos balanceados e números tabulares legíveis."
+              },
+              {
+                "aspect": "imagery",
+                "observed": "Fotografia corporativa realista com arquitetura em perspectiva, interiores executivos sóbrios e enquadramentos bem definidos.",
+                "sourceUrl": "https://institucional.btgpactual.com/",
+                "application": "Direção de imagens com fachadas de centros financeiros, salas de reunião com luz diurna natural e enquadramentos em planos médios sem artificialismo."
+              },
+              {
+                "aspect": "rhythm",
+                "observed": "Ritmo pausado alternando seções claras com faixas de contraste em azul escuro para marcar temas estratégicos.",
+                "sourceUrl": "https://institucional.btgpactual.com/",
+                "application": "Alternância rítmica entre fundos brancos e blocos em azul-marinho profundo (#06172d) nas transições de abertura, assinatura e fechamento."
+              },
+              {
+                "aspect": "surface",
+                "observed": "Contraste marcante entre branco puro e azul-marinho denso, com cartões delimitados por bordas sutis e guias cromáticas verticais.",
+                "sourceUrl": "https://institucional.btgpactual.com/",
+                "application": "Superfície contrastante com cartões em fundo neutro (#f4f6f8), linhas divisórias suaves e destaque em azul petróleo (#2d929f)."
+              },
+              {
+                "aspect": "mobile",
+                "observed": "Empilhamento vertical rigoroso no mobile (390px) com imagens no topo, cartões ocupando largura total e alvos de toque generosos.",
+                "sourceUrl": "https://institucional.btgpactual.com/",
+                "application": "Composição mobile em coluna única contínua, convertendo divisões horizontais em leitura vertical confortável sem overflow lateral."
+              }
+            ],
+            "primaryUrl": "https://institucional.btgpactual.com/",
+            "adaptations": "Adaptação da paleta oficial do Raizen Bank com azul-marinho profundo (#06172d) e acento em azul petróleo (#2d929f), mantendo a sobriedade tipográfica e a composição em duas colunas sem replicar marcas, cópias comerciais ou elementos exclusivos da referência."
+          },
+          "structureRationale": "Reproduz a cadência do BTG Pactual com hero dividido, apresentação de solidez desde 1983, esclarecimento das frentes de atuação e rota de confiança institucional com contato direto."
+        },
+        "radius": "sm",
+        "logoUrl": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizenbank/logo/1789359038604-logo-green.svg",
+        "surface": "#f4f6f8",
+        "accentAlt": "#06172d",
+        "highlight": "#ffffff",
+        "paletteSource": "operador"
+      },
+      "dials": {
+        "motion": 5,
+        "density": 4,
+        "variance": 7
+      },
+      "locale": "pt-BR",
+      "contacts": {
+        "phones": [
+          {
+            "number": "11998887766",
+            "whatsapp": true
+          }
+        ],
+        "social": [
+          "https://www.instagram.com/btgpactual/"
+        ],
+        "addresses": [
+          {
+            "text": "Salvador arruda 100",
+            "label": "Matriz"
+          }
+        ]
+      },
+      "whatsapp": "11998887766",
+      "contactEmail": "mail@mail.com"
+    }
+  },
+  "version": 1
+}
