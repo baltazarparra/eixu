@@ -5,7 +5,16 @@ import { MockLanguageModelV4 } from 'ai/test';
 import { pageEditFixture, editPages } from './helpers/page-edit-fixture.mjs';
 import { loadModule } from './helpers/load-module.mjs';
 
-for (const mode of ['model', 'receipt', 'ambiguous', 'explicit-home', 'omitted-removal'])
+const { pageRevision } = await loadModule('lib/ai/page-edits.ts');
+
+for (const mode of [
+  'model',
+  'receipt',
+  'ambiguous',
+  'explicit-home',
+  'omitted-removal',
+  'cross-page-omitted-removal',
+])
   await test(`rota de edição: ${mode}`, async () => {
     const withFinal = mode === 'model';
     const requestText =
@@ -13,7 +22,9 @@ for (const mode of ['model', 'receipt', 'ambiguous', 'explicit-home', 'omitted-r
         ? 'Na página Início, deixe o segundo box de dúvidas à direita.'
         : mode === 'omitted-removal'
           ? 'Troque o título Como escolher para Escolhas do projeto e remova a seção de dúvidas.'
-        : 'Troque o título Como escolher para Escolhas do projeto';
+          : mode === 'cross-page-omitted-removal'
+            ? 'Remova a seção de dúvidas na home e na página Materiais; troque o título Como escolher por Escolhas do projeto em Materiais.'
+            : 'Troque o título Como escolher para Escolhas do projeto';
     const f = await pageEditFixture(requestText);
     const persisted = [];
     let calls = 0;
@@ -62,10 +73,11 @@ for (const mode of ['model', 'receipt', 'ambiguous', 'explicit-home', 'omitted-r
             .split('Leitura feita pelo servidor neste turno.')[1]
             .split('\n')[1];
           const snapshot = JSON.parse(snapshotText);
-          assert.equal(
-            snapshot.slug,
-            mode === 'explicit-home' ? '/' : '/materiais',
-          );
+          if (mode !== 'cross-page-omitted-removal')
+            assert.equal(
+              snapshot.slug,
+              mode === 'explicit-home' ? '/' : '/materiais',
+            );
           return new ToolLoopAgent({
             tools,
             instructions,
@@ -103,7 +115,10 @@ for (const mode of ['model', 'receipt', 'ambiguous', 'explicit-home', 'omitted-r
                               }
                             : {
                                 page: 'materiais',
-                                revision: snapshot.revision,
+                                revision:
+                                  mode === 'cross-page-omitted-removal'
+                                    ? pageRevision(f.pages[1])
+                                    : snapshot.revision,
                                 operations: [
                                   {
                                     op: 'replace_text',
@@ -126,6 +141,17 @@ for (const mode of ['model', 'receipt', 'ambiguous', 'explicit-home', 'omitted-r
                       },
                       { type: 'text-end', id: 'final' },
                     ];
+                if (first && mode === 'cross-page-omitted-removal')
+                  content.unshift({
+                    type: 'tool-call',
+                    toolCallId: 'remove-home',
+                    toolName: 'edit_page',
+                    input: JSON.stringify({
+                      page: '',
+                      revision: pageRevision(f.pages[0]),
+                      operations: [{ op: 'remove', block: 'faq' }],
+                    }),
+                  });
                 const chunks = [
                   { type: 'stream-start', warnings: [] },
                   ...content,
@@ -201,6 +227,20 @@ for (const mode of ['model', 'receipt', 'ambiguous', 'explicit-home', 'omitted-r
         stream.indexOf('tool-output-available'),
     );
     assert.match(stream, /Alterações salvas no rascunho de/);
+    if (mode === 'cross-page-omitted-removal') {
+      assert.match(
+        stream,
+        /Em \/materiais, a edição foi salva sem remoção de seção/,
+      );
+      assert.equal(f.writes.length, 2);
+      assert.equal(
+        f.pages[0].blocks.some((block) => block.id === 'faq'),
+        false,
+      );
+      assert.equal(f.pages[1].blocks[2].props.title, 'Escolhas do projeto');
+      assert.equal(persisted.length, 2);
+      return;
+    }
     if (mode === 'omitted-removal')
       assert.match(stream, /A remoção da seção pedida não foi executada/);
     assert.match(

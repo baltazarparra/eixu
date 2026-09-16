@@ -61,6 +61,7 @@ const actions = [
   'Publique o site.',
   'Header mais escuro e fixo.',
   'Tem uma seção entre como funciona e sobre a Mizuki. Apague-a.',
+  'Tem uma seção entre como funciona e sobre a Mizuki. Tire-a.',
   'Remova a sessão que só tem uma foto gigante com legenda.',
 ];
 

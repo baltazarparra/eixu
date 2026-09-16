@@ -310,15 +310,17 @@ uma vez. Quando a tentativa de `remove` pede confirmação, o servidor guarda
 o lote, a página, o ID do bloco e a revisão num registro interno de
 `chat_messages` (`edit-pending`), vinculado ao operador que iniciou o pedido.
 Uma resposta afirmativa na próxima fala desse mesmo operador
-retoma esse lote sem nova interpretação do modelo. Outra fala consome a
-pendência; revisão desatualizada ou bloco ausente recusam a escrita. Um "sim"
+reivindica esse lote atomicamente e o retoma sem nova interpretação do modelo.
+Outra fala consome a pendência; duas abas não conseguem retomá-la ao mesmo
+tempo. Revisão desatualizada ou bloco ausente recusam a escrita. Um "sim"
 sem pendência não autoriza nada. Pedido explícito de remover a seção inteira
 grava diretamente, sujeito aos erros técnicos do schema e do pre-flight;
 recomendações de composição ficam no painel.
 
 Em um pedido composto, a exclusão autorizada não libera perda incidental de
 texto nos demais blocos do lote. Se o agente salvar outra parte e deixar a
-seção pedida intacta, o recibo declara essa omissão.
+seção pedida intacta, o recibo declara essa omissão. Em mais de uma página, o
+recibo confere a remoção por página e aponta onde houve edição sem exclusão.
 
 Toda escrita do rascunho guarda o estado anterior em `page_revisions`, com
 retenção das vinte últimas versões por página. `undo_page_edit` e o botão

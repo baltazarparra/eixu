@@ -9,6 +9,7 @@ async function removalChat({
   changeBeforeConfirm = false,
   otherOperator = false,
   auditFails = false,
+  concurrentConfirm = false,
 } = {}) {
   const f = await pageEditFixture('remova essa foto da seção');
   const messages = [];
@@ -32,6 +33,7 @@ async function removalChat({
         if (!latest) return [];
         return [
           {
+            id: latest.id,
             content: latest.content,
             next_turn: !messages.some(
               (message) =>
@@ -42,6 +44,26 @@ async function removalChat({
             ),
           },
         ];
+      }
+      if (statement.includes('update chat_messages pending')) {
+        const pending = messages.find((message) => message.id === values[0]);
+        if (
+          !pending ||
+          pending.tenantId !== values[1] ||
+          pending.userId !== values[2] ||
+          pending.content !== values[3] ||
+          messages.some(
+            (message) =>
+              message.role === 'user' &&
+              message.channel === 'site' &&
+              message.userId === values[5] &&
+              message.id > pending.id &&
+              (values[6] === null || message.id < values[6]),
+          )
+        )
+          return [];
+        pending.content = '{"status":"consumed"}';
+        return [{ id: pending.id }];
       }
       if (statement.includes('insert into chat_messages')) {
         const message = {
@@ -191,10 +213,20 @@ async function removalChat({
   }
   if (changeBeforeConfirm)
     f.pages[0].blocks[2].props.title = 'Título alterado em outra aba';
-  const second = await send(
-    'Confirmo que pode remover a seção inteira com tudo dentro.',
-  );
-  return { f, messages, activity, modelCalls, second, colleagueResponse };
+  const confirmation =
+    'Confirmo que pode remover a seção inteira com tudo dentro.';
+  const responses = concurrentConfirm
+    ? await Promise.all([send(confirmation), send(confirmation)])
+    : [await send(confirmation)];
+  return {
+    f,
+    messages,
+    activity,
+    modelCalls,
+    second: responses[0],
+    responses,
+    colleagueResponse,
+  };
 }
 
 await test('confirmação natural remove o bloco recusado sem repetir o modelo', async () => {
@@ -255,7 +287,7 @@ await test('outro operador não pode confirmar a remoção pendente', async () =
     messages
       .filter((message) => message.channel === 'edit-pending')
       .map((message) => message.userId),
-    ['user-1', 'user-1'],
+    ['user-1'],
   );
   assert.equal(
     activity.filter((entry) => entry.action === 'page.edit').length,
@@ -269,4 +301,21 @@ await test('falha da auditoria não transforma edição salva em falsa recusa', 
   assert.match(second, /Alterações salvas no rascunho/);
   assert.match(second, /registro desta edição na atividade falhou/);
   assert.doesNotMatch(second, /Nenhuma alteração foi salva/);
+});
+
+await test('duas confirmações concorrentes reivindicam o lote uma vez só', async () => {
+  const { f, responses, activity } = await removalChat({
+    concurrentConfirm: true,
+  });
+  assert.equal(
+    responses.filter((response) =>
+      /Alterações salvas no rascunho/.test(response),
+    ).length,
+    1,
+  );
+  assert.equal(f.writes.length, 1);
+  assert.equal(
+    activity.filter((entry) => entry.action === 'page.edit').length,
+    1,
+  );
 });

@@ -37,6 +37,7 @@ await test('o tamanho da remoção sai do pedido, não de um único bit', () => 
     'item',
   );
   assert.equal(removalScope('remova todos os cards da seção'), 'item');
+  assert.equal(removalScope('remova o segundo item da seção inteira'), 'item');
   assert.equal(
     removalScope('remova o bloco inteiro com todos os cards'),
     'block',
@@ -62,6 +63,10 @@ await test('o tamanho da remoção sai do pedido, não de um único bit', () => 
   );
   assert.equal(
     removalScope('Tem uma seção com uma foto gigante. Apague-a.'),
+    'block',
+  );
+  assert.equal(
+    removalScope('Tem uma seção com uma foto gigante. Tire-a.'),
     'block',
   );
   assert.equal(removalScope('troque o título da home'), undefined);

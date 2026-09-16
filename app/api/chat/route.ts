@@ -27,7 +27,7 @@ import {
   requestedEditingPage,
 } from '@/lib/ai/edit-policy';
 import {
-  consumePendingEdit,
+  claimPendingEdit,
   nextPendingEdit,
   pendingFromAttempt,
   storePendingEdit,
@@ -173,6 +173,7 @@ export async function POST(request: Request) {
   const pendingEdit = !phase
     ? await nextPendingEdit(sql, tenant.id, user.id)
     : null;
+  let userMessageId: number | null = null;
   if (lastUserText) {
     const rows = (await sql`
       insert into chat_messages (
@@ -183,6 +184,7 @@ export async function POST(request: Request) {
         ${user.id}, 'user', ${user.name}, ${user.login}
       ) returning id
     `) as { id: number }[];
+    userMessageId = rows[0]?.id ?? null;
     await recordActivity({
       actor: user,
       tenant,
@@ -210,21 +212,25 @@ export async function POST(request: Request) {
   // A resposta à pergunta retoma o lote recusado, sem pedir ao modelo que
   // adivinhe de novo o bloco. Qualquer outra fala consome a pendência.
   if (pendingEdit && !phase) {
-    await consumePendingEdit(sql, tenant.id, user.id);
-    if (!hasFile && isAffirmative(lastUserText)) {
+    const claimed = await claimPendingEdit(
+      sql,
+      tenant.id,
+      user.id,
+      pendingEdit,
+      userMessageId,
+    );
+    if (claimed && !hasFile && isAffirmative(lastUserText)) {
+      const edit = pendingEdit.edit;
       const page = pages.find(
         (candidate) =>
-          candidate.id === pendingEdit.pageId &&
-          candidate.slug === pendingEdit.page,
+          candidate.id === edit.pageId && candidate.slug === edit.page,
       );
       let text: string;
       let changed = false;
-      if (!page || pageRevision(page) !== pendingEdit.revision) {
+      if (!page || pageRevision(page) !== edit.revision) {
         text =
           'A página mudou desde a pergunta. Nenhuma alteração foi salva. Peça a remoção novamente para conferir o alvo atual.';
-      } else if (
-        !page.blocks.some((block) => block.id === pendingEdit.blockId)
-      ) {
+      } else if (!page.blocks.some((block) => block.id === edit.blockId)) {
         text =
           'A seção indicada não está mais nesta página. Nenhuma alteração foi salva.';
       } else {
@@ -235,9 +241,9 @@ export async function POST(request: Request) {
           const edited = applyPageEdit(
             page,
             {
-              page: pendingEdit.page,
-              revision: pendingEdit.revision,
-              operations: pendingEdit.operations,
+              page: edit.page,
+              revision: edit.revision,
+              operations: edit.operations,
             },
             policy,
             tenant.brand,
@@ -448,7 +454,7 @@ export async function POST(request: Request) {
   let completedSteps = 0;
   const editReceipt = editPolicy ? createEditReceipt() : undefined;
   const editOutcomes = new Map<string, { ok: boolean; changed: boolean }>();
-  let removedRequestedSection = false;
+  const removedSectionPages = new Set<string>();
   let pendingConfirmation: PendingEdit | null = null;
   const agent = siteAgent({
     tenantId: tenant.id,
@@ -534,9 +540,15 @@ export async function POST(request: Request) {
                   confirmationRequired?: { blockId?: string };
                   changes?: { op?: string }[];
                 };
-                if (output.changes?.some((change) => change.op === 'remove'))
-                  removedRequestedSection = true;
                 const parsedInput = pageEditSchema.safeParse(part.input);
+                if (
+                  output.ok === true &&
+                  parsedInput.success &&
+                  output.changes?.some((change) => change.op === 'remove')
+                )
+                  removedSectionPages.add(
+                    `/${parsedInput.data.page.replace(/^\/+|\/+$/g, '')}`,
+                  );
                 if (
                   output.confirmationRequired?.blockId &&
                   parsedInput.success
@@ -608,14 +620,21 @@ export async function POST(request: Request) {
         receipt: editReceipt
           ? () => {
               const base = editReceipt.text();
-              const omittedRemoval =
+              const pagesWithoutRemoval =
                 editPolicy?.removalScope === 'block' &&
-                editPolicy.removal === true &&
-                [...editOutcomes.values()].some((outcome) => outcome.changed) &&
-                !removedRequestedSection;
-              return omittedRemoval
-                ? `${base ?? 'Parte do pedido foi salva no rascunho.'} A remoção da seção pedida não foi executada.`
-                : base;
+                editPolicy.removal === true
+                  ? [...editOutcomes]
+                      .filter(
+                        ([page, outcome]) =>
+                          outcome.changed && !removedSectionPages.has(page),
+                      )
+                      .map(([page]) => page)
+                  : [];
+              if (!pagesWithoutRemoval.length) return base;
+              const warning = removedSectionPages.size
+                ? `Em ${pagesWithoutRemoval.join(', ')}, a edição foi salva sem remoção de seção. Confira se a remoção pedida ali ficou pendente.`
+                : 'A remoção da seção pedida não foi executada.';
+              return `${base ?? 'Parte do pedido foi salva no rascunho.'} ${warning}`;
             }
           : undefined,
         summary: async () => {

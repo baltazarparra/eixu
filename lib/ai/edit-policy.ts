@@ -140,7 +140,7 @@ export function removalScope(text: string): 'item' | 'block' | undefined {
   const section =
     '(?:secao|secoes|sessao|sessoes|blocos?|faixas?|banner|galeria|rodape|footer|cabecalho|header|menu|navbar|formulario|hero|abertura)';
   const item =
-    /\b(cards?|cartao|cartoes|itens?|parte|partes|pedaco|trecho|fotos?|imagens?|icones?|botoes?|botao|links?|selos?|etiquetas?|depoimentos?|perguntas?|colunas?|linhas?|opcoes|opcao)\b/.test(
+    /\b(cards?|cartao|cartoes|item|itens|parte|partes|pedaco|trecho|fotos?|imagens?|icones?|botoes?|botao|links?|selos?|etiquetas?|depoimentos?|perguntas?|colunas?|linhas?|opcoes|opcao)\b/.test(
       request,
     );
   const block = new RegExp(`\\b${section}\\b`).test(request);
@@ -162,12 +162,13 @@ export function removalScope(text: string): 'item' | 'block' | undefined {
     `\\b(?:remov\\w*|retir\\w*|tir[ae]\\w*|apag\\w*|exclu\\w*|delet\\w*)\\s+(?:(?:a|o|as|os|essa|esse|esta|este|aquela|aquele|toda|todo)\\s+){0,2}${section}\\b`,
   ).test(request);
   const anaphoricBlockTarget = new RegExp(
-    `^(?:tem|ha|existe)\\s+(?:uma?|alguma)\\s+${section}\\b[\\s\\S]{0,180}\\b(?:remov\\w*|retir\\w*|apag\\w*|exclu\\w*|delet\\w*)-[ao]\\b`,
+    `^(?:tem|ha|existe)\\s+(?:uma?|alguma)\\s+${section}\\b[\\s\\S]{0,180}\\b(?:remov\\w*|retir\\w*|tir[ae]\\w*|apag\\w*|exclu\\w*|delet\\w*)-[ao]\\b`,
   ).test(request);
   // O alvo menor prevalece. Palavras de preservação como “todos os outros”
   // não podem transformar “remova esse card da seção” em autorização para
   // apagar a seção inteira.
-  if (block && explicitWholeBlock) return 'block';
+  if (block && explicitWholeBlock && (!item || directBlockTarget))
+    return 'block';
   if ((directBlockTarget || anaphoricBlockTarget) && !pointed) return 'block';
   if (item) return 'item';
   if (block) return pointed ? undefined : 'block';
