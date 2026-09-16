@@ -901,19 +901,19 @@
       "ink": "#06172d",
       "font": "sans",
       "vibe": "comercial",
-      "paper": "#ffffff",
-      "accent": "#2d929f",
+      "paper": "#fcfcfd",
+      "accent": "#0e5a63",
       "design": {
         "motif": "none",
         "rhythm": "alternating",
         "concept": "Arquitetura institucional e solidez financeira em duas colunas assimétricas e contraste corporativo profundo",
         "version": 6,
-        "bodyFont": "sans",
+        "bodyFont": "source",
         "definedAt": "2026-09-14T04:13:59.223Z",
-        "signature": "comercial-confianca|sans|sans|split|bar|alternating|framed|contrast|none",
+        "signature": "comercial-confianca|humanist|source|split|bar|alternating|framed|contrast|none",
         "structure": "comercial-confianca",
         "navigation": "bar",
-        "displayFont": "sans",
+        "displayFont": "humanist",
         "surfaceStyle": "contrast",
         "imageTreatment": "framed",
         "heroComposition": "split",
@@ -930,7 +930,7 @@
               "aspect": "typography",
               "observed": "Tipografia sem serifa sóbria em pesos regulares, títulos moderados e corpo com entrelinha arejada para leitura executiva.",
               "sourceUrl": "https://institucional.btgpactual.com/",
-              "application": "Uso do par tipográfico sans (Geist) para títulos e corpo, preservando hierarquia discreta, pesos balanceados e números tabulares legíveis."
+              "application": "Par tipográfico humanist (Manrope) nos títulos e source (Source Sans 3) no corpo, preservando a sobriedade sem serifa observada e ampliando a hierarquia entre display e leitura executiva, com números tabulares legíveis."
             },
             {
               "aspect": "imagery",
@@ -948,7 +948,7 @@
               "aspect": "surface",
               "observed": "Contraste marcante entre branco puro e azul-marinho denso, com cartões delimitados por bordas sutis e guias cromáticas verticais.",
               "sourceUrl": "https://institucional.btgpactual.com/",
-              "application": "Superfície contrastante com cartões em fundo neutro (#f4f6f8), linhas divisórias suaves e destaque em azul petróleo (#2d929f)."
+              "application": "Superfície contrastante com cartões em fundo neutro (#edf1f5) sobre papel #fcfcfd, linhas divisórias suaves e destaque em azul petróleo profundo (#0e5a63), com a ação em verde-petróleo (#107567)."
             },
             {
               "aspect": "mobile",
@@ -958,15 +958,15 @@
             }
           ],
           "primaryUrl": "https://institucional.btgpactual.com/",
-          "adaptations": "Adaptação da paleta oficial do Raizen Bank com azul-marinho profundo (#06172d) e acento em azul petróleo (#2d929f), mantendo a sobriedade tipográfica e a composição em duas colunas sem replicar marcas, cópias comerciais ou elementos exclusivos da referência."
+          "adaptations": "Adaptação da paleta oficial do Raizen Bank preservando o azul-marinho profundo (#06172d) como âncora e aprofundando o acento de azul petróleo para #0e5a63, com cor de ação própria em verde-petróleo (#107567). Mantém a sobriedade tipográfica e a composição em duas colunas sem replicar marcas, cópias comerciais ou elementos exclusivos da referência."
         },
         "structureRationale": "Reproduz a cadência do BTG Pactual com hero dividido, apresentação de solidez desde 1983, esclarecimento das frentes de atuação e rota de confiança institucional com contato direto."
       },
-      "radius": "sm",
+      "radius": "md",
       "logoUrl": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/raizenbank/logo/1789359038604-logo-green.svg",
-      "surface": "#f4f6f8",
+      "surface": "#edf1f5",
       "accentAlt": "#06172d",
-      "highlight": "#ffffff",
+      "highlight": "#107567",
       "paletteSource": "operador"
     },
     "dials": {
