@@ -90,7 +90,7 @@ export function isUndoRequest(text: string): boolean {
  * fez a pergunta correspondente; sozinha não confirma nada.
  */
 export function isAffirmative(text: string): boolean {
-  return /^(?:sim|isso|isso mesmo|ok|okay|confirmo|confirmado|pode|pode sim|pode remover|pode remover a secao inteira|pode apagar|autorizo|manda|vai|correto|exato|positivo|e isso)(?:[ ,](?:pode|remover|apagar|sim|isso|mesmo|a|o|secao|bloco|inteira|inteiro|tudo))*$/.test(
+  return /^(?:sim|isso|isso mesmo|ok|okay|confirmo|confirmado|pode|pode sim|pode remover|pode remover a secao inteira|pode apagar|autorizo|manda|vai|correto|exato|positivo|e isso)(?:[ ,]+(?:que|pode|remover|apagar|excluir|deletar|sim|isso|mesmo|a|o|as|os|essa|esse|secao|sessao|bloco|inteira|inteiro|todo|toda|todos|todas|com|tudo|dentro))*$/.test(
     normalize(text),
   );
 }

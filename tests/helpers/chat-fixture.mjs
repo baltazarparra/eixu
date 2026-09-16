@@ -127,7 +127,7 @@ export async function chatFixture({
       db:
         () =>
         async (parts, ...values) => {
-          if (parts.join('').includes('chat_messages'))
+          if (parts.join('').includes('insert into chat_messages'))
             writes.push({
               role: parts.join('').includes("'assistant'")
                 ? 'assistant'
@@ -250,14 +250,17 @@ export async function chatFixture({
   };
 }
 
-export function chatRequest(text, phase) {
+export function chatRequest(text, phase, history = []) {
   return new Request('http://fixture.test/api/chat', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       tenant: 'stream-fixture',
       phase,
-      messages: [{ id: 'user', role: 'user', parts: [{ type: 'text', text }] }],
+      messages: [
+        ...history,
+        { id: 'user', role: 'user', parts: [{ type: 'text', text }] },
+      ],
     }),
   });
 }

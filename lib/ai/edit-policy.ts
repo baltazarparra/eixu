@@ -15,8 +15,6 @@ export type EditPolicy = {
    * cards porque a autorização era um único bit para o turno inteiro.
    */
   removalScope?: 'item' | 'block';
-  /** O operador confirmou, no turno anterior, a remoção da seção inteira. */
-  removalConfirmed?: boolean;
   /** Pedido visual em um bloco nomeado: preserva conteúdo, tipo e ordem. */
   visualOnly?: boolean;
   /** Famílias nomeadas pelo operador, aplicadas nas páginas selecionadas. */
@@ -139,30 +137,38 @@ export function asksRemoval(text: string): boolean {
 export function removalScope(text: string): 'item' | 'block' | undefined {
   if (!asksRemoval(text)) return undefined;
   const request = normalized(text);
+  const section =
+    '(?:secao|secoes|sessao|sessoes|blocos?|faixas?|banner|galeria|rodape|footer|cabecalho|header|menu|navbar|formulario|hero|abertura)';
   const item =
     /\b(cards?|cartao|cartoes|itens?|parte|partes|pedaco|trecho|fotos?|imagens?|icones?|botoes?|botao|links?|selos?|etiquetas?|depoimentos?|perguntas?|colunas?|linhas?|opcoes|opcao)\b/.test(
       request,
     );
-  const block =
-    /\b(secao|secoes|blocos?|faixas?|banner|galeria|rodape|footer|cabecalho|header|menu|navbar|formulario|hero|abertura)\b/.test(
-      request,
-    );
+  const block = new RegExp(`\\b${section}\\b`).test(request);
   const explicitWholeBlock =
-    /\b(?:secoes?|blocos?|faixas?|banner|galeria|rodape|footer|cabecalho|header|menu|navbar|formulario|hero|abertura)\s+(?:inteir\w*|complet\w*)\b/.test(
+    new RegExp(`\\b${section}\\s+(?:inteir\\w*|complet\\w*)\\b`).test(
       request,
     ) ||
-    /\b(?:toda|todo|todas|todos)\s+(?:a\s+|o\s+|as\s+|os\s+)?(?:secoes?|blocos?|faixas?|banner|galeria|rodape|footer|cabecalho|header|menu|navbar|formulario|hero|abertura)\b/.test(
-      request,
-    );
+    new RegExp(
+      `\\b(?:toda|todo|todas|todos)\\s+(?:a\\s+|o\\s+|as\\s+|os\\s+)?${section}\\b`,
+    ).test(request);
   // Alvo apontado por imagem: o texto não diz o que é, e o modelo adivinha.
   const pointed =
     /\b(anex\w*|referencia|print|captura|screenshot|imagem acima|acima|marcad\w*|circulad\w*)\b/.test(
       request,
     );
+  // O objeto do verbo decide o tamanho: em "remova a seção com a foto", a
+  // foto identifica a seção; em "remova a foto da seção", ela é o alvo.
+  const directBlockTarget = new RegExp(
+    `\\b(?:remov\\w*|retir\\w*|tir[ae]\\w*|apag\\w*|exclu\\w*|delet\\w*)\\s+(?:(?:a|o|as|os|essa|esse|esta|este|aquela|aquele|toda|todo)\\s+){0,2}${section}\\b`,
+  ).test(request);
+  const anaphoricBlockTarget = new RegExp(
+    `^(?:tem|ha|existe)\\s+(?:uma?|alguma)\\s+${section}\\b[\\s\\S]{0,180}\\b(?:remov\\w*|retir\\w*|apag\\w*|exclu\\w*|delet\\w*)-[ao]\\b`,
+  ).test(request);
   // O alvo menor prevalece. Palavras de preservação como “todos os outros”
   // não podem transformar “remova esse card da seção” em autorização para
   // apagar a seção inteira.
   if (block && explicitWholeBlock) return 'block';
+  if ((directBlockTarget || anaphoricBlockTarget) && !pointed) return 'block';
   if (item) return 'item';
   if (block) return pointed ? undefined : 'block';
   return undefined;
@@ -353,7 +359,6 @@ export function editPolicyFor(
       visualFamilies: ['nav'],
       removal: asksRemoval(text) || options.confirmedBlockRemoval === true,
       removalScope: scope,
-      removalConfirmed: options.confirmedBlockRemoval === true,
       targets: selected.flatMap((page) =>
         page.blocks
           .filter((block) => block.type === 'nav.bar')
@@ -397,14 +402,12 @@ export function editPolicyFor(
       kind: 'edit',
       removal: asksRemoval(text) || options.confirmedBlockRemoval === true,
       removalScope: scope,
-      removalConfirmed: options.confirmedBlockRemoval === true,
     };
   }
   return {
     kind: 'edit',
     removal: asksRemoval(text) || options.confirmedBlockRemoval === true,
     removalScope: scope,
-    removalConfirmed: options.confirmedBlockRemoval === true,
   };
 }
 

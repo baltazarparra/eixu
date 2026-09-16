@@ -24,6 +24,10 @@ await test('reconhece o pedido curto de reverter e a confirmação', () => {
   assert.equal(isUndoRequest('remove esse bloco em anexo'), false);
   assert.equal(isUndoRequest('refaz a home inteira'), false);
   assert.equal(isAffirmative('sim, pode remover'), true);
+  assert.equal(
+    isAffirmative('Confirmo que pode remover a seção inteira com tudo dentro.'),
+    true,
+  );
   assert.equal(isAffirmative('não'), false);
   assert.equal(isAffirmative('remove tudo mesmo assim'), false);
 });

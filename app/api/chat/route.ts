@@ -26,12 +26,21 @@ import {
   editScopeText,
   requestedEditingPage,
 } from '@/lib/ai/edit-policy';
+import {
+  consumePendingEdit,
+  nextPendingEdit,
+  pendingFromAttempt,
+  storePendingEdit,
+  type PendingEdit,
+} from '@/lib/ai/pending-edit';
 import { interactionModeFor } from '@/lib/ai/interaction';
 import {
-  BLOCK_REMOVAL_CONFIRMATION,
+  applyPageEdit,
   PageEditError,
   editingPageContext,
   literalEditClarification,
+  pageEditSchema,
+  pageRevision,
 } from '@/lib/ai/page-edits';
 import { isAuthenticated } from '@/lib/auth';
 import { buildTools } from '@/lib/ai/tools';
@@ -58,6 +67,7 @@ import {
 import { systemPrompt, type PromptContext } from '@/lib/taste/prompt';
 import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
 import { undoPageEdit } from '@/lib/sites/edits';
+import { savePageEdit } from '@/lib/sites/edits';
 import { latestUndoPage } from '@/lib/sites/revisions';
 import { publicationMessage, publishSite } from '@/lib/sites/publish';
 import {
@@ -110,6 +120,7 @@ export async function POST(request: Request) {
 
   const tenant = await getTenantBySlug(body.tenant);
   if (!tenant) return new Response('Cliente não encontrado', { status: 404 });
+  const sql = db();
 
   const [pages, libraryImages] = await Promise.all([
     listPages(tenant.id),
@@ -157,21 +168,79 @@ export async function POST(request: Request) {
     .filter((part) => part.type === 'text')
     .map((part) => (part as { text: string }).text)
     .join(' ');
+  const pendingEdit = !phase ? await nextPendingEdit(sql, tenant.id) : null;
   if (lastUserText) {
-    await db()`
+    await sql`
       insert into chat_messages (tenant_id, role, content, channel)
       values (${tenant.id}, 'user', ${lastUserText}, 'site')
     `;
   }
 
   const persistAssistant = async (text: string) => {
-    await db()`
+    await sql`
       insert into chat_messages (tenant_id, role, content, channel)
       values (${tenant.id}, 'assistant', ${text}, 'site')
     `;
   };
 
   const hasFile = Boolean(lastUser?.parts.some((part) => part.type === 'file'));
+  // A resposta à pergunta retoma o lote recusado, sem pedir ao modelo que
+  // adivinhe de novo o bloco. Qualquer outra fala consome a pendência.
+  if (pendingEdit && !phase) {
+    await consumePendingEdit(sql, tenant.id);
+    if (!hasFile && isAffirmative(lastUserText)) {
+      const page = pages.find(
+        (candidate) =>
+          candidate.id === pendingEdit.pageId &&
+          candidate.slug === pendingEdit.page,
+      );
+      let text: string;
+      let changed = false;
+      if (!page || pageRevision(page) !== pendingEdit.revision) {
+        text =
+          'A página mudou desde a pergunta. Nenhuma alteração foi salva. Peça a remoção novamente para conferir o alvo atual.';
+      } else if (
+        !page.blocks.some((block) => block.id === pendingEdit.blockId)
+      ) {
+        text =
+          'A seção indicada não está mais nesta página. Nenhuma alteração foi salva.';
+      } else {
+        try {
+          const policy = editPolicyFor(lastUserText, [page], page.slug, {
+            confirmedBlockRemoval: true,
+          });
+          const edited = applyPageEdit(
+            page,
+            {
+              page: pendingEdit.page,
+              revision: pendingEdit.revision,
+              operations: pendingEdit.operations,
+            },
+            policy,
+            tenant.brand,
+          );
+          const saved = await savePageEdit({
+            tenant,
+            page,
+            blocks: edited.blocks,
+            brand: tenant.brand,
+            summary: edited.summary.join(' '),
+          });
+          changed = saved.changed;
+          text = changed
+            ? `Alterações salvas no rascunho de /${page.slug}. ${edited.summary.join(' ')} Se não era isso, peça “desfaz”. Confira a prévia.`
+            : 'A página já estava como solicitado. Nenhuma alteração nova foi salva.';
+        } catch (error) {
+          text =
+            error instanceof PageEditError
+              ? error.message
+              : 'Não consegui concluir a alteração. Nenhuma alteração foi salva.';
+        }
+      }
+      await persistAssistant(text);
+      return textResponse(text, changed);
+    }
+  }
   // A ordem explícita é executada pelo servidor: o modelo não veta a decisão
   // editorial nem transforma autorização de publicação em confirmação de fatos.
   if (!phase && !hasFile && isDirectPublicationRequest(lastUserText)) {
@@ -246,9 +315,6 @@ export async function POST(request: Request) {
 
   // A revisão renderiza o rascunho pela própria origem da requisição.
   const origin = new URL(request.url).origin;
-  // Uma recusa por tamanho de remoção termina com uma frase estável no recibo
-  // do servidor. Só a resposta afirmativa a essa pergunta eleva o escopo, e
-  // apenas no turno seguinte: um "sim" solto não autoriza nada.
   const previousAssistant = [...body.messages]
     .filter((message) => message.role === 'assistant')
     .at(-1);
@@ -256,21 +322,13 @@ export async function POST(request: Request) {
     .filter((part) => part.type === 'text')
     .map((part) => (part as { text: string }).text)
     .join(' ');
-  const askedBlockRemoval = previousAssistantText.includes(
-    BLOCK_REMOVAL_CONFIRMATION,
-  );
-  const confirmedBlockRemoval =
-    askedBlockRemoval && isAffirmative(lastUserText);
   const conversationOnly =
     !phase &&
-    !confirmedBlockRemoval &&
     interactionModeFor(lastUserText, previousAssistantText) === 'conversation';
   const editPolicy =
     phase || conversationOnly
       ? undefined
-      : editPolicyFor(lastUserText, pages, body.page ?? '', {
-          confirmedBlockRemoval,
-        });
+      : editPolicyFor(lastUserText, pages, body.page ?? '');
   const repairPublication = !phase && isPublicationRepairRequest(lastUserText);
   const anchor = resolveAnchor(editingPage, body.anchor);
   context.editing = Boolean(editPolicy);
@@ -323,6 +381,8 @@ export async function POST(request: Request) {
   let completedSteps = 0;
   const editReceipt = editPolicy ? createEditReceipt() : undefined;
   const editOutcomes = new Map<string, { ok: boolean; changed: boolean }>();
+  let removedRequestedSection = false;
+  let pendingConfirmation: PendingEdit | null = null;
   const agent = siteAgent({
     tenantId: tenant.id,
     tools,
@@ -389,7 +449,33 @@ export async function POST(request: Request) {
                 ) as {
                   ok?: boolean;
                   changed?: boolean;
+                  confirmationRequired?: { blockId?: string };
+                  changes?: { op?: string }[];
                 };
+                if (output.changes?.some((change) => change.op === 'remove'))
+                  removedRequestedSection = true;
+                const parsedInput = pageEditSchema.safeParse(part.input);
+                if (
+                  output.confirmationRequired?.blockId &&
+                  parsedInput.success
+                ) {
+                  const targetPage = pages.find(
+                    (candidate) => candidate.slug === parsedInput.data.page,
+                  );
+                  pendingConfirmation = targetPage
+                    ? pendingFromAttempt(
+                        parsedInput.data,
+                        targetPage.id,
+                        output.confirmationRequired.blockId,
+                      )
+                    : null;
+                }
+                if (
+                  output.ok === true &&
+                  parsedInput.success &&
+                  pendingConfirmation?.page === parsedInput.data.page
+                )
+                  pendingConfirmation = null;
                 const inputPage = (part.input as { page?: unknown } | undefined)
                   ?.page;
                 const page =
@@ -434,7 +520,19 @@ export async function POST(request: Request) {
         messageMetadata: usageMetadata(model, phase ?? 'livre', started),
       }),
       {
-        receipt: editReceipt ? () => editReceipt.text() : undefined,
+        receipt: editReceipt
+          ? () => {
+              const base = editReceipt.text();
+              const omittedRemoval =
+                editPolicy?.removalScope === 'block' &&
+                editPolicy.removal === true &&
+                [...editOutcomes.values()].some((outcome) => outcome.changed) &&
+                !removedRequestedSection;
+              return omittedRemoval
+                ? `${base ?? 'Parte do pedido foi salva no rascunho.'} A remoção da seção pedida não foi executada.`
+                : base;
+            }
+          : undefined,
         summary: async () => {
           if (editOutcomes.size) {
             const saved = [...editOutcomes]
@@ -474,7 +572,14 @@ export async function POST(request: Request) {
             ? `Este turno atingiu o limite de passos. ${progress}`
             : progress;
         },
-        persist: persistAssistant,
+        persist: async (text) => {
+          await persistAssistant(text);
+          if (
+            pendingConfirmation &&
+            !editOutcomes.get(`/${pendingConfirmation.page}`)?.changed
+          )
+            await storePendingEdit(sql, tenant.id, pendingConfirmation);
+        },
       },
     ),
   });

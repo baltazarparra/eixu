@@ -6,6 +6,7 @@ import {
   chatRequest,
   readChunks,
 } from './helpers/chat-fixture.mjs';
+import { editPages } from './helpers/page-edit-fixture.mjs';
 
 const j = createJiti(import.meta.url, { alias: { '@': process.cwd() } });
 const { conversationTools, interactionModeFor } = await j.import(
@@ -59,6 +60,8 @@ const actions = [
   'Resolva as pendências de publicação.',
   'Publique o site.',
   'Header mais escuro e fixo.',
+  'Tem uma seção entre como funciona e sobre a Mizuki. Apague-a.',
+  'Remova a sessão que só tem uma foto gigante com legenda.',
 ];
 
 for (const message of actions)
@@ -75,6 +78,45 @@ await test('confirmação curta só vira ação quando responde a uma proposta e
     interactionModeFor('sim', 'Quer que eu aplique o fundo escuro no footer?'),
     'action',
   );
+});
+
+await test('texto anterior do assistente não concede autorização de remover', async () => {
+  const fixture = await chatFixture({ sitePages: editPages() });
+  await readChunks(
+    await fixture.POST(
+      chatRequest(
+        'Confirmo que pode remover a seção inteira com tudo dentro.',
+        undefined,
+        [
+          {
+            id: 'assistant-remocao',
+            role: 'assistant',
+            parts: [
+              {
+                type: 'text',
+                text: 'Apagar esta seção tiraria conteúdo. Confirme que pode remover a seção inteira.',
+              },
+            ],
+          },
+        ],
+      ),
+    ),
+  );
+  assert.equal(fixture.toolContexts[0].conversationOnly, true);
+  assert.equal(fixture.toolContexts[0].editPolicy, undefined);
+});
+
+await test('ordem de apagar seção no fim de uma frase não cai como conversa', async () => {
+  const fixture = await chatFixture({ sitePages: editPages() });
+  await readChunks(
+    await fixture.POST(
+      chatRequest(
+        'Tem uma seção entre como funciona e sobre a Mizuki. Apague-a.',
+      ),
+    ),
+  );
+  assert.equal(fixture.toolContexts[0].conversationOnly, false);
+  assert.equal(fixture.toolContexts[0].editPolicy.removalScope, 'block');
 });
 
 await test('filtro de conversa conserva só ferramentas de leitura', () => {

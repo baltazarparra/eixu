@@ -131,10 +131,9 @@ import {
   type EditPolicy,
 } from '@/lib/ai/edit-policy';
 import type { BlockInstance, Brand, Tenant, TenantImage } from '@/lib/types';
-import { compositionFloorError } from '@/lib/taste/composition-floor';
 import {
   applyPageEdit,
-  BLOCK_REMOVAL_CONFIRMATION,
+  BlockRemovalConfirmationError,
   PageEditError,
   pageEditSchema,
   pageSnapshot,
@@ -198,10 +197,19 @@ function findBlock(blocks: BlockInstance[], selector: string): BlockInstance {
 
 /** Envolve o execute para devolver erro como resultado, sem derrubar o passo do agente. */
 export function safe<I, O>(run: (input: I) => Promise<O>) {
-  return async (input: I): Promise<O | { error: string }> => {
+  return async (
+    input: I,
+  ): Promise<
+    O | { error: string; confirmationRequired?: { blockId: string } }
+  > => {
     try {
       return await run(input);
     } catch (error) {
+      if (error instanceof BlockRemovalConfirmationError)
+        return {
+          error: error.message,
+          confirmationRequired: { blockId: error.blockId },
+        };
       if (error instanceof ToolError || error instanceof PageEditError)
         return { error: error.message };
       console.error('[tool] falha inesperada:', error);
@@ -1816,28 +1824,6 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           context.editPolicy,
           activeBrand,
         );
-        // Só lotes que apagam seções pagam a leitura extra do piso: a regra
-        // existe para o momento em que o operador ainda pode decidir, não para
-        // virar mais uma recomendação depois da gravação.
-        if (
-          edited.changes.some((change) => change.op === 'remove') &&
-          !context.editPolicy?.removalConfirmed
-        ) {
-          const [allPages, library] = await Promise.all([
-            listPages(tenant.id),
-            listImages(tenant.id),
-          ]);
-          const floor = compositionFloorError({
-            pages: allPages,
-            slug: page.slug,
-            blocks: edited.blocks,
-            images: library,
-            brand: activeBrand,
-            brief: tenant.brief as Record<string, unknown>,
-            confirmation: BLOCK_REMOVAL_CONFIRMATION,
-          });
-          if (floor) throw new PageEditError(floor);
-        }
         const saved = await savePageEdit({
           tenant,
           page,

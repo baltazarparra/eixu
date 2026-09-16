@@ -5,12 +5,14 @@ import { MockLanguageModelV4 } from 'ai/test';
 import { pageEditFixture, editPages } from './helpers/page-edit-fixture.mjs';
 import { loadModule } from './helpers/load-module.mjs';
 
-for (const mode of ['model', 'receipt', 'ambiguous', 'explicit-home'])
+for (const mode of ['model', 'receipt', 'ambiguous', 'explicit-home', 'omitted-removal'])
   await test(`rota de edição: ${mode}`, async () => {
     const withFinal = mode === 'model';
     const requestText =
       mode === 'explicit-home'
         ? 'Na página Início, deixe o segundo box de dúvidas à direita.'
+        : mode === 'omitted-removal'
+          ? 'Troque o título Como escolher para Escolhas do projeto e remova a seção de dúvidas.'
         : 'Troque o título Como escolher para Escolhas do projeto';
     const f = await pageEditFixture(requestText);
     const persisted = [];
@@ -20,8 +22,9 @@ for (const mode of ['model', 'receipt', 'ambiguous', 'explicit-home'])
       '@/lib/db': {
         db:
           () =>
-          async (_parts, ...values) => {
-            persisted.push(values[1]);
+          async (parts, ...values) => {
+            if (parts.join('').includes('insert into chat_messages'))
+              persisted.push(values[1]);
             return [];
           },
       },
@@ -188,6 +191,8 @@ for (const mode of ['model', 'receipt', 'ambiguous', 'explicit-home'])
         stream.indexOf('tool-output-available'),
     );
     assert.match(stream, /Alterações salvas no rascunho de/);
+    if (mode === 'omitted-removal')
+      assert.match(stream, /A remoção da seção pedida não foi executada/);
     assert.match(
       stream,
       mode === 'explicit-home'
@@ -233,8 +238,9 @@ await test('rota desfaz a última página editada mesmo quando o painel mudou de
     '@/lib/db': {
       db:
         () =>
-        async (_parts, ...values) => {
-          persisted.push(values[1]);
+        async (parts, ...values) => {
+          if (parts.join('').includes('insert into chat_messages'))
+            persisted.push(values[1]);
           return [];
         },
     },

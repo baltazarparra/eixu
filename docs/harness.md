@@ -107,6 +107,10 @@ executável do assistente. Perguntas de capacidade como “o que você pode cria
 continuam conversa mesmo contendo um verbo de ação. Negação explícita, como
 “não mude nada”, também prevalece. Confirmação de remoção, publicação,
 andamento, retomada e desfazer mantêm seus caminhos determinísticos da rota.
+Uma confirmação de exclusão só retoma a pendência interna da fala anterior,
+vinculada ao bloco e à revisão; o texto anterior do assistente não concede
+autorização por si só. Pedidos de seção com foto tratam a foto como descrição
+do alvo, e ordens como “há uma seção; apague-a” entram em ação.
 O classificador é conservador; não tenta resolver toda pragmática da linguagem.
 
 [AGENTS.md](../AGENTS.md) orienta o desenvolvimento: mapa, invariantes e entrega.
