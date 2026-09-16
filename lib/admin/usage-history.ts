@@ -53,7 +53,10 @@ export type UsageFilters = {
   periodo: UsagePeriod | 'livre';
 };
 
-function presetOf(range: { start: string; end: string }): UsagePeriod | 'livre' {
+function presetOf(range: {
+  start: string;
+  end: string;
+}): UsagePeriod | 'livre' {
   const now = new Date();
   for (const days of ['7', '30', '90'] as const) {
     const preset = defaultPeriod(now, Number(days));
@@ -81,7 +84,11 @@ export function usageFilters(
   if (chosen === 'tudo' || (!chosen && query.period === 'all'))
     return { page, periodo: 'tudo' };
   if (chosen)
-    return { ...defaultPeriod(new Date(), Number(chosen)), page, periodo: chosen };
+    return {
+      ...defaultPeriod(new Date(), Number(chosen)),
+      page,
+      periodo: chosen,
+    };
   const fallback = defaultPeriod();
   const parsed = periodSchema.safeParse({
     start: query.start ?? fallback.start,
@@ -232,7 +239,10 @@ export async function usageSummary(
         and created_at >= ($2::date::timestamp at time zone 'America/Sao_Paulo')
         and created_at < (($3::date + 1)::timestamp at time zone 'America/Sao_Paulo')`,
     [tenantId, start, end],
-  )) as { costUsd: number | string | null; totalTokens: number | string | null }[];
+  )) as {
+    costUsd: number | string | null;
+    totalTokens: number | string | null;
+  }[];
   const row = result[0];
   const number = (value: number | string | null | undefined) =>
     value === null || value === undefined ? null : Number(value);
@@ -240,5 +250,72 @@ export async function usageSummary(
     days,
     costUsd: number(row?.costUsd),
     totalTokens: number(row?.totalTokens),
+  };
+}
+
+export type TenantUsageRow = {
+  tenantId: string;
+  slug: string;
+  name: string;
+  costUsd: number | null;
+  totalTokens: number | null;
+};
+
+export type TenantUsage = {
+  days: number;
+  costUsd: number | null;
+  totalTokens: number | null;
+  /** Os maiores consumos do período, já ordenados, para o cartão da lista. */
+  rows: TenantUsageRow[];
+};
+
+/**
+ * Consumo agregado por cliente no período curto. O total e as linhas saem do
+ * mesmo recorte: o cartão da home não pode somar um período e listar outro.
+ */
+export async function usageByTenant(days = 30, top = 3): Promise<TenantUsage> {
+  const { start, end } = defaultPeriod(new Date(), days);
+  const result = (await db().query(
+    `with periodo as (
+       select tenant_id, sum(cost_usd) as cost_usd, sum(total_tokens) as total_tokens
+         from ai_usage
+        where created_at >= ($1::date::timestamp at time zone 'America/Sao_Paulo')
+          and created_at < (($2::date + 1)::timestamp at time zone 'America/Sao_Paulo')
+        group by tenant_id
+     )
+     select
+       (select sum(cost_usd) from periodo) as "costUsd",
+       (select sum(total_tokens) from periodo) as "totalTokens",
+       coalesce((select json_agg(linha) from (
+         select p.tenant_id as "tenantId", t.slug, t.name,
+                p.cost_usd as "costUsd", p.total_tokens as "totalTokens"
+           from periodo p join tenants t on t.id = p.tenant_id
+          order by p.cost_usd desc nulls last, t.name
+          limit $3
+       ) linha), '[]'::json) as rows`,
+    [start, end, Math.max(1, top)],
+  )) as {
+    costUsd: number | string | null;
+    totalTokens: number | string | null;
+    rows: (Omit<TenantUsageRow, 'costUsd' | 'totalTokens'> & {
+      costUsd: number | string | null;
+      totalTokens: number | string | null;
+    })[];
+  }[];
+  const row = result[0];
+  // Contagem ausente não vira zero, como no resto do ledger.
+  const number = (value: number | string | null | undefined) =>
+    value === null || value === undefined ? null : Number(value);
+  return {
+    days,
+    costUsd: number(row?.costUsd),
+    totalTokens: number(row?.totalTokens),
+    rows: (row?.rows ?? []).map((item) => ({
+      tenantId: item.tenantId,
+      slug: item.slug,
+      name: item.name,
+      costUsd: number(item.costUsd),
+      totalTokens: number(item.totalTokens),
+    })),
   };
 }

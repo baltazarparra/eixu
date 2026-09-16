@@ -1,4 +1,5 @@
 import type { AdminUser } from '@/lib/auth';
+import type { SiteAction } from '@/lib/admin/site-list';
 import { db } from '@/lib/db';
 
 export type ActivityActor = AdminUser & {
@@ -94,6 +95,36 @@ export async function listActivity(input?: {
     summary: row.summary,
     createdAt: new Date(row.created_at).toISOString(),
   }));
+}
+
+/**
+ * Última ação de cada site, para a coluna da lista. Um `distinct on` percorre
+ * o índice por tenant e devolve uma linha por cliente, sem uma consulta por
+ * site na renderização da home.
+ */
+export async function lastSiteActions(): Promise<Map<string, SiteAction>> {
+  const rows = (await db()`
+    select distinct on (tenant_id)
+      tenant_id, action, actor_type, actor_name, summary, created_at
+    from admin_activity
+    where tenant_id is not null
+    order by tenant_id, created_at desc, id desc
+  `) as (Pick<
+    ActivityRow,
+    'action' | 'actor_type' | 'actor_name' | 'summary' | 'created_at'
+  > & { tenant_id: string })[];
+  return new Map(
+    rows.map((row) => [
+      row.tenant_id,
+      {
+        action: row.action,
+        actorType: row.actor_type,
+        actorName: row.actor_name,
+        summary: row.summary,
+        at: new Date(row.created_at).toISOString(),
+      },
+    ]),
+  );
 }
 
 export const MUTATING_AGENT_TOOLS = new Set([

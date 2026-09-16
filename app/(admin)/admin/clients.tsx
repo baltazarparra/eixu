@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   type DragEvent,
+  type ReactNode,
   type SyntheticEvent,
 } from 'react';
 import Link from 'next/link';
@@ -15,7 +16,6 @@ import {
   Check,
   ChevronRight,
   Folder,
-  FolderOpen,
   GripVertical,
   MoreHorizontal,
   Pencil,
@@ -28,13 +28,21 @@ import { TenantFields } from '@/components/admin/tenant-fields';
 import { useAdminSession } from '@/components/admin/session';
 import {
   EmptyState,
-  MetricCard,
   SegmentedControl,
   StatusDot,
   StatusPill,
   type StatusTone,
 } from '@/components/admin/primitives';
 import type { FolderAssignment } from '@/lib/admin/site-folders';
+import type { OperationSummary } from '@/lib/admin/queries';
+import type { TenantUsage } from '@/lib/admin/usage-history';
+import { formatCost, formatTokens } from '@/lib/admin/usage-summary';
+import {
+  actionLabel,
+  actorLabel,
+  lastTouch,
+  type SiteAction,
+} from '@/lib/admin/site-list';
 import {
   createSiteFolderAction,
   createTenantAction,
@@ -49,9 +57,8 @@ export type ClientSummary = {
   name: string;
   status: string;
   folderId: string | null;
-  pageCount: number;
-  leadCount: number;
   updatedAt: string;
+  lastAction: SiteAction | null;
 };
 
 export type SiteFolderSummary = {
@@ -63,14 +70,21 @@ export type SiteFolderSummary = {
 type Scope = string;
 type Toast = { message: string; undo?: FolderAssignment[] };
 
-const num = new Intl.NumberFormat('pt-BR');
-const date = new Intl.DateTimeFormat('pt-BR', {
+const day = new Intl.DateTimeFormat('pt-BR', {
   day: '2-digit',
   month: 'short',
   timeZone: 'America/Sao_Paulo',
 });
+const clock = new Intl.DateTimeFormat('pt-BR', {
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'America/Sao_Paulo',
+});
 const folderOrder = new Intl.Collator('pt-BR', { sensitivity: 'base' });
 const CONTEXT_KEY = 'eixu:sites-list-context:v1';
+
+/** Contagens da tela têm dois dígitos, como o resto do painel. */
+const pad = (value: number) => String(value).padStart(2, '0');
 
 function formText(form: FormData, key: string) {
   const value = form.get(key);
@@ -208,7 +222,118 @@ function SiteActions({
   );
 }
 
-function FolderSidebar({
+/**
+ * Fila de trabalho da tela: o que espera revisão e o que a máquina está
+ * fazendo agora. Ocupa a coluna que antes era um rail de pastas quase vazio.
+ */
+function AttentionCard({
+  drafts,
+  summary,
+  onDrafts,
+}: {
+  drafts: number;
+  summary: OperationSummary;
+  onDrafts: () => void;
+}) {
+  return (
+    <section className="admin-attention" aria-label="Precisa de atenção">
+      <div className="admin-attention-head">
+        <p className="admin-label">Precisa de atenção</p>
+        {drafts ? (
+          <span className="admin-attention-badge">{pad(drafts)}</span>
+        ) : null}
+      </div>
+      <button
+        type="button"
+        className="admin-attention-item"
+        disabled={!drafts}
+        onClick={onDrafts}
+      >
+        <span
+          className="admin-attention-value"
+          data-tone={drafts ? 'warn' : undefined}
+        >
+          {pad(drafts)}
+        </span>
+        <span>
+          <strong>Rascunhos sem revisão</strong>
+          <small>
+            {drafts
+              ? 'Nenhum deles está no ar. Revise a prévia antes de publicar.'
+              : 'Nenhum rascunho parado agora.'}
+          </small>
+        </span>
+        {drafts ? (
+          <ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" />
+        ) : null}
+      </button>
+      <div className="admin-attention-item">
+        <span
+          className="admin-attention-value"
+          data-tone={summary.running ? 'accent' : undefined}
+        >
+          {pad(summary.running)}
+        </span>
+        <span>
+          <strong>Gerações em curso</strong>
+          <small>
+            {summary.current ? (
+              <>
+                <StatusDot tone="accent" pulse />
+                {summary.current.stage} · {summary.current.site}
+              </>
+            ) : (
+              'Nenhuma agora. O andamento aparece aqui com a etapa.'
+            )}
+          </small>
+        </span>
+      </div>
+    </section>
+  );
+}
+
+/** Consumo do período curto, por cliente, com link para o histórico de cada um. */
+function UsageCard({ usage }: { usage: TenantUsage }) {
+  const rows = usage.rows.filter((row) => row.costUsd !== null);
+  if (!rows.length) return null;
+  const top = Math.max(...rows.map((row) => row.costUsd ?? 0));
+  return (
+    <section
+      className="admin-usage-card"
+      aria-label={`Consumo de IA nos últimos ${usage.days} dias`}
+    >
+      <p className="admin-label">Consumo de IA · {usage.days} dias</p>
+      <p className="admin-usage-total">
+        <strong>{formatCost(usage.costUsd ?? undefined)}</strong>
+        <span>{formatTokens(usage.totalTokens ?? undefined)}</span>
+      </p>
+      <ul className="admin-usage-list">
+        {rows.map((row) => (
+          <li key={row.tenantId}>
+            <Link href={`/admin/${row.slug}/consumo`}>{row.name}</Link>
+            <b>{formatCost(row.costUsd ?? undefined)}</b>
+            <span className="admin-usage-bar" aria-hidden="true">
+              <span
+                style={{
+                  width: `${top ? Math.round(((row.costUsd ?? 0) / top) * 100) : 0}%`,
+                }}
+              />
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="admin-usage-note">
+        Valores informados pelo provedor, em dólar, sem conversão para reais.
+      </p>
+    </section>
+  );
+}
+
+/**
+ * As pastas deixaram o rail e viraram filtro no topo da lista: continuam
+ * recebendo o arraste, mas sem gastar uma coluna inteira da tela.
+ */
+function FolderFilters({
   folders,
   counts,
   active,
@@ -216,10 +341,9 @@ function FolderSidebar({
   dropTarget,
   onSelect,
   onCreate,
-  onRename,
-  onDelete,
   onDragOver,
   onDrop,
+  children,
 }: {
   folders: SiteFolderSummary[];
   counts: Map<string | null, number>;
@@ -228,170 +352,86 @@ function FolderSidebar({
   dropTarget: string | null | undefined;
   onSelect: (scope: Scope) => void;
   onCreate: (name: string) => Promise<boolean>;
-  onRename: (folder: SiteFolderSummary, name: string) => Promise<boolean>;
-  onDelete: (folder: SiteFolderSummary) => void;
   onDragOver: (folderId: string | null, event: DragEvent) => void;
   onDrop: (folderId: string | null, event: DragEvent) => void;
+  children: ReactNode;
 }) {
   const [creating, setCreating] = useState(false);
-  const [editing, setEditing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const submitCreate = async (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
-    const name = formText(new FormData(event.currentTarget), 'name');
-    if (await onCreate(name)) {
+    const form = event.currentTarget;
+    if (await onCreate(formText(new FormData(form), 'name'))) {
       setCreating(false);
-      event.currentTarget.reset();
+      form.reset();
     } else setError('Confira o nome ou tente novamente.');
   };
 
+  const pill = (
+    scope: Scope,
+    folderId: string | null | undefined,
+    name: string,
+    count: number,
+    title: string,
+  ) => (
+    <button
+      key={scope}
+      type="button"
+      className="admin-folder-pill"
+      data-folder-id={scope}
+      title={title}
+      aria-current={active === scope ? 'page' : undefined}
+      data-drag-over={
+        folderId !== undefined && dropTarget === folderId ? true : undefined
+      }
+      onClick={() => onSelect(scope)}
+      onDragEnter={
+        folderId === undefined
+          ? undefined
+          : (event) => onDragOver(folderId, event)
+      }
+      onDragOver={
+        folderId === undefined
+          ? undefined
+          : (event) => onDragOver(folderId, event)
+      }
+      onDrop={
+        folderId === undefined ? undefined : (event) => onDrop(folderId, event)
+      }
+    >
+      <Folder size={14} strokeWidth={1.7} aria-hidden="true" />
+      {name}
+      <small>{pad(count)}</small>
+    </button>
+  );
+
   return (
-    <aside className="admin-folder-sidebar" aria-label="Pastas dos sites">
-      <div className="admin-folder-sidebar-heading">
-        <span>Biblioteca</span>
-        <button
-          type="button"
-          aria-label="Criar pasta"
-          title="Criar pasta"
-          onClick={() => {
-            setCreating(true);
-            setEditing(null);
-            setError(null);
-          }}
-        >
-          <Plus size={16} strokeWidth={1.7} aria-hidden="true" />
-        </button>
-      </div>
-      <nav>
-        <button
-          type="button"
-          className="admin-folder-link"
-          data-folder-id="all"
-          aria-current={active === 'all' ? 'page' : undefined}
-          onClick={() => onSelect('all')}
-        >
-          <span className="admin-folder-icon">
-            <FolderOpen size={16} strokeWidth={1.7} aria-hidden="true" />
-          </span>
-          <span>Todos os sites</span>
-          <small>{counts.get('all') ?? 0}</small>
-        </button>
-        <button
-          type="button"
-          className="admin-folder-link"
-          data-folder-id="unfiled"
-          aria-current={active === 'unfiled' ? 'page' : undefined}
-          data-drag-over={dropTarget === null ? true : undefined}
-          onClick={() => onSelect('unfiled')}
-          onDragEnter={(event) => onDragOver(null, event)}
-          onDragOver={(event) => onDragOver(null, event)}
-          onDrop={(event) => onDrop(null, event)}
-        >
-          <span className="admin-folder-icon">
-            <Folder size={16} strokeWidth={1.7} aria-hidden="true" />
-          </span>
-          <span>Sem pasta</span>
-          <small>{counts.get(null) ?? 0}</small>
-        </button>
-      </nav>
-      <div className="admin-folder-section-label">Pastas da equipe</div>
-      <nav className="admin-folder-list">
-        {folders.map((folder) =>
-          editing === folder.id ? (
-            <form
-              key={folder.id}
-              className="admin-folder-inline-form"
-              onSubmit={async (event) => {
-                event.preventDefault();
-                const name = formText(
-                  new FormData(event.currentTarget),
-                  'name',
-                );
-                if (await onRename(folder, name)) setEditing(null);
-              }}
-            >
-              <input
-                name="name"
-                defaultValue={folder.name}
-                aria-label={`Novo nome de ${folder.name}`}
-                maxLength={40}
-                onKeyDown={(event) => {
-                  if (event.key === 'Escape') setEditing(null);
-                }}
-              />
-              <button type="submit" disabled={busy} aria-label="Salvar nome">
-                <Check size={15} strokeWidth={1.7} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                aria-label="Cancelar"
-                onClick={() => setEditing(null)}
-              >
-                <X size={15} strokeWidth={1.7} aria-hidden="true" />
-              </button>
-            </form>
-          ) : (
-            <div className="admin-folder-item" key={folder.id}>
-              <button
-                type="button"
-                className="admin-folder-link"
-                data-folder-id={folder.id}
-                aria-current={active === folder.id ? 'page' : undefined}
-                data-drag-over={dropTarget === folder.id || undefined}
-                onClick={() => onSelect(folder.id)}
-                onDragEnter={(event) => onDragOver(folder.id, event)}
-                onDragOver={(event) => onDragOver(folder.id, event)}
-                onDrop={(event) => onDrop(folder.id, event)}
-              >
-                <span className="admin-folder-icon">
-                  {active === folder.id ? (
-                    <FolderOpen
-                      size={16}
-                      strokeWidth={1.7}
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    <Folder size={16} strokeWidth={1.7} aria-hidden="true" />
-                  )}
-                </span>
-                <span>{folder.name}</span>
-                <small>{counts.get(folder.id) ?? 0}</small>
-              </button>
-              <details className="admin-folder-menu">
-                <summary aria-label={`Ações da pasta ${folder.name}`}>
-                  <MoreHorizontal
-                    size={15}
-                    strokeWidth={1.7}
-                    aria-hidden="true"
-                  />
-                </summary>
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditing(folder.id);
-                      setCreating(false);
-                    }}
-                  >
-                    <Pencil size={14} strokeWidth={1.7} aria-hidden="true" />
-                    Renomear
-                  </button>
-                  <button
-                    type="button"
-                    className="admin-folder-delete"
-                    onClick={() => onDelete(folder)}
-                  >
-                    <Trash2 size={14} strokeWidth={1.7} aria-hidden="true" />
-                    Excluir pasta
-                  </button>
-                </div>
-              </details>
-            </div>
-          ),
-        )}
-      </nav>
+    <div className="admin-folder-filters" aria-label="Pastas dos sites">
+      {pill(
+        'all',
+        undefined,
+        'Todos',
+        counts.get('all') ?? 0,
+        'Todos os sites da equipe',
+      )}
+      {pill(
+        'unfiled',
+        null,
+        'Sem pasta',
+        counts.get(null) ?? 0,
+        'Solte sites aqui para tirar da pasta',
+      )}
+      {folders.map((folder) =>
+        pill(
+          folder.id,
+          folder.id,
+          folder.name,
+          counts.get(folder.id) ?? 0,
+          `Solte sites aqui para mover para ${folder.name}`,
+        ),
+      )}
       {creating ? (
         <form className="admin-folder-create" onSubmit={submitCreate}>
           <input
@@ -415,12 +455,75 @@ function FolderSidebar({
             <X size={15} strokeWidth={1.7} aria-hidden="true" />
           </button>
         </form>
+      ) : (
+        <button
+          type="button"
+          className="admin-folder-add"
+          onClick={() => {
+            setCreating(true);
+            setError(null);
+          }}
+        >
+          <Plus size={13} strokeWidth={1.9} aria-hidden="true" />
+          Nova pasta
+        </button>
+      )}
+      {error ? (
+        <p className="admin-folder-error" role="alert">
+          {error}
+        </p>
       ) : null}
-      {error ? <p className="admin-folder-error">{error}</p> : null}
-      <p className="admin-folder-hint">
-        Arraste sites para organizar o trabalho da equipe.
-      </p>
-    </aside>
+      <div className="admin-folder-filters-trailing">{children}</div>
+    </div>
+  );
+}
+
+/** Renomear e excluir seguem a pasta aberta, no lugar do menu do rail. */
+function ScopeMenu({
+  folder,
+  busy,
+  onRename,
+  onDelete,
+}: {
+  folder: SiteFolderSummary;
+  busy: boolean;
+  onRename: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <details className="admin-scope-menu">
+      <summary
+        aria-label={`Ações da pasta ${folder.name}`}
+        title="Ações da pasta"
+      >
+        <MoreHorizontal size={16} strokeWidth={1.7} aria-hidden="true" />
+      </summary>
+      <div>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={(event) => {
+            event.currentTarget.closest('details')?.removeAttribute('open');
+            onRename();
+          }}
+        >
+          <Pencil size={14} strokeWidth={1.7} aria-hidden="true" />
+          Renomear
+        </button>
+        <button
+          type="button"
+          className="admin-folder-delete"
+          disabled={busy}
+          onClick={(event) => {
+            event.currentTarget.closest('details')?.removeAttribute('open');
+            onDelete();
+          }}
+        >
+          <Trash2 size={14} strokeWidth={1.7} aria-hidden="true" />
+          Excluir pasta
+        </button>
+      </div>
+    </details>
   );
 }
 
@@ -428,10 +531,12 @@ export function Clients({
   tenants,
   folders: initialFolders,
   summary,
+  usage,
 }: {
   tenants: ClientSummary[];
   folders: SiteFolderSummary[];
-  summary: { leads30d: number; running: number };
+  summary: OperationSummary;
+  usage: TenantUsage;
 }) {
   const session = useAdminSession();
   const [sites, setSites] = useState(tenants);
@@ -440,6 +545,7 @@ export function Clients({
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('published');
   const [creating, setCreating] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [dragged, setDragged] = useState<string[]>([]);
   const [dropTarget, setDropTarget] = useState<string | null>();
@@ -512,6 +618,7 @@ export function Clients({
       (filter === 'todos' || site.status === filter),
   );
   const published = sites.filter((site) => site.status === 'published').length;
+  const drafts = sites.filter((site) => site.status === 'draft').length;
   const activeFolder = orderedFolders.find((folder) => folder.id === active);
   const scopeTitle =
     active === 'all'
@@ -667,27 +774,20 @@ export function Clients({
     setActive(scope);
     if (scope !== 'all') setFilter('todos');
     setSelected(new Set());
+    setRenaming(false);
   };
-  const newClient = (
-    <button
-      className="admin-primary"
-      type="button"
-      onClick={() => setCreating((current) => !current)}
-      aria-expanded={creating}
-      aria-controls="new-client"
-    >
-      {creating ? 'Fechar cadastro' : '+ Novo site'}
-    </button>
-  );
 
   return (
     <>
       <div className="admin-page-heading">
         <div>
           <h1>Sites</h1>
-          <p>
-            Organize o trabalho da equipe e abra cada projeto do ponto em que
-            parou.
+          <p className="admin-sites-stats">
+            <b>{pad(sites.length)}</b> sites
+            <span aria-hidden="true">·</span>
+            <b data-tone="ok">{pad(published)}</b> no ar
+            <span aria-hidden="true">·</span>
+            <b data-tone="warn">{pad(drafts)}</b> em rascunho
           </p>
         </div>
         <div className="admin-page-actions">
@@ -700,7 +800,22 @@ export function Clients({
           <Link className="admin-secondary" href="/admin/kanban">
             Kanban
           </Link>
-          {newClient}
+          <button
+            className="admin-primary"
+            type="button"
+            onClick={() => setCreating((current) => !current)}
+            aria-expanded={creating}
+            aria-controls="new-client"
+          >
+            {creating ? (
+              'Fechar cadastro'
+            ) : (
+              <>
+                <Plus size={14} strokeWidth={2.2} aria-hidden="true" />
+                Novo site
+              </>
+            )}
+          </button>
           {session?.logout}
         </div>
       </div>
@@ -747,95 +862,110 @@ export function Clients({
           </form>
         </section>
       ) : null}
-      <section
-        className="admin-metrics admin-client-metrics"
-        aria-label="Resumo da operação"
-      >
-        <MetricCard
-          label="Sites no ar"
-          value={String(published).padStart(2, '0')}
-          qualifier={`de ${String(sites.length).padStart(2, '0')}`}
-        />
-        <MetricCard
-          label="Leads · 30 dias"
-          value={num.format(summary.leads30d)}
-          note="Contatos recebidos por formulário"
-        />
-        <MetricCard
-          label="Gerações em curso"
-          value={String(summary.running).padStart(2, '0')}
-          qualifier={
-            summary.running ? (
-              <>
-                <StatusDot tone="accent" pulse /> em andamento
-              </>
-            ) : (
-              'nenhuma agora'
-            )
-          }
-        />
-      </section>
       <div className="admin-sites-library">
-        <FolderSidebar
-          folders={orderedFolders}
-          counts={counts}
-          active={active}
-          busy={busy}
-          dropTarget={dropTarget}
-          onSelect={selectScope}
-          onCreate={createFolder}
-          onRename={renameFolder}
-          onDelete={(folder) => void deleteFolder(folder)}
-          onDragOver={(folderId, event) => {
-            if (!dragged.length || busy) return;
-            event.preventDefault();
-            event.dataTransfer.dropEffect = 'move';
-            setDropTarget(folderId);
-          }}
-          onDrop={drop}
-        />
+        <aside className="admin-sites-aside">
+          <AttentionCard
+            drafts={drafts}
+            summary={summary}
+            onDrafts={() => {
+              setFilter('draft');
+              setSelected(new Set());
+            }}
+          />
+          <UsageCard usage={usage} />
+        </aside>
         <section
           className="admin-sites-content"
           aria-labelledby="sites-scope-title"
         >
           <div className="admin-sites-scope-heading">
             <div>
-              <h2 id="sites-scope-title">{scopeTitle}</h2>
+              <div className="admin-sites-scope-title" id="sites-scope-title">
+                {renaming && activeFolder ? (
+                  <form
+                    className="admin-folder-inline-form"
+                    onSubmit={async (event) => {
+                      event.preventDefault();
+                      const name = formText(
+                        new FormData(event.currentTarget),
+                        'name',
+                      );
+                      if (await renameFolder(activeFolder, name))
+                        setRenaming(false);
+                    }}
+                  >
+                    <input
+                      name="name"
+                      defaultValue={activeFolder.name}
+                      aria-label={`Novo nome de ${activeFolder.name}`}
+                      maxLength={40}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Escape') setRenaming(false);
+                      }}
+                    />
+                    <button
+                      type="submit"
+                      disabled={busy}
+                      aria-label="Salvar nome"
+                    >
+                      <Check size={15} strokeWidth={1.7} aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Cancelar"
+                      onClick={() => setRenaming(false)}
+                    >
+                      <X size={15} strokeWidth={1.7} aria-hidden="true" />
+                    </button>
+                  </form>
+                ) : (
+                  <h2>{scopeTitle}</h2>
+                )}
+                {activeFolder && !renaming ? (
+                  <ScopeMenu
+                    folder={activeFolder}
+                    busy={busy}
+                    onRename={() => setRenaming(true)}
+                    onDelete={() => void deleteFolder(activeFolder)}
+                  />
+                ) : null}
+              </div>
               <p>
                 {scopeSites.length === 1
                   ? '1 site'
-                  : `${scopeSites.length} sites`}
+                  : `${scopeSites.length} sites`}{' '}
+                · {visible.length} nesta lista
               </p>
             </div>
-            <label className="admin-folder-mobile-select">
-              <span>Pasta</span>
-              <select
-                value={active}
-                onChange={(event) => selectScope(event.target.value)}
-              >
-                <option value="all">Todos os sites</option>
-                <option value="unfiled">Sem pasta</option>
-                {orderedFolders.map((folder) => (
-                  <option value={folder.id} key={folder.id}>
-                    {folder.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <div className="admin-client-toolbar">
             <label className="admin-search">
               <span className="admin-search-glyph" aria-hidden="true" />
               <input
-                aria-label="Buscar clientes"
+                aria-label="Buscar sites"
                 placeholder="Buscar por nome ou endereço"
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
               />
             </label>
+          </div>
+          <FolderFilters
+            folders={orderedFolders}
+            counts={counts}
+            active={active}
+            busy={busy}
+            dropTarget={dropTarget}
+            onSelect={selectScope}
+            onCreate={createFolder}
+            onDragOver={(folderId, event) => {
+              if (!dragged.length || busy) return;
+              event.preventDefault();
+              event.dataTransfer.dropEffect = 'move';
+              setDropTarget(folderId);
+            }}
+            onDrop={drop}
+          >
             <SegmentedControl
-              label="Filtrar clientes"
+              label="Filtrar sites por estado"
               value={filter}
               onChange={setFilter}
               options={[
@@ -845,26 +975,37 @@ export function Clients({
                 ['archived', 'Arquivados'],
               ]}
             />
-          </div>
+          </FolderFilters>
           {selected.size ? (
             <section className="admin-bulk-bar" aria-label="Sites selecionados">
-              <span>
+              <strong>
                 {selected.size} selecionado{selected.size === 1 ? '' : 's'}
-              </span>
-              <details>
-                <summary className="admin-secondary">Mover para</summary>
-                <div>
-                  <FolderDestinations
-                    folders={orderedFolders}
-                    currentFolderId={undefined}
-                    disabled={busy}
-                    onMove={(folderId) => moveSites([...selected], folderId)}
-                  />
-                </div>
-              </details>
+              </strong>
+              <span>Mover para</span>
               <button
                 type="button"
-                className="admin-icon-button"
+                className="admin-bulk-target"
+                disabled={busy}
+                onClick={() => moveSites([...selected], null)}
+              >
+                <Folder size={13} strokeWidth={1.7} aria-hidden="true" />
+                Sem pasta
+              </button>
+              {orderedFolders.map((folder) => (
+                <button
+                  key={folder.id}
+                  type="button"
+                  className="admin-bulk-target"
+                  disabled={busy}
+                  onClick={() => moveSites([...selected], folder.id)}
+                >
+                  <Folder size={13} strokeWidth={1.7} aria-hidden="true" />
+                  {folder.name}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="admin-bulk-clear"
                 aria-label="Limpar seleção"
                 onClick={() => setSelected(new Set())}
               >
@@ -881,15 +1022,14 @@ export function Clients({
                 <span />
                 <span>Site</span>
                 <span>Status</span>
-                <span>Páginas</span>
-                <span>Leads</span>
-                <span>Atualizado</span>
-                <span />
+                <span>Última ação</span>
+                <span>Quando</span>
                 <span />
               </div>
               <ul>
                 {visible.map((tenant) => {
                   const status = statusPresentation(tenant.status);
+                  const touched = new Date(lastTouch(tenant));
                   return (
                     <li
                       className="admin-client-row"
@@ -960,48 +1100,48 @@ export function Clients({
                         <span>
                           <strong>{tenant.name}</strong>
                           <small>{tenant.slug}.eixu.com.br</small>
-                          {active === 'all' ? (
-                            <em>
-                              {folderLabel(orderedFolders, tenant.folderId)}
-                            </em>
-                          ) : null}
                         </span>
                       </Link>
                       <StatusPill tone={status.tone}>{status.label}</StatusPill>
                       <span
-                        className="admin-numeric"
-                        aria-label={`${tenant.pageCount} páginas`}
+                        className="admin-client-action"
+                        title={tenant.lastAction?.summary}
                       >
-                        {String(tenant.pageCount).padStart(2, '0')}
+                        <span>
+                          {tenant.lastAction
+                            ? actionLabel(tenant.lastAction.action)
+                            : '—'}
+                        </span>
+                        <small>
+                          {tenant.lastAction
+                            ? actorLabel(tenant.lastAction)
+                            : 'Sem ação registrada'}
+                        </small>
                       </span>
-                      <span
-                        className="admin-numeric"
-                        aria-label={`${tenant.leadCount} leads`}
-                      >
-                        {tenant.leadCount ? num.format(tenant.leadCount) : '—'}
-                      </span>
-                      <time dateTime={tenant.updatedAt}>
-                        {date.format(new Date(tenant.updatedAt))}
+                      <time dateTime={touched.toISOString()}>
+                        {day.format(touched)} {clock.format(touched)}
                       </time>
-                      <SiteActions
-                        tenant={tenant}
-                        folders={orderedFolders}
-                        busy={busy}
-                        onMove={(folderId) =>
-                          moveSites([tenant.slug], folderId)
-                        }
-                      />
-                      <Link
-                        className="admin-client-open"
-                        href={`/admin/${tenant.slug}`}
-                        aria-label={`Abrir ${tenant.name}`}
-                      >
-                        <ChevronRight
-                          size={16}
-                          strokeWidth={1.7}
-                          aria-hidden="true"
+                      <span className="admin-client-row-actions">
+                        <SiteActions
+                          tenant={tenant}
+                          folders={orderedFolders}
+                          busy={busy}
+                          onMove={(folderId) =>
+                            moveSites([tenant.slug], folderId)
+                          }
                         />
-                      </Link>
+                        <Link
+                          className="admin-client-open"
+                          href={`/admin/${tenant.slug}`}
+                          aria-label={`Abrir ${tenant.name}`}
+                        >
+                          <ChevronRight
+                            size={16}
+                            strokeWidth={1.7}
+                            aria-hidden="true"
+                          />
+                        </Link>
+                      </span>
                     </li>
                   );
                 })}
@@ -1045,6 +1185,7 @@ export function Clients({
                     else {
                       setQuery('');
                       setFilter('todos');
+                      setActive('all');
                     }
                   }}
                 >
@@ -1062,31 +1203,32 @@ export function Clients({
                   : 'Tente outro nome ou limpe os filtros para ver a lista novamente.'}
             </EmptyState>
           )}
+          {toast ? (
+            <output className="admin-sites-toast" aria-live="polite">
+              <span>{toast.message}</span>
+              {toast.undo?.length ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() =>
+                    void applyAssignments(toast.undo!, 'Movimentação desfeita.')
+                  }
+                >
+                  Desfazer
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="admin-sites-toast-close"
+                aria-label="Fechar aviso"
+                onClick={() => setToast(null)}
+              >
+                <X size={14} strokeWidth={1.7} aria-hidden="true" />
+              </button>
+            </output>
+          ) : null}
         </section>
       </div>
-      {toast ? (
-        <output className="admin-sites-toast" aria-live="polite">
-          <span>{toast.message}</span>
-          {toast.undo?.length ? (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() =>
-                void applyAssignments(toast.undo!, 'Movimentação desfeita.')
-              }
-            >
-              Desfazer
-            </button>
-          ) : null}
-          <button
-            type="button"
-            aria-label="Fechar aviso"
-            onClick={() => setToast(null)}
-          >
-            <X size={14} strokeWidth={1.7} aria-hidden="true" />
-          </button>
-        </output>
-      ) : null}
     </>
   );
 }

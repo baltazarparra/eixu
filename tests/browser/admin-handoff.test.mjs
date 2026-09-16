@@ -37,10 +37,8 @@ await test(
     };
     const clickFolder = async (text) => {
       const found = await page.evaluate((text) => {
-        const node = [...document.querySelectorAll('.admin-folder-link')].find(
-          (node) =>
-            node.querySelector('span:nth-child(2)')?.textContent.trim() ===
-            text,
+        const node = [...document.querySelectorAll('.admin-folder-pill')].find(
+          (node) => node.textContent.replace(/\d+$/, '').trim() === text,
         );
         node?.click();
         return !!node;
@@ -52,7 +50,7 @@ await test(
     await open('/admin');
     assert.equal(
       await page.$eval(
-        '[aria-label="Filtrar clientes"] button[aria-pressed="true"]',
+        '[aria-label="Filtrar sites por estado"] button[aria-pressed="true"]',
         (node) => node.textContent.trim(),
       ),
       'Publicados',
@@ -66,7 +64,7 @@ await test(
       await page.$$('.admin-client-row').then((rows) => rows.length),
       2,
     );
-    await page.type('[aria-label="Buscar clientes"]', 'inexistente');
+    await page.type('[aria-label="Buscar sites"]', 'inexistente');
     await page.waitForSelector('.admin-empty');
     await clickText('Limpar filtros');
     assert.equal(
@@ -74,8 +72,13 @@ await test(
       5,
     );
     assert.match(
-      await page.$eval('.admin-folder-sidebar', (node) => node.textContent),
-      /Baltz\s*2.*David\s*1/s,
+      await page.$eval('.admin-folder-filters', (node) => node.textContent),
+      /Baltz\s*02.*David\s*01/s,
+    );
+    // A coluna de atenção conta os rascunhos e filtra a lista por eles.
+    assert.match(
+      await page.$eval('.admin-attention', (node) => node.textContent),
+      /02\s*Rascunhos sem revisão/,
     );
     await clickFolder('Sem pasta');
     assert.equal(
@@ -123,7 +126,7 @@ await test(
     await page.waitForFunction(
       () => document.querySelectorAll('.admin-client-row').length === 2,
     );
-    await clickFolder('Todos os sites');
+    await clickFolder('Todos');
     await page.click('.admin-client-table li:nth-child(2) .admin-client-name');
     await page.waitForFunction(
       () => location.pathname === '/admin/clinica-vertice',
