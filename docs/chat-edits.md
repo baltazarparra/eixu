@@ -303,6 +303,11 @@ autoriza `block`, porque a foto só identifica o alvo. A grafia "sessão" també
 é aceita. Um alvo apontado só por anexo fica indefinido e a remoção grande
 passa a exigir confirmação.
 
+Citações e frases que proíbem a remoção não ampliam esse escopo. Em
+"remova a primeira pergunta da seção. Não remova a seção", somente o item é
+autorizado. Perguntas sobre uma remoção e relatos de algo já removido continuam
+em modo de conversa, com ferramentas de leitura.
+
 `applyPageEdit` mede a operação contra esse escopo antes de qualquer escrita.
 Apagar ou substituir um bloco sob escopo de item é recusado com o nome da seção
 e a quantidade de itens e textos que sairiam; um lote não apaga duas seções de
@@ -321,6 +326,8 @@ Em um pedido composto, a exclusão autorizada não libera perda incidental de
 texto nos demais blocos do lote. Se o agente salvar outra parte e deixar a
 seção pedida intacta, o recibo declara essa omissão. Em mais de uma página, o
 recibo confere a remoção por página e aponta onde houve edição sem exclusão.
+Nas listas, a comparação acompanha inserções, movimentos e remoções na ordem
+do lote, preservando os textos dos itens restantes mesmo quando seus índices mudam.
 
 Toda escrita do rascunho guarda o estado anterior em `page_revisions`, com
 retenção das vinte últimas versões por página. `undo_page_edit` e o botão

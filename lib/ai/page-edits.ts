@@ -780,6 +780,11 @@ export function applyPageEdit(
       409,
     );
   const blocks: BlockInstance[] = JSON.parse(JSON.stringify(page.blocks));
+  // A comparação acompanha a ordem das operações de lista, preservando os
+  // textos originais para detectar perdas causadas por set/unset posteriores.
+  const comparisonBefore: BlockInstance[] = JSON.parse(
+    JSON.stringify(page.blocks),
+  );
   const touched = new Set<string>();
   let rewrittenSections = 0;
   const changes: {
@@ -854,6 +859,9 @@ export function applyPageEdit(
       continue;
     }
     const block = selectBlock(blocks, operation.block);
+    const comparisonBlock = comparisonBefore.find(
+      (candidate) => candidate.id === block.id,
+    );
     const from = blocks.indexOf(block);
     if (operation.op === 'replace_block') {
       // Uma troca de bloco reescreve a seção inteira e pode eliminar tanto
@@ -895,6 +903,8 @@ export function applyPageEdit(
           'O pedido atual não autoriza remover itens. Nenhuma alteração salva.',
         );
       removeArrayItem(block.props, operation.path, operation.index);
+      if (comparisonBlock)
+        removeArrayItem(comparisonBlock.props, operation.path, operation.index);
       touched.add(block.id);
       changes.push({
         op: operation.op,
@@ -908,6 +918,13 @@ export function applyPageEdit(
         operation.index,
         operation.value,
       );
+      if (comparisonBlock)
+        insertArrayItem(
+          comparisonBlock.props,
+          operation.path,
+          operation.index,
+          operation.value,
+        );
       touched.add(block.id);
       changes.push({
         op: operation.op,
@@ -917,6 +934,13 @@ export function applyPageEdit(
       });
     } else if (operation.op === 'move_item') {
       moveArrayItem(block.props, operation.path, operation.from, operation.to);
+      if (comparisonBlock)
+        moveArrayItem(
+          comparisonBlock.props,
+          operation.path,
+          operation.from,
+          operation.to,
+        );
       touched.add(block.id);
       changes.push({
         op: operation.op,
@@ -966,23 +990,6 @@ export function applyPageEdit(
       .filter((change) => change.op === 'remove')
       .map((change) => change.blockId),
   );
-  const comparisonBefore: BlockInstance[] = JSON.parse(
-    JSON.stringify(page.blocks),
-  );
-  for (const change of changes.filter(
-    (candidate) => candidate.op === 'remove_item',
-  )) {
-    const original = comparisonBefore.find(
-      (block) => block.id === change.blockId,
-    );
-    if (!original || !change.path) continue;
-    const lastDot = change.path.lastIndexOf('.');
-    removeArrayItem(
-      original.props,
-      change.path.slice(0, lastDot),
-      Number(change.path.slice(lastDot + 1)),
-    );
-  }
   const authorizedRemoval = Boolean(
     policy?.removal &&
     changes.some((change) => ['remove', 'remove_item'].includes(change.op)),

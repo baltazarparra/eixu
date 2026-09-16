@@ -86,44 +86,55 @@ function containsTextSequence(value: unknown, target: string): boolean {
 
 /** Uma restrição como "apenas mova" ou "sem apagar" não autoriza remoção.
  * Tirar decoração também não dá permissão para apagar o conteúdo do bloco. */
-export function asksRemoval(text: string): boolean {
-  const verb =
-    '(?:remov\\w*|retir\\w*|tir[ae]\\w*|apag\\w*|exclu\\w*|delet\\w*|ocult\\w*|escond\\w*|encurt\\w*|cort[ae]\\w*)';
-  const request = normalized(text).replace(/["“][^"”]*["”]/g, '');
-  return request.split(/[.;!?\n]/).some((clause) => {
-    if (
-      new RegExp(
-        `\\b(?:nao|nunca|jamais|sem|evite)(?:\\s+\\w+){0,3}\\s+${verb}\\b`,
-      ).test(clause)
+const REMOVAL_VERB =
+  '(?:remov\\w*|retir\\w*|tir[ae]\\w*|apag\\w*|exclu\\w*|delet\\w*|ocult\\w*|escond\\w*|encurt\\w*|cort[ae]\\w*)';
+
+/** A autorização e seu tamanho usam os mesmos trechos, sem citações ou negações. */
+function removalRequest(text: string): string {
+  return normalized(text)
+    .replace(/["“][^"”]*["”]|'[^']*'|‘[^’]*’/g, '')
+    .split(/[.;!?\n]/)
+    .filter(
+      (clause) =>
+        !new RegExp(
+          `\\b(?:nao|nunca|jamais|sem|evite)(?:\\s+\\w+){0,3}\\s+${REMOVAL_VERB}\\b`,
+        ).test(clause),
     )
-      return false;
-    const contentRequest = clause
-      .replace(
-        new RegExp(
-          `\\b${verb}\\s+(?:(?:o|a|os|as|esse|essa|esses|essas|este|esta|estes|estas)\\s+)?(?:bg|background|fundo|bordas?|molduras?|padding|margin|margens?|espacamento|espaco|sombra)\\b`,
-          'g',
-        ),
-        '',
-      )
-      .replace(
-        // "Remover esse container e deixar apenas a imagem" tira decoração;
-        // não é permissão para apagar o texto ou substituir a abertura.
-        new RegExp(
-          `\\b${verb}\\s+(?:(?:o|a|esse|essa|este|esta)\\s+)?(?:container|conteiner|contêiner|box|caixa)\\b(?=\\s+e\\s+(?:deixar|deixe|manter|mantenha)\\s+(?:so|apenas|somente)\\s+(?:a\\s+)?(?:imagem|foto)\\b)`,
-          'g',
-        ),
-        '',
+    .join('. ');
+}
+
+export function asksRemoval(text: string): boolean {
+  const verb = REMOVAL_VERB;
+  return removalRequest(text)
+    .split(/[.;!?\n]/)
+    .some((clause) => {
+      const contentRequest = clause
+        .replace(
+          new RegExp(
+            `\\b${verb}\\s+(?:(?:o|a|os|as|esse|essa|esses|essas|este|esta|estes|estas)\\s+)?(?:bg|background|fundo|bordas?|molduras?|padding|margin|margens?|espacamento|espaco|sombra)\\b`,
+            'g',
+          ),
+          '',
+        )
+        .replace(
+          // "Remover esse container e deixar apenas a imagem" tira decoração;
+          // não é permissão para apagar o texto ou substituir a abertura.
+          new RegExp(
+            `\\b${verb}\\s+(?:(?:o|a|esse|essa|este|esta)\\s+)?(?:container|conteiner|contêiner|box|caixa)\\b(?=\\s+e\\s+(?:deixar|deixe|manter|mantenha)\\s+(?:so|apenas|somente)\\s+(?:a\\s+)?(?:imagem|foto)\\b)`,
+            'g',
+          ),
+          '',
+        );
+      return (
+        new RegExp(`\\b${verb}\\b`).test(contentRequest) ||
+        /\bsem\s+(?:o|a|os|as)\s+(?:selos?|etiquetas?|textos?|blocos?|secoes?|imagens?|fotos?|botoes?|links?)\b/.test(
+          contentRequest,
+        ) ||
+        /\bdeix[ae]\s+(?:so|apenas|somente)\s+(?:\d+|um|uma|dois|duas|tres)\s+(?:selos?|etiquetas?|itens|blocos?|secoes?)\b/.test(
+          contentRequest,
+        )
       );
-    return (
-      new RegExp(`\\b${verb}\\b`).test(contentRequest) ||
-      /\bsem\s+(?:o|a|os|as)\s+(?:selos?|etiquetas?|textos?|blocos?|secoes?|imagens?|fotos?|botoes?|links?)\b/.test(
-        contentRequest,
-      ) ||
-      /\bdeix[ae]\s+(?:so|apenas|somente)\s+(?:\d+|um|uma|dois|duas|tres)\s+(?:selos?|etiquetas?|itens|blocos?|secoes?)\b/.test(
-        contentRequest,
-      )
-    );
-  });
+    });
 }
 
 /**
@@ -136,7 +147,7 @@ export function asksRemoval(text: string): boolean {
  */
 export function removalScope(text: string): 'item' | 'block' | undefined {
   if (!asksRemoval(text)) return undefined;
-  const request = normalized(text);
+  const request = removalRequest(text);
   const section =
     '(?:secao|secoes|sessao|sessoes|blocos?|faixas?|banner|galeria|rodape|footer|cabecalho|header|menu|navbar|formulario|hero|abertura)';
   const item =

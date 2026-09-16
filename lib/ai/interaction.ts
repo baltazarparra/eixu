@@ -49,8 +49,17 @@ const EXPLICIT_NO_ACTION =
 // “Tem uma seção entre X e Y. Apague-a.” continua sendo uma ordem, embora o
 // verbo não esteja no começo da mensagem. Exigimos um alvo de seção para não
 // transformar uma menção casual a uma foto ou a um card em edição.
-const DIRECT_SECTION_REMOVAL =
-  /\b(?:secao|sessao|bloco|faixa|banner|galeria|formulario|hero|abertura|rodape|footer|cabecalho|header|menu)\b[\s\S]{0,180}\b(?:remov\w*|retir\w*|tir[ae]\w*|apag\w*|exclu\w*|delet\w*)(?:-[ao]s?)?\b|\b(?:remov\w*|retir\w*|tir[ae]\w*|apag\w*|exclu\w*|delet\w*)(?:-[ao]s?)?\b[\s\S]{0,180}\b(?:secao|sessao|bloco|faixa|banner|galeria|formulario|hero|abertura|rodape|footer|cabecalho|header|menu)\b/;
+function hasSectionRemovalCommand(request: string): boolean {
+  const unquoted = request.replace(/["“][^"”]*["”]|'[^']*'|‘[^’]*’/g, '');
+  return (
+    /\b(?:secao|sessao|bloco|faixa|banner|galeria|formulario|hero|abertura|rodape|footer|cabecalho|header|menu)\b/.test(
+      unquoted,
+    ) &&
+    /(?:^|[.!;,]\s*)(?:por favor[, ]+)?(?:remova|remove|retire|retira|tire|tira|apague|apaga|exclua|exclui|delete|deleta)(?:-[ao]s?)?\b/.test(
+      unquoted,
+    )
+  );
+}
 
 /**
  * Libera escrita somente quando o operador formula uma ação reconhecível.
@@ -90,7 +99,7 @@ export function interactionModeFor(
   if (CLEAR_DISCUSSION.test(request)) return 'conversation';
   if (HYPOTHETICAL.test(request)) return 'conversation';
 
-  if (DIRECT_SECTION_REMOVAL.test(request)) return 'action';
+  if (hasSectionRemovalCommand(request)) return 'action';
 
   if (
     DIRECT_ACTION.test(request) ||

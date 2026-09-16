@@ -29,6 +29,12 @@ const conversations = [
   'Me dê ideias para o hero.',
   'Confere se está bom no celular.',
   'Não mude nada, só me explica essa composição.',
+  'Você removeu a seção?',
+  'A seção foi removida ontem.',
+  'Não remova a seção.',
+  'Estou pensando em remover a seção.',
+  'Tem uma seção com uma foto. Não remova a seção.',
+  'O cliente escreveu: “Remova a seção.”',
   '',
 ];
 
@@ -182,3 +188,15 @@ await test('rota marca perguntas como conversa antes de montar prompt e ferramen
   assert.equal(fixture.toolContexts[0].conversationOnly, true);
   assert.equal(fixture.toolContexts[0].editPolicy, undefined);
 });
+
+for (const message of [
+  'Você removeu a seção?',
+  'A seção foi removida ontem.',
+  'Não remova a seção.',
+])
+  await test(`rota mantém ferramentas somente de leitura: ${message}`, async () => {
+    const fixture = await chatFixture({ sitePages: editPages() });
+    await readChunks(await fixture.POST(chatRequest(message)));
+    assert.equal(fixture.toolContexts[0].conversationOnly, true);
+    assert.equal(fixture.toolContexts[0].editPolicy, undefined);
+  });

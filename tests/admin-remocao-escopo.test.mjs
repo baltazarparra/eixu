@@ -30,6 +30,90 @@ const input = (page, operations) => ({
  */
 const POINTED = 'remove esse bloco em anexo de referencia da pagina inicial';
 
+for (const text of [
+  'Remova a primeira pergunta da seção. Não remova a seção.',
+  'Remova a foto da seção. Nunca apague a seção inteira.',
+  'Remova a foto da seção. O cliente escreveu "remova a seção", mas quero preservar a seção.',
+  'Remova a foto da seção. O cliente escreveu ‘remova a seção’.',
+])
+  await test(`negação ou citação não amplia a remoção: ${text}`, () => {
+    const [page] = editPages();
+    const before = structuredClone(page);
+    const policy = editPolicyFor(text, [page], '');
+    assert.equal(policy.removalScope, 'item');
+    assert.throws(
+      () =>
+        applyPageEdit(
+          page,
+          input(page, [{ op: 'remove', block: 'faq' }]),
+          policy,
+        ),
+      /pedido atual não autoriza esse tamanho/,
+    );
+    assert.deepEqual(page, before);
+  });
+
+await test('inserção antes da remoção usa os índices do lote e preserva o publicado', async () => {
+  const f = await pageEditFixture(
+    'Adicione uma pergunta no começo e remova a última pergunta antiga.',
+  );
+  const page = f.pages[0];
+  const original = structuredClone(page);
+  const added = { q: 'Nova pergunta?', a: 'Nova resposta.' };
+  const result = await f.tools.edit_page.execute(
+    input(page, [
+      {
+        op: 'insert_item',
+        block: 'faq',
+        path: 'items',
+        index: 0,
+        value: added,
+      },
+      { op: 'remove_item', block: 'faq', path: 'items', index: 2 },
+    ]),
+  );
+  assert.equal(result.ok, true, result.error);
+  assert.equal(f.writes.length, 1);
+  assert.deepEqual(f.pages[0].blocks.find((b) => b.id === 'faq').props.items, [
+    added,
+    original.blocks.find((b) => b.id === 'faq').props.items[0],
+  ]);
+  assert.deepEqual(f.pages[0].publishedBlocks, original.publishedBlocks);
+});
+
+await test('mover antes de remover preserva os textos dos itens restantes', () => {
+  const page = pageWithCards();
+  page.blocks.find((b) => b.id === 'cards').props.items[3].body = '';
+  const original = structuredClone(page);
+  const operations = [
+    { op: 'move_item', block: 'cards', path: 'items', from: 0, to: 3 },
+    { op: 'remove_item', block: 'cards', path: 'items', index: 3 },
+  ];
+  const policy = editPolicyFor(
+    'Mova o primeiro card para o fim e depois remova esse card.',
+    [page],
+    '',
+  );
+  const result = applyPageEdit(page, input(page, operations), policy);
+  assert.deepEqual(
+    result.blocks.find((b) => b.id === 'cards').props.items,
+    original.blocks.find((b) => b.id === 'cards').props.items.slice(1),
+  );
+  assert.throws(
+    () =>
+      applyPageEdit(
+        page,
+        input(page, [
+          ...operations,
+          { op: 'set', block: 'cards', path: 'items.0.body', value: '' },
+        ]),
+        policy,
+      ),
+    /remoção pedida não autoriza apagar outros textos/,
+  );
+  assert.deepEqual(page, original);
+});
+
 await test('o tamanho da remoção sai do pedido, não de um único bit', () => {
   assert.equal(removalScope('remova esse card do bloco Variedade'), 'item');
   assert.equal(
