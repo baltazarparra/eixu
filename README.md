@@ -20,6 +20,7 @@ O modelo interno é **Gemini 3.8 Flash**, com raciocínio `high`. O harness prio
 - Contatos do cadastro renderizados sozinhos no site: telefones, e-mail e redes sociais no rodapé, e uma seção de localização com mapa acima dele quando há endereço.
 - Cinco vibes com contratos próprios de tipografia, abertura, navegação, ritmo, superfície, iconografia, imagem e [voz de escrita](docs/copy.md). As quatro vibes multipágina oferecem três estruturas cada e uma composição autoral. Landing Page usa perfil v7, uma home indexável e uma página de obrigado, com ação única, prova confirmada e formulário curto. Referências visuais verificadas prevalecem na direção visual; a voz continua usando a vibe e linguagem simples.
 - Formulários, WhatsApp rastreado, atribuição de campanhas, exportação de contatos em CSV e painel de tráfego com gastos informados à mão.
+- Conversão Premium de um site publicado para um workspace próprio em `apps/premium/<cliente>`, com dependências isoladas, manutenção pelo code agent e publicação automática na mesma URL após o merge. Leads, tracking, WhatsApp, imagens e métricas continuam ligados ao tenant central.
 
 É um MVP de operação centralizada: há contas administrativas individuais, todas com acesso global aos clientes, sem papéis ou permissões por cliente, cobrança ou integração automática com plataformas de anúncios. Os [limites atuais](docs/architecture.md#limites-atuais) fazem parte do contrato de desenvolvimento.
 
@@ -41,6 +42,7 @@ O institucional e a tela de login abrem sem banco. Para usar o painel e os sites
 | `ADMIN_PIN_PEPPER`       | Segredo adicional usado no hash dos PINs; obrigatório em produção e estável entre provisionamento e login.  |
 | `ADMIN_SESSION_SECRET`   | Segredo dos tokens internos de prévia; obrigatório em produção.                                             |
 | `KANBAN_AGENT_TOKEN`     | Bearer exclusivo para agentes operarem somente as rotas do Kanban; preferível à sessão administrativa.      |
+| `PREMIUM_WORKER_TOKEN`   | Bearer exclusivo dos workflows de conversão e release Premium; obrigatório na raiz em produção.             |
 | `AI_GATEWAY_API_KEY`     | Autenticação explícita do AI Gateway, útil localmente. O SDK também aceita OIDC da Vercel.                  |
 | `EIXU_MODEL`             | Modelo do chat do site; fallback no código: `google/gemini-3.8-flash`.                                      |
 | `EIXU_EDIT_MODEL`        | Override opcional só para edições; sem ele, usa `EIXU_MODEL` e o mesmo fallback.                            |

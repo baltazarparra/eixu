@@ -457,6 +457,7 @@ export async function setTenantArchivedAction(
           end,
           updated_at = now()
       where t.slug = ${slugResult.data}
+        and (${intent === 'restore'}::boolean or t.maintenance_mode = 'generator')
       returning t.id, t.name, t.status
     `) as {
       id?: string;
@@ -464,7 +465,16 @@ export async function setTenantArchivedAction(
       status: 'draft' | 'published' | 'archived';
     }[];
     const changed = rows[0];
-    if (!changed) return { ok: false, message: 'Cliente não encontrado.' };
+    if (!changed) {
+      const current = await getTenantBySlug(slugResult.data);
+      if (current && current.maintenanceMode !== 'generator')
+        return {
+          ok: false,
+          message:
+            'Projetos Premium não podem ser arquivados por este controle. Publique uma alteração no projeto para desativar a experiência pública.',
+        };
+      return { ok: false, message: 'Cliente não encontrado.' };
+    }
     await recordActivity({
       actor,
       tenant: { id: changed.id, slug: slugResult.data, name: changed.name },
@@ -513,12 +523,24 @@ export async function deleteTenantAction(
     return { ok: false, message: 'Endereço de cliente inválido.' };
   const tenant = await getTenantBySlug(slugResult.data);
   if (!tenant) return { ok: false, message: 'Cliente não encontrado.' };
+  if (tenant.maintenanceMode !== 'generator')
+    return {
+      ok: false,
+      message:
+        'A exclusão de um projeto Premium exige retirar o domínio e preservar seus releases antes de apagar os dados centrais.',
+    };
   let stage: 'prepare' | 'files' | 'record' = 'prepare';
   try {
     const result = await withTenantLock(
       tenant.id,
       'delete',
       async (locked, connection): Promise<DeleteTenantResult> => {
+        if (locked.maintenanceMode !== 'generator')
+          return {
+            ok: false,
+            message:
+              'A exclusão foi interrompida porque este projeto está em conversão ou já é Premium.',
+          };
         const counts = await countTenantData(locked.id);
         // Reconfere o estado depois de adquirir o lock: publicação e contatos
         // podem ter mudado desde a abertura do diálogo.

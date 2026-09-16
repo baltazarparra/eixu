@@ -8,20 +8,21 @@ produto, ambiente e comandos.
 
 ## Guias vigentes
 
-| Assunto                                                  | Documento                                    |
-| -------------------------------------------------------- | -------------------------------------------- |
-| Visão completa das funcionalidades, fluxos e limites     | [Manual do gerador](manual-gerador-sites.md) |
-| Cadastro, geração, prévia, imagens, publicação e tráfego | [Manual do operador](admin.md)               |
-| Rotas, dados, autenticação, fontes e snapshots           | [Arquitetura e limites](architecture.md)     |
-| Vibes, referências, blocos, identidade e responsividade  | [Design](design.md)                          |
-| Alterações pontuais pelo chat e recibos                  | [Edição pelo chat](chat-edits.md)            |
-| Linguagem simples e voz de cada vibe                     | [Escrita dos sites](copy.md)                 |
-| Modelos, ferramentas, contexto e geração em etapas       | [Harness](harness.md)                        |
-| Checks locais e publicação Git/Vercel                    | [Verificação](verification.md)               |
-| Spec, desenvolvimento e revisão pelo Kanban              | [Fluxo AI Native](ai-native-development.md)  |
-| Comparação de saídas e avaliação humana                  | [Rubrica](eval-rubric.md)                    |
-| Identidade e critérios dos agentes                       | [SOUL.md](../SOUL.md)                        |
-| Invariantes e orientação para trabalhar no repositório   | [AGENTS.md](../AGENTS.md)                    |
+| Assunto                                                  | Documento                                     |
+| -------------------------------------------------------- | --------------------------------------------- |
+| Visão completa das funcionalidades, fluxos e limites     | [Manual do gerador](manual-gerador-sites.md)  |
+| Cadastro, geração, prévia, imagens, publicação e tráfego | [Manual do operador](admin.md)                |
+| Rotas, dados, autenticação, fontes e snapshots           | [Arquitetura e limites](architecture.md)      |
+| Vibes, referências, blocos, identidade e responsividade  | [Design](design.md)                           |
+| Alterações pontuais pelo chat e recibos                  | [Edição pelo chat](chat-edits.md)             |
+| Linguagem simples e voz de cada vibe                     | [Escrita dos sites](copy.md)                  |
+| Modelos, ferramentas, contexto e geração em etapas       | [Harness](harness.md)                         |
+| Checks locais e publicação Git/Vercel                    | [Verificação](verification.md)                |
+| Spec, desenvolvimento e revisão pelo Kanban              | [Fluxo AI Native](ai-native-development.md)   |
+| Conversão e operação de projetos Premium                 | [Projetos Premium](plano-projetos-premium.md) |
+| Comparação de saídas e avaliação humana                  | [Rubrica](eval-rubric.md)                     |
+| Identidade e critérios dos agentes                       | [SOUL.md](../SOUL.md)                         |
+| Invariantes e orientação para trabalhar no repositório   | [AGENTS.md](../AGENTS.md)                     |
 
 O produto tem quatro vibes multipágina e Landing Page. Perfis v2–v4 preservam
 contratos anteriores; v5 escolhe uma estrutura da vibe, v6 usa a referência

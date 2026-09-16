@@ -487,6 +487,27 @@ no ar; edições posteriores ficam no rascunho. Métricas de GA4 e Meta Pixel
 continuam operacionais fora do snapshot visual. Publicar o código na Vercel não
 publica automaticamente os rascunhos dos clientes.
 
+## Converter um site em Premium
+
+Em um site já publicado e ainda mantido pelo gerador, **Premium** captura a
+versão que está no ar e inicia a criação de uma pasta própria no repositório. A
+URL continua funcionando durante a preparação. Alterações ainda em rascunho não
+entram na conversão; publique-as antes se elas precisarem fazer parte da primeira
+versão Premium.
+
+Depois do clique, geração, chat, edição e publicação do gerador ficam bloqueados.
+O painel acompanha o job mesmo se a aba for fechada. Quando aparecer **Revisar
+conversão**, abra a PR, confira e faça merge. O release valida a aplicação,
+publica e move a mesma URL para o projeto próprio. O estado muda para **Premium
+ativo** apenas depois do smoke na URL original.
+
+A partir daí, páginas, estilos, bibliotecas e backend são alterados na pasta
+`apps/premium/<cliente>` pelo code agent. Fazer merge de uma mudança nessa pasta
+publica automaticamente uma nova versão na URL original. Dados, imagens, leads,
+tráfego e contatos continuam no painel, mas mudar o rascunho antigo não muda o
+site Premium. Arquivar e excluir ficam protegidos até existir um fluxo que trate
+o domínio e os releases próprios.
+
 ## Acompanhar consumo
 
 Abaixo da caixa de mensagem, **Consumo** mostra tokens e custo em dólar quando o Gateway informa. Aberto, traz uma linha por etapa da geração e por turno de conversa, com entrada, quanto veio do cache, saída, passos, duração e custo. As etapas da geração entram porque cada uma grava seu recibo ao terminar; antes disso, a parte cara do trabalho não aparecia em lugar nenhum do painel. Nada é convertido para reais.

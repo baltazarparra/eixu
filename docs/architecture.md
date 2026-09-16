@@ -317,27 +317,56 @@ Uploads manuais em `/api/admin/[tenant]/upload` aceitam PNG, JPEG, WebP, GIF e S
 
 ## Dados, conversão e tráfego
 
-| Tabela              | Responsabilidade                                                        |
-| ------------------- | ----------------------------------------------------------------------- |
-| `tenants`           | Identidade, rascunho e snapshot da apresentação global                  |
-| `site_folders`      | Pastas compartilhadas que organizam os tenants no painel                |
-| `admin_users`       | Operadores globais, estado da conta e hash do PIN                       |
-| `admin_sessions`    | Sessões opacas, expiração e revogação                                   |
-| `admin_activity`    | Autoria, resultado e snapshots das ações administrativas                |
-| `pages`             | Rascunho e snapshot publicado de conteúdo, SEO e dados editoriais       |
-| `images`            | Biblioteca, sequência por tenant, geração, crítica e disponibilidade    |
-| `generation_runs`   | Execução da geração em etapas: estado, fase, saltos e origem            |
-| `generation_events` | Linha do tempo que o painel mostra: fases, ferramentas, pausas          |
-| `chat_messages`     | Texto da conversa do site; o canal `imagens` só guarda histórico antigo |
-| `leads`             | Campos recebidos, origem e consentimento informado                      |
-| `events`            | Eventos de primeira parte por tenant/página/campanha                    |
-| `campaign_spend`    | Gastos manuais em centavos, com campanha, canal e período               |
+| Tabela                | Responsabilidade                                                        |
+| --------------------- | ----------------------------------------------------------------------- |
+| `tenants`             | Identidade, rascunho e snapshot da apresentação global                  |
+| `site_folders`        | Pastas compartilhadas que organizam os tenants no painel                |
+| `admin_users`         | Operadores globais, estado da conta e hash do PIN                       |
+| `admin_sessions`      | Sessões opacas, expiração e revogação                                   |
+| `admin_activity`      | Autoria, resultado e snapshots das ações administrativas                |
+| `pages`               | Rascunho e snapshot publicado de conteúdo, SEO e dados editoriais       |
+| `images`              | Biblioteca, sequência por tenant, geração, crítica e disponibilidade    |
+| `generation_runs`     | Execução da geração em etapas: estado, fase, saltos e origem            |
+| `generation_events`   | Linha do tempo que o painel mostra: fases, ferramentas, pausas          |
+| `chat_messages`       | Texto da conversa do site; o canal `imagens` só guarda histórico antigo |
+| `leads`               | Campos recebidos, origem e consentimento informado                      |
+| `events`              | Eventos de primeira parte por tenant/página/campanha                    |
+| `campaign_spend`      | Gastos manuais em centavos, com campanha, canal e período               |
+| `premium_projects`    | Pasta, domínio, token em hash e release ativa de cada Premium           |
+| `premium_conversions` | Snapshot público, hash, SHA de origem, lease e PR de conversão          |
+| `premium_releases`    | Deployments imutáveis e manifesto de assets de cada Premium             |
 
 O script de atribuição guarda primeiro/último toque, click IDs e identificador de visita em `localStorage`. Preenche campos de formulário e envia eventos para `/api/e`. Formulários nativos passam por honeypot, gravam contato e evento e redirecionam com 303. `/go/wa` registra clique e redireciona para `wa.me`; `?n=` escolhe outro WhatsApp do cadastro, e índice ausente ou inválido usa o principal.
 
 O painel filtra eventos por datas inclusivas no horário de Brasília e calcula visitantes identificados, formulários recebidos e cliques no WhatsApp separadamente. O total de visitantes conta IDs distintos no período, sem somar campanhas. O ID de navegador é persistido em `localStorage`, não representa pessoa nem sessão com expiração. Cliques que passam por `/go/wa` são registrados apenas no redirecionador, com atribuição e ID levados pela URL; links diretos a `wa.me` usam o evento do navegador. A correção não deduplica eventos antigos.
 
 Gastos de todos os canais da mesma campanha são somados, incluindo campanhas sem visita. Entram no custo apenas lançamentos integralmente contidos no filtro; períodos parcialmente sobrepostos são avisados e excluídos, sem rateio presumido. Os totais não dependem do limite de 50 campanhas exibidas. Custo por ação divide gastos por formulários mais cliques, não por pessoas. O CSV contém os últimos 5.000 contatos recebidos por formulário, de todos os períodos, e neutraliza fórmulas de planilha. O schema guarda IDs de GA4/Meta, mas esses campos, sozinhos, não significam integração ativa.
+
+## Projetos Premium
+
+Um tenant publicado pode reservar uma conversão Premium. `maintenance_mode`
+define se o gerador ainda escreve; `public_runtime` só muda depois que o novo
+deployment passou pelos gates e respondeu na URL canônica. Enquanto o estado é
+`converting`, o snapshot do gerador continua no ar, mas chat, geração, edição
+direta e publicação recusam novas escritas também sob lock transacional.
+
+O executor exporta somente dados publicados para `apps/premium/<project-key>` e
+copia o fechamento do renderer e do CSS do SHA que atendia produção. Cada pasta
+é uma aplicação Next.js e um projeto Vercel independentes, mas permanece neste
+repositório. A primeira PR exige revisão; o merge publica, associa o domínio
+exato `<slug>.eixu.com.br` e registra a release. Merges posteriores na pasta
+disparam o mesmo release e atualizam essa URL sem DNS manual.
+
+Formulários, eventos e WhatsApp entram pelas rotas server-side do Premium e são
+encaminhados às APIs centrais. O bearer é exclusivo do projeto, seu hash fica em
+`premium_projects` e o host canônico precisa coincidir. O projeto filho nunca
+recebe `DATABASE_URL`, cookie administrativo ou token do Kanban. Um banco próprio
+opcional usa credenciais e migrações daquele workspace.
+
+O manifesto da release protege imagens centrais em uso. Cadastro, acervo, leads,
+tráfego e pastas continuam no painel. Arquivamento e exclusão ficam bloqueados
+até existir um ciclo que retire o domínio e preserve os releases. O contrato
+completo está em [Projetos Premium](plano-projetos-premium.md).
 
 ## Limites atuais
 
@@ -368,3 +397,5 @@ telemetria e o redirecionador de WhatsApp. A sessão administrativa continua
 resolvendo o tenant e acessa a prévia com `preview=1`. A reativação recupera
 `published` quando existe ao menos uma página publicada; caso contrário,
 recupera `draft`. Publicar não reativa um tenant arquivado implicitamente.
+Projetos Premium não usam este controle: arquivar sem retirar o domínio do
+projeto filho deixaria a URL ativa, por isso o servidor recusa a ação.

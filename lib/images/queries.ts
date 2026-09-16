@@ -174,6 +174,18 @@ export async function referenceReason(
       and (blocks::text like ${'%' + url + '%'} or published_blocks::text like ${'%' + url + '%'}) limit 1
   `) as Row[];
   if (inPages.length) return 'pagina';
+  // Depois da conversao, a release ativa e a fonte da implementacao. O
+  // manifesto e recalculado em cada deploy para proteger tambem uma imagem
+  // adicionada diretamente pelo code agent.
+  const inPremium = (await db()`
+    select 1
+    from premium_projects project
+    join premium_releases release on release.id = project.active_release_id
+    where project.tenant_id = ${tenantId}
+      and release.manifest::text like ${'%' + url + '%'}
+    limit 1
+  `) as Row[];
+  if (inPremium.length) return 'pagina';
   // Rascunho e snapshot publicado, logo principal e versão para fundo escuro.
   const asLogo = (await db()`
     select 1 from tenants where id = ${tenantId}

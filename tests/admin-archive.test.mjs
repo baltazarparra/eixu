@@ -2,10 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadModule } from './helpers/load-module.mjs';
 
-async function fixture(status) {
+async function fixture(
+  status,
+  { maintenanceMode = 'generator', update = true } = {},
+) {
   const writes = [];
   const refreshed = [];
-  const { setTenantArchivedAction } = await loadModule(
+  const { deleteTenantAction, setTenantArchivedAction } = await loadModule(
     'app/(admin)/admin/actions.ts',
     {
       '@/lib/auth': {
@@ -16,12 +19,20 @@ async function fixture(status) {
         }),
       },
       '@/lib/admin/activity': { recordActivity: async () => undefined },
+      '@/lib/tenant-queries': {
+        getTenantBySlug: async () => ({
+          id: 'tenant-1',
+          slug: 'fixture',
+          name: 'Fixture',
+          maintenanceMode,
+        }),
+      },
       '@/lib/db': {
         db:
           () =>
           async (parts, ...values) => {
             writes.push({ sql: parts.join('?'), values });
-            return [{ name: 'Fixture', status }];
+            return update ? [{ name: 'Fixture', status }] : [];
           },
       },
       'next/cache': { revalidatePath: (path) => refreshed.push(path) },
@@ -33,7 +44,7 @@ async function fixture(status) {
       'next/server': { after: () => undefined },
     },
   );
-  return { setTenantArchivedAction, writes, refreshed };
+  return { deleteTenantAction, setTenantArchivedAction, writes, refreshed };
 }
 
 function form(intent, slug = 'fixture') {
@@ -71,5 +82,25 @@ await test('intenção ou endereço inválido não escreve no banco', async () =
     (await f.setTenantArchivedAction(null, form('archive', 'Admin'))).ok,
     false,
   );
+  assert.equal(f.writes.length, 0);
+});
+
+await test('projeto Premium não promete arquivamento que deixaria o domínio no ar', async () => {
+  const f = await fixture('published', {
+    maintenanceMode: 'premium',
+    update: false,
+  });
+  const result = await f.setTenantArchivedAction(null, form('archive'));
+  assert.equal(result.ok, false);
+  assert.match(result.message, /Premium/);
+  assert.equal(f.writes.length, 1);
+  assert.match(f.writes[0].sql, /maintenance_mode = 'generator'/);
+});
+
+await test('projeto Premium bloqueia exclusão antes de remover arquivos', async () => {
+  const f = await fixture('published', { maintenanceMode: 'premium' });
+  const result = await f.deleteTenantAction(null, form('archive'));
+  assert.equal(result.ok, false);
+  assert.match(result.message, /domínio.*releases/i);
   assert.equal(f.writes.length, 0);
 });

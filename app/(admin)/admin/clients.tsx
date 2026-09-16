@@ -56,6 +56,7 @@ export type ClientSummary = {
   slug: string;
   name: string;
   status: string;
+  maintenanceMode: 'generator' | 'converting' | 'premium';
   folderId: string | null;
   updatedAt: string;
   lastAction: SiteAction | null;
@@ -91,10 +92,17 @@ function formText(form: FormData, key: string) {
   return typeof value === 'string' ? value : '';
 }
 
-function statusPresentation(status: string): {
+function statusPresentation(
+  status: string,
+  maintenanceMode: ClientSummary['maintenanceMode'],
+): {
   label: string;
   tone: StatusTone;
 } {
+  if (maintenanceMode === 'premium')
+    return { label: 'Premium', tone: 'accent' };
+  if (maintenanceMode === 'converting')
+    return { label: 'Preparando Premium', tone: 'warn' };
   if (status === 'published') return { label: 'Publicado', tone: 'ok' };
   if (status === 'archived') return { label: 'Arquivado', tone: 'neutral' };
   return { label: 'Rascunho', tone: 'warn' };
@@ -108,6 +116,7 @@ function folderLabel(folders: SiteFolderSummary[], folderId: string | null) {
 
 function ArchiveSiteButton({ tenant }: { tenant: ClientSummary }) {
   const archived = tenant.status === 'archived';
+  const generator = tenant.maintenanceMode === 'generator';
   const [result, action, pending] = useActionState(
     setTenantArchivedAction,
     null,
@@ -132,8 +141,22 @@ function ArchiveSiteButton({ tenant }: { tenant: ClientSummary }) {
         name="intent"
         value={archived ? 'restore' : 'archive'}
       />
-      <button type="submit" disabled={pending}>
-        {pending ? 'Salvando…' : archived ? 'Reativar site' : 'Arquivar site'}
+      <button
+        type="submit"
+        disabled={pending || (!archived && !generator)}
+        title={
+          !archived && !generator
+            ? 'A disponibilidade pública deste projeto é controlada pelo release Premium.'
+            : undefined
+        }
+      >
+        {pending
+          ? 'Salvando…'
+          : archived
+            ? 'Reativar site'
+            : generator
+              ? 'Arquivar site'
+              : 'Gerenciar pelo Premium'}
       </button>
       {result && !result.ok ? (
         <span className="admin-client-action-error" role="alert">
@@ -1028,7 +1051,10 @@ export function Clients({
               </div>
               <ul>
                 {visible.map((tenant) => {
-                  const status = statusPresentation(tenant.status);
+                  const status = statusPresentation(
+                    tenant.status,
+                    tenant.maintenanceMode,
+                  );
                   const touched = new Date(lastTouch(tenant));
                   return (
                     <li

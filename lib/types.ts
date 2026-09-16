@@ -1,5 +1,8 @@
 export type PageType = 'page' | 'paid_lp' | 'post' | 'thank_you';
 
+export type SiteMaintenanceMode = 'generator' | 'converting' | 'premium';
+export type SitePublicRuntime = 'generator' | 'premium';
+
 import type { DesignProfile } from '@/lib/design/profile';
 import type { Vibe } from '@/lib/design/vibes';
 import type { Contacts } from '@/lib/tenant-contacts';
@@ -213,6 +216,10 @@ export type Tenant = {
   slug: string;
   name: string;
   status: 'draft' | 'published' | 'archived';
+  /** Quem pode alterar a implementacao publica deste site. */
+  maintenanceMode: SiteMaintenanceMode;
+  /** Runtime que atende a URL canonica; muda apenas depois do deploy validado. */
+  publicRuntime: SitePublicRuntime;
   brief: Record<string, unknown>;
   brand: Brand;
   dials: Dials;

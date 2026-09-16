@@ -169,6 +169,13 @@ alter table pages         add column if not exists published_title text;
 alter table pages         add column if not exists published_type text;
 alter table pages         add column if not exists published_meta jsonb;
 alter table pages         add column if not exists published_nav_order int;
+-- O estado editorial continua em `status`. Estes dois eixos dizem quem pode
+-- manter a implementacao e qual runtime atende a URL publica. Durante a
+-- conversao o gerador fica bloqueado, mas o snapshot publicado segue no ar.
+alter table tenants       add column if not exists maintenance_mode text not null default 'generator'
+  check (maintenance_mode in ('generator', 'converting', 'premium'));
+alter table tenants       add column if not exists public_runtime text not null default 'generator'
+  check (public_runtime in ('generator', 'premium'));
 
 -- A primeira aplicação captura o que já está no ar. Sem este backfill, uma
 -- edição de marca ou metadado posterior à migração ainda vazaria para clientes
@@ -230,6 +237,75 @@ create index if not exists chat_tenant_time_idx    on chat_messages (tenant_id, 
 create index if not exists spend_tenant_idx        on campaign_spend (tenant_id);
 create index if not exists admin_sessions_user_idx on admin_sessions (user_id, expires_at desc);
 create index if not exists admin_sessions_expiry_idx on admin_sessions (expires_at);
+
+-- Projeto de codigo que substitui o runtime do gerador sem mudar a URL do
+-- cliente. O token da ponte e guardado apenas como hash; o segredo cru e
+-- entregue uma vez ao executor e instalado somente no projeto correspondente.
+create table if not exists premium_projects (
+  id                    uuid primary key default gen_random_uuid(),
+  tenant_id             uuid not null unique references tenants(id) on delete restrict,
+  project_key           text not null unique
+    check (project_key ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'),
+  directory             text not null unique,
+  canonical_host        text not null unique,
+  vercel_project_id     text,
+  vercel_project_name   text,
+  bridge_token_hash     text,
+  status                text not null default 'preparing'
+    check (status in ('preparing', 'active', 'failed', 'archived')),
+  created_at            timestamptz not null default now(),
+  updated_at            timestamptz not null default now()
+);
+
+-- A captura publicada fica congelada no pedido. Assim a exportacao e
+-- reproduzivel e uma alteracao posterior do rascunho nao muda o artefato.
+create table if not exists premium_conversions (
+  id                    uuid primary key default gen_random_uuid(),
+  tenant_id             uuid not null references tenants(id) on delete restrict,
+  project_id            uuid not null references premium_projects(id) on delete restrict,
+  requested_by          uuid references admin_users(id) on delete set null,
+  status                text not null default 'queued'
+    check (status in ('queued', 'claimed', 'exported', 'deploying', 'activated', 'failed', 'canceled')),
+  source_snapshot       jsonb not null,
+  source_hash           text not null,
+  source_commit         text not null,
+  converter_version     text not null,
+  branch                text,
+  pull_request_url      text,
+  claimed_at            timestamptz,
+  lease_expires_at      timestamptz,
+  finished_at           timestamptz,
+  error                 text,
+  created_at            timestamptz not null default now(),
+  updated_at            timestamptz not null default now()
+);
+
+create unique index if not exists premium_conversions_active_tenant_idx
+  on premium_conversions (tenant_id)
+  where status in ('queued', 'claimed', 'exported', 'deploying');
+create index if not exists premium_conversions_queue_idx
+  on premium_conversions (status, created_at);
+
+-- Cada deploy e imutavel. O dominio canonico permanece ligado ao projeto; um
+-- novo deploy de producao troca automaticamente o que a mesma URL entrega.
+create table if not exists premium_releases (
+  id                    uuid primary key default gen_random_uuid(),
+  project_id            uuid not null references premium_projects(id) on delete restrict,
+  conversion_id         uuid references premium_conversions(id) on delete restrict,
+  commit_sha            text not null,
+  deployment_id         text not null unique,
+  deployment_url        text not null,
+  status                text not null default 'ready'
+    check (status in ('ready', 'active', 'failed', 'rolled_back')),
+  manifest              jsonb not null default '{}'::jsonb,
+  activated_at          timestamptz,
+  created_at            timestamptz not null default now()
+);
+
+alter table premium_projects add column if not exists active_release_id uuid
+  references premium_releases(id) on delete set null;
+create index if not exists premium_releases_project_time_idx
+  on premium_releases (project_id, created_at desc);
 
 -- Execução da geração em etapas. O laço vivia no navegador: fechar a aba ou
 -- recarregar matava a sequência sem deixar rastro, e o painel voltava

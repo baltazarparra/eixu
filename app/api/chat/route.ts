@@ -70,6 +70,10 @@ import { systemPrompt, type PromptContext } from '@/lib/taste/prompt';
 import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
 import { undoPageEdit } from '@/lib/sites/edits';
 import { savePageEdit } from '@/lib/sites/edits';
+import {
+  generatorWriteBlocked,
+  generatorWriteMessage,
+} from '@/lib/premium/access';
 import { latestUndoPage } from '@/lib/sites/revisions';
 import { publicationMessage, publishSite } from '@/lib/sites/publish';
 import {
@@ -123,6 +127,11 @@ export async function POST(request: Request) {
 
   const tenant = await getTenantBySlug(body.tenant);
   if (!tenant) return new Response('Cliente não encontrado', { status: 404 });
+  if (generatorWriteBlocked(tenant))
+    return Response.json(
+      { error: generatorWriteMessage(tenant) },
+      { status: 409 },
+    );
   const sql = db();
 
   const [pages, libraryImages] = await Promise.all([

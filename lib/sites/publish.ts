@@ -11,6 +11,10 @@ import { publicationFinding } from '@/lib/sites/publication-policy';
 import { listPages } from '@/lib/tenant-queries';
 import { publicTenant, tenantDraftSnapshot } from '@/lib/sites/snapshot';
 import type { Tenant } from '@/lib/types';
+import {
+  generatorWriteBlocked,
+  generatorWriteMessage,
+} from '@/lib/premium/access';
 
 export type PublishResult = {
   published: string[];
@@ -27,6 +31,12 @@ export async function publishSite(
   slug?: string,
 ): Promise<PublishResult> {
   const url = `https://${tenant.slug}.eixu.com.br`;
+  if (generatorWriteBlocked(tenant))
+    return {
+      published: [],
+      blocked: [{ page: '/', preflight: generatorWriteMessage(tenant) }],
+      url,
+    };
   if (tenant.status === 'archived')
     return {
       published: [],
@@ -112,10 +122,13 @@ export async function publishSite(
   const updateTenant = promotesTenant
     ? sql`update tenants set status = 'published', published_snapshot = ${JSON.stringify(
         tenantDraftSnapshot(tenant),
-      )}::jsonb, updated_at = now() where id = ${tenant.id} and status <> 'archived'`
-    : sql`update tenants set status = 'published', updated_at = now() where id = ${tenant.id} and status <> 'archived'`;
+      )}::jsonb, updated_at = now() where id = ${tenant.id} and status <> 'archived' and maintenance_mode = 'generator'`
+    : sql`update tenants set status = 'published', updated_at = now() where id = ${tenant.id} and status <> 'archived' and maintenance_mode = 'generator'`;
   // Publica exatamente os valores validados, mesmo se um rascunho mudar durante a consulta.
-  await sql.transaction([
+  const transactionResult = await sql.transaction([
+    sql`select id from tenants
+        where id = ${tenant.id} and maintenance_mode = 'generator'
+        for update`,
     ...targets.map(
       (page) =>
         sql`update pages set published_blocks = ${JSON.stringify(page.blocks)}::jsonb,
@@ -125,10 +138,30 @@ export async function publishSite(
                              published_meta = ${JSON.stringify(page.meta)}::jsonb,
                              published_nav_order = ${page.navOrder},
                              published_at = now(), updated_at = now()
-            where id = ${page.id} and tenant_id = ${tenant.id}`,
+            where id = ${page.id} and tenant_id = ${tenant.id}
+              and exists (
+                select 1 from tenants
+                where id = ${tenant.id} and maintenance_mode = 'generator'
+              )`,
     ),
     updateTenant,
   ]);
+  const guard = Array.isArray(transactionResult)
+    ? transactionResult[0]
+    : undefined;
+  if (Array.isArray(guard) && guard.length === 0)
+    return {
+      published: [],
+      blocked: [
+        {
+          page: '/',
+          preflight:
+            'A conversão para Premium começou durante a publicação. O site no ar foi preservado.',
+        },
+      ],
+      warnings,
+      url,
+    };
   return {
     published: targets.map((p) => `/${p.slug}`),
     blocked,

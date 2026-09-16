@@ -3,6 +3,7 @@ import { workspaceState } from '@/lib/admin/state';
 import { pagesWithUndo } from '@/lib/sites/revisions';
 import { listImages } from '@/lib/images/queries';
 import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
+import { premiumWorkspaceState } from '@/lib/premium/queries';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,11 +22,18 @@ export async function GET(
   const tenant = await getTenantBySlug(slug);
   if (!tenant) return new Response('Cliente não encontrado', { status: 404 });
 
-  const [pages, images] = await Promise.all([
+  const [pages, images, premium] = await Promise.all([
     listPages(tenant.id),
     listImages(tenant.id),
+    premiumWorkspaceState(tenant),
   ]);
   return Response.json(
-    workspaceState(tenant, pages, images, await pagesWithUndo(tenant.id)),
+    workspaceState(
+      tenant,
+      pages,
+      images,
+      await pagesWithUndo(tenant.id),
+      premium,
+    ),
   );
 }

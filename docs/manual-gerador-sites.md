@@ -460,6 +460,22 @@ diferentes. Uma release só está comprovada quando Git, build/deployment e smok
 correspondem ao mesmo SHA. Uma página de cliente só mudou no ar quando seu
 snapshot foi promovido e o comportamento público foi testado.
 
+### Saída para projeto Premium
+
+Um site publicado pode deixar o catálogo evolutivo do gerador e virar uma
+aplicação própria sem sair da EIXU. O botão Premium congela somente os snapshots
+publicados, preserva a URL e bloqueia todas as escritas do gerador. Um workflow
+exporta o renderer e o CSS do SHA que estava em produção, valida o workspace e
+abre uma PR. O merge publica em um projeto Vercel próprio, transfere o domínio
+exato e ativa o novo runtime somente depois do smoke canônico.
+
+O código fica em `apps/premium/<project-key>` com dependências e backend próprios.
+Formulário, eventos e WhatsApp continuam escrevendo no tenant central por uma
+ponte server-side com token e host vinculados. Imagens usadas pela release ficam
+protegidas no acervo. A partir da ativação, só uma alteração de código seguida de
+release muda o site; chat, edição direta e Publicar do gerador recusam o pedido.
+O [contrato Premium](plano-projetos-premium.md) detalha operação e limites.
+
 ## SEO, conversão e tráfego
 
 Cada página tem título e descrição próprios; títulos aceitam até 60 caracteres

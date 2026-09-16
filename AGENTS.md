@@ -131,6 +131,11 @@ Somente evidência atual comprova essa análise. Preserve erros e gates de publi
   pre-flight nos dois caminhos de publicação. O snapshot também inclui apresentação global
   e dados editoriais; a publicação pontual preserva a marca já publicada,
   conforme a arquitetura. Preview por query não é controle de acesso.
+- Um site Premium permanece no mesmo tenant e na mesma URL, mas sua implementação
+  vive em `apps/premium/<project-key>`. Depois de reservar a conversão, nenhuma
+  escrita do gerador pode atravessar o lock. Releases Premium passam pelos gates,
+  pelo projeto Vercel próprio e pelo smoke canônico antes de ativar o runtime;
+  leads, eventos e WhatsApp continuam centrais por token e host vinculados.
 - Imagens ficam disponíveis com número e URL assim que são geradas, sem aprovação.
   Mantenha o acervo em `/admin/[tenant]/imagens` e alterações pelo número no chat.
   A crítica orienta ajustes. Só o estúdio paralelo ao briefing pode aplicar

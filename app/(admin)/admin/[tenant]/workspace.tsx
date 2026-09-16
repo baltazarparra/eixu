@@ -30,6 +30,7 @@ import {
   Undo2,
   PanelLeftClose,
   PanelLeftOpen,
+  Gem,
 } from 'lucide-react';
 import {
   WorkspaceHeader,
@@ -91,6 +92,9 @@ export function Workspace({
   const tenantSlug = initial.tenant.slug;
   const refreshTenant = useRefreshTenant();
   const [site, setSite] = useState<SiteState>(initial);
+  const generatorEnabled =
+    site.premium.maintenanceMode === 'generator' &&
+    site.premium.publicRuntime === 'generator';
   const [current, setCurrent] = useState(initial.pages[0]?.slug ?? '');
   const [input, setInput] = useState(imageRequest);
   const [view, setView] = useState<'chat' | 'content'>(
@@ -108,6 +112,7 @@ export function Workspace({
   const [collapsed, setCollapsed] = useState(false);
   const [nonce, setNonce] = useState(0);
   const [publishing, setPublishing] = useState(false);
+  const [premiumStarting, setPremiumStarting] = useState(false);
   const [editing, setEditing] = useState<'off' | 'on' | 'saving'>('off');
   const [editingReady, setEditingReady] = useState(false);
   const [editChanged, setEditChanged] = useState(false);
@@ -214,6 +219,16 @@ export function Workspace({
     [],
   );
 
+  // A conversão roda fora do navegador. Enquanto ela estiver preparando a
+  // pasta ou aguardando revisão, o painel acompanha o estado persistido.
+  useEffect(() => {
+    if (site.premium.maintenanceMode !== 'converting') return;
+    const timer = window.setInterval(() => {
+      void refresh().catch(() => undefined);
+    }, 10_000);
+    return () => window.clearInterval(timer);
+  }, [refresh, site.premium.maintenanceMode]);
+
   // O painel acompanha a execução pelo servidor: recarregar, trocar de aba ou
   // fechar o navegador não interrompe nem esconde o que está acontecendo.
   const generation = useGeneration({
@@ -242,7 +257,7 @@ export function Workspace({
 
   const startGeneration = useCallback(
     async (focus = true) => {
-      if (editSession.current.active) return;
+      if (editSession.current.active || !generatorEnabled) return;
       setNotice(null);
       if (focus) setView('chat');
       try {
@@ -251,7 +266,7 @@ export function Workspace({
         fail(failure instanceof Error ? failure.message : 'Falha na geração.');
       }
     },
-    [startRun, fail],
+    [startRun, fail, generatorEnabled],
   );
 
   /**
@@ -265,6 +280,7 @@ export function Workspace({
   useEffect(() => {
     if (
       autoStarted.current ||
+      !generatorEnabled ||
       !ready ||
       everRan !== false ||
       running ||
@@ -277,6 +293,7 @@ export function Workspace({
     void startGeneration(false);
   }, [
     ready,
+    generatorEnabled,
     everRan,
     running,
     busy,
@@ -335,7 +352,7 @@ export function Workspace({
 
   // Conversa livre e geração disputariam as mesmas páginas: enquanto uma roda,
   // a outra espera, e a tela diz por quê.
-  const locked = busy || running || editing !== 'off';
+  const locked = busy || running || editing !== 'off' || !generatorEnabled;
   const page = site.pages.find((item) => item.slug === current);
   const undoAvailable = page?.canUndo === true;
   // Restaurar é do servidor: o painel não recompõe blocos, só pede a volta da
@@ -397,6 +414,7 @@ export function Workspace({
       site.warnings.length > 0 ||
       site.pages.some((item) => item.warnings.length > 0));
   const publishable =
+    generatorEnabled &&
     site.tenant.status !== 'archived' &&
     site.pages.length > 0 &&
     totalErrors === 0 &&
@@ -428,6 +446,45 @@ export function Workspace({
       );
     } finally {
       setPublishing(false);
+    }
+  }
+
+  async function activatePremium() {
+    if (
+      !generatorEnabled ||
+      site.tenant.status !== 'published' ||
+      premiumStarting ||
+      publishing ||
+      running ||
+      busy
+    )
+      return;
+    const hasDraft = site.tenant.dirty || site.pages.some((item) => item.dirty);
+    const accepted = window.confirm(
+      `Converter a versão publicada deste site para Premium?\n\nO endereço ${site.premium.canonicalUrl} será preservado. Depois da ativação, o gerador deixa de editar o projeto e as próximas mudanças serão publicadas pelo code agent.${hasDraft ? '\n\nExistem alterações em rascunho; elas não entram na conversão enquanto não forem publicadas.' : ''}`,
+    );
+    if (!accepted) return;
+    setPremiumStarting(true);
+    setNotice(null);
+    try {
+      await adminFetch(`/api/admin/${tenantSlug}/premium`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      });
+      setNotice({
+        tone: 'ok',
+        text: 'Conversão Premium iniciada. O site publicado continua no ar na mesma URL durante todo o processo.',
+      });
+      await refresh();
+    } catch (error) {
+      fail(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível iniciar a conversão Premium.',
+      );
+    } finally {
+      setPremiumStarting(false);
     }
   }
 
@@ -502,7 +559,8 @@ export function Workspace({
       publishing ||
       uploading ||
       !page ||
-      site.tenant.status !== 'published'
+      site.tenant.status !== 'published' ||
+      !generatorEnabled
     )
       return;
     editSession.current = {
@@ -842,7 +900,11 @@ export function Workspace({
           <Maximize2 size={17} aria-hidden="true" />
         )}
       </button>
-      {page && !locked && !generating && editing === 'off' ? (
+      {generatorEnabled &&
+      page &&
+      !locked &&
+      !generating &&
+      editing === 'off' ? (
         <button
           type="button"
           className="admin-icon-button admin-preview-point"
@@ -859,7 +921,12 @@ export function Workspace({
           <Crosshair size={17} aria-hidden="true" />
         </button>
       ) : null}
-      {page && !locked && !generating && editing === 'off' && undoAvailable ? (
+      {generatorEnabled &&
+      page &&
+      !locked &&
+      !generating &&
+      editing === 'off' &&
+      undoAvailable ? (
         <button
           type="button"
           className="admin-icon-button admin-preview-undo"
@@ -872,6 +939,7 @@ export function Workspace({
         </button>
       ) : null}
       {site.tenant.status === 'published' &&
+      generatorEnabled &&
       page &&
       !locked &&
       !generating &&
@@ -958,7 +1026,55 @@ export function Workspace({
               </>
             ) : (
               <>
+                {site.tenant.status === 'published' && generatorEnabled ? (
+                  <button
+                    type="button"
+                    className="admin-secondary"
+                    disabled={
+                      premiumStarting ||
+                      publishing ||
+                      uploading ||
+                      running ||
+                      busy
+                    }
+                    onClick={() => void activatePremium()}
+                    title="Converter a versão publicada em um projeto de código próprio"
+                  >
+                    <Gem size={15} aria-hidden="true" />
+                    {premiumStarting ? 'Ativando…' : 'Premium'}
+                  </button>
+                ) : null}
+                {site.premium.maintenanceMode === 'converting' ? (
+                  site.premium.conversion?.pullRequestUrl ? (
+                    <a
+                      className="admin-secondary"
+                      href={site.premium.conversion.pullRequestUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <Gem size={15} aria-hidden="true" />
+                      Revisar conversão
+                    </a>
+                  ) : (
+                    <button type="button" className="admin-secondary" disabled>
+                      <Gem size={15} aria-hidden="true" />
+                      Convertendo…
+                    </button>
+                  )
+                ) : null}
+                {site.premium.maintenanceMode === 'premium' ? (
+                  <a
+                    className="admin-secondary"
+                    href={site.premium.canonicalUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <Gem size={15} aria-hidden="true" />
+                    Premium ativo
+                  </a>
+                ) : null}
                 {site.tenant.status === 'published' &&
+                  generatorEnabled &&
                   page &&
                   !locked &&
                   !generating && (
@@ -971,26 +1087,48 @@ export function Workspace({
                       Editar
                     </button>
                   )}
-                <button
-                  type="button"
-                  onClick={publishAll}
-                  disabled={!publishable || publishing}
-                  title={
-                    site.tenant.status === 'archived'
-                      ? 'Reative o site na lista de clientes antes de publicar'
-                      : totalErrors
-                        ? `${totalErrors} pendências bloqueiam a publicação`
-                        : 'Publicar as alterações revisadas'
-                  }
-                  className="admin-primary"
-                >
-                  {publishing ? 'Publicando…' : 'Publicar'}
-                </button>
+                {generatorEnabled ? (
+                  <button
+                    type="button"
+                    onClick={publishAll}
+                    disabled={!publishable || publishing}
+                    title={
+                      site.tenant.status === 'archived'
+                        ? 'Reative o site na lista de clientes antes de publicar'
+                        : totalErrors
+                          ? `${totalErrors} pendências bloqueiam a publicação`
+                          : 'Publicar as alterações revisadas'
+                    }
+                    className="admin-primary"
+                  >
+                    {publishing ? 'Publicando…' : 'Publicar'}
+                  </button>
+                ) : null}
               </>
             )}
           </>
         }
       />
+      {site.premium.maintenanceMode !== 'generator' ? (
+        <output className="admin-notice" data-tone="info" aria-live="polite">
+          <span>
+            {site.premium.maintenanceMode === 'converting'
+              ? site.premium.conversion?.error
+                ? `A conversão Premium precisa de atenção: ${site.premium.conversion.error}`
+                : 'Conversão Premium em andamento. A versão publicada continua na URL original e o gerador está bloqueado.'
+              : `Projeto Premium em ${site.premium.project?.directory ?? 'pasta própria'}. Edições e publicações agora são feitas pelo code agent e chegam automaticamente à URL original.`}
+          </span>
+        </output>
+      ) : null}
+      {site.premium.maintenanceMode === 'generator' &&
+      site.premium.conversion?.status === 'failed' ? (
+        <output className="admin-notice" data-tone="warn" aria-live="polite">
+          <span>
+            {site.premium.conversion.error ??
+              'A conversão Premium não terminou. Você pode tentar novamente.'}
+          </span>
+        </output>
+      ) : null}
       {notice ? (
         <output
           className="admin-notice"

@@ -14,7 +14,12 @@ import { TriangleAlert, Upload } from 'lucide-react';
 import { text } from '@/lib/form-data';
 import { formSnapshot, changedFields } from '@/lib/admin/form-changes';
 import { FormSection, StatusDot } from '@/components/admin/primitives';
-import { HelpArea, HelpButton, HelpHint, HelpNote } from '@/components/admin/help';
+import {
+  HelpArea,
+  HelpButton,
+  HelpHint,
+  HelpNote,
+} from '@/components/admin/help';
 import { TenantFields } from '@/components/admin/tenant-fields';
 import { VibePreview } from '@/components/admin/brand-fields';
 import { DeleteTenantDialog } from '@/components/admin/delete-tenant-dialog';
@@ -59,6 +64,7 @@ export function SettingsForm({
     slug: string;
     name: string;
     status: string;
+    maintenanceMode: 'generator' | 'converting' | 'premium';
     contactEmail: string | null;
     logoUrl?: string;
     logoDarkUrl?: string;
@@ -147,9 +153,11 @@ export function SettingsForm({
       });
       setLogoDarkUrl(url ?? undefined);
       setNotice(
-        url
-          ? 'Versão para fundo escuro aplicada ao rascunho.'
-          : 'Versão para fundo escuro removida do rascunho.',
+        tenant.maintenanceMode === 'generator'
+          ? url
+            ? 'Versão para fundo escuro aplicada ao rascunho.'
+            : 'Versão para fundo escuro removida do rascunho.'
+          : 'Cadastro atualizado. Para mudar o logo visível, edite e publique o projeto Premium.',
       );
     } catch (error) {
       setNotice(
@@ -216,9 +224,11 @@ export function SettingsForm({
       setProfile(next);
       setSocialUrl(parsed.data.socialUrl);
       setNotice(
-        regenerationRequired
-          ? 'Direção salva no rascunho. Volte ao Site e peça "Refaça o site" pelo chat para aplicar a nova direção; a versão publicada foi preservada.'
-          : 'Dados salvos no rascunho. A história será usada nas próximas edições do site.',
+        tenant.maintenanceMode === 'generator'
+          ? regenerationRequired
+            ? 'Direção salva no rascunho. Volte ao Site e peça "Refaça o site" pelo chat para aplicar a nova direção; a versão publicada foi preservada.'
+            : 'Dados salvos no rascunho. A história será usada nas próximas edições do site.'
+          : 'Dados operacionais salvos na EIXU. A apresentação pública só muda por uma nova release do projeto Premium.',
       );
     } catch (error) {
       setNotice(
@@ -249,7 +259,9 @@ export function SettingsForm({
       // A versão escura do logo anterior sai junto; a do novo chega depois.
       setLogoDarkUrl(undefined);
       setNotice(
-        'Logo aplicado ao rascunho. A versão para fundo escuro é preparada em seguida; recarregue para conferir. O site no ar muda na próxima publicação.',
+        tenant.maintenanceMode === 'generator'
+          ? 'Logo aplicado ao rascunho. A versão para fundo escuro é preparada em seguida; recarregue para conferir. O site no ar muda na próxima publicação.'
+          : 'Logo salvo no cadastro. Para aplicá-lo ao site, edite e publique o projeto Premium.',
       );
     } catch (error) {
       setNotice(
@@ -268,8 +280,9 @@ export function SettingsForm({
           <p className="admin-eyebrow">Cadastro do cliente</p>
           <h1>Dados</h1>
           <p>
-            O que você grava aqui alimenta as próximas edições do site. O
-            rascunho muda ao salvar; o site no ar só muda ao publicar.
+            {tenant.maintenanceMode === 'generator'
+              ? 'O que você grava aqui alimenta as próximas edições do site. O rascunho muda ao salvar; o site no ar só muda ao publicar.'
+              : 'O cadastro continua centralizado na EIXU. A apresentação do site é mantida no código e só muda por uma release Premium.'}
           </p>
         </div>
         <HelpButton />
@@ -434,7 +447,11 @@ export function SettingsForm({
                   ) : null}
                   {tenant.logoSvgUrl && logoUrl === tenant.logoUrl ? (
                     <p className="admin-logo-line">
-                      <a href={tenant.logoSvgUrl} target="_blank" rel="noreferrer">
+                      <a
+                        href={tenant.logoSvgUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
                         Abrir logo em SVG
                       </a>
                     </p>
@@ -469,9 +486,9 @@ export function SettingsForm({
             </form>
             <div className="admin-settings-footer">
               <p>
-                Nome, contatos, logo e direção alteram o rascunho. Alterar a
-                história ou a referência orienta uma reconstrução; não reescreve
-                páginas automaticamente.
+                {tenant.maintenanceMode === 'generator'
+                  ? 'Nome, contatos, logo e direção alteram o rascunho. Alterar a história ou a referência orienta uma reconstrução; não reescreve páginas automaticamente.'
+                  : 'Nome, contatos e histórico operacional continuam na EIXU. Mudanças visuais, páginas e novas integrações pertencem ao código Premium.'}
               </p>
               <details className="admin-risk-drawer">
                 <summary>
@@ -480,16 +497,19 @@ export function SettingsForm({
                 </summary>
                 <div>
                   <p>
-                    Apaga o cadastro, as páginas, os contatos recebidos, as
-                    conversas e todos os arquivos deste cliente. Não há como
-                    desfazer.
+                    {tenant.maintenanceMode === 'generator'
+                      ? 'Apaga o cadastro, as páginas, os contatos recebidos, as conversas e todos os arquivos deste cliente. Não há como desfazer.'
+                      : 'Este projeto tem código e releases próprios. A exclusão fica bloqueada até o domínio e o histórico Premium serem tratados pelo fluxo específico.'}
                   </p>
                   <button
                     type="button"
                     className="admin-danger"
+                    disabled={tenant.maintenanceMode !== 'generator'}
                     onClick={() => setDeleting(true)}
                   >
-                    Excluir {tenant.name}
+                    {tenant.maintenanceMode === 'generator'
+                      ? `Excluir ${tenant.name}`
+                      : 'Exclusão protegida'}
                   </button>
                 </div>
               </details>
@@ -538,6 +558,7 @@ export function SettingsForm({
                       slug: tenant.slug,
                       name: tenant.name,
                       status: tenant.status,
+                      maintenanceMode: tenant.maintenanceMode,
                       pageCount: tenant.pageCount,
                       leadCount: tenant.leadCount,
                       imageCount: tenant.imageCount,

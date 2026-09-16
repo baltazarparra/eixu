@@ -247,11 +247,16 @@ await test('botões sem ação clara são erros, enquanto o contexto decide jarg
 await test('publicação autorizada conserva o aviso de texto ruim e reconhece o reparo', async () => {
   let target = page('Learn more');
   let writes = 0;
-  const sql = () => {
+  const sql = (parts) => {
     writes += 1;
-    return [];
+    return { sql: parts.join('?') };
   };
-  sql.transaction = async (operations) => operations;
+  sql.transaction = async (operations) =>
+    operations.map((operation) =>
+      operation.sql.includes('select id from tenants')
+        ? [{ id: tenant.id }]
+        : [],
+    );
   const { publishSite } = await loadModule('lib/sites/publish.ts', {
     '@/lib/db': { db: () => sql },
     '@/lib/tenant-queries': { listPages: async () => [target] },
@@ -273,7 +278,7 @@ await test('publicação autorizada conserva o aviso de texto ruim e reconhece o
   const repaired = await publishSite(tenant);
   assert.equal(repaired.blocked.length, 0);
   assert.equal(repaired.published.length, 1);
-  assert.equal(writes, 6);
+  assert.equal(writes, 9);
   assert.ok(
     !repaired.warnings.some((finding) => finding.rule === 'acao-pouco-clara'),
   );

@@ -385,13 +385,14 @@ await test('publicação real aceita decisão editorial sem fabricar prova; snap
   assert.ok(
     authorized.warnings.some((finding) => finding.rule === 'landing-prova'),
   );
-  assert.equal(writes.length, 3);
+  assert.equal(writes.length, 4);
+  assert.match(writes[0].sql, /maintenance_mode = 'generator'/);
   assert.deepEqual(f.tenant.brief.evidence, []);
   writes.length = 0;
   f.tenant.brief.evidence = original;
   const result = await publishSite(f.tenant);
   assert.equal(result.blocked.length, 0, JSON.stringify(result));
-  assert.equal(writes.length, 3);
+  assert.equal(writes.length, 4);
   assert.equal(f.pages[0].publishedBlocks, null);
 });
 

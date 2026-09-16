@@ -27,6 +27,7 @@ export function handoffData() {
     slug,
     name,
     status,
+    maintenanceMode: 'generator',
     folderId:
       index === 0 || index === 3
         ? folders[0].id
@@ -153,7 +154,17 @@ export function handoffData() {
         slug: tenant.slug,
         name: tenant.name,
         status: tenant.status,
+        maintenanceMode: 'generator',
+        publicRuntime: 'generator',
         hasDesign: true,
+        dirty: true,
+      },
+      premium: {
+        maintenanceMode: 'generator',
+        publicRuntime: 'generator',
+        canonicalUrl: `https://${tenant.slug}.eixu.com.br`,
+        project: null,
+        conversion: null,
       },
       previewRevision: 'test-v1',
       review: {
@@ -375,6 +386,37 @@ export async function handoffFixture({ port = 0, imageUpload, publish } = {}) {
               }
               if (url.pathname.endsWith('/state')) {
                 res.end(JSON.stringify(site));
+                return;
+              }
+              if (url.pathname.endsWith('/premium')) {
+                const target = data.clients.find(
+                  (item) => item.slug === url.pathname.split('/')[3],
+                );
+                if (target) target.maintenanceMode = 'converting';
+                data.site.tenant.maintenanceMode = 'converting';
+                data.site.premium = {
+                  maintenanceMode: 'converting',
+                  publicRuntime: 'generator',
+                  canonicalUrl: `https://${target?.slug ?? data.tenant.slug}.eixu.com.br`,
+                  project: {
+                    id: 'premium-project',
+                    key: target?.slug ?? data.tenant.slug,
+                    directory: `apps/premium/${target?.slug ?? data.tenant.slug}`,
+                    status: 'preparing',
+                    vercelProjectName: `eixu-premium-${target?.slug ?? data.tenant.slug}`,
+                  },
+                  conversion: {
+                    id: 'premium-conversion',
+                    status: 'queued',
+                    pullRequestUrl: null,
+                    error: null,
+                    createdAt: new Date().toISOString(),
+                  },
+                };
+                res.statusCode = 202;
+                res.end(
+                  JSON.stringify({ conversion: data.site.premium.conversion }),
+                );
                 return;
               }
               if (url.pathname.endsWith('/publish')) {
