@@ -50,6 +50,8 @@ async function fixture(
   const revisions = [];
   const published = [];
   const executeQuery = async (sql, values = []) => {
+    if (sql.includes('select maintenance_mode from tenants'))
+      return [{ maintenance_mode: f.tenant.maintenanceMode ?? 'generator' }];
     if (sql.includes('update pages set blocks')) {
       const [blocks, pageId, tenantId, expected] = values;
       const page = f.pages.find(
@@ -57,10 +59,7 @@ async function fixture(
           candidate.id === pageId && candidate.tenantId === tenantId,
       );
       if (!page) return [];
-      if (
-        pageRevision(page) !==
-        pageRevision({ blocks: JSON.parse(expected) })
-      )
+      if (pageRevision(page) !== pageRevision({ blocks: JSON.parse(expected) }))
         return [];
       page.blocks = JSON.parse(blocks);
       writes.push({ page: page.slug });

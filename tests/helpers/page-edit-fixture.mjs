@@ -196,6 +196,8 @@ export async function pageEditFixture(
   let revisionSeq = 0;
   const policy = editPolicyFor(text, pages);
   const executeQuery = async (sql, values = []) => {
+    if (sql.includes('select maintenance_mode from tenants'))
+      return [{ maintenance_mode: tenant.maintenanceMode ?? 'generator' }];
     if (
       sql === 'SAVEPOINT page_revision_history' ||
       sql === 'RELEASE SAVEPOINT page_revision_history' ||

@@ -1,7 +1,13 @@
 import type { Client } from '@neondatabase/serverless';
 import { transaction } from '@/lib/db';
 
-type LockedTenant = { id: string; slug: string; name: string; status: string };
+type LockedTenant = {
+  id: string;
+  slug: string;
+  name: string;
+  status: string;
+  maintenanceMode: 'generator' | 'converting' | 'premium';
+};
 
 export class TenantRemovedError extends Error {
   constructor() {
@@ -21,11 +27,28 @@ export function withTenantLock<T>(
 ): Promise<T> {
   return transaction(async (connection) => {
     const lock = mode === 'upload' ? 'FOR KEY SHARE' : 'FOR UPDATE';
-    const { rows } = await connection.query<LockedTenant>(
-      `SELECT id, slug, name, status FROM tenants WHERE id = $1 ${lock}`,
+    const result = await connection.query<{
+      id: string;
+      slug: string;
+      name: string;
+      status: string;
+      maintenance_mode: LockedTenant['maintenanceMode'];
+    }>(
+      `SELECT id, slug, name, status, maintenance_mode
+       FROM tenants WHERE id = $1 ${lock}`,
       [tenantId],
     );
-    if (!rows[0]) throw new TenantRemovedError();
-    return run(rows[0], connection);
+    const row = result.rows[0];
+    if (!row) throw new TenantRemovedError();
+    return run(
+      {
+        id: row.id,
+        slug: row.slug,
+        name: row.name,
+        status: row.status,
+        maintenanceMode: row.maintenance_mode ?? 'generator',
+      },
+      connection,
+    );
   });
 }

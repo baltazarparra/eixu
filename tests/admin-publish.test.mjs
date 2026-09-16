@@ -115,8 +115,10 @@ await test('avisos do contrato de projeto não recusam a publicação', async ()
   assert.deepEqual(result.blocked, []);
   assert.deepEqual(result.published, ['/', '/materiais', '/guia']);
   assert.equal(result.url, 'https://fixture.eixu.com.br');
-  // Três páginas e o status do cliente, na mesma transação.
-  assert.equal(writes.length, 4);
+  // O lock do modo de manutenção, três páginas e o status do cliente ficam
+  // na mesma transação. A conversão Premium não pode atravessar esse lote.
+  assert.equal(writes.length, 5);
+  assert.match(writes[0].sql, /maintenance_mode = 'generator'/);
   const tenantWrite = writes.at(-1);
   assert.match(tenantWrite.sql, /published_snapshot/);
   assert.match(tenantWrite.sql, /status <> 'archived'/);

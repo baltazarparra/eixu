@@ -25,13 +25,17 @@ function str(value: unknown, fallback = ''): string {
   return fallback;
 }
 
-function toTenant(row: Row): Tenant {
+export function tenantFromRow(row: Row): Tenant {
   const brief = (row.brief ?? {}) as Record<string, unknown>;
   return {
     id: str(row.id),
     slug: str(row.slug),
     name: str(row.name),
     status: row.status as Tenant['status'],
+    maintenanceMode:
+      (row.maintenance_mode as Tenant['maintenanceMode']) ?? 'generator',
+    publicRuntime:
+      (row.public_runtime as Tenant['publicRuntime']) ?? 'generator',
     brief,
     brand: (row.brand ?? {}) as Tenant['brand'],
     dials: (row.dials ?? {
@@ -57,7 +61,7 @@ function toTenant(row: Row): Tenant {
   };
 }
 
-function toPage(row: Row): Page {
+export function pageFromRow(row: Row): Page {
   return {
     id: str(row.id),
     tenantId: str(row.tenant_id),
@@ -84,7 +88,7 @@ function toPage(row: Row): Page {
 export async function getTenantBySlug(slug: string): Promise<Tenant | null> {
   const rows =
     (await db()`select * from tenants where slug = ${slug} limit 1`) as Row[];
-  return rows[0] ? toTenant(rows[0]) : null;
+  return rows[0] ? tenantFromRow(rows[0]) : null;
 }
 
 export async function listTenants(): Promise<
@@ -94,7 +98,7 @@ export async function listTenants(): Promise<
     select * from tenants order by created_at desc
   `) as Row[];
   return rows.map((row) => ({
-    ...toTenant(row),
+    ...tenantFromRow(row),
     folderId: row.folder_id ? str(row.folder_id) : null,
     updatedAt: str(row.updated_at),
   }));
@@ -239,7 +243,7 @@ export async function listPages(tenantId: string): Promise<Page[]> {
   const rows = (await db()`
     select * from pages where tenant_id = ${tenantId} order by nav_order asc, created_at asc
   `) as Row[];
-  return rows.map(toPage);
+  return rows.map(pageFromRow);
 }
 
 export async function getPage(
@@ -249,13 +253,13 @@ export async function getPage(
   const rows = (await db()`
     select * from pages where tenant_id = ${tenantId} and slug = ${slug} limit 1
   `) as Row[];
-  return rows[0] ? toPage(rows[0]) : null;
+  return rows[0] ? pageFromRow(rows[0]) : null;
 }
 
 export async function getPageById(id: string): Promise<Page | null> {
   const rows =
     (await db()`select * from pages where id = ${id} limit 1`) as Row[];
-  return rows[0] ? toPage(rows[0]) : null;
+  return rows[0] ? pageFromRow(rows[0]) : null;
 }
 
 /** Posts publicados, para a listagem do blog e para o sitemap. */

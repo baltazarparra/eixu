@@ -180,7 +180,8 @@ for (const version of [2, 3, 4]) {
     ]);
     const result = await gate.publish();
     assert.equal(result.blocked.length, 0);
-    assert.equal(gate.writes.length, 4);
+    assert.equal(gate.writes.length, 5);
+    assert.match(gate.writes[0].sql, /maintenance_mode = 'generator'/);
     assert.equal(
       result.warnings.some(
         (finding) => finding.rule === 'composicao-duplicada',
@@ -253,7 +254,8 @@ await test('publicação pontual preserva marca publicada e publicação complet
   };
   const single = await publisher(f);
   assert.deepEqual(plain((await single.publish('guia')).published), ['/guia']);
-  assert.equal(single.writes.length, 2);
+  assert.equal(single.writes.length, 3);
+  assert.match(single.writes[0].sql, /maintenance_mode = 'generator'/);
   assert.equal(single.writes.at(-1).sql.includes('published_snapshot'), false);
   const complete = await publisher(f);
   assert.ok(
@@ -277,7 +279,7 @@ await test('publicação pontual preserva marca publicada e publicação complet
         finding.rule === 'composicao-duplicada' && /80%/.test(finding.message),
     ),
   );
-  assert.equal(duplicate.writes.length, 2);
+  assert.equal(duplicate.writes.length, 3);
 });
 
 await test('primeira publicação pontual usa e grava a marca do rascunho', async () => {

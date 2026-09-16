@@ -12,6 +12,7 @@ import { tenantDraftSnapshot } from '@/lib/sites/snapshot';
 import type { Page, Tenant, TenantImage } from '@/lib/types';
 import { logoStudioState } from '@/lib/images/logo-studio-state';
 import { publicationFinding } from '@/lib/sites/publication-policy';
+import type { PremiumWorkspaceState } from '@/lib/premium/types';
 
 /** A ordem das chaves JSON não indica uma alteração editorial. */
 function canonical(value: unknown): string {
@@ -60,6 +61,7 @@ export function workspaceState(
   images: TenantImage[],
   /** Slugs com versão anterior guardada; o painel só oferece desfazer nelas. */
   undoPages: string[] = [],
+  premium?: PremiumWorkspaceState,
 ) {
   const generationFindings = lintSite(
     pages,
@@ -91,8 +93,17 @@ export function workspaceState(
       slug: tenant.slug,
       name: tenant.name,
       status: tenant.status,
+      maintenanceMode: tenant.maintenanceMode ?? 'generator',
+      publicRuntime: tenant.publicRuntime ?? 'generator',
       hasDesign: Boolean(design),
       dirty: hasTenantDraftChanges(tenant),
+    },
+    premium: premium ?? {
+      maintenanceMode: tenant.maintenanceMode ?? 'generator',
+      publicRuntime: tenant.publicRuntime ?? 'generator',
+      canonicalUrl: `https://${tenant.slug}.eixu.com.br`,
+      project: null,
+      conversion: null,
     },
     generation: generationState(tenant, pages, images, generationFindings),
     review: {

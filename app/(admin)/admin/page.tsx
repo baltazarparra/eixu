@@ -22,14 +22,25 @@ export default async function AdminHome() {
     <main className="admin-page admin-clients-page">
       <Clients
         tenants={tenants
-          .map(({ id, slug, name, status, folderId, updatedAt }) => ({
-            slug,
-            name,
-            status,
-            folderId,
-            updatedAt,
-            lastAction: actions.get(id) ?? null,
-          }))
+          .map(
+            ({
+              id,
+              slug,
+              name,
+              status,
+              maintenanceMode,
+              folderId,
+              updatedAt,
+            }) => ({
+              slug,
+              name,
+              status,
+              maintenanceMode,
+              folderId,
+              updatedAt,
+              lastAction: actions.get(id) ?? null,
+            }),
+          )
           .sort(byLastAction)}
         folders={folders}
         summary={summary}

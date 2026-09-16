@@ -16,6 +16,7 @@ nova execução. Os scripts e dependências vêm de [package.json](../package.js
 | Imagens ou ferramentas             | Falha parcial, disponibilidade, alteração por número, isolamento, aplicação de logo e recusa de exclusão em uso.                                                    |
 | Tokens e custos de IA              | SDK real com modelo simulado, idempotência, ausências, falhas, isolamento por cliente, datas de Brasília, paginação, migração repetível e UI responsiva.            |
 | Schema                             | Aplicação e reaplicação em PostgreSQL descartável, com verificação dos consumidores.                                                                                |
+| Projeto Premium                    | Snapshot público, locks, workspace isolado, build, ponte por token/host, domínio canônico, release posterior e proteção de assets.                                  |
 | Pastas de sites                    | CRUD, nomes únicos, preservação ao excluir, lote atômico, conflito entre sessões, desfazer, arrasto, teclado e celular.                                             |
 | Kanban interno                     | Sessão, rota canônica e redirecionamento, host de cliente, origem, upgrade idempotente, vínculo, filtros, arquivo, ordem, concorrência por cartão, teclado e toque. |
 | Skills e cliente do Kanban         | Validação estrutural das skills, bearer restrito, sessão humana/Origin, host de cliente, parser, payloads/versionamento e leitura real sem escrita no destino.      |
@@ -56,7 +57,8 @@ escrita.
 `next typegen` prepara tipos de rotas e `next-env.d.ts`. Consulte o guia da
 versão instalada em `node_modules/next/dist/docs/01-app/03-api-reference/06-cli/next.md`
 antes de alterar APIs. O build pode precisar de rede para `next/font/google`.
-Não há script genérico `test` ou `verify`, nem workflow de CI versionado.
+Não há script genérico `test` ou `verify`, nem workflow geral de CI. Conversão
+e release Premium têm workflows próprios e escopo por projeto.
 Os scripts Vinext não substituem o build de produção Next.js.
 
 Para documentação:
@@ -86,6 +88,15 @@ pastas compartilhadas, arrasto, desfazer, contraste, referências, teclado e
 movimento reduzido. Elas não comprovam latência
 do modelo, persistência no Neon ou comportamento em aparelhos físicos/Safari.
 Sem Chrome, os casos dependentes são pulados; informe isso no resultado.
+
+Para Premium, gere um projeto sintético com `premium:export`, rode typecheck,
+lint e build do workspace e depois `premium:validate`. O ensaio de infraestrutura
+deve usar um projeto Vercel descartável: confirmar que o domínio exato passa a
+servir o filho, editar um texto, publicar outra vez e observar a mudança na mesma
+URL. Remova projeto e domínio sintéticos ao terminar. A ponte de formulário,
+evento e WhatsApp exige token e host corretos e deve gravar apenas em banco de
+teste. A primeira ativação e uma release posterior são caminhos diferentes e
+ambos precisam ser exercitados.
 
 O Kanban tem um teste SQL com o driver Neon ligado apenas a um banco Postgres
 descartável. Ele cobre upgrade e reaplicação do schema, numeração permanente dos cards

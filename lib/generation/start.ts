@@ -16,6 +16,10 @@ import { listPages } from '@/lib/tenant-queries';
 import type { Tenant } from '@/lib/types';
 import type { AdminUser } from '@/lib/auth';
 import { recordActivity } from '@/lib/admin/activity';
+import {
+  generatorWriteBlocked,
+  generatorWriteMessage,
+} from '@/lib/premium/access';
 
 export type StartResult =
   | { ok: true; run: GenerationRun; phase: string }
@@ -32,6 +36,12 @@ export async function startGeneration(input: {
   requestedBy: AdminUser;
 }): Promise<StartResult> {
   const { tenant, origin, requestedBy } = input;
+  if (generatorWriteBlocked(tenant))
+    return {
+      ok: false,
+      status: 409,
+      error: generatorWriteMessage(tenant),
+    };
   const existing = await expireStaleRun(await activeRun(tenant.id));
   if (existing && ACTIVE_STATUS.includes(existing.status))
     return {

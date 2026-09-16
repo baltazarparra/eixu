@@ -9,6 +9,35 @@ import {
 import { lintPage, formatFindings } from '@/lib/taste/lint';
 import { lintTextStyles } from '@/lib/blocks/text-style-lint';
 import type { BlockInstance, Brand, Page, Tenant } from '@/lib/types';
+import {
+  generatorWriteBlocked,
+  generatorWriteMessage,
+} from '@/lib/premium/access';
+
+async function lockGeneratorMaintenance(
+  connection: {
+    query: (
+      sql: string,
+      values?: unknown[],
+    ) => Promise<{ rows: Record<string, unknown>[] }>;
+  },
+  tenant: Pick<Tenant, 'id' | 'maintenanceMode'>,
+) {
+  if (generatorWriteBlocked(tenant))
+    throw new PageEditError(generatorWriteMessage(tenant), 409);
+  const locked = await connection.query(
+    `select maintenance_mode from tenants where id = $1 for update`,
+    [tenant.id],
+  );
+  const mode = locked.rows[0]?.maintenance_mode ?? 'generator';
+  if (mode !== 'generator')
+    throw new PageEditError(
+      mode === 'converting'
+        ? 'A conversão para Premium começou durante a edição. Nenhuma alteração foi salva.'
+        : 'Este projeto é Premium e não pode ser alterado pelo gerador.',
+      409,
+    );
+}
 
 /** Chat e edição direta compartilham validação e comparação atômica do rascunho. */
 export async function savePageEdit({
@@ -19,7 +48,7 @@ export async function savePageEdit({
   origin = 'chat',
   summary,
 }: {
-  tenant: Pick<Tenant, 'id'>;
+  tenant: Pick<Tenant, 'id'> & Partial<Pick<Tenant, 'maintenanceMode'>>;
   page: Page;
   blocks: BlockInstance[];
   brand: Brand;
@@ -65,6 +94,10 @@ export async function savePageEdit({
   let undoAvailable = false;
   if (changed) {
     undoAvailable = await transaction(async (connection) => {
+      await lockGeneratorMaintenance(
+        connection,
+        tenant as Pick<Tenant, 'id' | 'maintenanceMode'>,
+      );
       const saved = await connection.query(
         `update pages set blocks = $1::jsonb, updated_at = now()
          where id = $2 and tenant_id = $3 and blocks = $4::jsonb
@@ -132,12 +165,16 @@ export async function undoPageEdit({
   page,
   brand,
 }: {
-  tenant: Pick<Tenant, 'id'>;
+  tenant: Pick<Tenant, 'id'> & Partial<Pick<Tenant, 'maintenanceMode'>>;
   page: Page;
   brand: Brand;
 }) {
   const current = pageRevision(page);
   const previous = await transaction(async (connection) => {
+    await lockGeneratorMaintenance(
+      connection,
+      tenant as Pick<Tenant, 'id' | 'maintenanceMode'>,
+    );
     // Toda edição e todo desfazer travam primeiro a mesma linha. A comparação
     // continua otimista, mas a revisão é escolhida e consumida sob esse lock.
     const locked = await connection.query(

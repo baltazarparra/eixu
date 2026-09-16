@@ -41,6 +41,7 @@ export default async function SettingsPage({
           slug: tenant.slug,
           name: tenant.name,
           status: tenant.status,
+          maintenanceMode: tenant.maintenanceMode,
           contactEmail: tenant.contactEmail,
           logoUrl: tenant.brand.logoUrl,
           logoDarkUrl: tenant.brand.logoDarkUrl,

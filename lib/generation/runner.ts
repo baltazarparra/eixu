@@ -40,6 +40,10 @@ import {
   type Phase,
 } from '@/lib/taste/phases';
 import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
+import {
+  generatorWriteBlocked,
+  generatorWriteMessage,
+} from '@/lib/premium/access';
 import type { LogoStudioState, Tenant } from '@/lib/types';
 import { runLogoStudio, shouldRunLogoStudio } from '@/lib/images/logo-studio';
 
@@ -237,6 +241,8 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
 
   const tenant = await getTenantBySlug(slug);
   if (!tenant) return { kind: 'failed', error: 'Cliente não encontrado.' };
+  if (generatorWriteBlocked(tenant))
+    return { kind: 'failed', error: generatorWriteMessage(tenant) };
 
   const [pages, images] = await Promise.all([
     listPages(tenant.id),
