@@ -17,6 +17,15 @@ const favicon =
 const config: NextConfig = {
   turbopack: { root: resolve(process.cwd(), '../../..') },
   htmlLimitedBots: /.*/,
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'ymqzywawtrbgbpti.public.blob.vercel-storage.com',
+        pathname: '/tenants/raizencard/**',
+      },
+    ],
+  },
   async redirects() {
     return favicon
       ? [

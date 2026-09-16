@@ -12,6 +12,7 @@ import { logoThemeColor } from '@/lib/sites/logo-metadata';
 import { structuredData } from '@/lib/sites/structured-data';
 import { attributionScript } from '@/lib/tracking';
 import { pages, posts, tenant } from '@/content/site';
+import { RaizenCardHome } from '@/app/raizen-card-home';
 
 type Props = { params: Promise<{ slug?: string[] }> };
 const origin = `https://${tenant.slug}.eixu.com.br`;
@@ -117,6 +118,20 @@ export default async function PremiumPage({ params }: Props) {
         .join(' ')
     : undefined;
   const pagePath = `/${page.slug}`;
+  const pageContent =
+    page.slug === '' ? (
+      <RaizenCardHome />
+    ) : (
+      <RenderBlocks
+        blocks={page.blocks}
+        ctx={{
+          tenant,
+          posts,
+          pagePath,
+          pageType: page.type,
+        }}
+      />
+    );
   return (
     <div
       className="site-theme"
@@ -154,15 +169,7 @@ export default async function PremiumPage({ params }: Props) {
           ).replace(/</g, '\\u003c'),
         }}
       />
-      <RenderBlocks
-        blocks={page.blocks}
-        ctx={{
-          tenant,
-          posts,
-          pagePath,
-          pageType: page.type,
-        }}
-      />
+      {pageContent}
       <script
         dangerouslySetInnerHTML={{
           __html: attributionScript(tenant.slug, pagePath),

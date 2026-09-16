@@ -24,6 +24,8 @@ import './iconography.css';
 import './navigation.css';
 // Por último: escolhas explícitas do operador vencem a decoração da vibe.
 import './operator.css';
+// A home Premium tem composição própria e não depende do catálogo do gerador.
+import './raizen-card.css';
 
 const sans = Geist({
   subsets: ['latin'],
