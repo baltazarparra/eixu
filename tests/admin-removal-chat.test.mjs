@@ -10,6 +10,7 @@ async function removalChat({
   otherOperator = false,
   auditFails = false,
   concurrentConfirm = false,
+  attributionOnly = false,
 } = {}) {
   const f = await pageEditFixture('remova essa foto da seção');
   const messages = [];
@@ -194,7 +195,12 @@ async function removalChat({
     assert.equal(response.status, 200);
     return response.text();
   };
-  const first = await send('remova essa foto da seção');
+  const first = await send(
+    attributionOnly
+      ? 'Remova a assinatura EIXU do site e o rodapé do cliente.'
+      : 'remova essa foto da seção',
+  );
+  if (attributionOnly) return { f, messages, activity, modelCalls, first };
   assert.match(first, /pedido atual não autoriza esse tamanho/);
   assert.equal(f.writes.length, 0);
   const pending = messages.find(
@@ -228,6 +234,28 @@ async function removalChat({
     colleagueResponse,
   };
 }
+
+await test('pedido para remover a assinatura recebe explicação e preserva o rodapé', async () => {
+  const { f, messages, activity, modelCalls, first } = await removalChat({
+    attributionOnly: true,
+  });
+  assert.match(first, /assinatura.*eixu\.com\.br/i);
+  assert.match(first, /Nenhuma alteração foi salva/);
+  assert.equal(modelCalls, 0);
+  assert.equal(f.writes.length, 0);
+  assert.deepEqual(f.pages[0].blocks, editPages()[0].blocks);
+  assert.deepEqual(f.pages[0].publishedBlocks, editPages()[0].publishedBlocks);
+  assert.deepEqual(
+    activity.map((entry) => entry.action),
+    ['chat.message'],
+  );
+  assert.deepEqual(
+    messages
+      .filter((message) => message.channel === 'site')
+      .map((message) => message.role),
+    ['user', 'assistant'],
+  );
+});
 
 await test('confirmação natural remove o bloco recusado sem repetir o modelo', async () => {
   const { f, messages, activity, modelCalls, second } = await removalChat();

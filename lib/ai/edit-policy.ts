@@ -137,6 +137,19 @@ export function asksRemoval(text: string): boolean {
     });
 }
 
+/** A assinatura da plataforma é moldura do site e não pode virar alvo de edição. */
+export function attributionRemovalRequested(text: string): boolean {
+  const request = removalRequest(text);
+  return (
+    asksRemoval(text) &&
+    (/\b(?:eixu\.com\.br|desenvolvido\s+e\s+hospedado)\b/.test(request) ||
+      (/\beixu\b/.test(request) &&
+        /\b(?:assinatura|faixa|creditos?|marca|link|rodape|footer)\b/.test(
+          request,
+        )))
+  );
+}
+
 /**
  * Até onde o pedido atual autoriza remover.
  *

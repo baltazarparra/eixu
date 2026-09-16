@@ -259,6 +259,13 @@ pre-flight e documentação coerentes.
 | `form.lead`      | Formulário configurável com texto de consentimento, opt-in de WhatsApp e redirecionamento                                          |
 | `footer.compact` | Rodapé único com logo, links e aviso legal                                                                                         |
 
+Depois dos blocos, toda página de cliente exibe uma faixa discreta da EIXU com
+“Desenvolvido e hospedado por eixu.com.br”. Ela é moldura da plataforma,
+inclusive em sites já publicados, e não integra o catálogo nem o rodapé do
+cliente. Não há controle para removê-la por site. O rodapé do cliente permanece
+editável; um pedido para retirar a faixa recebe uma explicação sem alterar os
+blocos.
+
 ### Prova, oferta e narrativa
 
 | Tipo                    | Capacidade                                                                                 |

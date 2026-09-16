@@ -5,6 +5,7 @@ import * as B from '@/lib/blocks/components';
 import { SiteMotion } from '@/lib/blocks/motion';
 import { VisualExplorer, type ExplorerProps } from '@/lib/blocks/explorer';
 import { SiteLocation } from '@/lib/blocks/location';
+import { SiteAttribution } from '@/lib/sites/site-attribution';
 import { contactsOf } from '@/lib/tenant-contacts';
 import { renderingVibeOf, VIBE_LOCATION_TONE } from '@/lib/design/vibes';
 import { previewProps } from '@/lib/sites/preview';
@@ -99,6 +100,7 @@ export function RenderBlocks({
         </LandingStickyCta>
       )}
       {!landing && !ctx.editing && <B.FloatingWhatsapp ctx={ctx} />}
+      <SiteAttribution />
     </SiteMotion>
   );
 }
