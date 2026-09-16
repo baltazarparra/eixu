@@ -1,0 +1,322 @@
+/*
+ * Refino institucional do Premium raizenbank.
+ *
+ * Camada de apresentação: ritmo, hierarquia tipográfica, profundidade das
+ * superfícies e estado das ações. Não muda conteúdo, ordem de blocos nem
+ * estrutura — só como o que já existe é apresentado.
+ *
+ * Entra depois de vibes/typography/navigation e antes de operator.css, para
+ * que uma escolha explícita do operador continue vencendo este arquivo.
+ * Todas as cores saem dos tokens do tema (lib/blocks/theme.ts), que já são
+ * medidos por contraste. Nada aqui fixa cor literal nem usa !important.
+ */
+
+.site-theme {
+  /* Raio próprio dos painéis: --panel-radius chega inline pelo tema. */
+  --refino-card: clamp(0.625rem, 0.45rem + 0.5vw, 1.125rem);
+  /* Hairline mais discreta que --line para divisões internas. */
+  --refino-hairline: color-mix(in oklab, var(--ink) 9%, var(--paper));
+  /* Elevação institucional: sombra longa e quase imperceptível. */
+  --refino-lift: 0 1px 2px -1px color-mix(in oklab, var(--ink) 18%, transparent),
+    0 16px 40px -32px color-mix(in oklab, var(--ink) 55%, transparent);
+  --refino-lift-hover: 0 2px 4px -2px
+      color-mix(in oklab, var(--ink) 22%, transparent),
+    0 24px 56px -34px color-mix(in oklab, var(--ink) 62%, transparent);
+}
+/*
+ * Respiro entre seções. A faixa da vibe comercial em vibes.css é declarada com
+ * especificidade 0,3,0 (`.site-theme:is([data-design-version=…])[data-vibe=…]`),
+ * então o par [data-vibe][data-density] abaixo é o mínimo necessário para o
+ * refino valer — com 0,1,0 a regra era simplesmente ignorada.
+ */
+.site-theme[data-vibe][data-density] {
+  --section-space: clamp(5rem, 9vw, 9rem);
+}
+.site-theme[data-vibe][data-density='airy'] {
+  --section-space: clamp(5.75rem, 11vw, 10.5rem);
+}
+.site-theme[data-vibe][data-density='compact'] {
+  --section-space: clamp(3.25rem, 6vw, 6rem);
+}
+
+/* ---------------------------------------------------------------------------
+ * Tipografia: mais contraste entre display e corpo, medida de leitura maior.
+ * ------------------------------------------------------------------------ */
+
+/*
+ * A escala do título do hero pertence à vibe: vibes.css calibra .site-headline
+ * por data-length/data-long-word com especificidade 0,6,0. O refino não a
+ * duplica — mexer ali só produziria regra morta ou brigaria com a calibragem
+ * por comprimento.
+ *
+ * O que estava errado era a hierarquia: --type-title regia os h2 de seção em
+ * 56px enquanto o hero desta home resolve para 46px, deixando o título interno
+ * maior que o da página. A faixa abaixo mantém o h2 forte e subordinado ao
+ * hero em toda a extensão (390px a 1920px).
+ */
+.site-theme {
+  --type-title: clamp(1.9rem, 2.6vw, 3.1rem);
+  --type-subtitle: clamp(1.3rem, 1.02rem + 0.85vw, 1.8rem);
+  --type-lead: clamp(1.15rem, 1rem + 0.7vw, 1.6rem);
+  --type-label: 0.78rem;
+}
+
+/* Subtítulo do hero com medida curta: linha longa cansa em tela larga. */
+.site-theme .site-hero-copy > p:not(.site-eyebrow) {
+  max-width: 46ch;
+  color: var(--muted);
+}
+
+/* Rótulos e categorias em caixa alta discreta: vocabulário institucional. */
+.site-theme :is(.site-eyebrow, .site-signature-label, .site-resource-category) {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: var(--type-label);
+}
+
+/* Parágrafos longos com respiro entre si. */
+.site-theme :is(.site-text, .site-post-body) p + p {
+  margin-top: 1.1em;
+}
+
+/* ---------------------------------------------------------------------------
+ * Ações.
+ *
+ * Correção de contraste: o botão sólido usa --highlight, que sobre a faixa de
+ * CTA (tone accent) ficava a 1.41:1 e praticamente sumia. Em seção escura o
+ * botão passa a inverter o papel local — dentro de um tom escuro, --ink já é a
+ * cor clara e --paper é o fundo. Isso dá 7,9:1 na faixa e 17,5:1 no hero, e
+ * mantém a cor de ação nas seções claras, onde ela contrasta bem.
+ * ------------------------------------------------------------------------ */
+
+.site-theme :is(.site-action, .site-submit, .site-nav-cta) {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+.site-theme :is(.site-action, .site-submit):hover {
+  box-shadow: var(--refino-lift-hover);
+  transform: translateY(-1px);
+}
+.site-theme :is(.site-action, .site-submit):active {
+  transform: translateY(0) scale(0.99);
+}
+
+/* Nem toda ação declara data-variant: o CTA da faixa e o da nav são sólidos
+   sem o atributo. A regra pega tudo que não for explicitamente vazado. */
+.site-theme
+  :is(.site-block[data-tone='ink'], .site-block[data-tone='accent'])
+  :is(.site-action:not([data-variant='ghost']), .site-submit) {
+  background-color: var(--ink);
+  color: var(--paper);
+}
+
+/* O botão vazado em faixa escura precisa de borda visível, não da hairline. */
+.site-theme
+  :is(.site-block[data-tone='ink'], .site-block[data-tone='accent'])
+  .site-action[data-variant='ghost'] {
+  border-color: color-mix(in oklab, var(--ink) 42%, transparent);
+}
+.site-theme
+  :is(.site-block[data-tone='ink'], .site-block[data-tone='accent'])
+  .site-action[data-variant='ghost']:hover {
+  background-color: color-mix(in oklab, var(--ink) 12%, transparent);
+  border-color: color-mix(in oklab, var(--ink) 62%, transparent);
+}
+
+/* ---------------------------------------------------------------------------
+ * Navegação: barra leve, com separação apenas quando há conteúdo atrás.
+ * ------------------------------------------------------------------------ */
+
+.site-theme .site-nav {
+  border-bottom: 1px solid var(--refino-hairline);
+  background: color-mix(in oklab, var(--paper) 86%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px);
+}
+.site-theme .site-nav-minimal {
+  border-bottom-color: transparent;
+}
+.site-theme .site-nav-link {
+  position: relative;
+  transition: color 0.2s ease;
+}
+/* Sublinhado que cresce do início: some com movimento reduzido logo abaixo. */
+.site-theme .site-nav-link::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  bottom: -0.35rem;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.24s ease;
+}
+.site-theme .site-nav-link:hover::after,
+.site-theme .site-nav-link:focus-visible::after {
+  transform: scaleX(1);
+}
+
+/* ---------------------------------------------------------------------------
+ * Superfícies: cartões com hairline e elevação discreta em vez de fundo chapado.
+ * ------------------------------------------------------------------------ */
+
+.site-theme :is(.site-bento-item, .site-faq-cards details) {
+  border-radius: var(--refino-card);
+}
+.site-theme .site-bento-item:not(.site-bento-featured) {
+  border: 1px solid var(--refino-hairline);
+  background: color-mix(in oklab, var(--ink) 2.5%, var(--paper));
+  box-shadow: var(--refino-lift);
+  transition:
+    box-shadow 0.25s ease,
+    transform 0.25s ease,
+    border-color 0.25s ease;
+}
+.site-theme .site-bento-item:not(.site-bento-featured):hover {
+  box-shadow: var(--refino-lift-hover);
+  border-color: var(--line);
+  transform: translateY(-2px);
+}
+
+/* Imagem emoldurada: canto coerente com os cartões e leve profundidade. */
+.site-theme
+  :is(.site-hero-media, .site-media-image figure img, .site-narrative-split img) {
+  border-radius: var(--refino-card);
+}
+.site-theme .site-hero-media {
+  box-shadow: var(--refino-lift);
+}
+
+/* ---------------------------------------------------------------------------
+ * Dados institucionais: o ledger é o bloco que comunica solidez.
+ * ------------------------------------------------------------------------ */
+
+.site-theme .site-facts-ledger dl {
+  border-radius: var(--refino-card);
+  background: var(--paper);
+  box-shadow: var(--refino-lift);
+}
+.site-theme .site-facts-ledger dt {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: var(--type-label);
+  color: var(--muted);
+}
+/* O valor é frase curta alinhada à direita: ganha peso e numeral de display
+   sem crescer a ponto de quebrar as duas colunas do ledger. */
+.site-theme .site-facts-ledger dd {
+  font-family: var(--font-display, var(--font-site));
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+
+/* Passos numerados com numeral de display. */
+.site-theme .site-step-number {
+  font-family: var(--font-display, var(--font-site));
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+/* ---------------------------------------------------------------------------
+ * FAQ: alvo de toque confortável e abertura calma.
+ * ------------------------------------------------------------------------ */
+
+.site-theme .site-faq-summary {
+  min-height: 3.25rem;
+  gap: 1rem;
+  transition: color 0.2s ease;
+}
+.site-theme .site-faq-cards details {
+  border-color: var(--refino-hairline);
+  background: var(--paper);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.site-theme .site-faq-cards details[open] {
+  border-color: var(--line);
+  box-shadow: var(--refino-lift);
+}
+
+/* ---------------------------------------------------------------------------
+ * Formulário: campo com superfície própria e foco em anel, não só borda.
+ * ------------------------------------------------------------------------ */
+
+/*
+ * Campos de texto: superfície própria, para o campo se ler como campo sobre o
+ * papel claro. Checkbox e radio ficam de fora e mantêm a aparência nativa.
+ *
+ * Só o estado base é declarado aqui. Tentativas de :hover e :focus neste mesmo
+ * seletor não venceram as utilitárias do formulário (verificado forçando o
+ * pseudo-estado pelo CDP: nem background, nem borda, nem anel chegavam a
+ * aplicar), e regra que não pinta nada é ruído. O foco continua visível pelo
+ * `outline: 2px solid currentColor` que site.css já dá a :focus-visible.
+ */
+.site-theme .site-form :is(input[type='text'], input[type='email']),
+.site-theme .site-form :is(input[type='tel'], input[type='url']),
+.site-theme .site-form :is(input[type='number'], input[type='date']),
+.site-theme .site-form :is(textarea, select) {
+  background-color: color-mix(in oklab, var(--ink) 3%, var(--paper));
+  border-color: var(--refino-hairline);
+}
+
+/* ---------------------------------------------------------------------------
+ * Rodapé: separação por hairline e contatos com alvo maior.
+ * ------------------------------------------------------------------------ */
+
+.site-theme :is(.site-footer-nav, .site-footer-contacts) a {
+  transition: color 0.2s ease;
+}
+.site-theme .site-footer-social a {
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+.site-theme .site-footer-social a:hover {
+  transform: translateY(-2px);
+}
+
+/* ---------------------------------------------------------------------------
+ * Telas estreitas: o refino não pode custar respiro nem alvo de toque.
+ * ------------------------------------------------------------------------ */
+
+@media (max-width: 640px) {
+  .site-theme .site-headline,
+  .site-theme .site-hero-text .site-headline {
+    letter-spacing: -0.028em;
+  }
+  .site-theme .site-hero-copy > p:not(.site-eyebrow) {
+    max-width: none;
+  }
+  .site-theme :is(.site-action, .site-submit, .site-nav-cta) {
+    min-height: 2.75rem;
+  }
+  /* Elevação em tela pequena vira ruído: mantém só a hairline. */
+  .site-theme .site-bento-item:not(.site-bento-featured),
+  .site-theme .site-facts-ledger dl,
+  .site-theme .site-hero-media {
+    box-shadow: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Movimento reduzido: nenhum deslocamento, nenhuma varredura.
+ * ------------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .site-theme :is(.site-action, .site-submit):hover,
+  .site-theme .site-bento-item:not(.site-bento-featured):hover,
+  .site-theme .site-footer-social a:hover {
+    transform: none;
+  }
+  .site-theme .site-nav-link::after {
+    transition: none;
+  }
+}

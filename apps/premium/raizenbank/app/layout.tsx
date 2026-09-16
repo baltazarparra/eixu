@@ -22,6 +22,8 @@ import './vibes.css';
 import './typography.css';
 import './iconography.css';
 import './navigation.css';
+// Refino de apresentação do Premium: vence a decoração da vibe, não o operador.
+import './refinement.css';
 // Por último: escolhas explícitas do operador vencem a decoração da vibe.
 import './operator.css';
 
