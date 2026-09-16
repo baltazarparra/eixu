@@ -350,16 +350,17 @@ Alt, nome do arquivo e presença na biblioteca também não confirmam um fato.
 
 O chat tem dois modos determinados antes de chamar o modelo:
 
-| Modo     | Quando entra                                                                                                         | Capacidades expostas                                              |
-| -------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Conversa | Saudação, pergunta, hipótese, pedido de opinião, contexto solto, anexo sem comando ou frase que diz para não alterar | Manual, estado, página, catálogo, imagens e lint; nenhuma escrita |
-| Ação     | Verbo direto, resultado desejado, pedido “pode fazer…?”, confirmação contextual ou etapa formal                      | Ferramentas compatíveis com o escopo atual                        |
+| Modo     | Quando entra                                                                                                                   | Capacidades expostas                                              |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| Conversa | Saudação, pergunta, hipótese, pedido de opinião, contexto solto, anexo sem comando ou frase que diz para não alterar           | Manual, estado, página, catálogo, imagens e lint; nenhuma escrita |
+| Ação     | Verbo direto, inclusive dentro de uma frase, resultado desejado, pedido “pode fazer…?”, confirmação contextual ou etapa formal | Ferramentas compatíveis com o escopo atual                        |
 
 Assim, “o que você acha desta abertura?” pede leitura e opinião; “troque a
 abertura por editorial” pede execução. “Seria melhor um footer escuro?” não
-altera nada. “Pode deixar o footer escuro?” abre a edição. O classificador é
-conservador: quando uma intenção ambígua não libera escrita, o Eixu explica a
-alternativa e espera uma instrução direta.
+altera nada. “Pode deixar o footer escuro?” abre a edição, assim como “há uma
+seção entre X e Y; apague-a”. O classificador é conservador: quando uma intenção
+ambígua não libera escrita, o Eixu explica a alternativa e espera uma instrução
+direta.
 
 Eixu conversa como designer de interface e frontend sênior, com domínio de
 creative development. Ele relaciona hierarquia, conteúdo, interação,
@@ -379,8 +380,9 @@ turno. `edit_page` reúne operações atômicas por página: substituir texto,
 gravar ou remover campo opcional, inserir, mover ou retirar um item, e inserir,
 mover, remover ou substituir um bloco. A revisão do rascunho evita que duas abas
 sobrescrevam trabalho. O
-executor valida schema, perda de conteúdo, escopo de remoção, piso de
-composição, contraste e pre-flight antes de gravar.
+executor valida schema, perda de conteúdo, escopo de remoção, contraste e
+pre-flight antes de gravar. Consequências de composição aparecem como
+recomendações no painel.
 
 Pedidos visuais nomeados ficam restritos à família ou ao bloco identificado.
 Nesse escopo, o agente pode mudar apresentação, estilos de texto, mídia e os
@@ -395,7 +397,11 @@ O servidor confere o alvo contra as props. Um print anexado ajuda o modelo a
 entender, mas não autoriza uma remoção grande. Remover card, foto, botão ou item
 atua sobre o elemento. Remover seção ou bloco inteiro exige essa abrangência;
 quando o tamanho está incerto, o servidor descreve o que sairia e pede a
-confirmação do turno seguinte.
+confirmação do turno seguinte. A confirmação guarda a página, o bloco, a
+revisão e o lote recusado, e aceita linguagem natural curta ou completa — por
+exemplo, “confirmo que pode remover a seção inteira com tudo dentro”. Se a
+página mudar antes da resposta, o sistema pede uma nova conferência do alvo.
+Um pedido explícito de remover a seção inteira não exige confirmação extra.
 
 Cada escrita guarda uma das 20 revisões mais recentes da página. “Desfaz” e o
 botão correspondente restauram a última versão com os mesmos IDs, textos,

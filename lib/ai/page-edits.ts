@@ -21,6 +21,16 @@ export class PageEditError extends Error {
   }
 }
 
+/** A confirmação só pode retomar o bloco que a tentativa realmente atingiu. */
+export class BlockRemovalConfirmationError extends PageEditError {
+  constructor(
+    message: string,
+    readonly blockId: string,
+  ) {
+    super(message);
+  }
+}
+
 const selector = z
   .string()
   .min(1)
@@ -435,10 +445,6 @@ function textMap(blocks: BlockInstance[]) {
   );
 }
 
-/** Frase estável que autoriza a remoção da seção no turno seguinte. A rota
- * procura esta confirmação no recibo anterior; o texto do modelo não decide. */
-export const BLOCK_REMOVAL_CONFIRMATION = 'pode remover a seção inteira';
-
 /** Quanto conteúdo uma seção carrega, para o operador dimensionar o que sai. */
 export function blockContentSize(block: BlockInstance) {
   const lists = Object.values(block.props).filter((value): value is unknown[] =>
@@ -467,7 +473,8 @@ function blockRemovalError(
   const size = items
     ? `${items} ${items === 1 ? 'item' : 'itens'} e ${texts} ${texts === 1 ? 'texto' : 'textos'}`
     : `${texts} ${texts === 1 ? 'texto' : 'textos'}`;
-  const ask = `Nenhuma alteração foi salva. Para tirar só um elemento, use remove_item com o caminho da lista e o índice. Se a intenção for apagar a seção com tudo dentro, peça ao operador que confirme que ${BLOCK_REMOVAL_CONFIRMATION}.`;
+  const ask =
+    'Nenhuma alteração foi salva. Se você quer apagar a seção inteira com tudo dentro, responda “sim, pode remover”.';
   if (policy.removalScope !== 'block')
     return `Apagar “${blockName(block)}” tiraria a seção inteira, com ${size}, e o pedido atual não autoriza esse tamanho. ${ask}`;
   if (removedSoFar >= 1)
@@ -483,6 +490,7 @@ export function contentLossError(
   policy: EditPolicy | undefined,
   before: BlockInstance[],
   after: BlockInstance[],
+  authorizedRemoval = false,
 ): string | null {
   if (policy?.kind !== 'edit' || policy.removal) return null;
   const previous = textMap(before);
@@ -512,6 +520,8 @@ export function contentLossError(
       lost.push(`${block.type} ${id}: ${paths.slice(0, 6).join(', ')}`);
   }
   if (!lost.length) return null;
+  if (authorizedRemoval)
+    return `A remoção pedida não autoriza apagar outros textos neste lote: ${lost.join('; ')}. Nenhuma alteração salva. Preserve os demais campos e itens.`;
   return `O pedido atual não menciona remoção, e a operação apagaria conteúdo: ${lost.join('; ')}. Nenhuma alteração salva. Para mover um elemento dentro de um bloco, use o campo de posição do schema quando existir; se não existir, explique o limite ao operador. Se a intenção for mesmo apagar, peça que ele confirme a remoção.`;
 }
 
@@ -770,6 +780,11 @@ export function applyPageEdit(
       409,
     );
   const blocks: BlockInstance[] = JSON.parse(JSON.stringify(page.blocks));
+  // A comparação acompanha a ordem das operações de lista, preservando os
+  // textos originais para detectar perdas causadas por set/unset posteriores.
+  const comparisonBefore: BlockInstance[] = JSON.parse(
+    JSON.stringify(page.blocks),
+  );
   const touched = new Set<string>();
   let rewrittenSections = 0;
   const changes: {
@@ -844,6 +859,9 @@ export function applyPageEdit(
       continue;
     }
     const block = selectBlock(blocks, operation.block);
+    const comparisonBlock = comparisonBefore.find(
+      (candidate) => candidate.id === block.id,
+    );
     const from = blocks.indexOf(block);
     if (operation.op === 'replace_block') {
       // Uma troca de bloco reescreve a seção inteira e pode eliminar tanto
@@ -860,7 +878,10 @@ export function applyPageEdit(
       changes.push({ op: operation.op, blockId: block.id });
     } else if (operation.op === 'remove') {
       const error = blockRemovalError(policy, block, rewrittenSections);
-      if (error) throw new PageEditError(error);
+      if (error)
+        throw policy?.removalScope !== 'block' && rewrittenSections === 0
+          ? new BlockRemovalConfirmationError(error, block.id)
+          : new PageEditError(error);
       rewrittenSections += 1;
       blocks.splice(from, 1);
       changes.push({ op: operation.op, blockId: block.id, from });
@@ -882,6 +903,8 @@ export function applyPageEdit(
           'O pedido atual não autoriza remover itens. Nenhuma alteração salva.',
         );
       removeArrayItem(block.props, operation.path, operation.index);
+      if (comparisonBlock)
+        removeArrayItem(comparisonBlock.props, operation.path, operation.index);
       touched.add(block.id);
       changes.push({
         op: operation.op,
@@ -895,6 +918,13 @@ export function applyPageEdit(
         operation.index,
         operation.value,
       );
+      if (comparisonBlock)
+        insertArrayItem(
+          comparisonBlock.props,
+          operation.path,
+          operation.index,
+          operation.value,
+        );
       touched.add(block.id);
       changes.push({
         op: operation.op,
@@ -904,6 +934,13 @@ export function applyPageEdit(
       });
     } else if (operation.op === 'move_item') {
       moveArrayItem(block.props, operation.path, operation.from, operation.to);
+      if (comparisonBlock)
+        moveArrayItem(
+          comparisonBlock.props,
+          operation.path,
+          operation.from,
+          operation.to,
+        );
       touched.add(block.id);
       changes.push({
         op: operation.op,
@@ -945,7 +982,24 @@ export function applyPageEdit(
       if (error) throw new PageEditError(error);
     }
   }
-  const loss = contentLossError(policy, page.blocks, blocks);
+  // A seção removida sai da comparação. Para remove_item, compare o bloco
+  // original após retirar apenas o item autorizado: os demais textos da mesma
+  // seção ainda precisam sobreviver a outras operações deste lote.
+  const removedBlocks = new Set(
+    changes
+      .filter((change) => change.op === 'remove')
+      .map((change) => change.blockId),
+  );
+  const authorizedRemoval = Boolean(
+    policy?.removal &&
+    changes.some((change) => ['remove', 'remove_item'].includes(change.op)),
+  );
+  const loss = contentLossError(
+    authorizedRemoval && policy ? { ...policy, removal: false } : policy,
+    comparisonBefore.filter((block) => !removedBlocks.has(block.id)),
+    blocks.filter((block) => !removedBlocks.has(block.id)),
+    authorizedRemoval,
+  );
   if (loss) throw new PageEditError(loss);
   const summary = [
     ...new Set(

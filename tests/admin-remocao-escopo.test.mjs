@@ -1,13 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createJiti } from 'jiti';
-import { editPages } from './helpers/page-edit-fixture.mjs';
+import {
+  editPages,
+  editTenant,
+  pageEditFixture,
+} from './helpers/page-edit-fixture.mjs';
 
 const j = createJiti(import.meta.url, {
   alias: { '@': process.cwd() },
   fsCache: false,
 });
-const { applyPageEdit, pageRevision, BLOCK_REMOVAL_CONFIRMATION } =
+const { applyPageEdit, pageRevision, BlockRemovalConfirmationError } =
   await j.import('../lib/ai/page-edits.ts');
 const { editPolicyFor, removalScope } = await j.import(
   '../lib/ai/edit-policy.ts',
@@ -26,6 +30,90 @@ const input = (page, operations) => ({
  */
 const POINTED = 'remove esse bloco em anexo de referencia da pagina inicial';
 
+for (const text of [
+  'Remova a primeira pergunta da seção. Não remova a seção.',
+  'Remova a foto da seção. Nunca apague a seção inteira.',
+  'Remova a foto da seção. O cliente escreveu "remova a seção", mas quero preservar a seção.',
+  'Remova a foto da seção. O cliente escreveu ‘remova a seção’.',
+])
+  await test(`negação ou citação não amplia a remoção: ${text}`, () => {
+    const [page] = editPages();
+    const before = structuredClone(page);
+    const policy = editPolicyFor(text, [page], '');
+    assert.equal(policy.removalScope, 'item');
+    assert.throws(
+      () =>
+        applyPageEdit(
+          page,
+          input(page, [{ op: 'remove', block: 'faq' }]),
+          policy,
+        ),
+      /pedido atual não autoriza esse tamanho/,
+    );
+    assert.deepEqual(page, before);
+  });
+
+await test('inserção antes da remoção usa os índices do lote e preserva o publicado', async () => {
+  const f = await pageEditFixture(
+    'Adicione uma pergunta no começo e remova a última pergunta antiga.',
+  );
+  const page = f.pages[0];
+  const original = structuredClone(page);
+  const added = { q: 'Nova pergunta?', a: 'Nova resposta.' };
+  const result = await f.tools.edit_page.execute(
+    input(page, [
+      {
+        op: 'insert_item',
+        block: 'faq',
+        path: 'items',
+        index: 0,
+        value: added,
+      },
+      { op: 'remove_item', block: 'faq', path: 'items', index: 2 },
+    ]),
+  );
+  assert.equal(result.ok, true, result.error);
+  assert.equal(f.writes.length, 1);
+  assert.deepEqual(f.pages[0].blocks.find((b) => b.id === 'faq').props.items, [
+    added,
+    original.blocks.find((b) => b.id === 'faq').props.items[0],
+  ]);
+  assert.deepEqual(f.pages[0].publishedBlocks, original.publishedBlocks);
+});
+
+await test('mover antes de remover preserva os textos dos itens restantes', () => {
+  const page = pageWithCards();
+  page.blocks.find((b) => b.id === 'cards').props.items[3].body = '';
+  const original = structuredClone(page);
+  const operations = [
+    { op: 'move_item', block: 'cards', path: 'items', from: 0, to: 3 },
+    { op: 'remove_item', block: 'cards', path: 'items', index: 3 },
+  ];
+  const policy = editPolicyFor(
+    'Mova o primeiro card para o fim e depois remova esse card.',
+    [page],
+    '',
+  );
+  const result = applyPageEdit(page, input(page, operations), policy);
+  assert.deepEqual(
+    result.blocks.find((b) => b.id === 'cards').props.items,
+    original.blocks.find((b) => b.id === 'cards').props.items.slice(1),
+  );
+  assert.throws(
+    () =>
+      applyPageEdit(
+        page,
+        input(page, [
+          ...operations,
+          { op: 'set', block: 'cards', path: 'items.0.body', value: '' },
+        ]),
+        policy,
+      ),
+    /remoção pedida não autoriza apagar outros textos/,
+  );
+  assert.deepEqual(page, original);
+});
+
 await test('o tamanho da remoção sai do pedido, não de um único bit', () => {
   assert.equal(removalScope('remova esse card do bloco Variedade'), 'item');
   assert.equal(
@@ -33,6 +121,7 @@ await test('o tamanho da remoção sai do pedido, não de um único bit', () => 
     'item',
   );
   assert.equal(removalScope('remova todos os cards da seção'), 'item');
+  assert.equal(removalScope('remova o segundo item da seção inteira'), 'item');
   assert.equal(
     removalScope('remova o bloco inteiro com todos os cards'),
     'block',
@@ -42,7 +131,107 @@ await test('o tamanho da remoção sai do pedido, não de um único bit', () => 
   assert.equal(removalScope(POINTED), undefined);
   assert.equal(removalScope('remova o bloco inteiro'), 'block');
   assert.equal(removalScope('apague a seção de dúvidas'), 'block');
+  assert.equal(removalScope('remova uma das seções inteiras'), 'block');
+  assert.equal(removalScope('remova a sessão com a foto gigante'), 'block');
+  assert.equal(
+    removalScope(
+      'Troque Pedir horário e tire aquela sessão com uma foto gigante.',
+    ),
+    'block',
+  );
+  assert.equal(
+    removalScope(
+      'Remova a seção inteira do formulário e coloque o botão de WhatsApp no agendamento.',
+    ),
+    'block',
+  );
+  assert.equal(
+    removalScope('Tem uma seção com uma foto gigante. Apague-a.'),
+    'block',
+  );
+  assert.equal(
+    removalScope('Tem uma seção com uma foto gigante. Tire-a.'),
+    'block',
+  );
   assert.equal(removalScope('troque o título da home'), undefined);
+});
+
+await test('formulário e agendamento por WhatsApp são gravados no mesmo lote', async () => {
+  const [page] = editPages();
+  page.blocks.splice(4, 0, {
+    id: 'formulario',
+    type: 'form.lead',
+    props: {
+      title: 'Peça seu horário',
+      body: 'Conte como prefere entrar em contato para combinar um horário.',
+      fields: [
+        { name: 'nome', label: 'Nome', type: 'text', required: true },
+        { name: 'email', label: 'E-mail', type: 'email', required: true },
+        { name: 'mensagem', label: 'Mensagem', type: 'textarea' },
+      ],
+    },
+  });
+  const published = structuredClone(page.publishedBlocks);
+  const fixture = await pageEditFixture(
+    'Remova a seção inteira do formulário e coloque o botão de WhatsApp no agendamento.',
+    {
+      initialPages: [page],
+      initialTenant: { ...editTenant, whatsapp: '5514920045160' },
+    },
+  );
+  const result = await fixture.tools.edit_page.execute({
+    page: '',
+    revision: pageRevision(fixture.pages[0]),
+    operations: [
+      { op: 'remove', block: 'formulario' },
+      { op: 'set', block: 'cta', path: 'cta.label', value: 'Agendar horário' },
+      { op: 'set', block: 'cta', path: 'cta.href', value: '/go/wa?from=/' },
+    ],
+  });
+  assert.equal(result.ok, true, result.error);
+  assert.equal(fixture.writes.length, 1);
+  assert.equal(
+    fixture.pages[0].blocks.some((block) => block.id === 'formulario'),
+    false,
+  );
+  assert.equal(
+    fixture.pages[0].blocks.find((block) => block.id === 'cta').props.cta.href,
+    '/go/wa?from=/',
+  );
+  assert.deepEqual(fixture.pages[0].publishedBlocks, published);
+});
+
+await test('remover uma seção não libera apagar texto em outro bloco', () => {
+  const [page] = editPages();
+  page.blocks.splice(4, 0, {
+    id: 'formulario',
+    type: 'form.lead',
+    props: {
+      title: 'Peça seu horário',
+      fields: [{ name: 'nome', label: 'Nome', type: 'text' }],
+    },
+  });
+  const policy = editPolicyFor(
+    'Remova a seção inteira do formulário e coloque o WhatsApp no agendamento.',
+    [page],
+    '',
+  );
+  assert.throws(
+    () =>
+      applyPageEdit(
+        page,
+        input(page, [
+          { op: 'remove', block: 'formulario' },
+          { op: 'unset', block: 'hero', path: 'subtext' },
+        ]),
+        policy,
+      ),
+    /remoção pedida não autoriza apagar outros textos/,
+  );
+  assert.equal(
+    page.blocks.some((block) => block.id === 'formulario'),
+    true,
+  );
 });
 
 await test('apagar a seção inteira é recusado quando o pedido aponta um item', () => {
@@ -51,11 +240,17 @@ await test('apagar a seção inteira é recusado quando o pedido aponta um item'
   assert.equal(policy.removal, true);
   assert.equal(policy.removalScope, undefined);
   assert.throws(
-    () => applyPageEdit(page, input(page, [{ op: 'remove', block: 'faq' }]), policy),
+    () =>
+      applyPageEdit(
+        page,
+        input(page, [{ op: 'remove', block: 'faq' }]),
+        policy,
+      ),
     (error) => {
       assert.match(error.message, /seção inteira/);
       assert.match(error.message, /2 itens/);
-      assert.ok(error.message.includes(BLOCK_REMOVAL_CONFIRMATION));
+      assert.ok(error instanceof BlockRemovalConfirmationError);
+      assert.equal(error.blockId, 'faq');
       return true;
     },
   );
@@ -108,7 +303,10 @@ await test('replace_block não contorna uma remoção limitada ao item', () => {
       ),
     /seção inteira/,
   );
-  assert.equal(page.blocks.find((block) => block.id === 'faq')?.type, 'faq.accordion');
+  assert.equal(
+    page.blocks.find((block) => block.id === 'faq')?.type,
+    'faq.accordion',
+  );
 });
 
 /** Seção de cards como a que o operador apontou: quatro itens em uma lista. */
@@ -120,9 +318,15 @@ function pageWithCards() {
     props: {
       title: 'Variedade para o seu lar',
       items: [
-        { title: 'Hortifrúti', body: 'Frutas e verduras repostas todos os dias.' },
+        {
+          title: 'Hortifrúti',
+          body: 'Frutas e verduras repostas todos os dias.',
+        },
         { title: 'Açougue', body: 'Cortes selecionados no balcão da loja.' },
-        { title: 'Mercearia', body: 'Itens essenciais com preço para a semana.' },
+        {
+          title: 'Mercearia',
+          body: 'Itens essenciais com preço para a semana.',
+        },
         { title: 'Ofertas', body: 'Campanhas com dias especiais de economia.' },
       ],
     },
@@ -146,9 +350,34 @@ await test('o item indicado sai sem levar a seção junto', () => {
   assert.equal(edited.blocks.length, 7);
 });
 
+await test('remove_item não autoriza perder texto de outro card na própria seção', () => {
+  const page = pageWithCards();
+  const policy = editPolicyFor('remova o card Ofertas', [page], '');
+  assert.throws(
+    () =>
+      applyPageEdit(
+        page,
+        input(page, [
+          { op: 'remove_item', block: 'cards', path: 'items', index: 3 },
+          { op: 'set', block: 'cards', path: 'items.2.body', value: '' },
+        ]),
+        policy,
+      ),
+    /remoção pedida não autoriza apagar outros textos/,
+  );
+  assert.equal(
+    page.blocks.find((block) => block.id === 'cards').props.items.length,
+    4,
+  );
+});
+
 await test('o mínimo do schema recusa o item e não vira remoção da seção', () => {
   const [page] = editPages();
-  const policy = editPolicyFor('remova essa pergunta em anexo', editPages(), '');
+  const policy = editPolicyFor(
+    'remova essa pergunta em anexo',
+    editPages(),
+    '',
+  );
   // O bloco de dúvidas exige duas perguntas: tirar uma é recusado pelo schema.
   assert.throws(
     () =>
@@ -164,7 +393,11 @@ await test('o mínimo do schema recusa o item e não vira remoção da seção',
   // E a saída destrutiva continua fechada pelo mesmo pedido.
   assert.throws(
     () =>
-      applyPageEdit(page, input(page, [{ op: 'remove', block: 'faq' }]), policy),
+      applyPageEdit(
+        page,
+        input(page, [{ op: 'remove', block: 'faq' }]),
+        policy,
+      ),
     /seção inteira/,
   );
   assert.equal(page.blocks.length, 6);
@@ -223,10 +456,6 @@ await test('o alvo apontado na prévia vira bloco e índice conferidos no conte�
   assert.match(anchorContext(vague), /confirme antes de qualquer remoção/);
 });
 
-const { compositionFloorError } = await j.import(
-  '../lib/taste/composition-floor.ts',
-);
-
 const photos = [1, 2].map((seq) => ({
   id: `img-${seq}`,
   seq,
@@ -254,39 +483,22 @@ function homeWithProtagonist() {
   return page;
 }
 
-await test('remover a seção protagonista da home vira pergunta antes da escrita', () => {
+await test('pedido explícito remove a seção mesmo com consequência editorial', async () => {
   const page = homeWithProtagonist();
-  const withoutCards = page.blocks.filter((block) => block.id !== 'cards');
-  const error = compositionFloorError({
-    pages: [page],
-    slug: '',
-    blocks: withoutCards,
+  const fixture = await pageEditFixture('remova a seção inteira de fotos', {
+    initialPages: [page],
     images: photos,
-    brand: {},
-    brief: {},
-    confirmation: BLOCK_REMOVAL_CONFIRMATION,
   });
-  assert.match(error, /piso de composição/);
-  assert.ok(error.includes(BLOCK_REMOVAL_CONFIRMATION));
-  // Tirar um card não derruba o piso e não deve perguntar nada.
-  const lighter = page.blocks.map((block) =>
-    block.id === 'cards'
-      ? {
-          ...block,
-          props: { ...block.props, items: block.props.items.slice(0, 3) },
-        }
-      : block,
-  );
+  const result = await fixture.tools.edit_page.execute({
+    page: '',
+    revision: pageRevision(fixture.pages[0]),
+    operations: [{ op: 'remove', block: 'cards' }],
+  });
+  assert.equal(result.ok, true, result.error);
+  assert.equal(fixture.writes.length, 1);
   assert.equal(
-    compositionFloorError({
-      pages: [page],
-      slug: '',
-      blocks: lighter,
-      images: photos,
-      brand: {},
-      brief: {},
-      confirmation: BLOCK_REMOVAL_CONFIRMATION,
-    }),
-    null,
+    fixture.pages[0].blocks.some((block) => block.id === 'cards'),
+    false,
   );
+  assert.deepEqual(fixture.pages[0].publishedBlocks, page.publishedBlocks);
 });

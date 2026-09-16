@@ -297,23 +297,37 @@ reparos por conta própria. A ferramenta usa o briefing atualizado no mesmo turn
 ## Tamanho da remoção e reversão
 
 A autorização para apagar deixou de ser um único bit do turno. `removalScope`
-em `lib/ai/edit-policy.ts` classifica o pedido atual: card, item, foto, botão,
-link ou "essa parte" autorizam `item`, mesmo quando a frase cita o bloco onde o
-elemento está ou pede para manter "todos os outros"; seção, faixa ou bloco
-inteiro autorizam `block`. Um alvo citado
-como bloco mas apontado só por anexo fica indefinido, e a remoção grande passa
-a exigir confirmação.
+em `lib/ai/edit-policy.ts` classifica o pedido atual pelo objeto da ação:
+"remova a foto da seção" autoriza `item`; "remova a seção que tem uma foto"
+autoriza `block`, porque a foto só identifica o alvo. A grafia "sessão" também
+é aceita. Um alvo apontado só por anexo fica indefinido e a remoção grande
+passa a exigir confirmação.
+
+Citações e frases que proíbem a remoção não ampliam esse escopo. Em
+"remova a primeira pergunta da seção. Não remova a seção", somente o item é
+autorizado. Perguntas sobre uma remoção e relatos de algo já removido continuam
+em modo de conversa, com ferramentas de leitura.
 
 `applyPageEdit` mede a operação contra esse escopo antes de qualquer escrita.
-Apagar ou substituir um bloco sob escopo de item é recusado com o nome da seção,
-a quantidade de itens e textos que sairiam e a frase estável
-`pode remover a seção inteira`;
-um lote não apaga duas seções de uma vez. A rota reconhece a resposta afirmativa
-do operador à pergunta anterior, pelo recibo do servidor, e só então eleva o
-escopo. Um "sim" sem pergunta pendente não autoriza nada. Quando o lote remove
-blocos, `compositionFloorError` recalcula protagonista e fotos da página pelas
-regras de `lib/taste/metrics.ts` e transforma a queda do piso em pergunta, antes
-da gravação; na publicação essas regras continuam recomendações.
+Apagar ou substituir um bloco sob escopo de item é recusado com o nome da seção
+e a quantidade de itens e textos que sairiam; um lote não apaga duas seções de
+uma vez. Quando a tentativa de `remove` pede confirmação, o servidor guarda
+o lote, a página, o ID do bloco e a revisão num registro interno de
+`chat_messages` (`edit-pending`), vinculado ao operador que iniciou o pedido.
+Uma resposta afirmativa na próxima fala desse mesmo operador
+reivindica esse lote atomicamente e o retoma sem nova interpretação do modelo.
+Outra fala consome a pendência; duas abas não conseguem retomá-la ao mesmo
+tempo. Revisão desatualizada ou bloco ausente recusam a escrita. Um "sim"
+sem pendência não autoriza nada. Pedido explícito de remover a seção inteira
+grava diretamente, sujeito aos erros técnicos do schema e do pre-flight;
+recomendações de composição ficam no painel.
+
+Em um pedido composto, a exclusão autorizada não libera perda incidental de
+texto nos demais blocos do lote. Se o agente salvar outra parte e deixar a
+seção pedida intacta, o recibo declara essa omissão. Em mais de uma página, o
+recibo confere a remoção por página e aponta onde houve edição sem exclusão.
+Nas listas, a comparação acompanha inserções, movimentos e remoções na ordem
+do lote, preservando os textos dos itens restantes mesmo quando seus índices mudam.
 
 Toda escrita do rascunho guarda o estado anterior em `page_revisions`, com
 retenção das vinte últimas versões por página. `undo_page_edit` e o botão

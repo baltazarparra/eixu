@@ -46,6 +46,21 @@ const CLEAR_DISCUSSION =
 const EXPLICIT_NO_ACTION =
   /\b(?:nao (?:mude|altere|edite|aplique|salve|execute|publique|faca) nada|sem (?:mudar|alterar|editar|aplicar|salvar|executar|publicar|fazer) nada|so (?:quero )?(?:conversar|entender|saber|uma ideia|sua opiniao))\b/;
 
+// “Tem uma seção entre X e Y. Apague-a.” continua sendo uma ordem, embora o
+// verbo não esteja no começo da mensagem. Exigimos um alvo de seção para não
+// transformar uma menção casual a uma foto ou a um card em edição.
+function hasSectionRemovalCommand(request: string): boolean {
+  const unquoted = request.replace(/["“][^"”]*["”]|'[^']*'|‘[^’]*’/g, '');
+  return (
+    /\b(?:secao|sessao|bloco|faixa|banner|galeria|formulario|hero|abertura|rodape|footer|cabecalho|header|menu)\b/.test(
+      unquoted,
+    ) &&
+    /(?:^|[.!;,]\s*)(?:por favor[, ]+)?(?:remova|remove|retire|retira|tire|tira|apague|apaga|exclua|exclui|delete|deleta)(?:-[ao]s?)?\b/.test(
+      unquoted,
+    )
+  );
+}
+
 /**
  * Libera escrita somente quando o operador formula uma ação reconhecível.
  * Perguntas, hipóteses, contexto solto e anexos sem instrução ficam em modo de
@@ -71,6 +86,10 @@ export function interactionModeFor(
     ).test(previous)
   )
     return 'action';
+  // Confirmação de exclusão é retomada pela pendência registrada no servidor.
+  // Sem ela, um texto anterior do assistente não concede escrita.
+  if (/^(?:confirmo|confirmado|autorizo)\b/.test(request))
+    return 'conversation';
 
   // “Pode trocar o hero?” é um pedido. “O que você pode trocar?” é capacidade.
   const asksDirectAction = new RegExp(
@@ -79,6 +98,8 @@ export function interactionModeFor(
   if (asksDirectAction) return 'action';
   if (CLEAR_DISCUSSION.test(request)) return 'conversation';
   if (HYPOTHETICAL.test(request)) return 'conversation';
+
+  if (hasSectionRemovalCommand(request)) return 'action';
 
   if (
     DIRECT_ACTION.test(request) ||

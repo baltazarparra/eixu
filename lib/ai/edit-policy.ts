@@ -15,8 +15,6 @@ export type EditPolicy = {
    * cards porque a autorização era um único bit para o turno inteiro.
    */
   removalScope?: 'item' | 'block';
-  /** O operador confirmou, no turno anterior, a remoção da seção inteira. */
-  removalConfirmed?: boolean;
   /** Pedido visual em um bloco nomeado: preserva conteúdo, tipo e ordem. */
   visualOnly?: boolean;
   /** Famílias nomeadas pelo operador, aplicadas nas páginas selecionadas. */
@@ -88,44 +86,55 @@ function containsTextSequence(value: unknown, target: string): boolean {
 
 /** Uma restrição como "apenas mova" ou "sem apagar" não autoriza remoção.
  * Tirar decoração também não dá permissão para apagar o conteúdo do bloco. */
-export function asksRemoval(text: string): boolean {
-  const verb =
-    '(?:remov\\w*|retir\\w*|tir[ae]\\w*|apag\\w*|exclu\\w*|delet\\w*|ocult\\w*|escond\\w*|encurt\\w*|cort[ae]\\w*)';
-  const request = normalized(text).replace(/["“][^"”]*["”]/g, '');
-  return request.split(/[.;!?\n]/).some((clause) => {
-    if (
-      new RegExp(
-        `\\b(?:nao|nunca|jamais|sem|evite)(?:\\s+\\w+){0,3}\\s+${verb}\\b`,
-      ).test(clause)
+const REMOVAL_VERB =
+  '(?:remov\\w*|retir\\w*|tir[ae]\\w*|apag\\w*|exclu\\w*|delet\\w*|ocult\\w*|escond\\w*|encurt\\w*|cort[ae]\\w*)';
+
+/** A autorização e seu tamanho usam os mesmos trechos, sem citações ou negações. */
+function removalRequest(text: string): string {
+  return normalized(text)
+    .replace(/["“][^"”]*["”]|'[^']*'|‘[^’]*’/g, '')
+    .split(/[.;!?\n]/)
+    .filter(
+      (clause) =>
+        !new RegExp(
+          `\\b(?:nao|nunca|jamais|sem|evite)(?:\\s+\\w+){0,3}\\s+${REMOVAL_VERB}\\b`,
+        ).test(clause),
     )
-      return false;
-    const contentRequest = clause
-      .replace(
-        new RegExp(
-          `\\b${verb}\\s+(?:(?:o|a|os|as|esse|essa|esses|essas|este|esta|estes|estas)\\s+)?(?:bg|background|fundo|bordas?|molduras?|padding|margin|margens?|espacamento|espaco|sombra)\\b`,
-          'g',
-        ),
-        '',
-      )
-      .replace(
-        // "Remover esse container e deixar apenas a imagem" tira decoração;
-        // não é permissão para apagar o texto ou substituir a abertura.
-        new RegExp(
-          `\\b${verb}\\s+(?:(?:o|a|esse|essa|este|esta)\\s+)?(?:container|conteiner|contêiner|box|caixa)\\b(?=\\s+e\\s+(?:deixar|deixe|manter|mantenha)\\s+(?:so|apenas|somente)\\s+(?:a\\s+)?(?:imagem|foto)\\b)`,
-          'g',
-        ),
-        '',
+    .join('. ');
+}
+
+export function asksRemoval(text: string): boolean {
+  const verb = REMOVAL_VERB;
+  return removalRequest(text)
+    .split(/[.;!?\n]/)
+    .some((clause) => {
+      const contentRequest = clause
+        .replace(
+          new RegExp(
+            `\\b${verb}\\s+(?:(?:o|a|os|as|esse|essa|esses|essas|este|esta|estes|estas)\\s+)?(?:bg|background|fundo|bordas?|molduras?|padding|margin|margens?|espacamento|espaco|sombra)\\b`,
+            'g',
+          ),
+          '',
+        )
+        .replace(
+          // "Remover esse container e deixar apenas a imagem" tira decoração;
+          // não é permissão para apagar o texto ou substituir a abertura.
+          new RegExp(
+            `\\b${verb}\\s+(?:(?:o|a|esse|essa|este|esta)\\s+)?(?:container|conteiner|contêiner|box|caixa)\\b(?=\\s+e\\s+(?:deixar|deixe|manter|mantenha)\\s+(?:so|apenas|somente)\\s+(?:a\\s+)?(?:imagem|foto)\\b)`,
+            'g',
+          ),
+          '',
+        );
+      return (
+        new RegExp(`\\b${verb}\\b`).test(contentRequest) ||
+        /\bsem\s+(?:o|a|os|as)\s+(?:selos?|etiquetas?|textos?|blocos?|secoes?|imagens?|fotos?|botoes?|links?)\b/.test(
+          contentRequest,
+        ) ||
+        /\bdeix[ae]\s+(?:so|apenas|somente)\s+(?:\d+|um|uma|dois|duas|tres)\s+(?:selos?|etiquetas?|itens|blocos?|secoes?)\b/.test(
+          contentRequest,
+        )
       );
-    return (
-      new RegExp(`\\b${verb}\\b`).test(contentRequest) ||
-      /\bsem\s+(?:o|a|os|as)\s+(?:selos?|etiquetas?|textos?|blocos?|secoes?|imagens?|fotos?|botoes?|links?)\b/.test(
-        contentRequest,
-      ) ||
-      /\bdeix[ae]\s+(?:so|apenas|somente)\s+(?:\d+|um|uma|dois|duas|tres)\s+(?:selos?|etiquetas?|itens|blocos?|secoes?)\b/.test(
-        contentRequest,
-      )
-    );
-  });
+    });
 }
 
 /**
@@ -138,31 +147,40 @@ export function asksRemoval(text: string): boolean {
  */
 export function removalScope(text: string): 'item' | 'block' | undefined {
   if (!asksRemoval(text)) return undefined;
-  const request = normalized(text);
+  const request = removalRequest(text);
+  const section =
+    '(?:secao|secoes|sessao|sessoes|blocos?|faixas?|banner|galeria|rodape|footer|cabecalho|header|menu|navbar|formulario|hero|abertura)';
   const item =
-    /\b(cards?|cartao|cartoes|itens?|parte|partes|pedaco|trecho|fotos?|imagens?|icones?|botoes?|botao|links?|selos?|etiquetas?|depoimentos?|perguntas?|colunas?|linhas?|opcoes|opcao)\b/.test(
+    /\b(cards?|cartao|cartoes|item|itens|parte|partes|pedaco|trecho|fotos?|imagens?|icones?|botoes?|botao|links?|selos?|etiquetas?|depoimentos?|perguntas?|colunas?|linhas?|opcoes|opcao)\b/.test(
       request,
     );
-  const block =
-    /\b(secao|secoes|blocos?|faixas?|banner|galeria|rodape|footer|cabecalho|header|menu|navbar|formulario|hero|abertura)\b/.test(
-      request,
-    );
+  const block = new RegExp(`\\b${section}\\b`).test(request);
   const explicitWholeBlock =
-    /\b(?:secoes?|blocos?|faixas?|banner|galeria|rodape|footer|cabecalho|header|menu|navbar|formulario|hero|abertura)\s+(?:inteir\w*|complet\w*)\b/.test(
+    new RegExp(`\\b${section}\\s+(?:inteir\\w*|complet\\w*)\\b`).test(
       request,
     ) ||
-    /\b(?:toda|todo|todas|todos)\s+(?:a\s+|o\s+|as\s+|os\s+)?(?:secoes?|blocos?|faixas?|banner|galeria|rodape|footer|cabecalho|header|menu|navbar|formulario|hero|abertura)\b/.test(
-      request,
-    );
+    new RegExp(
+      `\\b(?:toda|todo|todas|todos)\\s+(?:a\\s+|o\\s+|as\\s+|os\\s+)?${section}\\b`,
+    ).test(request);
   // Alvo apontado por imagem: o texto não diz o que é, e o modelo adivinha.
   const pointed =
     /\b(anex\w*|referencia|print|captura|screenshot|imagem acima|acima|marcad\w*|circulad\w*)\b/.test(
       request,
     );
+  // O objeto do verbo decide o tamanho: em "remova a seção com a foto", a
+  // foto identifica a seção; em "remova a foto da seção", ela é o alvo.
+  const directBlockTarget = new RegExp(
+    `\\b(?:remov\\w*|retir\\w*|tir[ae]\\w*|apag\\w*|exclu\\w*|delet\\w*)\\s+(?:(?:a|o|as|os|essa|esse|esta|este|aquela|aquele|toda|todo)\\s+){0,2}${section}\\b`,
+  ).test(request);
+  const anaphoricBlockTarget = new RegExp(
+    `^(?:tem|ha|existe)\\s+(?:uma?|alguma)\\s+${section}\\b[\\s\\S]{0,180}\\b(?:remov\\w*|retir\\w*|tir[ae]\\w*|apag\\w*|exclu\\w*|delet\\w*)-[ao]\\b`,
+  ).test(request);
   // O alvo menor prevalece. Palavras de preservação como “todos os outros”
   // não podem transformar “remova esse card da seção” em autorização para
   // apagar a seção inteira.
-  if (block && explicitWholeBlock) return 'block';
+  if (block && explicitWholeBlock && (!item || directBlockTarget))
+    return 'block';
+  if ((directBlockTarget || anaphoricBlockTarget) && !pointed) return 'block';
   if (item) return 'item';
   if (block) return pointed ? undefined : 'block';
   return undefined;
@@ -353,7 +371,6 @@ export function editPolicyFor(
       visualFamilies: ['nav'],
       removal: asksRemoval(text) || options.confirmedBlockRemoval === true,
       removalScope: scope,
-      removalConfirmed: options.confirmedBlockRemoval === true,
       targets: selected.flatMap((page) =>
         page.blocks
           .filter((block) => block.type === 'nav.bar')
@@ -397,14 +414,12 @@ export function editPolicyFor(
       kind: 'edit',
       removal: asksRemoval(text) || options.confirmedBlockRemoval === true,
       removalScope: scope,
-      removalConfirmed: options.confirmedBlockRemoval === true,
     };
   }
   return {
     kind: 'edit',
     removal: asksRemoval(text) || options.confirmedBlockRemoval === true,
     removalScope: scope,
-    removalConfirmed: options.confirmedBlockRemoval === true,
   };
 }
 
