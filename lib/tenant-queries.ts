@@ -88,21 +88,44 @@ export async function getTenantBySlug(slug: string): Promise<Tenant | null> {
 }
 
 export async function listTenants(): Promise<
-  (Tenant & { pageCount: number; leadCount: number; updatedAt: string })[]
+  (Tenant & { folderId: string | null; updatedAt: string })[]
 > {
   const rows = (await db()`
-    select t.*,
-      (select count(*) from pages p where p.tenant_id = t.id) as page_count,
-      (select count(*) from leads l where l.tenant_id = t.id) as lead_count
-    from tenants t
-    order by t.created_at desc
+    select * from tenants order by created_at desc
   `) as Row[];
   return rows.map((row) => ({
     ...toTenant(row),
-    pageCount: Number(row.page_count ?? 0),
-    leadCount: Number(row.lead_count ?? 0),
+    folderId: row.folder_id ? str(row.folder_id) : null,
     updatedAt: str(row.updated_at),
   }));
+}
+
+export type SiteFolderSummary = {
+  id: string;
+  name: string;
+  siteCount: number;
+};
+
+export async function listSiteFolders(): Promise<SiteFolderSummary[]> {
+  const rows = (await db()`
+    select f.id, f.name, count(t.id)::int as site_count
+    from site_folders f
+    left join tenants t on t.folder_id = f.id
+    group by f.id, f.name
+    order by lower(f.name), f.created_at
+  `) as Row[];
+  return rows.map((row) => ({
+    id: str(row.id),
+    name: str(row.name),
+    siteCount: Number(row.site_count ?? 0),
+  }));
+}
+
+export async function siteFolderExists(id: string): Promise<boolean> {
+  const rows = (await db()`
+    select exists(select 1 from site_folders where id = ${id}) as exists
+  `) as { exists: boolean }[];
+  return rows[0]?.exists === true;
 }
 
 /** Contagens do que a exclusão leva junto, para o diálogo de confirmação. */

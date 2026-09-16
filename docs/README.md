@@ -18,6 +18,7 @@ produto, ambiente e comandos.
 | Linguagem simples e voz de cada vibe                     | [Escrita dos sites](copy.md)                 |
 | Modelos, ferramentas, contexto e geração em etapas       | [Harness](harness.md)                        |
 | Checks locais e publicação Git/Vercel                    | [Verificação](verification.md)               |
+| Spec, desenvolvimento e revisão pelo Kanban              | [Fluxo AI Native](ai-native-development.md)  |
 | Comparação de saídas e avaliação humana                  | [Rubrica](eval-rubric.md)                    |
 | Identidade e critérios dos agentes                       | [SOUL.md](../SOUL.md)                        |
 | Invariantes e orientação para trabalhar no repositório   | [AGENTS.md](../AGENTS.md)                    |

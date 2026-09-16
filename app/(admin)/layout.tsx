@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import localFont from 'next/font/local';
 import { LogOut } from 'lucide-react';
-import { isAuthenticated } from '@/lib/auth';
+import { currentUser } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/admin-shell';
 import { logoutAction } from './admin/actions';
 import './admin.css';
@@ -39,20 +39,20 @@ export default async function AdminRootLayout({
 }: {
   children: ReactNode;
 }) {
-  const authenticated = await isAuthenticated();
-  const operator = process.env.ADMIN_USER || 'admin';
+  const user = await currentUser();
   return (
     <html lang="pt-BR" className={`${sans.variable} ${mono.variable}`}>
       <body>
-        {authenticated ? (
+        {user ? (
           <AdminShell
-            operator={operator}
+            operator={user.name}
+            login={user.login}
             logout={
               <form action={logoutAction}>
                 <button
                   className="admin-icon-button"
                   aria-label="Sair do painel"
-                  title={`Sair (${operator})`}
+                  title={`Sair (${user.login})`}
                 >
                   <LogOut size={15} aria-hidden="true" />
                 </button>

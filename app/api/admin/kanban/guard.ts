@@ -6,11 +6,27 @@ export const PRIVATE_HEADERS = {
   'x-robots-tag': 'noindex',
 } as const;
 
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let difference = 0;
+  for (let index = 0; index < a.length; index += 1)
+    difference |= a.charCodeAt(index) ^ b.charCodeAt(index);
+  return difference === 0;
+}
+
+export function isKanbanAgentRequest(request: Request): boolean {
+  const configured = process.env.KANBAN_AGENT_TOKEN;
+  const authorization = request.headers.get('authorization');
+  if (!configured || !authorization?.startsWith('Bearer ')) return false;
+  return safeEqual(authorization.slice('Bearer '.length), configured);
+}
+
 export async function guardKanbanRequest(
   request: Request,
   mutation = false,
 ): Promise<Response | null> {
-  if (!(await isAuthenticated()))
+  const agentAuthenticated = isKanbanAgentRequest(request);
+  if (!agentAuthenticated && !(await isAuthenticated()))
     return Response.json(
       {
         error: 'Sua sessão expirou. Entre novamente no painel.',
@@ -31,7 +47,7 @@ export async function guardKanbanRequest(
       { status: 403, headers: PRIVATE_HEADERS },
     );
 
-  if (mutation) {
+  if (mutation && !agentAuthenticated) {
     const origin = request.headers.get('origin');
     if (!origin || origin !== url.origin)
       return Response.json(

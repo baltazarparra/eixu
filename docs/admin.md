@@ -3,20 +3,39 @@
 ## Organizar tarefas no Kanban
 
 Na lista de clientes, abra **Kanban** para usar o quadro interno da operação. O
-quadro é compartilhado por todas as pessoas que usam a credencial administrativa;
-ele não separa tarefas por cliente nem registra um responsável individual.
+quadro é compartilhado por todos os operadores autorizados; cada pessoa entra
+com seu login e PIN, mas os cards não registram um responsável individual.
+Busque por título ou cliente e filtre o quadro por cliente e prioridade.
 
-O primeiro quadro tem **A fazer**, **Em andamento** e **Concluído**. Use o botão
-**+ Cartão** na coluna para registrar uma tarefa com um título. Abra o cartão
-para editar título e descrição. Mova o cartão arrastando sua alça ou pelo menu
-**Mover para**, **Subir** e **Descer**; esses comandos também funcionam com teclado e no
-celular. Colunas podem ser criadas, renomeadas e reordenadas. Uma coluna só pode
-ser excluída quando está vazia, e o quadro conserva pelo menos uma coluna.
+O primeiro quadro tem **A fazer**, **Em andamento**, **Em revisão** e
+**Concluído**. Use **+ Cartão** para registrar o título; o editor abre em seguida
+para completar descrição, cliente, prioridade e prazo. Mova o cartão arrastando
+sua alça ou pelo menu **Mover para**, **Subir** e **Descer**; esses comandos
+também funcionam com teclado e no celular. Colunas podem ser criadas, renomeadas
+e reordenadas. Uma coluna só pode ser excluída quando não possui cartões ativos
+nem arquivados, e o quadro conserva pelo menos uma coluna.
 
-O painel confirma cada salvamento antes de anunciar sucesso. Se outra aba mudar
-o quadro, a operação antiga pode ser recusada: atualize a versão exibida e tente
-novamente. Texto que ainda não foi salvo continua no editor para conferência. A
-exclusão de cartões é definitiva e exige confirmação.
+Cada cartão tem um número permanente, como **#0001**, visível no quadro, no
+editor e nos arquivados. Busque por `0001`, `1` ou `#0001` para encontrar esse
+cartão. O número não muda ao editar, mover ou arquivar e não é reaproveitado
+após exclusão. Ele também identifica tarefas nas conversas com agentes, por
+exemplo: “revise o card 0001 e crie um plano de implementação”.
+
+**Arquivar cartão** retira a tarefa das colunas sem apagá-la. Abra
+**Arquivados** para consultar, editar, restaurar ou excluir definitivamente. Se
+o cliente vinculado for excluído, o cartão permanece sem cliente.
+
+O painel confirma cada salvamento antes de anunciar sucesso. Mudanças
+estruturais feitas em outra aba podem exigir atualização; edições simultâneas no
+mesmo cartão são recusadas pela versão do cartão. Texto que ainda não foi salvo
+continua no editor para conferência. A exclusão definitiva exige confirmação.
+
+Cards de desenvolvimento podem usar até 12.000 caracteres de descrição. O
+[fluxo AI Native](ai-native-development.md) usa as mesmas rotas para passar uma
+spec entre Astra, Sol e a revisão da PR; a interface e `npm run kanban` leem o
+mesmo quadro e respeitam as mesmas revisões. Para agentes, configure
+`KANBAN_AGENT_TOKEN`; esse bearer é limitado ao Kanban e não substitui a sessão
+humana do painel.
 
 ## Escolher Landing Page
 
@@ -37,8 +56,18 @@ ajustados pela edição direta ou pelo chat.
 
 Entre em `/admin` com a credencial do operador. Ao abrir o painel, a lista já
 mostra os sites publicados. A busca procura nome ou endereço; os filtros
-permitem consultar todos os clientes, rascunhos e arquivados. Abra
-**Novo cliente** e informe nome, endereço, **História do cliente** e vibe. A
+permitem consultar todos os sites, rascunhos e arquivados.
+
+As pastas da lateral são compartilhadas por toda a equipe. Crie uma pasta com o
+botão **+**, arraste um site para ela ou selecione vários sites e use **Mover
+para**. O menu de cada site oferece a mesma ação para teclado e celular. **Sem
+pasta** reúne o que ainda não foi organizado. Excluir uma pasta mantém seus
+sites e os devolve para **Sem pasta**. Depois de uma movimentação, **Desfazer**
+restaura a pasta anterior. Busca, filtro e pasta ativa são preservados ao abrir
+um site e voltar à lista.
+
+Abra **Novo site** e informe nome, endereço, **História do cliente** e vibe. Se
+uma pasta estiver aberta, o novo site já nasce nela. A
 história é obrigatória e deve reunir o que a empresa faz, para quem vende, onde
 atende, sua trajetória, diferenciais, provas e o próximo passo esperado. Um
 **Site atual** e um único link de referência visual ficam à vista e são
@@ -74,9 +103,16 @@ negócio. Ao editar uma cor, a paleta vira uma decisão confirmada do operador e
 é preservada. Primária e secundária precisam ser diferentes; o site ajusta o
 uso quando uma combinação não alcança contraste mínimo.
 
-O painel é uma operação administrativa global: quem tem a credencial pode acessar todos os clientes. Não compartilhe essa sessão com clientes finais.
+O painel é uma operação administrativa global: cada operador entra com seu login e PIN, e todos podem acessar todos os clientes. O nome e o login ativos aparecem no cabeçalho. Não compartilhe a sessão com clientes finais.
 
-A lista de clientes é a base da navegação: busque por nome/endereço ou filtre
+**Atividade** reúne as ações administrativas mais recentes, com data, cliente,
+resultado e o operador responsável. Mensagens do chat mostram quem escreveu;
+ações executadas pelo agente aparecem como “Agente · a pedido de” quem iniciou
+o turno ou a geração. A geração também mostra quem a iniciou e quem pediu a
+pausa. Registros antigos, anteriores à autoria, aparecem como legado.
+
+A lista de sites é a base da navegação: escolha uma pasta compartilhada, busque
+por nome/endereço ou filtre
 publicados, rascunhos e arquivados. **Arquivar** tira a URL pública do ar sem
 apagar páginas, imagens, contatos ou conversas; o editor e a prévia autenticada
 continuam disponíveis. **Reativar** recoloca no ar a última versão publicada ou
@@ -89,14 +125,47 @@ O botão de sair fica no fim das ações do cabeçalho, na lista e no cliente.
 
 ## Preparar os dados
 
-Dentro do cliente, a navegação reúne **Site**, **Imagens**, **Tráfego** e
-**Dados**. Em Dados, atualize diretamente contatos e briefing: a **História do
-cliente**, um Site atual, uma referência visual opcional, fatos confirmados,
-restrições,
+Dentro do cliente, a navegação reúne **Site**, **Imagens**, **Tráfego**,
+**Dados** e **Consumo**. Em Dados, atualize diretamente contatos e briefing: a
+**História do cliente**, um Site atual, uma referência visual opcional, fatos
+confirmados, restrições,
 telefones, e-mail, endereços e redes sociais. A história reúne origem, oferta,
 segmento, região atendida, público, diferenciais, provas e a ação esperada. A
 direção visual também pode ser trocada ali. A edição dos campos não usa o chat;
 a descrição de um avatar social novo pode consumir uma chamada ao modelo.
+
+A tela é um cadastro de cinco seções numeradas — Identificação, Contato,
+História, Direção visual e Logo — com índice lateral e barra de salvar fixa. O
+botão **Ajuda** liga ou desliga todo o texto de apoio de uma vez, abaixo de cada
+campo, e a preferência fica gravada no navegador do operador. A zona de risco é
+uma gaveta fechada no fim da página.
+
+### Acompanhar tokens e custos
+
+**Consumo** é uma tela própria, irmã de Dados, no quinto item da navegação do
+cliente. Em Dados, um cartão no índice lateral mostra custo e tokens dos últimos
+30 dias e leva até ela.
+
+O seletor de período oferece 7, 30 ou 90 dias e todo o histórico, sempre pelo
+horário de Brasília; o período fica na URL (`?periodo=30`). O custo informado
+pelo provedor em USD é a manchete, com o valor exato e a média por milhão de
+tokens ao lado; entrada, saída e total acompanham na mesma faixa. Um gráfico
+por operação compara as etapas do período pelo maior total de tokens.
+
+Cada linha da lista abre o detalhe da operação: cache lido, cache gravado,
+raciocínio na saída, custo exato, número de chamadas e os identificadores da
+operação e da geração. O cabeçalho de cada linha identifica a origem, o horário
+e o modelo. Cache e raciocínio já fazem parte da entrada e da saída e não são
+somados de novo. **Totais por dia** continua disponível, junto das ressalvas, em
+gavetas fechadas no fim da tela.
+
+Uma chamada nasce como pendente antes de chegar ao provedor. Se ela for
+interrompida ou falhar sem recibo, o painel mostra essa lacuna em vez de tratá-la
+como custo zero. Imagens podem ter custo sem informar tokens. Valores ausentes
+deixam o total como parcial e o histórico não substitui a fatura do Gateway.
+Recibos antigos de fases de geração são recuperados pela migração; conversas,
+imagens e críticas anteriores que não foram persistidas não podem ser
+reconstruídas.
 
 A barra inferior conta alterações não salvas. **Salvar dados** confirma os
 campos; **Descartar** restaura o último salvamento, incluindo listas de contatos

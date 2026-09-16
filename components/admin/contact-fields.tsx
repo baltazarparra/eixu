@@ -1,7 +1,9 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Plus, X } from 'lucide-react';
+import { FormSection } from '@/components/admin/primitives';
+import { HelpHint, HelpNote } from '@/components/admin/help';
 import {
   EMPTY_CONTACTS,
   formatPhone,
@@ -36,21 +38,31 @@ function useRows<T>(initial: T[], blank: () => T, minimum = 1) {
 
 function AddRow({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button
-      type="button"
-      className="admin-secondary self-start"
-      onClick={onClick}
-    >
-      <Plus size={15} aria-hidden="true" />
+    <button type="button" className="admin-add-row" onClick={onClick}>
+      <Plus size={14} aria-hidden="true" />
       {label}
     </button>
   );
 }
 
+/** Legenda com o limite do grupo como sufixo apagado, não como aviso. */
+function GroupLegend({ label, limit }: { label: string; limit: string }) {
+  return (
+    <legend className="admin-legend">
+      {label} <span>· {limit}</span>
+    </legend>
+  );
+}
+
 export function ContactFields({
   contacts = EMPTY_CONTACTS,
+  ordinal,
+  /** Cartão read-only do perfil lido, companhia do link que o gerou. */
+  socialCard,
 }: {
   contacts?: Contacts;
+  ordinal?: string;
+  socialCard?: ReactNode;
 }) {
   const phones = useRows(contacts.phones, () => ({
     number: '',
@@ -63,24 +75,26 @@ export function ContactFields({
   const social = useRows<string>(contacts.social, () => '');
 
   return (
-    <section id="contato" className="admin-form-section">
-      <h2 className="text-base font-semibold">Contatos</h2>
-      <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
-        Tudo opcional e usado direto no site: o primeiro WhatsApp vira o botão
-        flutuante e os CTAs rastreados, telefone comum vira link de ligação,
-        endereço vira o mapa acima do rodapé e as redes vão para o rodapé. O
-        primeiro Instagram ou LinkedIn da lista também é lido para o briefing.
-      </p>
-      <div className="grid gap-7 sm:grid-cols-2">
+    <FormSection
+      id="contato"
+      ordinal={ordinal}
+      title="Contato"
+      status="tudo opcional"
+    >
+      <HelpNote>
+        O primeiro WhatsApp vira o botão flutuante e os CTAs rastreados;
+        telefone comum vira link de ligação; o endereço vira o mapa acima do
+        rodapé; as redes vão para o rodapé. O primeiro Instagram ou LinkedIn
+        também é lido para o briefing.
+      </HelpNote>
+      <div className="admin-field-groups">
         <fieldset className="admin-field">
-          <legend className="mb-2 text-[13px] font-medium">
-            Telefones <em className="text-[11px] font-normal">até 4</em>
-          </legend>
+          <GroupLegend label="Telefones" limit="até 4" />
           <div className="flex flex-col gap-2">
             {phones.rows.map(({ key, value }) => (
               <div key={key} className="flex flex-wrap items-center gap-2">
                 <input
-                  className="admin-input min-w-0 grow basis-48"
+                  className="admin-input admin-numeric min-w-0 grow basis-48"
                   name="phone"
                   maxLength={24}
                   inputMode="tel"
@@ -111,16 +125,14 @@ export function ContactFields({
               <AddRow label="Outro telefone" onClick={phones.add} />
             ) : null}
           </div>
-          <small>
-            Use + e o DDI nos números internacionais, como +55 no Brasil.
-            WhatsApp exige DDI; telefone local pode ficar sem ele.
-          </small>
+          <HelpHint>
+            Use + e o DDI nos números internacionais. WhatsApp exige DDI;
+            telefone local pode ficar sem ele.
+          </HelpHint>
         </fieldset>
 
         <fieldset className="admin-field">
-          <legend className="mb-2 text-[13px] font-medium">
-            Redes sociais <em className="text-[11px] font-normal">até 8</em>
-          </legend>
+          <GroupLegend label="Redes sociais" limit="até 8" />
           <div className="flex flex-col gap-2">
             {social.rows.map(({ key, value }) => (
               <div key={key} className="flex items-center gap-2">
@@ -142,16 +154,15 @@ export function ContactFields({
                 </button>
               </div>
             ))}
+            {socialCard}
             {social.rows.length < 8 ? (
               <AddRow label="Outra rede" onClick={social.add} />
             ) : null}
           </div>
         </fieldset>
 
-        <fieldset className="admin-field sm:col-span-2">
-          <legend className="mb-2 text-[13px] font-medium">
-            Endereços <em className="text-[11px] font-normal">até 5</em>
-          </legend>
+        <fieldset className="admin-field">
+          <GroupLegend label="Endereços" limit="até 5" />
           <div className="flex flex-col gap-2">
             {addresses.rows.map(({ key, value }) => (
               <div key={key} className="flex flex-wrap items-center gap-2">
@@ -185,12 +196,12 @@ export function ContactFields({
               <AddRow label="Outro endereço" onClick={addresses.add} />
             ) : null}
           </div>
-          <small>
+          <HelpHint>
             O endereço completo melhora o pino no mapa. O mapa carrega sob
             demanda e sempre oferece o link de rota.
-          </small>
+          </HelpHint>
         </fieldset>
       </div>
-    </section>
+    </FormSection>
   );
 }

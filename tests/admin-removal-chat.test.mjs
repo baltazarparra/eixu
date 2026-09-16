@@ -5,10 +5,18 @@ import { MockLanguageModelV4 } from 'ai/test';
 import { pageEditFixture, editPages } from './helpers/page-edit-fixture.mjs';
 import { loadModule } from './helpers/load-module.mjs';
 
-async function removalChat({ changeBeforeConfirm = false } = {}) {
+async function removalChat({
+  changeBeforeConfirm = false,
+  otherOperator = false,
+  auditFails = false,
+} = {}) {
   const f = await pageEditFixture('remova essa foto da seção');
   const messages = [];
+  const activity = [];
   let modelCalls = 0;
+  const operator = { id: 'user-1', name: 'Operador', login: 'operador@eixu' };
+  const colleague = { id: 'user-2', name: 'Colega', login: 'colega@eixu' };
+  let activeUser = operator;
   const sql =
     () =>
     async (parts, ...values) => {
@@ -16,7 +24,11 @@ async function removalChat({ changeBeforeConfirm = false } = {}) {
       if (statement.includes('from chat_messages pending')) {
         const latest = [...messages]
           .reverse()
-          .find((message) => message.channel === 'edit-pending');
+          .find(
+            (message) =>
+              message.channel === 'edit-pending' &&
+              message.userId === values[3],
+          );
         if (!latest) return [];
         return [
           {
@@ -25,13 +37,14 @@ async function removalChat({ changeBeforeConfirm = false } = {}) {
               (message) =>
                 message.id > latest.id &&
                 message.channel === 'site' &&
-                message.role === 'user',
+                message.role === 'user' &&
+                message.userId === values[1],
             ),
           },
         ];
       }
       if (statement.includes('insert into chat_messages')) {
-        messages.push({
+        const message = {
           id: messages.length + 1,
           tenantId: values[0],
           role: statement.includes("'assistant'")
@@ -42,13 +55,40 @@ async function removalChat({ changeBeforeConfirm = false } = {}) {
           channel: statement.includes("'edit-pending'")
             ? 'edit-pending'
             : 'site',
-          content: values[1] ?? '{"status":"consumed"}',
-        });
+          content:
+            statement.includes("'edit-pending'") &&
+            statement.includes('consumed')
+              ? '{"status":"consumed"}'
+              : values[1],
+          userId: statement.includes("'edit-pending'")
+            ? values.at(-1)
+            : values[2],
+          actorType: statement.includes("'edit-pending'")
+            ? null
+            : statement.includes("'agent'")
+              ? 'agent'
+              : statement.includes("'user'") && statement.includes('actor_type')
+                ? 'user'
+                : null,
+          actorName: values[3] ?? null,
+        };
+        messages.push(message);
+        if (statement.includes('returning id')) return [{ id: message.id }];
       }
       return [];
     };
   const { POST } = await loadModule('app/api/chat/route.ts', {
-    '@/lib/auth': { isAuthenticated: async () => true },
+    '@/lib/auth': {
+      currentUser: async () => activeUser,
+    },
+    '@/lib/admin/activity': {
+      recordActivity: async (entry) => {
+        activity.push(entry);
+        if (auditFails && entry.action === 'page.edit')
+          throw new Error('Falha sintética de auditoria');
+      },
+      recordAgentTool: async () => undefined,
+    },
     '@/lib/db': { db: sql },
     '@/lib/tenant-queries': {
       getTenantBySlug: async (slug) =>
@@ -61,7 +101,10 @@ async function removalChat({ changeBeforeConfirm = false } = {}) {
       expireStaleRun: async () => null,
     },
     '@/lib/sites/edits': f.mocks['@/lib/sites/edits'],
-    '@/lib/ai/tools': { buildTools: () => f.tools },
+    '@/lib/ai/tools': {
+      buildTools: (_tenant, context) =>
+        context.conversationOnly ? {} : f.tools,
+    },
     '@/lib/ai/agent': {
       siteAgent: ({ tools }) => {
         modelCalls += 1;
@@ -107,7 +150,8 @@ async function removalChat({ changeBeforeConfirm = false } = {}) {
       },
     },
   });
-  const send = async (text) => {
+  const send = async (text, user = operator) => {
+    activeUser = user;
     const response = await POST(
       new Request('http://localhost/api/chat', {
         method: 'POST',
@@ -136,16 +180,25 @@ async function removalChat({ changeBeforeConfirm = false } = {}) {
   );
   assert.ok(pending);
   assert.equal(JSON.parse(pending.content).blockId, 'faq');
+  assert.equal(pending.userId, operator.id);
+  let colleagueResponse;
+  if (otherOperator) {
+    colleagueResponse = await send(
+      'Confirmo que pode remover a seção inteira com tudo dentro.',
+      colleague,
+    );
+    assert.equal(f.writes.length, 0);
+  }
   if (changeBeforeConfirm)
     f.pages[0].blocks[2].props.title = 'Título alterado em outra aba';
   const second = await send(
     'Confirmo que pode remover a seção inteira com tudo dentro.',
   );
-  return { f, messages, modelCalls, second };
+  return { f, messages, activity, modelCalls, second, colleagueResponse };
 }
 
 await test('confirmação natural remove o bloco recusado sem repetir o modelo', async () => {
-  const { f, modelCalls, second } = await removalChat();
+  const { f, messages, activity, modelCalls, second } = await removalChat();
   assert.match(second, /Alterações salvas no rascunho/);
   assert.match(second, /data-preview-update/);
   assert.equal(modelCalls, 1);
@@ -155,10 +208,27 @@ await test('confirmação natural remove o bloco recusado sem repetir o modelo',
     false,
   );
   assert.deepEqual(f.pages[0].publishedBlocks, editPages()[0].publishedBlocks);
+  assert.deepEqual(
+    messages
+      .filter((message) => message.channel === 'site')
+      .map((message) => message.actorType),
+    ['user', 'agent', 'user', 'agent'],
+  );
+  assert.ok(
+    messages
+      .filter((message) => message.channel === 'site')
+      .every((message) => message.actorName === 'Operador'),
+  );
+  assert.deepEqual(
+    activity.map((entry) => entry.action),
+    ['chat.message', 'chat.message', 'page.edit'],
+  );
+  assert.equal(activity[2].actor.id, 'user-1');
+  assert.equal(activity[2].resourceId, f.pages[0].id);
 });
 
 await test('confirmação antiga não remove bloco após mudança da página', async () => {
-  const { f, modelCalls, second } = await removalChat({
+  const { f, activity, modelCalls, second } = await removalChat({
     changeBeforeConfirm: true,
   });
   assert.match(second, /A página mudou desde a pergunta/);
@@ -168,4 +238,35 @@ await test('confirmação antiga não remove bloco após mudança da página', a
     f.pages[0].blocks.some((block) => block.id === 'faq'),
     true,
   );
+  assert.deepEqual(
+    activity.map((entry) => entry.action),
+    ['chat.message', 'chat.message'],
+  );
+});
+
+await test('outro operador não pode confirmar a remoção pendente', async () => {
+  const { f, messages, activity, modelCalls, second, colleagueResponse } =
+    await removalChat({ otherOperator: true });
+  assert.doesNotMatch(colleagueResponse, /Alterações salvas no rascunho/);
+  assert.match(second, /Alterações salvas no rascunho/);
+  assert.equal(f.writes.length, 1);
+  assert.equal(modelCalls, 2);
+  assert.deepEqual(
+    messages
+      .filter((message) => message.channel === 'edit-pending')
+      .map((message) => message.userId),
+    ['user-1', 'user-1'],
+  );
+  assert.equal(
+    activity.filter((entry) => entry.action === 'page.edit').length,
+    1,
+  );
+});
+
+await test('falha da auditoria não transforma edição salva em falsa recusa', async () => {
+  const { f, second } = await removalChat({ auditFails: true });
+  assert.equal(f.writes.length, 1);
+  assert.match(second, /Alterações salvas no rascunho/);
+  assert.match(second, /registro desta edição na atividade falhou/);
+  assert.doesNotMatch(second, /Nenhuma alteração foi salva/);
 });

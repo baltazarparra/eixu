@@ -1,9 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { neon } from '@neondatabase/serverless';
 
-const url = process.env.DATABASE_URL;
+const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
 if (!url) {
-  console.error('DATABASE_URL ausente. Rode: vercel env pull .env.local --yes');
+  console.error(
+    'DATABASE_URL_UNPOOLED ou DATABASE_URL ausente. Rode: vercel env pull .env.local --yes',
+  );
   process.exit(1);
 }
 

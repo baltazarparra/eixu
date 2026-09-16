@@ -5,7 +5,8 @@ import { redirect } from 'next/navigation';
 import { after } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { del } from '@vercel/blob';
-import { isAuthenticated, signIn, signOut } from '@/lib/auth';
+import { currentUser, signIn, signOut, type AdminUser } from '@/lib/auth';
+import { recordActivity } from '@/lib/admin/activity';
 import { db } from '@/lib/db';
 import { text } from '@/lib/form-data';
 import {
@@ -18,7 +19,11 @@ import {
 } from '@/lib/admin/tenant-input';
 import { primaryWhatsapp } from '@/lib/tenant-contacts';
 import { spendSchema } from '@/lib/admin/traffic';
-import { countTenantData, getTenantBySlug } from '@/lib/tenant-queries';
+import {
+  countTenantData,
+  getTenantBySlug,
+  siteFolderExists,
+} from '@/lib/tenant-queries';
 import {
   UploadError,
   deleteTenantBlobs,
@@ -30,9 +35,16 @@ import { normalizeSocialUrl } from '@/lib/social-profile';
 import { markSocialReading, syncSocialProfile } from '@/lib/ai/social';
 import { deriveLogoAssets } from '@/lib/images/logo-apply';
 import type { Brand } from '@/lib/types';
+import {
+  folderNameSchema,
+  optionalFolderIdSchema,
+  parseFolderAssignments,
+} from '@/lib/admin/site-folders';
 
-async function guard() {
-  if (!(await isAuthenticated())) redirect('/admin/login');
+async function guard(): Promise<AdminUser> {
+  const user = await currentUser();
+  if (!user) redirect('/admin/login');
+  return user;
 }
 
 export async function loginAction(
@@ -40,10 +52,19 @@ export async function loginAction(
   formData: FormData,
 ): Promise<string | null> {
   const user = text(formData, 'user');
-  const password = text(formData, 'password');
+  const pin = text(formData, 'pin');
   // Atraso fixo para desencorajar tentativa em massa contra uma senha curta.
   await new Promise((resolve) => setTimeout(resolve, 400));
-  if (!(await signIn(user, password))) return 'Usuário ou senha incorretos.';
+  const result = await signIn(user, pin);
+  if (!result.ok)
+    return result.blocked
+      ? 'Muitas tentativas. Aguarde 15 minutos e tente novamente.'
+      : 'Usuário ou PIN incorretos.';
+  await recordActivity({
+    actor: result.user,
+    action: 'auth.login',
+    summary: `${result.user.name} entrou no painel`,
+  });
   const returnTo = text(formData, 'returnTo');
   redirect(
     returnTo.startsWith('/admin') &&
@@ -55,6 +76,13 @@ export async function loginAction(
 }
 
 export async function logoutAction() {
+  const user = await currentUser();
+  if (user)
+    await recordActivity({
+      actor: user,
+      action: 'auth.logout',
+      summary: `${user.name} saiu do painel`,
+    });
   await signOut();
   redirect('/admin/login');
 }
@@ -63,7 +91,7 @@ export async function createTenantAction(
   _prev: string | null,
   formData: FormData,
 ): Promise<string | null> {
-  await guard();
+  const actor = await guard();
   const details = tenantDetailsSchema.safeParse(Object.fromEntries(formData));
   const slugResult = tenantSlugSchema.safeParse(text(formData, 'slug'));
   const intake = intakeFromForm(formData);
@@ -72,6 +100,9 @@ export async function createTenantAction(
     text(formData, 'paletteSource') === 'operador' ? 'operador' : 'sugerida';
   const contacts = contactsFromForm(formData);
   const vibe = vibeFromForm(formData);
+  const folderIdResult = optionalFolderIdSchema.safeParse(
+    text(formData, 'folderId') || null,
+  );
   if (!details.success)
     return details.error.issues[0]?.message ?? 'Confira os dados do cliente.';
   if (!slugResult.success)
@@ -86,6 +117,9 @@ export async function createTenantAction(
   if (!colors.success)
     return colors.error.issues[0]?.message ?? 'Confira as cores da marca.';
   if (!vibe.success) return 'Escolha uma vibe para o site.';
+  if (!folderIdResult.success) return 'A pasta selecionada é inválida.';
+  if (folderIdResult.data && !(await siteFolderExists(folderIdResult.data)))
+    return 'Essa pasta não existe mais. Escolha outra pasta ou crie o site sem pasta.';
   const slug = slugResult.data;
   const { name, contactEmail } = details.data;
   // O site inteiro continua lendo tenants.whatsapp: aqui ele é o primeiro
@@ -119,11 +153,12 @@ export async function createTenantAction(
   let tenantId: string;
   try {
     const rows = (await db()`
-      insert into tenants (slug, name, whatsapp, contact_email, brief, brand, contacts)
+      insert into tenants (slug, name, whatsapp, contact_email, brief, brand, contacts, folder_id)
       values (${slug}, ${name}, ${whatsapp}, ${contactEmail},
               ${JSON.stringify({ intake: intake.data })}::jsonb,
               ${JSON.stringify(brand)}::jsonb,
-              ${JSON.stringify(contacts.data)}::jsonb)
+              ${JSON.stringify(contacts.data)}::jsonb,
+              ${folderIdResult.data})
       on conflict (slug) do nothing returning id
     `) as { id: string }[];
     if (!rows.length) {
@@ -159,8 +194,227 @@ export async function createTenantAction(
       );
     }
   }
+  await recordActivity({
+    actor,
+    tenant: { id: tenantId, slug, name },
+    action: 'tenant.create',
+    summary: `${actor.name} criou o cliente ${name}`,
+    resourceType: 'tenant',
+    resourceId: tenantId,
+  });
   revalidatePath('/admin');
   redirect(`/admin/${slug}`);
+}
+
+export type FolderActionResult = {
+  ok: boolean;
+  message: string;
+  folder?: { id: string; name: string; siteCount: number };
+};
+
+function folderId(formData: FormData) {
+  return optionalFolderIdSchema.safeParse(text(formData, 'folderId') || null);
+}
+
+export async function createSiteFolderAction(
+  formData: FormData,
+): Promise<FolderActionResult> {
+  const actor = await guard();
+  const name = folderNameSchema.safeParse(text(formData, 'name'));
+  if (!name.success)
+    return {
+      ok: false,
+      message: name.error.issues[0]?.message ?? 'Confira o nome da pasta.',
+    };
+  try {
+    const rows = (await db()`
+      insert into site_folders (name)
+      values (${name.data})
+      on conflict do nothing
+      returning id, name
+    `) as { id: string; name: string }[];
+    if (!rows[0])
+      return { ok: false, message: 'Já existe uma pasta com esse nome.' };
+    await recordActivity({
+      actor,
+      action: 'folder.create',
+      summary: `${actor.name} criou a pasta ${rows[0].name}`,
+      resourceType: 'site_folder',
+      resourceId: rows[0].id,
+    });
+    revalidatePath('/admin');
+    return {
+      ok: true,
+      message: `Pasta ${rows[0].name} criada.`,
+      folder: { ...rows[0], siteCount: 0 },
+    };
+  } catch {
+    return {
+      ok: false,
+      message: 'Não foi possível criar a pasta. Tente novamente.',
+    };
+  }
+}
+
+export async function renameSiteFolderAction(
+  formData: FormData,
+): Promise<FolderActionResult> {
+  const actor = await guard();
+  const id = folderId(formData);
+  const name = folderNameSchema.safeParse(text(formData, 'name'));
+  if (!id.success || !id.data) return { ok: false, message: 'Pasta inválida.' };
+  if (!name.success)
+    return {
+      ok: false,
+      message: name.error.issues[0]?.message ?? 'Confira o nome da pasta.',
+    };
+  try {
+    const rows = (await db()`
+      update site_folders f
+      set name = ${name.data}, updated_at = now()
+      where f.id = ${id.data}
+        and not exists (
+          select 1 from site_folders other
+          where other.id <> f.id
+            and lower(btrim(other.name)) = lower(btrim(${name.data}))
+        )
+      returning id, name,
+        (select count(*)::int from tenants where folder_id = f.id) as site_count
+    `) as { id: string; name: string; site_count: number }[];
+    if (!rows[0])
+      return {
+        ok: false,
+        message: 'A pasta não existe mais ou esse nome já está em uso.',
+      };
+    await recordActivity({
+      actor,
+      action: 'folder.rename',
+      summary: `${actor.name} renomeou a pasta para ${rows[0].name}`,
+      resourceType: 'site_folder',
+      resourceId: rows[0].id,
+    });
+    revalidatePath('/admin');
+    return {
+      ok: true,
+      message: `Pasta renomeada para ${rows[0].name}.`,
+      folder: {
+        id: rows[0].id,
+        name: rows[0].name,
+        siteCount: Number(rows[0].site_count ?? 0),
+      },
+    };
+  } catch {
+    return {
+      ok: false,
+      message: 'Não foi possível renomear a pasta. Tente novamente.',
+    };
+  }
+}
+
+export async function deleteSiteFolderAction(
+  formData: FormData,
+): Promise<FolderActionResult> {
+  const actor = await guard();
+  const id = folderId(formData);
+  if (!id.success || !id.data) return { ok: false, message: 'Pasta inválida.' };
+  try {
+    const rows = (await db()`
+      delete from site_folders where id = ${id.data} returning id, name
+    `) as { id: string; name: string }[];
+    if (!rows[0]) return { ok: false, message: 'A pasta não existe mais.' };
+    await recordActivity({
+      actor,
+      action: 'folder.delete',
+      summary: `${actor.name} excluiu a pasta ${rows[0].name}`,
+      resourceType: 'site_folder',
+      resourceId: rows[0].id,
+    });
+    revalidatePath('/admin');
+    return {
+      ok: true,
+      message: `${rows[0].name} foi excluída. Os sites ficaram em Sem pasta.`,
+    };
+  } catch {
+    return {
+      ok: false,
+      message: 'Não foi possível excluir a pasta. Tente novamente.',
+    };
+  }
+}
+
+export type MoveSitesResult = {
+  ok: boolean;
+  message: string;
+  moved: number;
+};
+
+/**
+ * O lote compara a pasta vista pelo operador antes de escrever. Se outra sessão
+ * mover qualquer site no intervalo, nenhuma linha do lote é alterada.
+ */
+export async function moveSitesToFolderAction(
+  formData: FormData,
+): Promise<MoveSitesResult> {
+  const actor = await guard();
+  const parsed = parseFolderAssignments(text(formData, 'assignments'));
+  if (!parsed.success)
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? 'Movimentação inválida.',
+      moved: 0,
+    };
+  const assignments = JSON.stringify(parsed.data);
+  try {
+    const rows = (await db()`
+      with requested as (
+        select *
+        from jsonb_to_recordset(${assignments}::jsonb)
+          as item(slug text, "fromFolderId" uuid, "toFolderId" uuid)
+      ), eligible as (
+        select count(*) = (select count(*) from requested) as ok
+        from requested r
+        join tenants t on t.slug = r.slug
+          and t.folder_id is not distinct from r."fromFolderId"
+        where r."toFolderId" is null
+          or exists(select 1 from site_folders f where f.id = r."toFolderId")
+      )
+      update tenants t
+      set folder_id = r."toFolderId", updated_at = now()
+      from requested r, eligible e
+      where e.ok and t.slug = r.slug
+      returning t.slug
+    `) as { slug: string }[];
+    if (rows.length !== parsed.data.length)
+      return {
+        ok: false,
+        message:
+          'A organização mudou em outra sessão. Atualize a página antes de mover novamente.',
+        moved: 0,
+      };
+    await recordActivity({
+      actor,
+      action: 'folder.move_sites',
+      summary:
+        rows.length === 1
+          ? `${actor.name} moveu um site entre pastas`
+          : `${actor.name} moveu ${rows.length} sites entre pastas`,
+      resourceType: 'site_folder',
+      detail: { sites: rows.map((row) => row.slug) },
+    });
+    revalidatePath('/admin');
+    return {
+      ok: true,
+      message:
+        rows.length === 1 ? 'Site movido.' : `${rows.length} sites movidos.`,
+      moved: rows.length,
+    };
+  } catch {
+    return {
+      ok: false,
+      message: 'Não foi possível mover os sites. Tente novamente.',
+      moved: 0,
+    };
+  }
 }
 
 export type DeleteTenantResult = {
@@ -182,7 +436,7 @@ export async function setTenantArchivedAction(
   _prev: ArchiveTenantResult | null,
   formData: FormData,
 ): Promise<ArchiveTenantResult> {
-  await guard();
+  const actor = await guard();
   const slugResult = tenantSlugSchema.safeParse(text(formData, 'slug'));
   if (!slugResult.success)
     return { ok: false, message: 'Endereço de cliente inválido.' };
@@ -203,10 +457,26 @@ export async function setTenantArchivedAction(
           end,
           updated_at = now()
       where t.slug = ${slugResult.data}
-      returning t.name, t.status
-    `) as { name: string; status: 'draft' | 'published' | 'archived' }[];
+      returning t.id, t.name, t.status
+    `) as {
+      id?: string;
+      name: string;
+      status: 'draft' | 'published' | 'archived';
+    }[];
     const changed = rows[0];
     if (!changed) return { ok: false, message: 'Cliente não encontrado.' };
+    await recordActivity({
+      actor,
+      tenant: { id: changed.id, slug: slugResult.data, name: changed.name },
+      action:
+        changed.status === 'archived' ? 'tenant.archive' : 'tenant.restore',
+      summary:
+        changed.status === 'archived'
+          ? `${actor.name} arquivou ${changed.name}`
+          : `${actor.name} reativou ${changed.name}`,
+      resourceType: 'tenant',
+      resourceId: slugResult.data,
+    });
     revalidatePath('/admin');
     revalidatePath(`/admin/${slugResult.data}`);
     return {
@@ -237,7 +507,7 @@ export async function deleteTenantAction(
   _prev: DeleteTenantResult | null,
   formData: FormData,
 ): Promise<DeleteTenantResult> {
-  await guard();
+  const actor = await guard();
   const slugResult = tenantSlugSchema.safeParse(text(formData, 'slug'));
   if (!slugResult.success)
     return { ok: false, message: 'Endereço de cliente inválido.' };
@@ -275,7 +545,17 @@ export async function deleteTenantAction(
         };
       },
     );
-    if (result.ok) revalidatePath('/admin');
+    if (result.ok) {
+      await recordActivity({
+        actor,
+        tenant: { slug: tenant.slug, name: tenant.name },
+        action: 'tenant.delete',
+        summary: `${actor.name} excluiu ${tenant.name}`,
+        resourceType: 'tenant',
+        resourceId: tenant.id,
+      });
+      revalidatePath('/admin');
+    }
     return result;
   } catch (error) {
     const messages = {
@@ -299,7 +579,7 @@ export async function saveSpendAction(
   _prev: SpendResult | null,
   formData: FormData,
 ): Promise<SpendResult> {
-  await guard();
+  const actor = await guard();
   const tenantSlug = text(formData, 'tenant');
   const parsed = spendSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success)
@@ -316,6 +596,14 @@ export async function saveSpendAction(
       insert into campaign_spend (tenant_id, campaign, channel, spend_cents, period_start, period_end)
       values (${tenant.id}, ${campaign}, ${channel}, ${spend}, ${start}, ${end})
     `;
+    await recordActivity({
+      actor,
+      tenant,
+      action: 'traffic.spend.create',
+      summary: `${actor.name} adicionou um gasto em ${tenant.name}`,
+      resourceType: 'campaign_spend',
+      detail: { campaign, channel, start, end },
+    });
   } catch {
     return {
       ok: false,

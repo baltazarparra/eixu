@@ -308,7 +308,8 @@ Apagar ou substituir um bloco sob escopo de item é recusado com o nome da seç�
 e a quantidade de itens e textos que sairiam; um lote não apaga duas seções de
 uma vez. Quando a tentativa de `remove` pede confirmação, o servidor guarda
 o lote, a página, o ID do bloco e a revisão num registro interno de
-`chat_messages` (`edit-pending`). Uma resposta afirmativa na fala seguinte
+`chat_messages` (`edit-pending`), vinculado ao operador que iniciou o pedido.
+Uma resposta afirmativa na próxima fala desse mesmo operador
 retoma esse lote sem nova interpretação do modelo. Outra fala consome a
 pendência; revisão desatualizada ou bloco ausente recusam a escrita. Um "sim"
 sem pendência não autoriza nada. Pedido explícito de remover a seção inteira

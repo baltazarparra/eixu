@@ -39,7 +39,17 @@ export async function editBrowserFixture({
     workspaceState(fixture.tenant, fixture.pages, [], undoPages);
   const requests = [];
   const { POST } = await loadModule('app/api/chat/route.ts', {
-    '@/lib/auth': { isAuthenticated: async () => true },
+    '@/lib/auth': {
+      currentUser: async () => ({
+        id: 'user-1',
+        name: 'Operador',
+        login: 'operador@eixu',
+      }),
+    },
+    '@/lib/admin/activity': {
+      recordActivity: async () => undefined,
+      recordAgentTool: async () => undefined,
+    },
     '@/lib/db': { db: () => async () => [] },
     '@/lib/tenant-queries': {
       getTenantBySlug: async () => fixture.tenant,

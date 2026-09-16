@@ -4,6 +4,7 @@ import { getToolName, isToolUIPart, type UIMessage } from 'ai';
 import { useEffect, useState } from 'react';
 import { Check, Loader2, X } from 'lucide-react';
 import { describeTool } from '@/lib/generation/labels';
+import { useAdminSession } from '@/components/admin/session';
 
 type ToolPart = {
   type: string;
@@ -61,6 +62,20 @@ function collapse(parts: ToolPart[]) {
 }
 
 export function Message({ message }: { message: UIMessage }) {
+  const session = useAdminSession();
+  const metadata = message.metadata as
+    | { author?: { type?: string; name?: string; login?: string } }
+    | undefined;
+  const recorded = metadata?.author;
+  const person = recorded?.name ?? recorded?.login ?? session?.operator;
+  const author =
+    recorded?.type === 'legacy'
+      ? 'Operador anterior'
+      : message.role === 'user'
+        ? (person ?? 'Operador')
+        : person
+          ? `Agente · a pedido de ${person}`
+          : 'Agente';
   if (message.role === 'user') {
     const text = message.parts
       .filter((part) => part.type === 'text')
@@ -71,7 +86,7 @@ export function Message({ message }: { message: UIMessage }) {
       filename?: string;
     }[];
     return (
-      <Bubble from="user">
+      <Bubble from="user" author={author}>
         {images.length ? (
           <span className="admin-bubble-files">
             {images.map((image) => (
@@ -112,7 +127,7 @@ export function Message({ message }: { message: UIMessage }) {
     <div className="admin-turn">
       {groups.map((group, index) =>
         group.kind === 'text' ? (
-          <Bubble key={index} from="assistant">
+          <Bubble key={index} from="assistant" author={author}>
             {group.text.trim()}
           </Bubble>
         ) : (
@@ -212,15 +227,19 @@ export function ChatActivity({
 
 export function Bubble({
   from,
+  author,
   children,
 }: {
   from: string;
+  author?: string;
   children: React.ReactNode;
 }) {
   const isUser = from === 'user';
   return (
     <div className="admin-bubble" data-from={isUser ? 'user' : 'assistant'}>
-      <span className="admin-bubble-author">{isUser ? 'Você' : 'Agente'}</span>
+      <span className="admin-bubble-author">
+        {author ?? (isUser ? 'Você' : 'Agente')}
+      </span>
       <div className="admin-bubble-body whitespace-pre-wrap">{children}</div>
     </div>
   );

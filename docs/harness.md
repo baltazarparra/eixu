@@ -305,10 +305,19 @@ duração; os eventos carregam versão do fluxo/harness, modelo, SHA, espera de
 fila e motivo de parada quando disponíveis. Captura e crítico publicam página,
 viewport e unidades concluídas durante a execução. O evento de fim de fase
 carrega também o recibo daquela fase — modelo, passos, duração, tokens e custo
-do Gateway —, porque a contagem do stream não existe fora do navegador e a
-parte cara do trabalho tinha deixado de aparecer no consumo do painel.
-`lib/admin/usage-summary.ts` soma esses recibos com os dos turnos livres;
-parcela sem custo deixa o total sem valor, em vez de contá-lo como zero. O painel lê por consulta
+do Gateway — para a linha do tempo da execução.
+
+O ledger `ai_usage` é a fonte consolidada da aba Dados. Cada passo de texto
+cria uma linha pendente antes da chamada e completa o recibo com entrada, saída,
+total, cache, raciocínio e custo do Gateway. Geração e crítica de imagens usam o
+mesmo contrato, embora o provedor possa informar custo sem tokens. Chat, runner,
+crítica visual, referências, Site atual, logo e avatar passam por esse ledger.
+O `operation_id` agrupa os passos do mesmo turno e a chave por cliente impede
+duplicação. Ausência continua ausente, sem virar zero; a migração importa uma
+vez os recibos antigos de `phase_end` e os eventos novos marcam `usageLedger`
+para não serem somados de novo.
+
+O painel de andamento lê por consulta
 periódica, reativa a leitura ao iniciar pelo botão ou pelo chat e reconstrói o
 andamento depois de qualquer recarga. As mensagens são paginadas a partir de
 zero, com cursor do último registro entregue; a leitura continua até esvaziar

@@ -42,7 +42,8 @@ import {
   pageEditSchema,
   pageRevision,
 } from '@/lib/ai/page-edits';
-import { isAuthenticated } from '@/lib/auth';
+import { currentUser } from '@/lib/auth';
+import { recordActivity, recordAgentTool } from '@/lib/admin/activity';
 import { buildTools } from '@/lib/ai/tools';
 import { db } from '@/lib/db';
 import {
@@ -101,7 +102,8 @@ function textResponse(text: string, changedDraft = false) {
 }
 
 export async function POST(request: Request) {
-  if (!(await isAuthenticated())) {
+  const user = await currentUser();
+  if (!user) {
     return new Response('Não autorizado', { status: 401 });
   }
 
@@ -168,18 +170,39 @@ export async function POST(request: Request) {
     .filter((part) => part.type === 'text')
     .map((part) => (part as { text: string }).text)
     .join(' ');
-  const pendingEdit = !phase ? await nextPendingEdit(sql, tenant.id) : null;
+  const pendingEdit = !phase
+    ? await nextPendingEdit(sql, tenant.id, user.id)
+    : null;
   if (lastUserText) {
-    await sql`
-      insert into chat_messages (tenant_id, role, content, channel)
-      values (${tenant.id}, 'user', ${lastUserText}, 'site')
-    `;
+    const rows = (await sql`
+      insert into chat_messages (
+        tenant_id, role, content, channel,
+        admin_user_id, actor_type, actor_name, actor_login
+      ) values (
+        ${tenant.id}, 'user', ${lastUserText}, 'site',
+        ${user.id}, 'user', ${user.name}, ${user.login}
+      ) returning id
+    `) as { id: number }[];
+    await recordActivity({
+      actor: user,
+      tenant,
+      action: 'chat.message',
+      summary: `${user.name} enviou uma mensagem ao agente`,
+      resourceType: 'chat_message',
+      resourceId: String(rows[0]?.id ?? ''),
+      operationId: rows[0] ? `chat:${rows[0].id}` : undefined,
+    });
   }
 
   const persistAssistant = async (text: string) => {
     await sql`
-      insert into chat_messages (tenant_id, role, content, channel)
-      values (${tenant.id}, 'assistant', ${text}, 'site')
+      insert into chat_messages (
+        tenant_id, role, content, channel,
+        admin_user_id, actor_type, actor_name, actor_login
+      ) values (
+        ${tenant.id}, 'assistant', ${text}, 'site',
+        ${user.id}, 'agent', ${user.name}, ${user.login}
+      )
     `;
   };
 
@@ -187,7 +210,7 @@ export async function POST(request: Request) {
   // A resposta à pergunta retoma o lote recusado, sem pedir ao modelo que
   // adivinhe de novo o bloco. Qualquer outra fala consome a pendência.
   if (pendingEdit && !phase) {
-    await consumePendingEdit(sql, tenant.id);
+    await consumePendingEdit(sql, tenant.id, user.id);
     if (!hasFile && isAffirmative(lastUserText)) {
       const page = pages.find(
         (candidate) =>
@@ -227,8 +250,29 @@ export async function POST(request: Request) {
             summary: edited.summary.join(' '),
           });
           changed = saved.changed;
+          let auditFailed = false;
+          if (changed) {
+            try {
+              await recordActivity({
+                actor: user,
+                tenant,
+                action: 'page.edit',
+                summary: `${user.name} confirmou a remoção de uma seção em /${page.slug || ''}`,
+                resourceType: 'page',
+                resourceId: page.id,
+                operationId: `page-edit:${page.id}:${saved.revision}`,
+              });
+            } catch (error) {
+              auditFailed = true;
+              console.error('[chat] falha ao registrar edição confirmada', {
+                tenantId: tenant.id,
+                pageId: page.id,
+                error: error instanceof Error ? error.name : 'unknown',
+              });
+            }
+          }
           text = changed
-            ? `Alterações salvas no rascunho de /${page.slug}. ${edited.summary.join(' ')} Se não era isso, peça “desfaz”. Confira a prévia.`
+            ? `Alterações salvas no rascunho de /${page.slug}. ${edited.summary.join(' ')} Se não era isso, peça “desfaz”. Confira a prévia.${auditFailed ? ' O registro desta edição na atividade falhou.' : ''}`
             : 'A página já estava como solicitado. Nenhuma alteração nova foi salva.';
         } catch (error) {
           text =
@@ -244,7 +288,20 @@ export async function POST(request: Request) {
   // A ordem explícita é executada pelo servidor: o modelo não veta a decisão
   // editorial nem transforma autorização de publicação em confirmação de fatos.
   if (!phase && !hasFile && isDirectPublicationRequest(lastUserText)) {
-    const text = publicationMessage(await publishSite(tenant));
+    const publication = await publishSite(tenant);
+    const text = publicationMessage(publication);
+    await recordActivity({
+      actor: user,
+      tenant,
+      action: 'site.publish',
+      summary:
+        publication.blocked.length === 0
+          ? `${user.name} publicou ${tenant.name} pelo chat`
+          : `${user.name} tentou publicar ${tenant.name} pelo chat`,
+      result: publication.blocked.length === 0 ? 'success' : 'denied',
+      resourceType: 'tenant',
+      resourceId: tenant.id,
+    });
     await persistAssistant(text);
     return textResponse(text);
   }
@@ -279,6 +336,7 @@ export async function POST(request: Request) {
     const started = await startGeneration({
       tenant,
       origin: new URL(request.url).origin,
+      requestedBy: user,
     });
     const text = started.ok
       ? `Retomando a geração pela etapa "${started.phase}". Acompanhe o andamento no painel; pode fechar esta aba sem perder nada.`
@@ -310,6 +368,15 @@ export async function POST(request: Request) {
           )
       : 'Não há alteração anterior guardada para desfazer neste rascunho. Nada foi alterado.';
     await persistAssistant(text);
+    if (text.startsWith('Desfeito'))
+      await recordActivity({
+        actor: user,
+        tenant,
+        action: 'page.undo',
+        summary: `${user.name} desfez a última edição em ${tenant.name}`,
+        resourceType: 'page',
+        resourceId: undoPage?.id,
+      });
     return textResponse(text, text.startsWith('Desfeito'));
   }
 
@@ -388,6 +455,7 @@ export async function POST(request: Request) {
     tools,
     phase,
     modelRole,
+    usageContext: { kind: phase ? 'geracao' : 'conversa' },
     repairPublication,
     instructions: systemPrompt(
       tenant,
@@ -430,7 +498,7 @@ export async function POST(request: Request) {
         tools,
         stream: result.stream.pipeThrough(
           new TransformStream({
-            transform(part, controller) {
+            async transform(part, controller) {
               if (part.type === 'finish-step') completedSteps += 1;
               if (part.type === 'tool-result' || part.type === 'tool-error')
                 editReceipt?.observe(
@@ -440,6 +508,20 @@ export async function POST(request: Request) {
                     ? part.output
                     : { error: 'A tentativa foi recusada pelo servidor.' },
                 );
+              if (part.type === 'tool-result' || part.type === 'tool-error') {
+                const callId = (part as { toolCallId?: string }).toolCallId;
+                if (callId)
+                  await recordAgentTool({
+                    requestedBy: user,
+                    tenant,
+                    tool: part.toolName,
+                    callId,
+                    output:
+                      part.type === 'tool-result'
+                        ? part.output
+                        : { error: 'A ferramenta falhou.' },
+                  });
+              }
               if (
                 (part.type === 'tool-result' || part.type === 'tool-error') &&
                 part.toolName === 'edit_page'
@@ -517,7 +599,10 @@ export async function POST(request: Request) {
           }),
         ),
         onError: () => CHAT_INTERRUPTED,
-        messageMetadata: usageMetadata(model, phase ?? 'livre', started),
+        messageMetadata: ({ part }) => ({
+          author: { type: 'agent', name: user.name, login: user.login },
+          ...usageMetadata(model, phase ?? 'livre', started)({ part }),
+        }),
       }),
       {
         receipt: editReceipt
@@ -578,7 +663,12 @@ export async function POST(request: Request) {
             pendingConfirmation &&
             !editOutcomes.get(`/${pendingConfirmation.page}`)?.changed
           )
-            await storePendingEdit(sql, tenant.id, pendingConfirmation);
+            await storePendingEdit(
+              sql,
+              tenant.id,
+              user.id,
+              pendingConfirmation,
+            );
         },
       },
     ),

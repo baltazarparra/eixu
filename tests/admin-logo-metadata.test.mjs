@@ -61,7 +61,7 @@ async function fixture({ client = tenant, home = page, auth = true } = {}) {
       getTenantBySlug: async () => client,
       getPage: async () => home,
     },
-    '@/lib/auth': { isAuthenticated: async () => auth },
+    '@/lib/auth': { isPreviewAuthorized: async () => auth },
     '@/lib/blocks/render': { RenderBlocks: () => null },
     '@/lib/blocks/inline-editor-loader': { InlineEditorLoader: () => null },
     'next/headers': {

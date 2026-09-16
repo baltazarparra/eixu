@@ -74,7 +74,14 @@ await test(
       '@/lib/blob/tenant-files': blobFiles,
       '@/lib/tenant-queries': queries,
       '@/lib/ai/social': social,
-      '@/lib/auth': { isAuthenticated: async () => true },
+      '@/lib/auth': {
+        currentUser: async () => ({
+          id: 'user-1',
+          name: 'Operador',
+          login: 'operador@eixu',
+        }),
+      },
+      '@/lib/admin/activity': { recordActivity: async () => undefined },
       'next/navigation': {
         redirect: () => {
           throw new Error('Redirecionamento inesperado');

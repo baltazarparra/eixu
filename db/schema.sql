@@ -21,6 +21,46 @@ create table if not exists tenants (
   updated_at    timestamptz not null default now()
 );
 
+-- Organização compartilhada da biblioteca administrativa. Pastas não alteram
+-- publicação, domínio ou conteúdo; ao excluir uma pasta, os sites permanecem.
+create table if not exists site_folders (
+  id         uuid primary key default gen_random_uuid(),
+  name       text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table tenants add column if not exists folder_id uuid references site_folders(id) on delete set null;
+
+-- Operadores internos. O PIN nunca é persistido; somente o hash com salt.
+create table if not exists admin_users (
+  id         uuid primary key default gen_random_uuid(),
+  login      text not null unique check (login = lower(btrim(login))),
+  name       text not null check (char_length(btrim(name)) between 1 and 80),
+  pin_hash   text not null,
+  active     boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- O navegador recebe um token aleatório; somente seu SHA-256 fica no banco.
+create table if not exists admin_sessions (
+  token_hash text primary key,
+  user_id    uuid not null references admin_users(id) on delete cascade,
+  expires_at timestamptz not null,
+  revoked_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+-- Limite compartilhado entre instâncias para proteger o PIN curto.
+create table if not exists admin_login_attempts (
+  login              text primary key,
+  failures           integer not null default 0,
+  window_started_at  timestamptz not null default now(),
+  blocked_until      timestamptz,
+  updated_at         timestamptz not null default now()
+);
+
 create table if not exists pages (
   id               uuid primary key default gen_random_uuid(),
   tenant_id        uuid not null references tenants(id) on delete cascade,
@@ -112,6 +152,10 @@ create table if not exists images (
 -- Colunas acrescentadas depois da primeira versão do schema.
 alter table tenants       add column if not exists image_guide jsonb not null default '{}'::jsonb;
 alter table chat_messages add column if not exists channel text not null default 'site';
+alter table chat_messages add column if not exists admin_user_id uuid references admin_users(id) on delete set null;
+alter table chat_messages add column if not exists actor_type text not null default 'legacy';
+alter table chat_messages add column if not exists actor_name text;
+alter table chat_messages add column if not exists actor_login text;
 -- 'foto' ou 'logo'. Coluna própria porque target_block é enum de blocos do site.
 alter table images        add column if not exists kind text not null default 'foto';
 -- Telefones, endereços e redes do cliente. Coluna própria porque brand é
@@ -175,6 +219,8 @@ where published_blocks is not null
     or published_nav_order is null);
 
 create index if not exists pages_tenant_idx        on pages (tenant_id);
+create unique index if not exists site_folders_name_unique_idx on site_folders (lower(btrim(name)));
+create index if not exists tenants_folder_idx       on tenants (folder_id);
 create index if not exists images_tenant_time_idx  on images (tenant_id, created_at desc);
 create index if not exists images_batch_idx        on images (batch_id);
 create index if not exists leads_tenant_time_idx   on leads (tenant_id, created_at desc);
@@ -182,6 +228,8 @@ create index if not exists events_tenant_time_idx  on events (tenant_id, created
 create index if not exists events_tenant_type_idx  on events (tenant_id, type);
 create index if not exists chat_tenant_time_idx    on chat_messages (tenant_id, created_at);
 create index if not exists spend_tenant_idx        on campaign_spend (tenant_id);
+create index if not exists admin_sessions_user_idx on admin_sessions (user_id, expires_at desc);
+create index if not exists admin_sessions_expiry_idx on admin_sessions (expires_at);
 
 -- Execução da geração em etapas. O laço vivia no navegador: fechar a aba ou
 -- recarregar matava a sequência sem deixar rastro, e o painel voltava
@@ -221,12 +269,114 @@ create table if not exists generation_events (
   created_at timestamptz not null default now()
 );
 
+alter table generation_runs add column if not exists requested_by uuid references admin_users(id) on delete set null;
+alter table generation_runs add column if not exists requester_name text;
+alter table generation_runs add column if not exists requester_login text;
+alter table generation_runs add column if not exists stop_requested_by uuid references admin_users(id) on delete set null;
+alter table generation_runs add column if not exists stop_requester_name text;
+alter table generation_runs add column if not exists stop_requester_login text;
+
 -- Um run ativo por cliente. O índice parcial é a garantia real contra duas
 -- gerações simultâneas; a checagem na rota é só a mensagem amigável.
 create unique index if not exists generation_runs_active_idx
   on generation_runs (tenant_id) where status in ('queued', 'running', 'stopping');
 create index if not exists generation_runs_tenant_time_idx on generation_runs (tenant_id, created_at desc);
 create index if not exists generation_events_run_idx on generation_events (run_id, id);
+
+-- Consumo por chamada: guarda apenas contadores e identificadores, nunca
+-- prompts, conteúdo do cliente ou credenciais. O recibo nasce antes da chamada;
+-- uma interrupção pode deixá-lo pendente, em vez de fingir custo zero.
+create table if not exists ai_usage (
+  id                 bigserial primary key,
+  tenant_id          uuid not null references tenants(id) on delete cascade,
+  operation_id       text not null,
+  step               int not null check (step >= 0),
+  kind               text not null,
+  model              text not null,
+  phase              text,
+  run_id             uuid references generation_runs(id) on delete set null,
+  status             text not null default 'pending'
+    check (status in ('pending', 'recorded', 'failed')),
+  input_tokens       bigint check (input_tokens >= 0),
+  output_tokens      bigint check (output_tokens >= 0),
+  total_tokens       bigint check (total_tokens >= 0),
+  cache_read_tokens  bigint check (cache_read_tokens >= 0),
+  cache_write_tokens bigint check (cache_write_tokens >= 0),
+  reasoning_tokens   bigint check (reasoning_tokens >= 0),
+  cost_usd           numeric(20, 10) check (cost_usd >= 0),
+  legacy             boolean not null default false,
+  created_at         timestamptz not null default now(),
+  finished_at        timestamptz,
+  unique (tenant_id, operation_id, step)
+);
+
+create index if not exists ai_usage_tenant_time_idx
+  on ai_usage (tenant_id, created_at desc, id desc);
+
+-- Recupera somente recibos antigos que já existem. Chamadas novas são medidas
+-- por passo e marcam usageLedger no resumo da fase para impedir dupla contagem.
+insert into ai_usage (
+  tenant_id, operation_id, step, kind, model, phase, run_id, status,
+  input_tokens, output_tokens, total_tokens, cache_read_tokens,
+  cache_write_tokens, reasoning_tokens, cost_usd, legacy,
+  created_at, finished_at
+)
+select
+  tenant_id, 'legacy-generation-' || id, 0, 'geracao',
+  coalesce(payload #>> '{usage,model}', 'Não informado'), phase, run_id,
+  'recorded',
+  case when jsonb_typeof(payload #> '{usage,inputTokens}') = 'number'
+    and (payload #>> '{usage,inputTokens}')::numeric >= 0
+    then (payload #>> '{usage,inputTokens}')::bigint end,
+  case when jsonb_typeof(payload #> '{usage,outputTokens}') = 'number'
+    and (payload #>> '{usage,outputTokens}')::numeric >= 0
+    then (payload #>> '{usage,outputTokens}')::bigint end,
+  case when jsonb_typeof(payload #> '{usage,totalTokens}') = 'number'
+    and (payload #>> '{usage,totalTokens}')::numeric >= 0
+    then (payload #>> '{usage,totalTokens}')::bigint end,
+  case when jsonb_typeof(payload #> '{usage,cacheReadTokens}') = 'number'
+    and (payload #>> '{usage,cacheReadTokens}')::numeric >= 0
+    then (payload #>> '{usage,cacheReadTokens}')::bigint end,
+  case when jsonb_typeof(payload #> '{usage,cacheWriteTokens}') = 'number'
+    and (payload #>> '{usage,cacheWriteTokens}')::numeric >= 0
+    then (payload #>> '{usage,cacheWriteTokens}')::bigint end,
+  case when jsonb_typeof(payload #> '{usage,reasoningTokens}') = 'number'
+    and (payload #>> '{usage,reasoningTokens}')::numeric >= 0
+    then (payload #>> '{usage,reasoningTokens}')::bigint end,
+  case when jsonb_typeof(payload #> '{usage,costUsd}') = 'number'
+    and (payload #>> '{usage,costUsd}')::numeric >= 0
+    then (payload #>> '{usage,costUsd}')::numeric end,
+  true, created_at, created_at
+from generation_events
+where kind = 'phase_end'
+  and jsonb_typeof(payload -> 'usage') = 'object'
+  and coalesce(payload ->> 'usageLedger', 'false') <> 'true'
+on conflict (tenant_id, operation_id, step) do nothing;
+
+-- Linha do tempo administrativa. O snapshot de nome/login e o SET NULL
+-- preservam a autoria mesmo depois de desativar uma conta ou excluir um cliente.
+create table if not exists admin_activity (
+  id             bigserial primary key,
+  user_id        uuid references admin_users(id) on delete set null,
+  actor_type     text not null default 'user',
+  actor_name     text,
+  actor_login    text,
+  tenant_id      uuid references tenants(id) on delete set null,
+  tenant_slug    text,
+  tenant_name    text,
+  action         text not null,
+  resource_type  text,
+  resource_id    text,
+  result         text not null default 'success',
+  summary        text not null,
+  operation_id   text unique,
+  detail         jsonb not null default '{}'::jsonb,
+  created_at     timestamptz not null default now()
+);
+
+create index if not exists admin_activity_time_idx on admin_activity (created_at desc, id desc);
+create index if not exists admin_activity_tenant_idx on admin_activity (tenant_id, created_at desc, id desc);
+create index if not exists admin_activity_user_idx on admin_activity (user_id, created_at desc, id desc);
 
 -- Histórico curto do rascunho de cada página. Uma edição pontual sobrescrevia
 -- `pages.blocks` sem deixar cópia: quando o agente removia a seção errada, não
@@ -247,15 +397,22 @@ create table if not exists page_revisions (
 create index if not exists page_revisions_page_time_idx
   on page_revisions (page_id, created_at desc);
 
--- Quadro interno da operação. Não pertence a um tenant nem ao site publicado.
+-- Quadro interno da operação. É global; cada cartão pode referenciar um tenant.
 create table if not exists kanban_boards (
   id         uuid primary key default gen_random_uuid(),
   key        text not null unique,
   title      text not null,
   revision   bigint not null default 0 check (revision >= 0),
+  schema_version integer not null default 2 check (schema_version > 0),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Tabelas do primeiro piloto não tinham versão de schema. O valor 1 permite
+-- acrescentar a quarta etapa uma única vez sem recriá-la após uma exclusão.
+alter table kanban_boards
+  add column if not exists schema_version integer not null default 1
+  check (schema_version > 0);
 
 create table if not exists kanban_columns (
   id         uuid primary key,
@@ -272,11 +429,52 @@ create table if not exists kanban_cards (
   column_id   uuid not null references kanban_columns(id) on delete restrict,
   title       text not null check (char_length(btrim(title)) between 1 and 160),
   description text not null default '' check (char_length(description) <= 5000),
+  tenant_id   uuid references tenants(id) on delete set null,
+  priority    text check (priority in ('low', 'medium', 'high', 'urgent')),
+  due_date    date,
+  version     integer not null default 1 check (version > 0),
+  archived_at timestamptz,
   position    integer not null check (position >= 0),
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now(),
   unique (column_id, position) deferrable initially deferred
 );
+
+-- Evolução aditiva para instalações que já receberam o primeiro piloto.
+alter table kanban_cards
+  add column if not exists tenant_id uuid references tenants(id) on delete set null;
+alter table kanban_cards
+  add column if not exists priority text
+  check (priority in ('low', 'medium', 'high', 'urgent'));
+alter table kanban_cards add column if not exists due_date date;
+alter table kanban_cards
+  add column if not exists version integer not null default 1 check (version > 0);
+alter table kanban_cards add column if not exists archived_at timestamptz;
+
+-- Referência humana global e permanente. A sequência nunca é reiniciada na
+-- reaplicação, nem ao excluir cartões; lacunas são permitidas.
+create sequence if not exists kanban_card_number_seq as integer;
+alter table kanban_cards
+  add column if not exists card_number integer check (card_number > 0);
+alter sequence kanban_card_number_seq owned by kanban_cards.card_number;
+alter table kanban_cards
+  alter column card_number set default nextval('kanban_card_number_seq');
+with numbered as materialized (
+  select id, nextval('kanban_card_number_seq') as card_number
+  from (
+    select id from kanban_cards where card_number is null order by created_at, id
+  ) existing
+)
+update kanban_cards k set card_number = numbered.card_number
+from numbered where k.id = numbered.id and k.card_number is null;
+alter table kanban_cards alter column card_number set not null;
+create unique index if not exists kanban_cards_number_idx
+  on kanban_cards (card_number);
+
+create index if not exists kanban_cards_tenant_idx
+  on kanban_cards (tenant_id) where tenant_id is not null;
+create index if not exists kanban_cards_archived_idx
+  on kanban_cards (archived_at desc) where archived_at is not null;
 
 -- Um statement para a primeira criação: migrate.mjs executa statements isolados.
 -- Reaplicar o schema não restaura colunas que já foram alteradas ou excluídas.
@@ -284,8 +482,42 @@ with inserted_board as (
   insert into kanban_boards (key, title) values ('operations', 'Kanban')
   on conflict (key) do nothing returning id
 ), defaults(title, position) as (
-  values ('A fazer', 0), ('Em andamento', 1), ('Concluído', 2)
+  values
+    ('A fazer', 0),
+    ('Em andamento', 1),
+    ('Em revisão', 2),
+    ('Concluído', 3)
 )
 insert into kanban_columns (id, board_id, title, position)
 select gen_random_uuid(), inserted_board.id, defaults.title, defaults.position
 from inserted_board cross join defaults;
+
+-- Acrescenta "Em revisão" uma vez aos quadros criados pelo piloto v1. O CTE
+-- desloca as posições na mesma instrução para preservar a restrição deferida.
+with upgraded_board as (
+  update kanban_boards
+  set schema_version = 2, updated_at = now()
+  where key = 'operations' and schema_version < 2
+  returning id
+), target as (
+  select upgraded_board.id,
+    least(2, count(kanban_columns.id))::integer as insert_position,
+    coalesce(bool_or(kanban_columns.title = 'Em revisão'), false) as has_review
+  from upgraded_board
+  left join kanban_columns on kanban_columns.board_id = upgraded_board.id
+  group by upgraded_board.id
+), shifted as (
+  update kanban_columns
+  set position = kanban_columns.position + 1, updated_at = now()
+  from target
+  where kanban_columns.board_id = target.id
+    and not target.has_review
+    and kanban_columns.position >= target.insert_position
+  returning kanban_columns.id
+)
+insert into kanban_columns (id, board_id, title, position)
+select gen_random_uuid(), target.id, 'Em revisão', target.insert_position
+from target
+where not target.has_review;
+
+alter table kanban_boards alter column schema_version set default 2;

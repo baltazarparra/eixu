@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import type { Phase } from '@/lib/taste/phases';
+import type { AdminUser } from '@/lib/auth';
 
 export const RUN_STATUS = [
   'queued',
@@ -27,6 +28,8 @@ export type GenerationRun = {
   hops: number;
   progress: string | null;
   origin: string;
+  requestedBy: AdminUser | null;
+  stopRequestedBy: AdminUser | null;
 };
 
 export type EventKind =
@@ -70,6 +73,12 @@ type RunRow = {
   hops: number;
   progress: string | null;
   origin: string;
+  requested_by: string | null;
+  requester_name: string | null;
+  requester_login: string | null;
+  stop_requested_by: string | null;
+  stop_requester_name: string | null;
+  stop_requester_login: string | null;
 };
 
 const iso = (value: Date | string | null): string | null =>
@@ -89,6 +98,24 @@ function toRun(row: RunRow): GenerationRun {
     hops: row.hops,
     progress: row.progress,
     origin: row.origin,
+    requestedBy:
+      row.requested_by && row.requester_name && row.requester_login
+        ? {
+            id: row.requested_by,
+            name: row.requester_name,
+            login: row.requester_login,
+          }
+        : null,
+    stopRequestedBy:
+      row.stop_requested_by &&
+      row.stop_requester_name &&
+      row.stop_requester_login
+        ? {
+            id: row.stop_requested_by,
+            name: row.stop_requester_name,
+            login: row.stop_requester_login,
+          }
+        : null,
   };
 }
 
@@ -147,10 +174,16 @@ export async function createRun(input: {
   tenantId: string;
   origin: string;
   phase: Phase;
+  requestedBy: AdminUser;
 }): Promise<GenerationRun | null> {
   const rows = (await db()`
-    insert into generation_runs (tenant_id, origin, phase, status)
-    values (${input.tenantId}, ${input.origin}, ${input.phase}, 'queued')
+    insert into generation_runs (
+      tenant_id, origin, phase, status,
+      requested_by, requester_name, requester_login
+    ) values (
+      ${input.tenantId}, ${input.origin}, ${input.phase}, 'queued',
+      ${input.requestedBy.id}, ${input.requestedBy.name}, ${input.requestedBy.login}
+    )
     on conflict do nothing
     returning *
   `) as RunRow[];
@@ -197,9 +230,15 @@ export async function saveProgress(
   `;
 }
 
-export async function requestStop(runId: string): Promise<void> {
+export async function requestStop(
+  runId: string,
+  requestedBy: AdminUser,
+): Promise<void> {
   await db()`
-    update generation_runs set status = 'stopping'
+    update generation_runs set status = 'stopping',
+      stop_requested_by = ${requestedBy.id},
+      stop_requester_name = ${requestedBy.name},
+      stop_requester_login = ${requestedBy.login}
     where id = ${runId} and status in ('queued', 'running')
   `;
 }

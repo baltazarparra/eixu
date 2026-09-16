@@ -3,6 +3,7 @@ import {
   currentDarkLogoAsset,
 } from '@/lib/images/logo-schema';
 import { logoStudioSummary } from '@/lib/images/logo-studio-state';
+import { usageSummary } from '@/lib/admin/usage-history';
 import { adminTenant } from '@/lib/admin/queries';
 import { notFound, redirect } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
@@ -27,46 +28,40 @@ export default async function SettingsPage({
   const tenant = await adminTenant(slug);
   if (!tenant) notFound();
   const intake = intakeForForm(tenant.brief.intake);
-  const counts = await countTenantData(tenant.id);
+  // O cadastro não carrega mais o histórico: só o resumo do cartão do rail.
+  const [counts, usage] = await Promise.all([
+    countTenantData(tenant.id),
+    usageSummary(tenant.id),
+  ]);
   return (
-    <>
-      <main className="admin-page admin-settings-page">
-        <div className="admin-page-heading">
-          <div>
-            <h1>Dados do cliente</h1>
-            <p className="mt-3 mb-8 max-w-2xl text-sm text-[var(--color-muted)]">
-              Mantenha contatos e história atualizados. O agente usa essas
-              informações nas próximas edições.
-            </p>
-          </div>
-        </div>
-        <SettingsForm
-          key={tenant.slug}
-          tenant={{
-            slug: tenant.slug,
-            name: tenant.name,
-            status: tenant.status,
-            contactEmail: tenant.contactEmail,
-            logoUrl: tenant.brand.logoUrl,
-            logoDarkUrl: tenant.brand.logoDarkUrl,
-            logoPreviewUrl: currentLogoAsset(tenant.brand)?.nav.url,
-            logoDarkPreviewUrl: currentDarkLogoAsset(tenant.brand)?.nav.url,
-            logoSvgUrl: currentLogoAsset(tenant.brand)?.svg?.url,
-            logoStudioSummary: logoStudioSummary(tenant.brief, tenant.brand),
-            paper: tenant.brand.paper,
-            // O achado de composição usa o papel real do cabeçalho; aqui a
-            // prévia avisa pelo papel da marca, que é o caso comum.
-            logoIssue: logoIssueText(tenant.brand),
-            vibe: vibeOf(tenant.brand),
-            pageCount: counts.pages,
-            leadCount: counts.leads,
-            imageCount: counts.images,
-          }}
-          intake={intake ?? {}}
-          contacts={tenant.contacts}
-          social={parseSocialRecord(tenant.brief.social)}
-        />
-      </main>
-    </>
+    <main className="admin-page admin-settings-page">
+      <SettingsForm
+        key={tenant.slug}
+        tenant={{
+          slug: tenant.slug,
+          name: tenant.name,
+          status: tenant.status,
+          contactEmail: tenant.contactEmail,
+          logoUrl: tenant.brand.logoUrl,
+          logoDarkUrl: tenant.brand.logoDarkUrl,
+          logoPreviewUrl: currentLogoAsset(tenant.brand)?.nav.url,
+          logoDarkPreviewUrl: currentDarkLogoAsset(tenant.brand)?.nav.url,
+          logoSvgUrl: currentLogoAsset(tenant.brand)?.svg?.url,
+          logoStudioSummary: logoStudioSummary(tenant.brief, tenant.brand),
+          paper: tenant.brand.paper,
+          // O achado de composição usa o papel real do cabeçalho; aqui a
+          // prévia avisa pelo papel da marca, que é o caso comum.
+          logoIssue: logoIssueText(tenant.brand),
+          vibe: vibeOf(tenant.brand),
+          pageCount: counts.pages,
+          leadCount: counts.leads,
+          imageCount: counts.images,
+        }}
+        intake={intake ?? {}}
+        contacts={tenant.contacts}
+        social={parseSocialRecord(tenant.brief.social)}
+        usage={usage}
+      />
+    </main>
   );
 }

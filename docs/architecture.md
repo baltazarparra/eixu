@@ -37,6 +37,7 @@ Mapa do admin e da geração revisado em 13/09/2026 sobre `main` `f9d5918` (PR #
 | Edição direta      | `POST /api/admin/[tenant]/edit`; `lib/sites/inline-edits.ts` e `lib/sites/edits.ts`                                                 |
 | Imagens            | `/admin/[tenant]/imagens` (biblioteca), `/api/admin/[tenant]/images` e `/api/admin/[tenant]/upload`; a geração vive no chat do site |
 | Dados e briefing   | `/admin/[tenant]/dados`, `/api/admin/[tenant]/settings`, `/api/admin/[tenant]/social`; validação em `lib/admin/tenant-input.ts`     |
+| Consumo de IA      | `/admin/[tenant]/consumo`; leitura em `lib/admin/usage-history.ts`, com resumo leve para o cartão em Dados                          |
 | Tráfego e contatos | `/admin/[tenant]/trafego`, `/api/admin/[tenant]/contatos.csv`                                                                       |
 | Site de cliente    | Host do tenant → `proxy.ts` → `/s/[tenant]/[[...slug]]`, com sitemap e robots próprios                                              |
 | Conversão          | `/api/form`, `/api/e`, `/go/wa`; `lib/tracking.ts`                                                                                  |
@@ -47,27 +48,59 @@ O [contrato visual](design.md) descreve variantes, dials, âncoras e a aplicaç�
 
 ## Composição administrativa
 
-O Kanban da operação é uma página global em `/admin/app/kanban`, fora das abas de
-cliente. `app` é um slug reservado no cadastro, e o release verifica um eventual
-cliente legado com esse nome. A página e os handlers conferem a sessão; os
-handlers também recusam hosts de clientes, pois `proxy.ts` deixa `/api/*` passar
-nesses subdomínios. As mutações verificam a origem do navegador.
+A listagem em `/admin` consulta `tenants` e `site_folders` no servidor. As
+pastas têm um nível e são globais para a equipe; `tenants.folder_id` guarda a
+associação e usa `ON DELETE SET NULL` para preservar o site quando a pasta é
+excluída. O cliente aplica a movimentação de forma otimista e permite desfazer.
+A Server Action recebe a pasta anterior observada por site e só grava o lote
+completo quando todas as associações ainda coincidem, evitando sobrescrever uma
+mudança feita em outra sessão. Criação, renomeação, exclusão e movimentação
+entram em `admin_activity` com o operador autenticado.
+
+O Kanban da operação é uma página global em `/admin/kanban`, fora das abas de
+cliente. O endereço inicial `/admin/app/kanban` redireciona permanentemente para
+a rota canônica. `kanban` e o legado `app` são slugs reservados no cadastro. A
+página confere a sessão. Os handlers aceitam essa sessão ou o bearer dedicado
+`KANBAN_AGENT_TOKEN` e recusam ambos em hosts de clientes, pois `proxy.ts` deixa
+`/api/*` passar nesses subdomínios. Mutações feitas pela sessão verificam a
+origem do navegador; o bearer não autentica nenhuma outra rota administrativa.
 
 `kanban_boards`, `kanban_columns` e `kanban_cards` guardam o quadro único, as
-etapas e as tarefas, separados de `tenants` e `pages`. A primeira migração cria
-o quadro e três colunas em uma instrução atômica; reaplicá-la não restaura
-colunas que o operador já alterou. O GET devolve título, etapa e posição dos
-cartões; a descrição completa é lida só ao abrir um cartão.
+etapas e as tarefas. Um cartão pode referenciar um cliente por `tenant_id`; ao
+excluir esse cliente, a tarefa permanece e só perde o vínculo. Uma instalação
+nova recebe **A fazer**, **Em andamento**, **Em revisão** e **Concluído**. O
+upgrade do piloto acrescenta **Em revisão** uma única vez, e reaplicar o schema
+não restaura colunas que o operador removeu depois. O GET do quadro devolve
+metadados compactos, cartões ativos e arquivados e a lista de clientes; a
+descrição completa é lida só ao abrir um cartão.
+
+`kanban_cards.card_number` é um inteiro positivo único, gerado por sequência no
+banco e exposto como `number`. O UUID `id` continua sendo a identidade interna.
+A migração atribui números aos cartões existentes (inclusive arquivados) por
+`created_at, id`, preserva os demais campos e nunca reinicia a sequência.
+Reaplicar não renumera cartões. Aplique o schema antes de publicar o código que
+consulta essa coluna. As leituras de detalhe aceitam número ou UUID, sob a mesma
+autorização; comandos de escrita continuam usando UUID e revisão/versão.
+
+O cliente interno `scripts/kanban.mjs` consome esses handlers para o fluxo de
+desenvolvimento. Ele usa apenas o bearer restrito e não acessa as tabelas
+diretamente. Em worktrees, localiza também o `.env.local` do checkout principal.
+O destino padrão é a origem de produção e pode ser trocado por
+`EIXU_KANBAN_URL` em desenvolvimento. A descrição aceita 12.000 caracteres para
+acomodar a spec e recibos de entrega e revisão, sem mudança de schema SQL porque
+o campo persistido já é `text`.
 
 Cada comando trava a linha do quadro, compara a revisão recebida e reordena as
-posições em uma transação. Uma aba com revisão antiga recebe conflito em vez de
-sobrescrever outra mudança. Como a revisão é global, alterações simultâneas em
-cartões independentes também podem conflitar; o cliente relê o quadro e preserva
-texto não salvo. Não há histórico de atividades, autoria individual ou
-sincronização imediata entre operadores.
+posições em uma transação. Comandos estruturais e movimentos ainda exigem a
+revisão global atual. A edição de conteúdo também envia a versão do próprio
+cartão: uma mudança independente no quadro não bloqueia o salvamento, mas duas
+edições concorrentes no mesmo cartão recebem conflito. O cliente relê o quadro
+e preserva texto não salvo. Os comandos bem-sucedidos entram na atividade com
+o operador responsável ou com autoria de agente quando usam o bearer dedicado.
+Não há sincronização imediata entre operadores.
 
-O layout raiz consulta a sessão antes de montar a casca e entrega identidade do
-operador e formulário de saída por contexto, desenhados nos cabeçalhos.
+O layout raiz consulta a sessão persistida antes de montar a casca e entrega
+nome, login e formulário de saída por contexto, desenhados nos cabeçalhos.
 `adminTenant` deduplica a resolução do cliente durante o render com React
 `cache`, sem persistir entre sessões. O
 layout de `[tenant]` repete a autenticação e fornece cabeçalho e abas. O editor
@@ -119,7 +152,7 @@ WhatsApp continuam recebendo apenas dígitos.
 alvos semânticos e valores validados viram CSS escopado ao bloco, com regras
 separadas para mobile e desktop. O tenant não armazena seletor ou código livre.
 
-1. O operador autentica em `lib/auth.ts`: cookie `eixu_admin`, HMAC e validade de 12 horas. As páginas administrativas, ações e APIs verificam a sessão.
+1. O operador autentica em `lib/auth.ts` com login e PIN de quatro dígitos. `admin_users` guarda o hash scrypt com salt e pepper; `admin_sessions` guarda apenas o SHA-256 de um token aleatório com validade de 12 horas. O cookie `eixu_admin` é HttpOnly, SameSite Lax e Secure em produção. Cinco falhas na mesma conta bloqueiam novas tentativas por 15 minutos. As páginas administrativas, ações e APIs resolvem o usuário da sessão no servidor.
 2. A criação do tenant exige nome, slug e `brief.intake.story`. A história reúne oferta, segmento, região, público, diferenciais, provas e a ação esperada; o formulário não grava mais esses cinco campos separadamente. Evidências, restrições, um Site atual, um link de referência visual, contatos, logo e cores são opcionais. Os dois URLs têm papéis separados: o Site atual fornece fatos e ativos do próprio cliente, enquanto a Referência visual define composição. O schema de leitura conserva o intake antigo; Dados sintetiza a história sem escrever até o operador salvar. Telefones, endereços e redes sociais vão para `tenants.contacts`; o primeiro WhatsApp é derivado para `tenants.whatsapp`, e a primeira rede suportada alimenta a leitura de perfil. Cada vibe mostra uma amostra comparável e uma paleta sugerida. `paletteSource` só vira `operador` quando uma cor é editada. O logo opcional sobe ao Blob antes do insert e é limpo se o cadastro falhar. O workspace reidrata as 60 mensagens textuais mais recentes do canal. Slug duplicado é recusado sem abrir ou sobrescrever o cliente existente.
 3. A interface apresenta duas etapas: **Preparar** e **Criar**. O servidor preserva três checkpoints (`briefing`, `cenas`, `composicao`) para retomar com precisão. Preparar chama `read_current_site` quando o campo existe: o crawler percorre até 12 páginas públicas do mesmo domínio, consulta sitemap, complementa páginas dependentes de JavaScript, extrai texto, links, contatos, JSON-LD e candidatos de imagem e grava um recibo em `brief.currentSite`. Um modelo focado, sem ferramentas, sintetiza fatos com procedência e seleciona ativos. Depois, a referência visual recebe captura desktop/mobile e exige aplicações verificadas para layout, tipografia, imagens, ritmo, superfície e mobile. Sem referência legível, compara as três estruturas da vibe e persiste v5. Com referência, compara as doze estruturas, permite todos os eixos visuais e persiste v6; a estrutura escolhida também define a família de renderer, enquanto a vibe fica como voz e fallback. O mesmo perfil guarda escolha, justificativa, plano editorial e pedidos semânticos para todas as vagas de imagem. Duas vagas pertencem à composição autoral da home. Se os pedidos estão válidos, o runner executa `prepare_site_images` diretamente. Criar monta até 12 páginas com 1–20 blocos. A composição encerra a geração e a revisão passa ao operador pela prévia.
 4. Schemas e catálogo vivem em `lib/blocks/registry.ts`; o perfil e as faixas ficam em `lib/design/profile.ts` e `lib/design/vibes.ts`; as doze estruturas ficam em `lib/design/structures.ts`. `lib/blocks/render.tsx` despacha blocos para componentes de servidor e de interação. Primitivos em `lib/blocks/ui/` recebem apenas props serializáveis, entregam fallback completo no SSR e carregam seu motor sob demanda. `cta.band:cover` mantém a foto 16:9 no HTML e a posiciona como fundo sob uma camada de contraste; `items` associa contatos ou endereços a ícones do enum e links opcionais. Os layouts anteriores continuam com a imagem separada. `feature.bento.items.href` transforma somente o card que recebeu destino em um link acessível e conserva foto, título, texto e layout; `featured-masonry` coloca o primeiro card na largura inteira e distribui os demais em colunas responsivas. `edit_page.remove_item` exclui um único elemento de uma lista quando o pedido atual autoriza remoção; `edit_page.remove` apaga o bloco inteiro e exige escopo de bloco reconhecido no pedido ou confirmado pelo operador. `signature.composition.arrangement: focus-full` dá largura integral ao item `focus` e distribui os demais em colunas, sem trocar tipo, layout ou papéis. `signature.composition` é um singleton controlado, com quatro árvores semânticas e doze layouts, sem código arbitrário por tenant. `build_site` valida páginas, estrutura e contrato de projeto antes de gravar o lote em uma transação. Sem referência, também compara a silhueta da home com outros clientes; em v6, a fidelidade documentada prevalece sobre essa trava. Um lote recusado fica apenas na memória da instância de ferramentas daquele tenant e turno; `repair_site` altera campos por slug/índice, revalida tudo pelo mesmo caminho e só grava se válido. Não altera snapshots nem páginas fora do lote e não publica. Na edição pós-geração, `edit_page` recebe a revisão atual e aplica operações pontuais em lote. Toda escrita do rascunho guarda o estado anterior em `page_revisions` (vinte versões por página), e `undo_page_edit` restaura essa versão com os mesmos IDs, textos e posições; snapshots publicados não entram no histórico. Valida os blocos tocados e recusa novos erros de `lintPage` e `lintTextStyles`; pendências preexistentes permanecem no recibo. A escrita compara o JSONB anterior e o tenant, recusando alterações concorrentes. Rascunhos legados inválidos continuam apontados pelo lint e omitidos no render. O [contrato de edição](chat-edits.md) detalha texto literal, campos aninhados, cores locais e posição relativa.
@@ -130,7 +163,7 @@ separadas para mobile e desktop. O tenant não armazena seletor ou código livre
 
 A geração em etapas não passa pelo chat. `POST /api/admin/[tenant]/generation` cria um run em `generation_runs` — um ativo por cliente, garantido por índice parcial — e envia run, slug e salto à Vercel Queues. O consumidor privado `/api/queues/generation`, registrado em `vercel.json`, reconfirma o tenant e reserva atomicamente o salto antes de executar a fase, com `maxDuration` de 800 segundos. A fila entrega uma invocação independente e espera a conclusão do trabalho; evita a recursão HTTP que causava 508. A chave de idempotência combina run e salto, e o banco impede trabalho duplicado mesmo em entregas simultâneas. Falha de envio só encerra a reserva que ainda pertence ao remetente. Localmente, `/api/admin/[tenant]/generation/step` mantém HTTP assinado, resposta 202 e `after()`, compartilhando `lib/generation/step.ts` com a fila.
 
-`lib/generation/runner.ts` monta o mesmo agente, ferramentas e prompt do chat (`lib/generation/context.ts`), exceto no lote de cenas já planejado, executado diretamente. Autentica a captura com uma sessão emitida no servidor e grava início/fim de fase e ferramenta em `generation_events`, correlacionando cada chamada por ID e duração. Eventos incluem versão do fluxo/harness, modelo, SHA, espera de fila e motivo de parada; captura e crítico registram seu avanço em unidades. Ao terminar, `generationState` decide o próximo salto. O banco continua sendo a fonte do progresso e da retomada.
+`lib/generation/runner.ts` monta o mesmo agente, ferramentas e prompt do chat (`lib/generation/context.ts`), exceto no lote de cenas já planejado, executado diretamente. Autentica a captura com um token interno curto, assinado e limitado ao tenant; esse token não representa uma sessão humana. O runner grava início/fim de fase e ferramenta em `generation_events`, correlacionando cada chamada por ID e duração, e associa mutações e conclusão ao operador que iniciou o run. Eventos incluem versão do fluxo/harness, modelo, SHA, espera de fila e motivo de parada; captura e crítico registram seu avanço em unidades. Ao terminar, `generationState` decide o próximo salto. O banco continua sendo a fonte do progresso e da retomada.
 
 `GET` devolve run, eventos, estado, `previewRevision`, a hora do servidor e as mensagens gravadas desde um id. A hora sincroniza os cronômetros sem depender da configuração do aparelho. O cursor vem do último registro entregue e lotes de 60 são drenados sem saltar mensagens. Mensagens internas que abrem uma fase não são persistidas como pedidos do operador. Enquanto um run está ativo, `/api/chat` responde 409. O `GET` informa ainda `everRan`; com ele, o painel inicia sozinho apenas um cliente sem tentativa, conversa ou página anterior.
 
@@ -287,6 +320,10 @@ Uploads manuais em `/api/admin/[tenant]/upload` aceitam PNG, JPEG, WebP, GIF e S
 | Tabela              | Responsabilidade                                                        |
 | ------------------- | ----------------------------------------------------------------------- |
 | `tenants`           | Identidade, rascunho e snapshot da apresentação global                  |
+| `site_folders`      | Pastas compartilhadas que organizam os tenants no painel                |
+| `admin_users`       | Operadores globais, estado da conta e hash do PIN                       |
+| `admin_sessions`    | Sessões opacas, expiração e revogação                                   |
+| `admin_activity`    | Autoria, resultado e snapshots das ações administrativas                |
 | `pages`             | Rascunho e snapshot publicado de conteúdo, SEO e dados editoriais       |
 | `images`            | Biblioteca, sequência por tenant, geração, crítica e disponibilidade    |
 | `generation_runs`   | Execução da geração em etapas: estado, fase, saltos e origem            |
@@ -309,12 +346,12 @@ Gastos de todos os canais da mesma campanha são somados, incluindo campanhas se
 - **Classificação de conversa:** o filtro é conservador e baseado em linguagem explícita, não uma compreensão universal de intenção. Ordens de remoção após uma descrição da seção e a grafia “sessão” são aceitas; pedidos realmente ambíguos podem ficar somente em leitura. Confirmação de exclusão usa a pendência interna da fala anterior, não uma frase anterior do assistente.
 - **Exclusão:** definitiva, sem lixeira. O CDN pode servir um arquivo apagado por cerca de um minuto, e uma exclusão durante geração ativa derruba as ferramentas daquele turno por chave estrangeira.
 - **Leitura de rede social:** depende do que a rede entrega a robôs e do IP de saída; o Instagram falha com frequência a partir de datacenter. Nome, bio e avatar lidos são material público, não verificação de identidade do cliente.
-- **Acesso:** admin global, sem vínculo usuário–tenant ou RLS no schema versionado. Rotas administrativas, chats e rascunhos exigem sessão. Em produção, ausência de segredo e senha impede emissão/validação de sessão. `__tenant` continua disponível para resolver o conteúdo publicado; não autentica. Arquivos no Blob continuam públicos.
+- **Acesso:** admin global, com operadores individuais e sem vínculo usuário–tenant ou RLS no schema versionado. Rotas administrativas, chats e rascunhos exigem sessão persistida. Em produção, ausência de `ADMIN_PIN_PEPPER` impede validar PINs, e ausência de `ADMIN_SESSION_SECRET` impede os tokens internos de prévia. `__tenant` continua disponível para resolver o conteúdo publicado; não autentica. Arquivos no Blob continuam públicos.
 - **Domínios e SEO:** o host só resolve tenant em um subdomínio de `eixu.com.br` ou `.localhost`; nomes reservados e hosts numéricos não viram clientes. `lib/site.ts` ainda aponta para o endereço legado `chatgpt.site`, usado no sitemap/robots institucional. O tenant tem handler próprio de `robots.txt`; o endereço institucional legado permanece uma limitação a corrigir em trabalho de código.
 - **Snapshot:** publicações novas versionam apresentação global, título, tipo, metadados e ordem junto de blocos/SEO. O schema cria um snapshot inicial para clientes e páginas que já estavam publicados; a aplicação da migração precisa anteceder o código. GA4 e Meta Pixel continuam cadastro operacional fora do snapshot visual.
 - **Autorização do agente:** pedido para publicar é uma regra de prompt/tool description; o executor de `publish_page` não valida confirmação estruturada. Não há aprovação de imagens; a troca de logo por `set_site_logo` ainda usa regex sobre a última mensagem, sem garantia de interpretação de negação. As fases de geração não expõem ferramentas de publicação. Não confundir esses mecanismos com autorização formal.
 - **Revisão visual:** Chromium captura até 12 páginas, em desktop e mobile, com cookie restrito à origem. O crítico recebe imagens binárias e retorna evidências por página/bloco. Medições de overflow e imagens quebradas entram no relatório. Falha ou cobertura parcial deixa a análise solicitada incompleta, sem reabrir a geração; `EIXU_REVIEW_CAPTURE=0` só permite diagnóstico estrutural. O recibo v2 é incremental e precisa cobrir cada página e imagem usada da versão atual. Um parecer do crítico não autoriza publicação.
-- **Histórico e custos:** persistência textual dos últimos 60 itens por canal, sem trace completo, anexos ou recibos antigos. A compactação não resume decisões do operador. Conversas muito extensas são recusadas; recarregar retoma o histórico recente. Cache depende de provedor, prefixo e janela. O custo mostrado exclui imagens e críticas internas, falhas sem recibo e outras abas; não é uma conta consolidada.
+- **Histórico e custos:** persistência textual dos últimos 60 itens por canal, sem trace completo, anexos ou recibos antigos. A compactação não resume decisões do operador. Conversas muito extensas são recusadas; recarregar retoma o histórico recente. `ai_usage` registra por cliente e chamada os tokens de entrada, saída, total, cache, raciocínio e custo em USD informado pelo Gateway, cobrindo chat, geração, imagens, logos, críticas e leituras auxiliares. Um registro pendente precede a chamada paga; falhas ou interrupções sem recibo continuam visíveis como lacuna. A migração recupera apenas resumos antigos de fases de geração. Outros consumos anteriores e tentativas internas sem recibo não podem ser reconstruídos, portanto o painel não substitui a fatura do provedor.
 - **Imagens antigas:** candidatas e aprovadas anteriores a esta entrega ficam disponíveis, inclusive as já usadas em página. Rejeitadas antigas permanecem no banco/Blob e no filtro Rejeitadas, fora dos prompts; não há limpeza automática. A listagem mostra as 200 imagens mais recentes; consulta por número não tem esse limite.
 - **Assets de logo:** hashes antigos e lotes parcialmente enviados ficam no Blob até excluir o cliente, pois snapshots podem referenciá-los. Traçado reprovado mantém PNG sem SVG. Fundo não uniforme fica opaco; branco interno grande é preservado e contadores pequenos podem ser removidos. Favicon de wordmark sem símbolo usa a marca inteira. Ícones/OG refletem o papel da preparação; mudar só a paleta não os regenera. `db:prepare-logo-assets` é dry-run por padrão, exige `--slug` ou `--all` e só escreve com `--apply`; prepara rascunhos, sem publicar ou apagar. Não foi executado em clientes existentes.
 - **Medição:** eventos são atribuição de navegador e ações, não pessoas únicas, conversas confirmadas ou receita. Dados anteriores ao release podem conter cliques duplicados; não foram apagados. Gasto é lançamento manual sem conciliação ou integração com anúncios.

@@ -1,4 +1,5 @@
-import { isAuthenticated } from '@/lib/auth';
+import { currentUser } from '@/lib/auth';
+import { recordActivity } from '@/lib/admin/activity';
 import { getPage, getTenantBySlug } from '@/lib/tenant-queries';
 import { PageEditError } from '@/lib/ai/page-edits';
 import { undoPageEdit } from '@/lib/sites/edits';
@@ -8,8 +9,8 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ tenant: string }> },
 ) {
-  if (!(await isAuthenticated()))
-    return new Response('Não autorizado', { status: 401 });
+  const user = await currentUser();
+  if (!user) return new Response('Não autorizado', { status: 401 });
   const origin = request.headers.get('origin');
   if (origin && origin !== new URL(request.url).origin)
     return new Response('Origem inválida', { status: 403 });
@@ -29,6 +30,15 @@ export async function POST(
   if (!page) return new Response('Página não encontrada', { status: 404 });
   try {
     const undone = await undoPageEdit({ tenant, page, brand: tenant.brand });
+    await recordActivity({
+      actor: user,
+      actorType: 'user',
+      tenant,
+      action: 'page.undo',
+      resourceType: 'page',
+      resourceId: page.id,
+      summary: `${user.name} desfez a última edição de /${page.slug || ''}`,
+    });
     return Response.json(undone);
   } catch (error) {
     if (error instanceof PageEditError)

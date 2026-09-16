@@ -15,6 +15,7 @@ async function fixture({
   socialFails = false,
   vibe = 'ousado',
   currentSiteUrl = '',
+  folderId = '',
 } = {}) {
   const deleted = [],
     inserted = [],
@@ -25,17 +26,39 @@ async function fixture({
   const { createTenantAction } = await loadModule(
     'app/(admin)/admin/actions.ts',
     {
-      '@/lib/auth': { isAuthenticated: async () => true },
+      '@/lib/auth': {
+        currentUser: async () => ({
+          id: 'user-1',
+          name: 'Operador',
+          login: 'operador@eixu',
+        }),
+      },
+      '@/lib/admin/activity': { recordActivity: async () => undefined },
+      '@/lib/tenant-queries': {
+        countTenantData: async () => ({ pages: 0, leads: 0, images: 0 }),
+        getTenantBySlug: async () => null,
+        siteFolderExists: async () => true,
+      },
       '@/lib/db': {
         db:
           () =>
-          async (_parts, ...values) => {
+          async (parts, ...values) => {
+            const sql = parts.join('?');
+            if (/select exists/i.test(sql)) return [{ exists: true }];
             if (insert === 'error') throw new Error('Insert recusado');
             if (insert === 'duplicate') return [];
             // Posicional: o insert grava slug, nome, WhatsApp derivado,
-            // e-mail, briefing, marca e contatos, nessa ordem.
-            const [slug, name, whatsapp, contactEmail, brief, brand, contacts] =
-              values;
+            // e-mail, briefing, marca, contatos e pasta, nessa ordem.
+            const [
+              slug,
+              name,
+              whatsapp,
+              contactEmail,
+              brief,
+              brand,
+              contacts,
+              folderId,
+            ] = values;
             inserted.push({
               slug,
               name,
@@ -44,6 +67,7 @@ async function fixture({
               brief: JSON.parse(brief),
               brand: JSON.parse(brand),
               contacts: JSON.parse(contacts),
+              folderId,
             });
             return [{ id: 'fixture-id' }];
           },
@@ -90,6 +114,7 @@ async function fixture({
   }))
     form.set(key, value);
   if (currentSiteUrl) form.set('currentSiteUrl', currentSiteUrl);
+  if (folderId) form.set('folderId', folderId);
   // Duas linhas de contato: a primeira é telefone comum, então o WhatsApp
   // gravado precisa ser o segundo número.
   for (const [number, kind] of [
@@ -146,6 +171,7 @@ await test('cadastro grava contatos, vibe e o WhatsApp derivado da lista', async
   assert.equal(row.whatsapp, '5511988887777');
   assert.equal(row.contactEmail, 'contato@fixture.com.br');
   assert.equal(row.brand.vibe, 'ousado');
+  assert.equal(row.folderId, null);
   assert.deepEqual(row.contacts.phones, [
     { number: '1133334444', whatsapp: false },
     { number: '+5511988887777', whatsapp: true },
@@ -158,6 +184,13 @@ await test('cadastro grava contatos, vibe e o WhatsApp derivado da lista', async
   assert.equal(row.brief.intake.currentSiteUrl, '');
   assert.equal(row.brief.intake.offer, '');
   assert.equal(row.brief.intake.references.length, 0);
+});
+
+await test('cadastro dentro de uma pasta preserva a organização escolhida', async () => {
+  const folderId = '11111111-1111-4111-8111-111111111111';
+  const f = await fixture({ folderId });
+  await assert.rejects(f.run, /redirect:\/admin\/fixture/);
+  assert.equal(f.inserted[0].folderId, folderId);
 });
 
 await test('cadastro preserva o site atual separado da referência visual', async () => {

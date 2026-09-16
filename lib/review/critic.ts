@@ -7,6 +7,7 @@ import {
   CRITIC_TIMEOUT_MS,
 } from '@/lib/ai/models';
 import { gatewayOptions, sumGatewayCosts, usageRecord } from '@/lib/ai/usage';
+import { usageTracking } from '@/lib/ai/usage-ledger';
 import type { Page, Tenant, TenantImage } from '@/lib/types';
 import type { Shot } from './capture';
 import { copyDirection, COPY_REVIEW } from '@/lib/copy/policy';
@@ -253,6 +254,12 @@ export async function critiquePages(
     model,
     ...modelSettings('critic'),
     providerOptions: gatewayOptions(tenant.id, 'review'),
+    ...usageTracking({
+      tenantId: tenant.id,
+      kind: 'critica-visual',
+      model,
+      phase: 'revisao',
+    }),
     timeout: { totalMs: CRITIC_TIMEOUT_MS },
     maxRetries: 1,
     output: Output.object({ schema: reviewSchemaFor(pages) }),

@@ -35,12 +35,22 @@ await test(
       }, text);
       assert.equal(found, true, `Botão ${text}`);
     };
+    const clickFolder = async (text) => {
+      const found = await page.evaluate((text) => {
+        const node = [...document.querySelectorAll('.admin-folder-pill')].find(
+          (node) => node.textContent.replace(/\d+$/, '').trim() === text,
+        );
+        node?.click();
+        return !!node;
+      }, text);
+      assert.equal(found, true, `Pasta ${text}`);
+    };
     await mkdir('outputs/admin-handoff', { recursive: true });
     await page.setViewport({ width: 1440, height: 900 });
     await open('/admin');
     assert.equal(
       await page.$eval(
-        '[aria-label="Filtrar clientes"] button[aria-pressed="true"]',
+        '[aria-label="Filtrar sites por estado"] button[aria-pressed="true"]',
         (node) => node.textContent.trim(),
       ),
       'Publicados',
@@ -54,14 +64,70 @@ await test(
       await page.$$('.admin-client-row').then((rows) => rows.length),
       2,
     );
-    await page.type('[aria-label="Buscar clientes"]', 'inexistente');
+    await page.type('[aria-label="Buscar sites"]', 'inexistente');
     await page.waitForSelector('.admin-empty');
     await clickText('Limpar filtros');
     assert.equal(
       await page.$$('.admin-client-row').then((rows) => rows.length),
       5,
     );
-    await page.click('.admin-client-table li:nth-child(2) .admin-client-row');
+    assert.match(
+      await page.$eval('.admin-folder-filters', (node) => node.textContent),
+      /Baltz\s*02.*David\s*01/s,
+    );
+    // A coluna de atenção conta os rascunhos e filtra a lista por eles.
+    assert.match(
+      await page.$eval('.admin-attention', (node) => node.textContent),
+      /02\s*Rascunhos sem revisão/,
+    );
+    await clickFolder('Sem pasta');
+    assert.equal(
+      await page.$$('.admin-client-row').then((rows) => rows.length),
+      2,
+    );
+    await page.evaluate(() => {
+      const handle = document.querySelector(
+        '.admin-client-row .admin-client-drag',
+      );
+      const destination = document.querySelector(
+        '[data-folder-id="22222222-2222-4222-8222-222222222222"]',
+      );
+      const transfer = new DataTransfer();
+      handle.dispatchEvent(
+        new DragEvent('dragstart', {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer: transfer,
+        }),
+      );
+      destination.dispatchEvent(
+        new DragEvent('dragover', {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer: transfer,
+        }),
+      );
+      destination.dispatchEvent(
+        new DragEvent('drop', {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer: transfer,
+        }),
+      );
+    });
+    await page.waitForFunction(
+      () => document.querySelectorAll('.admin-client-row').length === 1,
+    );
+    assert.match(
+      await page.$eval('.admin-sites-toast', (node) => node.textContent),
+      /Site movido para David/,
+    );
+    await clickText('Desfazer');
+    await page.waitForFunction(
+      () => document.querySelectorAll('.admin-client-row').length === 2,
+    );
+    await clickFolder('Todos');
+    await page.click('.admin-client-table li:nth-child(2) .admin-client-name');
     await page.waitForFunction(
       () => location.pathname === '/admin/clinica-vertice',
     );
@@ -166,7 +232,11 @@ await test(
     await page.waitForFunction(
       () => document.querySelectorAll('[name="phone"]').length === 2,
     );
-    assert.match(await dirty(), /3 alterações/);
+    await page.waitForFunction(() =>
+      document
+        .querySelector('.admin-save-bar output')
+        .textContent.startsWith('3 alterações'),
+    );
     await page.click('[aria-label="Remover fato: Oficina própria"]');
     await page.waitForFunction(
       () =>
@@ -187,7 +257,7 @@ await test(
       await page.$eval('[name="evidence"]', (node) => node.value),
       'Oficina própria\n12 anos de atuação',
     );
-    assert.match(await dirty(), /Dados salvos/);
+    assert.match(await dirty(), /Tudo salvo/);
     await page.type('input[name="name"]', ' atualizada');
     fixture.failSave(true);
     await clickText('Salvar dados');
@@ -199,8 +269,9 @@ await test(
     await clickText('Salvar dados');
     await page.waitForFunction(
       () =>
-        document.querySelector('.admin-save-bar output').textContent ===
-        'Dados salvos',
+        document
+          .querySelector('.admin-save-bar output')
+          .textContent.startsWith('Tudo salvo'),
     );
     assert.equal(fixture.writes.at(-1).name, 'Marcenaria Horizonte atualizada');
     assert.equal(fixture.writes.at(-1).contacts.phones.length, 1);
@@ -210,7 +281,8 @@ await test(
       await page.$eval('[name="name"]', (node) => node.value),
       'Marcenaria Horizonte atualizada',
     );
-    const trigger = await page.$('.admin-risk button');
+    await page.click('.admin-risk-drawer summary');
+    const trigger = await page.$('.admin-risk-drawer button');
     await trigger.click();
     await page.waitForSelector('dialog[open]');
     assert.equal(
@@ -228,12 +300,12 @@ await test(
       await page.evaluate(
         () =>
           document.activeElement ===
-          document.querySelector('.admin-risk button'),
+          document.querySelector('.admin-risk-drawer button'),
       ),
       true,
     );
     for (const [route, title] of [
-      ['/admin?empty', 'Nenhum cliente cadastrado'],
+      ['/admin?empty', 'Nenhum site cadastrado'],
       [
         '/admin/marcenaria-horizonte/imagens?empty',
         'O acervo ainda está vazio',
@@ -247,7 +319,7 @@ await test(
       );
     }
     await open('/admin?empty');
-    await clickText('Cadastrar cliente');
+    await clickText('Criar site aqui');
     await page.waitForSelector('#new-client');
     assert.deepEqual(
       await page.$eval('[name="story"]', (node) => ({

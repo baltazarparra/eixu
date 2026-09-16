@@ -116,6 +116,7 @@ export async function deriveLogoAssets(
     height: white.height,
   });
   const critique = await critiqueLogo({
+    tenantId: tenant.id,
     id: row.id,
     bytes: new Uint8Array(white.png),
     variant: 'branca',

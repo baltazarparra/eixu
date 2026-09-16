@@ -9,6 +9,7 @@ import { createContext, useContext, type ReactNode } from 'react';
  */
 export const AdminSession = createContext<{
   operator: string;
+  login: string;
   logout: ReactNode;
 } | null>(null);
 

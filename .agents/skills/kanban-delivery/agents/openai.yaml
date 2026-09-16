@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Desenvolver card'
+  short_description: 'Implementa, valida e abre a PR de um card'
+  default_prompt: 'Use $kanban-delivery para executar este card até uma PR validada.'

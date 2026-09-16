@@ -18,22 +18,23 @@ const content = isClients ? (
   <main className="admin-page admin-clients-page">
     <Clients
       tenants={data.empty ? [] : data.clients}
-      summary={data.empty ? { leads30d: 0, running: 0 } : data.summary}
+      folders={data.empty ? [] : data.folders}
+      summary={data.empty ? { running: 0, current: null } : data.summary}
+      usage={
+        data.empty
+          ? { days: 30, costUsd: null, totalTokens: null, rows: [] }
+          : data.sitesUsage
+      }
     />
   </main>
 ) : area === 'dados' ? (
   <main className="admin-page admin-settings-page">
-    <div className="admin-page-heading">
-      <div>
-        <h1>Dados do cliente</h1>
-        <p>Contatos, história e marca em um só lugar.</p>
-      </div>
-    </div>
     <SettingsForm
       tenant={tenant}
       intake={data.intake}
       contacts={data.contacts}
       social={null}
+      usage={data.usage ?? { days: 30, costUsd: 0.410472, totalTokens: 593297 }}
     />
   </main>
 ) : area === 'imagens' ? (
@@ -82,6 +83,7 @@ createRoot(document.getElementById('root')!).render(
   ) : (
     <AdminShell
       operator="Operação"
+      login="operacao@eixu"
       logout={
         <button
           type="button"

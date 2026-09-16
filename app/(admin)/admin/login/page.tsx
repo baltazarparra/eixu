@@ -35,7 +35,7 @@ function LoginContent() {
             </span>
           </div>
           <h2>Entrar</h2>
-          <p>Use a credencial da operação para acessar o painel.</p>
+          <p>Use seu login e PIN para acessar o painel.</p>
           <label className="admin-field">
             <span>Usuário</span>
             <input
@@ -46,10 +46,13 @@ function LoginContent() {
             />
           </label>
           <label className="admin-field">
-            <span>Senha</span>
+            <span>PIN</span>
             <input
-              name="password"
+              name="pin"
               type="password"
+              inputMode="numeric"
+              pattern="[0-9]{4}"
+              maxLength={4}
               autoComplete="current-password"
               required
               className="admin-input"

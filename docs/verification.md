@@ -6,17 +6,20 @@ nova execução. Os scripts e dependências vêm de [package.json](../package.js
 
 ## Verificação pelo impacto
 
-| Mudança                            | Evidência necessária                                                                                                              |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| README, AGENTS e docs              | Links e âncoras locais, comandos existentes, fatos conferidos no código e formatação. Não exige geração, banco ou testes novos.   |
-| Institucional ou CSS               | Tipos, lint, build Next.js e navegador em desktop/celular; navegação, CTA, metadados e aparência.                                 |
-| Blocos, lint, edição ou publicação | Contratos válidos e inválidos; recusas sem escrita; concorrência; rascunho e snapshot preservados; render e fluxo no navegador.   |
-| Auth, tenant ou proxy              | Sessão ausente/expirada, tenant incorreto, host reservado, acesso a `/s/*`, query de prévia e conteúdo público.                   |
-| Formulário ou tracking             | Em ambiente de teste autorizado, envio, atribuição, consentimento, gravação e destino; duplicação de clique.                      |
-| Imagens ou ferramentas             | Falha parcial, disponibilidade, alteração por número, isolamento, aplicação de logo e recusa de exclusão em uso.                  |
-| Schema                             | Aplicação e reaplicação em PostgreSQL descartável, com verificação dos consumidores.                                              |
-| Kanban interno                     | Sessão, host de cliente, origem, migração atômica, ordem, duas abas, texto não salvo, teclado e toque.                            |
-| Modelo ou prompt                   | Contratos e [avaliação reproduzível](harness.md#avaliação-reproduzível), com chamadas reais autorizadas e limitações registradas. |
+| Mudança                            | Evidência necessária                                                                                                                                                |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| README, AGENTS e docs              | Links e âncoras locais, comandos existentes, fatos conferidos no código e formatação. Não exige geração, banco ou testes novos.                                     |
+| Institucional ou CSS               | Tipos, lint, build Next.js e navegador em desktop/celular; navegação, CTA, metadados e aparência.                                                                   |
+| Blocos, lint, edição ou publicação | Contratos válidos e inválidos; recusas sem escrita; concorrência; rascunho e snapshot preservados; render e fluxo no navegador.                                     |
+| Auth, tenant ou proxy              | Sessão ausente/expirada, tenant incorreto, host reservado, acesso a `/s/*`, query de prévia e conteúdo público.                                                     |
+| Formulário ou tracking             | Em ambiente de teste autorizado, envio, atribuição, consentimento, gravação e destino; duplicação de clique.                                                        |
+| Imagens ou ferramentas             | Falha parcial, disponibilidade, alteração por número, isolamento, aplicação de logo e recusa de exclusão em uso.                                                    |
+| Tokens e custos de IA              | SDK real com modelo simulado, idempotência, ausências, falhas, isolamento por cliente, datas de Brasília, paginação, migração repetível e UI responsiva.            |
+| Schema                             | Aplicação e reaplicação em PostgreSQL descartável, com verificação dos consumidores.                                                                                |
+| Pastas de sites                    | CRUD, nomes únicos, preservação ao excluir, lote atômico, conflito entre sessões, desfazer, arrasto, teclado e celular.                                             |
+| Kanban interno                     | Sessão, rota canônica e redirecionamento, host de cliente, origem, upgrade idempotente, vínculo, filtros, arquivo, ordem, concorrência por cartão, teclado e toque. |
+| Skills e cliente do Kanban         | Validação estrutural das skills, bearer restrito, sessão humana/Origin, host de cliente, parser, payloads/versionamento e leitura real sem escrita no destino.      |
+| Modelo ou prompt                   | Contratos e [avaliação reproduzível](harness.md#avaliação-reproduzível), com chamadas reais autorizadas e limitações registradas.                                   |
 
 O lint de código e o pre-flight `lintPage` são verificações diferentes.
 Compilação, fixtures e crítica de IA não substituem a validação do fluxo afetado.
@@ -35,6 +38,20 @@ npm run test:admin
 npm run build:vercel
 git diff --check
 ```
+
+Para o fluxo AI Native e o cliente das rotas:
+
+```bash
+python /caminho/skill-creator/scripts/quick_validate.py .agents/skills/kanban-spec
+python /caminho/skill-creator/scripts/quick_validate.py .agents/skills/kanban-delivery
+python /caminho/skill-creator/scripts/quick_validate.py .agents/skills/kanban-pr-review
+npm run kanban -- board
+```
+
+Os três validadores conferem estrutura e metadados, não a qualidade de decisão
+dos modelos. `npm run kanban -- board` faz uma leitura autenticada do destino e
+não cria nem altera cartões; confirme `EIXU_KANBAN_URL` antes de usar comandos de
+escrita.
 
 `next typegen` prepara tipos de rotas e `next-env.d.ts`. Consulte o guia da
 versão instalada em `node_modules/next/dist/docs/01-app/03-api-reference/06-cli/next.md`
@@ -65,12 +82,17 @@ npm run test:sites:browser
 
 As suítes usam componentes reais e CSS emitido pelo Next.js, com dados e serviços
 simulados. Cobrem o editor, geração, conversa, atualização da prévia, navegação,
-contraste, referências, teclado e movimento reduzido. Elas não comprovam latência
+pastas compartilhadas, arrasto, desfazer, contraste, referências, teclado e
+movimento reduzido. Elas não comprovam latência
 do modelo, persistência no Neon ou comportamento em aparelhos físicos/Safari.
 Sem Chrome, os casos dependentes são pulados; informe isso no resultado.
 
-O Kanban tem um teste SQL com o driver Neon ligado apenas ao banco local
-descartável `eixu_pr2_test`. Execute com
+O Kanban tem um teste SQL com o driver Neon ligado apenas a um banco Postgres
+descartável. Ele cobre upgrade e reaplicação do schema, numeração permanente dos cards
+existentes, consulta por número/UUID, criação concorrente sem colisão, exclusão
+sem reutilizar número, vínculo opcional com cliente, prioridade, prazo,
+arquivo/restauração, ordem e concorrência. Execute
+com
 `EIXU_TEST_POSTGRES_URL=postgresql://127.0.0.1/eixu_pr2_test node --test tests/admin-kanban.test.mjs`.
 O teste de navegador `tests/browser/admin-kanban.test.mjs` usa o componente real
 e o CSS fonte compilado pelo Vite em uma fixture isolada; o build Next.js valida
@@ -122,8 +144,12 @@ após compilar. Três checks exigem `SOUL.md` e os binários do Chromium nos man
 
 ## Integração em PostgreSQL local
 
-`EIXU_TEST_POSTGRES_URL` habilita cinco suítes opcionais em `test:admin`:
-`admin-concurrency`, `admin-generation-db`, `admin-handoff`, `admin-page-edits-db` e `admin-logo-state-db`. Elas aplicam o schema e escrevem em um banco descartável.
+`EIXU_TEST_POSTGRES_URL` habilita seis suítes opcionais em `test:admin`:
+`admin-concurrency`, `admin-generation-db`, `admin-handoff`,
+`admin-page-edits-db`, `admin-logo-state-db` e `admin-usage-history`. Elas
+aplicam o schema e escrevem em um banco descartável. O histórico de consumo
+também exercita callbacks reais do AI SDK com modelos simulados, custo ausente
+e zero, operações em várias etapas e backfill idempotente.
 O helper [local-postgres.mjs](../tests/helpers/local-postgres.mjs) exige nome
 `eixu_pr2_test` e host local; usa o driver Neon por um proxy WebSocket local.
 Banco remoto não é aceito. Blob, rede social e modelo são simulados.
@@ -169,6 +195,9 @@ um registro antigo.
 
 O smoke mínimo cobre `/`, os dois cases, `/vibe-coding-para-producao`,
 `/admin/login`, redirecionamento de `/admin` sem sessão e recusas das APIs/chat.
+Mudanças de autenticação exigem ainda entrar com cada conta provisionada,
+confirmar nome/login no cabeçalho, executar uma ação reversível, conferir sua
+autoria em `/admin/atividade`, sair e verificar que a sessão revogada não volta.
 Para servir o build local, use `npx next start --hostname 127.0.0.1 --port 3100`.
 O host numérico não resolve tenant; use `cliente.localhost` ou a rota de prévia
 autenticada com `__tenant` para verificar um cliente.

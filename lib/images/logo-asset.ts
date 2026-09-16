@@ -346,7 +346,9 @@ export async function prepareLogoAsset(
     ? await (
         deps.read ??
         (async (bytes: Buffer) =>
-          (await import('@/lib/images/logo-read')).readLogo(bytes))
+          (await import('@/lib/images/logo-read')).readLogo(bytes, {
+            tenantId: input.tenant.id,
+          }))
       )(clean.master).catch(() => null)
     : null;
   const component = markBox(clean.rgba);

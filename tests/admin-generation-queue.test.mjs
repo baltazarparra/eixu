@@ -350,10 +350,16 @@ await test('falha do primeiro envio distingue recusa de resposta perdida após r
       '@/lib/sites/generation': {
         generationState: () => ({ next: 'revisao' }),
       },
+      '@/lib/admin/activity': { recordActivity: async () => undefined },
     });
     const result = await startGeneration({
-      tenant: { id: 'tenant', slug: 'fixture' },
+      tenant: { id: 'tenant', slug: 'fixture', name: 'Fixture' },
       origin: 'https://fixture.test',
+      requestedBy: {
+        id: 'user-1',
+        name: 'Operador',
+        login: 'operador@eixu',
+      },
     });
     assert.equal(result.ok, delivered);
     assert.equal(run.status, delivered ? 'running' : 'failed');
@@ -387,10 +393,16 @@ await test('retomar usa o mesmo pedido quando a execução antiga acaba de expir
     '@/lib/images/queries': { listImages: async () => [] },
     '@/lib/tenant-queries': { listPages: async () => [] },
     '@/lib/sites/generation': { generationState: () => ({ next: 'briefing' }) },
+    '@/lib/admin/activity': { recordActivity: async () => undefined },
   });
   const result = await startGeneration({
-    tenant: { id: 'tenant', slug: 'fixture' },
+    tenant: { id: 'tenant', slug: 'fixture', name: 'Fixture' },
     origin: 'https://fixture.test',
+    requestedBy: {
+      id: 'user-1',
+      name: 'Operador',
+      login: 'operador@eixu',
+    },
   });
   assert.equal(result.ok, true);
   assert.equal(created, 1);

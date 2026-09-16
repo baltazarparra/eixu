@@ -14,21 +14,24 @@ const pendingSchema = z.object({
 export type PendingEdit = z.infer<typeof pendingSchema>;
 type Sql = ReturnType<typeof db>;
 
-/** A confirmação pertence somente à próxima fala do operador deste tenant. */
+/** A confirmação pertence somente à próxima fala do mesmo operador neste tenant. */
 export async function nextPendingEdit(
   sql: Sql,
   tenantId: string,
+  userId: string,
 ): Promise<PendingEdit | null> {
   const rows = (await sql`
     select pending.content,
       not exists (
         select 1 from chat_messages later
         where later.tenant_id = ${tenantId}
+          and later.admin_user_id = ${userId}
           and later.channel = 'site' and later.role = 'user'
           and later.id > pending.id
       ) as next_turn
     from chat_messages pending
     where pending.tenant_id = ${tenantId}
+      and pending.admin_user_id = ${userId}
       and pending.channel = 'edit-pending' and pending.role = 'system'
     order by pending.id desc limit 1
   `) as { content: string; next_turn: boolean }[];
@@ -46,18 +49,23 @@ export async function nextPendingEdit(
 export async function storePendingEdit(
   sql: Sql,
   tenantId: string,
+  userId: string,
   pending: PendingEdit,
 ) {
   await sql`
-    insert into chat_messages (tenant_id, role, content, channel)
-    values (${tenantId}, 'system', ${JSON.stringify(pending)}, 'edit-pending')
+    insert into chat_messages (tenant_id, role, content, channel, admin_user_id, actor_type)
+    values (${tenantId}, 'system', ${JSON.stringify(pending)}, 'edit-pending', ${userId}, 'system')
   `;
 }
 
-export async function consumePendingEdit(sql: Sql, tenantId: string) {
+export async function consumePendingEdit(
+  sql: Sql,
+  tenantId: string,
+  userId: string,
+) {
   await sql`
-    insert into chat_messages (tenant_id, role, content, channel)
-    values (${tenantId}, 'system', '{"status":"consumed"}', 'edit-pending')
+    insert into chat_messages (tenant_id, role, content, channel, admin_user_id, actor_type)
+    values (${tenantId}, 'system', '{"status":"consumed"}', 'edit-pending', ${userId}, 'system')
   `;
 }
 

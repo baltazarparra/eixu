@@ -214,6 +214,7 @@ export async function runLogoStudio(
         .map(async (image) => {
           const critique: Critique = await deps
             .critique({
+              tenantId: tenant.id,
               id: image.id,
               bytes: image.bytes,
               variant: image.variant,

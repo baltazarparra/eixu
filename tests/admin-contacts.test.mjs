@@ -48,7 +48,14 @@ async function legacyFixture({ runActive = false } = {}) {
   const { PATCH } = await loadModule(
     'app/api/admin/[tenant]/settings/route.ts',
     {
-      '@/lib/auth': { isAuthenticated: async () => true },
+      '@/lib/auth': {
+        currentUser: async () => ({
+          id: 'user-1',
+          name: 'Operador',
+          login: 'operador@eixu',
+        }),
+      },
+      '@/lib/admin/activity': { recordActivity: async () => undefined },
       '@/lib/tenant-queries': queries,
       '@/lib/db': {
         db:

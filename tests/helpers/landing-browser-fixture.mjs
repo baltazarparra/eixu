@@ -32,7 +32,7 @@ export async function landingBrowserFixture() {
     },
     '@/lib/tenant-queries': {
       getTenantBySlug: async (slug) =>
-        slug === f.tenant.slug ? f.tenant : null,
+        slug === f.tenant.slug ? { ...f.tenant, status: 'published' } : null,
       getPage: async (tenant, slug) =>
         tenant === f.tenant.id ? f.pages.find((p) => p.slug === slug) : null,
     },

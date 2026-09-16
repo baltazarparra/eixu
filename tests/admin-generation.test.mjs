@@ -434,7 +434,8 @@ async function runnerFixture({
           targetBlock: 'hero.cover',
           ratio: '16:9',
           hint: 'Abertura.',
-          request: 'Abertura do cliente, com assunto concreto no enquadramento.',
+          request:
+            'Abertura do cliente, com assunto concreto no enquadramento.',
         },
       ],
       generationState: () => {
@@ -475,7 +476,14 @@ async function runnerFixture({
       savedProgressMessage: (state, running) =>
         `Progresso salvo: recibo sintético. ${state.generation.next === 'pronto' ? 'Site gerado.' : running ? 'Continua.' : 'Parado.'}`,
     },
-    '@/lib/auth': { createSessionToken: async () => 'token' },
+    '@/lib/auth': {
+      createPreviewToken: async () => 'token',
+      PREVIEW_SESSION_COOKIE: 'eixu_preview',
+    },
+    '@/lib/admin/activity': {
+      recordActivity: async () => undefined,
+      recordAgentTool: async () => undefined,
+    },
     '@/lib/ai/tools': {
       buildTools: () =>
         sceneTool ? { prepare_site_images: { execute: sceneTool } } : {},
@@ -975,9 +983,7 @@ await test('recusa do estúdio no lote direto chega ao chat e à linha do tempo'
   const end = f.events.find((event) => event.kind === 'tool_end');
   assert.equal(end.payload.ok, false, 'a recusa não pode ficar como sucesso');
   assert.ok(
-    f.events.some(
-      (event) => event.kind === 'note' && event.label === refusal,
-    ),
+    f.events.some((event) => event.kind === 'note' && event.label === refusal),
     'a linha do tempo precisa do motivo real',
   );
   // Sem isso o operador lia só que nada foi preenchido, sem o que corrigir.

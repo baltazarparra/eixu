@@ -7,6 +7,7 @@ import { Output, generateText, type FilePart, type TextPart } from 'ai';
 import sharp from 'sharp';
 import { z } from 'zod';
 import { saveCritique } from '@/lib/images/queries';
+import { usageTracking } from '@/lib/ai/usage-ledger';
 import type { Critique } from '@/lib/types';
 
 const score = z.number().min(0).max(10);
@@ -144,6 +145,7 @@ Não reprove por ser monocromática nem por perder as cores: isso é a intençã
 Escreva em português do Brasil. Problemas em frases curtas e concretas.`;
 
 export async function critiqueLogo(input: {
+  tenantId?: string;
   id: string;
   bytes: Uint8Array;
   variant: string;
@@ -197,9 +199,17 @@ export async function critiqueLogo(input: {
       },
     ];
 
+    const model = input.model ?? productModel('logo-critic');
     const { output } = await generateText({
-      model: input.model ?? productModel('logo-critic'),
+      model,
       ...modelSettings('critic'),
+      ...(input.tenantId
+        ? usageTracking({
+            tenantId: input.tenantId,
+            kind: 'critica-logo',
+            model,
+          })
+        : {}),
       output: Output.object({ schema: logoCritiqueSchema }),
       maxRetries: 1,
       timeout: { totalMs: CRITIC_TIMEOUT_MS },

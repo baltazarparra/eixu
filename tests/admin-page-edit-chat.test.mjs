@@ -18,7 +18,17 @@ for (const mode of ['model', 'receipt', 'ambiguous', 'explicit-home', 'omitted-r
     const persisted = [];
     let calls = 0;
     const { POST } = await loadModule('app/api/chat/route.ts', {
-      '@/lib/auth': { isAuthenticated: async () => true },
+      '@/lib/auth': {
+        currentUser: async () => ({
+          id: 'user-1',
+          name: 'Operador',
+          login: 'operador@eixu',
+        }),
+      },
+      '@/lib/admin/activity': {
+        recordActivity: async () => undefined,
+        recordAgentTool: async () => undefined,
+      },
       '@/lib/db': {
         db:
           () =>
@@ -234,7 +244,17 @@ await test('rota desfaz a última página editada mesmo quando o painel mudou de
 
   const persisted = [];
   const { POST } = await loadModule('app/api/chat/route.ts', {
-    '@/lib/auth': { isAuthenticated: async () => true },
+    '@/lib/auth': {
+      currentUser: async () => ({
+        id: 'user-1',
+        name: 'Operador',
+        login: 'operador@eixu',
+      }),
+    },
+    '@/lib/admin/activity': {
+      recordActivity: async () => undefined,
+      recordAgentTool: async () => undefined,
+    },
     '@/lib/db': {
       db:
         () =>

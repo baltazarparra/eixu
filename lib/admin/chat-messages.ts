@@ -26,7 +26,11 @@ export function mergeSavedMessages(
     );
     if (match === -1) next.push(message);
     else {
-      next[match] = { ...next[match], id: message.id };
+      next[match] = {
+        ...next[match],
+        id: message.id,
+        metadata: { ...next[match].metadata, ...message.metadata },
+      };
       from = match + 1;
     }
     known.add(message.id);

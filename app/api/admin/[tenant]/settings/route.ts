@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { after } from 'next/server';
-import { isAuthenticated } from '@/lib/auth';
+import { currentUser } from '@/lib/auth';
+import { recordActivity } from '@/lib/admin/activity';
 import { db } from '@/lib/db';
 import { getTenantBySlug } from '@/lib/tenant-queries';
 import { intakeSchema, intakeWriteSchema } from '@/lib/tenant-intake';
@@ -38,8 +39,8 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ tenant: string }> },
 ) {
-  if (!(await isAuthenticated()))
-    return new Response('Não autorizado', { status: 401 });
+  const user = await currentUser();
+  if (!user) return new Response('Não autorizado', { status: 401 });
   const { tenant: slug } = await params;
   const tenant = await getTenantBySlug(slug);
   if (!tenant) return new Response('Cliente não encontrado', { status: 404 });
@@ -153,6 +154,16 @@ export async function PATCH(
       await clearSocialProfile(tenant.id);
     }
   }
+  await recordActivity({
+    actor: user,
+    actorType: 'user',
+    tenant,
+    action: 'tenant.settings.update',
+    resourceType: 'tenant',
+    resourceId: tenant.id,
+    summary: `${user.name} atualizou os dados de ${tenant.name}`,
+    detail: { fields: Object.keys(input) },
+  });
   return Response.json({
     ok: true,
     brand,

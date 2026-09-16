@@ -396,7 +396,13 @@ await test('API mantém sessão e recusa tentativas de reintroduzir aprovação 
   let authenticated = false;
   let writes = 0;
   const route = await loadModule('app/api/admin/[tenant]/images/route.ts', {
-    '@/lib/auth': { isAuthenticated: async () => authenticated },
+    '@/lib/auth': {
+      currentUser: async () =>
+        authenticated
+          ? { id: 'user-1', name: 'Operador', login: 'operador@eixu' }
+          : null,
+    },
+    '@/lib/admin/activity': { recordActivity: async () => undefined },
     '@/lib/tenant-queries': { getTenantBySlug: async () => tenant },
     '@/lib/images/queries': {
       updateImageMetadata: async () => {

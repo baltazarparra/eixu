@@ -5,19 +5,45 @@ import react from '@vitejs/plugin-react';
 import { inlineHtml } from './inline-edit-fixture.mjs';
 
 export function handoffData() {
+  const folders = [
+    {
+      id: '11111111-1111-4111-8111-111111111111',
+      name: 'Baltz',
+      siteCount: 2,
+    },
+    {
+      id: '22222222-2222-4222-8222-222222222222',
+      name: 'David',
+      siteCount: 1,
+    },
+  ];
   const clients = [
     ['marcenaria-horizonte', 'Marcenaria Horizonte', 'published', 7, 41],
     ['clinica-vertice', 'Clínica Vértice', 'published', 9, 63],
     ['padaria-sao-bento', 'Padaria São Bento', 'draft', 3, 0],
     ['otica-lumen', 'Ótica Lumen', 'published', 6, 43],
     ['studio-corda', 'Studio Corda', 'draft', 2, 0],
-  ].map(([slug, name, status, pageCount, leadCount]) => ({
+  ].map(([slug, name, status, pageCount, leadCount], index) => ({
     slug,
     name,
     status,
+    folderId:
+      index === 0 || index === 3
+        ? folders[0].id
+        : index === 1
+          ? folders[1].id
+          : null,
     pageCount,
     leadCount,
     updatedAt: '2026-09-11T12:00:00Z',
+    lastAction: {
+      action: index % 2 ? 'agent.edit_page' : 'agent.publish_site',
+      actorType: 'agent',
+      actorName: 'Operação',
+      summary: 'Agente executou a ferramenta, a pedido de Operação',
+      // Datas decrescentes: a lista chega ordenada pela última ação.
+      at: `2026-09-1${5 - index}T12:00:00Z`,
+    },
   }));
   const tenant = {
     ...clients[0],
@@ -32,8 +58,30 @@ export function handoffData() {
   }));
   return {
     clients,
+    folders,
     tenant,
-    summary: { leads30d: 147, running: 1 },
+    summary: { running: 1, current: { stage: 'Criar', site: 'Studio Corda' } },
+    sitesUsage: {
+      days: 30,
+      costUsd: 96.3412,
+      totalTokens: 4100000,
+      rows: [
+        {
+          tenantId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          slug: 'marcenaria-horizonte',
+          name: 'Marcenaria Horizonte',
+          costUsd: 14.8102,
+          totalTokens: 900000,
+        },
+        {
+          tenantId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+          slug: 'clinica-vertice',
+          name: 'Clínica Vértice',
+          costUsd: 11.264,
+          totalTokens: 700000,
+        },
+      ],
+    },
     intake: {
       story:
         'A Marcenaria Horizonte nasceu em Campinas e há 12 anos cria móveis planejados sob medida para arquitetos e moradores da região. A oficina própria acompanha cada projeto e o site deve facilitar pedidos de orçamento.',
@@ -230,7 +278,7 @@ export async function handoffFixture({ port = 0, imageUpload, publish } = {}) {
         },
         transform(_source, id) {
           if (id.endsWith('/app/(admin)/admin/actions.ts'))
-            return `export async function createTenantAction(){return 'Cadastro simulado para teste.'} export async function deleteTenantAction(){return {ok:false,message:'Exclusão simulada para teste.'}} export async function loginAction(){return 'Usuário ou senha incorretos.'} export async function logoutAction(){}`;
+            return `export async function createTenantAction(){return 'Cadastro simulado para teste.'} export async function createSiteFolderAction(){return {ok:true,message:'Pasta criada.',folder:{id:'33333333-3333-4333-8333-333333333333',name:'Nova pasta',siteCount:0}}} export async function renameSiteFolderAction(){return {ok:true,message:'Pasta renomeada.'}} export async function deleteSiteFolderAction(){return {ok:true,message:'Pasta excluída.'}} export async function moveSitesToFolderAction(form){return {ok:true,message:'Sites movidos.',moved:JSON.parse(form.get('assignments')).length}} export async function deleteTenantAction(){return {ok:false,message:'Exclusão simulada para teste.'}} export async function setTenantArchivedAction(){return {ok:true,message:'Arquivamento simulado para teste.'}} export async function loginAction(){return 'Usuário ou PIN incorretos.'} export async function logoutAction(){}`;
         },
         configureServer(vite) {
           vite.middlewares.use(async (req, res, next) => {
