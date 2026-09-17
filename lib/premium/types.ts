@@ -68,6 +68,9 @@ export type PremiumWorkspaceState = {
     pullRequestUrl: string | null;
     error: string | null;
     createdAt: string;
+    claimedAt: string | null;
+    updatedAt: string;
+    finishedAt: string | null;
   };
   editor: PremiumEditorState | null;
 };

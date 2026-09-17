@@ -17,6 +17,11 @@ const GeneratorWorkspace = dynamic(() =>
 const PremiumCms = dynamic(() =>
   import('./premium-cms').then((module) => module.PremiumCms),
 );
+const PremiumConversionWorkspace = dynamic(() =>
+  import('./premium-conversion-workspace').then(
+    (module) => module.PremiumConversionWorkspace,
+  ),
+);
 
 /** Carrega somente o editor que pode escrever no runtime atual do tenant. */
 export function Workspace(props: Props) {
@@ -25,5 +30,7 @@ export function Workspace(props: Props) {
     props.initial.premium.publicRuntime === 'premium'
   )
     return <PremiumCms initial={props.initial} />;
+  if (props.initial.premium.maintenanceMode === 'converting')
+    return <PremiumConversionWorkspace initial={props.initial} />;
   return <GeneratorWorkspace {...props} />;
 }

@@ -496,10 +496,13 @@ entram na conversão; publique-as antes se elas precisarem fazer parte da primei
 versão Premium.
 
 Depois do clique, geração, chat, edição e publicação do gerador ficam bloqueados.
-O painel acompanha o job mesmo se a aba for fechada. Quando aparecer **Revisar
-conversão**, abra a PR, confira e faça merge. O release valida a aplicação,
-publica e move a mesma URL para o projeto próprio. O estado muda para **Premium
-ativo** apenas depois do smoke na URL original.
+O painel troca para uma área de entrega com a versão pública à direita e cinco
+etapas à esquerda: pedido, preparação, revisão, publicação e ativação. O tempo
+decorrido e a última etapa persistem mesmo se a aba for fechada. Quando aparecer
+**Revisar e aprovar**, abra a PR, confira e faça merge. O release valida a
+aplicação, publica e move a mesma URL para o projeto próprio. Falha de release
+oferece **Tentar publicar novamente**, sem refazer o projeto. O CMS Premium abre
+automaticamente somente depois do smoke na URL original.
 
 A partir daí, páginas, estilos, bibliotecas e backend são alterados na pasta
 `apps/premium/<cliente>` pelo code agent. Fazer merge de uma mudança nessa pasta

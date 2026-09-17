@@ -22,6 +22,10 @@ function argument(name) {
   return index >= 0 ? process.argv[index + 1] : undefined;
 }
 
+// O conversor e o contrato editorial são sempre os atuais. O renderer e o CSS
+// continuam vindo do commit que realmente atendia o site no momento do pedido.
+const SOURCE_ROOT = resolve(argument('--source-root') ?? ROOT);
+
 function canonical(value) {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
   if (value && typeof value === 'object')
@@ -38,7 +42,7 @@ function hash(value) {
 
 function resolveImport(from, specifier) {
   const base = specifier.startsWith('@/')
-    ? join(ROOT, specifier.slice(2))
+    ? join(SOURCE_ROOT, specifier.slice(2))
     : resolve(dirname(from), specifier);
   for (const suffix of [
     '',
@@ -59,7 +63,7 @@ function resolveImport(from, specifier) {
 function runtimeClosure(entries) {
   const files = new Set();
   const visit = (relativePath) => {
-    const file = resolve(ROOT, relativePath);
+    const file = resolve(SOURCE_ROOT, relativePath);
     if (files.has(file)) return;
     files.add(file);
     const source = readFileSync(file, 'utf8');
@@ -69,9 +73,9 @@ function runtimeClosure(entries) {
       const dependency = resolveImport(file, specifier);
       if (!dependency)
         throw new Error(
-          `Import local não resolvido em ${relative(ROOT, file)}: ${specifier}`,
+          `Import local não resolvido em ${relative(SOURCE_ROOT, file)}: ${specifier}`,
         );
-      visit(relative(ROOT, dependency));
+      visit(relative(SOURCE_ROOT, dependency));
     }
   };
   entries.forEach(visit);
@@ -93,7 +97,7 @@ function copyFrozenRuntime(target) {
     'lib/tracking.ts',
   ];
   for (const source of runtimeClosure(entries)) {
-    const destination = join(target, relative(ROOT, source));
+    const destination = join(target, relative(SOURCE_ROOT, source));
     mkdirSync(dirname(destination), { recursive: true });
     cpSync(source, destination);
   }
@@ -107,8 +111,11 @@ function copyFrozenRuntime(target) {
     'navigation.css',
     'operator.css',
   ])
-    cpSync(join(ROOT, 'app/(sites)', name), join(target, 'app', name));
-  cpSync(join(ROOT, 'app/(sites)/layout.tsx'), join(target, 'app/layout.tsx'));
+    cpSync(join(SOURCE_ROOT, 'app/(sites)', name), join(target, 'app', name));
+  cpSync(
+    join(SOURCE_ROOT, 'app/(sites)/layout.tsx'),
+    join(target, 'app/layout.tsx'),
+  );
 }
 
 function packageJson(key) {

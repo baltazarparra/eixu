@@ -13,6 +13,7 @@ import { DefaultChatTransport } from 'ai';
 import { ChatActivity, Message, chatErrorMessage } from './chat-parts';
 import { PreviewFrame } from './preview-frame';
 import { GenerationPanel } from './generation-panel';
+import { PremiumConversionDialog } from './premium-conversion-dialog';
 import { isRunning, useGeneration } from './use-generation';
 
 import {
@@ -113,6 +114,7 @@ export function GeneratorWorkspace({
   const [nonce, setNonce] = useState(0);
   const [publishing, setPublishing] = useState(false);
   const [premiumStarting, setPremiumStarting] = useState(false);
+  const [premiumConfirming, setPremiumConfirming] = useState(false);
   const [editing, setEditing] = useState<'off' | 'on' | 'saving'>('off');
   const [editingReady, setEditingReady] = useState(false);
   const [editChanged, setEditChanged] = useState(false);
@@ -441,6 +443,7 @@ export function GeneratorWorkspace({
       await refresh();
       if (result.published.length) refreshTenant?.();
     } catch (error) {
+      setPremiumConfirming(false);
       fail(
         error instanceof Error ? error.message : 'Não foi possível publicar.',
       );
@@ -459,11 +462,6 @@ export function GeneratorWorkspace({
       busy
     )
       return;
-    const hasDraft = site.tenant.dirty || site.pages.some((item) => item.dirty);
-    const accepted = window.confirm(
-      `Converter a versão publicada deste site para Premium?\n\nO endereço ${site.premium.canonicalUrl} será preservado. Depois da ativação, o gerador deixa de editar o projeto e as próximas mudanças serão publicadas pelo code agent.${hasDraft ? '\n\nExistem alterações em rascunho; elas não entram na conversão enquanto não forem publicadas.' : ''}`,
-    );
-    if (!accepted) return;
     setPremiumStarting(true);
     setNotice(null);
     try {
@@ -472,11 +470,10 @@ export function GeneratorWorkspace({
         headers: { 'content-type': 'application/json' },
         body: '{}',
       });
-      setNotice({
-        tone: 'ok',
-        text: 'Conversão Premium iniciada. O site publicado continua no ar na mesma URL durante todo o processo.',
-      });
-      await refresh();
+      setPremiumConfirming(false);
+      // A conversão tem uma interface própria. Recarregar também troca o
+      // componente para o CMS assim que uma ativação termina.
+      window.location.reload();
     } catch (error) {
       fail(
         error instanceof Error
@@ -1037,7 +1034,7 @@ export function GeneratorWorkspace({
                       running ||
                       busy
                     }
-                    onClick={() => void activatePremium()}
+                    onClick={() => setPremiumConfirming(true)}
                     title="Converter a versão publicada em um projeto de código próprio"
                   >
                     <Gem size={15} aria-hidden="true" />
@@ -1565,6 +1562,14 @@ export function GeneratorWorkspace({
           setView(next);
           if (next === 'chat') setExpanded(false);
         }}
+      />
+      <PremiumConversionDialog
+        open={premiumConfirming}
+        canonicalUrl={site.premium.canonicalUrl}
+        hasDraft={site.tenant.dirty || site.pages.some((item) => item.dirty)}
+        starting={premiumStarting}
+        onClose={() => setPremiumConfirming(false)}
+        onConfirm={() => void activatePremium()}
       />
     </div>
   );

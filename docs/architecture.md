@@ -352,9 +352,11 @@ deployment passou pelos gates e respondeu na URL canônica. Enquanto o estado é
 `converting`, o snapshot do gerador continua no ar, mas chat, geração, edição
 direta e publicação recusam novas escritas também sob lock transacional.
 
-O executor exporta somente dados publicados para `apps/premium/<project-key>` e
-copia o fechamento do renderer e do CSS do SHA que atendia produção. Cada pasta
-é uma aplicação Next.js e um projeto Vercel independentes, mas permanece neste
+O pedido dispara o executor imediatamente e o cron cobre indisponibilidades. O
+conversor vigente exporta somente dados publicados para
+`apps/premium/<project-key>` e cria o contrato editorial atual; o fechamento do
+renderer e do CSS continua vindo do SHA que atendia produção. Cada pasta é uma
+aplicação Next.js e um projeto Vercel independentes, mas permanece neste
 repositório. A primeira PR exige revisão; o merge publica, associa o domínio
 exato `<slug>.eixu.com.br` e registra a release. Merges posteriores na pasta
 disparam o mesmo release e atualizam essa URL sem DNS manual.

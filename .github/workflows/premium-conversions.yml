@@ -2,6 +2,11 @@ name: Premium conversions
 
 on:
   workflow_dispatch:
+    inputs:
+      conversion_id:
+        description: Conversão específica pedida pelo painel
+        required: false
+        type: string
   schedule:
     - cron: '*/5 * * * *'
 
@@ -34,12 +39,17 @@ jobs:
 
       - name: Claim next conversion
         id: claim
+        env:
+          CONVERSION_ID: ${{ inputs.conversion_id || '' }}
         shell: bash
         run: |
           set -euo pipefail
           status="$(curl --silent --show-error --output claim.json --write-out '%{http_code}' \
             --request POST \
             --header "authorization: Bearer ${PREMIUM_WORKER_TOKEN}" \
+            --header 'content-type: application/json' \
+            --data "$(jq --null-input --arg conversion "$CONVERSION_ID" \
+              'if $conversion == "" then {} else {conversionId:$conversion} end')" \
             "${EIXU_URL}/api/internal/premium/jobs/claim")"
           if [ "$status" = '204' ]; then
             echo 'found=false' >> "$GITHUB_OUTPUT"
@@ -62,8 +72,9 @@ jobs:
           source_root="${RUNNER_TEMP}/eixu-premium-source"
           git worktree add --detach "$source_root" "$source_commit"
           npm ci --ignore-scripts
-          node "$source_root/scripts/premium/export-project.mjs" \
+          node scripts/premium/export-project.mjs \
             --input "$GITHUB_WORKSPACE/premium-job.json" \
+            --source-root "$source_root" \
             --output-root "$GITHUB_WORKSPACE"
           npm install --package-lock-only --ignore-scripts
 

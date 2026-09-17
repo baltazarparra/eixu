@@ -94,6 +94,57 @@ await test('conversao congela somente o snapshot publicado e tem hash JSON estav
   );
 });
 
+await test('dispatch inicia o job exato e mantém o agendamento como recuperação', async () => {
+  const dispatch = await j.import('../lib/premium/dispatch.ts');
+  const previousToken = process.env.GITHUB_WORKFLOW_TOKEN;
+  const previousRepository = process.env.PREMIUM_GITHUB_REPOSITORY;
+  const previousFetch = globalThis.fetch;
+  const calls = [];
+  try {
+    delete process.env.GITHUB_WORKFLOW_TOKEN;
+    assert.equal(
+      await dispatch.dispatchPremiumConversion(
+        '00000000-0000-4000-8000-000000000099',
+      ),
+      'scheduled',
+    );
+    process.env.GITHUB_WORKFLOW_TOKEN = 'segredo-de-teste';
+    process.env.PREMIUM_GITHUB_REPOSITORY = 'eixu/teste';
+    globalThis.fetch = async (url, init) => {
+      calls.push({
+        url:
+          typeof url === 'string'
+            ? url
+            : url instanceof URL
+              ? url.href
+              : url.url,
+        init,
+      });
+      return new Response(null, { status: 204 });
+    };
+    assert.equal(
+      await dispatch.dispatchPremiumConversion(
+        '00000000-0000-4000-8000-000000000099',
+      ),
+      'started',
+    );
+    assert.match(calls[0].url, /premium-conversions\.yml\/dispatches$/);
+    assert.deepEqual(JSON.parse(calls[0].init.body), {
+      ref: 'main',
+      inputs: {
+        conversion_id: '00000000-0000-4000-8000-000000000099',
+      },
+    });
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousToken === undefined) delete process.env.GITHUB_WORKFLOW_TOKEN;
+    else process.env.GITHUB_WORKFLOW_TOKEN = previousToken;
+    if (previousRepository === undefined)
+      delete process.env.PREMIUM_GITHUB_REPOSITORY;
+    else process.env.PREMIUM_GITHUB_REPOSITORY = previousRepository;
+  }
+});
+
 await test('gerador fica disponivel no modo antigo e bloqueia conversao e Premium', () => {
   assert.equal(
     access.generatorWriteBlocked({ maintenanceMode: 'generator' }),
@@ -543,9 +594,10 @@ await test('ativação recusa tenant arquivado antes de criar release', async ()
   );
 });
 
-await test('schema e release preservam pasta propria e URL canonica', async () => {
-  const [schema, release] = await Promise.all([
+await test('schema e workflows preservam fila, pasta e URL canonica', async () => {
+  const [schema, conversion, release] = await Promise.all([
     readFile('db/schema.sql', 'utf8'),
+    readFile('.github/workflows/premium-conversions.yml', 'utf8'),
     readFile('.github/workflows/premium-release.yml', 'utf8'),
   ]);
   assert.match(schema, /create table if not exists premium_projects/);
@@ -557,6 +609,9 @@ await test('schema e release preservam pasta propria e URL canonica', async () =
   assert.match(schema, /create table if not exists premium_content_revisions/);
   assert.match(schema, /create table if not exists premium_preview_sessions/);
   assert.match(schema, /contract_hash.*\^\[0-9a-f\]\{64\}\$/);
+  assert.match(conversion, /inputs:\s+conversion_id:/);
+  assert.match(conversion, /node scripts\/premium\/export-project\.mjs/);
+  assert.match(conversion, /--source-root "\$source_root"/);
   assert.match(release, /apps\/premium\/\$\{key\}/);
   assert.match(release, /vercel alias set "\$deployment_url" "\$host"/);
   assert.match(release, /api\/internal\/premium\/releases/);
