@@ -3,6 +3,7 @@
 import {
   useEffect,
   useLayoutEffect,
+  useSyncExternalStore,
   type ComponentProps,
   type ReactNode,
 } from 'react';
@@ -33,7 +34,7 @@ export function SiteMotion({
   return <LegacySiteMotion intensity={intensity}>{children}</LegacySiteMotion>;
 }
 
-type CommercialEntranceKind = 'reveal' | 'fade';
+type CommercialEntranceKind = 'reveal' | 'rise' | 'image' | 'wipe' | 'fade';
 type CommercialEntranceRole = 'content' | 'image';
 
 type CommercialEntrance = {
@@ -72,14 +73,14 @@ function commercialEntrances(root: HTMLElement): CommercialEntrance[] {
   ) => {
     if (!container) return;
     Array.from(container.children).forEach((target, index) => {
-      const kind = target.matches(
-        'h1, h2, h3, .site-headline, .site-actions, .site-action',
-      )
+      // Links têm sua própria sequência; não anime pai e filho juntos.
+      if (target.matches('.site-social-links')) return;
+      const kind = target.matches('h1, h2, h3, .site-headline')
         ? 'reveal'
-        : 'fade';
+        : 'rise';
       add(target, kind, {
-        desktopDelay: start + index * 0.12,
-        mobileDelay: start + index * 0.1,
+        desktopDelay: Math.min(start + index * 0.08, 0.24),
+        mobileDelay: Math.min(start + index * 0.06, 0.18),
       });
     });
   };
@@ -96,7 +97,7 @@ function commercialEntrances(root: HTMLElement): CommercialEntrance[] {
         addCopySequence(section.querySelector('.site-shell > :first-child'));
         section.querySelectorAll('.site-bento-item').forEach((item, index) => {
           const rowDelay = (index % 3) * 0.12;
-          add(item.querySelector('img'), 'fade', {
+          add(item.querySelector('img'), 'image', {
             role: 'image',
             desktopDelay: rowDelay,
             mobileDelay: 0,
@@ -105,7 +106,7 @@ function commercialEntrances(root: HTMLElement): CommercialEntrance[] {
             desktopDelay: rowDelay + 0.1,
             mobileDelay: 0.08,
           });
-          add(item.querySelector('p'), 'fade', {
+          add(item.querySelector('p'), 'rise', {
             desktopDelay: rowDelay + 0.2,
             mobileDelay: 0.16,
           });
@@ -118,7 +119,7 @@ function commercialEntrances(root: HTMLElement): CommercialEntrance[] {
         section
           .querySelectorAll('.site-social-images > img')
           .forEach((image, index) =>
-            add(image, 'fade', {
+            add(image, 'image', {
               role: 'image',
               desktopDelay: (index % 3) * 0.1,
               mobileDelay: 0,
@@ -127,7 +128,7 @@ function commercialEntrances(root: HTMLElement): CommercialEntrance[] {
         section
           .querySelectorAll('.site-social-links > li')
           .forEach((link, index) =>
-            add(link, 'fade', {
+            add(link, 'rise', {
               desktopDelay: 0.26 + index * 0.1,
               mobileDelay: 0.18 + index * 0.08,
             }),
@@ -136,7 +137,7 @@ function commercialEntrances(root: HTMLElement): CommercialEntrance[] {
       }
 
       if (block === 'media.image') {
-        add(section.querySelector('img'), 'fade', { role: 'image' });
+        add(section.querySelector('img'), 'image', { role: 'image' });
         add(section.querySelector('figcaption'), 'reveal', {
           desktopDelay: 0.16,
           mobileDelay: 0.1,
@@ -147,7 +148,7 @@ function commercialEntrances(root: HTMLElement): CommercialEntrance[] {
       if (block === 'media.gallery') {
         add(section.querySelector('.site-shell > h2'), 'reveal');
         section.querySelectorAll('.site-gallery li').forEach((item, index) =>
-          add(item.querySelector('img') ?? item, 'fade', {
+          add(item.querySelector('img') ?? item, 'image', {
             role: 'image',
             desktopDelay: (index % 3) * 0.12,
             mobileDelay: 0,
@@ -160,7 +161,7 @@ function commercialEntrances(root: HTMLElement): CommercialEntrance[] {
         add(section.querySelector('.site-shell > h2'), 'reveal');
         section.querySelectorAll('.site-map-unit').forEach((unit, index) => {
           const delay = (index % 3) * 0.12;
-          add(unit.querySelector('.site-map-unit-copy'), 'fade', {
+          add(unit.querySelector('.site-map-unit-copy'), 'rise', {
             desktopDelay: delay,
             mobileDelay: 0,
           });
@@ -173,14 +174,7 @@ function commercialEntrances(root: HTMLElement): CommercialEntrance[] {
       }
 
       if (block === 'form.lead') {
-        const copy = section.querySelector('.site-shell > :first-child');
-        if (copy)
-          Array.from(copy.children).forEach((target, index) =>
-            add(target, 'fade', {
-              desktopDelay: index * 0.12,
-              mobileDelay: index * 0.1,
-            }),
-          );
+        addCopySequence(section.querySelector('.site-shell > :first-child'));
         add(section.querySelector('.site-shell > form'), 'fade', {
           desktopDelay: 0.2,
           mobileDelay: 0.16,
@@ -191,17 +185,17 @@ function commercialEntrances(root: HTMLElement): CommercialEntrance[] {
       const featureImage = section.querySelector(
         ':scope > section > .site-cta-image',
       );
-      if (featureImage) add(featureImage, 'fade', { role: 'image' });
+      if (featureImage) add(featureImage, 'wipe', { role: 'image' });
 
       const ctaCopy = section.querySelector('.site-cta-copy');
       if (ctaCopy) {
         addCopySequence(ctaCopy, featureImage ? 0.1 : 0);
         add(
           section.querySelector('.site-cta > .site-shell > .site-action'),
-          'reveal',
+          'rise',
           {
-            desktopDelay: featureImage ? 0.42 : 0.34,
-            mobileDelay: featureImage ? 0.32 : 0.28,
+            desktopDelay: 0.24,
+            mobileDelay: 0.18,
           },
         );
         return;
@@ -209,7 +203,12 @@ function commercialEntrances(root: HTMLElement): CommercialEntrance[] {
 
       const textShell = section.querySelector('.site-text > .site-shell');
       if (textShell) {
-        addCopySequence(textShell);
+        const identity = textShell.querySelector('.site-text-identity');
+        const copy = textShell.querySelector('.site-text-copy');
+        const image = textShell.querySelector('.site-text-media img');
+        if (identity) add(identity, 'wipe');
+        if (image) add(image, 'wipe', { role: 'image' });
+        addCopySequence(copy ?? textShell, identity || image ? 0.08 : 0);
         return;
       }
 
@@ -240,6 +239,15 @@ function commercialEntrances(root: HTMLElement): CommercialEntrance[] {
   return entrances;
 }
 
+const reducedMotionQuery = '(prefers-reduced-motion: reduce)';
+function subscribeReducedMotion(onChange: () => void) {
+  const query = window.matchMedia(reducedMotionQuery);
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
+}
+const readReducedMotion = () => window.matchMedia(reducedMotionQuery).matches;
+const serverReducedMotion = () => false;
+
 function CommercialSiteMotion({
   children,
   intensity,
@@ -248,91 +256,178 @@ function CommercialSiteMotion({
   intensity: number;
 }) {
   const [scope, animate] = useAnimate<HTMLDivElement>();
-  const reduced = useReducedMotion();
+  const reduced = useSyncExternalStore(
+    subscribeReducedMotion,
+    readReducedMotion,
+    serverReducedMotion,
+  );
   useLayoutEffect(() => {
-    if (reduced || intensity <= 0 || !scope.current) return;
+    if (reduced || readReducedMotion() || intensity <= 0 || !scope.current)
+      return;
 
     const root = scope.current;
     const entrances = commercialEntrances(root);
-    const controls: {
-      stop(): void;
-      complete(): void;
-      finished: Promise<unknown>;
-    }[] = [];
-    const stops: (() => void)[] = [];
-    const settleFrames = new Set<number>();
-
+    const controls = new Map<HTMLElement, { stop(): void; complete(): void }>();
+    const properties = [
+      'opacity',
+      'transform',
+      'clip-path',
+      'will-change',
+    ] as const;
+    const originalStyles = new Map(
+      entrances.map(({ target }) => [
+        target,
+        properties.map((property) => ({
+          property,
+          value: target.style.getPropertyValue(property),
+          priority: target.style.getPropertyPriority(property),
+        })),
+      ]),
+    );
+    const restore = (target: HTMLElement) => {
+      for (const { property, value, priority } of originalStyles.get(target) ??
+        []) {
+        if (value) target.style.setProperty(property, value, priority);
+        else target.style.removeProperty(property);
+      }
+    };
+    const frames = (kind: CommercialEntranceKind) => {
+      const desktop = window.innerWidth >= 768;
+      switch (kind) {
+        case 'reveal':
+          return {
+            clipPath: ['inset(0% 0% 100% 0%)', 'inset(0% 0% 0% 0%)'],
+            transform: [
+              `translate3d(0, ${desktop ? 24 : 14}px, 0)`,
+              'translate3d(0, 0, 0)',
+            ],
+          };
+        case 'image':
+          return {
+            clipPath: ['inset(0% 0% 100% 0%)', 'inset(0% 0% 0% 0%)'],
+            transform: [`scale(${desktop ? 0.97 : 0.985})`, 'scale(1)'],
+          };
+        case 'wipe':
+          return {
+            clipPath: [
+              desktop ? 'inset(0% 100% 0% 0%)' : 'inset(0% 0% 100% 0%)',
+              'inset(0% 0% 0% 0%)',
+            ],
+          };
+        case 'rise':
+          return {
+            opacity: [0, 1],
+            transform: [
+              `translate3d(0, ${desktop ? 18 : 12}px, 0)`,
+              'translate3d(0, 0, 0)',
+            ],
+          };
+        case 'fade':
+          return { opacity: [0, 1] };
+      }
+    };
     for (const { target, kind, role } of entrances) {
-      target.dataset.motionState = 'pending';
       target.dataset.motionKind = kind;
       target.dataset.motionRole = role;
-      target.style.opacity = '0';
-      if (kind === 'reveal')
-        target.style.transform = `translate3d(0, ${window.innerWidth >= 768 ? 28 : 20}px, 0)`;
-      target.style.willChange =
-        kind === 'reveal' ? 'opacity, transform' : 'opacity';
+      // Conteúdo já pintado (incluindo scroll restaurado) nunca desaparece na hidratação.
+      if (target.getBoundingClientRect().top < window.innerHeight) {
+        target.dataset.motionState = 'complete';
+        continue;
+      }
+      target.dataset.motionState = 'pending';
+      const initial = frames(kind);
+      if (initial.opacity) target.style.opacity = String(initial.opacity[0]);
+      if (initial.transform) target.style.transform = initial.transform[0];
+      if (initial.clipPath) target.style.clipPath = initial.clipPath[0];
     }
     let active = true;
+    const settleFrames = new Set<number>();
+    const afterPaint = (callback: () => void) => {
+      const frame = requestAnimationFrame(() => {
+        settleFrames.delete(frame);
+        if (active) callback();
+      });
+      settleFrames.add(frame);
+    };
     const finish = (target: HTMLElement) => {
       if (!active) return;
       target.dataset.motionState = 'complete';
-      target.style.removeProperty('opacity');
-      target.style.removeProperty('transform');
-      target.style.removeProperty('will-change');
+      restore(target);
+      controls.delete(target);
     };
-    const afterPaint = (callback: () => void) => {
-      const frameId = requestAnimationFrame(() => {
-        settleFrames.delete(frameId);
-        callback();
-      });
-      settleFrames.add(frameId);
-    };
-
     const reveal = ({
       target,
       kind,
-      role,
       desktopDelay,
       mobileDelay,
     }: CommercialEntrance) => {
       if (target.dataset.motionState !== 'pending') return;
       target.dataset.motionState = 'running';
       const desktop = window.innerWidth >= 768;
-      const delay = desktop ? desktopDelay : mobileDelay;
-      const duration = role === 'image' ? 1.15 : kind === 'fade' ? 1.05 : 1;
-      const control =
-        kind === 'fade'
-          ? animate(
-              target,
-              { opacity: [0, 1] },
-              {
-                duration,
-                delay,
-                ease: [0.39, 0.575, 0.565, 1],
-              },
-            )
-          : animate(
-              target,
-              { opacity: [0, 1], y: [desktop ? 28 : 20, 0] },
-              {
-                duration,
-                delay,
-                ease: [0.25, 0.46, 0.45, 0.94],
-              },
-            );
-      controls.push(control);
+      const keyframes = frames(kind);
+      target.style.willChange = Object.keys(keyframes)
+        .map((key) => (key === 'clipPath' ? 'clip-path' : key))
+        .join(', ');
+      const control = animate(target, keyframes, {
+        duration:
+          kind === 'image' || kind === 'wipe'
+            ? 0.85
+            : kind === 'fade'
+              ? 0.45
+              : 0.65,
+        delay: Math.min(
+          desktop ? desktopDelay : mobileDelay,
+          desktop ? 0.24 : 0.16,
+        ),
+        ease: [0.22, 1, 0.36, 1],
+      });
+      controls.set(target, control);
       void control.finished
+        // O motor confirma os estilos finais no frame seguinte à promise.
         .then(() => afterPaint(() => afterPaint(() => finish(target))))
-        .catch(() => undefined);
+        .catch(() => afterPaint(() => finish(target)));
     };
-
-    for (const entrance of entrances)
-      stops.push(
-        inView(entrance.target, () => reveal(entrance), {
-          amount: 0.18,
-          margin: '0px 0px -7% 0px',
-        }),
-      );
+    const pending = new Set(
+      entrances.filter(
+        ({ target }) => target.dataset.motionState === 'pending',
+      ),
+    );
+    let entranceFrame = 0;
+    const measureEntrances = () => {
+      entranceFrame = 0;
+      // Mede a caixa de layout, não a área recortada. Isso também preserva
+      // lazy loading e entradas individuais nas últimas linhas de uma grade.
+      const visible = [...pending].filter(({ target }) => {
+        const rect = target.getBoundingClientRect();
+        return rect.top < window.innerHeight * 0.94 && rect.bottom > 0;
+      });
+      for (const entrance of visible) {
+        pending.delete(entrance);
+        reveal(entrance);
+      }
+      if (!pending.size) {
+        window.removeEventListener('scroll', requestEntrances);
+        window.removeEventListener('resize', requestEntrances);
+      }
+    };
+    const requestEntrances = () => {
+      if (!entranceFrame)
+        entranceFrame = requestAnimationFrame(measureEntrances);
+    };
+    window.addEventListener('scroll', requestEntrances, { passive: true });
+    window.addEventListener('resize', requestEntrances);
+    requestEntrances();
+    const onFocus = (event: FocusEvent) => {
+      if (!(event.target instanceof Element)) return;
+      for (const { target } of entrances) {
+        if (!target.contains(event.target)) continue;
+        const control = controls.get(target);
+        control?.complete();
+        control?.stop();
+        finish(target);
+      }
+    };
+    root.addEventListener('focusin', onFocus);
 
     const parallax = Array.from(
       root.querySelectorAll<HTMLElement>('[data-parallax="true"] > figure'),
@@ -374,23 +469,26 @@ function CommercialSiteMotion({
 
     return () => {
       active = false;
-      stops.forEach((stop) => stop());
+      window.removeEventListener('scroll', requestEntrances);
+      window.removeEventListener('resize', requestEntrances);
+      if (entranceFrame) cancelAnimationFrame(entranceFrame);
       window.removeEventListener('scroll', requestParallax);
       window.removeEventListener('resize', requestParallax);
       if (frame) cancelAnimationFrame(frame);
       settleFrames.forEach((frameId) => cancelAnimationFrame(frameId));
-      settleFrames.clear();
+      root.removeEventListener('focusin', onFocus);
       controls.forEach((control) => {
         control.complete();
         control.stop();
       });
+      parallax.forEach(({ figure }) =>
+        figure.style.removeProperty('--site-parallax-y'),
+      );
       entrances.forEach(({ target }) => {
         delete target.dataset.motionState;
         delete target.dataset.motionKind;
         delete target.dataset.motionRole;
-        target.style.removeProperty('opacity');
-        target.style.removeProperty('transform');
-        target.style.removeProperty('will-change');
+        restore(target);
       });
     };
   }, [animate, intensity, reduced, scope]);
