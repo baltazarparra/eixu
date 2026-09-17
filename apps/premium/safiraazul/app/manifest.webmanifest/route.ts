@@ -1,10 +1,14 @@
 import { currentLogoAsset } from '@/lib/images/logo-schema';
-import { logoThemeColor } from '@/lib/sites/logo-metadata';
-import { surfaceOf } from '@/lib/blocks/theme';
-import { pages, tenant } from '@/content/site';
+import { tenant } from '@/content/site';
+
+/*
+ * O campo do site é mineral em todas as páginas, então a cor declarada aqui é
+ * a mesma do `viewport`. Derivar a cor do tom de um bloco, como antes, passaria
+ * a descrever uma superfície que a composição não usa mais.
+ */
+const SURFACE = '#0c0a1a';
 
 export async function GET() {
-  const home = pages.find((page) => page.slug === '') ?? pages[0];
   const asset = currentLogoAsset(tenant.brand);
   return Response.json(
     {
@@ -12,8 +16,8 @@ export async function GET() {
       short_name: tenant.name,
       start_url: '/',
       display: 'browser',
-      background_color: surfaceOf(tenant.brand),
-      theme_color: logoThemeColor(tenant.brand, home?.blocks ?? []),
+      background_color: SURFACE,
+      theme_color: SURFACE,
       icons: asset
         ? [
             {

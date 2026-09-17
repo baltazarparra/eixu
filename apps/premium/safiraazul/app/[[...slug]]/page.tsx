@@ -1,19 +1,12 @@
 import type { Metadata, Viewport } from 'next';
 import { notFound } from 'next/navigation';
-import { RenderBlocks } from '@/lib/blocks/render';
-import { renderedDesignVersionOf, themeVars } from '@/lib/blocks/theme';
-import { renderedMotif, renderingVibeOf } from '@/lib/design/vibes';
-import {
-  hasReferenceDirection,
-  referenceAspects,
-} from '@/lib/design/references';
 import { currentLogoAsset } from '@/lib/images/logo-schema';
-import { logoThemeColor } from '@/lib/sites/logo-metadata';
 import { structuredData } from '@/lib/sites/structured-data';
 import { attributionScript } from '@/lib/tracking';
-import { pages, posts, tenant } from '@/content/site';
+import { pages, tenant } from '@/content/site';
 import { applyPremiumValues, loadPremiumContent } from '@/lib/premium-content';
 import { PremiumPreviewReporter } from '@/app/premium-preview';
+import { Compose } from '@/lib/safira/compose';
 
 type Props = {
   params: Promise<{ slug?: string[] }>;
@@ -116,10 +109,10 @@ export async function generateMetadata({
   };
 }
 
-export async function generateViewport({ params }: Props): Promise<Viewport> {
-  const page = resolvePage((await params).slug);
-  return page ? { themeColor: logoThemeColor(tenant.brand, page.blocks) } : {};
-}
+/* O campo é mineral em todas as páginas: a barra do sistema acompanha. */
+export const viewport: Viewport = {
+  themeColor: '#0c0a1a',
+};
 
 export default async function PremiumPage({ params, searchParams }: Props) {
   const { slug = [] } = await params;
@@ -128,56 +121,13 @@ export default async function PremiumPage({ params, searchParams }: Props) {
     typeof query.eixu_preview === 'string' ? query.eixu_preview : undefined;
   const content = await loadPremiumContent(tenant.slug, previewToken);
   const renderedPages = applyPremiumValues(pages, content.values);
-  const renderedPosts = renderedPages
-    .filter((candidate) => candidate.type === 'post')
-    .map((post) => ({
-      slug: post.slug,
-      title: post.title,
-      excerpt: post.meta.excerpt,
-      date: post.meta.date,
-    }));
   const page = renderedPages.find(
     (candidate) => candidate.slug === slug.join('/'),
   );
   if (!page) notFound();
-  const referenceDirected = hasReferenceDirection(tenant.brand);
-  const designVersion = tenant.brand.design?.version;
-  const modulated = [4, 5, 6].includes(designVersion ?? 0) && referenceDirected;
-  const aspects = modulated
-    ? [...referenceAspects(tenant.brand)]
-        .sort((left, right) => left.localeCompare(right))
-        .join(' ')
-    : undefined;
   const pagePath = `/${page.slug}`;
   return (
-    <div
-      className="site-theme"
-      style={themeVars(tenant.brand) as React.CSSProperties}
-      data-variance={tenant.dials.variance <= 3 ? 'quiet' : 'expressive'}
-      data-density={
-        tenant.dials.density <= 3
-          ? 'airy'
-          : tenant.dials.density >= 8
-            ? 'compact'
-            : 'normal'
-      }
-      data-motion={tenant.dials.motion <= 3 ? 'still' : 'gentle'}
-      data-vibe={renderingVibeOf(tenant.brand)}
-      data-reference-direction={referenceDirected ? 'true' : undefined}
-      data-visual-authority={
-        designVersion === 6 && referenceDirected ? 'reference' : 'vibe'
-      }
-      data-design-version={renderedDesignVersionOf(tenant.brand)}
-      data-profile-version={designVersion}
-      data-structure={tenant.brand.design?.structure}
-      data-reference-aspects={aspects || undefined}
-      data-hero={tenant.brand.design?.heroComposition}
-      data-navigation={tenant.brand.design?.navigation}
-      data-rhythm={tenant.brand.design?.rhythm}
-      data-imagery={tenant.brand.design?.imageTreatment}
-      data-surface={tenant.brand.design?.surfaceStyle}
-      data-motif={renderedMotif(tenant.brand)}
-    >
+    <div className="sa">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -186,15 +136,7 @@ export default async function PremiumPage({ params, searchParams }: Props) {
           ).replace(/</g, '\\u003c'),
         }}
       />
-      <RenderBlocks
-        blocks={page.blocks}
-        ctx={{
-          tenant,
-          posts: renderedPosts.length ? renderedPosts : posts,
-          pagePath,
-          pageType: page.type,
-        }}
-      />
+      <Compose blocks={page.blocks} tenant={tenant} pagePath={pagePath} />
       {!previewToken ? (
         <script
           dangerouslySetInnerHTML={{
