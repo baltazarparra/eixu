@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdir } from 'node:fs/promises';
 import puppeteer from 'puppeteer-core';
 import { handoffFixture } from '../helpers/admin-handoff-fixture.mjs';
 
@@ -13,6 +14,7 @@ await test(
       args: ['--no-sandbox', '--disable-dev-shm-usage'],
     });
     const fixtures = [];
+    await mkdir('outputs/premium-review', { recursive: true });
     t.after(async () => {
       await browser.close();
       for (const fixture of fixtures) await fixture.server.close();
@@ -20,13 +22,22 @@ await test(
     for (const viewport of [
       { width: 1440, height: 900 },
       { width: 390, height: 844 },
+      { width: 320, height: 480 },
     ]) {
       const fixture = await handoffFixture();
       fixtures.push(fixture);
       const page = await browser.newPage();
       const errors = [];
       page.on('pageerror', (error) => errors.push(error.message));
-      await page.setViewport(viewport);
+      await page.setViewport({
+        ...viewport,
+        isMobile: viewport.width < 1024,
+        hasTouch: viewport.width < 1024,
+      });
+      if (viewport.width === 320)
+        await page.emulateMediaFeatures([
+          { name: 'prefers-reduced-motion', value: 'reduce' },
+        ]);
       await page.goto(`${fixture.base}/admin/marcenaria-horizonte`, {
         waitUntil: 'networkidle0',
       });
@@ -86,12 +97,82 @@ await test(
         true,
       );
 
+      const reviewUrl = 'https://github.com/example/sites/pull/94';
+      fixture.data.site.premium.conversion.status = 'exported';
+      fixture.data.site.premium.conversion.pullRequestUrl = reviewUrl;
+      await page.click('.admin-premium-conversion-meta button');
+      await page.waitForSelector('.admin-premium-review-dialog[open]');
+      const review = await page.$eval(
+        '.admin-premium-review-dialog',
+        (node) => {
+          const box = node.getBoundingClientRect();
+          return {
+            text: node.textContent,
+            modal: node.matches(':modal'),
+            focusInside: node.contains(document.activeElement),
+            fitsViewport:
+              box.left >= 0 &&
+              box.right <= window.innerWidth &&
+              box.top >= 0 &&
+              box.bottom <= window.innerHeight,
+            targets: [...node.querySelectorAll('a, button')].map(
+              (control) => control.getBoundingClientRect().height,
+            ),
+            href: node.querySelector('a').href,
+            target: node.querySelector('a').target,
+          };
+        },
+      );
+      assert.match(review.text, /Só falta sua aprovação/);
+      assert.match(review.text, /Merge pull request/);
+      assert.equal(review.modal, true);
+      assert.equal(review.focusInside, true);
+      assert.equal(review.fitsViewport, true);
+      assert.ok(review.targets.every((height) => height >= 44));
+      assert.equal(review.href, reviewUrl);
+      assert.equal(review.target, '_blank');
+      await page.screenshot({
+        path: `outputs/premium-review/modal-${viewport.width}.png`,
+      });
+
+      await page.keyboard.press('Tab');
+      assert.equal(
+        await page.evaluate(() => document.activeElement?.textContent.trim()),
+        'Revisar e aprovar',
+      );
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('.admin-premium-review-dialog[open]', {
+        hidden: true,
+      });
+      assert.equal(
+        await page.$eval('.admin-premium-review-action', (link) => link.href),
+        reviewUrl,
+      );
+      await Promise.all([
+        page.waitForResponse((response) => response.url().endsWith('/state')),
+        page.click('.admin-premium-conversion-meta button'),
+      ]);
+      await page.waitForFunction(
+        () =>
+          !document.querySelector('.admin-premium-conversion-meta button')
+            .disabled,
+      );
+      assert.equal(await page.$('.admin-premium-review-dialog[open]'), null);
+
+      await page.reload({ waitUntil: 'networkidle0' });
+      await page.waitForSelector('.admin-premium-review-dialog[open]');
+      await page.click('.admin-premium-review-dialog button');
+      await page.waitForSelector('.admin-premium-review-dialog[open]', {
+        hidden: true,
+      });
+
       if (viewport.width === 1440) {
         fixture.data.site.premium.conversion.status = 'exported';
         fixture.data.site.premium.conversion.error =
           'O release Premium falhou. Reexecute o workflow.';
         await page.click('.admin-premium-conversion-meta button');
         await page.waitForSelector('a[href*="premium-release.yml"]');
+        assert.equal(await page.$('.admin-premium-review-dialog'), null);
         assert.match(
           await page.$eval(
             'a[href*="premium-release.yml"]',
@@ -99,6 +180,15 @@ await test(
           ),
           /Abrir recuperação/,
         );
+
+        fixture.data.site.premium.conversion.error = null;
+        await page.click('.admin-premium-conversion-meta button');
+        await page.waitForSelector('.admin-premium-review-dialog[open]');
+        fixture.data.site.premium.conversion.status = 'deploying';
+        await page.waitForSelector('.admin-premium-review-dialog', {
+          hidden: true,
+        });
+        assert.equal(await page.$('.admin-premium-review-action'), null);
 
         const active = await handoffFixture({ premiumCms: true });
         fixtures.push(active);

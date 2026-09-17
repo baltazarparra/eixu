@@ -92,8 +92,12 @@ flowchart LR
 O painel acompanha a conversão persistida mesmo depois de fechar ou recarregar
 a aba. Uma área própria mostra pedido, preparação, revisão, publicação e
 ativação, junto da versão pública que continua no ar. Quando a PR estiver
-pronta, oferece **Revisar e aprovar**. A primeira ativação exige esse merge; ao
-terminar, a tela entra no CMS Premium. Falha de release preserva a entrega e
+pronta, abre uma modal que informa **Só falta sua aprovação** e oferece
+**Revisar e aprovar**, com orientação para concluir a revisão no GitHub.
+A modal também aparece ao entrar numa conversão que já aguarda aprovação;
+fechá-la conserva a ação junto ao passo de revisão, sem reabrir a cada
+atualização automática. A primeira ativação exige esse merge; ao terminar,
+a tela entra no CMS Premium. Falha de release preserva a entrega e
 oferece o workflow manual de recuperação sem repetir a exportação.
 
 ## Fronteira de dados
