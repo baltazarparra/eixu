@@ -4,7 +4,7 @@ import puppeteer from 'puppeteer-core';
 import { handoffFixture } from '../helpers/admin-handoff-fixture.mjs';
 
 await test(
-  'Premium: confirma a URL, reserva a conversão e bloqueia o gerador',
+  'Premium: acompanha etapas, preserva o site e entra no CMS ao ativar',
   { skip: !process.env.EIXU_CHROME_PATH },
   async (t) => {
     const browser = await puppeteer.launch({
@@ -38,32 +38,64 @@ await test(
       );
       assert.equal(premium, true);
 
-      page.once('dialog', async (dialog) => {
-        assert.match(dialog.message(), /mesma URL|será preservado/i);
-        assert.match(dialog.message(), /rascunho/i);
-        await dialog.accept();
-      });
       await page.evaluate(() => {
         const button = [...document.querySelectorAll('button')].find(
           (item) => item.textContent.trim() === 'Premium',
         );
         button.click();
       });
-      await page.waitForFunction(() =>
-        document.body.textContent.includes('Conversão Premium em andamento'),
+      await page.waitForSelector('.admin-premium-conversion-dialog[open]');
+      const dialog = await page.$eval(
+        '.admin-premium-conversion-dialog',
+        (node) => node.textContent,
       );
-      assert.match(
-        await page.evaluate(() => document.body.textContent),
-        /versão publicada continua na URL original.*gerador está bloqueado/s,
-      );
+      assert.match(dialog, /Mesmo endereço/);
+      assert.match(dialog, /alterações em rascunho/i);
+      await page.evaluate(() => {
+        const button = [
+          ...document.querySelectorAll(
+            '.admin-premium-conversion-dialog button',
+          ),
+        ].find((item) => item.textContent.includes('Iniciar conversão'));
+        button.click();
+      });
+      await page.waitForSelector('.admin-premium-conversion');
+      const content = await page.evaluate(() => document.body.textContent);
+      assert.match(content, /Pedido recebido|A preparação ainda não começou/);
+      assert.match(content, /Pedido recebido/);
+      assert.match(content, /Preparar o projeto/);
+      assert.match(content, /Revisar a entrega/);
+      assert.match(content, /O site continua no ar/);
       assert.equal(
         await page.evaluate(() =>
           [...document.querySelectorAll('button')].some(
-            (button) => button.textContent.trim() === 'Publicar',
+            (button) => button.textContent.trim() === 'Continuar',
           ),
         ),
         false,
       );
+      assert.equal(await page.$('.admin-composer-input'), null);
+      assert.equal(
+        (await page.$('.admin-premium-conversion-preview iframe')) !== null,
+        true,
+      );
+      assert.equal(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth === window.innerWidth,
+        ),
+        true,
+      );
+
+      if (viewport.width === 1440) {
+        const active = await handoffFixture({ premiumCms: true });
+        fixtures.push(active);
+        fixture.data.site.tenant.maintenanceMode = 'premium';
+        fixture.data.site.tenant.publicRuntime = 'premium';
+        fixture.data.site.premium = active.data.site.premium;
+        await page.click('.admin-premium-conversion-meta button');
+        await page.waitForSelector('.admin-premium-editor');
+        assert.equal(await page.$('.admin-premium-conversion'), null);
+      }
       assert.deepEqual(errors, []);
       await page.close();
     }

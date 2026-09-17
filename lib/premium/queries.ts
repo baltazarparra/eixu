@@ -183,7 +183,7 @@ export async function premiumWorkspaceState(
       select p.id, p.project_key, p.directory, p.status as project_status,
              p.vercel_project_name, c.id as conversion_id,
              c.status as conversion_status, c.pull_request_url, c.error,
-             c.created_at
+             c.created_at, c.claimed_at, c.updated_at, c.finished_at
       from premium_projects p
       left join lateral (
         select * from premium_conversions current
@@ -217,6 +217,9 @@ export async function premiumWorkspaceState(
             : null,
           error: row.error ? string(row.error) : null,
           createdAt: string(row.created_at),
+          claimedAt: row.claimed_at ? string(row.claimed_at) : null,
+          updatedAt: string(row.updated_at),
+          finishedAt: row.finished_at ? string(row.finished_at) : null,
         };
     }
   } catch (error) {
@@ -266,7 +269,9 @@ export type ClaimedPremiumConversion = {
 };
 
 /** Reserva um job por 20 minutos e entrega um novo token de projeto uma vez. */
-export async function claimPremiumConversion(): Promise<ClaimedPremiumConversion | null> {
+export async function claimPremiumConversion(
+  conversionId?: string,
+): Promise<ClaimedPremiumConversion | null> {
   const bridgeToken = randomBytes(32).toString('base64url');
   return transaction(async (connection) => {
     const selected = await connection.query(
@@ -274,11 +279,15 @@ export async function claimPremiumConversion(): Promise<ClaimedPremiumConversion
               p.vercel_project_name
        from premium_conversions c
        join premium_projects p on p.id = c.project_id
-       where c.status = 'queued'
-          or (c.status = 'claimed' and c.lease_expires_at < now())
+       where ($1::uuid is null or c.id = $1::uuid)
+         and (
+           c.status = 'queued'
+           or (c.status = 'claimed' and c.lease_expires_at < now())
+         )
        order by c.created_at asc
        for update of c skip locked
        limit 1`,
+      [conversionId ?? null],
     );
     const row = selected.rows[0] as Row | undefined;
     if (!row) return null;

@@ -97,6 +97,19 @@ ficam no [histórico](archive/verification-2026-09-13.md); não certificam o est
 
 ## Painel administrativo
 
+### Conversão para Premium
+
+Ao reservar uma conversão, o gerador sai da tela e dá lugar a uma superfície de
+entrega. O trilho à esquerda diferencia pedido, preparação, revisão, publicação
+e ativação; a versão pública ocupa o restante da tela e comprova que o endereço
+continua disponível. Tempo decorrido, atualização manual, falha e ação humana
+ficam no mesmo contexto. No celular, **Andamento** e **Site atual** alternam sem
+duplicar avisos ou manter os controles antigos do gerador.
+
+O botão de revisão só aparece quando a PR existe. Falha de release apresenta
+uma nova tentativa; ativação recarrega a rota e abre o CMS Premium. Movimento se
+limita ao indicador do trabalho ativo e some com movimento reduzido.
+
 ### CMS dos projetos Premium
 
 Quando `maintenance_mode` e `public_runtime` são `premium`, a área Site não

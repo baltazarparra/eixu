@@ -460,6 +460,9 @@ export async function handoffFixture({
                     pullRequestUrl: null,
                     error: null,
                     createdAt: new Date().toISOString(),
+                    claimedAt: null,
+                    updatedAt: new Date().toISOString(),
+                    finishedAt: null,
                   },
                 };
                 res.statusCode = 202;
@@ -619,6 +622,9 @@ export async function handoffFixture({
         pullRequestUrl: null,
         error: null,
         createdAt: '2026-09-16T12:00:00.000Z',
+        claimedAt: '2026-09-16T12:00:05.000Z',
+        updatedAt: '2026-09-16T12:02:00.000Z',
+        finishedAt: '2026-09-16T12:02:00.000Z',
       },
       editor: {
         contractHash: 'a'.repeat(64),

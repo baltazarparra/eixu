@@ -5,6 +5,7 @@ import {
   PremiumConversionError,
   requestPremiumConversion,
 } from '@/lib/premium/queries';
+import { dispatchPremiumConversion } from '@/lib/premium/dispatch';
 
 export async function POST(
   request: Request,
@@ -24,6 +25,7 @@ export async function POST(
       tenantId: tenant.id,
       requestedBy: user,
     });
+    const dispatch = await dispatchPremiumConversion(conversion.id);
     await recordActivity({
       actor: user,
       actorType: 'user',
@@ -37,9 +39,10 @@ export async function POST(
       detail: {
         projectKey: conversion.projectKey,
         sourceHash: conversion.sourceHash,
+        dispatch,
       },
     });
-    return Response.json({ conversion }, { status: 202 });
+    return Response.json({ conversion, dispatch }, { status: 202 });
   } catch (error) {
     if (error instanceof PremiumConversionError)
       return Response.json({ error: error.message }, { status: error.status });
