@@ -323,9 +323,9 @@ function UsageCard({ usage }: { usage: TenantUsage }) {
   return (
     <section
       className="admin-usage-card"
-      aria-label={`Consumo de IA nos últimos ${usage.days} dias`}
+      aria-label={`Consumo dos projetos nos últimos ${usage.days} dias`}
     >
-      <p className="admin-label">Consumo de IA · {usage.days} dias</p>
+      <p className="admin-label">Consumo dos projetos · {usage.days} dias</p>
       <p className="admin-usage-total">
         <strong>{formatCost(usage.costUsd ?? undefined)}</strong>
         <span>{formatTokens(usage.totalTokens ?? undefined)}</span>

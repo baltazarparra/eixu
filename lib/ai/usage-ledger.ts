@@ -14,7 +14,10 @@ export type UsageKind =
   | 'referencia'
   | 'site-atual'
   | 'leitura-logo'
-  | 'avatar';
+  | 'avatar'
+  | 'desenvolvimento'
+  | 'ia-runtime'
+  | 'servico-externo';
 
 export type UsageContext = {
   tenantId: string;
@@ -33,9 +36,10 @@ function count(value: number | undefined): number | null {
 /** Registra a intenção antes da chamada paga; uma interrupção conserva a lacuna. */
 async function begin(context: UsageContext, operation: string, step: number) {
   await db()`
-    insert into ai_usage (tenant_id, operation_id, step, kind, model, phase, run_id)
-    values (${context.tenantId}, ${operation}, ${step}, ${context.kind},
-      ${context.model}, ${context.phase ?? null}, ${context.runId ?? null})
+    insert into ai_usage (tenant_id, operation_id, step, kind, model, phase, run_id, lifecycle)
+    select id, ${operation}, ${step}, ${context.kind},
+      ${context.model}, ${context.phase ?? null}, ${context.runId ?? null}, maintenance_mode
+    from tenants where id = ${context.tenantId}
     on conflict (tenant_id, operation_id, step) do nothing
   `;
 }

@@ -431,6 +431,16 @@ create table if not exists ai_usage (
   unique (tenant_id, operation_id, step)
 );
 
+-- Classificação no instante da chamada, nunca pelo estado atual do cliente.
+-- Recibos anteriores permanecem sem fase; não se inventa uma data de conversão.
+alter table ai_usage add column if not exists source text not null default 'gateway';
+alter table ai_usage add column if not exists lifecycle text not null default 'unknown'
+  check (lifecycle in ('unknown', 'generator', 'converting', 'premium'));
+alter table ai_usage add column if not exists external_id text;
+-- Um recibo externo não pode ser atribuído a dois clientes.
+create unique index if not exists ai_usage_external_receipt_idx
+  on ai_usage (source, external_id) where external_id is not null;
+
 create index if not exists ai_usage_tenant_time_idx
   on ai_usage (tenant_id, created_at desc, id desc);
 

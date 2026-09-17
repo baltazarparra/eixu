@@ -327,6 +327,13 @@ duplicação. Ausência continua ausente, sem virar zero; a migração importa u
 vez os recibos antigos de `phase_end` e os eventos novos marcam `usageLedger`
 para não serem somados de novo.
 
+A continuidade depois da conversão segue [Consumo por projeto](project-usage.md).
+O ledger também aceita recibos externos de desenvolvimento e serviços atribuídos
+ao mesmo tenant, com origem e fase. `npm run usage:sync` coleta logs dedicados de
+Codex/Claude, com modo contínuo e deduplicação. O painel distingue acumulado e
+período; assinaturas e fontes não coletadas continuam como lacunas, sem preço
+presumido. Coleta externa exige execução do sincronizador, não somente prompt.
+
 O painel de andamento lê por consulta
 periódica, reativa a leitura ao iniciar pelo botão ou pelo chat e reconstrói o
 andamento depois de qualquer recarga. As mensagens são paginadas a partir de

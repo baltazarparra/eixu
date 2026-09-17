@@ -159,15 +159,19 @@ após compilar. Três checks exigem `SOUL.md` e os binários do Chromium nos man
 
 ## Integração em PostgreSQL local
 
-`EIXU_TEST_POSTGRES_URL` habilita seis suítes opcionais em `test:admin`:
+`EIXU_TEST_POSTGRES_URL` habilita sete suítes opcionais em `test:admin`:
 `admin-concurrency`, `admin-generation-db`, `admin-handoff`,
-`admin-page-edits-db`, `admin-logo-state-db` e `admin-usage-history`. Elas
+`admin-page-edits-db`, `admin-logo-state-db`, `admin-usage-history` e
+`admin-project-usage`. Elas
 aplicam o schema e escrevem em um banco descartável. O histórico de consumo
 também exercita callbacks reais do AI SDK com modelos simulados, custo ausente
 e zero, operações em várias etapas e backfill idempotente.
 O helper [local-postgres.mjs](../tests/helpers/local-postgres.mjs) exige nome
 `eixu_pr2_test` e host local; usa o driver Neon por um proxy WebSocket local.
-Banco remoto não é aceito. Blob, rede social e modelo são simulados.
+Banco remoto não é aceito. Blob, rede social e modelo são simulados. A suíte
+`admin-project-usage` cobre deduplicação de logs Codex/Claude, serviços sem tokens,
+privacidade da prévia CLI, recusa de destino divergente, atribuição exclusiva por
+cliente, rollback do lote, preservação da fase e acumulado independente do filtro.
 
 Sem a variável, essas suítes são puladas. Não configure `DATABASE_URL` de
 produção como substituto. Migração, seed e requantização não são checks.
