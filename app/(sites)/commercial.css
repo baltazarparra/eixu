@@ -34,35 +34,31 @@
 
 /*
  * A navbar é visualmente parte do hero e não reserva um cabeçalho próprio —
- * mas só onde existe um hero de fachada logo abaixo para recebê-la. A regra
- * valia em qualquer página, e nas internas, cuja abertura não reserva espaço,
- * a barra cobria o título. O invariante é a abertura seguinte, não o slug: uma
- * interna que legitimamente abrisse na fachada também se comportaria.
+ * mas só onde existe um hero de fachada para recebê-la. Nas internas, cuja
+ * abertura não reserva espaço, a barra cobriria o título.
+ *
+ * O invariante é a abertura da página, não o slug. Ele não pode ser lido por
+ * seletor de irmão: o miolo fica dentro de um `<main>` e a navegação fora, de
+ * modo que `nav + hero` nunca casa e a sobreposição morria em toda página,
+ * inclusive na home. `data-opening` traz a decisão já resolvida no servidor,
+ * com a assinatura `tipo:layout` do pre-flight, e independe do formato da
+ * árvore renderizada.
  */
 .site-theme[data-profile-version='8'][data-vibe='comercial']
-  > .site-motion-root
-  > .site-block:first-child:has(.site-nav):has(
-    + .site-block[data-block='hero.split'][data-layout='brand']
-  ) {
+  .site-block[data-block='nav.bar'][data-opening='hero.split:brand'] {
   position: relative;
   z-index: 60;
   height: 0;
 }
 
 .site-theme[data-profile-version='8'][data-vibe='comercial']
-  > .site-motion-root
-  > .site-block:first-child:has(.site-nav):has(
-    + .site-block[data-block='hero.split'][data-layout='brand']
-  )
+  .site-block[data-block='nav.bar'][data-opening='hero.split:brand']
   .site-navigation-frame:has(.site-nav) {
   height: 0;
 }
 
 .site-theme[data-profile-version='8'][data-vibe='comercial']
-  > .site-motion-root
-  > .site-block:first-child:has(.site-nav):has(
-    + .site-block[data-block='hero.split'][data-layout='brand']
-  )
+  .site-block[data-block='nav.bar'][data-opening='hero.split:brand']
   .site-navigation-frame:has(.site-nav)
   > .site-navigation-content {
   position: absolute;
@@ -76,10 +72,7 @@
  * próprio.
  */
 .site-theme[data-profile-version='8'][data-vibe='comercial']
-  > .site-motion-root
-  > .site-block:first-child:has(.site-nav):not(
-    :has(+ .site-block[data-block='hero.split'][data-layout='brand'])
-  )
+  .site-block[data-block='nav.bar']:not([data-opening='hero.split:brand'])
   .site-nav {
   border-bottom: 1px solid color-mix(in oklab, black 22%, transparent);
 }

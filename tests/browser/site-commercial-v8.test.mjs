@@ -778,6 +778,55 @@ await test(
         });
       assert.deepEqual(errors, []);
 
+      // A contraparte da interna: na home a barra compõe a fachada. Só a
+      // interna era medida, então a sobreposição pôde morrer em toda página
+      // sem que nenhum teste acusasse — a barra virou um cabeçalho solto no
+      // topo, acima do hero. Medir a home fecha os dois lados da regra.
+      await t.test('a home sobrepõe a navegação à fachada', async () => {
+        for (const [width, height] of [
+          [1440, 900],
+          [390, 844],
+        ]) {
+          await page.setViewport({ width, height });
+          await page.goto(origin, { waitUntil: 'networkidle0' });
+          const report = await page.evaluate(() => {
+            const rect = (el) => {
+              const r = el.getBoundingClientRect();
+              return { top: r.top, bottom: r.bottom, height: r.height };
+            };
+            const nav = document.querySelector('.site-nav');
+            return {
+              nav: rect(nav),
+              quadro: rect(nav.closest('.site-block')),
+              fachada: rect(document.querySelector('.site-hero-brand')),
+              headline: rect(document.querySelector('.site-headline')),
+              overflow:
+                document.documentElement.scrollWidth -
+                document.documentElement.clientWidth,
+            };
+          });
+          const onde = `${width}x${height}`;
+          assert.ok(
+            report.quadro.height <= 1,
+            `a navegação da home reserva cabeçalho próprio em ${onde}: quadro de ${report.quadro.height}px`,
+          );
+          assert.ok(
+            report.nav.top >= report.fachada.top &&
+              report.nav.bottom <= report.fachada.bottom,
+            `a barra da home não está sobre a fachada em ${onde}: barra ${report.nav.top}–${report.nav.bottom}, fachada ${report.fachada.top}–${report.fachada.bottom}`,
+          );
+          assert.ok(
+            report.headline.top >= report.nav.bottom,
+            `a barra cobre o título da home em ${onde}`,
+          );
+          assert.ok(
+            report.overflow <= 1,
+            `rolagem horizontal de ${report.overflow}px em ${onde}`,
+          );
+        }
+      });
+      assert.deepEqual(errors, []);
+
       // A navegação v8 é posicionada por cima de um quadro de altura zero, o
       // que só funciona sobre o hero de fachada. A regra valia em toda página e
       // a barra cobria o título das internas. Medir o título não bastaria: o
