@@ -15,6 +15,13 @@ import {
   structuresDirection,
   type SiteStructure,
 } from './structures';
+import {
+  commercialCompositionText,
+  commercialFooter,
+  commercialSequence,
+  resolveCommercialVariants,
+  type CommercialVariantKeys,
+} from './commercial-variants';
 
 /**
  * Vibe do site, escolhida pelo operador no cadastro. Ela não substitui a
@@ -284,7 +291,12 @@ export type VibeGrammar = {
 };
 
 type GrammarProfile =
-  | { version?: number; structure?: unknown; heroComposition?: string }
+  | {
+      version?: number;
+      structure?: unknown;
+      heroComposition?: string;
+      commercialVariants?: Partial<CommercialVariantKeys> | null;
+    }
   | undefined;
 
 /** V5 usa a família antiga; v6 usa a fonte do tenant; v8 fixa a Comercial nova. */
@@ -312,7 +324,13 @@ export function structureGrammar(
     design?.version === 6 && selected
       ? VIBE_GRAMMAR[selected.vibe]
       : VIBE_GRAMMAR[vibe];
-  const structure = selected;
+  // A sequência da Comercial v8 deixou de ser literal: a combinação sorteada
+  // para o tenant decide cada área. Este é o único ponto de injeção — o
+  // pre-flight, o plano de cenas e o prompt leem a estrutura por aqui.
+  const structure =
+    selected && design?.version === 8 && isCommercialV8Structure(selected.key)
+      ? commercialStructure(selected, design.commercialVariants)
+      : selected;
   if (!structure) return base;
   return {
     ...base,
@@ -323,6 +341,28 @@ export function structureGrammar(
     support: structure.support,
     summary: `${structure.label}: ${structure.intent}`,
     structure,
+  };
+}
+
+/**
+ * A estrutura com a composição do tenant. `openings`, `protagonists` e
+ * `closings` acompanham a sequência resolvida: o pre-flight compara a abertura
+ * e o fechamento com essas listas, e apontar a assinatura base recusaria a
+ * própria composição sorteada.
+ */
+function commercialStructure(
+  structure: SiteStructure,
+  keys?: Partial<CommercialVariantKeys> | null,
+): SiteStructure {
+  const resolved = resolveCommercialVariants(keys);
+  const sequence = commercialSequence(resolved);
+  return {
+    ...structure,
+    sequence,
+    openings: [sequence[0]!],
+    protagonists: [resolved.setores.signature],
+    closings: [sequence[sequence.length - 1]!],
+    footer: commercialFooter(resolved),
   };
 }
 
@@ -480,6 +520,14 @@ Realize as seis aplicações documentadas da referência em estrutura, hero, tip
     design?.version === 5 || design?.version === 8
       ? ''
       : `\nEstruturas disponíveis para sites novos:\n${structuresDirection(vibe)}`;
+  // A Comercial v8 não tem mais uma composição só: cada área desta combinação
+  // traz sua assinatura e suas contagens, e é isso que o pre-flight cobra.
+  const composition =
+    design?.version === 8 && grammar.structure
+      ? `\nComposição sorteada para este cliente, área por área:\n${commercialCompositionText(
+          resolveCommercialVariants(design.commercialVariants),
+        )}`
+      : '';
   return `Gramática obrigatória da vibe ${VIBE_LABEL[vibe]}, em tipo:layout. A vibe ${grammar.summary}
 - Abertura da home: ${grammar.openings.join(' ou ')}.
 - Seção protagonista da home, com duas fotos deste cliente: ${grammar.protagonists.join(' ou ')}.
@@ -488,7 +536,7 @@ Realize as seis aplicações documentadas da referência em estrutura, hero, tip
 - Headline de todo hero: até ${grammar.headline} caracteres. O que sobrar vai para o subtext.
 - Evite nesta vibe: ${grammar.avoid.join(', ')}.
 ${grammar.structure ? `- Estrutura selecionada: ${grammar.structure.key}. Sequência mínima: ${grammar.structure.sequence.join(' > ')}.${grammar.structure.footer ? ` Rodapé: ${grammar.structure.footer}.` : ''}` : ''}
-Sem referência visual verificada, esta gramática define a direção completa.${homeDirection}${choices}`;
+Sem referência visual verificada, esta gramática define a direção completa.${composition}${homeDirection}${choices}`;
 }
 
 const AXIS_LABEL: Record<Axis, string> = {
@@ -670,12 +718,13 @@ export function laneIssues(
 export const VIBE_DIRECTION: Record<Vibe, string> = {
   landing: `Vibe Landing Page: uma página, uma ação. Menu minimal em pílulas e âncoras; hero.landing stage com produto em moldura ou form com formulário curto. Benefício concreto, prova real, protagonista com duas fotos, passos, FAQ e fechamento sobre acento. De 6 a 11 seções de conteúdo. Repita o destino primário na abertura, no meio e no fechamento. nav.bar com stickyCta true e position fixed. A referência modula os eixos visuais, mas nunca a forma de página única.`,
   comercial: `Vibe Comercial v8: referência visual absoluta em https://minatelsupermercados.com.br/brotas, adaptada aos fatos e à marca de cada comércio.
-- Use sempre a estrutura fixa comercial-marca e preserve toda a sequência. Ela é o piso da página, não uma lista de blocos opcionais.
-- A navegação faz parte visualmente do hero. Mostre o logo somente na navegação e use no fundo do hero uma fotografia real da fachada do próprio comércio, com o logo ou nome visível no letreiro. A fachada deve vir de upload ou do site oficial; nunca gere ou invente esse registro. Aplique sobre a foto uma camada da cor principal da marca. Título, descrição e CTA são curtos.
-- Logo após o hero, use editorial.text bridge como ligação institucional com os setores: title identifica a unidade ou o negócio, lead traz o endereço confirmado da unidade quando cadastrado, e body apresenta o contexto local em um ou dois parágrafos curtos. O painel da marca e o texto em duas colunas fazem essa transição visual; não use lead/narrow nem uma faixa de CTA nesse lugar. Sem endereço confirmado, omita lead e mantenha o nome e o contexto real, sem inventar uma unidade. Depois entram exatamente seis setores em feature.bento gallery, cada um com foto, nome e descrição útil. Em seguida entram ofertas, redes sociais, uma faixa fotográfica panorâmica com parallax, história, outra faixa fotográfica, carreira, galeria com pelo menos seis fotos, convite de contato, formulário, todas as unidades no mapa e rodapé.
+- Use sempre a estrutura fixa comercial-marca. A composição desta combinação, área por área, está na gramática acima: ela traz a assinatura de cada seção e as contagens exigidas. Preserve a sequência inteira; ela é o piso da página, não uma lista de blocos opcionais.
+- O hero usa no fundo uma fotografia real da fachada do próprio comércio, com o logo ou nome visível no letreiro. A fachada deve vir de upload ou do site oficial; nunca gere ou invente esse registro. Aplique sobre a foto uma camada da cor principal da marca. Mostre o logo somente na navegação. Título, descrição e CTA são curtos.
+- A seção logo após o hero é a ligação institucional com os setores: title identifica a unidade ou o negócio, lead traz o endereço confirmado da unidade quando cadastrado, e body apresenta o contexto local em um ou dois parágrafos curtos. Sem endereço confirmado, omita lead e mantenha o nome e o contexto real, sem inventar uma unidade. Não use um texto corrido nem uma faixa de CTA nesse lugar.
+- Cada setor da listagem tem imagem própria, nome e descrição útil; a composição acima diz quantos são e se pede fotografia ou gravura recortada. Depois dela a página percorre ofertas, redes sociais, uma pausa visual de largura cheia, história, outra pausa visual, carreira, galeria, convite de contato, formulário, todas as unidades no mapa e rodapé.
 - Use somente contatos e redes cadastrados. Cada unidade renderiza nome, endereço, telefone, horário, rota e mapa quando esses dados existirem.
 - Paleta curta, tipografia sem ornamento, superfícies planas, bordas discretas e componentes simples. Não crie catálogo de funcionalidades, cartões decorativos, textura, grade ou prova inventada.
-- Todo componente entra uma vez quando aparece na tela: reveal suave para texto e formulário, entrada individual nas categorias e fotos, scale discreto nas fotografias. As duas faixas panorâmicas têm parallax no scroll. Sem loops; respeite movimento reduzido e o modo de edição.`,
+- Todo componente entra uma vez quando aparece na tela: reveal suave para texto e formulário, entrada individual nas categorias e imagens, scale discreto nas fotografias. As faixas fotográficas de largura cheia têm parallax no scroll. Sem loops; respeite movimento reduzido e o modo de edição.`,
   moderno: `Vibe moderno: papel quase preto e liso, fios de 1px entre capítulos, rótulos em mono e muito respiro, como linear.app e resend.com.
 - paper e surface quase pretos, ink quase branco, radius sm ou md, motif none. Não existe grade nem textura de fundo: os capítulos se separam por um fio de 1px.
 - nav.bar layout minimal com position "fixed". Abra com hero.split layout editorial: headline de até 56 caracteres, lead curto e o painel de foto largo abaixo, que some no papel.

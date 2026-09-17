@@ -1,5 +1,6 @@
 import { critique } from '@/lib/images/critic';
 import { generateCandidates } from '@/lib/images/generate';
+import { styleOfPrompt, transparentPrompt } from '@/lib/images/style';
 import { fetchReference, generateLogoCandidates } from '@/lib/images/logo';
 import { critiqueLogo } from '@/lib/images/logo-critic';
 import { getGuide } from '@/lib/images/queries';
@@ -70,6 +71,9 @@ export async function reviseImage(
     });
     image = generated;
   } else {
+    // A natureza da imagem vem do pedido original: alterar uma gravura pelo
+    // número devolvia foto opaca, e a seção ficava metade desenho, metade foto.
+    const estilo = styleOfPrompt(previous.promptFinal);
     const result = await generateCandidates({
       tenant,
       guide,
@@ -77,6 +81,8 @@ export async function reviseImage(
       ratio,
       targetBlock: previous.targetBlock ?? 'livre',
       models: ['openai/gpt-image-2'],
+      estilo,
+      transparent: transparentPrompt(previous.promptFinal),
       reference,
       referenceUrl: previous.url,
     });
@@ -92,6 +98,7 @@ export async function reviseImage(
       guide,
       request: description,
       ratio,
+      estilo,
       targetBlock: previous.targetBlock ?? 'livre',
     });
     image = generated;

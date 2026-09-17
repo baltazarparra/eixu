@@ -17,6 +17,12 @@ import {
   type Vibe,
 } from '@/lib/design/vibes';
 import type { DesignProfile } from '@/lib/design/profile';
+import type { ImageStyle } from '@/lib/types';
+import { styleOfPrompt } from '@/lib/images/style';
+import {
+  commercialScenes,
+  resolveCommercialVariants,
+} from '@/lib/design/commercial-variants';
 import { briefDepth, homeSectionFloor } from '@/lib/taste/metrics';
 
 export {
@@ -32,6 +38,10 @@ export type PlannedScene = {
   targetBlock: string;
   ratio: Ratio;
   hint: string;
+  /** Estilo desta vaga, quando a área pede outra natureza de imagem. */
+  estilo?: ImageStyle;
+  /** Pede a arte recortada, sem fundo. */
+  transparent?: boolean;
   /** Pedido semântico produzido junto do plano editorial. */
   request?: string;
   page?: string;
@@ -54,7 +64,8 @@ export function scenePlan(
   design:
     | (Pick<DesignProfile, 'heroComposition'> &
         Partial<Pick<DesignProfile, 'structure'>> &
-        Partial<Pick<DesignProfile, 'version'>>)
+        Partial<Pick<DesignProfile, 'version'>> &
+        Partial<Pick<DesignProfile, 'commercialVariants'>>)
     | undefined,
   organicPages = 3,
   vibe: Vibe = 'comercial',
@@ -71,40 +82,11 @@ export function scenePlan(
       ? design.heroComposition
       : heroCompositionFor(vibe, design?.heroComposition);
   if (design?.version === 8 && structure?.vibe === 'comercial') {
-    const scenes: PlannedScene[] = [
-      {
-        role: 'hero',
-        targetBlock: 'hero.brand',
-        ratio: '16:9',
-        page: '',
-        hint: 'Fotografia documental panorâmica da fachada real do comércio, com o nome ou logo da própria marca claramente visível no letreiro. Use apenas foto enviada pelo operador ou importada do site oficial; nunca gere ou invente a fachada.',
-      },
-    ];
-    for (let i = 0; i < 6; i++)
-      scenes.push({
-        role: 'protagonista',
-        targetBlock: 'feature.bento',
-        ratio: '4:3',
-        page: '',
-        hint: `Uma categoria real e diferente do comércio, fotografada de modo simples e reconhecível para o item ${i + 1} da grade de seis setores.`,
-      });
-    scenes.push(
-      {
-        role: 'apoio',
-        targetBlock: 'media.image',
-        ratio: '16:9',
-        page: '',
-        hint: 'Cena panorâmica documental de produtos ou ambiente, própria para uma faixa fotográfica larga com parallax e sem texto incorporado.',
-      },
-      {
-        role: 'apoio',
-        targetBlock: 'cta.band',
-        ratio: '16:9',
-        page: '',
-        hint: 'Cena documental do ambiente de trabalho real ou de atendimento, para acompanhar o convite de carreira sem retrato posado.',
-      },
-    );
-    return scenes;
+    // As vagas saem da combinação de variações do tenant: cada área declara
+    // quantas fotos pede, em que proporção e com que pedido.
+    return commercialScenes(
+      resolveCommercialVariants(design.commercialVariants),
+    ).map((scene) => ({ ...scene, page: '' }));
   }
   const heroBlock = `hero.${composition}`;
   const scenes: PlannedScene[] = [
@@ -200,7 +182,9 @@ export function sceneRequestsMatchPlan(
 
 /** Uma cena legível para o prompt. */
 export function sceneText(scene: PlannedScene): string {
-  return `${scene.role} · targetBlock ${scene.targetBlock} · ${scene.ratio} · ${scene.request ?? scene.hint}${scene.page ? ` · página ${scene.page}` : ''}`;
+  return `${scene.role} · targetBlock ${scene.targetBlock} · ${scene.ratio}${
+    scene.estilo ? ` · ${scene.estilo}` : ''
+  }${scene.transparent ? ' recortada sem fundo' : ''} · ${scene.request ?? scene.hint}${scene.page ? ` · página ${scene.page}` : ''}`;
 }
 
 /** Plano legível para o prompt da fase de cenas. */
@@ -211,17 +195,29 @@ export function scenePlanText(scenes: PlannedScene[]): string {
 }
 
 /** O que uma imagem precisa expor para preencher uma vaga do plano. */
-export type CoverageImage = { targetBlock: string | null; ratio: string };
+export type CoverageImage = {
+  targetBlock: string | null;
+  ratio: string;
+  promptFinal?: string;
+};
 
 /**
- * `ratioFits` aceita proporção desconhecida, porque lá ela só vira aviso. Aqui
- * ela decidiria pular uma geração inteira: foto sem proporção legível não pode
- * dar a vaga por preenchida.
+ * Proporção e natureza. `ratioFits` aceita proporção desconhecida, porque lá ela
+ * só vira aviso; aqui ela decidiria pular uma geração inteira, e foto sem
+ * proporção legível não pode dar a vaga por preenchida.
+ *
+ * A natureza importa pelo mesmo motivo: um upload 4:3 do comércio tem o bloco e
+ * a proporção da vaga de gravura, e sem esta comparação daria a vaga por
+ * coberta — a seção renderizaria fotos sob o CSS feito para traço recortado.
  */
 function fits(image: CoverageImage, scene: PlannedScene): boolean {
-  return (
-    ratioValue(image.ratio) !== null && ratioFits(image.ratio, scene.ratio)
-  );
+  if (ratioValue(image.ratio) === null || !ratioFits(image.ratio, scene.ratio))
+    return false;
+  const natureza = styleOfPrompt(image.promptFinal);
+  // Vaga sem estilo próprio segue o guia do cliente, que nunca é gravura: só
+  // precisa recusar um desenho recortado. Assim um tenant com guia de
+  // ilustração continua aproveitando o que já gerou.
+  return scene.estilo ? natureza === scene.estilo : natureza !== 'gravura';
 }
 
 /**

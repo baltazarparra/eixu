@@ -32,26 +32,65 @@
   text-transform: uppercase;
 }
 
-/* A navbar é visualmente parte do hero e não reserva um cabeçalho próprio. */
+/*
+ * A navbar é visualmente parte do hero e não reserva um cabeçalho próprio —
+ * mas só onde existe um hero de fachada logo abaixo para recebê-la. A regra
+ * valia em qualquer página, e nas internas, cuja abertura não reserva espaço,
+ * a barra cobria o título. O invariante é o par: barra flutuante acima de uma
+ * fachada de largura cheia. A barra ancorada e a fachada emoldurada ocupam
+ * altura própria e nunca sobrepõem.
+ */
 .site-theme[data-profile-version='8'][data-vibe='comercial']
   > .site-motion-root
-  > .site-block:first-child:has(.site-nav) {
+  > .site-block:first-child[data-layout='bar']:has(
+    + .site-block[data-block='hero.split'][data-layout='brand']
+  ) {
   position: relative;
   z-index: 60;
   height: 0;
 }
 
 .site-theme[data-profile-version='8'][data-vibe='comercial']
+  > .site-motion-root
+  > .site-block:first-child[data-layout='bar']:has(
+    + .site-block[data-block='hero.split'][data-layout='brand']
+  )
   .site-navigation-frame:has(.site-nav) {
   height: 0;
 }
 
 .site-theme[data-profile-version='8'][data-vibe='comercial']
+  > .site-motion-root
+  > .site-block:first-child[data-layout='bar']:has(
+    + .site-block[data-block='hero.split'][data-layout='brand']
+  )
   .site-navigation-frame:has(.site-nav)
   > .site-navigation-content {
   position: absolute;
   inset: clamp(1rem, 3vw, 2.5rem) 0 auto;
   z-index: 60;
+}
+
+/*
+ * Quando a barra não sobrepõe nada, ela fecha com um fio e as aberturas
+ * internas recebem o respiro que o hero de fachada resolvia com padding
+ * próprio.
+ */
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  > .site-motion-root
+  > .site-block:first-child:has(.site-nav):not(
+    [data-layout='bar']:has(
+      + .site-block[data-block='hero.split'][data-layout='brand']
+    )
+  )
+  .site-nav {
+  border-bottom: 1px solid color-mix(in oklab, black 22%, transparent);
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  :is(.site-statement-framed, .site-hero-info)
+  .site-hero-grid {
+  padding-block-start: clamp(3rem, 6vw, 5rem);
 }
 
 .site-theme[data-profile-version='8'][data-vibe='comercial'] .site-nav {
@@ -135,7 +174,25 @@
   width: 100%;
   max-width: var(--site-max);
   min-height: max(44rem, 87svh);
-  padding-block: clamp(10rem, 18vw, 14rem) clamp(4rem, 8vw, 7rem);
+  padding-block: clamp(4rem, 8vw, 7rem);
+}
+
+/*
+ * Só a fachada que recebe a barra sobreposta reserva espaço para ela. O logo
+ * v8 chega a 7.5rem de altura, então uma marca com wordmark alta empurra a
+ * barra para perto do limite de um respiro fixo: a medida real, publicada no
+ * tema pela navegação, mantém o título abaixo dela em qualquer marca, e o
+ * clamp continua valendo enquanto o JavaScript não mediu.
+ */
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  > .site-motion-root
+  > .site-block:first-child[data-layout='bar']
+  + .site-block[data-block='hero.split'][data-layout='brand']
+  .site-hero-grid {
+  padding-block-start: max(
+    clamp(10rem, 18vw, 14rem),
+    calc(var(--navigation-height, 0px) + 3rem)
+  );
 }
 
 .site-theme[data-profile-version='8'][data-vibe='comercial']
@@ -300,7 +357,10 @@
 
 /* Introdução e história. */
 .site-theme[data-profile-version='8'][data-vibe='comercial']
-  .site-block:has(> .site-text-bridge)
+  .site-block[data-block='editorial.text']:is(
+    [data-layout='bridge'],
+    [data-layout='threshold']
+  )
   + .site-block[data-block='feature.bento']
   > .site-section {
   padding-top: clamp(2rem, 4vw, 3.5rem);
@@ -706,4 +766,324 @@
     transform: none;
     will-change: auto;
   }
+}
+
+/*
+ * Segunda versão de cada área da abertura. Mesma voz, mesma paleta, mesmo
+ * vocabulário de movimento: o que muda é a distribuição. Nenhuma introduz
+ * textura, gradiente, sombra de cartão ou outra família de raio, porque duas
+ * lojas da mesma vibe não podem parecer trabalho de duas agências.
+ */
+
+/* Barra ancorada: faixa de borda a borda com altura própria. */
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-nav.site-nav-split {
+  width: 100%;
+  box-shadow: none;
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-nav.site-nav-split
+  .site-nav-row {
+  --nav-min-height: 4.5rem;
+  max-width: var(--site-max);
+  margin-inline: auto;
+  padding-inline: clamp(1rem, 3vw, 2.2rem);
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-nav.site-nav-split
+  .site-nav-logo {
+  height: clamp(2.6rem, 4vw, 3.6rem);
+  filter: none;
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-nav.site-nav-split
+  .site-nav-brand {
+  min-width: clamp(7rem, 11vw, 10rem);
+  max-width: clamp(7rem, 11vw, 10rem);
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-nav.site-nav-split
+  .site-nav-cta {
+  border: 1px solid color-mix(in oklab, white 55%, transparent);
+  background: transparent;
+  color: white;
+}
+
+/* Fachada emoldurada: a foto no topo, o texto abaixo sobre a cor da marca. */
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-hero-brand-frame {
+  display: grid;
+  padding: 0;
+  background: var(--commercial-blue);
+  color: white;
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-hero-brand-frame
+  .site-hero-grid {
+  display: grid;
+  grid-template-rows: auto auto;
+  width: 100%;
+  max-width: var(--site-max);
+  gap: clamp(2rem, 4vw, 3.25rem);
+  padding-block: clamp(2rem, 4vw, 3.5rem) clamp(3.5rem, 7vw, 6rem);
+}
+
+/*
+ * A foto vem depois da cópia no DOM e sobe para a primeira linha pelo grid.
+ * A figura não tem elemento focável, então a ordem de leitura e a de tabulação
+ * continuam corretas.
+ */
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-hero-brand-frame
+  .site-hero-visual {
+  grid-row: 1;
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-hero-brand-frame
+  .site-hero-media {
+  overflow: hidden;
+  width: 100%;
+  max-height: 60svh;
+  border-radius: 0;
+  aspect-ratio: 16 / 9;
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-hero-brand-frame
+  .site-hero-media
+  img {
+  width: 100%;
+  height: 100%;
+  object-position: center;
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-hero-brand-frame
+  .site-hero-copy {
+  grid-row: 2;
+  max-width: 44rem;
+  gap: 1.35rem;
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-hero-brand-frame
+  :is(.site-headline, .site-hero-copy p, .site-eyebrow) {
+  color: inherit;
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-hero-brand-frame
+  .site-headline {
+  max-width: 20ch;
+  font-size: clamp(2.35rem, 4.2vw, 3.9rem);
+  line-height: 0.99;
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-hero-brand-frame
+  .site-hero-bullets {
+  color: color-mix(in oklab, white 78%, transparent);
+}
+
+/* Verga: nome em faixa sobre um fio, texto em duas colunas embaixo. */
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-text-threshold
+  .site-text-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(1.75rem, 3vw, 2.75rem);
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-text-threshold
+  .site-text-identity {
+  padding-block-end: clamp(1rem, 2vw, 1.5rem);
+  border-bottom: 1px solid var(--line);
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-text-threshold
+  .site-text-identity
+  .site-h2 {
+  max-width: none;
+  color: var(--commercial-blue);
+  font-size: clamp(1.75rem, 3.2vw, 2.85rem);
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-text-threshold
+  .site-text-identity
+  .site-text-lead-copy {
+  margin-top: 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* O corpo é um flex column no renderer; colunas exigem fluxo de bloco. */
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-text-threshold
+  .site-text-body {
+  display: block;
+  columns: 2;
+  column-gap: clamp(2rem, 4vw, 3.5rem);
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-text-threshold
+  .site-text-body
+  p {
+  margin-bottom: 1.25rem;
+  break-inside: avoid;
+}
+
+/*
+ * Lista de setores: linhas de largura cheia com a foto alternando de lado.
+ * Um item com href embrulha a foto e o texto num link, então a grade da linha
+ * mora no elemento que contém a foto, e não sempre no article.
+ */
+.site-theme[data-profile-version='8'][data-vibe='comercial'] .site-bento-stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-bento-stack
+  .site-bento-item {
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-bento-stack
+  .site-bento-item:last-child {
+  border-bottom: 1px solid var(--line);
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-bento-stack
+  :is(.site-bento-item:not(:has(> .site-bento-link)), .site-bento-link) {
+  display: grid;
+  grid-template-columns: minmax(0, 18rem) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(1.5rem, 3vw, 2.75rem);
+  padding-block: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-bento-stack
+  .site-bento-item
+  img
+  + div {
+  padding: 0;
+  background: transparent;
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-bento-stack
+  .site-bento-item:nth-child(even)
+  img {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-bento-stack
+  .site-bento-item:nth-child(even)
+  img
+  + div {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-bento-stack
+  .site-bento-item
+  p {
+  max-width: 60ch;
+}
+
+@media (max-width: 767px) {
+  .site-theme[data-profile-version='8'][data-vibe='comercial']
+    .site-text-threshold
+    .site-text-body {
+    columns: 1;
+  }
+
+  .site-theme[data-profile-version='8'][data-vibe='comercial']
+    .site-bento-stack
+    :is(.site-bento-item:not(:has(> .site-bento-link)), .site-bento-link) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .site-theme[data-profile-version='8'][data-vibe='comercial']
+    .site-bento-stack
+    .site-bento-item:nth-child(even)
+    img,
+  .site-theme[data-profile-version='8'][data-vibe='comercial']
+    .site-bento-stack
+    .site-bento-item:nth-child(even)
+    img
+    + div {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .site-theme[data-profile-version='8'][data-vibe='comercial']
+    .site-hero-brand-frame
+    .site-hero-media {
+    max-height: none;
+  }
+}
+
+/*
+ * Gravuras recortadas. A arte vem sem fundo, então o campo é a seção e não a
+ * foto: cortar com object-fit cover decepa o traço, e um recorte sobre papel
+ * branco some. As duas áreas que usam gravura assentam a arte inteira sobre
+ * uma superfície da marca.
+ */
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-bento-stack
+  .site-bento-item
+  img {
+  width: 100%;
+  min-height: 0;
+  padding: clamp(1rem, 2vw, 1.75rem);
+  border-radius: 0;
+  background: color-mix(in oklab, var(--commercial-blue) 7%, var(--paper));
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-media-statement {
+  padding-block: clamp(3.5rem, 7vw, 6rem);
+  background: var(--commercial-blue);
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-media-statement
+  img {
+  width: 100%;
+  max-height: clamp(18rem, 38svh, 26rem);
+  border-radius: 0;
+  object-fit: contain;
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-media-statement
+  figcaption {
+  color: color-mix(in oklab, white 72%, transparent);
+  text-align: center;
 }

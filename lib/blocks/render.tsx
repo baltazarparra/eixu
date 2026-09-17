@@ -1,6 +1,10 @@
 import { LandingStickyCta } from './landing-interactions';
 import type { BlockInstance, PageType, Tenant } from '@/lib/types';
-import { blockSchemas, isBlockType } from '@/lib/blocks/registry';
+import {
+  blockSchemas,
+  isBlockType,
+  resolveBlockLayout,
+} from '@/lib/blocks/registry';
 import * as B from '@/lib/blocks/components';
 import { SiteMotion } from '@/lib/blocks/motion';
 import { VisualExplorer, type ExplorerProps } from '@/lib/blocks/explorer';
@@ -337,6 +341,13 @@ function renderList(
           elementScope,
           presentation?.elements,
         );
+        // `data-layout` precisa da mesma leitura do pre-flight: um hero que
+        // herda a composição do perfil não traz `layout` nas props, e o CSS
+        // que mira a variação pelo wrapper ficaria sem alvo.
+        const layout = resolveBlockLayout(block, ctx.tenant.brand.design);
+        // As regras de superfície continuam lendo o que foi escrito no bloco.
+        // Resolver o padrão aqui faria uma regra de layout casar com blocos
+        // que nunca o declararam, repintando sites comerciais v3/v4 no ar.
         const surfaceContext = {
           blockType: block.type,
           layout:
@@ -353,6 +364,7 @@ function renderList(
             id={anchor}
             className="site-block"
             data-block={block.type}
+            data-layout={layout}
             data-block-id={block.id}
             data-tone={presentation?.background ? 'custom' : presentation?.tone}
             data-scrim={sectionScrim(presentation)}

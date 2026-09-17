@@ -5,6 +5,14 @@ import {
   COMMERCIAL_V8_STRUCTURE_KEYS,
   SITE_STRUCTURES,
 } from '@/lib/design/structures';
+import {
+  COMMERCIAL_AREAS,
+  COMMERCIAL_VARIANTS,
+  commercialFooter,
+  commercialSequence,
+  resolveCommercialVariants,
+  type CommercialVariantKeys,
+} from '@/lib/design/commercial-variants';
 import type { DesignProfileInput } from '@/lib/design/profile';
 import type { BlockInstance, Tenant } from '@/lib/types';
 
@@ -13,7 +21,29 @@ const image = (index: number) =>
 
 type CommercialStructure = (typeof COMMERCIAL_V8_STRUCTURE_KEYS)[number];
 
-function fixtureTenant(structureKey: CommercialStructure): Tenant {
+/** `abertura:abertura-painel,setores:setores-lista` vira a seleção do perfil. */
+export function parseVariants(
+  value: string | null,
+): Partial<CommercialVariantKeys> | undefined {
+  if (!value) return undefined;
+  const keys: Partial<CommercialVariantKeys> = {};
+  for (const pair of value.split(',')) {
+    const [area, key] = pair.split(':');
+    if (
+      (COMMERCIAL_AREAS as readonly string[]).includes(area!) &&
+      COMMERCIAL_VARIANTS[area as keyof typeof COMMERCIAL_VARIANTS].some(
+        (variant) => variant.key === key,
+      )
+    )
+      keys[area as keyof CommercialVariantKeys] = key;
+  }
+  return Object.keys(keys).length ? keys : undefined;
+}
+
+function fixtureTenant(
+  structureKey: CommercialStructure,
+  variants?: Partial<CommercialVariantKeys>,
+): Tenant {
   const structure = SITE_STRUCTURES[structureKey];
   return {
     id: 'commercial-v8-fixture',
@@ -49,6 +79,7 @@ function fixtureTenant(structureKey: CommercialStructure): Tenant {
         surfaceStyle: 'flat',
         motif: 'none',
         signature: structure.key,
+        ...(variants ? { commercialVariants: variants } : {}),
         definedAt: '2026-09-17T00:00:00.000Z',
       },
     },
@@ -90,16 +121,38 @@ function fixtureTenant(structureKey: CommercialStructure): Tenant {
   } as Tenant;
 }
 
+const SETORES = [
+  ['Hortifruti', 'Frutas, verduras e legumes para a rotina da semana.'],
+  ['Padaria', 'Pães e preparos para diferentes momentos do dia.'],
+  ['Mercearia', 'Itens essenciais organizados para uma escolha rápida.'],
+  ['Açougue', 'Cortes selecionados e atendimento próximo.'],
+  ['Bebidas', 'Opções para acompanhar refeições e encontros.'],
+  ['Frios', 'Queijos, presuntos e acompanhamentos para o dia a dia.'],
+] as const;
+
+const SETOR_ALT = [
+  'Frutas e verduras organizadas em uma banca',
+  'Pães frescos organizados sobre uma bancada',
+  'Produtos de mercearia organizados em prateleiras',
+  'Cortes de carne organizados no balcão do açougue',
+  'Bebidas organizadas em expositores refrigerados',
+  'Frios e queijos apresentados no balcão',
+] as const;
+
 function propsFor(
   type: string,
   layout: string,
   index: number,
+  /** Contagens da combinação; o fixture não pode fixar o que o contrato varia. */
+  counts: { setores: number } = { setores: 6 },
 ): Record<string, unknown> {
   switch (type) {
     case 'hero.split':
       return {
         layout,
-        eyebrow: layout === 'brand' ? 'Mercado da Praça' : 'Perto de você',
+        eyebrow: layout.startsWith('brand')
+          ? 'Mercado da Praça'
+          : 'Perto de você',
         headline: 'Boas escolhas começam por perto',
         subtext: 'Conheça nossa história, categorias e formas de atendimento.',
         cta: { label: 'Ver categorias', href: '#categorias' },
@@ -107,51 +160,29 @@ function propsFor(
         imageAlt:
           'Fachada real do Mercado da Praça com o logo visível no letreiro',
       };
-    case 'editorial.text':
+    case 'editorial.text': {
+      const ligacao = layout === 'bridge' || layout === 'threshold';
       return {
-        anchor: layout === 'bridge' ? 'unidade' : 'historia',
+        anchor: ligacao ? 'unidade' : 'historia',
         layout,
-        title:
-          layout === 'bridge'
-            ? 'Loja Brotas'
-            : 'Um comércio que faz parte da rotina do bairro',
-        ...(layout === 'bridge'
-          ? { lead: 'Rua da Praça, 100\nCentro, Brotas' }
-          : {}),
+        title: ligacao
+          ? 'Loja Brotas'
+          : 'Um comércio que faz parte da rotina do bairro',
+        ...(ligacao ? { lead: 'Rua da Praça, 100\nCentro, Brotas' } : {}),
         body: 'O Mercado da Praça nasceu para deixar as compras do dia a dia mais simples. A equipe conhece a região e organiza o atendimento com proximidade.\n\nCada categoria é apresentada com clareza para ajudar as pessoas a encontrar o que procuram.',
       };
+    }
     case 'feature.bento':
       return {
         anchor: 'categorias',
         layout,
         eyebrow: 'Categorias',
         title: 'Encontre o que precisa',
-        items: [1, 2, 3, 4, 5, 6].map((item) => ({
-          title: [
-            'Hortifruti',
-            'Padaria',
-            'Mercearia',
-            'Açougue',
-            'Bebidas',
-            'Frios',
-          ][item - 1],
-          body: [
-            'Frutas, verduras e legumes para a rotina da semana.',
-            'Pães e preparos para diferentes momentos do dia.',
-            'Itens essenciais organizados para uma escolha rápida.',
-            'Cortes selecionados e atendimento próximo.',
-            'Opções para acompanhar refeições e encontros.',
-            'Queijos, presuntos e acompanhamentos para o dia a dia.',
-          ][item - 1],
-          image: image(item + 1),
-          imageAlt: [
-            'Frutas e verduras organizadas em uma banca',
-            'Pães frescos organizados sobre uma bancada',
-            'Produtos de mercearia organizados em prateleiras',
-            'Cortes de carne organizados no balcão do açougue',
-            'Bebidas organizadas em expositores refrigerados',
-            'Frios e queijos apresentados no balcão',
-          ][item - 1],
+        items: SETORES.slice(0, counts.setores).map(([title, body], item) => ({
+          title,
+          body,
+          image: image(item + 2),
+          imageAlt: SETOR_ALT[item],
         })),
       };
     case 'social.follow':
@@ -250,9 +281,21 @@ function propsFor(
   }
 }
 
-function fixtureBlocks(structureKey: CommercialStructure): BlockInstance[] {
-  const structure = SITE_STRUCTURES[structureKey];
-  const marks = ['nav.bar:bar', ...structure.sequence, structure.footer!];
+const NAV_PROPS = (layout: string) => ({
+  layout,
+  logoText: 'Mercado da Praça',
+  links: [
+    { label: 'História', href: '#historia' },
+    { label: 'Categorias', href: '#categorias' },
+    { label: 'Onde estamos', href: '#onde-estamos' },
+  ],
+  cta: { label: 'Fale conosco', href: '#contato' },
+});
+
+function blocksFrom(
+  marks: string[],
+  counts: { setores: number },
+): BlockInstance[] {
   return marks.map((mark, index) => {
     const [type, layout] = mark.split(':');
     return {
@@ -260,32 +303,87 @@ function fixtureBlocks(structureKey: CommercialStructure): BlockInstance[] {
       type,
       props:
         type === 'nav.bar'
-          ? {
-              layout,
-              logoText: 'Mercado da Praça',
-              links: [
-                { label: 'História', href: '#historia' },
-                { label: 'Categorias', href: '#categorias' },
-                { label: 'Onde estamos', href: '#onde-estamos' },
-              ],
-              cta: { label: 'Fale conosco', href: '#contato' },
-            }
-          : propsFor(type, layout, index),
+          ? NAV_PROPS(layout!)
+          : propsFor(type!, layout!, index, counts),
     } as BlockInstance;
   });
+}
+
+function fixtureBlocks(
+  variants?: Partial<CommercialVariantKeys>,
+): BlockInstance[] {
+  const resolved = resolveCommercialVariants(variants);
+  return blocksFrom(
+    [
+      resolved.navegacao.signature,
+      ...commercialSequence(resolved),
+      commercialFooter(resolved),
+    ],
+    { setores: resolved.setores.items?.exact ?? 6 },
+  );
+}
+
+/**
+ * Uma página interna, que é onde a barra cobria o título: o pre-flight v8 só
+ * examina a home, então esta composição não tem outro validador além daqui.
+ */
+function innerBlocks(
+  variants?: Partial<CommercialVariantKeys>,
+): BlockInstance[] {
+  const resolved = resolveCommercialVariants(variants);
+  return [
+    {
+      id: 'inner-nav',
+      type: 'nav.bar',
+      props: NAV_PROPS(resolved.navegacao.signature.split(':')[1]!),
+    },
+    {
+      id: 'inner-hero',
+      type: 'hero.statement',
+      props: {
+        layout: 'framed',
+        eyebrow: 'Sobre nós',
+        headline: 'Pioneirismo no varejo alimentar brasileiro',
+        subtext: 'Mais de seis décadas de dedicação a alimentos frescos.',
+        cta: { label: 'Fale conosco', href: '#contato' },
+      },
+    },
+    {
+      id: 'inner-text',
+      type: 'editorial.text',
+      props: {
+        layout: 'narrow',
+        title: 'Uma história construída no bairro',
+        body: 'O Mercado da Praça nasceu para deixar as compras do dia a dia mais simples.\n\nA equipe conhece a região e organiza o atendimento com proximidade.',
+      },
+    },
+    {
+      id: 'inner-footer',
+      type: 'footer.compact',
+      props: propsFor(
+        'footer.compact',
+        commercialFooter(resolved).split(':')[1]!,
+        90,
+      ),
+    },
+  ] as BlockInstance[];
 }
 
 export function CommercialV8Fixture({
   structureKey,
   editing = false,
   still = false,
+  variants,
+  page = 'home',
 }: {
   structureKey: CommercialStructure;
   editing?: boolean;
   still?: boolean;
+  variants?: Partial<CommercialVariantKeys>;
+  page?: 'home' | 'interna';
 }) {
   const structure = SITE_STRUCTURES[structureKey];
-  const tenant = fixtureTenant(structureKey);
+  const tenant = fixtureTenant(structureKey, variants);
   if (still) tenant.dials.motion = 0;
   return (
     <div
@@ -300,10 +398,12 @@ export function CommercialV8Fixture({
       style={themeVars(tenant.brand)}
     >
       <RenderBlocks
-        blocks={fixtureBlocks(structureKey)}
+        blocks={
+          page === 'interna' ? innerBlocks(variants) : fixtureBlocks(variants)
+        }
         ctx={{
           tenant,
-          pagePath: '/',
+          pagePath: page === 'interna' ? '/sobre' : '/',
           isPreview: true,
           pageType: 'page',
           editing,
@@ -320,12 +420,15 @@ if (typeof document !== 'undefined') {
   )
     ? (requested as CommercialStructure)
     : COMMERCIAL_V8_STRUCTURE_KEYS[0];
+  const params = new URLSearchParams(location.search);
   hydrateRoot(
     document.getElementById('root')!,
     <CommercialV8Fixture
       structureKey={structureKey}
-      editing={new URLSearchParams(location.search).has('editing')}
-      still={new URLSearchParams(location.search).has('still')}
+      editing={params.has('editing')}
+      still={params.has('still')}
+      variants={parseVariants(params.get('variants'))}
+      page={params.get('page') === 'interna' ? 'interna' : 'home'}
     />,
   );
 }

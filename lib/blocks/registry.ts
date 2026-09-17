@@ -483,6 +483,7 @@ export const blockSchemas = {
       layout: z
         .enum([
           'brand',
+          'brand-frame',
           'info',
           'split',
           'cover',
@@ -538,7 +539,8 @@ export const blockSchemas = {
     .superRefine((value, ctx) => {
       // `cover` já existia antes do perfil v8 e há snapshots sem `imageAlt`.
       // O pre-flight da Comercial nova exige ambos sem invalidar esse legado.
-      const imageHero = value.layout === 'brand';
+      const imageHero =
+        value.layout === 'brand' || value.layout === 'brand-frame';
       if (imageHero && !value.image)
         ctx.addIssue({
           code: 'custom',
@@ -926,7 +928,7 @@ export const blockSchemas = {
       presentation,
       textStyles: textStylesSchema.optional(),
       layout: z
-        .enum(['narrow', 'lead', 'columns', 'bridge', 'split'])
+        .enum(['narrow', 'lead', 'columns', 'bridge', 'threshold', 'split'])
         .optional(),
       title: z.string().max(90).optional(),
       lead: z
@@ -945,7 +947,10 @@ export const blockSchemas = {
       imageFit: z.enum(['cover', 'contain']).optional(),
     })
     .superRefine((value, ctx) => {
-      if (value.layout === 'bridge' && !value.title?.trim())
+      if (
+        (value.layout === 'bridge' || value.layout === 'threshold') &&
+        !value.title?.trim()
+      )
         ctx.addIssue({
           code: 'custom',
           path: ['title'],
@@ -1149,7 +1154,7 @@ export const blockMeta: Record<BlockType, Meta> = {
   'hero.split': {
     family: 'hero',
     label: 'Hero dividido',
-    use: 'Abertura assimétrica com imagem ao lado. split, poster, editorial e offset aceitam slides para carrossel, mantendo image como primeira foto; cover e atelier não aceitam e usam media.gallery carousel como alternativa. imageFit e focalPoint valem para todas as fotos. Selos sob os botões ou sob o título, por bulletsPlacement.',
+    use: 'Abertura assimétrica com imagem ao lado. brand cobre a tela com a foto e assenta o texto sobre ela; brand-frame emoldura a mesma foto no topo e leva o texto para baixo dela, sobre a cor da marca. Os dois exigem image e imageAlt. split, poster, editorial e offset aceitam slides para carrossel, mantendo image como primeira foto; cover, atelier, brand e brand-frame não aceitam e usam media.gallery carousel como alternativa. imageFit e focalPoint valem para todas as fotos. Selos sob os botões ou sob o título, por bulletsPlacement.',
     variance: [5, 10],
     singleton: true,
   },
@@ -1178,7 +1183,7 @@ export const blockMeta: Record<BlockType, Meta> = {
   'feature.bento': {
     family: 'feature',
     label: 'Grade de recursos',
-    use: 'Serviços ou diferenciais em grade irregular. featured-masonry destaca o primeiro item em largura total e organiza os demais em masonry responsiva. Cada item aceita href para que o card inteiro navegue a uma página ou âncora, sem trocar de bloco.',
+    use: 'Serviços ou diferenciais em grade irregular. gallery distribui os itens em grade regular; stack empilha linhas de largura cheia com a foto ao lado do texto; featured-masonry destaca o primeiro item em largura total e organiza os demais em masonry responsiva. Cada item aceita href para que o card inteiro navegue a uma página ou âncora, sem trocar de bloco.',
   },
   'feature.numbered': {
     family: 'feature',
@@ -1218,7 +1223,7 @@ export const blockMeta: Record<BlockType, Meta> = {
   'editorial.text': {
     family: 'editorial',
     label: 'Texto',
-    use: 'Texto institucional. bridge liga o hero aos setores: nome e lead confirmado em painel da marca, texto ao lado, sem CTA. split divide em metades iguais a foto e todo o texto existente, sem trocar o bloco nem exigir botão; image/imageAlt são obrigatórios, imagePosition escolhe o lado e imageFit contain preserva a foto inteira. narrow, lead e columns mantêm o texto corrido.',
+    use: 'Texto institucional. bridge liga o hero aos setores: nome e lead confirmado em painel da marca, texto ao lado, sem CTA. threshold faz a mesma ligação em outra forma: nome em faixa de largura cheia sobre um fio, lead logo abaixo e o texto em duas colunas; também exige title e não aceita CTA nem imagem. split divide em metades iguais a foto e todo o texto existente, sem trocar o bloco nem exigir botão; image/imageAlt são obrigatórios, imagePosition escolhe o lado e imageFit contain preserva a foto inteira. narrow, lead e columns mantêm o texto corrido.',
   },
   'social.follow': {
     family: 'social',
@@ -1317,6 +1322,27 @@ export function isBlockType(value: string): value is BlockType {
   return value in blockSchemas;
 }
 
+/**
+ * Layout que o visitante realmente vê. Sem `layout` nas props, hero e navegação
+ * caem na composição do perfil e os demais no padrão do componente.
+ *
+ * O renderer e o pre-flight precisam da mesma leitura: o wrapper publica este
+ * valor em `data-layout` e o CSS mira por ele, então divergir aqui faria uma
+ * regra de composição valer para uma leitura e o estilo para outra.
+ */
+export function resolveBlockLayout(
+  block: { type: string; props: Record<string, unknown> },
+  design?: { heroComposition?: string; navigation?: string },
+): string {
+  if (typeof block.props.layout === 'string' && block.props.layout)
+    return block.props.layout;
+  if (block.type === 'hero.split') return design?.heroComposition ?? 'split';
+  if (block.type === 'nav.bar') return design?.navigation ?? 'bar';
+  return isBlockType(block.type)
+    ? (DEFAULT_LAYOUT[block.type] ?? 'default')
+    : 'default';
+}
+
 export function familyOf(type: string): Family | null {
   return isBlockType(type) ? blockMeta[type].family : null;
 }
@@ -1378,6 +1404,7 @@ const IMAGE_LAYOUTS: Partial<Record<BlockType, string[]>> = {
   'cta.band': [],
   'hero.split': [
     'brand',
+    'brand-frame',
     'split',
     'cover',
     'poster',
