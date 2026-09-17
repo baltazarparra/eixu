@@ -33,21 +33,30 @@ têm pelo menos 56% da altura da tela e recebem parallax. `media.gallery` exige
 pelo menos seis fotos. `media.map` assume `onde-estamos` e renderiza nome,
 endereço, telefone, horário, rota e mapa para cada unidade cadastrada.
 
-A abertura entra junto do primeiro paint, sem desaparecer depois da hidratação.
-As seções seguintes são preparadas antes de aparecer e entram uma única vez,
-somente ao alcançar a viewport. Scroll reveal e fade in formam o vocabulário
-principal: títulos, ações e conteúdo de cards sobem 28 px no desktop e 20 px no
-celular durante 1 segundo; o título e a ação do hero usam 32 px no desktop.
-Textos de apoio, formulários, mapas e fotografias usam fade gradual de 1,05 a
-1,15 segundo. Título, descrição e ação entram em sequência de 100–120 ms.
-Categorias coordenam foto, título e descrição sem mover o card inteiro; galeria
-e unidades preservam entradas individuais. Cada propriedade recebe um único
-controle de animação, evitando efeitos somados no hero. O parallax é amortecido
-entre quadros para não acompanhar o scroll com trancos. O HTML continua visível
-no servidor, a edição desliga o movimento e
-`prefers-reduced-motion` preserva o conteúdo sem animação. A paleta usa até três
-tons de seção, superfícies planas, texto curto e nenhuma textura ou prova
-inventada.
+A abertura entra junto do primeiro paint: título por recorte vertical, apoio e
+CTA com subida curta, fotografia com aproximação discreta. Após hidratar, o
+conteúdo já visível ou acima da viewport permanece visível, inclusive ao
+restaurar a rolagem. As demais entradas acontecem uma única vez ao rolar.
+O vocabulário é definido pela função, sem sortear efeitos entre seções:
+
+- Títulos abrem por recorte vertical, com deslocamento de 24 px
+  (14 px no celular), em 650 ms.
+- Setores, fotos sociais, galeria e faixas panorâmicas abrem pelo mesmo eixo,
+  com escala de 0,97 até 1 (0,985 no celular), em 850 ms.
+- O painel de apresentação e a foto das seções divididas usam abertura lateral
+  no desktop e vertical no celular, em 850 ms.
+- Textos e ações sobem 18 px (12 px no celular), em 650 ms. Formulário, mapas
+  e rodapé mantêm fade curto de 450 ms, sem recortar controles.
+
+O intervalo entre elementos é de 60–120 ms, limitado a 240 ms no desktop e
+160 ms no celular. Cada propriedade recebe um único controle; pais e filhos
+não acumulam entradas. Gatilhos individuais pela borda do elemento
+preservam as entradas das próximas linhas e de seções maiores que a tela. O foco
+pelo teclado conclui a entrada do controle imediatamente. O parallax das faixas permanece amortecido e separado do reveal.
+O HTML continua visível sem JavaScript, a edição desliga o movimento e
+`prefers-reduced-motion` remove também estados pendentes e parallax. A paleta
+usa até três tons de seção, superfícies planas, texto curto e nenhuma textura
+ou prova inventada.
 
 ## Landing Page v7
 

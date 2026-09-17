@@ -277,11 +277,16 @@ function fixtureBlocks(structureKey: CommercialStructure): BlockInstance[] {
 
 export function CommercialV8Fixture({
   structureKey,
+  editing = false,
+  still = false,
 }: {
   structureKey: CommercialStructure;
+  editing?: boolean;
+  still?: boolean;
 }) {
   const structure = SITE_STRUCTURES[structureKey];
   const tenant = fixtureTenant(structureKey);
+  if (still) tenant.dials.motion = 0;
   return (
     <div
       className="site-theme"
@@ -289,13 +294,20 @@ export function CommercialV8Fixture({
       data-structure={structure.key}
       data-profile-version="8"
       data-design-version="8"
-      data-motion="gentle"
+      data-motion={still ? 'still' : 'gentle'}
+      data-editing={editing ? 'true' : undefined}
       data-hero={tenant.brand.design?.heroComposition}
       style={themeVars(tenant.brand)}
     >
       <RenderBlocks
         blocks={fixtureBlocks(structureKey)}
-        ctx={{ tenant, pagePath: '/', isPreview: true, pageType: 'page' }}
+        ctx={{
+          tenant,
+          pagePath: '/',
+          isPreview: true,
+          pageType: 'page',
+          editing,
+        }}
       />
     </div>
   );
@@ -310,6 +322,10 @@ if (typeof document !== 'undefined') {
     : COMMERCIAL_V8_STRUCTURE_KEYS[0];
   hydrateRoot(
     document.getElementById('root')!,
-    <CommercialV8Fixture structureKey={structureKey} />,
+    <CommercialV8Fixture
+      structureKey={structureKey}
+      editing={new URLSearchParams(location.search).has('editing')}
+      still={new URLSearchParams(location.search).has('still')}
+    />,
   );
 }

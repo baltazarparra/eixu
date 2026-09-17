@@ -11,7 +11,7 @@ import puppeteer from 'puppeteer-core';
 
 await test(
   'Comercial v8 realiza a jornada fixa em desktop, mobile e movimento reduzido',
-  { skip: !process.env.EIXU_CHROME_PATH },
+  { skip: !process.env.EIXU_CHROME_PATH, timeout: 120000 },
   async (t) => {
     const root = process.cwd();
     const jiti = createJiti(import.meta.url, {
@@ -43,7 +43,7 @@ await test(
     );
     assert.match(css, /commercial-fade-in/);
     assert.match(css, /commercial-scroll-reveal/);
-    assert.match(css, /commercial-image-fade/);
+    assert.match(css, /commercial-image-reveal/);
     assert.doesNotMatch(css, /commercial-copy-arrive/);
     const fontClasses = [...css.matchAll(/\.([\w-]+)\{--font-[\w-]+:/g)]
       .map((match) => match[1])
@@ -94,6 +94,13 @@ await test(
               const markup = renderToString(
                 createElement(CommercialV8Fixture, {
                   structureKey: structure,
+                  editing: new URL(
+                    req.url,
+                    'http://localhost',
+                  ).searchParams.has('editing'),
+                  still: new URL(req.url, 'http://localhost').searchParams.has(
+                    'still',
+                  ),
                 }),
               );
               res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -147,6 +154,8 @@ await test(
         await t.test(structure, async () => {
           for (const [width, height] of [
             [390, 844],
+            [320, 568],
+            [844, 390],
             [1440, 1000],
           ]) {
             await page.setViewport({ width, height });
@@ -175,82 +184,78 @@ await test(
                   : null,
               };
             });
-            const entrance =
-              width === 1440
-                ? await page.evaluate(async () => {
-                    const card = document.querySelector(
-                      "[data-block='feature.bento'] article",
-                    );
-                    const target = card?.querySelector(
-                      '[data-motion-kind="reveal"]',
-                    );
-                    const fadeTarget = card?.querySelector(
-                      '[data-motion-kind="fade"][data-motion-role="image"]',
-                    );
-                    if (!target || !fadeTarget) return null;
-                    if (
-                      target.dataset.motionState !== 'pending' ||
-                      fadeTarget.dataset.motionState !== 'pending'
-                    )
-                      await new Promise((resolve) => {
-                        const observer = new MutationObserver(() => {
-                          if (
-                            target.dataset.motionState !== 'pending' ||
-                            fadeTarget.dataset.motionState !== 'pending'
-                          )
-                            return;
-                          observer.disconnect();
-                          resolve();
-                        });
-                        observer.observe(card, {
-                          attributes: true,
-                          subtree: true,
-                          attributeFilter: ['data-motion-state'],
-                        });
-                      });
-                    const previousBehavior =
-                      document.documentElement.style.scrollBehavior;
-                    document.documentElement.style.scrollBehavior = 'auto';
-                    scrollTo(0, 0);
-                    await new Promise((resolve) =>
-                      requestAnimationFrame(() =>
-                        requestAnimationFrame(resolve),
-                      ),
-                    );
-                    const readTarget = (element) => ({
-                      opacity: Number.parseFloat(
-                        getComputedStyle(element).opacity,
-                      ),
-                      transform: getComputedStyle(element).transform,
-                      state: element.dataset.motionState,
-                      kind: element.dataset.motionKind,
-                      role: element.dataset.motionRole,
-                      style: element.getAttribute('style') ?? '',
-                    });
-                    const read = () => ({
-                      reveal: readTarget(target),
-                      fade: readTarget(fadeTarget),
-                    });
-                    const before = read();
-                    target.scrollIntoView({ block: 'center' });
-                    const samples = [];
-                    for (let index = 0; index < 11; index += 1) {
-                      await new Promise((resolve) => setTimeout(resolve, 80));
-                      samples.push(read());
-                    }
-                    await new Promise((resolve) => setTimeout(resolve, 440));
-                    const after = read();
-                    scrollTo(0, 0);
-                    await new Promise((resolve) => setTimeout(resolve, 100));
-                    target.scrollIntoView({ block: 'center' });
-                    await new Promise((resolve) => setTimeout(resolve, 100));
-                    const afterReentry = read();
-                    scrollTo(0, 0);
-                    document.documentElement.style.scrollBehavior =
-                      previousBehavior;
-                    return { before, samples, after, afterReentry };
-                  })
-                : null;
+            await page.waitForSelector('[data-motion-kind="image"]');
+            const entrance = await page.evaluate(async () => {
+              const card = document.querySelector(
+                "[data-block='feature.bento'] article",
+              );
+              const target = card?.querySelector('[data-motion-kind="reveal"]');
+              const imageTarget = card?.querySelector(
+                '[data-motion-kind="image"][data-motion-role="image"]',
+              );
+              if (!target || !imageTarget) return null;
+              const previousBehavior =
+                document.documentElement.style.scrollBehavior;
+              document.documentElement.style.scrollBehavior = 'auto';
+              scrollTo(0, 0);
+              await new Promise((resolve) =>
+                requestAnimationFrame(() => requestAnimationFrame(resolve)),
+              );
+              const readTarget = (element) => ({
+                opacity: Number.parseFloat(getComputedStyle(element).opacity),
+                transform: getComputedStyle(element).transform,
+                clip: getComputedStyle(element).clipPath,
+                state: element.dataset.motionState,
+                kind: element.dataset.motionKind,
+                role: element.dataset.motionRole,
+                style: element.getAttribute('style') ?? '',
+              });
+              const read = () => ({
+                reveal: readTarget(target),
+                image: readTarget(imageTarget),
+              });
+              const before = read();
+              target.scrollIntoView({ block: 'center' });
+              const samples = [];
+              for (let index = 0; index < 11; index += 1) {
+                await new Promise((resolve) => setTimeout(resolve, 80));
+                samples.push(read());
+              }
+              await new Promise((resolve) => setTimeout(resolve, 440));
+              const after = read();
+              scrollTo(0, 0);
+              await new Promise((resolve) => setTimeout(resolve, 100));
+              target.scrollIntoView({ block: 'center' });
+              await new Promise((resolve) => setTimeout(resolve, 100));
+              const afterReentry = read();
+              scrollTo(0, 0);
+              document.documentElement.style.scrollBehavior = previousBehavior;
+              return { before, samples, after, afterReentry };
+            });
+            const laterImages = await page.evaluate(async () => {
+              const images = [
+                ...document.querySelectorAll('.site-social-images > img'),
+              ];
+              document.documentElement.style.scrollBehavior = 'auto';
+              scrollTo(
+                0,
+                images[0].getBoundingClientRect().top +
+                  scrollY -
+                  innerHeight +
+                  80,
+              );
+              await new Promise((resolve) => setTimeout(resolve, 1200));
+              return images
+                .filter(
+                  (image) => image.getBoundingClientRect().top >= innerHeight,
+                )
+                .map((image) => image.dataset.motionState);
+            });
+            assert.ok(laterImages.length > 0);
+            assert.ok(
+              laterImages.every((state) => state === 'pending'),
+              'Fotos fora da viewport precisam aguardar sua própria entrada',
+            );
             const parallax = await page.evaluate(async () => {
               const section = document.querySelector('[data-parallax="true"]');
               const figure = section?.querySelector('figure');
@@ -410,20 +415,25 @@ await test(
                       targets: block.querySelectorAll('[data-motion-state]')
                         .length,
                     })),
-                  kinds: {
-                    reveal: motionTargets.filter(
-                      (target) => target.dataset.motionKind === 'reveal',
-                    ).length,
-                    fade: motionTargets.filter(
-                      (target) => target.dataset.motionKind === 'fade',
-                    ).length,
-                  },
+                  kinds: Object.fromEntries(
+                    ['reveal', 'rise', 'image', 'wipe', 'fade'].map((kind) => [
+                      kind,
+                      motionTargets.filter(
+                        (target) => target.dataset.motionKind === kind,
+                      ).length,
+                    ]),
+                  ),
+                  nested: motionTargets.filter((target) =>
+                    target.parentElement.closest('[data-motion-kind]'),
+                  ).length,
                   imageRoleCount: motionTargets.filter(
                     (target) => target.dataset.motionRole === 'image',
                   ).length,
-                  imageRolesAreFade: motionTargets
+                  imageRolesAreReveals: motionTargets
                     .filter((target) => target.dataset.motionRole === 'image')
-                    .every((target) => target.dataset.motionKind === 'fade'),
+                    .every((target) =>
+                      ['image', 'wipe'].includes(target.dataset.motionKind),
+                    ),
                   categoryTargets: [
                     ...document.querySelectorAll(
                       "[data-block='feature.bento'] .site-bento-item",
@@ -548,7 +558,7 @@ await test(
             );
             assert.equal(
               heroMotion.imageAnimation,
-              'commercial-image-fade',
+              'commercial-image-reveal',
               `${structure} ${width}`,
             );
             assert.ok(parallax);
@@ -575,13 +585,21 @@ await test(
               `${structure} ${width}: ${JSON.stringify(report.motion.coverage)}`,
             );
             assert.ok(report.motion.kinds.reveal >= 8, `${structure} ${width}`);
-            assert.ok(report.motion.kinds.fade >= 20, `${structure} ${width}`);
+            assert.ok(report.motion.kinds.rise >= 10, `${structure} ${width}`);
+            assert.ok(report.motion.kinds.image >= 13, `${structure} ${width}`);
+            assert.ok(report.motion.kinds.wipe >= 2, `${structure} ${width}`);
+            assert.ok(report.motion.kinds.fade < report.motion.kinds.rise);
+            assert.equal(
+              report.motion.nested,
+              0,
+              'Entradas não podem acumular em pais e filhos',
+            );
             assert.ok(
               report.motion.imageRoleCount >= 13,
               `${structure} ${width}`,
             );
             assert.equal(
-              report.motion.imageRolesAreFade,
+              report.motion.imageRolesAreReveals,
               true,
               `${structure} ${width}`,
             );
@@ -590,105 +608,87 @@ await test(
               report.motion.categoryTargets.every(
                 (kinds) =>
                   kinds.length === 3 &&
-                  kinds[0] === 'fade' &&
+                  kinds[0] === 'image' &&
                   kinds[1] === 'reveal' &&
-                  kinds[2] === 'fade',
+                  kinds[2] === 'rise',
               ),
               `${structure} ${width}: ${JSON.stringify(report.motion.categoryTargets)}`,
             );
             assert.ok(report.motion.formKinds.length >= 3);
             assert.ok(
-              report.motion.formKinds.every((kind) => kind === 'fade'),
+              ['reveal', 'rise', 'fade'].every((kind) =>
+                report.motion.formKinds.includes(kind),
+              ),
               `${structure} ${width}: ${JSON.stringify(report.motion.formKinds)}`,
             );
             assert.equal(report.motion.mapUnitKinds.length, 3);
             assert.ok(
               report.motion.mapUnitKinds.every(
                 (kinds) =>
-                  kinds.length === 2 && kinds.every((kind) => kind === 'fade'),
+                  kinds.length === 2 &&
+                  kinds[0] === 'rise' &&
+                  kinds[1] === 'fade',
               ),
               `${structure} ${width}: ${JSON.stringify(report.motion.mapUnitKinds)}`,
             );
-            if (entrance) {
-              assert.deepEqual(
-                {
-                  reveal: {
-                    opacity: entrance.before.reveal.opacity,
-                    state: entrance.before.reveal.state,
-                    kind: entrance.before.reveal.kind,
-                    role: entrance.before.reveal.role,
-                  },
-                  fade: {
-                    opacity: entrance.before.fade.opacity,
-                    state: entrance.before.fade.state,
-                    kind: entrance.before.fade.kind,
-                    role: entrance.before.fade.role,
-                  },
-                },
-                {
-                  reveal: {
-                    opacity: 0,
-                    state: 'pending',
-                    kind: 'reveal',
-                    role: 'content',
-                  },
-                  fade: {
-                    opacity: 0,
-                    state: 'pending',
-                    kind: 'fade',
-                    role: 'image',
-                  },
-                },
+            assert.ok(entrance, 'Fotos e títulos precisam de reveals');
+            for (const kind of ['reveal', 'image']) {
+              assert.equal(entrance.before[kind].state, 'pending');
+              assert.equal(
+                entrance.before[kind].opacity,
+                1,
+                'Reveal deve revelar por recorte, sem fade',
               );
-              assert.match(entrance.before.reveal.transform, /28/);
-              assert.equal(entrance.before.fade.transform, 'none');
-              for (const kind of ['reveal', 'fade']) {
-                const samples = entrance.samples.map(
-                  (sample) => sample[kind].opacity,
-                );
-                assert.ok(
-                  samples.some((opacity) => opacity > 0 && opacity < 1),
-                  JSON.stringify(entrance),
-                );
-                for (let index = 1; index < samples.length; index += 1)
-                  assert.ok(
-                    samples[index] + 0.015 >= samples[index - 1],
-                    JSON.stringify(entrance),
-                  );
-                assert.ok(
-                  samples[5] < 0.85,
-                  `${kind} terminou visualmente cedo: ${JSON.stringify(samples)}`,
-                );
-              }
+              assert.match(entrance.before[kind].clip, /100%/);
+              const samples = entrance.samples.map(
+                (sample) => sample[kind].clip,
+              );
               assert.ok(
-                entrance.samples[0].fade.opacity < 0.25,
-                JSON.stringify(entrance.samples),
+                samples.some(
+                  (clip) =>
+                    clip !== 'none' && clip !== entrance.before[kind].clip,
+                ),
+                JSON.stringify(entrance),
               );
-              for (const kind of ['reveal', 'fade']) {
-                assert.equal(entrance.after[kind].opacity, 1);
-                assert.equal(entrance.after[kind].state, 'complete');
-                assert.equal(entrance.after[kind].transform, 'none');
-                assert.doesNotMatch(
-                  entrance.after[kind].style,
-                  /opacity|transform|will-change/,
-                );
-                assert.equal(entrance.afterReentry[kind].opacity, 1);
-                assert.equal(entrance.afterReentry[kind].state, 'complete');
-              }
+              assert.equal(entrance.after[kind].state, 'complete');
+              assert.equal(entrance.after[kind].transform, 'none');
+              assert.equal(entrance.after[kind].clip, 'none');
+              assert.doesNotMatch(
+                entrance.after[kind].style,
+                /opacity|transform|clip-path|will-change/,
+              );
+              assert.equal(entrance.afterReentry[kind].state, 'complete');
+              assert.equal(entrance.afterReentry[kind].clip, 'none');
             }
             await page.screenshot({
-              path:
-                width === 1440
-                  ? `outputs/commercial-v8/${structure}.png`
-                  : `outputs/commercial-v8/${structure}-mobile.png`,
+              path: `outputs/commercial-v8/${structure}-${width}.png`,
               fullPage: true,
             });
           }
 
+          await page.reload({ waitUntil: 'networkidle0' });
+          const focus = await page.evaluate(() => {
+            const input = document.querySelector('form input[name=nome]');
+            const form = input.closest('form');
+            const before = form.dataset.motionState;
+            input.focus({ preventScroll: true });
+            return {
+              before,
+              after: form.dataset.motionState,
+              opacity: getComputedStyle(form).opacity,
+              focused: document.activeElement === input,
+            };
+          });
+          assert.equal(focus.before, 'pending');
+          assert.equal(focus.after, 'complete');
+          assert.equal(focus.opacity, '1');
+          assert.equal(focus.focused, true);
           await page.emulateMediaFeatures([
             { name: 'prefers-reduced-motion', value: 'reduce' },
           ]);
-          await page.reload({ waitUntil: 'networkidle0' });
+          await page.waitForFunction(
+            () => !document.querySelector('[data-motion-state]'),
+          );
           const reduced = await page.evaluate(() => ({
             visible: [...document.querySelectorAll('.site-block')].every(
               (block) => getComputedStyle(block).opacity === '1',
@@ -697,6 +697,13 @@ await test(
             inlineHidden: [
               ...document.querySelectorAll('.site-block [style]'),
             ].filter((element) => element.style.opacity === '0').length,
+            clipped: [
+              ...document.querySelectorAll('.site-block [style]'),
+            ].filter(
+              (element) =>
+                element.style.clipPath ||
+                element.style.getPropertyValue('--site-parallax-y'),
+            ).length,
             heroAnimations:
               document
                 .querySelector('.site-hero')
@@ -709,6 +716,11 @@ await test(
           );
           assert.equal(reduced.states, 0, `${structure}: movimento reduzido`);
           assert.equal(
+            reduced.clipped,
+            0,
+            'Redução de movimento em runtime deve limpar recortes e parallax',
+          );
+          assert.equal(
             reduced.inlineHidden,
             0,
             `${structure}: movimento reduzido`,
@@ -718,6 +730,50 @@ await test(
             0,
             `${structure}: movimento reduzido`,
           );
+          await page.emulateMediaFeatures([
+            { name: 'prefers-reduced-motion', value: 'no-preference' },
+          ]);
+          for (const mode of ['editing', 'still']) {
+            await page.goto(`${origin}/?structure=${structure}&${mode}`, {
+              waitUntil: 'networkidle0',
+            });
+            assert.equal(
+              await page.$$eval(
+                '[data-motion-state]',
+                (elements) => elements.length,
+              ),
+              0,
+              mode,
+            );
+            assert.equal(
+              await page.$eval(
+                '.site-hero',
+                (element) => element.getAnimations({ subtree: true }).length,
+              ),
+              0,
+              mode,
+            );
+          }
+          await page.setJavaScriptEnabled(false);
+          await page.goto(`${origin}/?structure=${structure}`, {
+            waitUntil: 'networkidle0',
+          });
+          const staticContent = await page.evaluate(() => ({
+            hidden: [
+              ...document.querySelectorAll(
+                'h2, .site-bento-item, .site-social-image, .site-gallery img, form',
+              ),
+            ].filter(
+              (element) =>
+                getComputedStyle(element).opacity !== '1' ||
+                getComputedStyle(element).clipPath !== 'none',
+            ).length,
+            inputs: document.querySelectorAll('form input, form textarea')
+              .length,
+          }));
+          assert.equal(staticContent.hidden, 0);
+          assert.ok(staticContent.inputs >= 3);
+          await page.setJavaScriptEnabled(true);
         });
       assert.deepEqual(errors, []);
     } finally {
