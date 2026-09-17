@@ -13,6 +13,16 @@ integrada ao hero; hero sobre a fachada; apresentação da unidade; seis setores
 ofertas; redes sociais; faixa fotográfica; história; segunda faixa fotográfica;
 carreira; galeria; convite de contato; formulário; todas as unidades; rodapé.
 
+A navegação compõe a fachada: na home ela é sobreposta ao hero, sem reservar
+cabeçalho próprio, e rola junto com a página. Isso vale apenas onde a abertura
+é a fachada — nas internas a barra flui como cabeçalho, com fio de fechamento,
+senão cobriria o título. A condição não pode ser escrita como relação de irmão
+entre navegação e hero: o miolo fica dentro de um `<main>` e a navegação fora,
+então `nav + hero` não casa em página alguma e a sobreposição some em silêncio.
+O renderer resolve a abertura do miolo e a publica no bloco de navegação como
+`data-opening="tipo:layout"`, a mesma assinatura do pre-flight, e o CSS lê esse
+atributo. `tests/site-commercial-navigation.test.mjs` prende os dois lados.
+
 A apresentação usa `editorial.text:bridge`, em contato com a base do hero:
 painel na cor da marca com nome e endereço confirmado, texto institucional ao
 lado e espaçamento curto até os setores. A largura acompanha as fotos abaixo;

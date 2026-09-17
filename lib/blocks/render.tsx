@@ -82,12 +82,22 @@ export function RenderBlocks({
   // A âncora da seção automática é reservada antes dos blocos: um bloco com o
   // mesmo nome perde o id em vez de duplicá-lo na página.
   if (showLocation) usedAnchors.add('onde-estamos');
+  // Uma navegação sobreposta depende da abertura da página, e só a abertura de
+  // fachada reserva espaço para ela. A relação não é expressável por seletor de
+  // irmão: o `<main>` abaixo separa a navegação do hero, então `nav + hero`
+  // nunca casa e a regra que dependia disso morria em toda página. A decisão é
+  // resolvida aqui, onde os blocos são conhecidos, e publicada na navegação com
+  // a mesma assinatura `tipo:layout` do pre-flight.
+  const opening = content[0];
+  const openingSignature = opening
+    ? `${opening.type}:${resolveBlockLayout(opening, ctx.tenant.brand.design)}`
+    : undefined;
   return (
     <SiteMotion
       intensity={ctx.editing ? 0 : ctx.tenant.dials.motion}
       commercialEntrances={ctx.tenant.brand.design?.version === 8}
     >
-      {renderList(leading, ctx, usedAnchors, 0)}
+      {renderList(leading, ctx, usedAnchors, 0, openingSignature)}
       <main>
         {renderList(content, ctx, usedAnchors, start)}
         {showLocation ? (
@@ -121,6 +131,8 @@ function renderList(
   ctx: RenderContext,
   usedAnchors: Set<string>,
   offset: number,
+  /** Assinatura da abertura do miolo, publicada nos blocos de navegação. */
+  openingSignature?: string,
 ) {
   return (
     <>
@@ -365,6 +377,9 @@ function renderList(
             className="site-block"
             data-block={block.type}
             data-layout={layout}
+            data-opening={
+              block.type.startsWith('nav.') ? openingSignature : undefined
+            }
             data-block-id={block.id}
             data-tone={presentation?.background ? 'custom' : presentation?.tone}
             data-scrim={sectionScrim(presentation)}
