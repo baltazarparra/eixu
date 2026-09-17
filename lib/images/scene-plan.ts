@@ -70,6 +70,37 @@ export function scenePlan(
     : design?.version === 6
       ? design.heroComposition
       : heroCompositionFor(vibe, design?.heroComposition);
+  if (design?.version === 8 && structure?.vibe === 'comercial') {
+    const scenes: PlannedScene[] = [];
+    if (composition !== 'info')
+      scenes.push({
+        role: 'hero',
+        targetBlock: `hero.${composition}`,
+        ratio: '16:9',
+        page: '',
+        hint:
+          composition === 'brand'
+            ? 'Fotografia panorâmica do comércio com área limpa para o logo em destaque e a mensagem curta.'
+            : 'Fotografia panorâmica de fundo com foco no comércio e contraste suficiente para título e CTA.',
+      });
+    const categoryScenes = composition === 'info' ? 4 : 3;
+    for (let i = 0; i < categoryScenes; i++)
+      scenes.push({
+        role: 'protagonista',
+        targetBlock: 'feature.bento',
+        ratio: '4:3',
+        page: '',
+        hint: `Uma categoria real do comércio, fotografada de modo simples e reconhecível para o item ${i + 1} da listagem.`,
+      });
+    scenes.push({
+      role: 'apoio',
+      targetBlock: 'media.image',
+      ratio: '16:9',
+      page: '',
+      hint: 'Cena panorâmica rica em detalhes, própria para ocupar a largura e a altura da tela sem texto incorporado.',
+    });
+    return scenes;
+  }
   const heroBlock = `hero.${composition}`;
   const scenes: PlannedScene[] = [
     {

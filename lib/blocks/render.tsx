@@ -69,13 +69,20 @@ export function RenderBlocks({
   const contacts = contactsOf(ctx.tenant.contacts, ctx.tenant.whatsapp);
   const showLocation =
     contacts.addresses.length > 0 &&
+    !(
+      ctx.tenant.brand.design?.version === 8 &&
+      blocks.some((block) => block.type === 'media.map')
+    ) &&
     ctx.pageType !== 'post' &&
     ctx.pageType !== 'thank_you';
   // A âncora da seção automática é reservada antes dos blocos: um bloco com o
   // mesmo nome perde o id em vez de duplicá-lo na página.
   if (showLocation) usedAnchors.add('onde-estamos');
   return (
-    <SiteMotion intensity={ctx.editing ? 0 : ctx.tenant.dials.motion}>
+    <SiteMotion
+      intensity={ctx.editing ? 0 : ctx.tenant.dials.motion}
+      commercialEntrances={ctx.tenant.brand.design?.version === 8}
+    >
       {renderList(leading, ctx, usedAnchors, 0)}
       <main>
         {renderList(content, ctx, usedAnchors, start)}
@@ -261,6 +268,14 @@ function renderList(
                   {...(props as B.EditorialTextProps)}
                 />
               );
+            case 'social.follow':
+              return (
+                <B.SocialFollow
+                  key={key}
+                  {...(props as B.SocialFollowProps)}
+                  ctx={ctx}
+                />
+              );
             case 'editorial.postList':
               return (
                 <B.EditorialPostList
@@ -281,7 +296,13 @@ function renderList(
                 <B.MediaGallery key={key} {...(props as B.MediaGalleryProps)} />
               );
             case 'media.map':
-              return <B.MediaMap key={key} {...(props as B.MediaMapProps)} />;
+              return (
+                <B.MediaMap
+                  key={key}
+                  {...(props as B.MediaMapProps)}
+                  ctx={ctx}
+                />
+              );
             case 'pricing.table':
               return (
                 <B.PricingTable key={key} {...(props as B.PricingTableProps)} />
@@ -299,7 +320,9 @@ function renderList(
           }
         };
         const requested =
-          parsed.data.anchor ??
+          (ctx.tenant.brand.design?.version === 8 && block.type === 'media.map'
+            ? 'onde-estamos'
+            : parsed.data.anchor) ??
           (block.type === 'form.lead' ? 'contato' : undefined);
         const presentation =
           'presentation' in parsed.data && parsed.data.presentation
@@ -350,7 +373,18 @@ function renderList(
                 : undefined
             }
             data-edge={presentation?.edge}
-            data-animation={presentation?.motion}
+            data-animation={
+              presentation?.motion ??
+              (ctx.tenant.brand.design?.version === 8
+                ? block.type === 'feature.bento' ||
+                  block.type === 'social.follow'
+                  ? 'stagger'
+                  : block.type.startsWith('hero.') ||
+                      block.type === 'media.image'
+                    ? 'image'
+                    : 'reveal'
+                : undefined)
+            }
           >
             {render()}
             {elementCss ? (

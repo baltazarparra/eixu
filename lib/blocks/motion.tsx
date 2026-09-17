@@ -13,14 +13,17 @@ import {
 export function SiteMotion({
   children,
   intensity,
+  commercialEntrances = false,
 }: {
   children: ReactNode;
   intensity: number;
+  commercialEntrances?: boolean;
 }) {
   const [scope, animate] = useAnimate<HTMLDivElement>();
   const reduced = useReducedMotion();
   useEffect(() => {
-    if (reduced || intensity <= 3) return;
+    if (reduced || intensity <= 0 || (!commercialEntrances && intensity <= 3))
+      return;
     const hero = scope.current?.querySelector('.site-hero');
     const controls: { stop(): void; complete(): void }[] = [];
     if (hero) {
@@ -51,16 +54,23 @@ export function SiteMotion({
         section,
         () => {
           if (section.contains(hero)) return;
-          const elements =
+          let elements = Array.from(
             section.dataset.animation === 'image'
               ? section.querySelectorAll(
-                  'img:not(.site-carousel-image), .site-carousel-slide:first-child .site-carousel-image',
+                  'img:not(.site-carousel-image), figcaption, .site-carousel-slide:first-child .site-carousel-image',
                 )
               : section.dataset.animation === 'stagger'
-                ? section.querySelectorAll('article, ol > li')
+                ? section.querySelectorAll(
+                    'article, ol > li, .site-social-links > li, .site-social-images > img',
+                  )
                 : section.querySelectorAll(
-                    '.site-shell > h2, .site-shell > div:first-child',
-                  );
+                    '.site-shell > h2, .site-shell > div:first-child, .site-nav-row > *, .site-footer > .site-shell > *',
+                  ),
+          );
+          if (commercialEntrances && !elements.length) {
+            const fallback = section.firstElementChild;
+            elements = fallback ? [fallback] : elements;
+          }
           if (elements.length)
             controls.push(
               animate(
@@ -110,7 +120,7 @@ export function SiteMotion({
         control.stop();
       });
     };
-  }, [animate, intensity, reduced, scope]);
+  }, [animate, commercialEntrances, intensity, reduced, scope]);
   return (
     <div
       className="site-motion-root"

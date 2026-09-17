@@ -22,7 +22,7 @@ await test(
     const { SignatureStructureFixture } = await jiti.import(
       './fixtures/signature-structures.tsx',
     );
-    const { STRUCTURE_KEYS } = await jiti.import(
+    const { REFERENCE_STRUCTURE_KEYS } = await jiti.import(
       '../../lib/design/structures.ts',
     );
     const css = (
@@ -133,7 +133,7 @@ await test(
         else void request.continue();
       });
 
-      for (const structure of STRUCTURE_KEYS)
+      for (const structure of REFERENCE_STRUCTURE_KEYS)
         await t.test(structure, async () => {
           await page.goto(`${origin}/?structure=${structure}`, {
             waitUntil: 'networkidle0',

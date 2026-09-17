@@ -157,14 +157,21 @@ export function lintPage(
   )) {
     const anchor =
       propText(block.props, 'anchor') ||
-      (block.type === 'form.lead' ? 'contato' : '');
+      (block.type === 'form.lead'
+        ? 'contato'
+        : block.type === 'media.map' && design?.version === 8
+          ? 'onde-estamos'
+          : '');
     if (!anchor) continue;
     // A seção de localização sai do cadastro e já ocupa esta âncora.
-    if (anchor === 'onde-estamos') {
+    if (
+      anchor === 'onde-estamos' &&
+      !(block.type === 'media.map' && design?.version === 8)
+    ) {
       push(
         'error',
         'anchor-reservada',
-        'A âncora "onde-estamos" pertence à seção de localização montada a partir do cadastro. Escolha outro nome.',
+        'A âncora "onde-estamos" pertence ao mapa cadastrado. Escolha outro nome.',
         block.id,
       );
     }
@@ -215,7 +222,7 @@ export function lintPage(
   // a página volta a ser a mesma sequência genérica pintada com outra paleta.
   if (
     design &&
-    [2, 3, 4, 5, 6].includes(design.version) &&
+    [2, 3, 4, 5, 6, 8].includes(design.version) &&
     page.type !== 'thank_you' &&
     page.type !== 'post'
   ) {

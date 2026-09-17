@@ -557,7 +557,8 @@ export function siteMetrics(
 /**
  * V4 usa a faixa ampla da vibe; v5 usa uma de suas três estruturas; v6 usa a
  * estrutura que mais se aproxima da referência, mesmo quando pertence a outra
- * família. Sites v2 e v3 mantêm a composição publicada.
+ * família; v8 fixa uma das três jornadas da Comercial nova. Sites v2 e v3
+ * mantêm a composição publicada.
  */
 function grammarFindings(
   pages: SitePage[],
@@ -599,16 +600,109 @@ function grammarFindings(
           rule: 'estrutura-v5-incompleta',
           message: `A estrutura ${grammar.structure.label} precisa preservar esta ordem mínima: ${grammar.structure.sequence.join(' > ')}. Ausentes ou fora de ordem: ${missing.join(', ')}.`,
         });
-      const signatureBlocks = marks.filter(
-        (mark) => mark.block.type === 'signature.composition',
-      );
-      if (signatureBlocks.length !== 1)
-        findings.push({
-          page: path,
-          level: 'error',
-          rule: 'composicao-autoral-obrigatoria',
-          message: `A home com perfil v${design.version} precisa de exatamente uma signature.composition; recebeu ${signatureBlocks.length}.`,
-        });
+      if (grammar.structure.signatureLayout) {
+        const signatureBlocks = marks.filter(
+          (mark) => mark.block.type === 'signature.composition',
+        );
+        if (signatureBlocks.length !== 1)
+          findings.push({
+            page: path,
+            level: 'error',
+            rule: 'composicao-autoral-obrigatoria',
+            message: `A home com perfil v${design.version} precisa de exatamente uma signature.composition; recebeu ${signatureBlocks.length}.`,
+          });
+      }
+      if (design.version === 8) {
+        const hero = marks.find((mark) => mark.block.type === 'hero.split');
+        const heroLayout = hero ? resolvedLayout(hero.block, design) : '';
+        if (
+          hero &&
+          ['brand', 'cover'].includes(heroLayout) &&
+          (typeof hero.block.props.image !== 'string' ||
+            typeof hero.block.props.imageAlt !== 'string' ||
+            !hero.block.props.imageAlt.trim())
+        )
+          findings.push({
+            page: path,
+            level: 'error',
+            rule: 'comercial-v8-hero-imagem',
+            blockId: hero.block.id,
+            blockType: hero.block.type,
+            message: `hero.split ${heroLayout} exige imagem de fundo e texto alternativo na Comercial v8.`,
+          });
+        const expectedTypes = grammar.structure.sequence.map(
+          (signature) => signature.split(':')[0],
+        );
+        const duplicate = expectedTypes.find(
+          (type) =>
+            marks.filter((mark) => mark.block.type === type).length !== 1,
+        );
+        if (duplicate)
+          findings.push({
+            page: path,
+            level: 'error',
+            rule: 'comercial-v8-familias',
+            message: `A Comercial v8 exige exatamente um bloco ${duplicate} na home.`,
+          });
+        const footerSignature = grammar.structure.footer;
+        const footers = page.blocks.filter(
+          (block) => block.type === 'footer.compact',
+        );
+        if (
+          footerSignature &&
+          (footers.length !== 1 ||
+            `${footers[0]?.type}:${resolvedLayout(footers[0]!, design)}` !==
+              footerSignature)
+        )
+          findings.push({
+            page: path,
+            level: 'error',
+            rule: 'comercial-v8-rodape',
+            message: `A estrutura ${grammar.structure.label} exige exatamente um ${footerSignature}.`,
+          });
+        const categories = marks.find(
+          (mark) => mark.block.type === 'feature.bento',
+        )?.block.props.items;
+        if (
+          !Array.isArray(categories) ||
+          categories.length < 3 ||
+          categories.length > 6 ||
+          categories.some(
+            (item) =>
+              !item ||
+              typeof item !== 'object' ||
+              !('image' in item) ||
+              typeof item.image !== 'string' ||
+              !('imageAlt' in item) ||
+              typeof item.imageAlt !== 'string',
+          )
+        )
+          findings.push({
+            page: path,
+            level: 'error',
+            rule: 'comercial-v8-categorias',
+            message:
+              'A listagem Comercial v8 precisa de 3 a 6 categorias, cada uma com foto e texto alternativo.',
+          });
+        const immersive = marks.find(
+          (mark) => mark.block.type === 'media.image',
+        );
+        if (
+          immersive &&
+          ['statement', 'caption'].includes(
+            resolvedLayout(immersive.block, design),
+          ) &&
+          typeof immersive.block.props.caption !== 'string'
+        )
+          findings.push({
+            page: path,
+            level: 'error',
+            rule: 'comercial-v8-legenda-imersiva',
+            blockId: immersive.block.id,
+            blockType: immersive.block.type,
+            message: `media.image ${resolvedLayout(immersive.block, design)} exige caption para realizar sua composição.`,
+          });
+      }
     }
     const opening = marks[0];
     const allowedOpenings = home
@@ -777,7 +871,16 @@ export function structuralFindings(
       });
     const tones = new Set(metrics.tones);
     const referenceAuthority = design?.version === 6;
-    if (referenceAuthority && tones.size < 2)
+    const commercialV8 = design?.version === 8;
+    if (commercialV8 && tones.size > 3)
+      findings.push({
+        page: '/',
+        level: 'warn',
+        rule: 'home-tons',
+        message:
+          'A Comercial v8 usa uma paleta curta. Reduza a home a no máximo três tons de seção.',
+      });
+    else if (referenceAuthority && tones.size < 2)
       findings.push({
         page: '/',
         level: 'warn',
@@ -787,6 +890,7 @@ export function structuralFindings(
       });
     else if (
       !referenceAuthority &&
+      !commercialV8 &&
       ![...tones].some((t) => t === 'accent' || t === 'secondary')
     )
       findings.push({
@@ -796,7 +900,7 @@ export function structuralFindings(
         message:
           'Aplique a cor principal ou complementar em uma seção da home, além das áreas de leitura.',
       });
-    else if (!referenceAuthority && tones.size < 3)
+    else if (!referenceAuthority && !commercialV8 && tones.size < 3)
       findings.push({
         page: '/',
         level: 'warn',

@@ -53,8 +53,11 @@ a gravação atômica e a revisão humana após a composição.
 Na vibe `landing`, `designSchemaFor` exige um único item em `pagePlan`, a home
 com `stage: conversion`. `set_design` grava perfil v7 sem estrutura multipágina,
 com abertura `stage` ou `form` e navegação `minimal`. A referência verificada
-modula a direção visual dentro dessa forma. As quatro vibes anteriores
-continuam no fluxo v5/v6 e mantêm seu piso de três páginas.
+modula a direção visual dentro dessa forma. Moderno, Ousado e Artístico
+continuam no fluxo v5/v6 e mantêm seu piso de três páginas. Comercial usa o
+perfil v8 e uma das três jornadas derivadas da Minatel Brotas, também com piso
+de três páginas; referências do tenant complementam marca e fotografia sem
+trocar a estrutura.
 
 `phaseBrief(phase, shape)` e `lib/taste/landing-prompt.ts` dão ao autor e ao
 crítico o mesmo contrato de ação única, prova literal, 6–11 seções, 250 palavras
@@ -409,10 +412,12 @@ O fluxo automático é briefing → cenas → composição, seguido de revisão 
 O planejamento escolhe
 alternativas coerentes com as referências visuais verificadas e o negócio,
 usando a vibe como apoio; o plano editorial diferencia as intenções das
-páginas. Em comercial v5/v6, o prompt e o catálogo recebem a profundidade
+páginas. Em comercial v5/v6 legado, o prompt e o catálogo recebem a profundidade
 mensurada do briefing, o piso da home e as camadas que história, evidências,
-números e acervo realmente sustentam; conteúdo sem fonte não é criado para
-preencher estrutura. A composição grava o lote validado e usa `repair_site` para corrigir
+números e acervo realmente sustentam. Na Comercial v8, o prompt recebe a
+sequência completa e as variantes da estrutura escolhida. Conteúdo sem fonte não
+é criado para preencher nenhuma delas. A composição grava o lote validado e usa
+`repair_site` para corrigir
 recusas sem reenviar tudo. Um lote salvo sem erros encerra o loop de composição
 por condição externa do SDK e entrega a prévia ao operador. Avisos de recorte são
 julgados nos pixels; não provocam reenvios do projeto para zerar contagens. A

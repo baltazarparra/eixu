@@ -150,8 +150,12 @@ export function lintSite(
         anchor &&
         !destination.blocks.some(
           (b) =>
-            (b.props.anchor ?? (b.type === 'form.lead' ? 'contato' : '')) ===
-              anchor ||
+            (b.props.anchor ??
+              (b.type === 'form.lead'
+                ? 'contato'
+                : b.type === 'media.map' && design?.version === 8
+                  ? 'onde-estamos'
+                  : '')) === anchor ||
             (b.type === 'hero.landing' &&
               b.props.layout === 'form' &&
               (b.props.formAnchor ?? 'contato') === anchor),

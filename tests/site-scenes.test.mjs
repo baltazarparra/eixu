@@ -43,7 +43,11 @@ const input = {
 /** As cinco vagas que o plano deste cliente pede, como a etapa agora envia. */
 const planInput = {
   scenes: [
-    { request: 'Abertura na bancada.', role: 'hero', targetBlock: 'hero.split' },
+    {
+      request: 'Abertura na bancada.',
+      role: 'hero',
+      targetBlock: 'hero.split',
+    },
     {
       request: 'Aplicação do serviço em detalhe.',
       role: 'protagonista',
@@ -67,12 +71,12 @@ const planInput = {
   ],
 };
 
-/** Um cliente v5 da estrutura, como o briefing entrega para a etapa de cenas. */
+/** Um cliente da estrutura persistida, como o briefing entrega para as cenas. */
 function brandFor(structure) {
   return {
     vibe: structure.vibe,
     design: {
-      version: 5,
+      version: structure.signatureLayout ? 5 : 8,
       structure: structure.key,
       structureRationale: 'A jornada corresponde ao objetivo deste cliente.',
       concept: 'Direção construída para o assunto do negócio',
@@ -276,7 +280,7 @@ await test('chat livre preserva oito cenas por turno, inclusive em chamadas para
   );
 });
 
-await test('o lote da etapa cobre o plano de cada estrutura na proporção da assinatura', async () => {
+await test('o lote da etapa cobre o plano de cada estrutura na proporção prevista', async () => {
   for (const structure of Object.values(SITE_STRUCTURES)) {
     const brand = brandFor(structure);
     const f = await fixture(brand);
@@ -298,13 +302,28 @@ await test('o lote da etapa cobre o plano de cada estrutura na proporção da as
       plan.map((slot) => slot.ratio),
       structure.key,
     );
-    const signature = f.calls[0].scenes.filter(
-      (scene) => scene.targetBlock === 'signature.composition',
-    );
-    assert.equal(signature.length, 2, structure.key);
-    assert.ok(
-      signature.every((scene) => scene.ratio === structure.signatureRatio),
-      structure.key,
-    );
+    if (structure.signatureLayout) {
+      const signature = f.calls[0].scenes.filter(
+        (scene) => scene.targetBlock === 'signature.composition',
+      );
+      assert.equal(signature.length, 2, structure.key);
+      assert.ok(
+        signature.every((scene) => scene.ratio === structure.signatureRatio),
+        structure.key,
+      );
+    } else {
+      assert.ok(
+        f.calls[0].scenes.filter(
+          (scene) => scene.targetBlock === 'feature.bento',
+        ).length >= 3,
+        structure.key,
+      );
+      assert.equal(
+        f.calls[0].scenes.filter((scene) => scene.targetBlock === 'media.image')
+          .length,
+        1,
+        structure.key,
+      );
+    }
   }
 });

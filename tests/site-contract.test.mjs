@@ -630,7 +630,7 @@ await test('catálogo entrega uso e proporção de cada bloco ao agente', () => 
     .split('\n')
     .find((line) => line.startsWith('hero.split · '));
   assert.ok(hero.includes('4:5 em split/poster/offset/atelier'));
-  assert.ok(hero.includes('16:9 em cover/editorial'));
+  assert.ok(hero.includes('16:9 em brand/cover/editorial'));
 });
 
 await test('gate de composição v2 acompanha o tamanho da página', () => {
@@ -1345,9 +1345,9 @@ await test('ferramentas preservam o perfil e o intake atualizados durante o turn
     },
     concept: 'Recortes da matéria em escala arquitetônica',
     signatureElement: 'Janela vertical de matéria',
-    structure: 'comercial-atendimento',
+    structure: 'comercial-informacao',
     structureRationale:
-      'O atendimento guiado organiza as escolhas do cliente antes do contato.',
+      'A informação direta organiza história, categorias e contato com sobriedade.',
     accent: '#87522a',
     accentAlt: '#315b48',
     ink: '#111111',
@@ -1356,14 +1356,14 @@ await test('ferramentas preservam o perfil e o intake atualizados durante o turn
     radius: 'sm',
     displayFont: 'humanist',
     bodyFont: 'source',
-    heroComposition: 'split',
+    heroComposition: 'info',
     navigation: 'bar',
     rhythm: 'alternating',
     imageTreatment: 'framed',
     surfaceStyle: 'flat',
     motif: 'wash',
     variance: 5,
-    motion: 3,
+    motion: 4,
     density: 5,
   });
   for (const [name, input] of [

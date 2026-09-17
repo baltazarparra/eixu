@@ -113,7 +113,8 @@ O primeiro WhatsApp vira botão flutuante e destino rastreado dos CTAs. Os
 outros contatos permanecem disponíveis no rodapé; um segundo WhatsApp usa o
 índice `n=1`. Números internacionais devem trazer `+` e DDI. A seção automática
 de localização reserva a âncora `onde-estamos`; blocos e links gerados não
-podem reutilizá-la.
+podem reutilizá-la. Na Comercial v8, `media.map` substitui essa seção na home,
+usa o endereço cadastrado e assume a mesma âncora.
 
 ### Autoridade das fontes
 
@@ -147,8 +148,10 @@ incompatível ou conteúdo raso ficam no recibo; não viram fatos inventados.
 observável. Uma leitura útil documenta estrutura, hero, tipografia, imagens,
 ritmo, superfícies e mobile. Captcha, login, tela quebrada ou abertura ausente
 viram limite explícito. A captura não permite inferir animação ou trechos não
-vistos. Com referência útil, o perfil v6 pode escolher qualquer uma das doze
-estruturas multipágina; sem ela, a decisão fica nas três estruturas da vibe.
+vistos. Nas vibes Moderno, Ousado e Artístico, uma referência útil permite ao
+perfil v6 escolher qualquer uma das doze estruturas gerais. A Comercial usa a
+Minatel Brotas como referência absoluta do perfil v8; outra referência do
+tenant complementa marca e fotografia sem trocar sua jornada.
 
 O primeiro Instagram ou LinkedIn do cadastro pode fornecer nome, bio e avatar
 públicos. A leitura é melhor esforço, pois muitas redes devolvem login. Nesse
@@ -168,7 +171,7 @@ referência visual com autoridade maior.
 
 | Vibe         | Forma        | Intenção                                                         |
 | ------------ | ------------ | ---------------------------------------------------------------- |
-| Comercial    | Multipágina  | Clareza acolhedora, prova e contato em um percurso direto        |
+| Comercial    | Multipágina  | Marca, história, categorias, social, contato e localização       |
 | Moderno      | Multipágina  | Sistema tipográfico escuro, fios finos, rótulos mono e respiro   |
 | Ousado       | Multipágina  | Escala extrema, contraste, título como imagem e texto firme      |
 | Artístico    | Multipágina  | Papel quente, serifas, assimetria, colagem e narrativa editorial |
@@ -176,11 +179,12 @@ referência visual com autoridade maior.
 
 Os perfis visuais são versionados. v2 e v3 preservam sites antigos. v4 aplica
 vibe de forma mais estável. v5 escolhe uma de três estruturas da própria vibe.
-v6 deixa uma referência visual verificada escolher entre todas as doze
-estruturas. v7 é o contrato de Landing Page. Editar um site antigo preserva seu
-perfil; uma reconstrução explícita pode criar a versão atual.
+v6 deixa uma referência visual verificada escolher entre as doze estruturas
+gerais. v7 é o contrato de Landing Page. v8 recria a Comercial a partir da
+Minatel Brotas. Editar um site antigo preserva seu perfil; uma reconstrução
+explícita pode criar a versão atual.
 
-As doze estruturas multipágina são:
+As doze estruturas gerais preservadas para v5/v6 são:
 
 - Comercial: Atendimento guiado, Vitrine de aplicações e Confiança por
   evidências.
@@ -194,6 +198,13 @@ fechamentos, apoios, proporções e uma composição autoral. A home v5/v6 usa
 exatamente um `signature.composition`, com layout próprio da estrutura e duas
 fotos em papéis distintos. Camadas extras entram somente quando o briefing tem
 evidência correspondente; quantidade de seção não justifica conteúdo vazio.
+
+A Comercial v8 acrescenta `comercial-marca`, `comercial-imagem` e
+`comercial-informacao`. As três exigem, nesta ordem: hero; história em
+`editorial.text`; três a seis categorias ilustradas em `feature.bento`;
+`social.follow`; imagem de largura e altura de viewport; `form.lead`;
+`media.map`; e o `footer.compact` indicado. Cada família tem três variantes.
+Todo componente recebe uma entrada curta, sem loop e com movimento reduzido.
 
 A direção grava conceito, elemento-assinatura, cores de tinta/papel/superfície,
 fontes, hero, navegação, ritmo, tratamento de imagem, superfície, motivo,
@@ -243,7 +254,7 @@ geração não adiciona prova, preço ou depoimento sem evidência literal.
 
 ## Catálogo de blocos
 
-O catálogo contém 30 tipos com schema próprio. Não existe HTML, CSS ou bloco
+O catálogo contém 31 tipos com schema próprio. Não existe HTML, CSS ou bloco
 arbitrário por tenant. Novo tipo exige schema, metadados, renderer, componente,
 pre-flight e documentação coerentes.
 
@@ -282,22 +293,23 @@ blocos.
 | `narrative.statement`   | Frase protagonista para problema ou benefício verificável                                  |
 | `narrative.steps`       | Processo ou jornada em sequência                                                           |
 | `narrative.split`       | Lista com foto em composições divididas                                                    |
-| `signature.composition` | Composição autoral da estrutura, com duas fotos e papéis semânticos distintos              |
+| `signature.composition` | Composição autoral das estruturas v5/v6, com duas fotos e papéis semânticos distintos      |
+| `social.follow`         | Redes cadastradas em faixa, perfil ou galeria; o bloco não aceita URLs inventadas          |
 
 ### Conteúdo, mídia e conversão
 
-| Tipo                  | Capacidade                                                                   |
-| --------------------- | ---------------------------------------------------------------------------- |
-| `editorial.resources` | Próximas leituras e páginas de consideração com imagem e link                |
-| `editorial.facts`     | Texto institucional e pares de fatos                                         |
-| `editorial.text`      | Texto corrido para páginas institucionais                                    |
-| `editorial.postList`  | Índice único da página `/blog`                                               |
-| `editorial.postBody`  | Corpo único de uma página do tipo post                                       |
-| `faq.accordion`       | Perguntas frequentes acessíveis                                              |
-| `media.gallery`       | Duas a oito fotos em grid, masonry, filmstrip, collage ou carrossel          |
-| `media.image`         | Uma imagem grande com legenda                                                |
-| `media.map`           | Mapa adicional carregado sob demanda; não substitui a localização automática |
-| `pricing.table`       | Planos ou pacotes com preços confirmados                                     |
+| Tipo                  | Capacidade                                                                 |
+| --------------------- | -------------------------------------------------------------------------- |
+| `editorial.resources` | Próximas leituras e páginas de consideração com imagem e link              |
+| `editorial.facts`     | Texto institucional e pares de fatos                                       |
+| `editorial.text`      | Texto corrido para páginas institucionais                                  |
+| `editorial.postList`  | Índice único da página `/blog`                                             |
+| `editorial.postBody`  | Corpo único de uma página do tipo post                                     |
+| `faq.accordion`       | Perguntas frequentes acessíveis                                            |
+| `media.gallery`       | Duas a oito fotos em grid, masonry, filmstrip, collage ou carrossel        |
+| `media.image`         | Uma imagem grande; na Comercial v8 aceita as três variantes imersivas      |
+| `media.map`           | Mapa adicional; na Comercial v8 substitui a localização automática da home |
+| `pricing.table`       | Planos ou pacotes com preços confirmados                                   |
 
 Todos os blocos relevantes aceitam `presentation`: tom, decoração, cor local,
 degradê controlado, cor de texto validada, movimento, largura, espaçamento,
@@ -485,11 +497,12 @@ estruturados compatíveis com o conteúdo disponível. O conteúdo deve começar
 pelo assunto e responder à intenção da página; repetir cards ou texto genérico
 não cria uma jornada de busca.
 
-Toda página comum termina em `cta.band` ou `form.lead`. Com WhatsApp cadastrado,
+Toda página comum contém `cta.band` ou `form.lead`. Com WhatsApp cadastrado,
 o destino rastreado usa `/go/wa?from=/...`; sem ele, a ação deve conduzir ao
 formulário. Links internos apontam para páginas ou âncoras existentes. O mapa
-automático usa endereços do cadastro, carrega sob demanda e expõe rota; um
-`media.map` adicional só entra quando fizer sentido em outro ponto.
+automático usa endereços do cadastro, carrega sob demanda e expõe rota. Na
+Comercial v8, o `media.map` da estrutura usa o mesmo dado e assume seu lugar;
+nas demais versões, o bloco continua sendo um mapa adicional.
 
 `form.lead` aceita de um a oito campos de texto, e-mail, telefone, textarea ou
 seleção, consentimento, opt-in e página de obrigado. O envio é gravado como lead
