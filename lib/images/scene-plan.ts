@@ -71,34 +71,39 @@ export function scenePlan(
       ? design.heroComposition
       : heroCompositionFor(vibe, design?.heroComposition);
   if (design?.version === 8 && structure?.vibe === 'comercial') {
-    const scenes: PlannedScene[] = [];
-    if (composition !== 'info')
-      scenes.push({
+    const scenes: PlannedScene[] = [
+      {
         role: 'hero',
-        targetBlock: `hero.${composition}`,
+        targetBlock: 'hero.brand',
         ratio: '16:9',
         page: '',
-        hint:
-          composition === 'brand'
-            ? 'Fotografia panorâmica do comércio com área limpa para o logo em destaque e a mensagem curta.'
-            : 'Fotografia panorâmica de fundo com foco no comércio e contraste suficiente para título e CTA.',
-      });
-    const categoryScenes = composition === 'info' ? 4 : 3;
-    for (let i = 0; i < categoryScenes; i++)
+        hint: 'Fotografia documental panorâmica da fachada real do comércio, com o nome ou logo da própria marca claramente visível no letreiro. Use apenas foto enviada pelo operador ou importada do site oficial; nunca gere ou invente a fachada.',
+      },
+    ];
+    for (let i = 0; i < 6; i++)
       scenes.push({
         role: 'protagonista',
         targetBlock: 'feature.bento',
         ratio: '4:3',
         page: '',
-        hint: `Uma categoria real do comércio, fotografada de modo simples e reconhecível para o item ${i + 1} da listagem.`,
+        hint: `Uma categoria real e diferente do comércio, fotografada de modo simples e reconhecível para o item ${i + 1} da grade de seis setores.`,
       });
-    scenes.push({
-      role: 'apoio',
-      targetBlock: 'media.image',
-      ratio: '16:9',
-      page: '',
-      hint: 'Cena panorâmica rica em detalhes, própria para ocupar a largura e a altura da tela sem texto incorporado.',
-    });
+    scenes.push(
+      {
+        role: 'apoio',
+        targetBlock: 'media.image',
+        ratio: '16:9',
+        page: '',
+        hint: 'Cena panorâmica documental de produtos ou ambiente, própria para uma faixa fotográfica larga com parallax e sem texto incorporado.',
+      },
+      {
+        role: 'apoio',
+        targetBlock: 'cta.band',
+        ratio: '16:9',
+        page: '',
+        hint: 'Cena documental do ambiente de trabalho real ou de atendimento, para acompanhar o convite de carreira sem retrato posado.',
+      },
+    );
     return scenes;
   }
   const heroBlock = `hero.${composition}`;

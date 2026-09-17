@@ -48,11 +48,14 @@ export const REFERENCE_STRUCTURE_KEYS = [
   'artistico-galeria',
 ] as const satisfies readonly StructureKey[];
 
-/** Três composições completas da Comercial recriada no perfil v8. */
+/**
+ * A Comercial v8 tem uma única composição. A rigidez é deliberada: a página
+ * Brotas da Minatel define o piso de conteúdo, ritmo e hierarquia da vibe.
+ * As outras duas chaves continuam no catálogo somente para ler rascunhos
+ * criados antes desta revisão; novas direções usam `comercial-marca`.
+ */
 export const COMMERCIAL_V8_STRUCTURE_KEYS = [
   'comercial-marca',
-  'comercial-imagem',
-  'comercial-informacao',
 ] as const satisfies readonly StructureKey[];
 
 export function isCommercialV8Structure(
@@ -289,23 +292,29 @@ export const SITE_STRUCTURES: Record<StructureKey, SiteStructure> = {
   'comercial-marca': {
     key: 'comercial-marca',
     vibe: 'comercial',
-    label: 'Marca em primeiro plano',
+    label: 'Comercial completa',
     intent:
-      'Abre com a marca sobre uma fotografia ampla e conduz por história, categorias, presença social, ambiente, contato e localização.',
+      'Reproduz a jornada completa da Minatel Brotas: fachada, unidade, seis setores, ofertas, redes, história, imagens amplas, carreira, galeria, contato e unidades.',
     sequence: [
       'hero.split:brand',
-      'editorial.text:narrow',
+      'editorial.text:lead',
       'feature.bento:gallery',
-      'social.follow:banner',
+      'cta.band:band',
+      'social.follow:gallery',
       'media.image:immersive',
-      'form.lead:stack',
+      'editorial.text:narrow',
+      'media.image:immersive',
+      'cta.band:split',
+      'media.gallery:grid',
+      'cta.band:minimal',
+      'form.lead:split',
       'media.map:wide',
     ],
     openings: ['hero.split:brand'],
     protagonists: ['feature.bento:gallery'],
     innerOpenings: ['hero.statement:framed', 'hero.split:info'],
     closings: ['media.map:wide'],
-    support: ['narrative.split', 'media.image'],
+    support: ['media.image', 'media.gallery'],
     footer: 'footer.compact:split',
   },
   'comercial-imagem': {

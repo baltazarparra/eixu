@@ -54,6 +54,8 @@ export function contactsFromForm(form: FormData) {
   const kinds = rows(form, 'phoneKind');
   const labels = rows(form, 'addressLabel');
   const texts = rows(form, 'addressText');
+  const addressPhones = rows(form, 'addressPhone');
+  const addressHours = rows(form, 'addressHours');
   return contactsSchema.safeParse({
     phones: numbers
       .map((number, index) => ({
@@ -62,7 +64,12 @@ export function contactsFromForm(form: FormData) {
       }))
       .filter((phone) => phone.number),
     addresses: texts
-      .map((value, index) => ({ label: labels[index] ?? '', text: value }))
+      .map((value, index) => ({
+        label: labels[index] ?? '',
+        text: value,
+        phone: addressPhones[index] || undefined,
+        hours: addressHours[index] || undefined,
+      }))
       .filter((address) => address.text),
     social: rows(form, 'social').filter(Boolean),
   });

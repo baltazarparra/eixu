@@ -268,7 +268,7 @@ export function HeroSplit({
   const resolvedLayout =
     layout ?? ctx.tenant.brand.design?.heroComposition ?? 'split';
   const brandLogo =
-    resolvedLayout === 'brand'
+    resolvedLayout === 'brand' && ctx.tenant.brand.design?.version !== 8
       ? logoImage(ctx.tenant.brand, presentation)
       : undefined;
   const carouselSlides =
@@ -307,7 +307,8 @@ export function HeroSplit({
     >
       <div className={`${shell} site-hero-grid`}>
         <div className="site-hero-copy flex flex-col items-start gap-6">
-          {resolvedLayout === 'brand' ? (
+          {resolvedLayout === 'brand' &&
+          ctx.tenant.brand.design?.version !== 8 ? (
             brandLogo ? (
               <img
                 src={brandLogo.src}
@@ -1654,9 +1655,51 @@ export function MediaMap({
   ctx,
 }: MediaMapProps & { ctx: RenderContext }) {
   const text = textAttrs(textStyles, editing);
+  const registeredContacts = contactsOf(
+    ctx.tenant.contacts,
+    ctx.tenant.whatsapp,
+  );
+  const commercialAddresses =
+    ctx.tenant.brand.design?.version === 8 ? registeredContacts.addresses : [];
+  if (commercialAddresses.length) {
+    return (
+      <section
+        className={`${section} site-map site-map-${layout} site-map-units border-b border-[var(--line)]`}
+      >
+        <div className={shell}>
+          {title ? (
+            <h2 className={h2Class} {...text.mark('title')}>
+              {text.content('title', title)}
+            </h2>
+          ) : null}
+          <div className="site-map-units-grid">
+            {commercialAddresses.map((unit, index) => (
+              <article className="site-map-unit" key={unit.text}>
+                <div className="site-map-unit-copy">
+                  <h3>{unit.label || `Unidade ${index + 1}`}</h3>
+                  <address>{unit.text}</address>
+                  {unit.phone ? <p>{unit.phone}</p> : null}
+                  {unit.hours ? <p>{unit.hours}</p> : null}
+                  <a href={mapsDirectionsUrl(unit.text)} rel="noreferrer">
+                    Ver rota <SiteIcon name="route" vibe={vibe} size={18} />
+                  </a>
+                </div>
+                <iframe
+                  title={`Mapa de ${unit.label || unit.text}`}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  src={mapsEmbedUrl(unit.text)}
+                />
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
   const registered =
     ctx.tenant.brand.design?.version === 8
-      ? contactsOf(ctx.tenant.contacts, ctx.tenant.whatsapp).addresses[0]?.text
+      ? registeredContacts.addresses[0]?.text
       : undefined;
   const resolvedAddress = registered ?? address;
   const resolvedQuery = registered ?? query;
@@ -2183,11 +2226,17 @@ export function MediaImage({
   alt,
   caption,
   layout = 'wide',
-}: MediaImageProps) {
+  ctx,
+}: MediaImageProps & { ctx?: RenderContext }) {
   const text = textAttrs(textStyles, editing);
   return (
     <section
       className={`${section} site-media-image site-media-${layout} border-b border-[var(--line)]`}
+      data-parallax={
+        ctx?.tenant.brand.design?.version === 8 && layout === 'immersive'
+          ? 'true'
+          : undefined
+      }
     >
       <figure className={shell}>
         <img

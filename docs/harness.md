@@ -55,7 +55,7 @@ com `stage: conversion`. `set_design` grava perfil v7 sem estrutura multipágina
 com abertura `stage` ou `form` e navegação `minimal`. A referência verificada
 modula a direção visual dentro dessa forma. Moderno, Ousado e Artístico
 continuam no fluxo v5/v6 e mantêm seu piso de três páginas. Comercial usa o
-perfil v8 e uma das três jornadas derivadas da Minatel Brotas, também com piso
+perfil v8 e a jornada fixa derivada da Minatel Brotas, também com piso
 de três páginas; referências do tenant complementam marca e fotografia sem
 trocar a estrutura.
 
@@ -230,8 +230,9 @@ código volta a baixar e validar. Conteúdo da página permanece dado não
 confiável. O recibo fica em `brief.currentSite`, separado de `brief.sources`, e
 não cria autoridade visual.
 
-Na fase de briefing multipágina, o modelo recebe três estruturas da vibe sem referência ou
-as doze quando há leitura visual válida. Precisa compará-las contra história,
+Na fase de briefing multipágina, a Comercial recebe a estrutura fixa
+`comercial-marca`; as demais vibes recebem três estruturas sem referência ou
+as doze quando há leitura visual válida. Precisa comparar as opções disponíveis contra história,
 conteúdo disponível, jornada e, no v6, a composição observada. Após
 `set_design`, prompt, catálogo, plano de cenas, composição, pre-flight e crítico
 recebem somente a gramática selecionada. O bloco `signature.composition` usa o

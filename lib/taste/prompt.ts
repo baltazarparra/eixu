@@ -99,7 +99,10 @@ Registre em set_design.referenceDirection aplicações concretas para layout, ty
 Na composição, realize esses traços na abertura, escala, proporção texto/imagem, recortes, densidade, sequência e transições entre seções. Derive o guia de imagens e as cenas dessa direção. Use as outras páginas como desdobramentos da mesma linguagem. Não copie marcas, textos, contatos ou alegações comerciais da fonte.
 Se o operador solicitar análise visual, compare os pixels do rascunho com as observações visuais e as aplicações registradas. Confira o conjunto em desktop/mobile: presença dos traços principais, coerência entre páginas e adequação à marca. Corrija desvios materiais da referência; adapte o que prejudicar leitura, conteúdo ou jornada e registre o motivo. Não troque eixos arbitrariamente por unicidade. ${legacy ? 'Preserve abertura, seção protagonista e plano de cenas do perfil existente durante esta retomada.' : authority ? 'Escolha a estrutura mais próxima entre as doze disponíveis; não restrinja a decisão à família da vibe.' : 'Preserve o perfil atual até uma reconstrução explícita.'} Depois da composição, o site está gerado e a revisão é humana pela prévia.`;
 
-const designDirection = (referenceAuthority: boolean) => `## Direção de design
+const designDirection = (
+  referenceAuthority: boolean,
+  commercialV8: boolean,
+) => `## Direção de design
 ${TYPOGRAPHY_DIRECTION}
 - Iconografia: cada vibe tem uma família visual própria (${Object.entries(
   ICON_STYLE,
@@ -108,8 +111,8 @@ ${TYPOGRAPHY_DIRECTION}
   .join(
     '; ',
   )}). Sem referência, use a família da vibe; no perfil v6, use a família da estrutura escolhida pela fonte. icon é opcional: prefira texto e fotos; use símbolo só quando ajudar a distinguir assuntos. Títulos de seção, rótulos, números, etapas e legendas não recebem adornos automáticos. Evite repetir símbolos na lista ou em seções vizinhas; omita os dispensáveis, sem trocar por ícones aleatórios para variar. Não use shield como promessa de certificação nem troque fotos por ícones. Foco, toque, abertura e seleção têm microinterações; elas não contam como seções com motion.
-- Comece pelo assunto: público, oferta, ação esperada, personalidade e evidências. Para site novo, ${referenceAuthority ? 'compare as doze estruturas e escolha a mais próxima da referência' : 'compare as três estruturas da vibe e escolha a que melhor organiza a jornada'}; grave a decisão em structure e explique em structureRationale. Escolha também um conceito concreto e um elemento-assinatura reconhecível.
-- set_design oferece doze estruturas gerais preservadas para v5/v6 e três estruturas exclusivas da Comercial v8, além das composições de hero, ritmos, tratamentos de imagem, superfícies, motivos e pares tipográficos. ${referenceAuthority ? 'A referência verificada pode escolher qualquer uma das doze estruturas gerais e qualquer eixo ou dial; a vibe não bloqueia essas decisões. Fidelidade à referência prevalece sobre a trava de similaridade entre clientes.' : 'Na Comercial, escolha uma das três estruturas v8; nas demais vibes sem referência, estrutura, eixos e dials permanecem na faixa. A home com composição estrutural repetida continua recusada.'}
+- Comece pelo assunto: público, oferta, ação esperada, personalidade e evidências. Para site novo, ${commercialV8 ? 'use a estrutura fixa comercial-marca' : referenceAuthority ? 'compare as doze estruturas e escolha a mais próxima da referência' : 'compare as três estruturas da vibe e escolha a que melhor organiza a jornada'}; grave a decisão em structure e explique em structureRationale. Escolha também um conceito concreto e um elemento-assinatura reconhecível.
+- set_design oferece doze estruturas gerais preservadas para v5/v6 e a estrutura fixa comercial-marca para a Comercial v8, além das composições de hero, ritmos, tratamentos de imagem, superfícies, motivos e pares tipográficos. ${referenceAuthority ? 'A referência verificada pode escolher qualquer uma das doze estruturas gerais e qualquer eixo ou dial; a vibe não bloqueia essas decisões. Fidelidade à referência prevalece sobre a trava de similaridade entre clientes.' : commercialV8 ? 'Na Comercial, use comercial-marca e cumpra sua sequência completa; estrutura, eixos e dials permanecem no contrato v8.' : 'Nas demais vibes sem referência, estrutura, eixos e dials permanecem na faixa. A home com composição estrutural repetida continua recusada.'}
 - As cores da marca vêm do cadastro do cliente e não mudam: accent pinta seções e superfícies fortes, accentAlt é o tom complementar e a cor de acento fica nos botões e links, aplicada pelo renderizador. Escolha ink, paper e surface que leiam bem com elas. Não deixe a segunda cor apenas armazenada no perfil. Faça a tipografia cumprir um papel e evite vidro genérico, repetição de cards e rótulos.
 - hero.split aceita brand, info, split, cover, poster, editorial, offset ou atelier. brand destaca o logo sobre foto ampla; info é somente texto, descrição e CTA; atelier combina ambiente e detalhe com secondaryImage, alt e captions. Não use imagem gerada como prova de obra, equipe ou instalação real: identifique como inspiração na legenda.
 - Em cada seção relevante, escolha layout e presentation. Em cada página orgânica, pelo menos duas seções variam tone, width, spacing, align ou edge; somente motion não satisfaz esse contrato.
@@ -298,7 +301,7 @@ export function systemPrompt(
       ? landing
         ? 'Referência visual verificada orienta os eixos da landing; preserve página única, hero stage/form e navegação minimal. Registre as seis aplicações em referenceDirection; fonte sem pixels é lacuna.'
         : commercialV8
-          ? 'A Comercial v8 usa minatelsupermercados.com.br/brotas como referência visual absoluta da vibe. Leia outras referências configuradas para compreender marca, fotografia e conteúdo do tenant, sem trocar a sequência nem as três estruturas v8.'
+          ? 'A Comercial v8 usa minatelsupermercados.com.br/brotas como referência visual absoluta da vibe. Leia outras referências configuradas para compreender marca, fotografia e conteúdo do tenant, sem trocar a estrutura fixa comercial-marca.'
           : referencesDirection(legacy, referenceAuthority)
       : '',
     phase
@@ -348,7 +351,7 @@ ${VIBE_DIRECTION.comercial}`
         ? wantsDirection
           ? ''
           : LANDING_DESIGN
-        : designDirection(referenceAuthority)
+        : designDirection(referenceAuthority, commercialV8)
       : '',
     RESPONSIVE_CONTRACT,
     wantsCatalog && !landing ? LIMITS : '',

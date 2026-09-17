@@ -49,44 +49,76 @@ export function SiteMotion({
     const sections = scope.current.querySelectorAll<HTMLElement>(
       '[data-animation]:not([data-animation="none"])',
     );
-    const stops = [...sections].map((section) =>
-      inView(
-        section,
-        () => {
-          if (section.contains(hero)) return;
-          let elements = Array.from(
-            section.dataset.animation === 'image'
-              ? section.querySelectorAll(
-                  'img:not(.site-carousel-image), figcaption, .site-carousel-slide:first-child .site-carousel-image',
-                )
-              : section.dataset.animation === 'stagger'
-                ? section.querySelectorAll(
-                    'article, ol > li, .site-social-links > li, .site-social-images > img',
-                  )
-                : section.querySelectorAll(
-                    '.site-shell > h2, .site-shell > div:first-child, .site-nav-row > *, .site-footer > .site-shell > *',
-                  ),
-          );
-          if (commercialEntrances && !elements.length) {
-            const fallback = section.firstElementChild;
-            elements = fallback ? [fallback] : elements;
-          }
-          if (elements.length)
-            controls.push(
-              animate(
-                elements,
-                { opacity: [0.45, 1], y: [20, 0] },
-                {
-                  duration: 0.6,
-                  delay: stagger(0.07),
-                  ease: [0.22, 1, 0.36, 1],
-                },
+    const stops: (() => void)[] = [];
+    for (const section of sections) {
+      if (section.contains(hero)) continue;
+      let elements = Array.from<HTMLElement>(
+        section.dataset.animation === 'image'
+          ? section.querySelectorAll(
+              'img:not(.site-carousel-image), figcaption, .site-carousel-slide:first-child .site-carousel-image',
+            )
+          : section.dataset.animation === 'stagger'
+            ? section.querySelectorAll(
+                'article, ol > li, .site-social-links > li, .site-social-images > img, .site-gallery li',
+              )
+            : section.querySelectorAll(
+                '.site-shell > h2, .site-shell > div:first-child, .site-nav-row > *, .site-footer > .site-shell > *',
               ),
-            );
-        },
-        { amount: 0.18 },
+      );
+      if (commercialEntrances && !elements.length) {
+        const fallback = section.firstElementChild as HTMLElement | null;
+        elements = fallback ? [fallback] : elements;
+      }
+      const individually = section.dataset.animation === 'stagger';
+      const targets = individually ? elements : [section];
+      targets.forEach((target, index) => {
+        stops.push(
+          inView(
+            target,
+            () => {
+              const animated = individually ? [target] : elements;
+              if (!animated.length) return;
+              controls.push(
+                animate(
+                  animated,
+                  { opacity: [0.35, 1], y: [20, 0] },
+                  {
+                    duration: 0.6,
+                    delay: individually ? (index % 3) * 0.055 : stagger(0.07),
+                    ease: [0.22, 1, 0.36, 1],
+                  },
+                ),
+              );
+            },
+            { amount: individually ? 0.35 : 0.18 },
+          ),
+        );
+      });
+    }
+    const parallax = Array.from(
+      scope.current.querySelectorAll<HTMLElement>(
+        '[data-parallax="true"] > figure',
       ),
     );
+    let frame = 0;
+    const updateParallax = () => {
+      frame = 0;
+      for (const figure of parallax) {
+        const rect = figure.parentElement?.getBoundingClientRect();
+        if (!rect || rect.bottom < 0 || rect.top > window.innerHeight) continue;
+        const distance = window.innerHeight / 2 - (rect.top + rect.height / 2);
+        const offset = Math.max(-56, Math.min(56, distance * 0.11));
+        figure.style.setProperty('--site-parallax-y', `${offset}px`);
+      }
+    };
+    const requestParallax = () => {
+      if (!frame) frame = requestAnimationFrame(updateParallax);
+    };
+    if (parallax.length) {
+      updateParallax();
+      addEventListener('scroll', requestParallax, { passive: true });
+      addEventListener('resize', requestParallax);
+    }
     // Entrada breve por símbolo, sem loop. Anima o invólucro; o SVG fica
     // disponível para o gesto de foco/hover mesmo depois da entrada.
     scope.current
@@ -115,6 +147,9 @@ export function SiteMotion({
       });
     return () => {
       stops.forEach((stop) => stop());
+      removeEventListener('scroll', requestParallax);
+      removeEventListener('resize', requestParallax);
+      if (frame) cancelAnimationFrame(frame);
       controls.forEach((control) => {
         control.complete();
         control.stop();

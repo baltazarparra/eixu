@@ -565,7 +565,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             }),
           )
           .min(1)
-          .max(6),
+          .max(10),
       }),
       execute: safe(async ({ scenes }) => {
         const design = activeBrand.design;
@@ -576,7 +576,10 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         // O estúdio gera em lotes paralelos. Uma cena por requisição fazia o
         // plano inteiro custar cinco idas ao modelo e cinco minutos de espera.
         const inPhase = context.phase === 'cenas';
-        const budget = 8;
+        const budget =
+          inPhase && design.version === 8 && vibeOf(activeBrand) === 'comercial'
+            ? 9
+            : 8;
         if (scenesPrepared + scenes.length > budget)
           throw new ToolError(
             `Orçamento de cenas deste turno esgotado: ${scenesPrepared} de ${budget} já ${scenesPrepared === 1 ? 'foi pedida' : 'foram pedidas'}. Encerre o turno.`,

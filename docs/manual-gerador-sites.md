@@ -199,12 +199,14 @@ exatamente um `signature.composition`, com layout próprio da estrutura e duas
 fotos em papéis distintos. Camadas extras entram somente quando o briefing tem
 evidência correspondente; quantidade de seção não justifica conteúdo vazio.
 
-A Comercial v8 acrescenta `comercial-marca`, `comercial-imagem` e
-`comercial-informacao`. As três exigem, nesta ordem: hero; história em
-`editorial.text`; três a seis categorias ilustradas em `feature.bento`;
-`social.follow`; imagem de largura e altura de viewport; `form.lead`;
-`media.map`; e o `footer.compact` indicado. Cada família tem três variantes.
-Todo componente recebe uma entrada curta, sem loop e com movimento reduzido.
+A Comercial v8 usa somente `comercial-marca`. A ordem obrigatória é: navbar
+integrada ao hero; hero com fachada real da marca; apresentação da unidade; seis
+setores ilustrados; ofertas; redes sociais; faixa panorâmica; história; segunda
+faixa panorâmica; carreira; galeria com pelo menos seis fotos; convite de
+contato; formulário; todas as unidades no mapa; rodapé. A fachada precisa vir de
+upload ou do site oficial e mostrar o logo ou nome no letreiro; ela nunca é
+gerada. Todo componente recebe uma entrada curta quando aparece na tela. As
+faixas panorâmicas recebem parallax, sem loop e com movimento reduzido.
 
 A direção grava conceito, elemento-assinatura, cores de tinta/papel/superfície,
 fontes, hero, navegação, ritmo, tratamento de imagem, superfície, motivo,
@@ -298,18 +300,18 @@ blocos.
 
 ### Conteúdo, mídia e conversão
 
-| Tipo                  | Capacidade                                                                 |
-| --------------------- | -------------------------------------------------------------------------- |
-| `editorial.resources` | Próximas leituras e páginas de consideração com imagem e link              |
-| `editorial.facts`     | Texto institucional e pares de fatos                                       |
-| `editorial.text`      | Texto corrido para páginas institucionais                                  |
-| `editorial.postList`  | Índice único da página `/blog`                                             |
-| `editorial.postBody`  | Corpo único de uma página do tipo post                                     |
-| `faq.accordion`       | Perguntas frequentes acessíveis                                            |
-| `media.gallery`       | Duas a oito fotos em grid, masonry, filmstrip, collage ou carrossel        |
-| `media.image`         | Uma imagem grande; na Comercial v8 aceita as três variantes imersivas      |
-| `media.map`           | Mapa adicional; na Comercial v8 substitui a localização automática da home |
-| `pricing.table`       | Planos ou pacotes com preços confirmados                                   |
+| Tipo                  | Capacidade                                                                     |
+| --------------------- | ------------------------------------------------------------------------------ |
+| `editorial.resources` | Próximas leituras e páginas de consideração com imagem e link                  |
+| `editorial.facts`     | Texto institucional e pares de fatos                                           |
+| `editorial.text`      | Texto corrido para páginas institucionais                                      |
+| `editorial.postList`  | Índice único da página `/blog`                                                 |
+| `editorial.postBody`  | Corpo único de uma página do tipo post                                         |
+| `faq.accordion`       | Perguntas frequentes acessíveis                                                |
+| `media.gallery`       | Duas a oito fotos em grid, masonry, filmstrip, collage ou carrossel            |
+| `media.image`         | Uma imagem grande; na Comercial v8 usa `immersive` em duas faixas com parallax |
+| `media.map`           | Mapa adicional; na Comercial v8 substitui a localização automática da home     |
+| `pricing.table`       | Planos ou pacotes com preços confirmados                                       |
 
 Todos os blocos relevantes aceitam `presentation`: tom, decoração, cor local,
 degradê controlado, cor de texto validada, movimento, largura, espaçamento,

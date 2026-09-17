@@ -228,7 +228,11 @@ function renderList(
               );
             case 'media.image':
               return (
-                <B.MediaImage key={key} {...(props as B.MediaImageProps)} />
+                <B.MediaImage
+                  key={key}
+                  {...(props as B.MediaImageProps)}
+                  ctx={ctx}
+                />
               );
             case 'feature.bento':
               return (

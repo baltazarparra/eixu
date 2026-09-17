@@ -106,20 +106,27 @@ function designFor(structure) {
   };
 }
 
-function commercialV8Props(type, layout) {
+function commercialV8Props(type, layout, index = 0) {
   switch (type) {
+    case 'nav.bar':
+      return {
+        layout,
+        logoText: 'Comércio local',
+        links: [
+          { label: 'Setores', href: '#categorias' },
+          { label: 'História', href: '#historia' },
+          { label: 'Unidades', href: '#onde-estamos' },
+        ],
+        cta: { label: 'Fale conosco', href: '#contato' },
+      };
     case 'hero.split':
       return {
         layout,
         headline: 'Tudo o que você procura, perto de você',
         subtext: 'Conheça o comércio, as categorias e as formas de contato.',
         cta: { label: 'Ver categorias', href: '#categorias' },
-        ...(layout === 'info'
-          ? {}
-          : {
-              image: photo(10),
-              imageAlt: 'Fachada e ambiente do comércio',
-            }),
+        image: photo(10),
+        imageAlt: 'Fachada real do comércio com o logo visível no letreiro',
       };
     case 'editorial.text':
       return {
@@ -132,7 +139,7 @@ function commercialV8Props(type, layout) {
         anchor: 'categorias',
         layout,
         title: 'Encontre por categoria',
-        items: [1, 2, 3].map((item) => ({
+        items: [1, 2, 3, 4, 5, 6].map((item) => ({
           title: `Categoria ${item}`,
           body: `Uma descrição curta e útil da categoria ${item}.`,
           image: photo(10 + item),
@@ -145,15 +152,46 @@ function commercialV8Props(type, layout) {
         eyebrow: 'Redes sociais',
         title: 'Acompanhe as novidades',
         body: 'Veja novidades e informações nos perfis oficiais cadastrados.',
+        images: [11, 12, 13].map((item) => ({
+          src: photo(item),
+          alt: `Cena ${item - 10} do comércio`,
+        })),
       };
     case 'media.image':
       return {
         layout,
-        src: photo(20),
+        src: photo(20 + index),
         alt: 'Vista ampla e detalhada do ambiente do comércio',
         ...(layout === 'immersive'
           ? {}
           : { caption: 'Um espaço feito para receber bem todos os dias.' }),
+      };
+    case 'cta.band':
+      return {
+        layout,
+        title:
+          layout === 'band'
+            ? 'Ofertas para aproveitar todos os dias'
+            : layout === 'split'
+              ? 'Trabalhe com a gente'
+              : 'Quer falar com a nossa equipe?',
+        body: 'Informação direta e útil para orientar o próximo passo.',
+        cta: { label: 'Saiba mais', href: '#contato' },
+        ...(layout === 'split'
+          ? {
+              image: photo(20 + index),
+              imageAlt: 'Equipe trabalhando no ambiente do comércio',
+            }
+          : {}),
+      };
+    case 'media.gallery':
+      return {
+        layout,
+        title: 'Nosso dia a dia',
+        images: [11, 12, 13, 14, 15, 16].map((item) => ({
+          src: photo(item),
+          alt: `Cena ${item - 10} do comércio`,
+        })),
       };
     case 'form.lead':
       return {
@@ -200,15 +238,18 @@ function blockFromMark(mark, index, variant = 0) {
         : type in blockSchemas &&
             [
               'hero.split',
+              'nav.bar',
               'editorial.text',
               'feature.bento',
+              'cta.band',
               'social.follow',
               'media.image',
+              'media.gallery',
               'form.lead',
               'media.map',
               'footer.compact',
             ].includes(type)
-          ? blockSchemas[type].parse(commercialV8Props(type, layout))
+          ? blockSchemas[type].parse(commercialV8Props(type, layout, index))
           : { layout },
   };
 }
@@ -226,6 +267,9 @@ function homeFor(structure, variant = 0) {
       inbound: { stage: 'conversion', intent: structure.intent },
     },
     blocks: [
+      ...(!structure.signatureLayout
+        ? [blockFromMark('nav.bar:bar', -1, variant)]
+        : []),
       ...structure.sequence.map((mark, index) =>
         blockFromMark(mark, index, variant),
       ),
@@ -238,8 +282,7 @@ function homeFor(structure, variant = 0) {
 
 function imagesFor(structure) {
   if (!structure.signatureLayout) {
-    const hero = structure.openings[0] === 'hero.split:info' ? [] : [10];
-    return [...hero, 11, 12, 13, 20].map((seq) => ({
+    return [10, 11, 12, 13, 14, 15, 16, 25, 27, 28].map((seq) => ({
       id: `image-${seq}`,
       seq,
       kind: 'foto',
@@ -248,19 +291,30 @@ function imagesFor(structure) {
       requestText: `Cena comercial ${seq}`,
       targetBlock:
         seq === 10
-          ? `hero.${structure.openings[0].split(':')[1]}`
-          : seq === 20
+          ? 'hero.brand'
+          : [25, 27].includes(seq)
             ? 'media.image'
-            : 'feature.bento',
-      ratio: seq >= 11 && seq <= 13 ? '4:3' : '16:9',
-      model: 'openai/gpt-image-2',
+            : seq === 28
+              ? 'cta.band'
+              : 'feature.bento',
+      ratio: seq >= 11 && seq <= 16 ? '4:3' : '16:9',
+      model: seq === 10 ? 'current-site-import' : 'openai/gpt-image-2',
       url: photo(seq),
-      blobPath: `tenants/fixture/gerado/commercial-${seq}.webp`,
+      blobPath:
+        seq === 10
+          ? `tenants/fixture/current-site/00000000-0000-4000-8000-000000000000/${'a'.repeat(64)}.webp`
+          : `tenants/fixture/gerado/commercial-${seq}.webp`,
       status: 'disponivel',
       score: null,
       critique: {},
-      alt: null,
-      description: null,
+      alt:
+        seq === 10
+          ? 'Fachada real do comércio com o logo visível no letreiro'
+          : null,
+      description:
+        seq === 10
+          ? 'Foto oficial da fachada e entrada da loja com a marca no letreiro.'
+          : null,
       createdAt: '2026-09-17T00:00:00.000Z',
     }));
   }
@@ -285,24 +339,27 @@ function imagesFor(structure) {
   }));
 }
 
-await test('cada vibe oferece três estruturas completas e distintas', () => {
+await test('a Comercial tem uma estrutura fixa e as demais vibes têm três', () => {
   assert.equal(structures.STRUCTURE_KEYS.length, 15);
   assert.equal(new Set(structures.STRUCTURE_KEYS).size, 15);
   assert.equal(structures.REFERENCE_STRUCTURE_KEYS.length, 12);
-  assert.equal(structures.COMMERCIAL_V8_STRUCTURE_KEYS.length, 3);
+  assert.equal(structures.COMMERCIAL_V8_STRUCTURE_KEYS.length, 1);
   assert.equal(new Set(structures.SIGNATURE_LAYOUTS).size, 12);
   for (const [vibe, choices] of Object.entries(structures.STRUCTURES_BY_VIBE)) {
-    assert.equal(choices.length, 3, vibe);
-    if (vibe !== 'comercial')
+    assert.equal(choices.length, vibe === 'comercial' ? 1 : 3, vibe);
+    if (vibe !== 'comercial') {
       assert.equal(
         new Set(choices.map((choice) => choice.signatureLayout)).size,
         3,
       );
-    else assert.equal(new Set(choices.map((choice) => choice.footer)).size, 3);
-    assert.equal(
-      new Set(choices.map((choice) => choice.sequence.join('>'))).size,
-      3,
-    );
+      assert.equal(
+        new Set(choices.map((choice) => choice.sequence.join('>'))).size,
+        3,
+      );
+    } else {
+      assert.equal(choices[0].key, 'comercial-marca');
+      assert.equal(choices[0].footer, 'footer.compact:split');
+    }
     for (const choice of choices)
       for (const mark of choice.sequence) {
         const [type, layout] = mark.split(':');
@@ -367,7 +424,7 @@ await test('perfil v5 persiste estrutura e a gramática resolve somente a escolh
   );
 });
 
-await test('perfil v8 nasce somente das três estruturas da Comercial nova', () => {
+await test('perfil v8 nasce somente da estrutura fixa da Comercial', () => {
   for (const structure of commercialV8Structures) {
     const design = designFor(structure);
     const grammar = structureGrammar('comercial', design);
@@ -418,13 +475,13 @@ await test('plano de cenas usa a assinatura e a proporção da estrutura', () =>
   }
 });
 
-await test('plano v8 cobre abertura quando visual, categorias e imagem imersiva', () => {
+await test('plano v8 cobre fachada, seis setores, imagem imersiva e carreira', () => {
   for (const structure of commercialV8Structures) {
     const scenes = scenePlan(designFor(structure), 3, 'comercial');
     const categories = scenes.filter(
       (scene) => scene.targetBlock === 'feature.bento',
     );
-    assert.ok(categories.length >= 3, structure.key);
+    assert.equal(categories.length, 6, structure.key);
     assert.equal(
       scenes.filter((scene) => scene.targetBlock === 'media.image').length,
       1,
@@ -435,9 +492,12 @@ await test('plano v8 cobre abertura quando visual, categorias e imagem imersiva'
       false,
       structure.key,
     );
-    if (structure.key === 'comercial-informacao')
-      assert.equal(scenes.length, 5);
-    else assert.match(scenes[0].targetBlock, /^hero\.(brand|cover)$/);
+    assert.equal(scenes.length, 9);
+    assert.equal(scenes[0].targetBlock, 'hero.brand');
+    assert.equal(
+      scenes.filter((scene) => scene.targetBlock === 'cta.band').length,
+      1,
+    );
   }
 });
 
@@ -473,7 +533,7 @@ await test('as doze estruturas atravessam o pre-flight com composição e cenas 
   }
 });
 
-await test('as três estruturas v8 atravessam o pre-flight com o contrato completo', () => {
+await test('a estrutura fixa v8 atravessa o pre-flight com o contrato completo', () => {
   for (const structure of commercialV8Structures) {
     const findings = metrics.structuralFindings(
       [homeFor(structure)],
@@ -488,7 +548,11 @@ await test('as três estruturas v8 atravessam o pre-flight com o contrato comple
       false,
       structure.key,
     );
-    assert.equal(rules.includes('comercial-v8-familias'), false, structure.key);
+    assert.equal(
+      rules.includes('comercial-v8-estrutura'),
+      false,
+      structure.key,
+    );
     assert.equal(rules.includes('comercial-v8-rodape'), false, structure.key);
     assert.equal(
       rules.includes('comercial-v8-categorias'),
@@ -499,12 +563,11 @@ await test('as três estruturas v8 atravessam o pre-flight com o contrato comple
   }
 });
 
-await test('cover legado continua legível e a Comercial v8 exige descrição da foto', () => {
-  const structure = structures.SITE_STRUCTURES['comercial-imagem'];
+await test('a Comercial v8 recusa hero sem descrição da fachada', () => {
+  const structure = structures.SITE_STRUCTURES['comercial-marca'];
   const page = homeFor(structure);
   const hero = page.blocks.find((block) => block.type === 'hero.split');
   delete hero.props.imageAlt;
-  assert.equal(blockSchemas['hero.split'].safeParse(hero.props).success, true);
   const rules = metrics
     .structuralFindings([page], imagesFor(structure), {
       vibe: 'comercial',

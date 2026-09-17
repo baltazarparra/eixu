@@ -557,14 +557,14 @@ export function siteMetrics(
 /**
  * V4 usa a faixa ampla da vibe; v5 usa uma de suas três estruturas; v6 usa a
  * estrutura que mais se aproxima da referência, mesmo quando pertence a outra
- * família; v8 fixa uma das três jornadas da Comercial nova. Sites v2 e v3
+ * família; v8 fixa a jornada completa da Comercial. Sites v2 e v3
  * mantêm a composição publicada.
  */
 function grammarFindings(
   pages: SitePage[],
   vibe: Vibe,
   design: DesignProfile,
-  generatedUrls: Set<string>,
+  availableImages: Map<string, TenantImage>,
 ): StructuralFinding[] {
   const grammar = structureGrammar(vibe, design);
   const findings: StructuralFinding[] = [];
@@ -613,14 +613,54 @@ function grammarFindings(
           });
       }
       if (design.version === 8) {
+        const exactSequence = marks.map((mark) => mark.signature);
+        if (
+          exactSequence.length !== grammar.structure.sequence.length ||
+          exactSequence.some(
+            (signature, index) =>
+              signature !== grammar.structure!.sequence[index],
+          )
+        )
+          findings.push({
+            page: path,
+            level: 'error',
+            rule: 'comercial-v8-estrutura',
+            message: `A Comercial v8 exige a sequência exata ${grammar.structure.sequence.join(' > ')}. Recebeu ${exactSequence.join(' > ')}.`,
+          });
+        const navs = page.blocks.filter((block) => block.type === 'nav.bar');
+        if (navs.length !== 1 || resolvedLayout(navs[0]!, design) !== 'bar')
+          findings.push({
+            page: path,
+            level: 'error',
+            rule: 'comercial-v8-navegacao',
+            message:
+              'A Comercial v8 exige exatamente uma nav.bar:bar integrada visualmente ao hero.',
+          });
         const hero = marks.find((mark) => mark.block.type === 'hero.split');
         const heroLayout = hero ? resolvedLayout(hero.block, design) : '';
+        const heroUrl =
+          hero && typeof hero.block.props.image === 'string'
+            ? hero.block.props.image
+            : '';
+        const heroImage = availableImages.get(heroUrl);
+        const heroDescription = [
+          hero?.block.props.imageAlt,
+          heroImage?.alt,
+          heroImage?.description,
+          heroImage?.requestText,
+        ]
+          .filter((value): value is string => typeof value === 'string')
+          .join(' ');
         if (
           hero &&
-          ['brand', 'cover'].includes(heroLayout) &&
-          (typeof hero.block.props.image !== 'string' ||
+          (heroLayout !== 'brand' ||
+            typeof hero.block.props.image !== 'string' ||
             typeof hero.block.props.imageAlt !== 'string' ||
-            !hero.block.props.imageAlt.trim())
+            !hero.block.props.imageAlt.trim() ||
+            !heroImage ||
+            !['upload', CURRENT_SITE_IMAGE_MODEL].includes(heroImage.model) ||
+            !/(fachad|front|entrada|storefront)/i.test(heroDescription) ||
+            !/(logo|letreiro|marca|nome|signage)/i.test(heroDescription))
         )
           findings.push({
             page: path,
@@ -628,21 +668,8 @@ function grammarFindings(
             rule: 'comercial-v8-hero-imagem',
             blockId: hero.block.id,
             blockType: hero.block.type,
-            message: `hero.split ${heroLayout} exige imagem de fundo e texto alternativo na Comercial v8.`,
-          });
-        const expectedTypes = grammar.structure.sequence.map(
-          (signature) => signature.split(':')[0],
-        );
-        const duplicate = expectedTypes.find(
-          (type) =>
-            marks.filter((mark) => mark.block.type === type).length !== 1,
-        );
-        if (duplicate)
-          findings.push({
-            page: path,
-            level: 'error',
-            rule: 'comercial-v8-familias',
-            message: `A Comercial v8 exige exatamente um bloco ${duplicate} na home.`,
+            message:
+              'O hero Comercial v8 exige uma foto real da fachada do próprio comércio, importada do site oficial ou enviada pelo operador, com o logo ou nome visível no letreiro e texto alternativo correspondente.',
           });
         const footerSignature = grammar.structure.footer;
         const footers = page.blocks.filter(
@@ -665,8 +692,7 @@ function grammarFindings(
         )?.block.props.items;
         if (
           !Array.isArray(categories) ||
-          categories.length < 3 ||
-          categories.length > 6 ||
+          categories.length !== 6 ||
           categories.some(
             (item) =>
               !item ||
@@ -674,33 +700,77 @@ function grammarFindings(
               !('image' in item) ||
               typeof item.image !== 'string' ||
               !('imageAlt' in item) ||
-              typeof item.imageAlt !== 'string',
-          )
+              typeof item.imageAlt !== 'string' ||
+              !('title' in item) ||
+              typeof item.title !== 'string' ||
+              !('body' in item) ||
+              typeof item.body !== 'string',
+          ) ||
+          new Set(
+            categories
+              .filter((item) => item && typeof item === 'object')
+              .map((item) => ('image' in item ? item.image : '')),
+          ).size !== 6
         )
           findings.push({
             page: path,
             level: 'error',
             rule: 'comercial-v8-categorias',
             message:
-              'A listagem Comercial v8 precisa de 3 a 6 categorias, cada uma com foto e texto alternativo.',
+              'A listagem Comercial v8 precisa de exatamente 6 setores, cada um com foto distinta, nome, descrição e texto alternativo.',
           });
-        const immersive = marks.find(
-          (mark) => mark.block.type === 'media.image',
+        const immersive = marks.filter(
+          (mark) =>
+            mark.block.type === 'media.image' &&
+            resolvedLayout(mark.block, design) === 'immersive',
         );
         if (
-          immersive &&
-          ['statement', 'caption'].includes(
-            resolvedLayout(immersive.block, design),
-          ) &&
-          typeof immersive.block.props.caption !== 'string'
+          immersive.length !== 2 ||
+          new Set(immersive.map((mark) => mark.block.props.src)).size !== 2
         )
           findings.push({
             page: path,
             level: 'error',
-            rule: 'comercial-v8-legenda-imersiva',
-            blockId: immersive.block.id,
-            blockType: immersive.block.type,
-            message: `media.image ${resolvedLayout(immersive.block, design)} exige caption para realizar sua composição.`,
+            rule: 'comercial-v8-imagens-imersivas',
+            message:
+              'A Comercial v8 exige duas faixas media.image:immersive com fotos distintas para o parallax.',
+          });
+        const gallery = marks.find(
+          (mark) => mark.block.type === 'media.gallery',
+        )?.block.props.images;
+        if (!Array.isArray(gallery) || gallery.length < 6)
+          findings.push({
+            page: path,
+            level: 'error',
+            rule: 'comercial-v8-galeria',
+            message:
+              'A galeria Comercial v8 precisa de pelo menos 6 fotos do comércio.',
+          });
+        const socialImages = marks.find(
+          (mark) => mark.block.type === 'social.follow',
+        )?.block.props.images;
+        if (!Array.isArray(socialImages) || socialImages.length < 3)
+          findings.push({
+            page: path,
+            level: 'error',
+            rule: 'comercial-v8-redes',
+            message:
+              'A área de redes sociais Comercial v8 precisa de pelo menos 3 fotos.',
+          });
+        const careers = marks.find(
+          (mark) => mark.signature === 'cta.band:split',
+        )?.block;
+        if (
+          !careers ||
+          typeof careers.props.image !== 'string' ||
+          typeof careers.props.imageAlt !== 'string'
+        )
+          findings.push({
+            page: path,
+            level: 'error',
+            rule: 'comercial-v8-carreira',
+            message:
+              'A chamada de carreira cta.band:split precisa de uma foto e texto alternativo.',
           });
       }
     }
@@ -738,7 +808,7 @@ function grammarFindings(
       !marks.some(
         (m) =>
           grammar.protagonists.includes(m.signature) &&
-          blockImageUrls(m.block).filter((url) => generatedUrls.has(url))
+          blockImageUrls(m.block).filter((url) => availableImages.has(url))
             .length >= 2,
       )
     )
@@ -943,12 +1013,7 @@ export function structuralFindings(
 
   if (design && design.version >= 4)
     findings.push(
-      ...grammarFindings(
-        pages,
-        vibeOf({ vibe: brand?.vibe }),
-        design,
-        new Set(byUrl.keys()),
-      ),
+      ...grammarFindings(pages, vibeOf({ vibe: brand?.vibe }), design, byUrl),
     );
 
   return findings;
