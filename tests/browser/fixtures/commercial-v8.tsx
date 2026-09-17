@@ -275,14 +275,64 @@ function fixtureBlocks(structureKey: CommercialStructure): BlockInstance[] {
   });
 }
 
+/**
+ * Uma página interna. O pre-flight v8 só examina a home, então a abertura
+ * interna — onde a barra cobria o título — não tem outro validador além deste
+ * fixture e do teste que o lê.
+ */
+function innerBlocks(): BlockInstance[] {
+  return [
+    {
+      id: 'inner-nav',
+      type: 'nav.bar',
+      props: {
+        layout: 'bar',
+        logoText: 'Mercado da Praça',
+        links: [
+          { label: 'História', href: '#historia' },
+          { label: 'Categorias', href: '#categorias' },
+        ],
+        cta: { label: 'Fale conosco', href: '#contato' },
+      },
+    },
+    {
+      id: 'inner-hero',
+      type: 'hero.statement',
+      props: {
+        layout: 'framed',
+        eyebrow: 'Sobre nós',
+        headline: 'Pioneirismo no varejo alimentar brasileiro',
+        subtext: 'Mais de seis décadas de dedicação a alimentos frescos.',
+        cta: { label: 'Fale conosco', href: '#contato' },
+      },
+    },
+    {
+      id: 'inner-text',
+      type: 'editorial.text',
+      props: {
+        layout: 'narrow',
+        title: 'Uma história construída no bairro',
+        body: 'O Mercado da Praça nasceu para deixar as compras do dia a dia mais simples.\n\nA equipe conhece a região e organiza o atendimento com proximidade.',
+      },
+    },
+    {
+      id: 'inner-footer',
+      type: 'footer.compact',
+      props: propsFor('footer.compact', 'split', 90),
+    },
+  ] as BlockInstance[];
+}
+
 export function CommercialV8Fixture({
   structureKey,
   editing = false,
   still = false,
+  page = 'home',
 }: {
   structureKey: CommercialStructure;
   editing?: boolean;
   still?: boolean;
+  page?: 'home' | 'interna';
 }) {
   const structure = SITE_STRUCTURES[structureKey];
   const tenant = fixtureTenant(structureKey);
@@ -300,10 +350,12 @@ export function CommercialV8Fixture({
       style={themeVars(tenant.brand)}
     >
       <RenderBlocks
-        blocks={fixtureBlocks(structureKey)}
+        blocks={
+          page === 'interna' ? innerBlocks() : fixtureBlocks(structureKey)
+        }
         ctx={{
           tenant,
-          pagePath: '/',
+          pagePath: page === 'interna' ? '/sobre' : '/',
           isPreview: true,
           pageType: 'page',
           editing,
@@ -314,7 +366,8 @@ export function CommercialV8Fixture({
 }
 
 if (typeof document !== 'undefined') {
-  const requested = new URLSearchParams(location.search).get('structure');
+  const params = new URLSearchParams(location.search);
+  const requested = params.get('structure');
   const structureKey = COMMERCIAL_V8_STRUCTURE_KEYS.includes(
     requested as CommercialStructure,
   )
@@ -324,8 +377,9 @@ if (typeof document !== 'undefined') {
     document.getElementById('root')!,
     <CommercialV8Fixture
       structureKey={structureKey}
-      editing={new URLSearchParams(location.search).has('editing')}
-      still={new URLSearchParams(location.search).has('still')}
+      editing={params.has('editing')}
+      still={params.has('still')}
+      page={params.get('page') === 'interna' ? 'interna' : 'home'}
     />,
   );
 }

@@ -87,20 +87,21 @@ await test(
                 return;
               }
               if (req.url?.split('?')[0] !== '/') return next();
-              const structure = new URL(
-                req.url,
-                'http://localhost',
-              ).searchParams.get('structure');
+              // O cliente hidrata a partir da mesma query: ler diferente aqui
+              // vira erro de hidratação, que este teste coleta como falha.
+              const params = new URL(req.url, 'http://localhost').searchParams;
+              const requested = params.get('structure');
               const markup = renderToString(
                 createElement(CommercialV8Fixture, {
-                  structureKey: structure,
-                  editing: new URL(
-                    req.url,
-                    'http://localhost',
-                  ).searchParams.has('editing'),
-                  still: new URL(req.url, 'http://localhost').searchParams.has(
-                    'still',
-                  ),
+                  // A página interna não pede estrutura; sem o mesmo padrão do
+                  // cliente o render do servidor quebraria e a hidratação
+                  // divergiria.
+                  structureKey: COMMERCIAL_V8_STRUCTURE_KEYS.includes(requested)
+                    ? requested
+                    : COMMERCIAL_V8_STRUCTURE_KEYS[0],
+                  editing: params.has('editing'),
+                  still: params.has('still'),
+                  page: params.get('page') === 'interna' ? 'interna' : 'home',
                 }),
               );
               res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -775,6 +776,58 @@ await test(
           assert.ok(staticContent.inputs >= 3);
           await page.setJavaScriptEnabled(true);
         });
+      assert.deepEqual(errors, []);
+
+      // A navegação v8 é posicionada por cima de um quadro de altura zero, o
+      // que só funciona sobre o hero de fachada. A regra valia em toda página e
+      // a barra cobria o título das internas. Medir o título não bastaria: o
+      // respiro que a correção dá às aberturas internas já o empurra para
+      // baixo mesmo com a regra antiga. O que distingue é o quadro da
+      // navegação ocupar altura e a abertura começar abaixo dela.
+      await t.test('página interna reserva o cabeçalho', async () => {
+        for (const [width, height] of [
+          [1440, 900],
+          [390, 844],
+        ]) {
+          await page.setViewport({ width, height });
+          await page.goto(`${origin}/?page=interna`, {
+            waitUntil: 'networkidle0',
+          });
+          const report = await page.evaluate(() => {
+            const rect = (el) => {
+              const r = el.getBoundingClientRect();
+              return { top: r.top, bottom: r.bottom, height: r.height };
+            };
+            const nav = document.querySelector('.site-nav');
+            return {
+              nav: rect(nav),
+              quadro: rect(nav.closest('.site-block')),
+              abertura: rect(document.querySelector('.site-hero')),
+              headline: rect(document.querySelector('.site-headline')),
+              overflow:
+                document.documentElement.scrollWidth -
+                document.documentElement.clientWidth,
+            };
+          });
+          const onde = `${width}x${height}`;
+          assert.ok(
+            report.quadro.height >= report.nav.height - 1,
+            `o bloco da navegação está colapsado na interna em ${onde}: ${report.quadro.height}px para uma barra de ${report.nav.height}px`,
+          );
+          assert.ok(
+            report.abertura.top >= report.nav.bottom - 1,
+            `a abertura interna passa por baixo da barra em ${onde}: seção em ${report.abertura.top}, barra até ${report.nav.bottom}`,
+          );
+          assert.ok(
+            report.headline.top >= report.nav.bottom,
+            `a barra cobre o título da interna em ${onde}`,
+          );
+          assert.ok(
+            report.overflow <= 1,
+            `rolagem horizontal de ${report.overflow}px em ${onde}`,
+          );
+        }
+      });
       assert.deepEqual(errors, []);
     } finally {
       await browser.close();
