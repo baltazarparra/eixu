@@ -150,12 +150,8 @@ export function expectedRatio(type: string, layout?: string): Ratio {
     case 'hero.landing':
       return layout === 'form' ? '4:5' : '16:9';
     case 'hero.split':
-      // O layout do bloco é a composição: cover e editorial são panorâmicos,
-      // e as duas aberturas de fachada mostram a mesma foto larga.
-      return layout === 'brand' ||
-        layout === 'brand-frame' ||
-        layout === 'cover' ||
-        layout === 'editorial'
+      // O layout do bloco é a composição: cover e editorial são panorâmicos.
+      return layout === 'brand' || layout === 'cover' || layout === 'editorial'
         ? '16:9'
         : '4:5';
     case 'narrative.split':

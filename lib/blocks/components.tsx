@@ -1334,11 +1334,9 @@ export function EditorialText({
       ))}
     </div>
   );
-  // A ligação com os setores tem duas formas com a mesma função e o mesmo
-  // conteúdo: painel ao lado do texto, ou verga sobre o texto em colunas.
-  if (layout === 'bridge' || layout === 'threshold')
+  if (layout === 'bridge')
     return (
-      <section className={`${section} site-text site-text-${layout}`}>
+      <section className={`${section} site-text site-text-bridge`}>
         <div className={`${shell} site-text-grid`}>
           <div className="site-text-identity" data-has-lead={Boolean(lead)}>
             {heading}

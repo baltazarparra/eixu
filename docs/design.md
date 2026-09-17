@@ -8,82 +8,26 @@ marca, texto, fotografias e contatos aos fatos de cada tenant. O perfil v8 fica
 isolado por `data-profile-version="8"`; perfis v2–v7 e seus snapshots continuam
 com o renderer anterior.
 
-A Comercial v8 usa somente `comercial-marca`. A jornada é fixa: navegação;
-abertura sobre a fachada; ligação com a unidade; setores; ofertas; redes
-sociais; faixa fotográfica; história; segunda faixa; carreira; galeria; convite
-de contato; formulário; todas as unidades; rodapé.
+A Comercial v8 usa somente `comercial-marca`. A silhueta é fixa: navegação
+integrada ao hero; hero sobre a fachada; apresentação da unidade; seis setores;
+ofertas; redes sociais; faixa fotográfica; história; segunda faixa fotográfica;
+carreira; galeria; convite de contato; formulário; todas as unidades; rodapé.
 
-### Variações por área
+A apresentação usa `editorial.text:bridge`, em contato com a base do hero:
+painel na cor da marca com nome e endereço confirmado, texto institucional ao
+lado e espaçamento curto até os setores. A largura acompanha as fotos abaixo;
+no celular, identidade e texto viram uma coluna. O endereço ocupa `lead` e é
+omitido quando não há dado confirmado. A sequência do pre-flight exige essa
+ligação nas novas composições. Os layouts de texto já salvos não são migrados.
+Para uma edição com foto ao lado, `editorial.text:split` mantém o conteúdo
+completo em metade da seção e a imagem em outra, sem exigir CTA.
 
-A jornada é fixa, a composição não. Cada área declara suas versões em
-`lib/design/commercial-variants.ts` — mesmo propósito, composição diferente — e
-uma semente derivada do `tenant.id` escolhe uma delas. O hash é refeito por
-área, e não fatiado de um hash único, para que as escolhas não correlacionem e
-para que acrescentar uma área depois não mexa nas já sorteadas.
-
-Esse módulo é a fonte única da decisão. `structureGrammar` injeta a sequência
-resolvida, e a partir dela o pre-flight, o plano de cenas e o prompt leem a
-mesma composição. Uma contagem literal em qualquer um dos três os colocaria em
-contradição, e o custo disso é um turno inteiro de geração recusado.
-
-| Área | Versões |
-| --- | --- |
-| navegação | `nav.bar:bar` flutuante sobre a abertura · `nav.bar:split` ancorada de borda a borda |
-| abertura | `hero.split:brand` com a fachada em largura cheia · `hero.split:brand-frame` com a fachada emoldurada e o texto abaixo |
-| ligação | `editorial.text:bridge` em painel · `editorial.text:threshold` em verga sobre duas colunas |
-| setores | `feature.bento:gallery` com seis fotos em grade · `feature.bento:stack` com cinco gravuras em lista |
-| faixa de abertura | `media.image:immersive` fotográfica · `media.image:statement` com gravura sobre a cor da marca |
-
-Cada versão traz seu contrato de conteúdo: contagem de itens, fotos distintas e
-as vagas que acrescenta ao plano de cenas. As regras do pre-flight preservam
-seus ids — um id novo nasceria bloqueante na publicação — e passam a ler a
-contagem da variação da sua área.
-
-Um perfil sem `commercialVariants` cai na primeira versão de cada área, que é
-exatamente o que está publicado hoje: nenhum site já gerado muda de forma. O
-campo só nasce em `completeDesignProfile`, numa regeração pedida pelo operador;
-um backfill repintaria sites no ar na próxima publicação completa.
-
-A trava de unicidade continua desligada para a v8. Com quatro áreas binárias,
-dois clientes ainda compartilham a maior parte da silhueta, e a escolha é
-determinística: recusar uma colisão deixaria a geração sem saída. A combinação
-entra na assinatura do perfil, então a distância entre direções já a enxerga.
-
-A ligação com os setores encosta na base da abertura: no `bridge`, painel na cor
-da marca com nome e endereço confirmado e texto ao lado; no `threshold`, nome em
-faixa sobre um fio e o texto em duas colunas. Nos dois o `title` é obrigatório,
-o endereço ocupa `lead` e é omitido sem dado confirmado, e não há CTA nem foto.
-No celular as duas viram uma coluna. Os layouts de texto já salvos não são
-migrados. Para uma edição com foto ao lado, `editorial.text:split` mantém o
-conteúdo completo em metade da seção e a imagem em outra, sem exigir CTA.
-
-As duas aberturas exigem fotografia panorâmica da fachada real do próprio
+`hero.split:brand` exige fotografia panorâmica da fachada real do próprio
 comércio, importada do site oficial ou enviada pelo operador, com o logo ou nome
 visível no letreiro. A arte do logo aparece na navegação, sem uma segunda cópia
-no hero. `brand` cobre a tela com a foto sob uma camada da cor da marca;
-`brand-frame` emoldura a mesma foto no topo e assenta o texto abaixo, sobre a
-cor. O eixo `heroComposition` permanece `brand` nas duas: a variação vive no
-layout do bloco, porque o schema do perfil, a faixa da vibe e o alvo da cena de
-hero estão amarrados a esse valor. `feature.bento` exige a contagem da sua
-variação — seis ou cinco setores —, todos com imagem distinta, título, descrição
-e texto alternativo.
-
-A navegação sobrepõe a abertura só no par barra flutuante mais fachada de
-largura cheia, e só esse hero reserva o respiro da barra, por medida real
-publicada no tema. Nas demais combinações e em toda página interna ela ocupa
-altura própria: a regra valia antes em qualquer página, e nas internas, cuja
-abertura não reserva espaço, a barra cobria o título. O pre-flight v8 examina
-somente a home, então essa composição é verificada em
-`tests/browser/site-commercial-variants.test.mjs`.
-
-Gravura recortada é decisão da área, não do guia do cliente: a vaga do plano
-declara `estilo` e `transparent`, o prompt troca as negativas e abandona
-ambiente, presença e luz, que descrevem uma cena fotográfica, e o crítico recebe
-o mesmo estilo. No render o campo é a seção e não a foto — recorte com
-`object-fit: cover` decepa o traço e arte recortada sobre papel branco some —,
-então as áreas em gravura assentam a arte inteira sobre uma superfície da marca.
-O fundo transparente é pedido ao provedor por `providerOptions`; o `sharp`
-preserva o alfa ao converter para WebP. `social.follow` recebe texto e fotos, enquanto links e ícones
+no hero. A foto recebe uma camada da cor principal da marca. `feature.bento`
+exige exatamente seis setores, todos com foto distinta, título, descrição e
+texto alternativo. `social.follow` recebe texto e fotos, enquanto links e ícones
 vêm das redes cadastradas. As duas `media.image:immersive` ocupam toda a largura,
 têm pelo menos 56% da altura da tela e recebem parallax. `media.gallery` exige
 pelo menos seis fotos. `media.map` assume `onde-estamos` e renderiza nome,

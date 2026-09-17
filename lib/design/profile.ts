@@ -13,11 +13,6 @@ import {
   structureKeySchema,
   type StructureKey,
 } from './structures';
-import {
-  commercialSignaturePart,
-  commercialVariantsFor,
-  type CommercialVariantKeys,
-} from './commercial-variants';
 
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
@@ -224,13 +219,6 @@ export type DesignProfile = Omit<
   version: 2 | 3 | 4 | 5 | 6 | 7 | 8;
   structure?: StructureKey;
   structureRationale?: string;
-  /**
-   * Combinação de variações da Comercial v8, sorteada por tenant. Ausente em
-   * todo perfil anterior a esta revisão e em toda vibe que não seja a
-   * Comercial: nesse caso a resolução cai na combinação base, idêntica ao que
-   * está no ar.
-   */
-  commercialVariants?: CommercialVariantKeys;
   signature: string;
   definedAt: string;
 };
@@ -249,30 +237,16 @@ export const DESIGN_AXES = [
 export function designSignature(
   profile: Pick<DesignProfile, (typeof DESIGN_AXES)[number]> & {
     structure?: StructureKey;
-    commercialVariants?: CommercialVariantKeys;
   },
 ): string {
-  return [
-    profile.structure,
-    ...DESIGN_AXES.map((axis) => profile[axis]),
-    // Sem isto, dois sites Comerciais teriam a mesma assinatura mesmo com
-    // composições diferentes: os oito eixos não enxergam a combinação.
-    profile.commercialVariants &&
-      commercialSignaturePart(profile.commercialVariants),
-  ]
+  return [profile.structure, ...DESIGN_AXES.map((axis) => profile[axis])]
     .filter(Boolean)
     .join('|');
 }
 
-/**
- * `seed` é a identidade estável do tenant. Sem ela — nos fixtures e nos testes
- * que só exercitam o schema — a Comercial cai na combinação base, que é o que
- * está publicado hoje.
- */
 export function completeDesignProfile(
   input: DesignProfileInput,
   now = new Date().toISOString(),
-  seed?: string,
 ): DesignProfile {
   const structural = {
     concept: input.concept,
@@ -291,14 +265,6 @@ export function completeDesignProfile(
       ? { referenceDirection: input.referenceDirection }
       : {}),
   };
-  const commercialVariants =
-    isCommercialV8Structure(input.structure) && seed
-      ? commercialVariantsFor(seed)
-      : undefined;
-  const versioned = {
-    ...structural,
-    ...(commercialVariants ? { commercialVariants } : {}),
-  };
   return {
     version: isCommercialV8Structure(input.structure)
       ? COMMERCIAL_PROFILE_VERSION
@@ -307,8 +273,8 @@ export function completeDesignProfile(
         : input.referenceDirection
           ? DESIGN_PROFILE_VERSION
           : 5,
-    ...versioned,
-    signature: designSignature(versioned),
+    ...structural,
+    signature: designSignature(structural),
     definedAt: now,
   };
 }

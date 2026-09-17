@@ -630,7 +630,7 @@ await test('catálogo entrega uso e proporção de cada bloco ao agente', () => 
     .split('\n')
     .find((line) => line.startsWith('hero.split · '));
   assert.ok(hero.includes('4:5 em split/poster/offset/atelier'));
-  assert.ok(hero.includes('16:9 em brand/brand-frame/cover/editorial'));
+  assert.ok(hero.includes('16:9 em brand/cover/editorial'));
 });
 
 await test('gate de composição v2 acompanha o tamanho da página', () => {

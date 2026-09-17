@@ -27,7 +27,6 @@ function toImage(row: Row): TenantImage {
     targetBlock: (row.target_block as string) ?? null,
     ratio: str(row.ratio),
     model: str(row.model),
-    promptFinal: str(row.prompt_final),
     url: str(row.url),
     blobPath: str(row.blob_path),
     status: row.status as ImageStatus,
