@@ -12,10 +12,11 @@ import { SCENE_TARGET_BLOCKS } from '@/lib/images/scene-slots';
  * porque não havia o que comparar. Aqui cada área declara suas versões — mesmo
  * propósito, composição diferente — e uma semente do tenant escolhe uma delas.
  *
- * Este módulo é a fonte única da decisão: a sequência da home, os `data-*` de
- * tratamento, o contrato de conteúdo do pre-flight e as vagas do plano de cenas
- * saem todos daqui. Ele é folha de propósito (só tipos de imagem entram), para
- * que o perfil, a gramática da vibe e o plano de cenas possam importá-lo.
+ * Este módulo é a fonte única da decisão: a sequência da home, o contrato de
+ * conteúdo do pre-flight, as vagas do plano de cenas e o texto que descreve a
+ * composição ao agente saem todos daqui. Ele é folha de propósito (só tipos
+ * entram), para que o perfil, a gramática da vibe e o plano de cenas possam
+ * importá-lo sem ciclo.
  */
 
 /** Ordem de leitura da página: navegação, as treze seções e o rodapé. */
@@ -336,17 +337,26 @@ export type ResolvedCommercialVariants = Record<
 >;
 
 /**
- * FNV-1a de 32 bits. Precisa ser estável entre execuções e entre máquinas — o
- * hash de string do runtime não é contrato — e não vale acrescentar dependência
- * por seis linhas.
+ * FNV-1a de 32 bits com avalanche final. Precisa ser estável entre execuções e
+ * entre máquinas — o hash de string do runtime não é contrato — e não vale
+ * acrescentar dependência por uma dúzia de linhas.
+ *
+ * A avalanche não é enfeite: sem ela, os bits baixos do FNV-1a ficam presos ao
+ * último byte da string, e como as chaves aqui só diferem no sufixo da área,
+ * duas áreas do mesmo tenant escolhiam de forma anticorrelacionada — metade das
+ * combinações nunca saía. Medido em 2000 sementes.
  */
-function fnv1a(value: string): number {
+function hashOf(value: string): number {
   let hash = 0x811c9dc5;
   for (let index = 0; index < value.length; index++) {
     hash ^= value.charCodeAt(index);
     hash = Math.imul(hash, 0x01000193) >>> 0;
   }
-  return hash >>> 0;
+  hash ^= hash >>> 16;
+  hash = Math.imul(hash, 0x85ebca6b) >>> 0;
+  hash ^= hash >>> 13;
+  hash = Math.imul(hash, 0xc2b2ae35) >>> 0;
+  return (hash ^ (hash >>> 16)) >>> 0;
 }
 
 /**
@@ -367,7 +377,7 @@ export function commercialVariantsFor(
     COMMERCIAL_AREAS.map((area) => {
       const variants = COMMERCIAL_VARIANTS[area];
       const chosen =
-        variants[fnv1a(`${seed}${suffix}:${area}`) % variants.length];
+        variants[hashOf(`${seed}${suffix}:${area}`) % variants.length];
       return [area, chosen!.key];
     }),
   ) as CommercialVariantKeys;
