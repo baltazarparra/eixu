@@ -984,17 +984,6 @@
 .site-theme[data-profile-version='8'][data-vibe='comercial']
   .site-bento-stack
   .site-bento-item
-  img {
-  width: 100%;
-  min-height: 0;
-  border-radius: 0;
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
-}
-
-.site-theme[data-profile-version='8'][data-vibe='comercial']
-  .site-bento-stack
-  .site-bento-item
   img
   + div {
   padding: 0;
@@ -1056,4 +1045,45 @@
     .site-hero-media {
     max-height: none;
   }
+}
+
+/*
+ * Gravuras recortadas. A arte vem sem fundo, então o campo é a seção e não a
+ * foto: cortar com object-fit cover decepa o traço, e um recorte sobre papel
+ * branco some. As duas áreas que usam gravura assentam a arte inteira sobre
+ * uma superfície da marca.
+ */
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-bento-stack
+  .site-bento-item
+  img {
+  width: 100%;
+  min-height: 0;
+  padding: clamp(1rem, 2vw, 1.75rem);
+  border-radius: 0;
+  background: color-mix(in oklab, var(--commercial-blue) 7%, var(--paper));
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-media-statement {
+  padding-block: clamp(3.5rem, 7vw, 6rem);
+  background: var(--commercial-blue);
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-media-statement
+  img {
+  width: 100%;
+  max-height: clamp(18rem, 38svh, 26rem);
+  border-radius: 0;
+  object-fit: contain;
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-media-statement
+  figcaption {
+  color: color-mix(in oklab, white 72%, transparent);
+  text-align: center;
 }

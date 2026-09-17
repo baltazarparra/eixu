@@ -1,5 +1,6 @@
 import type { Ratio } from '@/lib/images/ratios';
 import type { SceneRole } from '@/lib/images/scene-slots';
+import type { ImageStyle } from '@/lib/types';
 import { SCENE_TARGET_BLOCKS } from '@/lib/images/scene-slots';
 
 /**
@@ -63,6 +64,10 @@ export type CommercialSceneSlot = {
   count: number;
   /** `{i}` recebe o número da vaga quando `count` é maior que um. */
   hint: string;
+  /** Sobrepõe o estilo do guia do cliente só nestas vagas. */
+  estilo?: ImageStyle;
+  /** Pede a arte recortada, sem fundo, para assentar sobre a cor da seção. */
+  transparent?: boolean;
 };
 
 export type CommercialVariant = {
@@ -178,9 +183,9 @@ export const COMMERCIAL_VARIANTS = {
     {
       key: 'setores-lista',
       signature: 'feature.bento:stack',
-      label: 'Lista de cinco setores',
+      label: 'Lista de cinco setores em gravura',
       intent:
-        'Cinco setores em linhas de largura cheia, com a foto alternando de lado e espaço para uma descrição mais longa.',
+        'Cinco setores em linhas de largura cheia, cada um com uma gravura recortada alternando de lado e espaço para uma descrição mais longa.',
       items: { exact: 5 },
       distinctImages: true,
       scenes: [
@@ -189,7 +194,9 @@ export const COMMERCIAL_VARIANTS = {
           targetBlock: 'feature.bento',
           ratio: '4:3',
           count: 5,
-          hint: 'Uma categoria real e diferente do comércio, fotografada de modo simples e reconhecível para a linha {i} da lista de cinco setores.',
+          estilo: 'gravura',
+          transparent: true,
+          hint: 'Um objeto único e reconhecível da categoria {i} do comércio, desenhado como gravura de traço isolada, sem cenário, para a lista de cinco setores.',
         },
       ],
     },
@@ -213,9 +220,9 @@ export const COMMERCIAL_VARIANTS = {
   ],
   'faixa-abertura': [
     {
-      key: 'faixa-abertura-imersiva',
+      key: 'faixa-fotografica',
       signature: 'media.image:immersive',
-      label: 'Faixa imersiva',
+      label: 'Faixa fotográfica',
       intent: 'Fotografia de largura cheia com parallax entre duas leituras.',
       scenes: [
         {
@@ -224,6 +231,24 @@ export const COMMERCIAL_VARIANTS = {
           ratio: '16:9',
           count: 1,
           hint: 'Cena panorâmica documental de produtos ou ambiente, própria para uma faixa fotográfica larga com parallax e sem texto incorporado.',
+        },
+      ],
+    },
+    {
+      key: 'faixa-gravura',
+      signature: 'media.image:statement',
+      label: 'Faixa de gravura',
+      intent:
+        'Campo de largura cheia na cor da marca com uma gravura recortada ao centro, como pausa gráfica entre duas leituras.',
+      scenes: [
+        {
+          role: 'apoio',
+          targetBlock: 'media.image',
+          ratio: '16:9',
+          count: 1,
+          estilo: 'gravura',
+          transparent: true,
+          hint: 'Composição larga de objetos do comércio desenhados como gravura de traço, isolados e sem cenário, para assentar sobre a cor da marca.',
         },
       ],
     },
@@ -402,6 +427,8 @@ export type CommercialScene = {
   targetBlock: (typeof SCENE_TARGET_BLOCKS)[number];
   ratio: Ratio;
   hint: string;
+  estilo?: ImageStyle;
+  transparent?: boolean;
 };
 
 /** As vagas de foto da combinação, na ordem de leitura da página. */
@@ -417,6 +444,8 @@ export function commercialScenes(
           targetBlock: slot.targetBlock,
           ratio: slot.ratio,
           hint: slot.hint.replace('{i}', String(index + 1)),
+          ...(slot.estilo ? { estilo: slot.estilo } : {}),
+          ...(slot.transparent ? { transparent: true } : {}),
         });
   return scenes;
 }
@@ -440,7 +469,15 @@ export function commercialCompositionText(
     if (variant.distinctImages) counts.push('uma foto distinta por item');
     for (const slot of variant.scenes ?? [])
       counts.push(
-        `${slot.count} ${slot.count === 1 ? 'foto' : 'fotos'} ${slot.ratio}`,
+        `${slot.count} ${
+          slot.estilo === 'gravura'
+            ? slot.count === 1
+              ? 'gravura'
+              : 'gravuras'
+            : slot.count === 1
+              ? 'foto'
+              : 'fotos'
+        } ${slot.ratio}`,
       );
     return `- ${area} · ${variant.signature} — ${variant.label}: ${variant.intent}${
       counts.length ? ` (${counts.join('; ')})` : ''

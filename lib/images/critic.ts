@@ -7,7 +7,7 @@ import { Output, generateText } from 'ai';
 import { z } from 'zod';
 import { saveCritique } from '@/lib/images/queries';
 import { usageTracking } from '@/lib/ai/usage-ledger';
-import type { Critique, ImageGuide } from '@/lib/types';
+import type { Critique, ImageGuide, ImageStyle } from '@/lib/types';
 
 const score = z.number().min(0).max(10);
 
@@ -55,9 +55,12 @@ export async function critique(input: {
   ratio: string;
   targetBlock: string;
   allowText?: boolean;
+  /** Estilo da vaga; sem ele o crítico reprovaria uma gravura por não ser foto. */
+  estilo?: ImageStyle;
 }): Promise<Critique> {
+  const estilo = input.estilo ?? input.guide.estilo;
   const guideText = [
-    input.guide.estilo ? `estilo ${input.guide.estilo}` : null,
+    estilo ? `estilo ${estilo}` : null,
     input.guide.luz ? `luz ${input.guide.luz}` : null,
     input.guide.paleta?.length
       ? `paleta ${input.guide.paleta.join(', ')}`

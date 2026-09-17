@@ -139,12 +139,19 @@ export type PublishedTenantSnapshot = {
 };
 
 /**
+ * Estilo do pedido de imagem. O guia define o estilo do cliente; uma vaga do
+ * plano pode sobrepô-lo quando a área pede outra natureza de imagem — é o que
+ * permite uma seção de setores em gravura num site cujo restante é fotográfico.
+ */
+export type ImageStyle = 'fotografia' | 'ilustracao' | '3d' | 'gravura';
+
+/**
  * Direção de imagem do cliente. Definida uma vez pelo agente a partir do
  * briefing e da marca; todo prompt de geração é composto a partir dela, que é
  * o que mantém as imagens do site coerentes entre si.
  */
 export type ImageGuide = {
-  estilo?: 'fotografia' | 'ilustracao' | '3d';
+  estilo?: ImageStyle;
   luz?: string;
   paleta?: string[];
   ambientes?: string[];

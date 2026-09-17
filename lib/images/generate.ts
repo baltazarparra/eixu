@@ -5,13 +5,27 @@ import sharp from 'sharp';
 import { FRAMING, dimensionsFor, type Ratio } from '@/lib/images/ratios';
 import { insertImage } from '@/lib/images/queries';
 import { trackImageUsage } from '@/lib/ai/usage-ledger';
-import type { ImageGuide, Tenant, TenantImage } from '@/lib/types';
+import type { ImageGuide, ImageStyle, Tenant, TenantImage } from '@/lib/types';
 
-const ESTILO: Record<string, string> = {
+const ESTILO: Record<ImageStyle, string> = {
   fotografia:
     'Fotografia documental, câmera com lente 35mm, profundidade de campo natural',
   ilustracao: 'Ilustração editorial vetorial, traço limpo, sem contorno pesado',
   '3d': 'Render 3D suave, materiais foscos, iluminação de estúdio',
+  gravura:
+    'Gravura de traço, desenho a bico de pena com hachura fina e monocromática, assunto isolado e recortado, sem cenário ao redor',
+};
+
+/** As negativas de fotografia não servem a um desenho e vice-versa. */
+const NEGATIVAS: Record<ImageStyle, readonly string[]> = {
+  fotografia: ['sem cara de banco de imagens, sem pose artificial'],
+  ilustracao: ['sem cara de banco de imagens'],
+  '3d': ['sem cara de banco de imagens'],
+  gravura: [
+    'sem fotografia, sem render, sem textura fotográfica',
+    'sem cenário, sem chão, sem sombra projetada',
+    'sem preenchimento de cor chapada no fundo',
+  ],
 };
 
 /**
@@ -24,19 +38,38 @@ export function composePrompt(
   request: string,
   ratio: Ratio,
   targetBlock: string,
-  options?: { allowText?: boolean; extraNegatives?: string[] },
+  options?: {
+    allowText?: boolean;
+    extraNegatives?: string[];
+    /** Estilo da vaga; sobrepõe o do guia só nesta cena. */
+    estilo?: ImageStyle;
+    /** Pede a arte recortada, sem fundo. */
+    transparent?: boolean;
+  },
 ): string {
+  const estilo = options?.estilo ?? guide.estilo ?? 'fotografia';
   const parts: string[] = [];
-  parts.push(ESTILO[guide.estilo ?? 'fotografia'] ?? ESTILO.fotografia);
+  parts.push(ESTILO[estilo] ?? ESTILO.fotografia);
   parts.push(request.trim());
-  if (guide.ambientes?.length)
-    parts.push(`Ambiente: ${guide.ambientes.join(', ')}`);
-  if (guide.sujeitos?.length)
-    parts.push(`Presença típica: ${guide.sujeitos.join(', ')}`);
-  if (guide.luz) parts.push(`Luz: ${guide.luz}`);
+  // Ambiente, presença e luz descrevem uma cena fotográfica. Numa gravura
+  // recortada eles pediriam o cenário que a arte justamente não deve ter; a
+  // paleta continua, porque é o que mantém o desenho no tom do projeto.
+  if (estilo !== 'gravura') {
+    if (guide.ambientes?.length)
+      parts.push(`Ambiente: ${guide.ambientes.join(', ')}`);
+    if (guide.sujeitos?.length)
+      parts.push(`Presença típica: ${guide.sujeitos.join(', ')}`);
+    if (guide.luz) parts.push(`Luz: ${guide.luz}`);
+  }
   if (guide.paleta?.length) parts.push(`Paleta: ${guide.paleta.join(', ')}`);
   if (guide.notas) parts.push(guide.notas);
-  parts.push(FRAMING[targetBlock] ?? FRAMING.livre);
+  // Ambiente e luz descrevem uma cena fotográfica; numa gravura recortada eles
+  // pediriam justamente o cenário que a arte não deve ter.
+  if (estilo !== 'gravura') parts.push(FRAMING[targetBlock] ?? FRAMING.livre);
+  if (options?.transparent)
+    parts.push(
+      'Fundo totalmente transparente, sem cor de fundo, com a arte recortada até a borda do traço',
+    );
   parts.push(`Proporção ${ratio}`);
 
   const negatives = [
@@ -45,7 +78,7 @@ export function composePrompt(
       : ['nenhum texto, letreiro, legenda ou marca dágua']),
     'nenhum logotipo ou marca reconhecível',
     'sem colagem, sem moldura, sem borda',
-    'sem cara de banco de imagens, sem pose artificial',
+    ...NEGATIVAS[estilo],
     ...(guide.nunca ?? []),
     ...(options?.extraNegatives ?? []),
   ];
@@ -70,6 +103,10 @@ export async function generateCandidates(input: {
   models: readonly string[];
   allowText?: boolean;
   extraNegatives?: string[];
+  /** Estilo desta vaga, quando a área pede outra natureza de imagem. */
+  estilo?: ImageStyle;
+  /** Pede a arte sem fundo ao gerador. */
+  transparent?: boolean;
   /** Imagem existente do tenant, usada para uma alteração por número. */
   reference?: Buffer;
   referenceUrl?: string;
@@ -83,6 +120,8 @@ export async function generateCandidates(input: {
     {
       allowText: input.allowText,
       extraNegatives: input.extraNegatives,
+      estilo: input.estilo,
+      transparent: input.transparent,
     },
   );
 
@@ -97,6 +136,19 @@ export async function generateCandidates(input: {
               ? { text: prompt, images: [input.reference] }
               : prompt,
             ...dimensionsFor(model, input.ratio),
+            // O canal alfa precisa ser pedido ao provedor: só a negativa no
+            // texto devolve um fundo chapado. PNG é o formato que o carrega
+            // até o sharp, que preserva o alfa ao converter para WebP.
+            ...(input.transparent
+              ? {
+                  providerOptions: {
+                    openai: {
+                      background: 'transparent',
+                      output_format: 'png',
+                    },
+                  },
+                }
+              : {}),
             maxRetries: 1,
           }),
       );

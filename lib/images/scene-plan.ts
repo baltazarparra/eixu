@@ -17,6 +17,7 @@ import {
   type Vibe,
 } from '@/lib/design/vibes';
 import type { DesignProfile } from '@/lib/design/profile';
+import type { ImageStyle } from '@/lib/types';
 import {
   commercialScenes,
   resolveCommercialVariants,
@@ -36,6 +37,10 @@ export type PlannedScene = {
   targetBlock: string;
   ratio: Ratio;
   hint: string;
+  /** Estilo desta vaga, quando a área pede outra natureza de imagem. */
+  estilo?: ImageStyle;
+  /** Pede a arte recortada, sem fundo. */
+  transparent?: boolean;
   /** Pedido semântico produzido junto do plano editorial. */
   request?: string;
   page?: string;
@@ -176,7 +181,9 @@ export function sceneRequestsMatchPlan(
 
 /** Uma cena legível para o prompt. */
 export function sceneText(scene: PlannedScene): string {
-  return `${scene.role} · targetBlock ${scene.targetBlock} · ${scene.ratio} · ${scene.request ?? scene.hint}${scene.page ? ` · página ${scene.page}` : ''}`;
+  return `${scene.role} · targetBlock ${scene.targetBlock} · ${scene.ratio}${
+    scene.estilo ? ` · ${scene.estilo}` : ''
+  }${scene.transparent ? ' recortada sem fundo' : ''} · ${scene.request ?? scene.hint}${scene.page ? ` · página ${scene.page}` : ''}`;
 }
 
 /** Plano legível para o prompt da fase de cenas. */

@@ -18,6 +18,9 @@ export function guideTool(
     description:
       'Define ou ajusta o guia de imagem do cliente. Passe só os campos que mudam; o resto é preservado. Toda imagem gerada depois obedece a este guia.',
     inputSchema: z.object({
+      // gravura fica fora: é decisão de composição por área, declarada em
+      // lib/design/commercial-variants.ts. No guia ela tornaria o site inteiro
+      // desenhado, que não é o que a vibe pede.
       estilo: z.enum(['fotografia', 'ilustracao', '3d']).optional(),
       luz: z
         .string()

@@ -596,9 +596,10 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         // para signature.composition e recusava o lote inteiro nas estruturas
         // de assinatura 16:9 e 4:5. Visto no cliente wanderb em 12/09/2026.
         const plan = scenePlan(design, 3, vibeOf(activeBrand), activeBrief);
+        const plannedSlot = (targetBlock: string) =>
+          plan.find((slot) => slot.targetBlock === targetBlock);
         const plannedRatio = (targetBlock: string) =>
-          plan.find((slot) => slot.targetBlock === targetBlock)?.ratio ??
-          expectedRatio(targetBlock);
+          plannedSlot(targetBlock)?.ratio ?? expectedRatio(targetBlock);
 
         const prepared = scenes.map((scene) => {
           // A proporção nasce da composição decidida, não de um palpite: foto
@@ -622,7 +623,17 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             throw new ToolError(
               `${scene.targetBlock} exibe ${ratio}. A proporção ${scene.ratio} seria recortada; envie ${ratio} ou omita o campo.`,
             );
-          return { ...scene, ratio };
+          // A natureza da imagem é decisão da composição, como a proporção: a
+          // área declara se quer fotografia ou gravura recortada, e o agente
+          // descreve o assunto. Um dos dois escolhendo sozinho produziria uma
+          // seção com metade gravura e metade foto.
+          const slot = plannedSlot(scene.targetBlock);
+          return {
+            ...scene,
+            ratio,
+            ...(slot?.estilo ? { estilo: slot.estilo } : {}),
+            ...(slot?.transparent ? { transparent: true } : {}),
+          };
         });
         // Reserva antes do primeiro await: ferramentas do mesmo turno podem
         // ser executadas em paralelo. Só devolve orçamento sem tentativa paga.
