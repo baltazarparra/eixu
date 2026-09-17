@@ -187,6 +187,87 @@
   object-position: center;
 }
 
+/* A abertura começa junto do primeiro paint. As seções seguintes são
+   preparadas pelo motor antes de entrar na viewport, sem o recuo 1 → 0 → 1. */
+@media (prefers-reduced-motion: no-preference) {
+  .site-theme[data-profile-version='8'][data-vibe='comercial'][data-motion='gentle']:not(
+      [data-editing='true']
+    )
+    .site-nav {
+    animation: commercial-nav-arrive 0.72s 0.04s cubic-bezier(0.16, 1, 0.3, 1)
+      both;
+  }
+
+  .site-theme[data-profile-version='8'][data-vibe='comercial'][data-motion='gentle']:not(
+      [data-editing='true']
+    )
+    .site-hero-copy
+    > * {
+    animation: commercial-copy-arrive 0.72s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .site-theme[data-profile-version='8'][data-vibe='comercial'][data-motion='gentle']:not(
+      [data-editing='true']
+    )
+    .site-hero-copy
+    > :nth-child(1) {
+    animation-delay: 0.08s;
+  }
+
+  .site-theme[data-profile-version='8'][data-vibe='comercial'][data-motion='gentle']:not(
+      [data-editing='true']
+    )
+    .site-hero-copy
+    > :nth-child(2) {
+    animation-delay: 0.14s;
+  }
+
+  .site-theme[data-profile-version='8'][data-vibe='comercial'][data-motion='gentle']:not(
+      [data-editing='true']
+    )
+    .site-hero-copy
+    > :nth-child(3) {
+    animation-delay: 0.2s;
+  }
+
+  .site-theme[data-profile-version='8'][data-vibe='comercial'][data-motion='gentle']:not(
+      [data-editing='true']
+    )
+    .site-hero-copy
+    > :nth-child(n + 4) {
+    animation-delay: 0.26s;
+  }
+
+  .site-theme[data-profile-version='8'][data-vibe='comercial'][data-motion='gentle']:not(
+      [data-editing='true']
+    )
+    .site-hero-media
+    img {
+    animation: commercial-hero-image-arrive 1.35s cubic-bezier(0.16, 1, 0.3, 1)
+      both;
+  }
+}
+
+@keyframes commercial-nav-arrive {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -10px, 0);
+  }
+}
+
+@keyframes commercial-copy-arrive {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+}
+
+@keyframes commercial-hero-image-arrive {
+  from {
+    transform: scale(1.022);
+  }
+}
+
 /* Introdução e história. */
 .site-theme[data-profile-version='8'][data-vibe='comercial']
   .site-text-lead
@@ -276,6 +357,7 @@
 .site-theme[data-profile-version='8'][data-vibe='comercial'] .site-cta-split {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  overflow: hidden;
   padding: 0;
 }
 
@@ -404,6 +486,12 @@
   .site-gallery-grid
   ul {
   gap: 0;
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-gallery-grid
+  li {
+  overflow: hidden;
 }
 
 .site-theme[data-profile-version='8'][data-vibe='comercial']

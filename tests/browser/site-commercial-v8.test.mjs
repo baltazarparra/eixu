@@ -41,6 +41,9 @@ await test(
       /\[data-profile-version=(?:["']8["']|8)\]\[data-vibe=(?:["']comercial["']|comercial)\]/,
       'Execute build:vercel antes deste teste.',
     );
+    assert.match(css, /commercial-nav-arrive/);
+    assert.match(css, /commercial-copy-arrive/);
+    assert.match(css, /commercial-hero-image-arrive/);
     const fontClasses = [...css.matchAll(/\.([\w-]+)\{--font-[\w-]+:/g)]
       .map((match) => match[1])
       .join(' ');
@@ -163,6 +166,18 @@ await test(
                     ];
                     const target = cards.at(-1);
                     if (!target) return null;
+                    if (target.dataset.motionState !== 'pending')
+                      await new Promise((resolve) => {
+                        const observer = new MutationObserver(() => {
+                          if (target.dataset.motionState !== 'pending') return;
+                          observer.disconnect();
+                          resolve();
+                        });
+                        observer.observe(target, {
+                          attributes: true,
+                          attributeFilter: ['data-motion-state'],
+                        });
+                      });
                     const previousBehavior =
                       document.documentElement.style.scrollBehavior;
                     document.documentElement.style.scrollBehavior = 'auto';
@@ -172,20 +187,32 @@ await test(
                         requestAnimationFrame(resolve),
                       ),
                     );
-                    const before = target.getAttribute('style') ?? '';
+                    const read = () => ({
+                      opacity: Number.parseFloat(
+                        getComputedStyle(target).opacity,
+                      ),
+                      transform: getComputedStyle(target).transform,
+                      state: target.dataset.motionState,
+                      style: target.getAttribute('style') ?? '',
+                    });
+                    const before = read();
                     target.scrollIntoView({ block: 'center' });
-                    await new Promise((resolve) => setTimeout(resolve, 80));
-                    const during = Number.parseFloat(
-                      getComputedStyle(target).opacity,
-                    );
-                    await new Promise((resolve) => setTimeout(resolve, 700));
-                    const after = Number.parseFloat(
-                      getComputedStyle(target).opacity,
-                    );
+                    const samples = [];
+                    for (let index = 0; index < 11; index += 1) {
+                      await new Promise((resolve) => setTimeout(resolve, 80));
+                      samples.push(read().opacity);
+                    }
+                    await new Promise((resolve) => setTimeout(resolve, 260));
+                    const after = read();
+                    scrollTo(0, 0);
+                    await new Promise((resolve) => setTimeout(resolve, 100));
+                    target.scrollIntoView({ block: 'center' });
+                    await new Promise((resolve) => setTimeout(resolve, 100));
+                    const afterReentry = read();
                     scrollTo(0, 0);
                     document.documentElement.style.scrollBehavior =
                       previousBehavior;
-                    return { before, during, after };
+                    return { before, samples, after, afterReentry };
                   })
                 : null;
             const parallax = await page.evaluate(async () => {
@@ -199,17 +226,22 @@ await test(
               await new Promise((resolve) =>
                 requestAnimationFrame(() => requestAnimationFrame(resolve)),
               );
-              const before =
-                getComputedStyle(figure).getPropertyValue('--site-parallax-y');
+              const read = () =>
+                Number.parseFloat(
+                  getComputedStyle(figure).getPropertyValue(
+                    '--site-parallax-y',
+                  ) || '0',
+                );
+              const before = read();
               scrollBy(0, 140);
-              await new Promise((resolve) =>
-                requestAnimationFrame(() => requestAnimationFrame(resolve)),
-              );
-              const after =
-                getComputedStyle(figure).getPropertyValue('--site-parallax-y');
+              const samples = [];
+              for (let index = 0; index < 10; index += 1) {
+                await new Promise((resolve) => requestAnimationFrame(resolve));
+                samples.push(read());
+              }
               scrollTo(0, 0);
               document.documentElement.style.scrollBehavior = previousBehavior;
-              return { before, after };
+              return { before, samples };
             });
             await page.evaluate(async () => {
               const limit = document.documentElement.scrollHeight - innerHeight;
@@ -228,11 +260,9 @@ await test(
                   });
                 }),
               );
-              await new Promise((resolve) => setTimeout(resolve, 700));
+              await new Promise((resolve) => setTimeout(resolve, 1100));
               scrollTo(0, 0);
-              await new Promise((resolve) => {
-                requestAnimationFrame(() => requestAnimationFrame(resolve));
-              });
+              await new Promise((resolve) => setTimeout(resolve, 1000));
             });
             const report = await page.evaluate(() => {
               const immersive = [
@@ -297,6 +327,37 @@ await test(
                   document.querySelector('.site-hero-brand-logo'),
                 ),
                 navLogo: Boolean(document.querySelector('.site-nav-logo')),
+                motion: {
+                  pending: document.querySelectorAll(
+                    '[data-motion-state="pending"]',
+                  ).length,
+                  running: document.querySelectorAll(
+                    '[data-motion-state="running"]',
+                  ).length,
+                  complete: document.querySelectorAll(
+                    '[data-motion-state="complete"]',
+                  ).length,
+                  runningTargets: [
+                    ...document.querySelectorAll(
+                      '[data-motion-state="running"]',
+                    ),
+                  ].map((target) => ({
+                    tag: target.tagName,
+                    className: target.className,
+                    block: target.closest('.site-block')?.dataset.block,
+                  })),
+                  coverage: blocks
+                    .filter(
+                      (block) =>
+                        block.dataset.block !== 'nav.bar' &&
+                        !block.dataset.block?.startsWith('hero.'),
+                    )
+                    .map((block) => ({
+                      block: block.dataset.block,
+                      targets: block.querySelectorAll('[data-motion-state]')
+                        .length,
+                    })),
+                },
               };
             });
             assert.ok(
@@ -366,11 +427,51 @@ await test(
             assert.equal(report.brandLogo, false);
             assert.equal(report.navLogo, true);
             assert.ok(parallax);
-            assert.notEqual(parallax.before, parallax.after);
+            assert.notEqual(parallax.before, parallax.samples.at(-1));
+            const parallaxDirection = Math.sign(
+              parallax.samples.at(-1) - parallax.before,
+            );
+            for (let index = 1; index < parallax.samples.length; index += 1)
+              assert.ok(
+                (parallax.samples[index] - parallax.samples[index - 1]) *
+                  parallaxDirection >=
+                  -0.01,
+                JSON.stringify(parallax),
+              );
+            assert.equal(report.motion.pending, 0, `${structure} ${width}`);
+            assert.equal(
+              report.motion.running,
+              0,
+              `${structure} ${width}: ${JSON.stringify(report.motion.runningTargets)}`,
+            );
+            assert.ok(report.motion.complete >= 20, `${structure} ${width}`);
+            assert.ok(
+              report.motion.coverage.every(({ targets }) => targets > 0),
+              `${structure} ${width}: ${JSON.stringify(report.motion.coverage)}`,
+            );
             if (entrance) {
-              assert.equal(entrance.before, '');
-              assert.ok(entrance.during < 1, JSON.stringify(entrance));
-              assert.equal(entrance.after, 1);
+              assert.equal(entrance.before.opacity, 0);
+              assert.equal(entrance.before.state, 'pending');
+              assert.match(entrance.before.transform, /12/);
+              assert.ok(
+                entrance.samples.some((opacity) => opacity > 0 && opacity < 1),
+                JSON.stringify(entrance),
+              );
+              for (let index = 1; index < entrance.samples.length; index += 1)
+                assert.ok(
+                  entrance.samples[index] + 0.015 >=
+                    entrance.samples[index - 1],
+                  JSON.stringify(entrance),
+                );
+              assert.equal(entrance.after.opacity, 1);
+              assert.equal(entrance.after.state, 'complete');
+              assert.equal(entrance.after.transform, 'none');
+              assert.doesNotMatch(
+                entrance.after.style,
+                /opacity|transform|will-change/,
+              );
+              assert.equal(entrance.afterReentry.opacity, 1);
+              assert.equal(entrance.afterReentry.state, 'complete');
             }
             await page.screenshot({
               path:
@@ -385,12 +486,35 @@ await test(
             { name: 'prefers-reduced-motion', value: 'reduce' },
           ]);
           await page.reload({ waitUntil: 'networkidle0' });
-          const visible = await page.evaluate(() =>
-            [...document.querySelectorAll('.site-block')].every(
+          const reduced = await page.evaluate(() => ({
+            visible: [...document.querySelectorAll('.site-block')].every(
               (block) => getComputedStyle(block).opacity === '1',
             ),
+            states: document.querySelectorAll('[data-motion-state]').length,
+            inlineHidden: [
+              ...document.querySelectorAll('.site-block [style]'),
+            ].filter((element) => element.style.opacity === '0').length,
+            heroAnimations:
+              document
+                .querySelector('.site-hero')
+                ?.getAnimations({ subtree: true }).length ?? 0,
+          }));
+          assert.equal(
+            reduced.visible,
+            true,
+            `${structure}: movimento reduzido`,
           );
-          assert.equal(visible, true, `${structure}: movimento reduzido`);
+          assert.equal(reduced.states, 0, `${structure}: movimento reduzido`);
+          assert.equal(
+            reduced.inlineHidden,
+            0,
+            `${structure}: movimento reduzido`,
+          );
+          assert.equal(
+            reduced.heroAnimations,
+            0,
+            `${structure}: movimento reduzido`,
+          );
         });
       assert.deepEqual(errors, []);
     } finally {

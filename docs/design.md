@@ -24,12 +24,17 @@ têm pelo menos 56% da altura da tela e recebem parallax. `media.gallery` exige
 pelo menos seis fotos. `media.map` assume `onde-estamos` e renderiza nome,
 endereço, telefone, horário, rota e mapa para cada unidade cadastrada.
 
-Todo bloco, incluindo navegação e rodapé, recebe uma entrada curta por Framer
-Motion. Categorias e redes entram em sequência; fotografias ganham escala
-discreta; os demais componentes usam reveal. O HTML continua visível no
-servidor, edição desliga o movimento e `prefers-reduced-motion` preserva o
-conteúdo sem animação. A paleta usa até três tons de seção, superfícies planas,
-texto curto e nenhuma textura ou prova inventada.
+A abertura entra junto do primeiro paint, sem desaparecer depois da hidratação.
+As seções seguintes são preparadas antes de aparecer e entram uma única vez,
+somente ao alcançar a viewport: deslocamento máximo de 12 px para conteúdo e
+escala de 2,2% para fotografias, sempre com curva contínua e sem recuo de
+opacidade. Categorias, galeria e unidades preservam entradas individuais no
+celular; no desktop, a sequência curta respeita a leitura por linha. O parallax
+é amortecido entre quadros para não acompanhar o scroll com trancos. O HTML
+continua visível no servidor, a edição desliga o movimento e
+`prefers-reduced-motion` preserva o conteúdo sem animação. A paleta usa até três
+tons de seção, superfícies planas, texto curto e nenhuma textura ou prova
+inventada.
 
 ## Landing Page v7
 
