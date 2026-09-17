@@ -33,12 +33,15 @@ export function SiteMotion({
   return <LegacySiteMotion intensity={intensity}>{children}</LegacySiteMotion>;
 }
 
-type CommercialEntranceKind = 'lift' | 'image';
+type CommercialEntranceKind = 'reveal' | 'fade';
+type CommercialEntranceRole = 'content' | 'image';
 
 type CommercialEntrance = {
   target: HTMLElement;
   kind: CommercialEntranceKind;
-  order: number;
+  role: CommercialEntranceRole;
+  desktopDelay: number;
+  mobileDelay: number;
 };
 
 function commercialEntrances(root: HTMLElement): CommercialEntrance[] {
@@ -47,11 +50,38 @@ function commercialEntrances(root: HTMLElement): CommercialEntrance[] {
   const add = (
     target: Element | null | undefined,
     kind: CommercialEntranceKind,
-    order = 0,
+    options: {
+      role?: CommercialEntranceRole;
+      desktopDelay?: number;
+      mobileDelay?: number;
+    } = {},
   ) => {
     if (!(target instanceof HTMLElement) || used.has(target)) return;
     used.add(target);
-    entrances.push({ target, kind, order });
+    entrances.push({
+      target,
+      kind,
+      role: options.role ?? 'content',
+      desktopDelay: options.desktopDelay ?? 0,
+      mobileDelay: options.mobileDelay ?? options.desktopDelay ?? 0,
+    });
+  };
+  const addCopySequence = (
+    container: Element | null | undefined,
+    start = 0,
+  ) => {
+    if (!container) return;
+    Array.from(container.children).forEach((target, index) => {
+      const kind = target.matches(
+        'h1, h2, h3, .site-headline, .site-actions, .site-action',
+      )
+        ? 'reveal'
+        : 'fade';
+      add(target, kind, {
+        desktopDelay: start + index * 0.12,
+        mobileDelay: start + index * 0.1,
+      });
+    });
   };
 
   root
@@ -63,63 +93,147 @@ function commercialEntrances(root: HTMLElement): CommercialEntrance[] {
       if (block === 'nav.bar' || block?.startsWith('hero.')) return;
 
       if (block === 'feature.bento') {
-        add(section.querySelector('.site-shell > :first-child'), 'lift');
-        section
-          .querySelectorAll('.site-bento-item')
-          .forEach((item, index) => add(item, 'lift', index));
+        addCopySequence(section.querySelector('.site-shell > :first-child'));
+        section.querySelectorAll('.site-bento-item').forEach((item, index) => {
+          const rowDelay = (index % 3) * 0.12;
+          add(item.querySelector('img'), 'fade', {
+            role: 'image',
+            desktopDelay: rowDelay,
+            mobileDelay: 0,
+          });
+          add(item.querySelector('h3'), 'reveal', {
+            desktopDelay: rowDelay + 0.1,
+            mobileDelay: 0.08,
+          });
+          add(item.querySelector('p'), 'fade', {
+            desktopDelay: rowDelay + 0.2,
+            mobileDelay: 0.16,
+          });
+        });
         return;
       }
 
       if (block === 'social.follow') {
-        add(section.querySelector('.site-social-copy'), 'lift');
+        addCopySequence(section.querySelector('.site-social-copy'));
         section
           .querySelectorAll('.site-social-images > img')
-          .forEach((image, index) => add(image, 'image', index));
-        return;
-      }
-
-      if (block === 'media.image') {
-        add(section.querySelector('img'), 'image');
-        add(section.querySelector('figcaption'), 'lift', 1);
-        return;
-      }
-
-      if (block === 'media.gallery') {
-        add(section.querySelector('.site-shell > h2'), 'lift');
+          .forEach((image, index) =>
+            add(image, 'fade', {
+              role: 'image',
+              desktopDelay: (index % 3) * 0.1,
+              mobileDelay: 0,
+            }),
+          );
         section
-          .querySelectorAll('.site-gallery li')
-          .forEach((item, index) =>
-            add(item.querySelector('img') ?? item, 'image', index),
+          .querySelectorAll('.site-social-links > li')
+          .forEach((link, index) =>
+            add(link, 'fade', {
+              desktopDelay: 0.26 + index * 0.1,
+              mobileDelay: 0.18 + index * 0.08,
+            }),
           );
         return;
       }
 
+      if (block === 'media.image') {
+        add(section.querySelector('img'), 'fade', { role: 'image' });
+        add(section.querySelector('figcaption'), 'reveal', {
+          desktopDelay: 0.16,
+          mobileDelay: 0.1,
+        });
+        return;
+      }
+
+      if (block === 'media.gallery') {
+        add(section.querySelector('.site-shell > h2'), 'reveal');
+        section.querySelectorAll('.site-gallery li').forEach((item, index) =>
+          add(item.querySelector('img') ?? item, 'fade', {
+            role: 'image',
+            desktopDelay: (index % 3) * 0.12,
+            mobileDelay: 0,
+          }),
+        );
+        return;
+      }
+
       if (block === 'media.map') {
-        add(section.querySelector('.site-shell > h2'), 'lift');
-        section
-          .querySelectorAll('.site-map-unit')
-          .forEach((unit, index) => add(unit, 'lift', index));
+        add(section.querySelector('.site-shell > h2'), 'reveal');
+        section.querySelectorAll('.site-map-unit').forEach((unit, index) => {
+          const delay = (index % 3) * 0.12;
+          add(unit.querySelector('.site-map-unit-copy'), 'fade', {
+            desktopDelay: delay,
+            mobileDelay: 0,
+          });
+          add(unit.querySelector('iframe'), 'fade', {
+            desktopDelay: delay + 0.12,
+            mobileDelay: 0.1,
+          });
+        });
         return;
       }
 
       if (block === 'form.lead') {
-        section
-          .querySelectorAll('.site-shell > *')
-          .forEach((column, index) => add(column, 'lift', index));
+        const copy = section.querySelector('.site-shell > :first-child');
+        if (copy)
+          Array.from(copy.children).forEach((target, index) =>
+            add(target, 'fade', {
+              desktopDelay: index * 0.12,
+              mobileDelay: index * 0.1,
+            }),
+          );
+        add(section.querySelector('.site-shell > form'), 'fade', {
+          desktopDelay: 0.2,
+          mobileDelay: 0.16,
+        });
         return;
       }
 
       const featureImage = section.querySelector(
         ':scope > section > .site-cta-image',
       );
-      if (featureImage) add(featureImage, 'image');
-      add(
-        section.querySelector(':scope > section > .site-shell') ??
-          section.querySelector(':scope > footer > .site-shell') ??
-          section.querySelector('.site-shell') ??
-          section.firstElementChild,
-        'lift',
-        featureImage ? 1 : 0,
+      if (featureImage) add(featureImage, 'fade', { role: 'image' });
+
+      const ctaCopy = section.querySelector('.site-cta-copy');
+      if (ctaCopy) {
+        addCopySequence(ctaCopy, featureImage ? 0.1 : 0);
+        add(
+          section.querySelector('.site-cta > .site-shell > .site-action'),
+          'reveal',
+          {
+            desktopDelay: featureImage ? 0.42 : 0.34,
+            mobileDelay: featureImage ? 0.32 : 0.28,
+          },
+        );
+        return;
+      }
+
+      const textShell = section.querySelector('.site-text > .site-shell');
+      if (textShell) {
+        addCopySequence(textShell);
+        return;
+      }
+
+      const footerShell = section.querySelector('.site-footer > .site-shell');
+      if (footerShell) {
+        const row = footerShell.firstElementChild;
+        if (row)
+          Array.from(row.children).forEach((target, index) =>
+            add(target, 'fade', {
+              desktopDelay: index * 0.1,
+              mobileDelay: index * 0.08,
+            }),
+          );
+        const legal = footerShell.lastElementChild;
+        if (legal !== row)
+          add(legal, 'fade', {
+            desktopDelay: 0.3,
+            mobileDelay: 0.24,
+          });
+        return;
+      }
+
+      addCopySequence(
+        section.querySelector('.site-shell') ?? section.firstElementChild,
       );
     });
 
@@ -148,13 +262,15 @@ function CommercialSiteMotion({
     const stops: (() => void)[] = [];
     const settleFrames = new Set<number>();
 
-    for (const { target, kind } of entrances) {
+    for (const { target, kind, role } of entrances) {
       target.dataset.motionState = 'pending';
       target.dataset.motionKind = kind;
+      target.dataset.motionRole = role;
       target.style.opacity = '0';
-      target.style.transform =
-        kind === 'image' ? 'scale(1.022)' : 'translate3d(0, 12px, 0)';
-      target.style.willChange = 'opacity, transform';
+      if (kind === 'reveal')
+        target.style.transform = `translate3d(0, ${window.innerWidth >= 768 ? 28 : 20}px, 0)`;
+      target.style.willChange =
+        kind === 'reveal' ? 'opacity, transform' : 'opacity';
     }
     let active = true;
     const finish = (target: HTMLElement) => {
@@ -172,28 +288,36 @@ function CommercialSiteMotion({
       settleFrames.add(frameId);
     };
 
-    const reveal = ({ target, kind, order }: CommercialEntrance) => {
+    const reveal = ({
+      target,
+      kind,
+      role,
+      desktopDelay,
+      mobileDelay,
+    }: CommercialEntrance) => {
       if (target.dataset.motionState !== 'pending') return;
       target.dataset.motionState = 'running';
-      const delay = window.innerWidth >= 768 ? (order % 3) * 0.045 : 0;
+      const desktop = window.innerWidth >= 768;
+      const delay = desktop ? desktopDelay : mobileDelay;
+      const duration = role === 'image' ? 1.15 : kind === 'fade' ? 1.05 : 1;
       const control =
-        kind === 'image'
+        kind === 'fade'
           ? animate(
               target,
-              { opacity: [0, 1], scale: [1.022, 1] },
+              { opacity: [0, 1] },
               {
-                duration: 0.82,
+                duration,
                 delay,
-                ease: [0.16, 1, 0.3, 1],
+                ease: [0.39, 0.575, 0.565, 1],
               },
             )
           : animate(
               target,
-              { opacity: [0, 1], y: [12, 0] },
+              { opacity: [0, 1], y: [desktop ? 28 : 20, 0] },
               {
-                duration: 0.7,
+                duration,
                 delay,
-                ease: [0.16, 1, 0.3, 1],
+                ease: [0.25, 0.46, 0.45, 0.94],
               },
             );
       controls.push(control);
@@ -263,6 +387,7 @@ function CommercialSiteMotion({
       entrances.forEach(({ target }) => {
         delete target.dataset.motionState;
         delete target.dataset.motionKind;
+        delete target.dataset.motionRole;
         target.style.removeProperty('opacity');
         target.style.removeProperty('transform');
         target.style.removeProperty('will-change');

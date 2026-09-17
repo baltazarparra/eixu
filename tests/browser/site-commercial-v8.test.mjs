@@ -41,9 +41,10 @@ await test(
       /\[data-profile-version=(?:["']8["']|8)\]\[data-vibe=(?:["']comercial["']|comercial)\]/,
       'Execute build:vercel antes deste teste.',
     );
-    assert.match(css, /commercial-nav-arrive/);
-    assert.match(css, /commercial-copy-arrive/);
-    assert.match(css, /commercial-hero-image-arrive/);
+    assert.match(css, /commercial-fade-in/);
+    assert.match(css, /commercial-scroll-reveal/);
+    assert.match(css, /commercial-image-fade/);
+    assert.doesNotMatch(css, /commercial-copy-arrive/);
     const fontClasses = [...css.matchAll(/\.([\w-]+)\{--font-[\w-]+:/g)]
       .map((match) => match[1])
       .join(' ');
@@ -156,25 +157,54 @@ await test(
               waitUntil: 'networkidle0',
             });
             await page.evaluate(() => document.fonts.ready);
+            const heroMotion = await page.evaluate(() => {
+              const copy = document.querySelector('.site-hero-copy');
+              const image = document.querySelector('.site-hero-media img');
+              return {
+                copyAnimation: copy
+                  ? getComputedStyle(copy).animationName
+                  : null,
+                childAnimations: copy
+                  ? [...copy.children].map((child) => ({
+                      className: child.className,
+                      animation: getComputedStyle(child).animationName,
+                    }))
+                  : [],
+                imageAnimation: image
+                  ? getComputedStyle(image).animationName
+                  : null,
+              };
+            });
             const entrance =
               width === 1440
                 ? await page.evaluate(async () => {
-                    const cards = [
-                      ...document.querySelectorAll(
-                        "[data-block='feature.bento'] article",
-                      ),
-                    ];
-                    const target = cards.at(-1);
-                    if (!target) return null;
-                    if (target.dataset.motionState !== 'pending')
+                    const card = document.querySelector(
+                      "[data-block='feature.bento'] article",
+                    );
+                    const target = card?.querySelector(
+                      '[data-motion-kind="reveal"]',
+                    );
+                    const fadeTarget = card?.querySelector(
+                      '[data-motion-kind="fade"][data-motion-role="image"]',
+                    );
+                    if (!target || !fadeTarget) return null;
+                    if (
+                      target.dataset.motionState !== 'pending' ||
+                      fadeTarget.dataset.motionState !== 'pending'
+                    )
                       await new Promise((resolve) => {
                         const observer = new MutationObserver(() => {
-                          if (target.dataset.motionState !== 'pending') return;
+                          if (
+                            target.dataset.motionState !== 'pending' ||
+                            fadeTarget.dataset.motionState !== 'pending'
+                          )
+                            return;
                           observer.disconnect();
                           resolve();
                         });
-                        observer.observe(target, {
+                        observer.observe(card, {
                           attributes: true,
+                          subtree: true,
                           attributeFilter: ['data-motion-state'],
                         });
                       });
@@ -187,22 +217,28 @@ await test(
                         requestAnimationFrame(resolve),
                       ),
                     );
-                    const read = () => ({
+                    const readTarget = (element) => ({
                       opacity: Number.parseFloat(
-                        getComputedStyle(target).opacity,
+                        getComputedStyle(element).opacity,
                       ),
-                      transform: getComputedStyle(target).transform,
-                      state: target.dataset.motionState,
-                      style: target.getAttribute('style') ?? '',
+                      transform: getComputedStyle(element).transform,
+                      state: element.dataset.motionState,
+                      kind: element.dataset.motionKind,
+                      role: element.dataset.motionRole,
+                      style: element.getAttribute('style') ?? '',
+                    });
+                    const read = () => ({
+                      reveal: readTarget(target),
+                      fade: readTarget(fadeTarget),
                     });
                     const before = read();
                     target.scrollIntoView({ block: 'center' });
                     const samples = [];
                     for (let index = 0; index < 11; index += 1) {
                       await new Promise((resolve) => setTimeout(resolve, 80));
-                      samples.push(read().opacity);
+                      samples.push(read());
                     }
-                    await new Promise((resolve) => setTimeout(resolve, 260));
+                    await new Promise((resolve) => setTimeout(resolve, 440));
                     const after = read();
                     scrollTo(0, 0);
                     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -244,6 +280,9 @@ await test(
               return { before, samples };
             });
             await page.evaluate(async () => {
+              const previousBehavior =
+                document.documentElement.style.scrollBehavior;
+              document.documentElement.style.scrollBehavior = 'auto';
               const limit = document.documentElement.scrollHeight - innerHeight;
               const step = Math.max(320, Math.round(innerHeight * 0.75));
               for (let top = 0; top <= limit; top += step) {
@@ -260,9 +299,10 @@ await test(
                   });
                 }),
               );
-              await new Promise((resolve) => setTimeout(resolve, 1100));
+              await new Promise((resolve) => setTimeout(resolve, 1700));
               scrollTo(0, 0);
-              await new Promise((resolve) => setTimeout(resolve, 1000));
+              await new Promise((resolve) => setTimeout(resolve, 1400));
+              document.documentElement.style.scrollBehavior = previousBehavior;
             });
             const report = await page.evaluate(() => {
               const immersive = [
@@ -276,6 +316,9 @@ await test(
               const intro = document.querySelector('.site-text-bridge');
               const introPanel = intro?.querySelector('.site-text-identity');
               const introCopy = intro?.querySelector('.site-text-copy');
+              const motionTargets = [
+                ...document.querySelectorAll('[data-motion-kind]'),
+              ];
               return {
                 intro: intro?.getBoundingClientRect().toJSON(),
                 introPanel: introPanel?.getBoundingClientRect().toJSON(),
@@ -367,6 +410,43 @@ await test(
                       targets: block.querySelectorAll('[data-motion-state]')
                         .length,
                     })),
+                  kinds: {
+                    reveal: motionTargets.filter(
+                      (target) => target.dataset.motionKind === 'reveal',
+                    ).length,
+                    fade: motionTargets.filter(
+                      (target) => target.dataset.motionKind === 'fade',
+                    ).length,
+                  },
+                  imageRoleCount: motionTargets.filter(
+                    (target) => target.dataset.motionRole === 'image',
+                  ).length,
+                  imageRolesAreFade: motionTargets
+                    .filter((target) => target.dataset.motionRole === 'image')
+                    .every((target) => target.dataset.motionKind === 'fade'),
+                  categoryTargets: [
+                    ...document.querySelectorAll(
+                      "[data-block='feature.bento'] .site-bento-item",
+                    ),
+                  ].map((item) =>
+                    [...item.querySelectorAll('[data-motion-kind]')].map(
+                      (target) => target.dataset.motionKind,
+                    ),
+                  ),
+                  formKinds: [
+                    ...document.querySelectorAll(
+                      "[data-block='form.lead'] [data-motion-kind]",
+                    ),
+                  ].map((target) => target.dataset.motionKind),
+                  mapUnitKinds: [
+                    ...document.querySelectorAll(
+                      "[data-block='media.map'] .site-map-unit",
+                    ),
+                  ].map((unit) =>
+                    [...unit.querySelectorAll('[data-motion-kind]')].map(
+                      (target) => target.dataset.motionKind,
+                    ),
+                  ),
                 },
               };
             });
@@ -449,6 +529,28 @@ await test(
             assert.ok(Math.abs(report.heroMedia.left) <= 1);
             assert.equal(report.brandLogo, false);
             assert.equal(report.navLogo, true);
+            assert.equal(
+              heroMotion.copyAnimation,
+              'none',
+              `${structure} ${width}: o contêiner do hero não pode animar`,
+            );
+            assert.ok(
+              heroMotion.childAnimations.some(
+                ({ animation }) => animation === 'commercial-fade-in',
+              ),
+              `${structure} ${width}: ${JSON.stringify(heroMotion)}`,
+            );
+            assert.ok(
+              heroMotion.childAnimations.some(
+                ({ animation }) => animation === 'commercial-scroll-reveal',
+              ),
+              `${structure} ${width}: ${JSON.stringify(heroMotion)}`,
+            );
+            assert.equal(
+              heroMotion.imageAnimation,
+              'commercial-image-fade',
+              `${structure} ${width}`,
+            );
             assert.ok(parallax);
             assert.notEqual(parallax.before, parallax.samples.at(-1));
             const parallaxDirection = Math.sign(
@@ -472,29 +574,107 @@ await test(
               report.motion.coverage.every(({ targets }) => targets > 0),
               `${structure} ${width}: ${JSON.stringify(report.motion.coverage)}`,
             );
+            assert.ok(report.motion.kinds.reveal >= 8, `${structure} ${width}`);
+            assert.ok(report.motion.kinds.fade >= 20, `${structure} ${width}`);
+            assert.ok(
+              report.motion.imageRoleCount >= 13,
+              `${structure} ${width}`,
+            );
+            assert.equal(
+              report.motion.imageRolesAreFade,
+              true,
+              `${structure} ${width}`,
+            );
+            assert.equal(report.motion.categoryTargets.length, 6);
+            assert.ok(
+              report.motion.categoryTargets.every(
+                (kinds) =>
+                  kinds.length === 3 &&
+                  kinds[0] === 'fade' &&
+                  kinds[1] === 'reveal' &&
+                  kinds[2] === 'fade',
+              ),
+              `${structure} ${width}: ${JSON.stringify(report.motion.categoryTargets)}`,
+            );
+            assert.ok(report.motion.formKinds.length >= 3);
+            assert.ok(
+              report.motion.formKinds.every((kind) => kind === 'fade'),
+              `${structure} ${width}: ${JSON.stringify(report.motion.formKinds)}`,
+            );
+            assert.equal(report.motion.mapUnitKinds.length, 3);
+            assert.ok(
+              report.motion.mapUnitKinds.every(
+                (kinds) =>
+                  kinds.length === 2 && kinds.every((kind) => kind === 'fade'),
+              ),
+              `${structure} ${width}: ${JSON.stringify(report.motion.mapUnitKinds)}`,
+            );
             if (entrance) {
-              assert.equal(entrance.before.opacity, 0);
-              assert.equal(entrance.before.state, 'pending');
-              assert.match(entrance.before.transform, /12/);
-              assert.ok(
-                entrance.samples.some((opacity) => opacity > 0 && opacity < 1),
-                JSON.stringify(entrance),
+              assert.deepEqual(
+                {
+                  reveal: {
+                    opacity: entrance.before.reveal.opacity,
+                    state: entrance.before.reveal.state,
+                    kind: entrance.before.reveal.kind,
+                    role: entrance.before.reveal.role,
+                  },
+                  fade: {
+                    opacity: entrance.before.fade.opacity,
+                    state: entrance.before.fade.state,
+                    kind: entrance.before.fade.kind,
+                    role: entrance.before.fade.role,
+                  },
+                },
+                {
+                  reveal: {
+                    opacity: 0,
+                    state: 'pending',
+                    kind: 'reveal',
+                    role: 'content',
+                  },
+                  fade: {
+                    opacity: 0,
+                    state: 'pending',
+                    kind: 'fade',
+                    role: 'image',
+                  },
+                },
               );
-              for (let index = 1; index < entrance.samples.length; index += 1)
+              assert.match(entrance.before.reveal.transform, /28/);
+              assert.equal(entrance.before.fade.transform, 'none');
+              for (const kind of ['reveal', 'fade']) {
+                const samples = entrance.samples.map(
+                  (sample) => sample[kind].opacity,
+                );
                 assert.ok(
-                  entrance.samples[index] + 0.015 >=
-                    entrance.samples[index - 1],
+                  samples.some((opacity) => opacity > 0 && opacity < 1),
                   JSON.stringify(entrance),
                 );
-              assert.equal(entrance.after.opacity, 1);
-              assert.equal(entrance.after.state, 'complete');
-              assert.equal(entrance.after.transform, 'none');
-              assert.doesNotMatch(
-                entrance.after.style,
-                /opacity|transform|will-change/,
+                for (let index = 1; index < samples.length; index += 1)
+                  assert.ok(
+                    samples[index] + 0.015 >= samples[index - 1],
+                    JSON.stringify(entrance),
+                  );
+                assert.ok(
+                  samples[5] < 0.85,
+                  `${kind} terminou visualmente cedo: ${JSON.stringify(samples)}`,
+                );
+              }
+              assert.ok(
+                entrance.samples[0].fade.opacity < 0.25,
+                JSON.stringify(entrance.samples),
               );
-              assert.equal(entrance.afterReentry.opacity, 1);
-              assert.equal(entrance.afterReentry.state, 'complete');
+              for (const kind of ['reveal', 'fade']) {
+                assert.equal(entrance.after[kind].opacity, 1);
+                assert.equal(entrance.after[kind].state, 'complete');
+                assert.equal(entrance.after[kind].transform, 'none');
+                assert.doesNotMatch(
+                  entrance.after[kind].style,
+                  /opacity|transform|will-change/,
+                );
+                assert.equal(entrance.afterReentry[kind].opacity, 1);
+                assert.equal(entrance.afterReentry[kind].state, 'complete');
+              }
             }
             await page.screenshot({
               path:
