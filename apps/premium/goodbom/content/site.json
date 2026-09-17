@@ -1,0 +1,1601 @@
+{
+  "pages": [
+    {
+      "id": "5be638a2-916f-4b0d-a665-d10031b59d48",
+      "seo": {
+        "title": "GoodBom Supermercados | Tradição, Variedade e Praticidade",
+        "noindex": false,
+        "description": "Conheça o GoodBom Supermercados. São 13 lojas em 7 cidades, hortifrúti fresco todo dia, padaria artesanal, e-commerce e retirada no drive-thru."
+      },
+      "meta": {
+        "inbound": {
+          "stage": "discovery",
+          "intent": "Apresentar o GoodBom, seus setores de produtos frescos e as modalidades de compra física, online e drive-thru."
+        }
+      },
+      "slug": "",
+      "type": "page",
+      "title": "GoodBom Supermercados | Página Inicial",
+      "blocks": [
+        {
+          "id": "dt6qgtp8",
+          "type": "nav.bar",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/",
+              "label": "Falar no WhatsApp"
+            },
+            "links": [
+              {
+                "href": "/lojas",
+                "label": "Nossas Lojas"
+              },
+              {
+                "href": "/como-comprar",
+                "label": "Como Comprar"
+              },
+              {
+                "href": "/sobre",
+                "label": "Nossa História"
+              },
+              {
+                "href": "/contato",
+                "label": "Fale Conosco"
+              }
+            ],
+            "layout": "bar",
+            "logoText": "GoodBom"
+          }
+        },
+        {
+          "id": "4tc35s4v",
+          "type": "hero.split",
+          "props": {
+            "cta": {
+              "href": "/lojas",
+              "label": "Ver nossas lojas"
+            },
+            "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/50c62351-a7e9-406f-80c1-aaeba98dbea6/1.webp",
+            "layout": "cover",
+            "bullets": [
+              "13 lojas na região",
+              "Desde 1932 com você",
+              "Drive-thru prático"
+            ],
+            "subtext": "Produtos frescos todos os dias, despensa abastecida e opções práticas para comprar na loja, online ou pelo drive-thru.",
+            "headline": "Supermercado completo para você e sua família",
+            "imageAlt": "Família com carrinho de compras em corredor amplo e iluminado de supermercado com hortifrúti ao fundo",
+            "secondary": {
+              "href": "/como-comprar",
+              "label": "Como comprar"
+            },
+            "presentation": {
+              "tone": "paper"
+            },
+            "bulletsPlacement": "cta"
+          }
+        },
+        {
+          "id": "5ukshmkn",
+          "type": "proof.strip",
+          "props": {
+            "items": [
+              {
+                "label": "Unidades ativas em 7 cidades do interior",
+                "value": "13 lojas",
+                "evidence": "Rede com 13 lojas distribuídas em 7 cidades do interior paulista."
+              },
+              {
+                "label": "Atendimento no interior e região metropolitana",
+                "value": "7 cidades",
+                "evidence": "Presente em Sumaré, Hortolândia, Indaiatuba, Mogi Mirim, Monte Mor, Campinas e Mogi Guaçu."
+              },
+              {
+                "label": "Colaboradores dedicados ao atendimento diário",
+                "value": "+2.000",
+                "evidence": "Equipe com mais de 2.000 colaboradores ativos."
+              },
+              {
+                "label": "Início da nossa história em Sumaré",
+                "value": "1932",
+                "evidence": "Fundada em 1932 por Hermenegildo Gigo em Sumaré como Casa Gigo."
+              }
+            ],
+            "title": "Números que mostram nossa presença e dedicação regional",
+            "layout": "numbers",
+            "presentation": {
+              "tone": "soft",
+              "motion": "stagger"
+            }
+          }
+        },
+        {
+          "id": "m01b26iz",
+          "type": "signature.composition",
+          "props": {
+            "body": "Cuidamos de cada detalhe para que sua mesa tenha sempre o melhor. Conheça nossos setores de produtos frescos e os serviços que facilitam o dia a dia da sua família.",
+            "items": [
+              {
+                "body": "Das marcas consagradas aos itens essenciais de limpeza e higiene para manter sua casa em dia.",
+                "role": "detail",
+                "label": "Variedade ampla",
+                "title": "Despensa completa para sua casa"
+              },
+              {
+                "cta": {
+                  "href": "/lojas",
+                  "label": "Conhecer as lojas"
+                },
+                "body": "Frutas, verduras e legumes colhidos e abastecidos diariamente para garantir sabor e nutrição à sua casa.",
+                "role": "focus",
+                "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/f6abc461-5fb9-4dfd-8cec-9bde1741f11a/1.webp",
+                "label": "Frescor diário",
+                "title": "Hortifrúti fresco todos os dias",
+                "caption": "Bancadas abastecidas diariamente com itens selecionados",
+                "imageAlt": "Mulher escolhendo maçãs frescas na bancada organizada do hortifrúti"
+              },
+              {
+                "cta": {
+                  "href": "/como-comprar",
+                  "label": "Ver como comprar"
+                },
+                "body": "Pães quentinhos saindo a toda hora, bolos fofos e doces preparados com carinho por nossa equipe especializada.",
+                "role": "support",
+                "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/cf6c46be-3865-4bb0-9e90-9b766179b3e0/1.webp",
+                "label": "Fornadas diárias",
+                "title": "Padaria e confeitaria artesanal",
+                "caption": "Receitas tradicionais com fornadas ao longo do dia",
+                "imageAlt": "Funcionária organizando pães artesanais em balcão de padaria"
+              },
+              {
+                "cta": {
+                  "href": "/como-comprar",
+                  "label": "Entender o drive-thru"
+                },
+                "body": "Faça suas compras pelo aplicativo e retire na loja sem sair do carro com total comodidade.",
+                "role": "action",
+                "label": "Sem fila",
+                "title": "Retirada rápida no drive-thru"
+              }
+            ],
+            "title": "Alimentos selecionados e rotina facilitada",
+            "layout": "service-lens",
+            "eyebrow": "Qualidade de ponta a ponta",
+            "presentation": {
+              "tone": "paper",
+              "motion": "reveal"
+            }
+          }
+        },
+        {
+          "id": "ud1tf3nu",
+          "type": "feature.numbered",
+          "props": {
+            "lead": "Organizamos cada setor com muito cuidado para você encontrar tudo o que sua casa precisa em um só lugar.",
+            "items": [
+              {
+                "body": "Frutas, verduras e legumes frescos recebidos de produtores selecionados com reposição constante.",
+                "icon": "leaf",
+                "title": "Hortifrúti fresco"
+              },
+              {
+                "body": "Fornadas quentes durante todo o dia, receitas caseiras, bolos confeitados e pães artesanais.",
+                "icon": "sun",
+                "title": "Padaria e confeitaria"
+              },
+              {
+                "body": "Cortes especiais bovinos, suínos e aves com procedência assegurada e atendimento no balcão.",
+                "icon": "tools",
+                "title": "Açougue especializado"
+              },
+              {
+                "body": "Pratos prontos saborosos, frango assado e opções práticas para quem quer economizar tempo na cozinha.",
+                "icon": "clock",
+                "title": "Rotisseria pronta"
+              },
+              {
+                "body": "Seleção especial de queijos, embutidos fatiados na hora e laticínios frescos para seu café da manhã.",
+                "icon": "check",
+                "title": "Frios e laticínios"
+              },
+              {
+                "body": "Gôndolas organizadas com alimentos básicos, bebidas, itens de higiene e produtos para o lar.",
+                "icon": "cube",
+                "title": "Mercearia completa"
+              }
+            ],
+            "title": "Setores completos para abastecer sua despensa",
+            "layout": "ledger",
+            "presentation": {
+              "tone": "soft"
+            }
+          }
+        },
+        {
+          "id": "0d40zqa8",
+          "type": "feature.explorer",
+          "props": {
+            "body": "Você decide como quer abastecer a sua despensa. Oferecemos comodidade tanto para quem gosta de passear nos corredores quanto para quem precisa de agilidade.",
+            "items": [
+              {
+                "cta": {
+                  "href": "/lojas",
+                  "label": "Encontrar loja"
+                },
+                "body": "Visite uma das nossas 13 lojas e aproveite o atendimento prestativo de nossa equipe, estacionamento amplo e setores completos para toda a sua família.",
+                "facts": [
+                  "13 unidades confortáveis",
+                  "Estacionamento fácil",
+                  "Atendimento humanizado"
+                ],
+                "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/576c43b0-fc3f-4d8b-851a-c249640583c3/1.webp",
+                "title": "Loja Física",
+                "headline": "Experiência acolhedora em nossos corredores",
+                "imageAlt": "Cliente escolhendo produtos frescos em bancada organizada de supermercado"
+              },
+              {
+                "cta": {
+                  "href": "/como-comprar",
+                  "label": "Ver passo a passo"
+                },
+                "body": "Compre pelo site ou aplicativo. Você pode receber tudo em casa ou retirar no drive-thru sem descer do veículo, com sacolas organizadas por nossa equipe.",
+                "facts": [
+                  "Lançado em 2018",
+                  "Drive-thru desde 2021",
+                  "Economia de tempo"
+                ],
+                "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/2c26c19b-37ec-4253-8b43-602c84613178/1.webp",
+                "title": "E-commerce e Drive-thru",
+                "headline": "Suas compras feitas de onde você estiver",
+                "imageAlt": "Mulher na cozinha conferindo compras no celular com sacolas ao lado"
+              }
+            ],
+            "title": "Escolha a forma que mais combina com seu dia",
+            "layout": "showroom",
+            "presentation": {
+              "tone": "paper"
+            }
+          }
+        },
+        {
+          "id": "c8n3azrn",
+          "type": "editorial.resources",
+          "props": {
+            "body": "Preparamos páginas explicativas para você conhecer cada cantinho da nossa rede e tirar suas dúvidas de forma rápida.",
+            "items": [
+              {
+                "body": "Confira a presença do GoodBom em Sumaré, Campinas, Hortolândia e nas outras 4 cidades atendidas.",
+                "href": "/lojas",
+                "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/8a3c7162-4d46-43c6-b2cf-58ab2fefb2db/1.webp",
+                "title": "Nossas 13 lojas no interior paulista",
+                "category": "Unidades",
+                "imageAlt": "Mosaico com setores de compras e fachadas das lojas GoodBom"
+              },
+              {
+                "body": "Entenda o funcionamento da entrega em domicílio e da retirada rápida no carro sem complicações.",
+                "href": "/como-comprar",
+                "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/2c26c19b-37ec-4253-8b43-602c84613178/1.webp",
+                "title": "Como fazer compras presenciais e digitais",
+                "category": "Canais",
+                "imageAlt": "Cliente utilizando celular para compras de mercado"
+              },
+              {
+                "body": "Descubra como um pequeno armazém fundado em 1932 se transformou em uma rede com mais de 2.000 pessoas.",
+                "href": "/sobre",
+                "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/50c62351-a7e9-406f-80c1-aaeba98dbea6/1.webp",
+                "title": "Nossa história: da Casa Gigo aos dias atuais",
+                "category": "Tradição",
+                "imageAlt": "Família fazendo compras no supermercado GoodBom"
+              }
+            ],
+            "title": "Explore nossos conteúdos e serviços",
+            "layout": "feature",
+            "presentation": {
+              "tone": "soft"
+            }
+          }
+        },
+        {
+          "id": "cxaycya3",
+          "type": "editorial.facts",
+          "props": {
+            "body": "Desde a fundação da Casa Gigo, nossa missão é oferecer produtos de qualidade com preços justos e atendimento atencioso. Hoje atuamos em sete municípios estratégicos.",
+            "dark": false,
+            "facts": [
+              {
+                "label": "Total de lojas",
+                "value": "13 unidades físicas ativas"
+              },
+              {
+                "label": "Municípios",
+                "value": "Sumaré, Hortolândia, Indaiatuba, Mogi Mirim, Monte Mor, Campinas e Mogi Guaçu"
+              },
+              {
+                "label": "Equipe",
+                "value": "Mais de 2.000 colaboradores"
+              },
+              {
+                "label": "Canais de compra",
+                "value": "Loja física, e-commerce e drive-thru"
+              }
+            ],
+            "title": "Nossa estrutura a serviço da sua família",
+            "layout": "ledger",
+            "presentation": {
+              "tone": "secondary"
+            }
+          }
+        },
+        {
+          "id": "97kpc01z",
+          "type": "cta.band",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/",
+              "label": "Falar pelo WhatsApp"
+            },
+            "body": "Visite a unidade mais perto de você ou tire suas dúvidas diretamente com nossa equipe pelo WhatsApp.",
+            "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/50c62351-a7e9-406f-80c1-aaeba98dbea6/1.webp",
+            "items": [
+              {
+                "href": "/lojas",
+                "icon": "pin",
+                "label": "13 lojas em 7 cidades do interior"
+              },
+              {
+                "href": "/go/wa?from=/",
+                "icon": "chat",
+                "label": "Atendimento direto pelo WhatsApp"
+              }
+            ],
+            "title": "Venha abastecer a despensa no GoodBom",
+            "layout": "split",
+            "imageAlt": "Família fazendo compras no supermercado GoodBom",
+            "whatsapp": true,
+            "presentation": {
+              "tone": "accent",
+              "motion": "image"
+            }
+          }
+        },
+        {
+          "id": "q40v6quo",
+          "type": "footer.compact",
+          "props": {
+            "legal": "© 2026 GoodBom Supermercados. Todos os direitos reservados.",
+            "links": [
+              {
+                "href": "/lojas",
+                "label": "Nossas Lojas"
+              },
+              {
+                "href": "/como-comprar",
+                "label": "Como Comprar"
+              },
+              {
+                "href": "/sobre",
+                "label": "Nossa História"
+              },
+              {
+                "href": "/contato",
+                "label": "Fale Conosco"
+              }
+            ],
+            "layout": "split",
+            "tagline": "Tradição em servir bem, produtos frescos e compras práticas para toda a sua família.",
+            "logoText": "GoodBom"
+          }
+        }
+      ],
+      "navOrder": 0,
+      "publishedAt": "2026-09-17T00:19:05.783Z"
+    },
+    {
+      "id": "93c3dd19-fdab-451b-9e60-e74cbda80b65",
+      "seo": {
+        "title": "Como Comprar | Loja Física, E-commerce e Drive-Thru",
+        "noindex": false,
+        "description": "Saiba como comprar no GoodBom: escolha entre visitar nossas lojas, pedir pelo e-commerce com entrega ou retirar suas compras sem sair do carro."
+      },
+      "meta": {
+        "inbound": {
+          "stage": "consideration",
+          "intent": "Explicar de forma simples e direta as opções de compra presencial, e-commerce com entrega e retirada no drive-thru."
+        }
+      },
+      "slug": "como-comprar",
+      "type": "page",
+      "title": "Como Comprar | GoodBom Supermercados",
+      "blocks": [
+        {
+          "id": "ot8uhza4",
+          "type": "nav.bar",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/como-comprar",
+              "label": "Falar no WhatsApp"
+            },
+            "links": [
+              {
+                "href": "/lojas",
+                "label": "Nossas Lojas"
+              },
+              {
+                "href": "/como-comprar",
+                "label": "Como Comprar"
+              },
+              {
+                "href": "/sobre",
+                "label": "Nossa História"
+              },
+              {
+                "href": "/contato",
+                "label": "Fale Conosco"
+              }
+            ],
+            "layout": "bar",
+            "logoText": "GoodBom"
+          }
+        },
+        {
+          "id": "783sk01v",
+          "type": "hero.split",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/como-comprar",
+              "label": "Tirar dúvidas no WhatsApp"
+            },
+            "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/2c26c19b-37ec-4253-8b43-602c84613178/1.webp",
+            "layout": "split",
+            "bullets": [
+              "Compra presencial",
+              "Entrega em domicílio",
+              "Drive-thru prático"
+            ],
+            "subtext": "Escolha entre visitar nossas lojas, pedir pelo e-commerce para receber em casa ou retirar tudo no drive-thru.",
+            "headline": "Três jeitos simples de fazer suas compras",
+            "imageAlt": "Mulher na cozinha olhando celular com compras frescas entregues do supermercado",
+            "secondary": {
+              "href": "/lojas",
+              "label": "Ver nossas lojas"
+            },
+            "presentation": {
+              "tone": "paper"
+            },
+            "bulletsPlacement": "cta"
+          }
+        },
+        {
+          "id": "bo57i1tq",
+          "type": "narrative.steps",
+          "props": {
+            "steps": [
+              {
+                "body": "Acesse nossa plataforma digital pelo celular ou computador e monte seu carrinho com os mesmos itens frescos da loja física.",
+                "title": "1. Escolha seus produtos"
+              },
+              {
+                "body": "Selecione entre entrega na sua casa ou retirada rápida pelo serviço de drive-thru na unidade mais conveniente.",
+                "title": "2. Escolha como quer receber"
+              },
+              {
+                "body": "Nossa equipe treinada escolhe frutas firmes, legumes frescos e produtos com melhor data de validade para você.",
+                "title": "3. Separação cuidadosa"
+              },
+              {
+                "body": "Na entrega, você recebe no conforto de casa. No drive-thru, encosta na vaga sinalizada e colocamos tudo no porta-malas.",
+                "title": "4. Receba ou retire no carro"
+              }
+            ],
+            "title": "Como funciona a compra pelo e-commerce e drive-thru",
+            "layout": "cards",
+            "presentation": {
+              "tone": "soft",
+              "motion": "reveal"
+            }
+          }
+        },
+        {
+          "id": "ofx760ab",
+          "type": "narrative.split",
+          "props": {
+            "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/576c43b0-fc3f-4d8b-851a-c249640583c3/1.webp",
+            "items": [
+              {
+                "body": "Nossos separadores escolhem cada item com o mesmo cuidado que você teria ao escolher pessoalmente.",
+                "icon": "check",
+                "title": "Mesma qualidade da loja física"
+              },
+              {
+                "body": "Pioneirismo regional em compras pela internet, com sistema estável e ambiente de compra seguro.",
+                "icon": "layers",
+                "title": "Plataforma digital desde 2018"
+              },
+              {
+                "body": "Agilidade para quem está voltando do trabalho ou com a rotina corrida e não pode perder tempo.",
+                "icon": "route",
+                "title": "Drive-thru em operação desde 2021"
+              },
+              {
+                "body": "Se tiver qualquer dúvida sobre seu pedido, nossa equipe responde diretamente pelo WhatsApp.",
+                "icon": "chat",
+                "title": "Atendimento para tirar dúvidas"
+              }
+            ],
+            "title": "Vantagens pensadas para seu tempo e rotina",
+            "layout": "split",
+            "imageAlt": "Bancada de hortifrúti com frutas frescas selecionadas",
+            "presentation": {
+              "tone": "paper"
+            }
+          }
+        },
+        {
+          "id": "g3eln6kh",
+          "type": "cta.band",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/como-comprar",
+              "label": "Falar pelo WhatsApp"
+            },
+            "body": "Fale com nosso time de atendimento ou venha até uma de nossas 13 lojas conhecer nossos setores.",
+            "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/8a3c7162-4d46-43c6-b2cf-58ab2fefb2db/1.webp",
+            "items": [
+              {
+                "href": "/go/wa?from=/como-comprar",
+                "icon": "chat",
+                "label": "Tire dúvidas no WhatsApp"
+              },
+              {
+                "href": "/lojas",
+                "icon": "pin",
+                "label": "Veja onde estamos"
+              }
+            ],
+            "title": "Pronto para abastecer sua despensa?",
+            "layout": "split",
+            "imageAlt": "Mosaico de serviços do supermercado GoodBom",
+            "whatsapp": true,
+            "presentation": {
+              "tone": "accent"
+            }
+          }
+        },
+        {
+          "id": "o91w987b",
+          "type": "footer.compact",
+          "props": {
+            "legal": "© 2026 GoodBom Supermercados. Todos os direitos reservados.",
+            "links": [
+              {
+                "href": "/lojas",
+                "label": "Nossas Lojas"
+              },
+              {
+                "href": "/como-comprar",
+                "label": "Como Comprar"
+              },
+              {
+                "href": "/sobre",
+                "label": "Nossa História"
+              },
+              {
+                "href": "/contato",
+                "label": "Fale Conosco"
+              }
+            ],
+            "layout": "split",
+            "tagline": "Tradição em servir bem, produtos frescos e compras práticas para toda a sua família.",
+            "logoText": "GoodBom"
+          }
+        }
+      ],
+      "navOrder": 0,
+      "publishedAt": "2026-09-17T00:19:05.783Z"
+    },
+    {
+      "id": "28d8fffc-f5e6-40aa-81e2-12118e4e8ff4",
+      "seo": {
+        "title": "Fale Conosco | Atendimento GoodBom Supermercados",
+        "noindex": false,
+        "description": "Fale com o GoodBom pelo WhatsApp, tire dúvidas sobre pedidos e encontre orientações de atendimento rápido para você e sua família."
+      },
+      "meta": {
+        "inbound": {
+          "stage": "conversion",
+          "intent": "Disponibilizar canais diretos para dúvidas, sugestões e atendimento ao cliente."
+        }
+      },
+      "slug": "contato",
+      "type": "page",
+      "title": "Fale Conosco | GoodBom Supermercados",
+      "blocks": [
+        {
+          "id": "2cav5emf",
+          "type": "nav.bar",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/contato",
+              "label": "Falar no WhatsApp"
+            },
+            "links": [
+              {
+                "href": "/lojas",
+                "label": "Nossas Lojas"
+              },
+              {
+                "href": "/como-comprar",
+                "label": "Como Comprar"
+              },
+              {
+                "href": "/sobre",
+                "label": "Nossa História"
+              },
+              {
+                "href": "/contato",
+                "label": "Fale Conosco"
+              }
+            ],
+            "layout": "bar",
+            "logoText": "GoodBom"
+          }
+        },
+        {
+          "id": "clo8o24p",
+          "type": "hero.split",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/contato",
+              "label": "Abrir conversa no WhatsApp"
+            },
+            "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/576c43b0-fc3f-4d8b-851a-c249640583c3/1.webp",
+            "layout": "split",
+            "bullets": [
+              "Atendimento rápido",
+              "WhatsApp oficial",
+              "Cuidado com você"
+            ],
+            "subtext": "Tire dúvidas sobre compras, pedidos online, lojas físicas e serviços diretamente com nossa equipe de atendimento.",
+            "headline": "Canais diretos para falar com o GoodBom",
+            "imageAlt": "Atendimento e seleção de produtos frescos no supermercado",
+            "secondary": {
+              "href": "#duvidas",
+              "label": "Ver dúvidas frequentes"
+            },
+            "presentation": {
+              "tone": "paper"
+            },
+            "bulletsPlacement": "cta"
+          }
+        },
+        {
+          "id": "9jm19xs4",
+          "type": "form.lead",
+          "props": {
+            "body": "Preencha os campos abaixo. Nossa equipe entrará em contato para responder suas dúvidas e acolher suas sugestões.",
+            "title": "Envie sua mensagem para nossa equipe",
+            "fields": [
+              {
+                "name": "nome",
+                "type": "text",
+                "label": "Seu nome completo",
+                "required": true
+              },
+              {
+                "name": "telefone",
+                "type": "tel",
+                "label": "Seu telefone com DDD",
+                "required": true
+              },
+              {
+                "name": "email",
+                "type": "email",
+                "label": "Seu e-mail",
+                "required": true
+              },
+              {
+                "name": "mensagem",
+                "type": "textarea",
+                "label": "Como podemos ajudar você?",
+                "required": true
+              }
+            ],
+            "layout": "split",
+            "redirectTo": "/obrigado",
+            "consentText": "Concordo com o tratamento dos meus dados para receber contato da equipe GoodBom conforme a política de privacidade.",
+            "submitLabel": "Enviar mensagem",
+            "presentation": {
+              "tone": "soft",
+              "motion": "reveal"
+            },
+            "whatsappOptIn": true
+          }
+        },
+        {
+          "id": "rm90p4co",
+          "type": "faq.accordion",
+          "props": {
+            "items": [
+              {
+                "a": "O canal mais rápido é o nosso WhatsApp oficial. Por lá você esclarece dúvidas sobre produtos, funcionamento de lojas e retirada pelo drive-thru.",
+                "q": "Como posso falar rapidamente com o GoodBom?"
+              },
+              {
+                "a": "Sim. Pelo WhatsApp ou enviando mensagem no formulário desta página, nossa equipe direciona sua solicitação para o setor responsável.",
+                "q": "Posso solicitar informações sobre compras corporativas?"
+              },
+              {
+                "a": "Com mais de 2.000 colaboradores, nossa rede divulga oportunidades e canais de recrutamento periodicamente em nossas unidades físicas e canais oficiais.",
+                "q": "Onde posso consultar vagas de emprego nas 13 lojas?"
+              },
+              {
+                "a": "Basta entrar em contato pelo WhatsApp informando seus dados básicos para que possamos localizar o status do seu pedido e ajudar imediatamente.",
+                "q": "O que fazer se tiver uma dúvida sobre meu pedido no e-commerce?"
+              }
+            ],
+            "title": "Perguntas frequentes sobre atendimento",
+            "anchor": "duvidas",
+            "layout": "split",
+            "presentation": {
+              "tone": "paper"
+            }
+          }
+        },
+        {
+          "id": "44pavtwa",
+          "type": "cta.band",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/contato",
+              "label": "Falar pelo WhatsApp"
+            },
+            "body": "Inicie uma conversa agora pelo WhatsApp e tire todas as suas dúvidas com nossa equipe.",
+            "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/2c26c19b-37ec-4253-8b43-602c84613178/1.webp",
+            "items": [
+              {
+                "href": "/go/wa?from=/contato",
+                "icon": "chat",
+                "label": "WhatsApp oficial do GoodBom"
+              },
+              {
+                "href": "/lojas",
+                "icon": "pin",
+                "label": "Consulte nossas 13 lojas"
+              }
+            ],
+            "title": "Estamos prontos para atender você",
+            "layout": "split",
+            "imageAlt": "Mulher sorridente com compras na cozinha",
+            "whatsapp": true,
+            "presentation": {
+              "tone": "accent"
+            }
+          }
+        },
+        {
+          "id": "q6e87bg8",
+          "type": "footer.compact",
+          "props": {
+            "legal": "© 2026 GoodBom Supermercados. Todos os direitos reservados.",
+            "links": [
+              {
+                "href": "/lojas",
+                "label": "Nossas Lojas"
+              },
+              {
+                "href": "/como-comprar",
+                "label": "Como Comprar"
+              },
+              {
+                "href": "/sobre",
+                "label": "Nossa História"
+              },
+              {
+                "href": "/contato",
+                "label": "Fale Conosco"
+              }
+            ],
+            "layout": "split",
+            "tagline": "Tradição em servir bem, produtos frescos e compras práticas para toda a sua família.",
+            "logoText": "GoodBom"
+          }
+        }
+      ],
+      "navOrder": 0,
+      "publishedAt": "2026-09-17T00:19:05.783Z"
+    },
+    {
+      "id": "bc5794ab-fef5-44f8-8bc4-51b5be456fca",
+      "seo": {
+        "title": "Nossas Lojas | Encontre o GoodBom Mais Próximo",
+        "noindex": false,
+        "description": "Veja onde encontrar as 13 lojas do GoodBom em Sumaré, Campinas, Hortolândia, Indaiatuba, Mogi Mirim, Monte Mor e Mogi Guaçu."
+      },
+      "meta": {
+        "inbound": {
+          "stage": "consideration",
+          "intent": "Orientar o cliente a encontrar a loja GoodBom mais próxima nas 7 cidades atendidas."
+        }
+      },
+      "slug": "lojas",
+      "type": "page",
+      "title": "Nossas Lojas | GoodBom Supermercados",
+      "blocks": [
+        {
+          "id": "u8e3khhf",
+          "type": "nav.bar",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/lojas",
+              "label": "Falar no WhatsApp"
+            },
+            "links": [
+              {
+                "href": "/lojas",
+                "label": "Nossas Lojas"
+              },
+              {
+                "href": "/como-comprar",
+                "label": "Como Comprar"
+              },
+              {
+                "href": "/sobre",
+                "label": "Nossa História"
+              },
+              {
+                "href": "/contato",
+                "label": "Fale Conosco"
+              }
+            ],
+            "layout": "bar",
+            "logoText": "GoodBom"
+          }
+        },
+        {
+          "id": "qk06zh6d",
+          "type": "hero.split",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/lojas",
+              "label": "Falar pelo WhatsApp"
+            },
+            "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/8a3c7162-4d46-43c6-b2cf-58ab2fefb2db/1.webp",
+            "layout": "split",
+            "bullets": [
+              "13 lojas ativas",
+              "7 cidades atendidas",
+              "Atendimento acolhedor"
+            ],
+            "subtext": "Estamos presentes em 7 cidades do interior paulista com corredores amplos, estacionamento e setores completos.",
+            "headline": "Nossas 13 lojas perto de você",
+            "imageAlt": "Fachada e setores de supermercado GoodBom com estacionamento",
+            "secondary": {
+              "href": "/como-comprar",
+              "label": "Como comprar online"
+            },
+            "presentation": {
+              "tone": "paper"
+            },
+            "bulletsPlacement": "cta"
+          }
+        },
+        {
+          "id": "n47otxip",
+          "type": "feature.numbered",
+          "props": {
+            "lead": "Distribuímos nossas 13 unidades para que moradores de diversas regiões do interior tenham acesso rápido a produtos frescos.",
+            "items": [
+              {
+                "body": "Berço da nossa história desde 1932. Abriga a tradicional loja da Avenida Rebouças e unidades que atendem diversos bairros.",
+                "icon": "pin",
+                "title": "Sumaré"
+              },
+              {
+                "body": "Duas unidades inauguradas em 2020 para atender a maior cidade da região com conforto e variedade.",
+                "icon": "pin",
+                "title": "Campinas"
+              },
+              {
+                "body": "Supermercado completo com hortifrúti fresco e padaria artesanal para as famílias da cidade.",
+                "icon": "pin",
+                "title": "Hortolândia"
+              },
+              {
+                "body": "Loja moderna com amplo estacionamento e todos os setores para o abastecimento da sua despensa.",
+                "icon": "pin",
+                "title": "Indaiatuba"
+              },
+              {
+                "body": "Atendimento acolhedor e seleção rigorosa de carnes, laticínios e produtos de limpeza para sua casa.",
+                "icon": "pin",
+                "title": "Mogi Mirim"
+              },
+              {
+                "body": "Unidade inaugurada em 2021, trazendo toda a estrutura de compras presenciais e digitais.",
+                "icon": "pin",
+                "title": "Mogi Guaçu"
+              },
+              {
+                "body": "Praticidade e economia para os moradores da região com ofertas justas e produtos frescos todos os dias.",
+                "icon": "pin",
+                "title": "Monte Mor"
+              }
+            ],
+            "title": "Cidades onde você encontra o GoodBom",
+            "layout": "ledger",
+            "presentation": {
+              "tone": "soft",
+              "motion": "stagger"
+            }
+          }
+        },
+        {
+          "id": "oerjuvmc",
+          "type": "editorial.facts",
+          "props": {
+            "body": "Cada loja GoodBom foi projetada pensando no bem-estar de quem compra. Oferecemos corredores espaçosos, sinalização clara de setores, balcões refrigerados modernos e estacionamento próprio.",
+            "dark": false,
+            "facts": [
+              {
+                "label": "Setores disponíveis",
+                "value": "Hortifrúti, açougue, padaria, rotisseria, laticínios e mercearia"
+              },
+              {
+                "label": "Acessibilidade",
+                "value": "Corredores planos, carrinhos adaptados e vagas prioritárias"
+              },
+              {
+                "label": "Estacionamento",
+                "value": "Vagas gratuitas durante suas compras presenciais"
+              },
+              {
+                "label": "Equipe dedicada",
+                "value": "Mais de 2.000 profissionais treinados para ajudar você"
+              }
+            ],
+            "title": "Estrutura planejada para seu conforto",
+            "layout": "split",
+            "presentation": {
+              "tone": "paper"
+            }
+          }
+        },
+        {
+          "id": "w6llxzoq",
+          "type": "cta.band",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/lojas",
+              "label": "Falar no WhatsApp"
+            },
+            "body": "Fale com nossa equipe pelo WhatsApp para saber qual unidade GoodBom fica mais perto de onde você está.",
+            "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/50c62351-a7e9-406f-80c1-aaeba98dbea6/1.webp",
+            "items": [
+              {
+                "icon": "pin",
+                "label": "Presente em 7 cidades do interior"
+              },
+              {
+                "href": "/go/wa?from=/lojas",
+                "icon": "chat",
+                "label": "Atendimento pelo WhatsApp"
+              }
+            ],
+            "title": "Precisa de ajuda para localizar uma loja?",
+            "layout": "split",
+            "imageAlt": "Clientes em compras no supermercado",
+            "whatsapp": true,
+            "presentation": {
+              "tone": "accent"
+            }
+          }
+        },
+        {
+          "id": "99gefex1",
+          "type": "footer.compact",
+          "props": {
+            "legal": "© 2026 GoodBom Supermercados. Todos os direitos reservados.",
+            "links": [
+              {
+                "href": "/lojas",
+                "label": "Nossas Lojas"
+              },
+              {
+                "href": "/como-comprar",
+                "label": "Como Comprar"
+              },
+              {
+                "href": "/sobre",
+                "label": "Nossa História"
+              },
+              {
+                "href": "/contato",
+                "label": "Fale Conosco"
+              }
+            ],
+            "layout": "split",
+            "tagline": "Tradição em servir bem, produtos frescos e compras práticas para toda a sua família.",
+            "logoText": "GoodBom"
+          }
+        }
+      ],
+      "navOrder": 0,
+      "publishedAt": "2026-09-17T00:19:05.783Z"
+    },
+    {
+      "id": "445e3a14-2c69-4c3e-933a-6cbdb5b5b9c1",
+      "seo": {
+        "title": "Mensagem Enviada | GoodBom Supermercados",
+        "noindex": true,
+        "description": "Agradecemos sua mensagem enviada ao GoodBom Supermercados. Nossa equipe responderá em breve."
+      },
+      "meta": {
+        "inbound": {
+          "stage": "conversion",
+          "intent": "Confirmar o envio do formulário de contato e orientar os próximos passos."
+        }
+      },
+      "slug": "obrigado",
+      "type": "thank_you",
+      "title": "Obrigado | GoodBom Supermercados",
+      "blocks": [
+        {
+          "id": "bziqcrtg",
+          "type": "nav.bar",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/obrigado",
+              "label": "Falar no WhatsApp"
+            },
+            "links": [
+              {
+                "href": "/lojas",
+                "label": "Nossas Lojas"
+              },
+              {
+                "href": "/como-comprar",
+                "label": "Como Comprar"
+              },
+              {
+                "href": "/sobre",
+                "label": "Nossa História"
+              },
+              {
+                "href": "/contato",
+                "label": "Fale Conosco"
+              }
+            ],
+            "layout": "bar",
+            "logoText": "GoodBom"
+          }
+        },
+        {
+          "id": "dvw7f5dg",
+          "type": "hero.statement",
+          "props": {
+            "cta": {
+              "href": "/",
+              "label": "Voltar para a página inicial"
+            },
+            "layout": "framed",
+            "subtext": "Agradecemos o seu contato. Nossa equipe responderá a sua mensagem em breve pelo telefone ou e-mail informado.",
+            "headline": "Mensagem recebida com sucesso",
+            "presentation": {
+              "tone": "paper"
+            }
+          }
+        },
+        {
+          "id": "krej11wo",
+          "type": "cta.band",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/obrigado",
+              "label": "Falar pelo WhatsApp"
+            },
+            "body": "Você também pode falar diretamente com nossa equipe de atendimento pelo WhatsApp.",
+            "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/50c62351-a7e9-406f-80c1-aaeba98dbea6/1.webp",
+            "title": "Precisa de retorno imediato?",
+            "layout": "split",
+            "imageAlt": "Clientes no supermercado GoodBom",
+            "whatsapp": true,
+            "presentation": {
+              "tone": "accent"
+            }
+          }
+        },
+        {
+          "id": "9y7hjo61",
+          "type": "footer.compact",
+          "props": {
+            "legal": "© 2026 GoodBom Supermercados. Todos os direitos reservados.",
+            "links": [
+              {
+                "href": "/lojas",
+                "label": "Nossas Lojas"
+              },
+              {
+                "href": "/como-comprar",
+                "label": "Como Comprar"
+              },
+              {
+                "href": "/sobre",
+                "label": "Nossa História"
+              },
+              {
+                "href": "/contato",
+                "label": "Fale Conosco"
+              }
+            ],
+            "layout": "split",
+            "tagline": "Tradição em servir bem, produtos frescos e compras práticas para toda a sua família.",
+            "logoText": "GoodBom"
+          }
+        }
+      ],
+      "navOrder": 0,
+      "publishedAt": "2026-09-17T00:19:05.783Z"
+    },
+    {
+      "id": "530a39ee-3edd-45b7-b5f1-95b5f0b6a679",
+      "seo": {
+        "title": "Nossa História | Da Casa Gigo à Rede GoodBom",
+        "noindex": false,
+        "description": "Conheça a história do GoodBom Supermercados. Uma trajetória que começou em 1932 em Sumaré e se transformou em uma rede com mais de 2.000 pessoas."
+      },
+      "meta": {
+        "inbound": {
+          "stage": "consideration",
+          "intent": "Contar a trajetória de mais de 90 anos da família Gigo e a evolução do armazém pioneiro até a rede GoodBom."
+        }
+      },
+      "slug": "sobre",
+      "type": "page",
+      "title": "Nossa História | GoodBom Supermercados",
+      "blocks": [
+        {
+          "id": "l2qdbiuc",
+          "type": "nav.bar",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/sobre",
+              "label": "Falar no WhatsApp"
+            },
+            "links": [
+              {
+                "href": "/lojas",
+                "label": "Nossas Lojas"
+              },
+              {
+                "href": "/como-comprar",
+                "label": "Como Comprar"
+              },
+              {
+                "href": "/sobre",
+                "label": "Nossa História"
+              },
+              {
+                "href": "/contato",
+                "label": "Fale Conosco"
+              }
+            ],
+            "layout": "bar",
+            "logoText": "GoodBom"
+          }
+        },
+        {
+          "id": "pm26ppzm",
+          "type": "hero.split",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/sobre",
+              "label": "Falar com nossa equipe"
+            },
+            "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/cf6c46be-3865-4bb0-9e90-9b766179b3e0/1.webp",
+            "layout": "split",
+            "bullets": [
+              "Origem em 1932",
+              "Inovação pioneira",
+              "+2.000 colaboradores"
+            ],
+            "subtext": "Uma trajetória familiar iniciada em 1932 que se transformou em uma das maiores redes de supermercados da região.",
+            "headline": "Mais de 90 anos de história e dedicação",
+            "imageAlt": "Tradição artesanal na padaria do GoodBom com profissional uniformizada",
+            "secondary": {
+              "href": "/lojas",
+              "label": "Conhecer as lojas"
+            },
+            "presentation": {
+              "tone": "paper"
+            },
+            "bulletsPlacement": "cta"
+          }
+        },
+        {
+          "id": "a2akuqdx",
+          "type": "narrative.steps",
+          "props": {
+            "steps": [
+              {
+                "body": "Hermenegildo Gigo, homem de origem simples, deixa o campo e adquire um armazém em Sumaré, iniciando a tradição da família no comércio.",
+                "title": "1932: A fundação da Casa Gigo"
+              },
+              {
+                "body": "Os filhos assumem a Gigo & Cia, adquirem o Armazém dos Raposeiros e inauguram o primeiro supermercado moderno da região de Sumaré.",
+                "title": "1953 a 1962: Primeiro supermercado moderno"
+              },
+              {
+                "body": "Reestruturação e inauguração da loja na Avenida Rebouças em Sumaré, pioneira na região na automatização com código de barras.",
+                "title": "1987: Nasce a marca GoodBom"
+              },
+              {
+                "body": "Lançamento da plataforma de compras pela internet, abertura de lojas em Campinas e Mogi Guaçu e início da operação de drive-thru.",
+                "title": "2018 a 2021: E-commerce e Drive-thru"
+              },
+              {
+                "body": "Presença consolidada em 7 cidades do interior paulista, mantendo o acolhimento humano e o frescor diário em cada loja.",
+                "title": "Hoje: 13 lojas e mais de 2.000 pessoas"
+              }
+            ],
+            "title": "Nossa linha do tempo e marcos históricos",
+            "layout": "timeline",
+            "presentation": {
+              "tone": "soft",
+              "motion": "reveal"
+            }
+          }
+        },
+        {
+          "id": "3txp0akm",
+          "type": "narrative.split",
+          "props": {
+            "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/50c62351-a7e9-406f-80c1-aaeba98dbea6/1.webp",
+            "items": [
+              {
+                "body": "O respeito aos clientes e aos produtores locais sempre foi a base do trabalho iniciado por Hermenegildo Gigo.",
+                "icon": "heart",
+                "title": "Origem simples e valores sólidos"
+              },
+              {
+                "body": "Fomos os primeiros a trazer leitura de código de barras nos caixas em 1987 e compras online estruturadas em 2018.",
+                "icon": "lightning",
+                "title": "Pioneirismo tecnológico na região"
+              },
+              {
+                "body": "Valorizamos nossos colaboradores e investimos na capacitação das equipes que recebem você todos os dias.",
+                "icon": "handshake",
+                "title": "Geração de mais de 2.000 empregos"
+              }
+            ],
+            "title": "Tradição familiar que evolui com você",
+            "layout": "reverse",
+            "imageAlt": "Clientes de diferentes gerações fazendo compras no corredor do supermercado",
+            "presentation": {
+              "tone": "paper"
+            }
+          }
+        },
+        {
+          "id": "d3djmii0",
+          "type": "cta.band",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/sobre",
+              "label": "Falar pelo WhatsApp"
+            },
+            "body": "Visite a unidade GoodBom mais próxima de você ou mande uma mensagem para conversar conosco.",
+            "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/f6abc461-5fb9-4dfd-8cec-9bde1741f11a/1.webp",
+            "items": [
+              {
+                "href": "/lojas",
+                "icon": "pin",
+                "label": "Encontre nossas lojas"
+              },
+              {
+                "href": "/go/wa?from=/sobre",
+                "icon": "chat",
+                "label": "Fale no WhatsApp"
+              }
+            ],
+            "title": "Faça parte dessa história todos os dias",
+            "layout": "split",
+            "imageAlt": "Cliente escolhendo frutas frescas no GoodBom",
+            "whatsapp": true,
+            "presentation": {
+              "tone": "accent"
+            }
+          }
+        },
+        {
+          "id": "ts459aqr",
+          "type": "footer.compact",
+          "props": {
+            "legal": "© 2026 GoodBom Supermercados. Todos os direitos reservados.",
+            "links": [
+              {
+                "href": "/lojas",
+                "label": "Nossas Lojas"
+              },
+              {
+                "href": "/como-comprar",
+                "label": "Como Comprar"
+              },
+              {
+                "href": "/sobre",
+                "label": "Nossa História"
+              },
+              {
+                "href": "/contato",
+                "label": "Fale Conosco"
+              }
+            ],
+            "layout": "split",
+            "tagline": "Tradição em servir bem, produtos frescos e compras práticas para toda a sua família.",
+            "logoText": "GoodBom"
+          }
+        }
+      ],
+      "navOrder": 0,
+      "publishedAt": "2026-09-17T00:19:05.783Z"
+    }
+  ],
+  "assets": [
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/2c26c19b-37ec-4253-8b43-602c84613178/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/50c62351-a7e9-406f-80c1-aaeba98dbea6/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/576c43b0-fc3f-4d8b-851a-c249640583c3/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/8a3c7162-4d46-43c6-b2cf-58ab2fefb2db/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/cf6c46be-3865-4bb0-9e90-9b766179b3e0/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/f6abc461-5fb9-4dfd-8cec-9bde1741f11a/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/1789603553540-logo-prancheta-1-alice-vieira-9d55af00-d9ed-470f-a1c5-7ffc429a842f-441cc643-bcf2-4463-a392-8224d57e40aa.png",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/a960a6ea-200e-4674-9670-94a28a12a872/branca.png",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/9af2671931e7-v1/nav-dark.png",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/apple-180.png",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/icon-192.png",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/icon-32.png",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/icon-512.png",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/icon-maskable-512.png",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/icon.svg",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/logo.svg",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/master.png",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/nav.png",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/og.png"
+  ],
+  "tenant": {
+    "id": "743edf92-428b-4ca3-bfd2-851c3ea8dc04",
+    "name": "Good Bom",
+    "slug": "goodbom",
+    "brand": {
+      "ink": "#0f172a",
+      "font": "sans",
+      "vibe": "comercial",
+      "paper": "#ffffff",
+      "accent": "#1f6feb",
+      "design": {
+        "motif": "wash",
+        "rhythm": "alternating",
+        "concept": "Supermercado completo da família com tradição regional, produtos frescos todos os dias e compras práticas na loja ou online.",
+        "version": 5,
+        "bodyFont": "source",
+        "definedAt": "2026-09-17T00:10:04.908Z",
+        "signature": "comercial-vitrine|humanist|source|cover|bar|alternating|framed|flat|wash",
+        "structure": "comercial-vitrine",
+        "navigation": "bar",
+        "displayFont": "humanist",
+        "surfaceStyle": "flat",
+        "imageTreatment": "framed",
+        "heroComposition": "cover",
+        "signatureElement": "Lentes visuais que alternam entre compra na loja física, e-commerce e retirada no drive-thru.",
+        "structureRationale": "Apresenta a variedade das 13 lojas, canais digitais e setores de produtos frescos, permitindo ao morador da região escolher entre comprar na loja física, pelo e-commerce ou retirar no drive-thru."
+      },
+      "radius": "md",
+      "logoUrl": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/1789603553540-logo-prancheta-1-alice-vieira-9d55af00-d9ed-470f-a1c5-7ffc429a842f-441cc643-bcf2-4463-a392-8224d57e40aa.png",
+      "surface": "#f8fafc",
+      "accentAlt": "#dbeafe",
+      "highlight": "#b35c09",
+      "logoAsset": {
+        "og": {
+          "url": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/og.png",
+          "width": 1200,
+          "height": 630
+        },
+        "nav": {
+          "url": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/nav.png",
+          "width": 349,
+          "height": 256
+        },
+        "svg": {
+          "url": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/logo.svg",
+          "bytes": 53586,
+          "traced": true
+        },
+        "icon": {
+          "svg": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/icon.svg",
+          "png32": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/icon-32.png",
+          "png192": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/icon-192.png",
+          "png512": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/icon-512.png",
+          "apple180": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/apple-180.png",
+          "maskable512": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/icon-maskable-512.png"
+        },
+        "aspect": 1.3624161073825503,
+        "master": {
+          "url": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/master.png",
+          "width": 406,
+          "height": 298
+        },
+        "source": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/1789603553540-logo-prancheta-1-alice-vieira-9d55af00-d9ed-470f-a1c5-7ffc429a842f-441cc643-bcf2-4463-a392-8224d57e40aa.png",
+        "version": 1,
+        "background": "transparent",
+        "preparedAt": "2026-09-17T00:06:19.839Z",
+        "sourceHash": "f39fb152b229",
+        "displayHeight": 56
+      },
+      "logoDarkUrl": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/a960a6ea-200e-4674-9670-94a28a12a872/branca.png",
+      "logoDarkAsset": {
+        "nav": {
+          "url": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/9af2671931e7-v1/nav-dark.png",
+          "width": 350,
+          "height": 256
+        },
+        "aspect": 1.3664383561643836,
+        "master": {
+          "url": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/a960a6ea-200e-4674-9670-94a28a12a872/branca.png",
+          "width": 399,
+          "height": 292
+        },
+        "source": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/a960a6ea-200e-4674-9670-94a28a12a872/branca.png",
+        "version": 1,
+        "background": "transparent",
+        "preparedAt": "2026-09-17T00:06:36.649Z",
+        "sourceHash": "9af2671931e7",
+        "displayHeight": 56
+      },
+      "paletteSource": "operador"
+    },
+    "dials": {
+      "motion": 3,
+      "density": 4,
+      "variance": 4
+    },
+    "ga4Id": null,
+    "locale": "pt-BR",
+    "status": "published",
+    "contacts": {
+      "phones": [
+        {
+          "number": "11998887766",
+          "whatsapp": true
+        }
+      ],
+      "social": [
+        "https://www.instagram.com/goodbom/"
+      ],
+      "addresses": [
+        {
+          "text": "Salvador arruda 100",
+          "label": "Loja"
+        }
+      ]
+    },
+    "whatsapp": "11998887766",
+    "metaPixelId": null,
+    "contactEmail": "mail@mail.com",
+    "publicRuntime": "premium",
+    "maintenanceMode": "premium",
+    "publishedSnapshot": {
+      "name": "Good Bom",
+      "brand": {
+        "ink": "#0f172a",
+        "font": "sans",
+        "vibe": "comercial",
+        "paper": "#ffffff",
+        "accent": "#1f6feb",
+        "design": {
+          "motif": "wash",
+          "rhythm": "alternating",
+          "concept": "Supermercado completo da família com tradição regional, produtos frescos todos os dias e compras práticas na loja ou online.",
+          "version": 5,
+          "bodyFont": "source",
+          "definedAt": "2026-09-17T00:10:04.908Z",
+          "signature": "comercial-vitrine|humanist|source|cover|bar|alternating|framed|flat|wash",
+          "structure": "comercial-vitrine",
+          "navigation": "bar",
+          "displayFont": "humanist",
+          "surfaceStyle": "flat",
+          "imageTreatment": "framed",
+          "heroComposition": "cover",
+          "signatureElement": "Lentes visuais que alternam entre compra na loja física, e-commerce e retirada no drive-thru.",
+          "structureRationale": "Apresenta a variedade das 13 lojas, canais digitais e setores de produtos frescos, permitindo ao morador da região escolher entre comprar na loja física, pelo e-commerce ou retirar no drive-thru."
+        },
+        "radius": "md",
+        "logoUrl": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/1789603553540-logo-prancheta-1-alice-vieira-9d55af00-d9ed-470f-a1c5-7ffc429a842f-441cc643-bcf2-4463-a392-8224d57e40aa.png",
+        "surface": "#f8fafc",
+        "accentAlt": "#dbeafe",
+        "highlight": "#b35c09",
+        "logoAsset": {
+          "og": {
+            "url": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/og.png",
+            "width": 1200,
+            "height": 630
+          },
+          "nav": {
+            "url": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/nav.png",
+            "width": 349,
+            "height": 256
+          },
+          "svg": {
+            "url": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/logo.svg",
+            "bytes": 53586,
+            "traced": true
+          },
+          "icon": {
+            "svg": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/icon.svg",
+            "png32": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/icon-32.png",
+            "png192": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/icon-192.png",
+            "png512": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/icon-512.png",
+            "apple180": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/apple-180.png",
+            "maskable512": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/icon-maskable-512.png"
+          },
+          "aspect": 1.3624161073825503,
+          "master": {
+            "url": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/master.png",
+            "width": 406,
+            "height": 298
+          },
+          "source": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/1789603553540-logo-prancheta-1-alice-vieira-9d55af00-d9ed-470f-a1c5-7ffc429a842f-441cc643-bcf2-4463-a392-8224d57e40aa.png",
+          "version": 1,
+          "background": "transparent",
+          "preparedAt": "2026-09-17T00:06:19.839Z",
+          "sourceHash": "f39fb152b229",
+          "displayHeight": 56
+        },
+        "logoDarkUrl": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/a960a6ea-200e-4674-9670-94a28a12a872/branca.png",
+        "logoDarkAsset": {
+          "nav": {
+            "url": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/9af2671931e7-v1/nav-dark.png",
+            "width": 350,
+            "height": 256
+          },
+          "aspect": 1.3664383561643836,
+          "master": {
+            "url": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/a960a6ea-200e-4674-9670-94a28a12a872/branca.png",
+            "width": 399,
+            "height": 292
+          },
+          "source": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/a960a6ea-200e-4674-9670-94a28a12a872/branca.png",
+          "version": 1,
+          "background": "transparent",
+          "preparedAt": "2026-09-17T00:06:36.649Z",
+          "sourceHash": "9af2671931e7",
+          "displayHeight": 56
+        },
+        "paletteSource": "operador"
+      },
+      "dials": {
+        "motion": 3,
+        "density": 4,
+        "variance": 4
+      },
+      "locale": "pt-BR",
+      "contacts": {
+        "phones": [
+          {
+            "number": "11998887766",
+            "whatsapp": true
+          }
+        ],
+        "social": [
+          "https://www.instagram.com/goodbom/"
+        ],
+        "addresses": [
+          {
+            "text": "Salvador arruda 100",
+            "label": "Loja"
+          }
+        ]
+      },
+      "whatsapp": "11998887766",
+      "contactEmail": "mail@mail.com"
+    }
+  },
+  "version": 1
+}
