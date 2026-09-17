@@ -109,9 +109,9 @@ export async function generateMetadata({
   };
 }
 
-/* O campo é mineral em todas as páginas: a barra do sistema acompanha. */
+/* Toda página abre na sala clara: a barra do sistema acompanha o marfim. */
 export const viewport: Viewport = {
-  themeColor: '#0c0a1a',
+  themeColor: '#f7f4ef',
 };
 
 export default async function PremiumPage({ params, searchParams }: Props) {

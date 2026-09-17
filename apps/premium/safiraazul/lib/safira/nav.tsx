@@ -8,7 +8,7 @@ import type { Link } from './props';
  * A faceta: a marca do lugar, desenhada. Uma gema vista de cima, com o corte
  * da mesa e duas arestas. Serve de âncora para a assinatura do resto do site.
  */
-export function Facet({ size = 18 }: { size?: number }) {
+export function Facet({ size = 16 }: { size?: number }) {
   return (
     <svg
       className="sa-facet"
@@ -25,6 +25,22 @@ export function Facet({ size = 18 }: { size?: number }) {
       <path d="M12 2.5 21.5 9l-9.5 12.5L2.5 9 12 2.5Z" />
       <path d="M6.6 9h10.8M12 2.5 9 9M12 2.5l3 6.5" />
     </svg>
+  );
+}
+
+/**
+ * O selo: a coroa do brilhante vista de cima, com a seta da ação no meio. Oito
+ * arestas, não doze — a dois centímetros de tela, doze lados voltam a ser um
+ * círculo e o botão vira uma pílula qualquer. Oito ainda se lê como pedra.
+ */
+export function Seal() {
+  return (
+    <span className="sa-seal" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M12 0 20.49 3.51 24 12 20.49 20.49 12 24 3.51 20.49 0 12 3.51 3.51Z" />
+      </svg>
+      <span>→</span>
+    </span>
   );
 }
 
@@ -75,7 +91,7 @@ export function SiteNav({
 
   return (
     <header className="sa-nav">
-      <div className="sa-shell sa-nav-inner">
+      <div className="sa-nav-inner">
         <SiteLink className="sa-wordmark" href="/">
           <Facet />
           {wordmark}
@@ -101,6 +117,7 @@ export function SiteNav({
             href={whatsapp.href}
           >
             {whatsapp.label}
+            <Seal />
           </SiteLink>
         ) : null}
 
@@ -130,6 +147,7 @@ export function SiteNav({
                 href={whatsapp.href}
               >
                 {whatsapp.label}
+                <Seal />
               </SiteLink>
             ) : null}
           </div>

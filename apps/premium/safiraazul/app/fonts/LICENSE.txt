@@ -97,9 +97,11 @@ DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 
-=== Geist — Copyright (c) 2023 Vercel, in collaboration with basement.studio
+=== Marcellus — Copyright 2011 The Marcellus Project Authors
+https://github.com/googlefonts/Marcellus
 
-Copyright (c) 2023 Vercel, in collaboration with basement.studio
+Copyright (c) 2011, Brian J. Bonislawsky DBA Astigmatic (AOETI)
+(astigmatic.com), with Reserved Font Name "Marcellus".
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
