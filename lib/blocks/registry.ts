@@ -1317,6 +1317,27 @@ export function isBlockType(value: string): value is BlockType {
   return value in blockSchemas;
 }
 
+/**
+ * Layout que o visitante realmente vê. Sem `layout` nas props, hero e navegação
+ * caem na composição do perfil e os demais no padrão do componente.
+ *
+ * O renderer e o pre-flight precisam da mesma leitura: o wrapper publica este
+ * valor em `data-layout` e o CSS mira por ele, então divergir aqui faria uma
+ * regra de composição valer para uma leitura e o estilo para outra.
+ */
+export function resolveBlockLayout(
+  block: { type: string; props: Record<string, unknown> },
+  design?: { heroComposition?: string; navigation?: string },
+): string {
+  if (typeof block.props.layout === 'string' && block.props.layout)
+    return block.props.layout;
+  if (block.type === 'hero.split') return design?.heroComposition ?? 'split';
+  if (block.type === 'nav.bar') return design?.navigation ?? 'bar';
+  return isBlockType(block.type)
+    ? (DEFAULT_LAYOUT[block.type] ?? 'default')
+    : 'default';
+}
+
 export function familyOf(type: string): Family | null {
   return isBlockType(type) ? blockMeta[type].family : null;
 }

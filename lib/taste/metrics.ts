@@ -1,9 +1,8 @@
 import {
-  DEFAULT_LAYOUT,
   blockSchemas,
   familyOf,
   isBlockType,
-  type BlockType,
+  resolveBlockLayout,
 } from '../blocks/registry';
 import { expectedRatio, ratioFits } from '../images/ratios';
 import {
@@ -92,13 +91,7 @@ export function resolvedLayout(
   block: BlockInstance,
   design?: Pick<DesignProfile, 'heroComposition' | 'navigation'>,
 ): string {
-  const explicit = layoutOf(block);
-  if (explicit) return explicit;
-  if (block.type === 'hero.split') return design?.heroComposition ?? 'split';
-  if (block.type === 'nav.bar') return design?.navigation ?? 'bar';
-  return isBlockType(block.type)
-    ? (DEFAULT_LAYOUT[block.type as BlockType] ?? 'default')
-    : 'default';
+  return resolveBlockLayout(block, design);
 }
 
 /** Silhueta da página: tipo e layout de cada seção, sem texto nem imagem. */
