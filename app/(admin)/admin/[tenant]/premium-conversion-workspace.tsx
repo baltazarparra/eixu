@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MobileViews, WorkspaceHeader } from '@/components/admin/navigation';
 import { adminFetch } from '@/lib/admin/http';
 import type { SiteState } from '@/lib/admin/state';
+import { PremiumReviewDialog } from './premium-review-dialog';
 
 type Props = { initial: SiteState };
 type Status = NonNullable<SiteState['premium']['conversion']>['status'];
@@ -100,9 +101,9 @@ function statusMessage(site: SiteState, now: number) {
     };
   if (conversion.status === 'exported')
     return {
-      title: 'Entrega pronta para revisão',
+      title: 'Aguardando sua aprovação',
       description:
-        'A preparação terminou. Revise a entrega e aprove para iniciar a publicação.',
+        'A preparação terminou. Abra a revisão e aprove a entrega para iniciar a publicação.',
     };
   if (conversion.status === 'deploying')
     return {
@@ -132,6 +133,10 @@ export function PremiumConversionWorkspace({ initial }: Props) {
   const refreshInFlight = useRef(false);
   const conversion = site.premium.conversion;
   const status = conversion?.status ?? 'queued';
+  const reviewUrl =
+    status === 'exported' && !conversion?.error
+      ? conversion?.pullRequestUrl
+      : null;
   const activeIndex = currentIndex(status);
   const message = statusMessage(site, now);
 
@@ -266,6 +271,17 @@ export function PremiumConversionWorkspace({ initial }: Props) {
                   <div>
                     <strong>{step.label}</strong>
                     <p>{step.description}</p>
+                    {current && reviewUrl ? (
+                      <a
+                        className="admin-primary admin-premium-review-action"
+                        href={reviewUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <GitPullRequest size={15} aria-hidden="true" /> Revisar
+                        e aprovar
+                      </a>
+                    ) : null}
                   </div>
                 </li>
               );
@@ -326,6 +342,9 @@ export function PremiumConversionWorkspace({ initial }: Props) {
       </div>
 
       <MobileViews value={view} onChange={setView} second="Site atual" />
+      {reviewUrl ? (
+        <PremiumReviewDialog key={conversion?.id} pullRequestUrl={reviewUrl} />
+      ) : null}
     </div>
   );
 }
