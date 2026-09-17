@@ -17,6 +17,10 @@ import {
   type Vibe,
 } from '@/lib/design/vibes';
 import type { DesignProfile } from '@/lib/design/profile';
+import {
+  commercialScenes,
+  resolveCommercialVariants,
+} from '@/lib/design/commercial-variants';
 import { briefDepth, homeSectionFloor } from '@/lib/taste/metrics';
 
 export {
@@ -54,7 +58,8 @@ export function scenePlan(
   design:
     | (Pick<DesignProfile, 'heroComposition'> &
         Partial<Pick<DesignProfile, 'structure'>> &
-        Partial<Pick<DesignProfile, 'version'>>)
+        Partial<Pick<DesignProfile, 'version'>> &
+        Partial<Pick<DesignProfile, 'commercialVariants'>>)
     | undefined,
   organicPages = 3,
   vibe: Vibe = 'comercial',
@@ -71,40 +76,11 @@ export function scenePlan(
       ? design.heroComposition
       : heroCompositionFor(vibe, design?.heroComposition);
   if (design?.version === 8 && structure?.vibe === 'comercial') {
-    const scenes: PlannedScene[] = [
-      {
-        role: 'hero',
-        targetBlock: 'hero.brand',
-        ratio: '16:9',
-        page: '',
-        hint: 'Fotografia documental panorâmica da fachada real do comércio, com o nome ou logo da própria marca claramente visível no letreiro. Use apenas foto enviada pelo operador ou importada do site oficial; nunca gere ou invente a fachada.',
-      },
-    ];
-    for (let i = 0; i < 6; i++)
-      scenes.push({
-        role: 'protagonista',
-        targetBlock: 'feature.bento',
-        ratio: '4:3',
-        page: '',
-        hint: `Uma categoria real e diferente do comércio, fotografada de modo simples e reconhecível para o item ${i + 1} da grade de seis setores.`,
-      });
-    scenes.push(
-      {
-        role: 'apoio',
-        targetBlock: 'media.image',
-        ratio: '16:9',
-        page: '',
-        hint: 'Cena panorâmica documental de produtos ou ambiente, própria para uma faixa fotográfica larga com parallax e sem texto incorporado.',
-      },
-      {
-        role: 'apoio',
-        targetBlock: 'cta.band',
-        ratio: '16:9',
-        page: '',
-        hint: 'Cena documental do ambiente de trabalho real ou de atendimento, para acompanhar o convite de carreira sem retrato posado.',
-      },
-    );
-    return scenes;
+    // As vagas saem da combinação de variações do tenant: cada área declara
+    // quantas fotos pede, em que proporção e com que pedido.
+    return commercialScenes(
+      resolveCommercialVariants(design.commercialVariants),
+    ).map((scene) => ({ ...scene, page: '' }));
   }
   const heroBlock = `hero.${composition}`;
   const scenes: PlannedScene[] = [

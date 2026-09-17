@@ -406,13 +406,31 @@ export function commercialScenes(
   return scenes;
 }
 
-/** Texto curto da combinação, para o prompt da fase de briefing. */
-export function commercialCombinationText(
+/**
+ * A composição desta combinação, em linhas para o prompt. O contrato precisa
+ * chegar ao modelo pela mesma fonte que o pre-flight usa: prosa fixa dizendo
+ * "exatamente seis setores" numa combinação de cinco custaria um turno inteiro
+ * de geração recusado.
+ */
+export function commercialCompositionText(
   resolved: ResolvedCommercialVariants,
 ): string {
-  return COMMERCIAL_AREAS.map(
-    (area) => `${area}: ${resolved[area].label} — ${resolved[area].intent}`,
-  ).join('\n');
+  return COMMERCIAL_AREAS.map((area) => {
+    const variant = resolved[area];
+    const counts: string[] = [];
+    if (variant.items?.exact !== undefined)
+      counts.push(`exatamente ${variant.items.exact} itens`);
+    else if (variant.items?.min !== undefined)
+      counts.push(`pelo menos ${variant.items.min} itens`);
+    if (variant.distinctImages) counts.push('uma foto distinta por item');
+    for (const slot of variant.scenes ?? [])
+      counts.push(
+        `${slot.count} ${slot.count === 1 ? 'foto' : 'fotos'} ${slot.ratio}`,
+      );
+    return `- ${area} · ${variant.signature} — ${variant.label}: ${variant.intent}${
+      counts.length ? ` (${counts.join('; ')})` : ''
+    }`;
+  }).join('\n');
 }
 
 /** Parte da assinatura do perfil, para a comparação entre clientes. */

@@ -18,6 +18,10 @@ import {
   type Vibe,
 } from '../design/vibes';
 import type { DesignProfile } from '../design/profile';
+import {
+  commercialSignatureCount,
+  resolveCommercialVariants,
+} from '../design/commercial-variants';
 import type { BlockInstance, Page, TenantImage } from '../types';
 import { CURRENT_SITE_IMAGE_MODEL } from '../current-site/constants';
 
@@ -608,6 +612,9 @@ function grammarFindings(
           });
       }
       if (design.version === 8) {
+        // A mesma combinação que montou a sequência resolvida define as
+        // contagens: um contrato por variação, lido de um lugar só.
+        const variants = resolveCommercialVariants(design.commercialVariants);
         const exactSequence = marks.map((mark) => mark.signature);
         if (
           exactSequence.length !== grammar.structure.sequence.length ||
@@ -622,15 +629,16 @@ function grammarFindings(
             rule: 'comercial-v8-estrutura',
             message: `A Comercial v8 exige a sequência exata ${grammar.structure.sequence.join(' > ')}. Recebeu ${exactSequence.join(' > ')}.`,
           });
+        const navLayout = variants.navegacao.signature.split(':')[1]!;
         const navs = page.blocks.filter((block) => block.type === 'nav.bar');
-        if (navs.length !== 1 || resolvedLayout(navs[0]!, design) !== 'bar')
+        if (navs.length !== 1 || resolvedLayout(navs[0]!, design) !== navLayout)
           findings.push({
             page: path,
             level: 'error',
             rule: 'comercial-v8-navegacao',
-            message:
-              'A Comercial v8 exige exatamente uma nav.bar:bar integrada visualmente ao hero.',
+            message: `A Comercial v8 exige exatamente uma nav.bar:${navLayout} coerente com a abertura desta composição.`,
           });
+        const openingLayout = variants.abertura.signature.split(':')[1]!;
         const hero = marks.find((mark) => mark.block.type === 'hero.split');
         const heroLayout = hero ? resolvedLayout(hero.block, design) : '';
         const heroUrl =
@@ -648,7 +656,7 @@ function grammarFindings(
           .join(' ');
         if (
           hero &&
-          (heroLayout !== 'brand' ||
+          (heroLayout !== openingLayout ||
             typeof hero.block.props.image !== 'string' ||
             typeof hero.block.props.imageAlt !== 'string' ||
             !hero.block.props.imageAlt.trim() ||
@@ -682,12 +690,13 @@ function grammarFindings(
             rule: 'comercial-v8-rodape',
             message: `A estrutura ${grammar.structure.label} exige exatamente um ${footerSignature}.`,
           });
+        const sectorCount = variants.setores.items?.exact ?? 6;
         const categories = marks.find(
           (mark) => mark.block.type === 'feature.bento',
         )?.block.props.items;
         if (
           !Array.isArray(categories) ||
-          categories.length !== 6 ||
+          categories.length !== sectorCount ||
           categories.some(
             (item) =>
               !item ||
@@ -705,55 +714,58 @@ function grammarFindings(
             categories
               .filter((item) => item && typeof item === 'object')
               .map((item) => ('image' in item ? item.image : '')),
-          ).size !== 6
+          ).size !== sectorCount
         )
           findings.push({
             page: path,
             level: 'error',
             rule: 'comercial-v8-categorias',
-            message:
-              'A listagem Comercial v8 precisa de exatamente 6 setores, cada um com foto distinta, nome, descrição e texto alternativo.',
+            message: `A listagem Comercial v8 precisa de exatamente ${sectorCount} setores, cada um com foto distinta, nome, descrição e texto alternativo.`,
           });
+        const immersiveCount = commercialSignatureCount(
+          variants,
+          'media.image:immersive',
+        );
         const immersive = marks.filter(
           (mark) =>
             mark.block.type === 'media.image' &&
             resolvedLayout(mark.block, design) === 'immersive',
         );
         if (
-          immersive.length !== 2 ||
-          new Set(immersive.map((mark) => mark.block.props.src)).size !== 2
+          immersive.length !== immersiveCount ||
+          new Set(immersive.map((mark) => mark.block.props.src)).size !==
+            immersiveCount
         )
           findings.push({
             page: path,
             level: 'error',
             rule: 'comercial-v8-imagens-imersivas',
-            message:
-              'A Comercial v8 exige duas faixas media.image:immersive com fotos distintas para o parallax.',
+            message: `A Comercial v8 exige ${immersiveCount} ${immersiveCount === 1 ? 'faixa' : 'faixas'} media.image:immersive com fotos distintas para o parallax.`,
           });
+        const galleryFloor = variants.galeria.items?.min ?? 6;
         const gallery = marks.find(
           (mark) => mark.block.type === 'media.gallery',
         )?.block.props.images;
-        if (!Array.isArray(gallery) || gallery.length < 6)
+        if (!Array.isArray(gallery) || gallery.length < galleryFloor)
           findings.push({
             page: path,
             level: 'error',
             rule: 'comercial-v8-galeria',
-            message:
-              'A galeria Comercial v8 precisa de pelo menos 6 fotos do comércio.',
+            message: `A galeria Comercial v8 precisa de pelo menos ${galleryFloor} fotos do comércio.`,
           });
+        const socialFloor = variants.redes.items?.min ?? 3;
         const socialImages = marks.find(
           (mark) => mark.block.type === 'social.follow',
         )?.block.props.images;
-        if (!Array.isArray(socialImages) || socialImages.length < 3)
+        if (!Array.isArray(socialImages) || socialImages.length < socialFloor)
           findings.push({
             page: path,
             level: 'error',
             rule: 'comercial-v8-redes',
-            message:
-              'A área de redes sociais Comercial v8 precisa de pelo menos 3 fotos.',
+            message: `A área de redes sociais Comercial v8 precisa de pelo menos ${socialFloor} fotos.`,
           });
         const careers = marks.find(
-          (mark) => mark.signature === 'cta.band:split',
+          (mark) => mark.signature === variants.carreira.signature,
         )?.block;
         if (
           !careers ||

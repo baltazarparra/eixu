@@ -576,9 +576,15 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         // O estúdio gera em lotes paralelos. Uma cena por requisição fazia o
         // plano inteiro custar cinco idas ao modelo e cinco minutos de espera.
         const inPhase = context.phase === 'cenas';
+        // O plano v8 deixou de ter tamanho fixo: cada combinação de variações
+        // pede seu próprio repertório. Um orçamento literal recusaria o lote
+        // com a mensagem errada — "orçamento esgotado" em vez de plano maior.
         const budget =
           inPhase && design.version === 8 && vibeOf(activeBrand) === 'comercial'
-            ? 9
+            ? Math.max(
+                8,
+                scenePlan(design, 3, vibeOf(activeBrand), activeBrief).length,
+              )
             : 8;
         if (scenesPrepared + scenes.length > budget)
           throw new ToolError(
