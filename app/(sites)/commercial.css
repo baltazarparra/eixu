@@ -32,26 +32,62 @@
   text-transform: uppercase;
 }
 
-/* A navbar é visualmente parte do hero e não reserva um cabeçalho próprio. */
+/*
+ * A navbar é visualmente parte do hero e não reserva um cabeçalho próprio —
+ * mas só onde existe um hero de fachada logo abaixo para recebê-la. A regra
+ * valia em qualquer página, e nas internas, cuja abertura não reserva espaço,
+ * a barra cobria o título. O invariante é a abertura seguinte, não o slug:
+ * `^='brand'` cobre a família de heróis de fachada da vibe.
+ */
 .site-theme[data-profile-version='8'][data-vibe='comercial']
   > .site-motion-root
-  > .site-block:first-child:has(.site-nav) {
+  > .site-block:first-child:has(.site-nav):has(
+    + .site-block[data-block='hero.split'][data-layout^='brand']
+  ) {
   position: relative;
   z-index: 60;
   height: 0;
 }
 
 .site-theme[data-profile-version='8'][data-vibe='comercial']
+  > .site-motion-root
+  > .site-block:first-child:has(.site-nav):has(
+    + .site-block[data-block='hero.split'][data-layout^='brand']
+  )
   .site-navigation-frame:has(.site-nav) {
   height: 0;
 }
 
 .site-theme[data-profile-version='8'][data-vibe='comercial']
+  > .site-motion-root
+  > .site-block:first-child:has(.site-nav):has(
+    + .site-block[data-block='hero.split'][data-layout^='brand']
+  )
   .site-navigation-frame:has(.site-nav)
   > .site-navigation-content {
   position: absolute;
   inset: clamp(1rem, 3vw, 2.5rem) 0 auto;
   z-index: 60;
+}
+
+/*
+ * Quando a barra não sobrepõe nada, ela fecha com um fio e as aberturas
+ * internas recebem o respiro que o hero de fachada resolvia com padding
+ * próprio.
+ */
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  > .site-motion-root
+  > .site-block:first-child:has(.site-nav):not(
+    :has(+ .site-block[data-block='hero.split'][data-layout^='brand'])
+  )
+  .site-nav {
+  border-bottom: 1px solid color-mix(in oklab, black 22%, transparent);
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  :is(.site-statement-framed, .site-hero-info)
+  .site-hero-grid {
+  padding-block-start: clamp(3rem, 6vw, 5rem);
 }
 
 .site-theme[data-profile-version='8'][data-vibe='comercial'] .site-nav {
@@ -135,7 +171,17 @@
   width: 100%;
   max-width: var(--site-max);
   min-height: max(44rem, 87svh);
-  padding-block: clamp(10rem, 18vw, 14rem) clamp(4rem, 8vw, 7rem);
+  /*
+   * O logo v8 chega a 7.5rem de altura, então uma marca com wordmark alta
+   * empurra a barra para perto do limite do respiro fixo. A medida real da
+   * navegação, publicada no tema, mantém o título abaixo dela em qualquer
+   * marca; o clamp continua valendo enquanto o JavaScript não mediu.
+   */
+  padding-block: max(
+      clamp(10rem, 18vw, 14rem),
+      calc(var(--navigation-height, 0px) + 3rem)
+    )
+    clamp(4rem, 8vw, 7rem);
 }
 
 .site-theme[data-profile-version='8'][data-vibe='comercial']
