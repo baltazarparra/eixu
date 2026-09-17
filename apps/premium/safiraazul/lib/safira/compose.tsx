@@ -1,8 +1,11 @@
+import { Fragment } from 'react';
 import type { BlockInstance, Tenant } from '@/lib/types';
 import { contactsOf } from '@/lib/tenant-contacts';
 import { SiteAttribution } from '@/lib/sites/site-attribution';
 import { SiteNav } from './nav';
 import {
+  ArcPhoto,
+  Catalog,
   Close,
   Faq,
   FloatingWhatsapp,
@@ -14,7 +17,6 @@ import {
   Steps,
   Vitrine,
   Where,
-  WidePhoto,
 } from './sections';
 import { links, str } from './props';
 
@@ -49,16 +51,14 @@ export function Compose({
     : '';
 
   /*
-   * A localização com mapa fica na página que existe para localizar. Nas
-   * outras, o endereço já aparece nos fatos e no rodapé: um terceiro mapa
-   * não ajudaria ninguém a decidir.
+   * A localização com mapa fica na página que existe para localizar, logo
+   * depois dos dados práticos: quem acabou de ler o endereço é quem quer o
+   * mapa. Nas outras páginas o endereço já aparece nos fatos e no rodapé.
    */
   const showWhere = Boolean(address) && pagePath === '/contato';
-
-  /* O fechamento é sempre o último bloco do miolo; o mapa entra antes dele. */
-  const closing = body.at(-1);
-  const closesWithCta = closing?.type === 'cta.band';
-  const middle = closesWithCta ? body.slice(0, -1) : body;
+  const afterWhere = body.findIndex(
+    (block) => block.type === 'editorial.facts',
+  );
 
   return (
     <>
@@ -78,11 +78,15 @@ export function Compose({
       ) : null}
 
       <main id="conteudo">
-        {middle.map((block) => (
-          <Section key={block.id} block={block} />
+        {body.map((block, index) => (
+          <Fragment key={block.id}>
+            <Section block={block} />
+            {showWhere && index === afterWhere ? (
+              <Where address={address} />
+            ) : null}
+          </Fragment>
         ))}
-        {showWhere ? <Where address={address} /> : null}
-        {closesWithCta && closing ? <Close props={closing.props} /> : null}
+        {showWhere && afterWhere < 0 ? <Where address={address} /> : null}
       </main>
 
       {footer ? <Footer props={footer.props} /> : null}
@@ -101,10 +105,11 @@ function Section({ block }: { block: BlockInstance }) {
     case 'media.gallery':
       return <Vitrine props={block.props} />;
     case 'media.image':
-      return <WidePhoto props={block.props} />;
+      return <ArcPhoto props={block.props} />;
     case 'feature.numbered':
-    case 'feature.bento':
       return <Ledger props={block.props} />;
+    case 'feature.bento':
+      return <Catalog props={block.props} />;
     case 'editorial.facts':
       return <Room props={block.props} />;
     case 'narrative.steps':

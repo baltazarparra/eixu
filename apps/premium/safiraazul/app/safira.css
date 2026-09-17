@@ -1,47 +1,55 @@
 @import 'tailwindcss';
 
 /*
- * Safira Azul — sistema visual "Lapidação".
+ * Safira Azul — sistema visual "Vitrine".
  *
- * Direção: toda foto do cliente é uma joia iluminada sobre pedra escura bruta.
- * O site adota a mesma física. O campo é mineral e contínuo; a luz só aparece
- * onde existe uma faceta — título, joia, ação. A única quebra para superfície
- * clara é a sala de recepção, onde o site convida a entrar na loja.
+ * Direção: a loja é uma sala clara onde as peças aparecem sob vidro curvo, e
+ * as fotos do cliente são joias acesas sobre pedra escura. O site alterna os
+ * dois estados: capítulos de marfim, onde se lê e se decide, e capítulos de
+ * tinta, onde a peça aparece. O arco é o vidro da vitrine; o bloom é a luz
+ * atravessando a gema; o selo facetado é a coroa do brilhante vista de cima.
  *
- * Cores do operador preservadas (paletteSource: operador). O que foi derivado
- * existe porque a cor original não cumpre contraste no papel pedido:
- *   accent #3b2f92 como texto sobre ink dá 1.87:1 e reprova; como preenchimento
- *   com texto branco dá 10.46:1 e passa. Daí --lit para texto de destaque.
- * Medidas em AGENTS/verificação: branco/ink 19.55:1, --lit/ink 6.37:1,
- * --muted/ink 9.67:1, branco/accent 10.46:1, ink/surface 18.60:1.
+ * Cores do operador preservadas (paletteSource: operador). Derivações existem
+ * só onde a cor original não cumpre contraste no papel pedido.
+ * Medidas (WCAG 2.1, texto normal exige 4.5:1):
+ *   ink/marfim 17.14:1 · ink/branco 18.81:1 · apoio-claro/marfim 6.36:1
+ *   safira/marfim 9.53:1 · branco/safira 10.46:1 · creme/tinta 17.44:1
+ *   apoio-escuro/tinta 8.46:1 · ouro/tinta 8.70:1 · tinta/creme 17.44:1
+ * O ouro não recebe texto pequeno sobre marfim (3.6:1, reprova): ali ele é
+ * fio e ornamento, e o rótulo fica em safira.
  */
 
 .sa {
-  /* Superfície: cores do operador, hierarquia invertida. */
-  --ink: #0c0a1a;
-  --ink-deep: #07060e;
-  --ink-raise: #14112a;
+  /* Superfícies */
+  --ivory: #f7f4ef;
   --paper: #ffffff;
-  --surface: #f9f9fb;
-  --accent: #3b2f92;
+  --ink: #0b0a14;
+  --ink-deep: #070610;
+  --ink-raise: #141227;
 
-  /* Derivados por luminância, para cumprir AA onde o original não cumpre. */
-  --lit: #938dc3; /* destaque sobre escuro — 6.37:1 */
-  --muted: #b6b6ba; /* apoio sobre escuro — 9.67:1 */
-  --muted-dark: #61606a; /* apoio sobre claro — 5.89:1 */
+  /* Tinta e apoio */
+  --graphite: #12101c;
+  --cream: #f4f1ea;
+  --support-light: #5c5766;
+  --support-dark: #ada7bc;
 
-  /* Fios: decoração sutil e contorno de controle são pesos diferentes. */
-  --line: rgb(255 255 255 / 0.13);
-  --line-lit: rgb(147 141 195 / 0.42);
-  --control-line: rgb(255 255 255 / 0.45); /* 4.48:1 — contorno operável */
-  --focus: var(--paper);
+  /* Marca */
+  --sapphire: #3b2f92;
+  --sapphire-lit: #b9a7f0;
+  --gold: #c9a86a;
+  --gold-deep: #9a7b43;
 
-  --shell: 78rem;
-  --gutter: clamp(1.25rem, 4vw, 3.5rem);
-  --bevel: clamp(1.5rem, 4vw, 3rem); /* o chanfro da lapidação */
+  /* Fios */
+  --rule: rgb(18 16 28 / 0.14);
+  --rule-gold: rgb(154 123 67 / 0.45);
 
-  background: var(--ink);
-  color: var(--paper);
+  /* Medidas */
+  --shell: 74rem;
+  --gutter: clamp(1.25rem, 5vw, 3.25rem);
+  --arc: ellipse(140% 100% at 50% 0%);
+
+  background: var(--ivory);
+  color: var(--graphite);
   font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
   font-synthesis-weight: none;
   -webkit-font-smoothing: antialiased;
@@ -55,29 +63,79 @@ html {
 
 body {
   margin: 0;
-  background: #0c0a1a;
-  /* Barras do sistema acompanham a pedra, inclusive no rebote de rolagem. */
-  overscroll-behavior-y: none;
+  background: #f7f4ef;
 }
 
-/* Nenhuma composição pode produzir rolagem lateral. */
+/* Nenhuma composição — inclusive as placas giradas — produz rolagem lateral. */
 html,
 body {
   overflow-x: clip;
 }
 
 ::selection {
-  background: var(--accent);
-  color: var(--paper);
+  background: var(--sapphire);
+  color: #fff;
 }
 
-/* ---------------------------------------------------------------- tipografia */
+/* ------------------------------------------------------------------- tons */
+
+/*
+ * Cada seção declara o seu tom e todas as peças leem as mesmas variáveis.
+ * Um componente não sabe se está no claro ou no escuro: ele pinta com --fg,
+ * --sub, --line e --ornament, e o tom responde.
+ */
+.sa-section {
+  --bg: var(--ivory);
+  --fg: var(--graphite);
+  --sub: var(--support-light);
+  --line: var(--rule);
+  --line-warm: var(--rule-gold);
+  --ornament: var(--sapphire);
+  --action-bg: var(--sapphire);
+  --action-fg: #ffffff;
+  --seal-fg: #ffffff;
+
+  position: relative;
+  isolation: isolate;
+  background: var(--bg);
+  color: var(--fg);
+  padding-block: clamp(4.5rem, 10vw, 9rem);
+}
+
+.sa-section[data-tone='ink'] {
+  --bg: var(--ink);
+  --fg: var(--cream);
+  --sub: var(--support-dark);
+  --line: rgb(244 241 234 / 0.14);
+  --line-warm: rgb(201 168 106 / 0.4);
+  --ornament: var(--gold);
+  --action-bg: var(--cream);
+  --action-fg: var(--ink);
+  --seal-fg: var(--ink);
+}
+
+.sa-section[data-flush='top'] {
+  padding-block-start: 0;
+}
+
+.sa-section[data-flush='bottom'] {
+  padding-block-end: 0;
+}
+
+/* --------------------------------------------------------------- estrutura */
+
+.sa-shell {
+  width: min(100% - var(--gutter) * 2, var(--shell));
+  margin-inline: auto;
+}
+
+/* ------------------------------------------------------------- tipografia */
 
 .sa-display {
-  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
-  font-weight: 800;
-  letter-spacing: -0.035em;
-  line-height: 0.94;
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+  font-weight: 400;
+  line-height: 0.96;
+  letter-spacing: -0.025em;
   text-wrap: balance;
   /*
    * Os títulos são editáveis pelo CMS. A escala foi medida para o texto atual,
@@ -85,288 +143,318 @@ body {
    * ele quebra, mesmo que sem elegância, em vez de ser decepado.
    */
   overflow-wrap: break-word;
+  margin: 0;
 }
 
+.sa-h1 {
+  font-size: clamp(3rem, 1.2rem + 9.2vw, 9.5rem);
+}
+
+.sa-h2 {
+  font-size: clamp(2.3rem, 1.1rem + 5.2vw, 5.5rem);
+}
+
+/* Título que divide a largura com outra coluna não pede corpo de cartaz. */
+.sa-h2[data-scale='tight'] {
+  font-size: clamp(2rem, 1.3rem + 2.6vw, 3.4rem);
+}
+
+.sa-h3 {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(1.35rem, 1.15rem + 0.9vw, 1.9rem);
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+/* O rótulo entre parênteses: a garra que segura a pedra, desenhada em letra. */
 .sa-eyebrow {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.85rem;
-  margin: 0 0 1.5rem;
-  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  gap: 0.5rem;
+  margin: 0 0 1.75rem;
   font-size: 0.7rem;
   font-weight: 600;
-  letter-spacing: 0.3em;
+  letter-spacing: 0.26em;
   text-transform: uppercase;
-  color: var(--lit);
+  color: var(--sub);
 }
 
-/* O fio de luz: a aresta onde a gema devolve a luz. */
-.sa-eyebrow::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(90deg, var(--line-lit), transparent 78%);
+.sa-eyebrow i {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+  font-style: normal;
+  font-size: 2.1em;
+  line-height: 0;
+  color: var(--ornament);
+  transform: translateY(0.06em);
 }
 
 .sa-lede {
   margin: 0;
-  max-width: 46ch;
-  font-size: clamp(1.05rem, 0.98rem + 0.4vw, 1.3rem);
-  line-height: 1.6;
-  color: var(--muted);
+  max-width: 44ch;
+  font-size: clamp(1.02rem, 0.96rem + 0.34vw, 1.22rem);
+  line-height: 1.62;
+  color: var(--sub);
   text-wrap: pretty;
 }
 
 .sa-body {
   margin: 0;
-  max-width: 62ch;
-  font-size: clamp(1rem, 0.96rem + 0.2vw, 1.1rem);
-  line-height: 1.72;
-  color: var(--muted);
+  max-width: 60ch;
+  font-size: clamp(0.98rem, 0.95rem + 0.16vw, 1.06rem);
+  line-height: 1.75;
+  color: var(--sub);
   text-wrap: pretty;
 }
 
-.sa-h2 {
-  margin: 0;
-  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
-  font-weight: 800;
-  font-size: clamp(1.9rem, 1.3rem + 2.3vw, 3.1rem);
-  line-height: 1.02;
-  letter-spacing: -0.03em;
-  text-wrap: balance;
-  overflow-wrap: break-word;
-}
-
-.sa-h3 {
-  margin: 0;
-  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
-  font-weight: 700;
-  font-size: clamp(1.1rem, 1.02rem + 0.38vw, 1.4rem);
-  line-height: 1.2;
-  letter-spacing: -0.02em;
-}
-
-/* ------------------------------------------------------------------ estrutura */
-
-.sa-shell {
-  width: 100%;
-  max-width: var(--shell);
-  margin-inline: auto;
-  padding-inline: var(--gutter);
-}
-
-/* Duas seções seguidas somam os dois espaços: medido na página, o par de
- * 9rem abria um vazio que lia como fim de página. */
-.sa-section {
-  position: relative;
-  padding-block: clamp(3.5rem, 6.5vw, 6.5rem);
-}
-
-.sa-section[data-tight] {
-  padding-block: clamp(2.5rem, 5vw, 4.5rem);
-}
-
-/* --------------------------------------------------------------------- foco */
+/* ------------------------------------------------------------------- foco */
 
 .sa :focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--ornament, var(--sapphire));
   outline-offset: 3px;
-  border-radius: 1px;
+  border-radius: 2px;
 }
 
+/* Fora do caminho da bandeja: no centro, o atalho cobriria a navegação. */
 .sa-skip {
-  position: absolute;
-  left: -9999px;
-  top: 0;
-  z-index: 100;
-  padding: 0.85rem 1.25rem;
-  background: var(--paper);
-  color: var(--ink);
-  font-weight: 600;
+  position: fixed;
+  top: 0.75rem;
+  left: var(--gutter);
+  transform: translateY(-200%);
+  z-index: 60;
+  padding: 0.75rem 1.25rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--cream);
+  font-size: 0.85rem;
+  text-decoration: none;
 }
 
 .sa-skip:focus {
-  left: 1rem;
-  top: 1rem;
+  transform: translateY(0);
 }
 
-/* ------------------------------------------------------------------- ações */
+/* ----------------------------------------------------------------- ações */
 
 .sa-action {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.6rem;
-  min-height: 3rem; /* 48px de alvo */
-  padding: 0.9rem 1.75rem;
-  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.9rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-decoration: none;
+  gap: 0.75rem;
+  min-height: 3rem;
+  padding: 0.75rem 0.75rem 0.75rem 1.5rem;
   border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  cursor: pointer;
   transition:
-    background-color 220ms ease,
-    color 220ms ease,
-    border-color 220ms ease,
-    transform 220ms ease;
+    background-color 0.25s ease,
+    color 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.25s ease;
 }
 
-/* Safira sólida: a matéria da ação. Branco sobre #3b2f92 = 10.46:1. */
 .sa-action[data-kind='solid'] {
-  background: var(--accent);
-  color: var(--paper);
+  background: var(--action-bg);
+  color: var(--action-fg);
 }
 
 .sa-action[data-kind='solid']:hover {
-  background: color-mix(in oklab, var(--accent) 82%, var(--paper));
+  transform: translateY(-2px);
 }
 
 .sa-action[data-kind='ghost'] {
-  color: var(--paper);
-  border-color: var(--control-line);
+  padding-inline: 1.5rem;
+  background: transparent;
+  color: var(--fg);
+  border-color: color-mix(in oklab, var(--fg) 32%, transparent);
 }
 
 .sa-action[data-kind='ghost']:hover {
-  border-color: var(--paper);
-  background: rgb(255 255 255 / 0.07);
+  border-color: var(--ornament);
+  color: var(--ornament);
 }
 
 .sa-action:active {
-  transform: translateY(1px);
+  transform: translateY(0);
 }
 
-/* Na sala clara os papéis se invertem. */
-.sa-light .sa-action[data-kind='ghost'] {
-  color: var(--ink);
-  border-color: rgb(12 10 26 / 0.3);
+/* O selo: a coroa do brilhante vista de cima, com a seta da ação dentro. */
+.sa-seal {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  flex: none;
+  color: var(--action-bg);
 }
 
-.sa-light .sa-action[data-kind='ghost']:hover {
-  border-color: var(--ink);
-  background: rgb(12 10 26 / 0.05);
+.sa-seal svg {
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+  fill: var(--seal-fg);
 }
 
-/* ------------------------------------------------------------ navegação */
+.sa-seal span {
+  grid-area: 1 / 1;
+  font-size: 0.85rem;
+  line-height: 1;
+  transform: translateY(-0.03em);
+}
 
+/* -------------------------------------------------------------- navegação */
+
+/*
+ * Uma bandeja de vidro fumê, centralizada e flutuante. Ela cruza capítulos
+ * claros e escuros na mesma rolagem, então o tom é fixo e escuro: assim o
+ * contraste é o mesmo sobre marfim e sobre tinta, sem depender de script
+ * de rolagem para trocar de cor no meio do caminho.
+ */
 .sa-nav {
-  position: sticky;
-  top: 0;
-  z-index: 60;
-  background: color-mix(in oklab, var(--ink) 82%, transparent);
-  backdrop-filter: blur(14px) saturate(140%);
-  border-bottom: 1px solid var(--line);
+  position: fixed;
+  inset-block-start: clamp(0.65rem, 1.6vw, 1.15rem);
+  inset-inline: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  padding-inline: var(--gutter);
 }
 
 .sa-nav-inner {
+  pointer-events: auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  min-height: 4.25rem;
+  gap: clamp(0.75rem, 2vw, 2.25rem);
+  max-width: 100%;
+  padding: 0.5rem 0.5rem 0.5rem 1.25rem;
+  border: 1px solid rgb(244 241 234 / 0.12);
+  border-radius: 999px;
+  background: rgb(11 10 20 / 0.82);
+  color: var(--cream);
+  box-shadow: 0 18px 40px -26px rgb(11 10 20 / 0.9);
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .sa-nav-inner {
+    /* Sem realce de saturação: sobre o marfim ele puxava a bandeja para o
+     * marrom e a tirava do tom mineral do resto do site. */
+    background: rgb(11 10 20 / 0.78);
+    backdrop-filter: blur(20px);
+  }
 }
 
 .sa-wordmark {
   display: inline-flex;
   align-items: center;
-  gap: 0.7rem;
-  /* A marca é um link: precisa do mesmo alvo de toque dos demais. */
+  /* Alvo de toque: a bandeja é alta o bastante, a marca precisa ocupá-la. */
   min-height: 2.75rem;
-  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.95rem;
-  font-weight: 800;
-  letter-spacing: 0.24em;
-  color: var(--paper);
+  gap: 0.6rem;
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+  font-size: 0.98rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
   text-decoration: none;
+  color: inherit;
   white-space: nowrap;
 }
 
-/* A marca do lugar: uma faceta desenhada, não um ícone de biblioteca. */
 .sa-facet {
   flex: none;
-  color: var(--lit);
+  color: var(--gold);
 }
 
 .sa-nav-links {
   display: none;
   align-items: center;
-  gap: clamp(1.25rem, 2.5vw, 2.5rem);
+  gap: 0.25rem;
 }
 
-.sa-nav-link {
-  position: relative;
-  padding: 0.75rem 0;
-  font-size: 0.82rem;
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-  text-decoration: none;
-  transition: color 200ms ease;
-}
-
-.sa-nav-link:hover,
-.sa-nav-link[aria-current='page'] {
-  color: var(--paper);
-}
-
-.sa-nav-link::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  bottom: 0.4rem;
-  width: 100%;
-  height: 1px;
-  background: var(--lit);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 260ms ease;
-}
-
-.sa-nav-link:hover::after,
-.sa-nav-link[aria-current='page']::after {
-  transform: scaleX(1);
-}
-
-.sa-nav-cta {
-  display: none;
-}
-
-@media (min-width: 62rem) {
-  .sa-nav-links,
-  .sa-nav-cta {
+@media (min-width: 60rem) {
+  .sa-nav-links {
     display: flex;
   }
 }
 
-/* Menu de celular: <details> nativo, útil sem JavaScript. */
+.sa-nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: rgb(244 241 234 / 0.78);
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease;
+}
+
+.sa-nav-link:hover {
+  color: var(--cream);
+  background: rgb(244 241 234 / 0.08);
+}
+
+.sa-nav-link[aria-current='page'] {
+  color: var(--ink);
+  background: var(--cream);
+}
+
+.sa-nav-cta {
+  display: none;
+  --action-bg: var(--cream);
+  --action-fg: var(--ink);
+  --seal-fg: var(--ink);
+  min-height: 2.75rem;
+  padding: 0.5rem 0.5rem 0.5rem 1.15rem;
+  font-size: 0.8rem;
+}
+
+@media (min-width: 60rem) {
+  .sa-nav-cta {
+    display: inline-flex;
+  }
+}
+
+.sa-nav-cta .sa-seal {
+  width: 1.75rem;
+  height: 1.75rem;
+  color: var(--cream);
+}
+
+/* Menu do celular: `<details>` nativo, aberto sem script. */
 .sa-menu {
   position: relative;
 }
 
-@media (min-width: 62rem) {
+@media (min-width: 60rem) {
   .sa-menu {
     display: none;
   }
 }
 
 .sa-menu-button {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.55rem;
-  min-width: 2.75rem;
-  min-height: 2.75rem; /* 44px */
-  padding: 0 0.85rem;
-  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
+  gap: 0.6rem;
+  min-height: 2.75rem;
+  padding: 0 1.15rem;
+  border-radius: 999px;
+  background: var(--cream);
+  color: var(--ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--paper);
-  border: 1px solid var(--control-line);
-  cursor: pointer;
   list-style: none;
+  cursor: pointer;
 }
 
 .sa-menu-button::-webkit-details-marker {
@@ -382,7 +470,7 @@ body {
 .sa-menu-bars span {
   height: 1.5px;
   background: currentColor;
-  transition: transform 220ms ease;
+  transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
 .sa-menu[open] .sa-menu-bars span:first-child {
@@ -398,285 +486,296 @@ body {
 }
 
 .sa-menu-panel {
-  position: fixed;
-  inset: 4.25rem 0 auto;
+  position: absolute;
+  inset-inline-end: 0;
+  inset-block-start: calc(100% + 0.85rem);
   display: grid;
   gap: 0.25rem;
-  padding: 1rem var(--gutter) 1.75rem;
-  background: var(--ink-deep);
-  border-bottom: 1px solid var(--line);
-  /* Telas baixas: o painel rola em vez de cortar links. */
-  max-height: calc(100dvh - 4.25rem);
-  overflow-y: auto;
+  width: max(58vw, 13rem);
+  padding: 0.75rem;
+  border: 1px solid rgb(244 241 234 / 0.12);
+  border-radius: 1.5rem;
+  background: rgb(11 10 20 / 0.96);
+  box-shadow: 0 24px 60px -30px rgb(11 10 20 / 0.95);
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .sa-menu-panel {
+    background: rgb(11 10 20 / 0.95);
+    backdrop-filter: blur(20px);
+  }
 }
 
 .sa-menu-panel a {
   display: flex;
   align-items: center;
-  min-height: 3.25rem;
-  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--paper);
+  min-height: 2.9rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  color: var(--cream);
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   text-decoration: none;
-  border-bottom: 1px solid var(--line);
+}
+
+.sa-menu-panel a[aria-current='page'] {
+  background: rgb(244 241 234 / 0.1);
 }
 
 .sa-menu-panel .sa-action {
-  margin-top: 1rem;
+  --action-bg: var(--cream);
+  --action-fg: var(--ink);
+  --seal-fg: var(--ink);
+  margin-top: 0.35rem;
+  justify-content: space-between;
+  letter-spacing: 0.14em;
 }
 
-/* -------------------------------------------------------------- abertura */
+/* ------------------------------------------------------------------ bloom */
 
-/* Duas faixas: a abertura ocupa o campo, a ficha técnica assenta na base. */
+/*
+ * A luz dentro da pedra: safira, azul e gelo atravessados por um fio de ouro.
+ * Fica atrás do texto, nunca sob ele — o contraste medido é sempre com a
+ * superfície sólida, e o bloom só ocupa a margem da composição.
+ */
+.sa-bloom {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.sa-bloom::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: min(120vw, 68rem);
+  aspect-ratio: 1.35;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  opacity: 0.78;
+  filter: blur(38px);
+  background:
+    radial-gradient(
+      38% 42% at 30% 38%,
+      color-mix(in oklab, var(--sapphire) 85%, transparent),
+      transparent 68%
+    ),
+    radial-gradient(
+      34% 38% at 68% 32%,
+      color-mix(in oklab, #2f6fd0 78%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      32% 36% at 58% 70%,
+      color-mix(in oklab, #8fd3ec 72%, transparent),
+      transparent 68%
+    ),
+    radial-gradient(
+      24% 26% at 26% 72%,
+      color-mix(in oklab, var(--gold) 62%, transparent),
+      transparent 72%
+    );
+}
+
+.sa-section[data-tone='ink'] .sa-bloom::before {
+  opacity: 0.5;
+  filter: blur(56px);
+}
+
+/* ---------------------------------------------------------------- abertura */
+
+/*
+ * Onde há bloom, o texto de apoio escurece. O halo é decoração e não pode
+ * decidir a legibilidade: medido sobre o ponto mais escuro do bloom (#b6afcd),
+ * #5c5766 daria 3.32:1 e reprovaria; #332f3d dá 6.19:1 e, sobre o marfim
+ * limpo, 11.85:1.
+ */
+.sa-hero,
+.sa-opening {
+  --sub: #332f3d;
+}
+
 .sa-hero {
-  position: relative;
-  display: grid;
-  grid-template-rows: 1fr auto;
-  min-height: min(92dvh, 58rem);
-  overflow: clip;
+  padding-block: clamp(8.5rem, 16vh, 12rem) clamp(4rem, 8vw, 6.5rem);
+  text-align: center;
 }
 
-/*
- * Celular deitado: sem altura cheia e com a abertura em escala menor, para a
- * ação não ficar a duas telas de distância de quem abriu o site.
- */
-@media (max-height: 34rem) {
-  .sa-hero {
-    min-height: auto;
-  }
-
-  .sa-hero-inner {
-    padding-block: 2.5rem 1.5rem;
-  }
-
-  .sa-hero-title {
-    font-size: clamp(2rem, 1rem + 4.5vw, 3.25rem);
-    margin-bottom: 1rem;
-  }
-
-  .sa-hero-actions {
-    margin-top: 1.5rem;
-  }
-}
-
-/*
- * A foto da abertura nasce em 4:5, com o assunto no terço superior. No celular
- * ela ocupa o campo e o recorte respeita esse terço; a partir do desktop vira
- * uma coluna com a proporção quase intacta, porque esticar um retrato numa
- * tela larga jogaria a joia para fora do quadro.
- */
-.sa-hero-media {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-}
-
-.sa-hero-media img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 18%;
-}
-
-@media (min-width: 62rem) {
-  .sa-hero-media {
-    left: auto;
-    width: min(44%, 36rem);
-    clip-path: polygon(
-      0 0,
-      calc(100% - var(--bevel)) 0,
-      100% var(--bevel),
-      100% 100%,
-      0 100%
-    );
-  }
-
-  .sa-hero-media img {
-    object-position: center 38%;
-  }
-}
-
-/*
- * A pedra sob a joia: a foto continua legível, o texto ganha base sólida.
- * Dois véus em ângulos diferentes mantêm a luz vindo sempre do mesmo lado.
- */
-/*
- * No celular a foto fica atrás do texto. A metade de baixo vira pedra sólida,
- * para a leitura não disputar com a joia, e o topo continua aberto para ela
- * aparecer inteira.
- */
-.sa-hero-veil {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  background: linear-gradient(
-    to top,
-    var(--ink) 0%,
-    var(--ink) 44%,
-    color-mix(in oklab, var(--ink) 78%, transparent) 60%,
-    color-mix(in oklab, var(--ink) 34%, transparent) 84%,
-    color-mix(in oklab, var(--ink) 18%, transparent) 100%
-  );
-}
-
-/* No desktop o véu só acerta a emenda entre a coluna da foto e o campo. */
-@media (min-width: 62rem) {
-  .sa-hero-veil {
-    left: auto;
-    width: min(50%, 42rem);
-    background: linear-gradient(
-      90deg,
-      var(--ink) 0%,
-      color-mix(in oklab, var(--ink) 55%, transparent) 26%,
-      transparent 52%
-    );
-  }
-}
-
-/*
- * No celular o texto assenta na base e deixa a joia respirar no alto da foto.
- * No desktop ele centraliza e para antes da coluna da imagem.
- */
 .sa-hero-inner {
-  position: relative;
-  z-index: 2;
-  align-self: end;
-  padding-block: clamp(5rem, 11vw, 8rem) clamp(2rem, 4vw, 3rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-@media (min-width: 62rem) {
-  .sa-hero-inner {
-    align-self: center;
-    padding-right: 42%;
-  }
-}
-
-/* Syne é uma família larga: a escala foi medida contra a coluna real, não
- * contra a viewport, para o título nunca encostar na borda da imagem. */
-.sa-hero-title {
-  margin: 0 0 2rem;
-  font-size: clamp(2.75rem, 1.1rem + 8vw, 8.5rem);
-  color: var(--paper);
-}
-
-/*
- * A varredura: o brilho que corre na faceta quando se gira a pedra. Uma vez.
- * O texto é branco sólido por padrão; a luz só entra onde há suporte e quando
- * a pessoa não pediu menos movimento.
- */
-@media (prefers-reduced-motion: no-preference) {
-  @supports (background-clip: text) {
-    .sa-hero-title[data-facet] {
-      background-image: linear-gradient(
-        104deg,
-        var(--paper) 0%,
-        var(--paper) 38%,
-        #d8d3f2 46%,
-        #ffffff 50%,
-        var(--paper) 58%,
-        var(--paper) 100%
-      );
-      background-size: 280% 100%;
-      background-repeat: no-repeat;
-      background-clip: text;
-      -webkit-background-clip: text;
-      color: transparent;
-      animation: sa-facet 1500ms cubic-bezier(0.22, 0.61, 0.36, 1) 260ms 1 both;
-    }
-  }
-}
-
-@keyframes sa-facet {
-  from {
-    background-position: 100% 0;
-  }
-  to {
-    background-position: 0 0;
-  }
+.sa-hero .sa-lede {
+  margin-top: clamp(1.5rem, 3vw, 2.25rem);
+  text-align: center;
 }
 
 .sa-hero-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.85rem;
-  margin-top: 2.5rem;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: clamp(2rem, 4vw, 2.75rem);
 }
 
+.sa-opening {
+  padding-block-start: clamp(8.5rem, 16vh, 12rem);
+}
+
+.sa-opening[data-align='center'] {
+  text-align: center;
+}
+
+.sa-opening[data-align='center'] .sa-lede {
+  margin-inline: auto;
+}
+
+.sa-opening[data-align='center'] .sa-hero-actions {
+  justify-content: center;
+}
+
+.sa-opening[data-align='start'] .sa-hero-actions {
+  justify-content: flex-start;
+}
+
+.sa-opening .sa-lede {
+  margin-top: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+/* O recuo da primeira linha escalona o título sem partir o texto editável. */
+.sa-opening[data-align='start'] .sa-display {
+  text-indent: clamp(0rem, 8vw, 7rem);
+  max-width: 18ch;
+}
+
+/* -------------------------------------------------------- vitrine em arco */
+
 /*
- * A ficha técnica da abertura. Os destaques do briefing são fatos —
- * hora marcada, endereço, materiais — então recebem forma de dado, não
- * de marcador decorativo.
+ * O vidro curvo do mostruário. A faixa de foto sangra de ponta a ponta e a
+ * base é um arco: a peça fica sob a curva, como quem se inclina para ver.
  */
-.sa-spec {
+.sa-arc {
   position: relative;
-  z-index: 2;
+  height: clamp(17rem, 46vh, 30rem);
+  clip-path: var(--arc);
+  background: var(--ink);
+}
+
+.sa-hero .sa-arc {
+  margin-top: clamp(3rem, 7vw, 5rem);
+}
+
+@media (max-width: 40rem) {
+  .sa-arc {
+    --arc: ellipse(190% 100% at 50% 0%);
+  }
+}
+
+.sa-arc img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.sa-arc-figure {
+  margin: 0;
+}
+
+/* A etiqueta do mostruário: fio de ouro, recuo e linha curta. */
+.sa-caption {
+  margin-block-start: clamp(1.5rem, 3vw, 2.25rem);
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: var(--sub);
+}
+
+.sa-caption span {
+  display: block;
+  max-width: 46ch;
+  padding-inline-start: 1.15rem;
+  border-inline-start: 1px solid var(--line-warm);
+}
+
+/* A régua da vitrine: os três dados que decidem uma visita. */
+.sa-spec {
   display: grid;
   gap: 0;
-  border-top: 1px solid var(--line);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-block-end: 1px solid var(--line-warm);
 }
 
 .sa-spec li {
   display: flex;
-  align-items: baseline;
-  gap: 0.9rem;
-  padding: 1rem 0;
-  border-bottom: 1px solid var(--line);
-  font-size: 0.92rem;
-  color: var(--muted);
+  align-items: center;
+  gap: 0.75rem;
+  padding-block: 1.1rem;
+  border-block-start: 1px solid var(--line-warm);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--sub);
 }
 
-/* O marcador é a faceta da marca, não um ponto genérico de lista. */
 .sa-spec b {
   display: inline-flex;
-  flex: none;
-  color: var(--lit);
-  transform: translateY(0.15em);
+  color: var(--ornament);
 }
 
 @media (min-width: 48rem) {
   .sa-spec {
     grid-template-columns: repeat(3, 1fr);
-    border-bottom: 1px solid var(--line);
   }
 
   .sa-spec li {
-    padding: 1.35rem 1.75rem 1.35rem 0;
-    border-bottom: 0;
+    justify-content: center;
+    border-block-start: none;
+    border-inline-start: 1px solid var(--line-warm);
+    padding-inline: 1rem;
+  }
+
+  .sa-spec li:first-child {
+    border-inline-start: none;
   }
 }
 
-/* Abertura só de tipografia, para as páginas internas. */
-.sa-opening {
-  border-bottom: 1px solid var(--line);
-  padding-block: clamp(5rem, 11vw, 9.5rem) clamp(3.5rem, 7vw, 6rem);
+/* --------------------------------------------------------------- lapidação */
+
+/* Duas placas fora do esquadro: uma bandeja de joalheria não alinha nada. */
+.sa-cut-title {
+  max-width: 16ch;
+  text-indent: clamp(0rem, 7vw, 6rem);
 }
 
-.sa-opening-title {
-  margin: 0 0 1.75rem;
-  font-size: clamp(2.6rem, 1.4rem + 6.2vw, 6.2rem);
-  color: var(--paper);
-  max-width: 18ch;
+.sa-plates {
+  display: grid;
+  gap: clamp(1.25rem, 3vw, 2.5rem);
+  margin-top: clamp(3rem, 7vw, 5.5rem);
 }
 
-/* ------------------------------------------------------------------ joias */
+@media (min-width: 46rem) {
+  .sa-plates {
+    grid-template-columns: 1.08fr 0.92fr;
+    align-items: center;
+  }
+}
 
-/*
- * O chanfro: um canto cortado, não quatro. A lapidação aparece uma vez por
- * peça, como numa gema de verdade.
- */
 .sa-plate {
-  position: relative;
-  display: block;
-  overflow: clip;
+  margin: 0;
+  border-radius: 1.5rem;
+  overflow: hidden;
   background: var(--ink-raise);
-  clip-path: polygon(
-    0 0,
-    calc(100% - var(--bevel)) 0,
-    100% var(--bevel),
-    100% 100%,
-    0 100%
-  );
+  box-shadow: 0 40px 80px -50px rgb(0 0 0 / 0.9);
 }
 
 .sa-plate img {
@@ -686,297 +785,271 @@ body {
   object-fit: cover;
 }
 
-/* A aresta de luz que corre no corte. */
-.sa-plate::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: calc(var(--bevel) * 1.42);
-  height: 1px;
-  background: var(--line-lit);
-  transform-origin: right top;
-  transform: rotate(45deg);
-  pointer-events: none;
+@media (min-width: 46rem) {
+  .sa-plate[data-tilt='a'] {
+    aspect-ratio: 4 / 5;
+    transform: rotate(-1.6deg);
+  }
+
+  .sa-plate[data-tilt='b'] {
+    aspect-ratio: 3 / 4;
+    margin-block-start: clamp(2rem, 6vw, 5rem);
+    transform: rotate(1.8deg);
+  }
 }
 
-.sa-vitrine {
+@media (max-width: 45.999rem) {
+  .sa-plate {
+    aspect-ratio: 4 / 5;
+  }
+}
+
+/* ------------------------------------------------------------------ ficha */
+
+.sa-head {
   display: grid;
-  gap: clamp(1.5rem, 4vw, 3rem);
+  gap: clamp(1.5rem, 3vw, 2.5rem);
 }
 
-/*
- * A medida fica no próprio título: `ch` em um contêiner sem font-size seria
- * resolvido contra o corpo de 16px e estrangularia a coluna.
- */
-.sa-vitrine-head .sa-h2 {
-  max-width: 15ch;
-}
-
-/*
- * Numa joalheria a peça é o assunto, então as fotos levam a maior parte da
- * largura e o título abre a seção em vez de disputar espaço com elas. O
- * desencontro vertical evita a fileira de vitrine de shopping.
- */
-@media (min-width: 52rem) {
-  .sa-vitrine {
-    grid-template-columns: repeat(12, 1fr);
-    align-items: start;
-    column-gap: clamp(1.5rem, 3vw, 2.5rem);
-  }
-
-  .sa-vitrine-head {
-    grid-column: 1 / -1;
-  }
-
-  .sa-vitrine-a {
-    grid-column: 1 / span 7;
-  }
-
-  .sa-vitrine-b {
-    grid-column: 8 / span 5;
-    transform: translateY(clamp(2.5rem, 7vw, 6rem));
-  }
-
-  /* O deslocamento não ocupa espaço no fluxo: a seção devolve o que ele usa. */
-  .sa-vitrine {
-    padding-bottom: clamp(2.5rem, 7vw, 6rem);
-  }
-}
-
-/* As fotos da galeria nascem em 4:3. A segunda fecha em quadrado para dar
- * ritmo sem empurrar o assunto para fora do quadro. */
-.sa-vitrine-a .sa-plate {
-  aspect-ratio: 4 / 3;
-}
-
-.sa-vitrine-b .sa-plate {
-  aspect-ratio: 1 / 1;
-}
-
-.sa-figure {
-  margin: 0;
-}
-
-.sa-caption {
-  margin: 1.1rem 0 0;
-  font-size: 0.9rem;
-  line-height: 1.55;
-  color: var(--muted);
-  max-width: 54ch;
-  text-wrap: pretty;
-}
-
-/* Foto larga das páginas internas: nasce em 16:9, com o assunto centralizado.
- * No celular fecha só até 3:2, para não comer as bordas da composição. */
-.sa-wide .sa-plate {
-  aspect-ratio: 16 / 9;
-}
-
-@media (max-width: 40rem) {
-  .sa-wide .sa-plate {
-    aspect-ratio: 3 / 2;
-  }
-}
-
-/* -------------------------------------------------------- ficha de rigor */
-
-.sa-ledger-head {
-  display: grid;
-  gap: 1.5rem;
-  margin-bottom: clamp(2.5rem, 5vw, 4.5rem);
-}
-
-/* Só divide em duas quando existe texto de apoio. Sem ele, o título usa a
- * largura toda em vez de deixar metade da tela vazia. */
-@media (min-width: 60rem) {
-  .sa-ledger-head[data-split] {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+@media (min-width: 58rem) {
+  .sa-head[data-split] {
+    grid-template-columns: 1.15fr 0.85fr;
     align-items: end;
-    gap: clamp(2rem, 5vw, 5rem);
-  }
-
-  .sa-ledger-head:not([data-split]) .sa-h2 {
-    max-width: 22ch;
   }
 }
 
 .sa-ledger {
   display: grid;
   gap: 0;
-  border-top: 1px solid var(--line);
+  margin-top: clamp(3rem, 6vw, 4.5rem);
+}
+
+@media (min-width: 46rem) {
+  .sa-ledger {
+    grid-template-columns: repeat(2, 1fr);
+    column-gap: clamp(2rem, 5vw, 4.5rem);
+  }
 }
 
 .sa-ledger-item {
   display: grid;
-  gap: 0.75rem;
-  padding: clamp(1.75rem, 3.5vw, 2.75rem) 0;
-  border-bottom: 1px solid var(--line);
-}
-
-@media (min-width: 46rem) {
-  .sa-ledger-item {
-    grid-template-columns: 5rem minmax(0, 1fr);
-    gap: clamp(1.5rem, 4vw, 3rem);
-    align-items: start;
-  }
-}
-
-@media (min-width: 72rem) {
-  .sa-ledger {
-    grid-template-columns: 1fr 1fr;
-    column-gap: clamp(3rem, 6vw, 5.5rem);
-  }
-
-  /* A segunda coluna não repete o fio de topo da primeira. */
-  .sa-ledger-item:nth-child(-n + 2) {
-    border-top: 0;
-  }
+  grid-template-columns: auto 1fr;
+  gap: 1.25rem;
+  padding-block: clamp(1.75rem, 3vw, 2.5rem);
+  border-block-start: 1px solid var(--line-warm);
 }
 
 .sa-ledger-n {
-  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-display), ui-serif, Georgia, serif;
   font-size: clamp(1.6rem, 1.2rem + 1.4vw, 2.4rem);
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -0.04em;
-  color: var(--lit);
-  font-variant-numeric: tabular-nums;
+  line-height: 0.9;
+  color: var(--ornament);
 }
 
 .sa-ledger-item p {
-  margin: 0;
-  max-width: 52ch;
-  font-size: 1rem;
+  margin: 0.7rem 0 0;
+  font-size: 0.95rem;
   line-height: 1.7;
-  color: var(--muted);
-  text-wrap: pretty;
+  color: var(--sub);
 }
 
-/* ------------------------------------------------------- sala de recepção */
+.sa-ledger-item a {
+  /* O título é o link. A área de toque cresce sem mexer na tipografia: o
+   * respiro entra por dentro e a margem negativa devolve o espaço ao texto. */
+  display: inline-block;
+  padding-block: 0.8rem;
+  margin-block: -0.8rem;
+  color: inherit;
+  text-decoration: none;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0 1px;
+  background-repeat: no-repeat;
+  /* O fio acompanha a linha de base do texto, não a borda do respiro. */
+  background-position: 0 calc(100% - 0.8rem);
+  transition: background-size 0.3s ease;
+}
+
+.sa-ledger-item a:hover {
+  background-size: 100% 1px;
+}
+
+/* -------------------------------------------------------------- catálogo */
 
 /*
- * A única superfície clara do site. Ela existe onde o texto convida a entrar
- * na loja: a luz do interior, não uma alternância decorativa de faixas.
+ * As categorias em corpo de cartaz. Cada linha é uma peça: o nome ocupa a
+ * largura, a descrição fica na coluna oposta, e o fio de ouro separa as
+ * gavetas do mostruário.
  */
-.sa-light {
-  background: var(--surface);
-  color: var(--ink);
-  --muted: var(--muted-dark);
-  --line: rgb(12 10 26 / 0.14);
-  --lit: var(--accent);
-  --focus: var(--accent);
+.sa-catalog {
+  margin: clamp(3rem, 6vw, 5rem) 0 0;
+  padding: 0;
+  list-style: none;
 }
 
-.sa-light .sa-h2,
-.sa-light .sa-h3 {
-  color: var(--ink);
-}
-
-.sa-room {
+.sa-catalog li {
   display: grid;
-  gap: clamp(2.5rem, 5vw, 4.5rem);
+  gap: 1rem;
+  padding-block: clamp(2rem, 4vw, 3.25rem);
+  border-block-start: 1px solid var(--line-warm);
 }
 
-@media (min-width: 60rem) {
-  .sa-room {
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-    align-items: start;
-    gap: clamp(3rem, 7vw, 6rem);
+@media (min-width: 58rem) {
+  .sa-catalog li {
+    grid-template-columns: 1.25fr 0.75fr;
+    align-items: baseline;
+    gap: clamp(2rem, 5vw, 4rem);
+  }
+
+  .sa-catalog li:nth-child(even) {
+    grid-template-columns: 0.75fr 1.25fr;
+  }
+
+  .sa-catalog li:nth-child(even) .sa-catalog-name {
+    order: 2;
+    text-align: right;
   }
 }
 
-.sa-facts {
+.sa-catalog-name {
+  font-size: clamp(2rem, 1rem + 4.6vw, 4.5rem);
+}
+
+.sa-catalog p {
+  margin: 0;
+  font-size: 0.98rem;
+  line-height: 1.7;
+  color: var(--sub);
+}
+
+/* -------------------------------------------------------- sala de recepção */
+
+.sa-room {
   display: grid;
-  border-top: 1px solid var(--line);
+  gap: clamp(2.5rem, 5vw, 4rem);
+}
+
+@media (min-width: 58rem) {
+  .sa-room {
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+  }
+}
+
+.sa-room .sa-body {
+  margin-top: 1.5rem;
+}
+
+/*
+ * A ficha vira objeto: um painel de papel sobre o marfim, com o mesmo
+ * chanfro das placas. É a mudança de plano que o branco puro sozinho não
+ * conseguia registrar — e é o que uma vitrine faz com o que precisa ser lido.
+ */
+.sa-facts {
+  margin: 0;
+  display: grid;
+  padding: clamp(1.25rem, 3vw, 2.25rem);
+  border: 1px solid var(--rule);
+  border-radius: 1.5rem;
+  background: var(--paper);
+  box-shadow: 0 34px 64px -48px rgb(18 16 28 / 0.55);
 }
 
 .sa-facts div {
   display: grid;
-  gap: 0.3rem;
-  padding: 1.1rem 0;
-  border-bottom: 1px solid var(--line);
+  gap: 0.35rem;
+  padding-block: 1.15rem;
+  border-block-start: 1px solid var(--line-warm);
+}
+
+.sa-facts div:first-child {
+  padding-block-start: 0;
+  border-block-start: none;
+}
+
+.sa-facts div:last-child {
+  padding-block-end: 0;
 }
 
 @media (min-width: 30rem) {
   .sa-facts div {
-    grid-template-columns: 11rem minmax(0, 1fr);
-    gap: 1rem;
+    grid-template-columns: 10.5rem 1fr;
+    gap: 1.5rem;
     align-items: baseline;
   }
 }
 
 .sa-facts dt {
-  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
   font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
+  font-weight: 600;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--sub);
 }
 
 .sa-facts dd {
   margin: 0;
-  font-size: 1.02rem;
-  line-height: 1.5;
-  color: inherit;
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+  font-size: 1.05rem;
+  line-height: 1.35;
+  color: var(--fg);
 }
 
-/* ------------------------------------------------------------- percurso */
+/* -------------------------------------------------------------- percurso */
 
 .sa-steps {
-  display: grid;
-  gap: 0;
-  counter-reset: sa-step;
+  margin: clamp(3rem, 6vw, 4.5rem) 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
 }
 
 .sa-step {
-  position: relative;
   display: grid;
-  gap: 0.75rem;
-  padding: clamp(1.75rem, 3.5vw, 2.5rem) 0;
-  border-top: 1px solid var(--line);
+  grid-template-columns: auto 1fr;
+  gap: clamp(1.25rem, 3vw, 2.5rem);
+  padding-block: clamp(1.75rem, 3vw, 2.5rem);
+  border-block-start: 1px solid var(--line-warm);
 }
 
 .sa-step:last-child {
-  border-bottom: 1px solid var(--line);
+  border-block-end: 1px solid var(--line-warm);
 }
 
-@media (min-width: 46rem) {
-  .sa-step {
-    grid-template-columns: 4.5rem minmax(0, 1fr);
-    gap: clamp(1.5rem, 4vw, 3rem);
+.sa-step-n {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+  font-size: clamp(2.2rem, 1.4rem + 2.6vw, 4rem);
+  line-height: 0.82;
+  color: var(--ornament);
+}
+
+.sa-step p {
+  margin: 0.7rem 0 0;
+  max-width: 54ch;
+  font-size: 0.98rem;
+  line-height: 1.7;
+  color: var(--sub);
+}
+
+/* --------------------------------------------------------------------- faq */
+
+.sa-faq-grid {
+  display: grid;
+  gap: clamp(2rem, 4vw, 3.5rem);
+}
+
+@media (min-width: 58rem) {
+  .sa-faq-grid {
+    grid-template-columns: 0.85fr 1.15fr;
     align-items: start;
   }
 }
 
-.sa-step-n {
-  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
-  font-size: clamp(1.25rem, 1.1rem + 0.6vw, 1.6rem);
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -0.03em;
-  color: var(--lit);
-  font-variant-numeric: tabular-nums;
-}
-
-.sa-step p {
-  margin: 0;
-  max-width: 56ch;
-  line-height: 1.7;
-  color: var(--muted);
-  text-wrap: pretty;
-}
-
-/* ------------------------------------------------------------------- faq */
-
-.sa-faq {
-  display: grid;
-  border-top: 1px solid var(--line);
-}
-
 .sa-faq details {
-  border-bottom: 1px solid var(--line);
+  border-block-start: 1px solid var(--line-warm);
+}
+
+.sa-faq details:last-child {
+  border-block-end: 1px solid var(--line-warm);
 }
 
 .sa-faq summary {
@@ -985,67 +1058,60 @@ body {
   justify-content: space-between;
   gap: 1.5rem;
   min-height: 3.5rem;
-  padding: 1.25rem 0;
-  cursor: pointer;
-  list-style: none;
-  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
-  font-size: clamp(1rem, 0.95rem + 0.3vw, 1.2rem);
-  font-weight: 700;
+  padding-block: 1.1rem;
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+  font-size: clamp(1.05rem, 1rem + 0.35vw, 1.3rem);
   line-height: 1.3;
-  color: var(--paper);
-  text-wrap: balance;
+  list-style: none;
+  cursor: pointer;
 }
 
 .sa-faq summary::-webkit-details-marker {
   display: none;
 }
 
-/* O sinal é a própria faceta: fecha em cruz, abre em traço. */
-.sa-faq summary span {
+.sa-faq summary:hover {
+  color: var(--ornament);
+}
+
+/* O sinal: um traço que vira cruz. Decorativo, o estado vem do `<details>`. */
+.sa-faq summary i {
   position: relative;
   flex: none;
   width: 1rem;
   height: 1rem;
+  color: var(--ornament);
 }
 
-.sa-faq summary span::before,
-.sa-faq summary span::after {
+.sa-faq summary i::before,
+.sa-faq summary i::after {
   content: '';
   position: absolute;
-  inset: 50% 0 auto;
-  height: 1.5px;
-  background: var(--lit);
-  transition: transform 240ms ease;
+  inset-block-start: 50%;
+  inset-inline-start: 0;
+  width: 100%;
+  height: 1px;
+  background: currentColor;
+  transition: transform 0.25s ease;
 }
 
-.sa-faq summary span::after {
+.sa-faq summary i::after {
   transform: rotate(90deg);
 }
 
-.sa-faq details[open] summary span::after {
+.sa-faq details[open] summary i::after {
   transform: rotate(0deg);
 }
 
 .sa-faq details p {
   margin: 0 0 1.5rem;
   max-width: 62ch;
+  font-size: 0.96rem;
   line-height: 1.72;
-  color: var(--muted);
-  text-wrap: pretty;
+  color: var(--sub);
 }
 
-/* A coluna do título precisa caber a palavra inteira: Syne é largo e
- * "Perguntas" não entra numa faixa estreita sem partir ao meio. */
-@media (min-width: 60rem) {
-  .sa-faq-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr);
-    gap: clamp(2.5rem, 6vw, 5rem);
-    align-items: start;
-  }
-}
-
-/* ------------------------------------------------------------ localização */
+/* ---------------------------------------------------------- onde estamos */
 
 .sa-where {
   display: grid;
@@ -1054,46 +1120,18 @@ body {
 
 @media (min-width: 58rem) {
   .sa-where {
-    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    grid-template-columns: 0.8fr 1.2fr;
     align-items: center;
-    gap: clamp(2.5rem, 6vw, 5rem);
   }
 }
 
-.sa-map {
-  position: relative;
-  aspect-ratio: 16 / 10;
-  overflow: clip;
-  border: 1px solid var(--line);
-  background: var(--ink-raise);
-  clip-path: polygon(
-    0 0,
-    calc(100% - var(--bevel)) 0,
-    100% var(--bevel),
-    100% 100%,
-    0 100%
-  );
-}
-
-.sa-map iframe {
-  width: 100%;
-  height: 100%;
-  border: 0;
-  /*
-   * A pedra também cobre o mapa: um retângulo branco quebraria o campo. Em
-   * cinza invertido as ruas ficam claras sobre fundo escuro, que é a receita
-   * usual de mapa noturno. Um hue-rotate depois do grayscale não teria efeito.
-   */
-  filter: grayscale(1) invert(0.92) contrast(0.9);
-}
-
 .sa-address {
+  margin: 1.5rem 0 0;
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+  font-size: clamp(1.2rem, 1.05rem + 0.6vw, 1.55rem);
   font-style: normal;
-  font-size: clamp(1.1rem, 1rem + 0.5vw, 1.45rem);
-  line-height: 1.45;
-  color: var(--muted);
-  margin: 1.5rem 0;
-  max-width: 22ch;
+  line-height: 1.35;
+  text-transform: capitalize;
 }
 
 .sa-route {
@@ -1101,186 +1139,159 @@ body {
   align-items: center;
   gap: 0.6rem;
   min-height: 2.75rem;
-  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.8rem;
-  font-weight: 700;
+  margin-top: 1.5rem;
+  font-size: 0.78rem;
+  font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--lit);
+  color: var(--fg);
   text-decoration: none;
-  border-bottom: 1px solid var(--line-lit);
+  border-block-end: 1px solid var(--line-warm);
 }
 
 .sa-route:hover {
-  color: var(--paper);
-  border-bottom-color: var(--paper);
+  color: var(--ornament);
+  border-color: currentColor;
+}
+
+.sa-map {
+  border-radius: 1.5rem;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--ivory);
+  aspect-ratio: 16 / 10;
+}
+
+.sa-map iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  /* O mapa do Google chega em branco puro; aqui ele entra no tom da sala. */
+  filter: saturate(0.72) contrast(1.02);
 }
 
 /* ------------------------------------------------------------ fechamento */
 
 .sa-close {
-  position: relative;
-  background: var(--ink-deep);
-  border-top: 1px solid var(--line);
   text-align: center;
-  overflow: clip;
-}
-
-/* O clarão da gema ao fundo, parado: luz, não animação. */
-.sa-close::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: -40%;
-  width: min(48rem, 120%);
-  aspect-ratio: 1;
-  transform: translateX(-50%);
-  background: radial-gradient(
-    circle,
-    color-mix(in oklab, var(--accent) 55%, transparent) 0%,
-    transparent 62%
-  );
-  pointer-events: none;
-}
-
-.sa-close-inner {
-  position: relative;
-  display: grid;
-  justify-items: center;
-  gap: 1.5rem;
 }
 
 .sa-close .sa-body {
-  max-width: 48ch;
-  text-align: center;
+  margin: clamp(1.5rem, 3vw, 2rem) auto 0;
+  max-width: 46ch;
 }
 
-/* --------------------------------------------------------------- rodapé */
+.sa-close .sa-action {
+  margin-top: clamp(2rem, 4vw, 2.75rem);
+}
+
+/* ---------------------------------------------------------------- rodapé */
 
 .sa-footer {
   background: var(--ink-deep);
-  border-top: 1px solid var(--line);
-  padding-block: clamp(3rem, 6vw, 4.5rem) 2rem;
+  color: var(--cream);
+  padding-block: clamp(3.5rem, 7vw, 5.5rem) clamp(2rem, 4vw, 3rem);
+}
+
+.sa-footer .sa-wordmark {
+  font-size: 1.3rem;
 }
 
 .sa-footer-top {
   display: grid;
-  gap: 2rem;
-  padding-bottom: 2.5rem;
-  border-bottom: 1px solid var(--line);
+  gap: 2.5rem;
 }
 
 @media (min-width: 48rem) {
   .sa-footer-top {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: 1.2fr 0.8fr;
     align-items: start;
-    gap: 3rem;
   }
 }
 
 .sa-footer-tagline {
-  margin: 1.1rem 0 0;
+  margin: 1.15rem 0 0;
   max-width: 34ch;
-  font-size: 0.95rem;
-  line-height: 1.6;
-  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: var(--support-dark);
 }
 
 .sa-footer-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 1.75rem;
+  display: grid;
+  gap: 0.15rem;
+  justify-items: start;
+}
+
+@media (min-width: 48rem) {
+  .sa-footer-links {
+    justify-items: end;
+  }
 }
 
 .sa-footer-links a {
   display: inline-flex;
   align-items: center;
   min-height: 2.75rem;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--support-dark);
   text-decoration: none;
 }
 
 .sa-footer-links a:hover {
-  color: var(--paper);
+  color: var(--gold);
 }
 
 .sa-footer-bottom {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 0.75rem 2rem;
-  padding-top: 1.75rem;
+  margin-top: clamp(2rem, 3.5vw, 2.75rem);
+  padding-top: 1.5rem;
+  border-block-start: 1px solid rgb(244 241 234 / 0.1);
   font-size: 0.78rem;
-  color: var(--muted);
+  color: var(--support-dark);
 }
 
-.sa-footer-bottom a {
-  color: var(--muted);
-  text-decoration: none;
-  border-bottom: 1px solid transparent;
-}
+/* ----------------------------------------------------------- whatsapp fixo */
 
-.sa-footer-bottom a:hover {
-  color: var(--paper);
-  border-bottom-color: var(--line-lit);
-}
-
-/* --------------------------------------------------------- whatsapp fixo */
-
+/* O ícone é escuro: branco sobre este verde reprova AA. */
 .sa-wa {
   position: fixed;
-  right: clamp(1rem, 3vw, 1.75rem);
-  bottom: clamp(1rem, 3vw, 1.75rem);
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  inset-block-end: clamp(1rem, 3vw, 1.75rem);
+  inset-inline-end: clamp(1rem, 3vw, 1.75rem);
+  z-index: 40;
+  display: grid;
+  place-items: center;
   width: 3.5rem;
   height: 3.5rem;
-  border-radius: 50%;
+  border-radius: 999px;
   background: #25d366;
-  /* Ícone escuro: branco sobre este verde dá 1.98:1 e reprova; ink dá 9.86:1. */
-  color: #0c0a1a;
-  box-shadow: 0 12px 34px -12px rgb(0 0 0 / 0.7);
-  transition: transform 220ms ease;
-  /* Respeita a área segura dos aparelhos com barra inferior. */
-  margin-bottom: env(safe-area-inset-bottom, 0);
+  color: #0b2b16;
+  box-shadow: 0 16px 34px -18px rgb(11 10 20 / 0.7);
+  transition: transform 0.25s ease;
 }
 
 .sa-wa:hover {
   transform: translateY(-2px);
 }
 
-/*
- * Acima do menu de celular a mesma ação já está fixa na barra de navegação.
- * Dois botões de WhatsApp na mesma tela competem em vez de somar — vale
- * também quando o menu aberto já mostra a ação.
- */
-@media (min-width: 62rem) {
-  .sa-wa {
-    display: none;
-  }
-}
-
 body:has(.sa-menu[open]) .sa-wa {
-  display: none;
+  opacity: 0;
+  pointer-events: none;
 }
 
-/* ------------------------------------------------------ atribuição EIXU */
+/* ------------------------------------------------------- atribuição EIXU */
 
 .site-attribution {
-  background: var(--ink-deep);
-  border-top: 1px solid var(--line);
+  background: var(--ink-deep, #070610);
+  padding-block: 0 clamp(1.5rem, 3vw, 2rem);
 }
 
 .site-attribution-inner {
-  max-width: var(--shell);
+  width: min(100% - 2.5rem, 74rem);
   margin-inline: auto;
-  padding: 1.25rem var(--gutter);
   display: flex;
   justify-content: center;
 }
@@ -1290,35 +1301,82 @@ body:has(.sa-menu[open]) .sa-wa {
   align-items: center;
   gap: 0.75rem;
   min-height: 2.75rem;
-  color: var(--muted);
+  color: rgb(173 167 188 / 0.8);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
   text-decoration: none;
-  font-size: 0.75rem;
-  letter-spacing: 0.04em;
 }
 
 .site-attribution-link:hover {
-  color: var(--paper);
+  color: #f4f1ea;
 }
 
 .site-attribution-brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.4rem;
 }
 
 .site-attribution-mark {
-  width: 1.15rem;
-  height: 1.15rem;
+  width: 20px;
+  height: 20px;
 }
 
 .site-attribution-wordmark {
-  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
-  font-weight: 800;
-  letter-spacing: 0.18em;
+  font-weight: 700;
+  letter-spacing: 0.2em;
   font-size: 0.72rem;
 }
 
-/* ------------------------------------------------------ movimento reduzido */
+/* ------------------------------------------------------------- movimento */
+
+/*
+ * Uma entrada por seção, ancorada na própria rolagem: sem observador em
+ * JavaScript e sem nada que continue se mexendo depois de chegar. Onde o
+ * recurso não existe, a página simplesmente já está visível.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    /*
+     * A faixa termina ainda dentro da entrada: qualquer seção que apareça no
+     * campo de visão já está opaca. O movimento acompanha a rolagem em vez de
+     * disputar com a leitura.
+     */
+    .sa-reveal {
+      animation: sa-rise both;
+      animation-timeline: view();
+      animation-range: entry 4% entry 72%;
+    }
+  }
+
+  .sa-hero-inner > * {
+    animation: sa-rise 0.9s cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+  }
+
+  .sa-hero-inner > *:nth-child(2) {
+    animation-delay: 0.08s;
+  }
+
+  .sa-hero-inner > *:nth-child(3) {
+    animation-delay: 0.16s;
+  }
+
+  .sa-hero-inner > *:nth-child(4) {
+    animation-delay: 0.24s;
+  }
+}
+
+@keyframes sa-rise {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   html {
@@ -1328,10 +1386,7 @@ body:has(.sa-menu[open]) .sa-wa {
   .sa *,
   .sa *::before,
   .sa *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
+    animation: none !important;
     transition-duration: 0.01ms !important;
   }
-
-  /* O desencontro da vitrine é composição, não animação: permanece. */
 }
