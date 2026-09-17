@@ -3,6 +3,7 @@
 // acrescentaria um salto de otimização. O enquadramento é feito em CSS, a
 // abertura carrega com prioridade e o resto é lazy.
 import { mapsDirectionsUrl, mapsEmbedUrl } from '@/lib/tenant-contacts';
+import { Chars, Words, step } from './motion';
 import { Facet, Seal } from './nav';
 import { SiteLink } from './site-link';
 import { link, links, list, ordinal, str, strings, type Link } from './props';
@@ -13,7 +14,7 @@ type Props = Record<string, unknown>;
 function Eyebrow({ children }: { children: string }) {
   if (!children) return null;
   return (
-    <p className="sa-eyebrow">
+    <p className="sa-eyebrow sa-in">
       <i aria-hidden="true">(</i>
       {children}
       <i aria-hidden="true">)</i>
@@ -31,21 +32,51 @@ function Action({ to, kind }: { to: Link; kind: 'solid' | 'ghost' }) {
 }
 
 /**
+ * O título de capítulo. A peça que a rolagem levanta palavra a palavra — é o
+ * gesto que abre cada seção, e por isso mora num lugar só.
+ */
+function Title({
+  text,
+  scale,
+  className,
+}: {
+  text: string;
+  scale?: 'tight';
+  className?: string;
+}) {
+  if (!text) return null;
+  return (
+    <h2
+      className={`sa-display sa-h2 sa-cut${className ? ` ${className}` : ''}`}
+      data-scale={scale}
+    >
+      <Words text={text} />
+    </h2>
+  );
+}
+
+/**
  * Abertura da home. O nome da casa ocupa a largura da página em capitular
  * romana, a luz da gema abre atrás dele e a peça aparece logo abaixo, sob o
  * arco — a ordem com que alguém chega a uma vitrine: o nome, depois a joia.
  */
 export function Hero({ props }: { props: Props }) {
   const image = str(props, 'image');
+  const headline = str(props, 'headline');
   const cta = link(props, 'cta');
   const secondary = link(props, 'secondary');
   const bullets = strings(props, 'bullets');
   return (
     <section className="sa-section sa-hero">
-      <div className="sa-bloom" aria-hidden="true" />
+      <div className="sa-bloom sa-bloom-drift" aria-hidden="true" />
       <div className="sa-shell sa-hero-inner">
         <Eyebrow>{str(props, 'eyebrow')}</Eyebrow>
-        <h1 className="sa-display sa-h1">{str(props, 'headline')}</h1>
+        <h1
+          className="sa-display sa-h1 sa-cut sa-cut-open"
+          aria-label={headline}
+        >
+          <Chars text={headline} />
+        </h1>
         <p className="sa-lede">{str(props, 'subtext')}</p>
         <div className="sa-hero-actions">
           {cta ? <Action to={cta} kind="solid" /> : null}
@@ -53,8 +84,9 @@ export function Hero({ props }: { props: Props }) {
         </div>
       </div>
       {image ? (
-        <div className="sa-arc">
+        <div className="sa-arc sa-wipe">
           <img
+            className="sa-drift"
             src={image}
             alt={str(props, 'imageAlt')}
             fetchPriority="high"
@@ -65,8 +97,8 @@ export function Hero({ props }: { props: Props }) {
       {bullets.length ? (
         <div className="sa-shell">
           <ul className="sa-spec">
-            {bullets.map((item) => (
-              <li key={item}>
+            {bullets.map((item, index) => (
+              <li className="sa-in" key={item} style={step(index)}>
                 <b aria-hidden="true">
                   <Facet size={11} />
                 </b>
@@ -87,13 +119,19 @@ export function Hero({ props }: { props: Props }) {
  */
 export function Opening({ props }: { props: Props }) {
   const cta = link(props, 'cta');
+  const headline = str(props, 'headline');
   const align = str(props, 'layout') === 'center' ? 'center' : 'start';
   return (
     <section className="sa-section sa-opening" data-align={align}>
-      <div className="sa-bloom" aria-hidden="true" />
+      <div className="sa-bloom sa-bloom-drift" aria-hidden="true" />
       <div className="sa-shell">
         <Eyebrow>{str(props, 'eyebrow')}</Eyebrow>
-        <h1 className="sa-display sa-h1">{str(props, 'headline')}</h1>
+        <h1
+          className="sa-display sa-h1 sa-cut sa-cut-open"
+          aria-label={headline}
+        >
+          <Chars text={headline} />
+        </h1>
         <p className="sa-lede">{str(props, 'subtext')}</p>
         {cta ? (
           <div className="sa-hero-actions">
@@ -114,14 +152,15 @@ export function Vitrine({ props }: { props: Props }) {
   const images = list(props, 'images');
   const [first, second] = images;
   return (
-    <section className="sa-section sa-reveal" data-tone="ink">
+    <section className="sa-section" data-tone="ink">
       <div className="sa-shell">
         {/* Sem rótulo inventado: o título já nomeia a seção. */}
-        <h2 className="sa-display sa-h2 sa-cut-title">{str(props, 'title')}</h2>
+        <Title text={str(props, 'title')} className="sa-cut-title" />
         <div className="sa-plates">
           {first ? (
-            <figure className="sa-plate" data-tilt="a">
+            <figure className="sa-plate sa-wipe" data-tilt="a">
               <img
+                className="sa-drift"
                 src={str(first, 'src')}
                 alt={str(first, 'alt')}
                 loading="lazy"
@@ -130,8 +169,9 @@ export function Vitrine({ props }: { props: Props }) {
             </figure>
           ) : null}
           {second ? (
-            <figure className="sa-plate" data-tilt="b">
+            <figure className="sa-plate sa-wipe" data-tilt="b">
               <img
+                className="sa-drift"
                 src={str(second, 'src')}
                 alt={str(second, 'alt')}
                 loading="lazy"
@@ -153,10 +193,11 @@ export function Vitrine({ props }: { props: Props }) {
 export function ArcPhoto({ props }: { props: Props }) {
   const caption = str(props, 'caption');
   return (
-    <section className="sa-section sa-reveal">
+    <section className="sa-section">
       <figure className="sa-arc-figure">
-        <div className="sa-arc">
+        <div className="sa-arc sa-wipe">
           <img
+            className="sa-drift"
             src={str(props, 'src')}
             alt={str(props, 'alt')}
             loading="lazy"
@@ -164,7 +205,7 @@ export function ArcPhoto({ props }: { props: Props }) {
           />
         </div>
         {caption ? (
-          <figcaption className="sa-shell sa-caption">
+          <figcaption className="sa-shell sa-caption sa-in">
             <span>{caption}</span>
           </figcaption>
         ) : null}
@@ -181,21 +222,27 @@ export function Ledger({ props }: { props: Props }) {
   const items = list(props, 'items');
   const lead = str(props, 'lead');
   return (
-    <section className="sa-section sa-reveal">
+    <section className="sa-section">
       <div className="sa-shell">
         <div className="sa-head" data-split={lead ? '' : undefined}>
           <div>
             <Eyebrow>{str(props, 'eyebrow')}</Eyebrow>
-            <h2 className="sa-display sa-h2">{str(props, 'title')}</h2>
+            <Title text={str(props, 'title')} />
           </div>
-          {lead ? <p className="sa-body">{lead}</p> : null}
+          {lead ? <p className="sa-body sa-kindle">{lead}</p> : null}
         </div>
         <div className="sa-ledger">
           {items.map((item, index) => {
             const href = str(item, 'href');
             const title = str(item, 'title');
             return (
-              <article className="sa-ledger-item" key={title}>
+              <article
+                className="sa-ledger-item sa-drawer"
+                key={title}
+                /* Em duas colunas os pares entram juntos: o escalonamento é
+                 * o da coluna, não o da lista inteira. */
+                style={step(index % 2)}
+              >
                 <span className="sa-ledger-n" aria-hidden="true">
                   {ordinal(index)}
                 </span>
@@ -221,26 +268,29 @@ export function Ledger({ props }: { props: Props }) {
 /**
  * O catálogo. Cada categoria ocupa uma gaveta inteira do mostruário, com o
  * nome em corpo de cartaz e a descrição na coluna oposta — o gesto que
- * separa uma vitrine de uma lista de produtos.
+ * separa uma vitrine de uma lista de produtos. Na rolagem a gaveta abre: o
+ * fio de ouro corre pela largura e o nome se levanta palavra a palavra.
  */
 export function Catalog({ props }: { props: Props }) {
   const items = list(props, 'items');
   return (
-    <section className="sa-section sa-reveal" data-tone="ink">
+    <section className="sa-section" data-tone="ink">
       <div className="sa-shell">
         <div className="sa-head">
           <div>
             <Eyebrow>{str(props, 'eyebrow')}</Eyebrow>
-            <h2 className="sa-display sa-h2">{str(props, 'title')}</h2>
+            <Title text={str(props, 'title')} />
           </div>
         </div>
         <ul className="sa-catalog">
+          {/* Gavetas altas: cada uma cruza a tela sozinha e já entra na sua
+           * vez. Escalonar por índice só faria a última esperar. */}
           {items.map((item) => (
-            <li key={str(item, 'title')}>
-              <h3 className="sa-display sa-catalog-name">
-                {str(item, 'title')}
+            <li className="sa-thread" key={str(item, 'title')}>
+              <h3 className="sa-display sa-catalog-name sa-cut">
+                <Words text={str(item, 'title')} />
               </h3>
-              <p>{str(item, 'body')}</p>
+              <p className="sa-in">{str(item, 'body')}</p>
             </li>
           ))}
         </ul>
@@ -256,14 +306,16 @@ export function Catalog({ props }: { props: Props }) {
 export function Room({ props }: { props: Props }) {
   const facts = list(props, 'facts');
   return (
-    <section className="sa-section sa-reveal">
+    <section className="sa-section">
       <div className="sa-shell sa-room">
         <div>
           <Eyebrow>{str(props, 'eyebrow')}</Eyebrow>
-          <h2 className="sa-display sa-h2">{str(props, 'title')}</h2>
-          <p className="sa-body">{str(props, 'body')}</p>
+          <Title text={str(props, 'title')} />
+          <p className="sa-body sa-in">{str(props, 'body')}</p>
         </div>
-        <dl className="sa-facts">
+        {/* O painel sobe inteiro: é um objeto sobre a mesa, não uma lista
+         * que se monta sozinha à frente de quem lê. */}
+        <dl className="sa-facts sa-in">
           {facts.map((fact) => (
             <div key={str(fact, 'label')}>
               <dt>{str(fact, 'label')}</dt>
@@ -280,23 +332,23 @@ export function Room({ props }: { props: Props }) {
 export function Steps({ props }: { props: Props }) {
   const steps = list(props, 'steps');
   return (
-    <section className="sa-section sa-reveal" data-tone="ink">
+    <section className="sa-section" data-tone="ink">
       <div className="sa-shell">
         <div className="sa-head">
           <div>
             <Eyebrow>{str(props, 'eyebrow')}</Eyebrow>
-            <h2 className="sa-display sa-h2">{str(props, 'title')}</h2>
+            <Title text={str(props, 'title')} />
           </div>
         </div>
         <ol className="sa-steps">
-          {steps.map((step, index) => (
-            <li className="sa-step" key={str(step, 'title')}>
+          {steps.map((item, index) => (
+            <li className="sa-step sa-drawer" key={str(item, 'title')}>
               <span className="sa-step-n" aria-hidden="true">
                 {ordinal(index)}
               </span>
               <div>
-                <h3 className="sa-h3">{str(step, 'title')}</h3>
-                <p>{str(step, 'body')}</p>
+                <h3 className="sa-h3">{str(item, 'title')}</h3>
+                <p>{str(item, 'body')}</p>
               </div>
             </li>
           ))}
@@ -310,16 +362,18 @@ export function Steps({ props }: { props: Props }) {
 export function Faq({ props }: { props: Props }) {
   const items = list(props, 'items');
   return (
-    <section className="sa-section sa-reveal">
+    <section className="sa-section">
       <div className="sa-shell sa-faq-grid">
         <div>
-          <h2 className="sa-display sa-h2" data-scale="tight">
-            {str(props, 'title')}
-          </h2>
+          <Title text={str(props, 'title')} scale="tight" />
         </div>
         <div className="sa-faq">
-          {items.map((item) => (
-            <details key={str(item, 'q')}>
+          {items.map((item, index) => (
+            <details
+              className="sa-drawer"
+              key={str(item, 'q')}
+              style={step(index)}
+            >
               <summary>
                 {str(item, 'q')}
                 <i aria-hidden="true" />
@@ -336,12 +390,12 @@ export function Faq({ props }: { props: Props }) {
 /** Onde estamos: endereço do cadastro, mapa e rota. */
 export function Where({ address }: { address: string }) {
   return (
-    <section className="sa-section sa-reveal" id="onde-estamos">
+    <section className="sa-section" id="onde-estamos">
       <div className="sa-shell sa-where">
         <div>
-          <h2 className="sa-display sa-h2">Onde estamos</h2>
-          <address className="sa-address">{address}</address>
-          <div>
+          <Title text="Onde estamos" />
+          <address className="sa-address sa-in">{address}</address>
+          <div className="sa-in">
             <a
               className="sa-route"
               href={mapsDirectionsUrl(address)}
@@ -353,7 +407,7 @@ export function Where({ address }: { address: string }) {
             </a>
           </div>
         </div>
-        <div className="sa-map">
+        <div className="sa-map sa-in">
           <iframe
             title={`Mapa de ${address}`}
             loading="lazy"
@@ -371,11 +425,15 @@ export function Close({ props }: { props: Props }) {
   const cta = link(props, 'cta');
   return (
     <section className="sa-section sa-close" data-tone="ink">
-      <div className="sa-bloom" aria-hidden="true" />
+      <div className="sa-bloom sa-bloom-rise" aria-hidden="true" />
       <div className="sa-shell">
-        <h2 className="sa-display sa-h2">{str(props, 'title')}</h2>
-        <p className="sa-body">{str(props, 'body')}</p>
-        {cta ? <Action to={cta} kind="solid" /> : null}
+        <Title text={str(props, 'title')} />
+        <p className="sa-body sa-in">{str(props, 'body')}</p>
+        {cta ? (
+          <div className="sa-in">
+            <Action to={cta} kind="solid" />
+          </div>
+        ) : null}
       </div>
     </section>
   );
