@@ -2131,7 +2131,10 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           );
         }
 
-        const profile = completeDesignProfile(input);
+        // A semente é a identidade estável do tenant: o slug pode ser trocado
+        // e definedAt muda a cada regeração, o que faria o site mudar de forma
+        // sem pedido.
+        const profile = completeDesignProfile(input, undefined, tenant.id);
         if (
           context.phase === 'briefing' &&
           (!input.brief.imageScenes ||

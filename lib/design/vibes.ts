@@ -15,6 +15,12 @@ import {
   structuresDirection,
   type SiteStructure,
 } from './structures';
+import {
+  commercialFooter,
+  commercialSequence,
+  resolveCommercialVariants,
+  type CommercialVariantKeys,
+} from './commercial-variants';
 
 /**
  * Vibe do site, escolhida pelo operador no cadastro. Ela não substitui a
@@ -284,7 +290,12 @@ export type VibeGrammar = {
 };
 
 type GrammarProfile =
-  | { version?: number; structure?: unknown; heroComposition?: string }
+  | {
+      version?: number;
+      structure?: unknown;
+      heroComposition?: string;
+      commercialVariants?: Partial<CommercialVariantKeys> | null;
+    }
   | undefined;
 
 /** V5 usa a família antiga; v6 usa a fonte do tenant; v8 fixa a Comercial nova. */
@@ -312,7 +323,13 @@ export function structureGrammar(
     design?.version === 6 && selected
       ? VIBE_GRAMMAR[selected.vibe]
       : VIBE_GRAMMAR[vibe];
-  const structure = selected;
+  // A sequência da Comercial v8 deixou de ser literal: a combinação sorteada
+  // para o tenant decide cada área. Este é o único ponto de injeção — o
+  // pre-flight, o plano de cenas e o prompt leem a estrutura por aqui.
+  const structure =
+    selected && design?.version === 8 && isCommercialV8Structure(selected.key)
+      ? commercialStructure(selected, design.commercialVariants)
+      : selected;
   if (!structure) return base;
   return {
     ...base,
@@ -323,6 +340,28 @@ export function structureGrammar(
     support: structure.support,
     summary: `${structure.label}: ${structure.intent}`,
     structure,
+  };
+}
+
+/**
+ * A estrutura com a composição do tenant. `openings`, `protagonists` e
+ * `closings` acompanham a sequência resolvida: o pre-flight compara a abertura
+ * e o fechamento com essas listas, e apontar a assinatura base recusaria a
+ * própria composição sorteada.
+ */
+function commercialStructure(
+  structure: SiteStructure,
+  keys?: Partial<CommercialVariantKeys> | null,
+): SiteStructure {
+  const resolved = resolveCommercialVariants(keys);
+  const sequence = commercialSequence(resolved);
+  return {
+    ...structure,
+    sequence,
+    openings: [sequence[0]!],
+    protagonists: [resolved.setores.signature],
+    closings: [sequence[sequence.length - 1]!],
+    footer: commercialFooter(resolved),
   };
 }
 
