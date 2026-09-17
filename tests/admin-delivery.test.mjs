@@ -42,9 +42,14 @@ await test('lote recusado força reparo no loop real, salva e encerra sem confer
             type: 'tool',
             toolName: 'repair_site',
           });
+          // O passo obrigatório é o toolChoice. Estreitar as ferramentas
+          // declaradas aqui deixava no payload um functionResponse de
+          // build_site sem a declaração correspondente, e o provedor recusava
+          // a requisição inteira: em 17/09/2026 a composição de um cliente
+          // parou duas vezes com "Request contains an invalid argument".
           assert.deepEqual(
-            options.tools.map((tool) => tool.name),
-            ['repair_site'],
+            options.tools.map((tool) => tool.name).sort(),
+            ['build_site', 'repair_site'],
           );
         }
         return {

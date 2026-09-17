@@ -62,26 +62,22 @@ export function siteAgent(input: {
         compositionReadyToFinish(steps.at(-1)?.toolResults ?? []),
       ({ steps }) => phase === 'revisao' && reviewTurnFinished(steps),
     ],
+    // Passo obrigatório é `toolChoice`, não lista de ferramentas ativas: o SDK
+    // interrompe o turno se o modelo não chamar a ferramenta escolhida. Estreitar
+    // `activeTools` aqui removia do payload as declarações das ferramentas que o
+    // histórico do próprio turno continua citando — um functionResponse sem a
+    // declaração correspondente é recusado pelo provedor.
     prepareStep: ({ stepNumber, steps }) =>
       input.repairPublication &&
       stepNumber === 0 &&
       'repair_publication' in tools
-        ? {
-            activeTools: ['repair_publication'],
-            toolChoice: { type: 'tool', toolName: 'repair_publication' },
-          }
+        ? { toolChoice: { type: 'tool', toolName: 'repair_publication' } }
         : phase === 'revisao' && reviewConferenceDue(steps, stepNumber)
-          ? {
-              activeTools: ['review_pages'],
-              toolChoice: { type: 'tool', toolName: 'review_pages' },
-            }
+          ? { toolChoice: { type: 'tool', toolName: 'review_pages' } }
           : phase === 'composicao' &&
               'repair_site' in tools &&
               compositionRepairDue(steps.at(-1)?.toolResults ?? [])
-            ? {
-                activeTools: ['repair_site'],
-                toolChoice: { type: 'tool', toolName: 'repair_site' },
-              }
+            ? { toolChoice: { type: 'tool', toolName: 'repair_site' } }
             : {},
     // A função Pro/Fluid tem 800 s; reserve tempo para encerrar e persistir.
     timeout: { totalMs: TURN_TIMEOUT_MS },
