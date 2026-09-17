@@ -5,13 +5,14 @@ import sharp from 'sharp';
 import { FRAMING, dimensionsFor, type Ratio } from '@/lib/images/ratios';
 import { insertImage } from '@/lib/images/queries';
 import { trackImageUsage } from '@/lib/ai/usage-ledger';
-import type { ImageGuide, ImageStyle, Tenant, TenantImage } from '@/lib/types';
-import {
-  ESTILO,
-  NEGATIVAS,
-  TRANSPARENTE,
-  knownStyle,
-} from '@/lib/images/style';
+import type { ImageGuide, Tenant, TenantImage } from '@/lib/types';
+
+const ESTILO: Record<string, string> = {
+  fotografia:
+    'Fotografia documental, câmera com lente 35mm, profundidade de campo natural',
+  ilustracao: 'Ilustração editorial vetorial, traço limpo, sem contorno pesado',
+  '3d': 'Render 3D suave, materiais foscos, iluminação de estúdio',
+};
 
 /**
  * Monta o prompt final: guia do cliente, pedido, enquadramento do bloco e as
@@ -23,36 +24,19 @@ export function composePrompt(
   request: string,
   ratio: Ratio,
   targetBlock: string,
-  options?: {
-    allowText?: boolean;
-    extraNegatives?: string[];
-    /** Estilo da vaga; sobrepõe o do guia só nesta cena. */
-    estilo?: ImageStyle;
-    /** Pede a arte recortada, sem fundo. */
-    transparent?: boolean;
-  },
+  options?: { allowText?: boolean; extraNegatives?: string[] },
 ): string {
-  const estilo =
-    knownStyle(options?.estilo) ?? knownStyle(guide.estilo) ?? 'fotografia';
   const parts: string[] = [];
-  parts.push(ESTILO[estilo]);
+  parts.push(ESTILO[guide.estilo ?? 'fotografia'] ?? ESTILO.fotografia);
   parts.push(request.trim());
-  // Ambiente, presença e luz descrevem uma cena fotográfica. Numa gravura
-  // recortada eles pediriam o cenário que a arte justamente não deve ter; a
-  // paleta continua, porque é o que mantém o desenho no tom do projeto.
-  if (estilo !== 'gravura') {
-    if (guide.ambientes?.length)
-      parts.push(`Ambiente: ${guide.ambientes.join(', ')}`);
-    if (guide.sujeitos?.length)
-      parts.push(`Presença típica: ${guide.sujeitos.join(', ')}`);
-    if (guide.luz) parts.push(`Luz: ${guide.luz}`);
-  }
+  if (guide.ambientes?.length)
+    parts.push(`Ambiente: ${guide.ambientes.join(', ')}`);
+  if (guide.sujeitos?.length)
+    parts.push(`Presença típica: ${guide.sujeitos.join(', ')}`);
+  if (guide.luz) parts.push(`Luz: ${guide.luz}`);
   if (guide.paleta?.length) parts.push(`Paleta: ${guide.paleta.join(', ')}`);
   if (guide.notas) parts.push(guide.notas);
-  // Ambiente e luz descrevem uma cena fotográfica; numa gravura recortada eles
-  // pediriam justamente o cenário que a arte não deve ter.
-  if (estilo !== 'gravura') parts.push(FRAMING[targetBlock] ?? FRAMING.livre);
-  if (options?.transparent) parts.push(TRANSPARENTE);
+  parts.push(FRAMING[targetBlock] ?? FRAMING.livre);
   parts.push(`Proporção ${ratio}`);
 
   const negatives = [
@@ -61,7 +45,7 @@ export function composePrompt(
       : ['nenhum texto, letreiro, legenda ou marca dágua']),
     'nenhum logotipo ou marca reconhecível',
     'sem colagem, sem moldura, sem borda',
-    ...NEGATIVAS[estilo],
+    'sem cara de banco de imagens, sem pose artificial',
     ...(guide.nunca ?? []),
     ...(options?.extraNegatives ?? []),
   ];
@@ -86,10 +70,6 @@ export async function generateCandidates(input: {
   models: readonly string[];
   allowText?: boolean;
   extraNegatives?: string[];
-  /** Estilo desta vaga, quando a área pede outra natureza de imagem. */
-  estilo?: ImageStyle;
-  /** Pede a arte sem fundo ao gerador. */
-  transparent?: boolean;
   /** Imagem existente do tenant, usada para uma alteração por número. */
   reference?: Buffer;
   referenceUrl?: string;
@@ -103,8 +83,6 @@ export async function generateCandidates(input: {
     {
       allowText: input.allowText,
       extraNegatives: input.extraNegatives,
-      estilo: input.estilo,
-      transparent: input.transparent,
     },
   );
 
@@ -119,19 +97,6 @@ export async function generateCandidates(input: {
               ? { text: prompt, images: [input.reference] }
               : prompt,
             ...dimensionsFor(model, input.ratio),
-            // O canal alfa precisa ser pedido ao provedor: só a negativa no
-            // texto devolve um fundo chapado. PNG é o formato que o carrega
-            // até o sharp, que preserva o alfa ao converter para WebP.
-            ...(input.transparent
-              ? {
-                  providerOptions: {
-                    openai: {
-                      background: 'transparent',
-                      output_format: 'png',
-                    },
-                  },
-                }
-              : {}),
             maxRetries: 1,
           }),
       );

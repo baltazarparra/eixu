@@ -48,9 +48,6 @@ export function NavigationFrame({
       }
       const height = header.getBoundingClientRect().height;
       container.style.setProperty('--navigation-height', `${height}px`);
-      // O hero é irmão deste quadro, não descendente: sem publicar a medida
-      // no tema ele não tem como reservar espaço para uma barra sobreposta.
-      theme?.style.setProperty('--navigation-height', `${height}px`);
       if (position === 'fixed')
         theme?.style.setProperty('--navigation-offset', `${height + 16}px`);
     };
@@ -69,7 +66,6 @@ export function NavigationFrame({
       observer.disconnect();
       mobile.removeEventListener('change', measure);
       logo?.removeEventListener('load', measure);
-      theme?.style.removeProperty('--navigation-height');
       if (position === 'fixed')
         theme?.style.removeProperty('--navigation-offset');
     };

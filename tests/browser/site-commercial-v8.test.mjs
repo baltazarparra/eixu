@@ -19,7 +19,7 @@ await test(
       jsx: { runtime: 'automatic' },
       fsCache: false,
     });
-    const { CommercialV8Fixture, parseVariants } = await jiti.import(
+    const { CommercialV8Fixture } = await jiti.import(
       './fixtures/commercial-v8.tsx',
     );
     const { COMMERCIAL_V8_STRUCTURE_KEYS, SITE_STRUCTURES } = await jiti.import(
@@ -87,16 +87,20 @@ await test(
                 return;
               }
               if (req.url?.split('?')[0] !== '/') return next();
-              // O cliente hidrata a partir da mesma query: ler diferente aqui
-              // vira erro de hidratação, que este teste coleta como falha.
-              const params = new URL(req.url, 'http://localhost').searchParams;
+              const structure = new URL(
+                req.url,
+                'http://localhost',
+              ).searchParams.get('structure');
               const markup = renderToString(
                 createElement(CommercialV8Fixture, {
-                  structureKey: params.get('structure'),
-                  editing: params.has('editing'),
-                  still: params.has('still'),
-                  variants: parseVariants(params.get('variants')),
-                  page: params.get('page') === 'interna' ? 'interna' : 'home',
+                  structureKey: structure,
+                  editing: new URL(
+                    req.url,
+                    'http://localhost',
+                  ).searchParams.has('editing'),
+                  still: new URL(req.url, 'http://localhost').searchParams.has(
+                    'still',
+                  ),
                 }),
               );
               res.setHeader('Content-Type', 'text/html; charset=utf-8');

@@ -3,17 +3,13 @@ import { generateCandidates } from '@/lib/images/generate';
 import { getGuide } from '@/lib/images/queries';
 import type { Ratio } from '@/lib/images/ratios';
 import type { SceneRole } from '@/lib/images/scene-plan';
-import type { ImageStyle, Tenant } from '@/lib/types';
+import type { Tenant } from '@/lib/types';
 
 export type SiteScene = {
   request: string;
   targetBlock: string;
   ratio: Ratio;
   role: SceneRole;
-  /** Estilo da vaga, quando a área pede outra natureza de imagem. */
-  estilo?: ImageStyle;
-  /** Pede a arte recortada, sem fundo. */
-  transparent?: boolean;
 };
 
 /** Executa em lotes: o gateway aguenta o paralelo, o banco numera sozinho. */
@@ -43,8 +39,6 @@ export async function prepareSiteImages(tenant: Tenant, scenes: SiteScene[]) {
       ratio: scene.ratio,
       targetBlock: scene.targetBlock,
       models: ['openai/gpt-image-2'],
-      estilo: scene.estilo,
-      transparent: scene.transparent,
     });
     const reviewed = await Promise.all(
       result.images.map(async (image) => {
@@ -56,7 +50,6 @@ export async function prepareSiteImages(tenant: Tenant, scenes: SiteScene[]) {
           request: scene.request,
           ratio: scene.ratio,
           targetBlock: scene.targetBlock,
-          estilo: scene.estilo,
         });
         const nota = review.nota ?? null;
         return {

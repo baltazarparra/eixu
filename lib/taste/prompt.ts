@@ -35,7 +35,6 @@ import {
   homeWordFloor,
 } from './metrics';
 import { structureByKey } from '../design/structures';
-import { commercialVariantsFor } from '../design/commercial-variants';
 import type { Tenant } from '../types';
 
 export type PromptContext = {
@@ -283,21 +282,6 @@ export function systemPrompt(
   const expansions = selectedStructure
     ? availableHomeExpansions(selectedStructure, depth)
     : [];
-  // No briefing o perfil ainda não existe, mas a combinação da Comercial v8 já
-  // está decidida: ela deriva só do id do tenant. Mostrar a combinação base
-  // aqui faria o modelo planejar as cenas de uma composição e set_design
-  // validá-las contra outra, queimando um turno inteiro de geração.
-  const grammarDesign =
-    phase !== 'briefing'
-      ? tenant.brand.design
-      : commercialV8 && !landing
-        ? {
-            version: 8 as const,
-            structure: 'comercial-marca' as const,
-            heroComposition: 'brand' as const,
-            commercialVariants: commercialVariantsFor(tenant.id),
-          }
-        : undefined;
   const homeDirection =
     selectedStructure?.vibe === 'comercial' &&
     (designVersion === 5 || designVersion === 6) &&
@@ -337,7 +321,7 @@ export function systemPrompt(
     !legacy && (wantsComposition || wantsDirection)
       ? `${referenceAuthority ? '## Estrutura guiada pela referência' : `## Gramática da vibe ${VIBE_LABEL[vibe]}`}\n${grammarDirection(
           vibe,
-          grammarDesign,
+          phase === 'briefing' ? undefined : tenant.brand.design,
           referenceAuthority,
           homeDirection,
         )}`

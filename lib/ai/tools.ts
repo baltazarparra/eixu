@@ -576,15 +576,9 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         // O estúdio gera em lotes paralelos. Uma cena por requisição fazia o
         // plano inteiro custar cinco idas ao modelo e cinco minutos de espera.
         const inPhase = context.phase === 'cenas';
-        // O plano v8 deixou de ter tamanho fixo: cada combinação de variações
-        // pede seu próprio repertório. Um orçamento literal recusaria o lote
-        // com a mensagem errada — "orçamento esgotado" em vez de plano maior.
         const budget =
           inPhase && design.version === 8 && vibeOf(activeBrand) === 'comercial'
-            ? Math.max(
-                8,
-                scenePlan(design, 3, vibeOf(activeBrand), activeBrief).length,
-              )
+            ? 9
             : 8;
         if (scenesPrepared + scenes.length > budget)
           throw new ToolError(
@@ -596,10 +590,9 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
         // para signature.composition e recusava o lote inteiro nas estruturas
         // de assinatura 16:9 e 4:5. Visto no cliente wanderb em 12/09/2026.
         const plan = scenePlan(design, 3, vibeOf(activeBrand), activeBrief);
-        const plannedSlot = (targetBlock: string) =>
-          plan.find((slot) => slot.targetBlock === targetBlock);
         const plannedRatio = (targetBlock: string) =>
-          plannedSlot(targetBlock)?.ratio ?? expectedRatio(targetBlock);
+          plan.find((slot) => slot.targetBlock === targetBlock)?.ratio ??
+          expectedRatio(targetBlock);
 
         const prepared = scenes.map((scene) => {
           // A proporção nasce da composição decidida, não de um palpite: foto
@@ -623,17 +616,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
             throw new ToolError(
               `${scene.targetBlock} exibe ${ratio}. A proporção ${scene.ratio} seria recortada; envie ${ratio} ou omita o campo.`,
             );
-          // A natureza da imagem é decisão da composição, como a proporção: a
-          // área declara se quer fotografia ou gravura recortada, e o agente
-          // descreve o assunto. Um dos dois escolhendo sozinho produziria uma
-          // seção com metade gravura e metade foto.
-          const slot = plannedSlot(scene.targetBlock);
-          return {
-            ...scene,
-            ratio,
-            ...(slot?.estilo ? { estilo: slot.estilo } : {}),
-            ...(slot?.transparent ? { transparent: true } : {}),
-          };
+          return { ...scene, ratio };
         });
         // Reserva antes do primeiro await: ferramentas do mesmo turno podem
         // ser executadas em paralelo. Só devolve orçamento sem tentativa paga.
@@ -2148,10 +2131,7 @@ export function buildTools(tenant: Tenant, context: ToolContext = {}) {
           );
         }
 
-        // A semente é a identidade estável do tenant: o slug pode ser trocado
-        // e definedAt muda a cada regeração, o que faria o site mudar de forma
-        // sem pedido.
-        const profile = completeDesignProfile(input, undefined, tenant.id);
+        const profile = completeDesignProfile(input);
         if (
           context.phase === 'briefing' &&
           (!input.brief.imageScenes ||
