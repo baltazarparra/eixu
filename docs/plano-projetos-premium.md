@@ -73,9 +73,11 @@ flowchart LR
    campos `published_*`, calcula um hash estável e grava projeto e job. O modo
    muda para `converting`; publicação, chat, edição e geração passam a falhar
    fechados no servidor.
-3. O pedido dispara imediatamente o workflow para reservar aquela conversão.
-   O agendamento periódico permanece como recuperação se o GitHub estiver
-   indisponível. O executor lê o commit que atendia produção.
+3. O pedido entra na fila persistida. Duas agendas do GitHub, cada uma com
+   intervalo de cinco minutos e minutos intercalados, procuram trabalho a cada
+   dois ou três minutos em condições normais. O claim ocorre antes de checkout
+   e instalação; uma execução sem trabalho termina imediatamente. O executor lê
+   o commit que atendia produção.
 4. O conversor atual cria a pasta e o contrato editorial vigente, enquanto
    copia do SHA publicado o fechamento exato de imports do renderer, o layout e
    o CSS. Assim uma conversão antiga não perde compatibilidade com o CMS novo e
@@ -91,7 +93,7 @@ a aba. Uma área própria mostra pedido, preparação, revisão, publicação e
 ativação, junto da versão pública que continua no ar. Quando a PR estiver
 pronta, oferece **Revisar e aprovar**. A primeira ativação exige esse merge; ao
 terminar, a tela entra no CMS Premium. Falha de release preserva a entrega e
-oferece uma nova tentativa sem repetir a exportação.
+oferece o workflow manual de recuperação sem repetir a exportação.
 
 ## Fronteira de dados
 
@@ -158,22 +160,21 @@ preservar releases e só então liberar a exclusão central.
 
 Os workflows exigem:
 
-| Configuração                | Destino                           | Uso                                    |
-| --------------------------- | --------------------------------- | -------------------------------------- |
-| `PREMIUM_WORKER_TOKEN`      | Vercel raiz e GitHub Actions      | Claim e callbacks internos             |
-| `VERCEL_TOKEN`              | GitHub Actions                    | Projetos, variáveis, deploy e domínio  |
-| `GITHUB_WORKFLOW_TOKEN`     | Vercel raiz                       | Dispatch imediato de conversão/release |
-| `PREMIUM_GITHUB_REPOSITORY` | Vercel raiz, opcional             | Repositório que recebe o dispatch      |
-| `VERCEL_TEAM`               | variável do GitHub, padrão `rvnn` | Escopo dos projetos                    |
-| `EIXU_PREMIUM_TOKEN`        | projeto Vercel filho              | Ponte daquele tenant                   |
-| `EIXU_PLATFORM_URL`         | projeto Vercel filho              | Origem das APIs centrais               |
+| Configuração           | Destino                           | Uso                                   |
+| ---------------------- | --------------------------------- | ------------------------------------- |
+| `PREMIUM_WORKER_TOKEN` | Vercel raiz e GitHub Actions      | Claim e callbacks internos            |
+| `VERCEL_TOKEN`         | GitHub Actions                    | Projetos, variáveis, deploy e domínio |
+| `VERCEL_TEAM`          | variável do GitHub, padrão `rvnn` | Escopo dos projetos                   |
+| `EIXU_PREMIUM_TOKEN`   | projeto Vercel filho              | Ponte daquele tenant                  |
+| `EIXU_PLATFORM_URL`    | projeto Vercel filho              | Origem das APIs centrais              |
 
 Nenhum valor secreto entra no job versionado, manifesto ou log. O token cru da
 ponte aparece uma vez ao executor, é mascarado no Actions e fica como variável
 sensível no projeto filho.
-`GITHUB_WORKFLOW_TOKEN` deve ser um token fino restrito a este repositório, com
-permissão de leitura e escrita em Actions. Sem ele, o pedido continua seguro e
-é coletado pelo agendamento de recuperação, mas perde o início imediato.
+O painel não armazena credencial do GitHub. A conversão é coletada pelas agendas
+do workflow; `workflow_dispatch` permanece disponível para recuperação manual de
+uma conversão específica. Releases normais começam pelo merge em `main`, e uma
+falha oferece no painel o workflow manual de recuperação.
 
 ## Validação executável
 

@@ -92,7 +92,7 @@ Sem Chrome, os casos dependentes são pulados; informe isso no resultado.
 Para Premium, valide também `.agents/skills/premium-frontend`, gere um projeto
 sintético com `premium:export`, rode typecheck, lint e build do workspace e
 depois `premium:validate`. `tests/admin-premium.test.mjs` cobre contrato, export e
-schema, dispatch imediato e compatibilidade do conversor atual com o runtime
+schema, agendas intercaladas e compatibilidade do conversor atual com o runtime
 congelado; `tests/browser/admin-premium.test.mjs` percorre andamento, transição
 automática para o CMS, hot refresh e publicação em desktop/celular. O ensaio de infraestrutura
 deve usar um projeto Vercel descartável: confirmar que o domínio exato passa a

@@ -87,6 +87,19 @@ await test(
       );
 
       if (viewport.width === 1440) {
+        fixture.data.site.premium.conversion.status = 'exported';
+        fixture.data.site.premium.conversion.error =
+          'O release Premium falhou. Reexecute o workflow.';
+        await page.click('.admin-premium-conversion-meta button');
+        await page.waitForSelector('a[href*="premium-release.yml"]');
+        assert.match(
+          await page.$eval(
+            'a[href*="premium-release.yml"]',
+            (link) => link.textContent,
+          ),
+          /Abrir recuperação/,
+        );
+
         const active = await handoffFixture({ premiumCms: true });
         fixtures.push(active);
         fixture.data.site.tenant.maintenanceMode = 'premium';

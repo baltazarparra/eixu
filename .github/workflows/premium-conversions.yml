@@ -8,7 +8,10 @@ on:
         required: false
         type: string
   schedule:
-    - cron: '*/5 * * * *'
+    # Cada agenda respeita o intervalo mínimo de cinco minutos do GitHub. Os
+    # minutos intercalados reduzem a espera normal sem exigir token no painel.
+    - cron: '1-59/5 * * * *'
+    - cron: '3-59/5 * * * *'
 
 permissions:
   contents: write
@@ -28,15 +31,6 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_TEAM: ${{ vars.VERCEL_TEAM || 'rvnn' }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-
       - name: Claim next conversion
         id: claim
         env:
@@ -60,6 +54,17 @@ jobs:
           jq --raw-output '.bridgeToken' premium-job.json | sed 's/^/::add-mask::/'
           echo 'found=true' >> "$GITHUB_OUTPUT"
           echo "id=$(jq --raw-output '.id' premium-job.json)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: steps.claim.outputs.found == 'true'
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        if: steps.claim.outputs.found == 'true'
+        with:
+          node-version: 24
+          cache: npm
 
       - name: Export frozen project
         if: steps.claim.outputs.found == 'true'
