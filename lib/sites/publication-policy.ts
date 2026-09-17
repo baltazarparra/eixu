@@ -25,6 +25,7 @@ const EDITORIAL_RULES = new Set([
   'inbound-jornada',
   'pagina-isolada',
   'estrutura-v5-incompleta',
+  'comercial-v8-estrutura',
   'composicao-autoral-obrigatoria',
   'abertura-fora-da-vibe',
   'headline-fora-da-vibe',

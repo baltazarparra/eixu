@@ -126,6 +126,20 @@ fim, exceção de um único campo à esquerda, mídia preservada e ausência de
 overflow. `tests/admin-page-edit-chat.test.mjs` cobre o “desfaz” da home com
 outra página em foco, sem chamada de modelo.
 
+`tests/admin-editorial-image.test.mjs` reproduz o pedido de dividir o texto da
+Loja Brotas com a imagem #10, com executores reais e I/O em memória: preservação,
+recusa atômica, revisão concorrente e desfazer. `tests/site-editorial-text.test.mjs`
+valida os dois layouts, HTML, campos editáveis e contraste do painel institucional.
+`tests/browser/site-editorial-text.test.mjs` mede colunas iguais, lados da foto,
+empilhamento, conteúdo e contraste em cinco vibes e larguras de 320 a 1440 px,
+incluindo tela baixa e HTML sem JavaScript. A suíte Comercial v8 verifica a ligação
+com o hero depois da hidratação e a sequência completa com CSS de produção.
+O contrato de estruturas mantém `bridge` obrigatório na geração, mas trata
+`comercial-v8-estrutura` como recomendação ao publicar: textos antigos e a
+variante `split` solicitada pelo operador não ganham um bloqueio novo.
+`npm run eval:edits -- --live --case=editorial-image` mede a decisão do modelo
+nessa mesma frase sobre dados sintéticos; é uma chamada paga separada dos contratos.
+
 `tests/browser/site-element-styles.test.mjs` cobre a superfície interna
 declarativa. Ele prova todos os treze alvos semânticos em Hero, FAQ e formulário,
 grade e box específicos no desktop, retorno para uma coluna no mobile,

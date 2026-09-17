@@ -313,10 +313,20 @@ await test(
               const heroMedia = document.querySelector('.site-hero-media');
               const map = document.querySelector("[data-block='media.map']");
               const blocks = [...document.querySelectorAll('.site-block')];
+              const intro = document.querySelector('.site-text-bridge');
+              const introPanel = intro?.querySelector('.site-text-identity');
+              const introCopy = intro?.querySelector('.site-text-copy');
               const motionTargets = [
                 ...document.querySelectorAll('[data-motion-kind]'),
               ];
               return {
+                intro: intro?.getBoundingClientRect().toJSON(),
+                introPanel: introPanel?.getBoundingClientRect().toJSON(),
+                introCopy: introCopy?.getBoundingClientRect().toJSON(),
+                introText: intro?.textContent,
+                heroBottom: document
+                  .querySelector('.site-hero')
+                  ?.getBoundingClientRect().bottom,
                 width: window.innerWidth,
                 scrollWidth: document.documentElement.scrollWidth,
                 blockTypes: blocks.map((block) => block.dataset.block),
@@ -481,6 +491,19 @@ await test(
               `${structure} ${width}`,
             );
             assert.equal(report.socialLinks, 2, `${structure} ${width}`);
+            assert.match(report.introText, /Loja Brotas/);
+            assert.match(report.introText, /Rua da Praça, 100/);
+            assert.ok(
+              Math.abs(report.intro.top - report.heroBottom) < 2,
+              'ligação deve começar na base do hero',
+            );
+            if (width >= 768) {
+              assert.ok(
+                Math.abs(report.introPanel.width - report.introCopy.width) < 1,
+              );
+              assert.ok(report.introCopy.left >= report.introPanel.right - 1);
+            } else
+              assert.ok(report.introCopy.top >= report.introPanel.bottom - 1);
             assert.equal(report.socialImages, 6, `${structure} ${width}`);
             assert.equal(report.galleryImages, 6, `${structure} ${width}`);
             assert.equal(report.immersive.length, 2, `${structure} ${width}`);

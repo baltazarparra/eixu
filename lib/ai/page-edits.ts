@@ -677,6 +677,12 @@ function visualChangeSummary(
   brand: Brand,
 ): string | undefined {
   if (!block) return undefined;
+  if (block.type === 'editorial.text' && property === 'layout') {
+    if (value === 'split')
+      return 'seção dividida meio a meio entre imagem e texto';
+    if (value === 'bridge')
+      return 'ligação institucional com painel da marca e texto ao lado';
+  }
   if (property === 'presentation.elements' && Array.isArray(value)) {
     const labels = value
       .filter(

@@ -1298,31 +1298,85 @@ export function EditorialText({
   textStyles,
   editing,
   title,
+  lead,
   body,
+  image,
+  imageAlt,
+  imagePosition = 'left',
+  imageFit = 'cover',
   layout = 'narrow',
 }: EditorialTextProps) {
   const text = textAttrs(textStyles, editing);
+  const heading = (
+    <>
+      {title ? (
+        <h2 className={`${h2Class} mb-7`} {...text.mark('title')}>
+          {text.content('title', title)}
+        </h2>
+      ) : null}
+      {lead ? (
+        <p className="site-text-lead-copy" {...text.mark('lead')}>
+          {text.content('lead', lead)}
+        </p>
+      ) : null}
+    </>
+  );
+  const paragraphs = (
+    <div className="site-text-body flex flex-col gap-5">
+      {body.split('\n\n').map((paragraph, index) => (
+        <p
+          key={index}
+          className="text-[1.05rem] leading-[1.75] text-[var(--muted)]"
+          {...text.mark('body', index)}
+        >
+          {text.content('body', paragraph)}
+        </p>
+      ))}
+    </div>
+  );
+  if (layout === 'bridge')
+    return (
+      <section className={`${section} site-text site-text-bridge`}>
+        <div className={`${shell} site-text-grid`}>
+          <div className="site-text-identity" data-has-lead={Boolean(lead)}>
+            {heading}
+          </div>
+          <div className="site-text-copy">{paragraphs}</div>
+        </div>
+      </section>
+    );
+  if (layout === 'split')
+    return (
+      <section
+        className={`${section} site-text site-text-split border-b border-[var(--line)]`}
+        data-image-position={imagePosition}
+      >
+        <div className={`${shell} site-text-grid`}>
+          <figure className="site-text-media">
+            <img
+              src={image}
+              alt={imageAlt}
+              width={1600}
+              height={1200}
+              loading="lazy"
+              decoding="async"
+              style={{ objectFit: imageFit }}
+            />
+          </figure>
+          <div className="site-text-copy">
+            {heading}
+            {paragraphs}
+          </div>
+        </div>
+      </section>
+    );
   return (
     <section
       className={`${section} site-text site-text-${layout} border-b border-[var(--line)]`}
     >
       <div className={`${shell} max-w-[48rem]`}>
-        {title ? (
-          <h2 className={`${h2Class} mb-7`} {...text.mark('title')}>
-            {text.content('title', title)}
-          </h2>
-        ) : null}
-        <div className="flex flex-col gap-5">
-          {body.split('\n\n').map((paragraph, index) => (
-            <p
-              key={index}
-              className="text-[1.05rem] leading-[1.75] text-[var(--muted)]"
-              {...text.mark('body', index)}
-            >
-              {text.content('body', paragraph)}
-            </p>
-          ))}
-        </div>
+        {heading}
+        {paragraphs}
       </div>
     </section>
   );

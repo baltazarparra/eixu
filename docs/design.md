@@ -13,6 +13,15 @@ integrada ao hero; hero sobre a fachada; apresentação da unidade; seis setores
 ofertas; redes sociais; faixa fotográfica; história; segunda faixa fotográfica;
 carreira; galeria; convite de contato; formulário; todas as unidades; rodapé.
 
+A apresentação usa `editorial.text:bridge`, em contato com a base do hero:
+painel na cor da marca com nome e endereço confirmado, texto institucional ao
+lado e espaçamento curto até os setores. A largura acompanha as fotos abaixo;
+no celular, identidade e texto viram uma coluna. O endereço ocupa `lead` e é
+omitido quando não há dado confirmado. A sequência do pre-flight exige essa
+ligação nas novas composições. Os layouts de texto já salvos não são migrados.
+Para uma edição com foto ao lado, `editorial.text:split` mantém o conteúdo
+completo em metade da seção e a imagem em outra, sem exigir CTA.
+
 `hero.split:brand` exige fotografia panorâmica da fachada real do próprio
 comércio, importada do site oficial ou enviada pelo operador, com o logo ou nome
 visível no letreiro. A arte do logo aparece na navegação, sem uma segunda cópia

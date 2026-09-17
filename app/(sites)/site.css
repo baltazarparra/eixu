@@ -848,6 +848,90 @@ details[open] > summary .site-disclosure {
   columns: 2;
   column-gap: clamp(2rem, 5vw, 5rem);
 }
+.site-theme .site-text .site-text-lead-copy {
+  margin-bottom: 1.75rem;
+  color: var(--ink);
+  font-size: clamp(1.2rem, 2.3vw, 1.8rem);
+  line-height: 1.35;
+  white-space: pre-line;
+}
+.site-text-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+.site-text-grid > * {
+  min-width: 0;
+}
+.site-text-split .site-text-grid {
+  align-items: center;
+  gap: clamp(1.75rem, 4vw, 4rem);
+}
+.site-text-media {
+  overflow: hidden;
+  border-radius: var(--panel-radius);
+}
+.site-text-media img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+}
+/* A ligação encosta no hero. O painel dá identidade, sem virar outro CTA. */
+.site-theme .site-block > .site-text-bridge {
+  padding-block: 0;
+  border: 0;
+}
+.site-text-identity {
+  --ink: var(--accent-ink);
+  --muted: var(--accent-ink);
+  padding: clamp(1.75rem, 4vw, 4rem);
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-end-start-radius: clamp(2.5rem, 6vw, 5rem);
+}
+.site-theme .site-text-bridge .site-text-identity .site-h2 {
+  max-width: 22ch;
+  margin: 0;
+  color: inherit;
+  font-size: clamp(1.65rem, 3vw, 2.6rem);
+}
+.site-theme
+  .site-text-bridge
+  .site-text-identity[data-has-lead='true']
+  .site-h2 {
+  margin-bottom: 1.5rem;
+  font-size: 1rem;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+}
+.site-text-identity .site-text-lead-copy {
+  max-width: 28ch;
+  margin: 0;
+}
+.site-text-bridge .site-text-copy {
+  align-self: center;
+  padding-block: 2rem;
+}
+.site-text-bridge .site-text-body {
+  max-width: 60ch;
+}
+@media (min-width: 768px) {
+  .site-text-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .site-text-split[data-image-position='right'] .site-text-media {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .site-text-split[data-image-position='right'] .site-text-copy {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .site-text-bridge .site-text-copy {
+    padding: clamp(2rem, 4vw, 4rem);
+    padding-right: 0;
+  }
+}
 .site-post-list-list ul {
   display: block;
   border-radius: 0;

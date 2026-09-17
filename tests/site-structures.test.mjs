@@ -563,6 +563,46 @@ await test('a estrutura fixa v8 atravessa o pre-flight com o contrato completo',
   }
 });
 
+await test('Comercial exige a ligação na geração e permite publicar variantes válidas do operador', () => {
+  const structure = structures.SITE_STRUCTURES['comercial-marca'];
+  assert.deepEqual(structure.sequence.slice(0, 3), [
+    'hero.split:brand',
+    'editorial.text:bridge',
+    'feature.bento:gallery',
+  ]);
+  for (const layout of ['lead', 'narrow', 'split']) {
+    const page = homeFor(structure);
+    const intro = page.blocks.find((block) => block.type === 'editorial.text');
+    intro.props.layout = layout;
+    if (layout === 'split')
+      Object.assign(intro.props, {
+        image: photo(10),
+        imageAlt: 'Fachada real do comércio com o logo visível no letreiro',
+      });
+    assert.equal(
+      blockSchemas['editorial.text'].safeParse(intro.props).success,
+      true,
+    );
+    const finding = metrics
+      .structuralFindings([page], imagesFor(structure), {
+        vibe: 'comercial',
+        design: designFor(structure),
+      })
+      .find((finding) => finding.rule === 'comercial-v8-estrutura');
+    assert.equal(finding?.level, 'error', `${layout}: geração exige bridge`);
+    assert.equal(
+      publicationFinding(finding).level,
+      'warn',
+      `${layout}: publicação respeita o operador`,
+    );
+    assert.equal(
+      finding.level,
+      'error',
+      'a política não altera a regra de geração',
+    );
+  }
+});
+
 await test('a Comercial v8 recusa hero sem descrição da fachada', () => {
   const structure = structures.SITE_STRUCTURES['comercial-marca'];
   const page = homeFor(structure);

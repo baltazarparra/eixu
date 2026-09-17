@@ -920,14 +920,63 @@ export const blockSchemas = {
 
   'form.lead': leadFormSchema,
 
-  'editorial.text': z.object({
-    anchor,
-    presentation,
-    textStyles: textStylesSchema.optional(),
-    layout: z.enum(['narrow', 'lead', 'columns']).optional(),
-    title: z.string().max(90).optional(),
-    body: z.string().min(20).max(4000),
-  }),
+  'editorial.text': z
+    .object({
+      anchor,
+      presentation,
+      textStyles: textStylesSchema.optional(),
+      layout: z
+        .enum(['narrow', 'lead', 'columns', 'bridge', 'split'])
+        .optional(),
+      title: z.string().max(90).optional(),
+      lead: z
+        .string()
+        .trim()
+        .min(3)
+        .max(180)
+        .optional()
+        .describe(
+          'Informação principal da unidade, como endereço confirmado. No bridge fica no painel da marca; não invente dados para preencher.',
+        ),
+      body: z.string().min(20).max(4000),
+      image: z.url().startsWith('http').optional(),
+      imageAlt: z.string().trim().min(3).max(140).optional(),
+      imagePosition: z.enum(['left', 'right']).optional(),
+      imageFit: z.enum(['cover', 'contain']).optional(),
+    })
+    .superRefine((value, ctx) => {
+      if (value.layout === 'bridge' && !value.title?.trim())
+        ctx.addIssue({
+          code: 'custom',
+          path: ['title'],
+          message:
+            'A ligação institucional exige o nome da unidade ou do negócio.',
+        });
+      if (value.layout === 'split') {
+        for (const field of ['image', 'imageAlt'] as const)
+          if (!value[field])
+            ctx.addIssue({
+              code: 'custom',
+              path: [field],
+              message:
+                'A divisão meio a meio exige imagem e texto alternativo.',
+            });
+      } else {
+        for (const field of [
+          'image',
+          'imageAlt',
+          'imagePosition',
+          'imageFit',
+        ] as const)
+          if (value[field] !== undefined)
+            ctx.addIssue({
+              code: 'custom',
+              path: [field],
+              message:
+                'Use layout split para exibir a imagem ao lado do texto.',
+            });
+      }
+    }),
 
   'social.follow': z.object({
     anchor,
@@ -1169,7 +1218,7 @@ export const blockMeta: Record<BlockType, Meta> = {
   'editorial.text': {
     family: 'editorial',
     label: 'Texto',
-    use: 'Bloco de texto corrido para páginas institucionais.',
+    use: 'Texto institucional. bridge liga o hero aos setores: nome e lead confirmado em painel da marca, texto ao lado, sem CTA. split divide em metades iguais a foto e todo o texto existente, sem trocar o bloco nem exigir botão; image/imageAlt são obrigatórios, imagePosition escolhe o lado e imageFit contain preserva a foto inteira. narrow, lead e columns mantêm o texto corrido.',
   },
   'social.follow': {
     family: 'social',
@@ -1322,6 +1371,7 @@ function summarize(schema: Record<string, unknown>, depth = 0): string {
 
 /** Layouts que mudam a proporção exibida. O recorte é object-cover. */
 const IMAGE_LAYOUTS: Partial<Record<BlockType, string[]>> = {
+  'editorial.text': ['split'],
   'hero.landing': ['stage', 'form'],
   'feature.showcase': [],
   'proof.testimonials': [],

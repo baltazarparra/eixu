@@ -65,8 +65,10 @@ export function inlineBlocks() {
       delete props.slides;
       delete props.carousel;
     }
-    if (type === 'editorial.text')
+    if (type === 'editorial.text') {
+      props.layout = 'split';
       props.body += '\n\nOutro parágrafo com conteúdo diferente.';
+    }
     if (type === 'form.lead')
       props.fields = [
         {

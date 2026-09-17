@@ -21,6 +21,7 @@ export const RATIO_BY_BLOCK: Record<string, Ratio> = {
   'feature.bento': '4:3',
   'feature.explorer': '4:3',
   'editorial.resources': '16:9',
+  'editorial.text': '4:3',
   'media.image': '16:9',
   'media.gallery': '4:3',
   'signature.composition': '4:3',
@@ -78,6 +79,8 @@ export const FRAMING: Record<string, string> = {
     'cena de aplicação em paisagem, assunto legível ao lado de descrição; sem texto na foto',
   'editorial.resources':
     'enquadramento panorâmico de apoio editorial, assunto à esquerda e área calma para o título',
+  'editorial.text':
+    'fotografia de apoio institucional em paisagem, assunto inteiro e reconhecível ao lado do texto',
   'narrative.split': 'enquadramento vertical fechado no assunto',
   'feature.bento':
     'enquadramento paisagem, assunto único e recorte forte em tamanhos variados',
