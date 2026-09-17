@@ -20,8 +20,9 @@ central e seus segredos não são entregues à aplicação Premium.
 - A URL canônica continua `https://<slug>.eixu.com.br`.
 - O corte público só acontece depois de typecheck, lint, build e smoke do novo
   deployment. Falha anterior ao corte conserva o runtime do gerador.
-- Depois do primeiro corte, cada merge que altera a pasta Premium publica um
-  novo deployment e o domínio já vinculado passa a servi-lo automaticamente.
+- Depois do primeiro corte, cada merge que altera a pasta Premium cria um novo
+  deployment sem mover o domínio; somente os gates e o smoke aprovados promovem
+  essa revisão para a URL canônica.
 - Alterações no renderer do gerador não modificam um Premium existente.
 - O token de integração é específico do projeto, fica apenas no servidor e é
   armazenado no banco central somente como SHA-256.
@@ -84,9 +85,9 @@ flowchart LR
    também não troca o runtime visual por acidente.
 5. O workflow valida a aplicação, cria seu projeto Vercel, instala o token da
    ponte e abre uma PR. A conversão não sobrescreve uma pasta já customizada.
-6. O merge da PR aciona o release. O workflow valida novamente, publica, espera
-   `READY`, testa a URL do deployment, atribui o domínio exato, testa a URL
-   canônica e só então registra a release ativa.
+6. O merge da PR aciona o release. O workflow valida novamente, publica sem
+   promover o domínio, espera `READY`, testa a URL do deployment, atribui o
+   domínio exato, testa a URL canônica e só então registra a release ativa.
 
 O painel acompanha a conversão persistida mesmo depois de fechar ou recarregar
 a aba. Uma área própria mostra pedido, preparação, revisão, publicação e
@@ -186,6 +187,12 @@ npm run lint
 npm run test:sites
 npm run test:admin
 npm run build:vercel
+```
+
+Para validar um projeto filho depois de uma alteração:
+
+```bash
+npm run premium:check -- <project-key>
 ```
 
 Além dos gates gerais, a validação Premium deve cobrir:

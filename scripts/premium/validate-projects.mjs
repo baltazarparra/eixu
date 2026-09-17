@@ -2,7 +2,13 @@ import { existsSync, globSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { assertEditorContract } from './editor-contract.mjs';
 
-const manifests = globSync('apps/premium/*/eixu.project.json');
+const projectIndex = process.argv.indexOf('--project');
+const project = projectIndex >= 0 ? process.argv[projectIndex + 1] : '';
+if (project && !/^apps\/premium\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(project))
+  throw new Error('Use --project apps/premium/<project-key>.');
+const manifests = project
+  ? [resolve(project, 'eixu.project.json')]
+  : globSync('apps/premium/*/eixu.project.json');
 for (const manifestPath of manifests) {
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
   const root = resolve(dirname(manifestPath));

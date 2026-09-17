@@ -50,10 +50,11 @@ jobs:
             exit 0
           fi
           test "$status" = '200'
-          jq --exit-status '.job' claim.json > premium-job.json
-          jq --raw-output '.bridgeToken' premium-job.json | sed 's/^/::add-mask::/'
+          job="${RUNNER_TEMP}/premium-job.json"
+          jq --exit-status '.job' claim.json > "$job"
+          jq --raw-output '.bridgeToken' "$job" | sed 's/^/::add-mask::/'
           echo 'found=true' >> "$GITHUB_OUTPUT"
-          echo "id=$(jq --raw-output '.id' premium-job.json)" >> "$GITHUB_OUTPUT"
+          echo "id=$(jq --raw-output '.id' "$job")" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@v4
         if: steps.claim.outputs.found == 'true'
@@ -71,14 +72,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          source_commit="$(jq --raw-output '.sourceCommit' premium-job.json)"
+          job="${RUNNER_TEMP}/premium-job.json"
+          source_commit="$(jq --raw-output '.sourceCommit' "$job")"
           [[ "$source_commit" =~ ^[0-9a-f]{40}$ ]]
           git cat-file -e "${source_commit}^{commit}"
           source_root="${RUNNER_TEMP}/eixu-premium-source"
           git worktree add --detach "$source_root" "$source_commit"
           npm ci --ignore-scripts
           node scripts/premium/export-project.mjs \
-            --input "$GITHUB_WORKSPACE/premium-job.json" \
+            --input "$job" \
             --source-root "$source_root" \
             --output-root "$GITHUB_WORKSPACE"
           npm install --package-lock-only --ignore-scripts
@@ -88,21 +90,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          workspace="@eixu/premium-$(jq --raw-output '.projectKey' premium-job.json)"
+          key="$(jq --raw-output '.projectKey' "${RUNNER_TEMP}/premium-job.json")"
           npm ci --ignore-scripts
-          npm run typecheck --workspace "$workspace"
-          npm run lint --workspace "$workspace"
-          npm run build --workspace "$workspace"
-          npm run premium:validate
+          npm run premium:check -- "$key"
 
       - name: Prepare isolated Vercel project
         if: steps.claim.outputs.found == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          directory="$(jq --raw-output '.directory' premium-job.json)"
-          project="$(jq --raw-output '.vercelProjectName' premium-job.json)"
-          bridge_token="$(jq --raw-output '.bridgeToken' premium-job.json)"
+          job="${RUNNER_TEMP}/premium-job.json"
+          directory="$(jq --raw-output '.directory' "$job")"
+          project="$(jq --raw-output '.vercelProjectName' "$job")"
+          bridge_token="$(jq --raw-output '.bridgeToken' "$job")"
           if ! npx vercel project inspect "$project" --scope "$VERCEL_TEAM" --token "$VERCEL_TOKEN" >/dev/null 2>&1; then
             npx vercel project add "$project" --scope "$VERCEL_TEAM" --token "$VERCEL_TOKEN"
           fi
@@ -118,13 +118,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          key="$(jq --raw-output '.projectKey' premium-job.json)"
-          short="$(jq --raw-output '.id' premium-job.json | cut -c1-8)"
+          job="${RUNNER_TEMP}/premium-job.json"
+          key="$(jq --raw-output '.projectKey' "$job")"
+          short="$(jq --raw-output '.id' "$job" | cut -c1-8)"
           branch="codex/premium-${key}-${short}"
           git config user.name 'eixu-premium-bot'
           git config user.email 'premium-bot@eixu.com.br'
           git switch -c "$branch"
-          git add "$(jq --raw-output '.directory' premium-job.json)" package.json package-lock.json
+          git add "$(jq --raw-output '.directory' "$job")" package.json package-lock.json
           git commit -m "feat(premium): converte ${key}"
           git push --set-upstream origin "$branch"
           pr_url="$(gh pr create --base main --head "$branch" \
@@ -143,6 +144,7 @@ jobs:
             --arg url '${{ steps.pull.outputs.url }}' \
             '{status:"exported", branch:$branch, pullRequestUrl:$url}' > callback.json
           curl --fail --silent --show-error \
+            --retry 5 --retry-all-errors --retry-delay 2 \
             --request PATCH \
             --header "authorization: Bearer ${PREMIUM_WORKER_TOKEN}" \
             --header 'content-type: application/json' \

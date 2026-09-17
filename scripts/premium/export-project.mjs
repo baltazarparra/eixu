@@ -4,7 +4,6 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
-  rmSync,
   writeFileSync,
 } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
@@ -218,7 +217,9 @@ if (existsSync(target)) {
   const current = JSON.parse(readFileSync(receipt, 'utf8'));
   if (current.conversionId !== job.id || current.sourceHash !== job.sourceHash)
     throw new Error('A pasta já pertence a outra conversão.');
-  rmSync(target, { recursive: true, force: true });
+  throw new Error(
+    'A conversão já materializou este projeto. A exportação não sobrescreve uma pasta Premium existente.',
+  );
 }
 mkdirSync(target, { recursive: true });
 writeProject(job, target);

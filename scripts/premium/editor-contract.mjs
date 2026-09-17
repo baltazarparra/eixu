@@ -1,3 +1,5 @@
+import { assertEditorContract } from '../../lib/premium/editor-contract.mjs';
+
 const LABELS = {
   headline: 'Título principal',
   subtext: 'Texto de apoio',
@@ -123,42 +125,4 @@ export function premiumEditorContract(snapshot) {
   return contract;
 }
 
-export function assertEditorContract(contract) {
-  if (!contract || contract.version !== 1 || !Array.isArray(contract.pages))
-    throw new Error('Contrato editorial Premium inválido.');
-  if (!contract.pages.length)
-    throw new Error('Contrato editorial sem páginas.');
-  const pageSlugs = new Set();
-  const keys = new Set();
-  for (const page of contract.pages) {
-    if (typeof page.slug !== 'string' || typeof page.label !== 'string')
-      throw new Error('Página editorial inválida.');
-    if (pageSlugs.has(page.slug))
-      throw new Error(`Página editorial repetida: ${page.slug}`);
-    pageSlugs.add(page.slug);
-    if (!Array.isArray(page.sections) || !page.sections.length)
-      throw new Error(`Página editorial sem seções: ${page.slug}`);
-    for (const section of page.sections) {
-      if (
-        typeof section.id !== 'string' ||
-        typeof section.label !== 'string' ||
-        !Array.isArray(section.fields) ||
-        !section.fields.length
-      )
-        throw new Error(`Seção editorial inválida: ${page.slug}`);
-      for (const field of section.fields) {
-        if (
-          typeof field.key !== 'string' ||
-          typeof field.label !== 'string' ||
-          !['text', 'textarea', 'image'].includes(field.type) ||
-          typeof field.value !== 'string'
-        )
-          throw new Error(`Campo editorial inválido em ${page.slug}.`);
-        if (keys.has(field.key))
-          throw new Error(`Chave editorial repetida: ${field.key}`);
-        keys.add(field.key);
-      }
-    }
-  }
-  return contract;
-}
+export { assertEditorContract };

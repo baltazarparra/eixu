@@ -33,6 +33,7 @@
     "db:prepare-logo-assets": "node --env-file=.env.local scripts/prepare-logo-assets.mjs",
     "usage:sync": "node --env-file-if-exists=.env.local scripts/usage-sync.mjs",
     "premium:export": "node scripts/premium/export-project.mjs",
+    "premium:check": "node scripts/premium/check-project.mjs",
     "premium:validate": "node scripts/premium/validate-projects.mjs"
   },
   "dependencies": {

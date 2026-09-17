@@ -1,6 +1,9 @@
 # Projetos Premium da EIXU
 
-Leia [SOUL.md](SOUL.md) para a identidade do Creative Developer e use a skill local `premium-frontend` em mudanças de composição visual. O `AGENTS.md` dentro de cada projeto registra endereço, comandos e limites específicos.
+Leia [SOUL.md](SOUL.md) para a identidade do Creative Developer. Use a skill
+local `premium-delivery` em conversão, atualização estrutural e publicação, e
+`premium-frontend` quando a mudança envolver composição visual. O `AGENTS.md`
+dentro de cada projeto registra endereço, comandos e limites específicos.
 
 ## Responsabilidades
 
@@ -15,7 +18,7 @@ O site usa `EIXU_PREMIUM_TOKEN` apenas no servidor para buscar conteúdo e encam
 1. Leia o briefing disponível, a direção atual, `content/editor.json` e a página renderizada.
 2. Defina ou revise a direção antes de remodelar.
 3. Implemente a menor mudança completa, incluindo estados e contrato editorial.
-4. Rode os comandos do projeto e observe desktop, celular, teclado e movimento reduzido.
+4. Rode `npm run premium:check -- <project-key>` e observe desktop, celular, teclado e movimento reduzido.
 5. Revise o diff, a prévia CMS e a URL pública pertinente antes de entregar.
 
 Não exponha tokens nem copie dados operacionais para o projeto. Conteúdo comercial usa fatos verificáveis. O merge em `main` dispara o workflow Premium; confira o deployment do SHA, o domínio canônico e o callback da release.

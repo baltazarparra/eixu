@@ -24,6 +24,7 @@ adaptador compatível.
 | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
 | Rotas, publicação, dados ou limites do MVP | [Arquitetura](docs/architecture.md) e os arquivos do fluxo afetado                                            |
 | Frontend e composição visual               | [Design e aplicação das duas skills](docs/design.md)                                                          |
+| Conversão, manutenção e release Premium    | [Projetos Premium](docs/plano-projetos-premium.md) e a skill `premium-delivery`                               |
 | Prompts, ferramentas, modelos ou contexto  | [SOUL.md](SOUL.md), [Harness e modelos](docs/harness.md)                                                      |
 | Validação e release                        | [Verificação](docs/verification.md)                                                                           |
 | Cards, execução e revisão de PR            | [Fluxo AI Native](docs/ai-native-development.md) e a skill da fase em `.agents/skills/kanban-*`               |
