@@ -63,3 +63,9 @@ work/
 # Artefatos de teste local
 .playwright-mcp/
 *.png.tmp
+
+# DesignSync (scripts encenados e saída gerada; o durável fica em .design-sync/)
+.ds-sync/
+ds-bundle/
+.design-sync/sb-reference/
+.design-sync/learnings/
