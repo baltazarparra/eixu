@@ -14,6 +14,22 @@ export const USAGE_LABELS: Record<UsageKind, string> = {
   'site-atual': 'Leitura do site atual',
   'leitura-logo': 'Leitura de logo',
   avatar: 'Leitura de avatar',
+  desenvolvimento: 'Desenvolvimento',
+  'ia-runtime': 'IA no site',
+  'servico-externo': 'Serviço externo',
+};
+
+export const SOURCE_LABELS: Record<string, string> = {
+  gateway: 'Gerador EIXU',
+  codex: 'Codex',
+  claude: 'Claude',
+  external: 'Serviço externo',
+};
+export const LIFECYCLE_LABELS: Record<string, string> = {
+  generator: 'Gerador',
+  converting: 'Conversão',
+  premium: 'Premium',
+  unknown: 'Fase não registrada',
 };
 
 /** Etapa da geração escrita como o operador lê no painel, não como no banco. */
@@ -128,6 +144,8 @@ export type UsageNumbers = {
 
 export type UsageHistoryRow = UsageNumbers & {
   operationId: string;
+  source: string;
+  lifecycle: string;
   kind: UsageKind;
   model: string;
   phase: string | null;
@@ -143,6 +161,8 @@ export type UsageOperationTotals = UsageNumbers & {
 
 export type UsageHistory = {
   totals: UsageNumbers;
+  lifetime: UsageNumbers;
+  bySource: (UsageNumbers & { source: string; lifecycle: string })[];
   rows: UsageHistoryRow[];
   byOperation: UsageOperationTotals[];
   daily: (UsageNumbers & { day: string })[];
@@ -185,9 +205,9 @@ export async function usageHistory(
           and ($2::date is null or created_at >= ($2::date::timestamp at time zone 'America/Sao_Paulo'))
           and ($3::date is null or created_at < (($3::date + 1)::timestamp at time zone 'America/Sao_Paulo'))
       ), grouped as (
-        select operation_id as "operationId", kind, model, phase,
+        select operation_id as "operationId", kind, model, phase, source, lifecycle,
           run_id as "runId", min(created_at) as "createdAt", ${aggregates}
-        from filtered group by operation_id, kind, model, phase, run_id
+        from filtered group by operation_id, kind, model, phase, run_id, source, lifecycle
       ), pagination as (
         select count(*)::int as "totalRows",
           greatest(1, ceil(count(*) / 20.0))::int as pages,
@@ -195,6 +215,11 @@ export async function usageHistory(
         from grouped
       )
       select
+        (select row_to_json(t) from (select ${aggregates} from ai_usage where tenant_id = $1) t) as lifetime,
+        coalesce((select json_agg(t) from (
+          select source, lifecycle, ${aggregates} from filtered group by source, lifecycle
+          order by source, lifecycle
+        ) t), '[]'::json) as "bySource",
         (select row_to_json(t) from (select ${aggregates} from filtered) t) as totals,
         coalesce((select json_agg(t) from (
           select * from grouped order by "createdAt" desc, "operationId" desc, model

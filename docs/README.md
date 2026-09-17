@@ -17,6 +17,7 @@ produto, ambiente e comandos.
 | Alterações pontuais pelo chat e recibos                  | [Edição pelo chat](chat-edits.md)             |
 | Linguagem simples e voz de cada vibe                     | [Escrita dos sites](copy.md)                  |
 | Modelos, ferramentas, contexto e geração em etapas       | [Harness](harness.md)                         |
+| Custos e tokens antes e depois do Premium                | [Consumo por projeto](project-usage.md)       |
 | Checks locais e publicação Git/Vercel                    | [Verificação](verification.md)                |
 | Spec, desenvolvimento e revisão pelo Kanban              | [Fluxo AI Native](ai-native-development.md)   |
 | Conversão e operação de projetos Premium                 | [Projetos Premium](plano-projetos-premium.md) |

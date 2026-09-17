@@ -19,3 +19,16 @@ O site usa `EIXU_PREMIUM_TOKEN` apenas no servidor para buscar conteúdo e encam
 5. Revise o diff, a prévia CMS e a URL pública pertinente antes de entregar.
 
 Não exponha tokens nem copie dados operacionais para o projeto. Conteúdo comercial usa fatos verificáveis. O merge em `main` dispara o workflow Premium; confira o deployment do SHA, o domínio canônico e o callback da release.
+
+## Consumo do projeto
+
+O histórico de custo continua no mesmo tenant depois da conversão. Antes de
+trabalhar, identifique o slug e dedique a sessão a esse cliente. Siga
+[Coleta de consumo](../../docs/project-usage.md): `npm run usage:sync` extrai
+recibos de Codex/Claude ou de serviços externos, sem enviar mensagens.
+Execute a coleta contínua durante o trabalho quando o ambiente de destino já
+estiver autorizado e faça uma sincronização final após o último recibo.
+Inclua arquivos próprios dos subagentes e ferramentas pagas; não atribua uma
+sessão compartilhada inteira a um cliente. Trabalho no harness geral da EIXU
+não é custo exclusivo de um cliente. Sem log, vínculo ou credencial disponível,
+registre a limitação na entrega; nunca invente tokens ou custo zero.

@@ -7,6 +7,8 @@ import type {
   UsageOperationTotals,
 } from '@/lib/admin/usage-history';
 import {
+  SOURCE_LABELS,
+  LIFECYCLE_LABELS,
   USAGE_PERIODS,
   USAGE_PERIOD_LABELS,
   phaseLabel,
@@ -71,6 +73,7 @@ function Metric({
       </span>
       {missing > 0 ? (
         <small>
+          {' '}
           {value === null ? '' : 'Parcial · '}
           {formatCount(missing)} sem informação
         </small>
@@ -94,7 +97,10 @@ function callsText(row: UsageNumbers & { legacy: number }) {
 /** Custo vira manchete; entrada, saída e total ficam na mesma faixa. */
 function Totals({ totals }: { totals: UsageNumbers }) {
   const rate =
-    totals.costUsd !== null && totals.totalTokens
+    totals.costUsd !== null &&
+    totals.totalTokens &&
+    !totals.missingCost &&
+    !totals.missingTotal
       ? (totals.costUsd / totals.totalTokens) * 1_000_000
       : null;
   return (
@@ -227,7 +233,7 @@ export function UsageHistoryPanel({
       <div className="admin-page-heading admin-consumo-heading">
         <div>
           <p className="admin-eyebrow">{name}</p>
-          <h1>Consumo de IA</h1>
+          <h1>Consumo do projeto</h1>
         </div>
         <nav className="admin-consumo-periods" aria-label="Período">
           {USAGE_PERIODS.map((periodo) => (
@@ -242,6 +248,32 @@ export function UsageHistoryPanel({
         </nav>
       </div>
 
+      {data.lifetime ? (
+        <section
+          className="admin-consumo-caveats"
+          aria-label="Acumulado do projeto"
+        >
+          <p>
+            <strong>Acumulado de todo o projeto</strong> ·{' '}
+            <Metric
+              value={data.lifetime.costUsd}
+              missing={data.lifetime.missingCost}
+              currency
+            />
+            {' · '}
+            <Metric
+              value={data.lifetime.totalTokens}
+              missing={data.lifetime.missingTotal}
+            />{' '}
+            tokens
+          </p>
+          <p>
+            Inclui os recibos registrados antes e depois da conversão Premium,
+            independentemente do período abaixo.
+          </p>
+        </section>
+      ) : null}
+
       {filters.error ? (
         <p className="admin-consumo-alert" role="alert">
           {filters.error}
@@ -251,14 +283,64 @@ export function UsageHistoryPanel({
       {!data.totals.calls ? (
         <p className="admin-consumo-empty">
           Nenhum consumo registrado neste período. O histórico aparecerá
-          conforme o cliente usar a IA.
+          conforme os recibos do projeto forem registrados.
         </p>
       ) : (
         <>
           <Totals totals={data.totals} />
           <ByOperation rows={data.byOperation} />
+          {data.bySource?.length ? (
+            <section
+              className="admin-consumo-list"
+              aria-label="Origem e fase do consumo"
+            >
+              <div className="admin-consumo-list-head">
+                <h2>Origem e fase no período</h2>
+              </div>
+              <div className="admin-consumo-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th scope="col">Origem</th>
+                      <th scope="col">Fase</th>
+                      <th scope="col">Tokens</th>
+                      <th scope="col">Custo · USD</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.bySource.map((item) => (
+                      <tr key={`${item.source}:${item.lifecycle}`}>
+                        <th scope="row">
+                          {SOURCE_LABELS[item.source] ?? item.source}
+                        </th>
+                        <td>
+                          {LIFECYCLE_LABELS[item.lifecycle] ?? item.lifecycle}
+                        </td>
+                        <td>
+                          <Metric
+                            value={item.totalTokens}
+                            missing={item.missingTotal}
+                          />
+                        </td>
+                        <td>
+                          <Metric
+                            value={item.costUsd}
+                            missing={item.missingCost}
+                            currency
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ) : null}
 
-          <section className="admin-consumo-list" aria-label="Operações do período">
+          <section
+            className="admin-consumo-list"
+            aria-label="Operações do período"
+          >
             <div className="admin-consumo-list-head">
               <h2>Operações</h2>
               <p>
@@ -312,6 +394,16 @@ export function UsageHistoryPanel({
                   <ChevronDown size={14} aria-hidden="true" />
                 </summary>
                 <dl>
+                  <div>
+                    <dt>Origem / fase</dt>
+                    <dd>
+                      {SOURCE_LABELS[row.source] ??
+                        row.source ??
+                        'Gerador EIXU'}{' '}
+                      ·{' '}
+                      {LIFECYCLE_LABELS[row.lifecycle] ?? 'Fase não registrada'}
+                    </dd>
+                  </div>
                   <div data-narrow="">
                     <dt>Entrada</dt>
                     <dd>
@@ -419,6 +511,11 @@ export function UsageHistoryPanel({
       )}
 
       <div className="admin-consumo-caveats">
+        <p>
+          O total cobre somente recibos recebidos. Codex, Claude, subagentes e
+          serviços externos precisam de coleta vinculada a este projeto.
+          Ausência de recibos não significa custo zero.
+        </p>
         <details>
           <summary>Como estes números são apurados</summary>
           <p>
@@ -426,7 +523,11 @@ export function UsageHistoryPanel({
             reais. Cache e raciocínio já fazem parte da entrada e da saída; não
             são somados novamente. Ausências deixam os totais parciais. Imagens
             podem ter custo sem contagem de tokens. Estes números não substituem
-            a fatura.
+            a fatura. Assinaturas não têm custo por interação presumido.
+            Serviços sem tokens podem ter apenas valor monetário; hospedagem,
+            domínio e outras despesas só entram quando existe um recibo
+            exclusivo do projeto em USD. Não há rateio automático de faturas
+            compartilhadas.
           </p>
         </details>
         <details>

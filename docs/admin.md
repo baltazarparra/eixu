@@ -148,9 +148,15 @@ cliente. Em Dados, um cartão no índice lateral mostra custo e tokens dos últi
 
 O seletor de período oferece 7, 30 ou 90 dias e todo o histórico, sempre pelo
 horário de Brasília; o período fica na URL (`?periodo=30`). O custo informado
-pelo provedor em USD é a manchete, com o valor exato e a média por milhão de
-tokens ao lado; entrada, saída e total acompanham na mesma faixa. Um gráfico
+pelo provedor em USD é a manchete, com o valor exato. A média por milhão de
+tokens aparece somente quando custos e tokens estão completos; entrada, saída e total acompanham na mesma faixa. Um gráfico
 por operação compara as etapas do período pelo maior total de tokens.
+
+O acumulado de todo o projeto permanece visível independentemente do filtro.
+A divisão por origem e fase separa gerador, conversão e Premium. Desenvolvimento
+no Codex/Claude e serviços exclusivos do cliente entram por recibos externos;
+a coleta precisa estar ativa no harness, conforme [Consumo por projeto](project-usage.md).
+Assinaturas sem custo por chamada e fontes não coletadas não viram custo zero.
 
 Cada linha da lista abre o detalhe da operação: cache lido, cache gravado,
 raciocínio na saída, custo exato, número de chamadas e os identificadores da
@@ -159,7 +165,7 @@ e o modelo. Cache e raciocínio já fazem parte da entrada e da saída e não s�
 somados de novo. **Totais por dia** continua disponível, junto das ressalvas, em
 gavetas fechadas no fim da tela.
 
-Uma chamada nasce como pendente antes de chegar ao provedor. Se ela for
+Uma chamada do gerador nasce como pendente antes de chegar ao provedor. Se ela for
 interrompida ou falhar sem recibo, o painel mostra essa lacuna em vez de tratá-la
 como custo zero. Imagens podem ter custo sem informar tokens. Valores ausentes
 deixam o total como parcial e o histórico não substitui a fatura do Gateway.

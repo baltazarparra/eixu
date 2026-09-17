@@ -70,6 +70,27 @@ await test(
       const empty = url.searchParams.get('start') === '2020-01-01';
       const page = Number(url.searchParams.get('usagePage') ?? 1);
       const data = {
+        lifetime: { ...numbers, costUsd: 25, missingCost: 1 },
+        bySource: empty
+          ? []
+          : [
+              { ...numbers, source: 'gateway', lifecycle: 'generator' },
+              {
+                ...numbers,
+                source: 'codex',
+                lifecycle: 'premium',
+                costUsd: null,
+                missingCost: 2,
+              },
+              {
+                ...numbers,
+                source: 'external',
+                lifecycle: 'premium',
+                totalTokens: null,
+                missingTotal: 1,
+                costUsd: 20,
+              },
+            ],
         totals: empty
           ? { ...numbers, calls: 0 }
           : { ...numbers, missingCost: 1, missingInput: 1, calls: 4 },
@@ -176,8 +197,13 @@ await test(
       ).replace(/\s+/g, ' ');
       assert.match(
         headline,
-        /US\$ 0,12 .*exato: US\$ 0,123456 .*por milhão de tokens .*parcial, 1 sem informação/,
+        /US\$ 0,12 .*exato: US\$ 0,123456 .*parcial, 1 sem informação/,
       );
+      assert.doesNotMatch(headline, /por milhão de tokens/);
+      assert.ok(body.includes('Acumulado de todo o projeto'));
+      assert.ok(body.includes('Origem e fase no período'));
+      assert.ok(body.includes('Codex'));
+      assert.ok(body.includes('Premium'));
       // Entrada e saída saem da linha em tela estreita, mas não do detalhe.
       const columns = await page.$$eval(
         '.admin-consumo-columns > span',
@@ -220,9 +246,7 @@ await test(
     await page.goto(base);
     // O gráfico escala pelo maior total entre as etapas, não pelo período.
     const bars = await page.$$eval('.admin-consumo-bar', (nodes) =>
-      nodes.map((node) =>
-        [...node.children].map((child) => child.style.width),
-      ),
+      nodes.map((node) => [...node.children].map((child) => child.style.width)),
     );
     assert.equal(bars.length, 2);
     const widths = bars.map((pair) => pair.map((value) => parseFloat(value)));
