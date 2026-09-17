@@ -297,6 +297,13 @@ body {
   width: 100%;
   height: 100%;
   fill: var(--seal-fg);
+  /* Meia faceta do octógono: a pedra gira o suficiente para se notar que é
+   * uma pedra, e pouco o bastante para continuar sendo o mesmo selo. */
+  transition: transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.sa-action:hover .sa-seal svg {
+  transform: rotate(22.5deg);
 }
 
 .sa-seal span {
@@ -327,6 +334,7 @@ body {
 
 .sa-nav-inner {
   pointer-events: auto;
+  position: relative;
   display: flex;
   align-items: center;
   gap: clamp(0.75rem, 2vw, 2.25rem);
@@ -785,16 +793,31 @@ body {
   object-fit: cover;
 }
 
+/*
+ * A inclinação vira variável porque o movimento precisa dela: a placa entra
+ * mais torta do que fica, e só o CSS de movimento sabe quanto. Sem ele, o
+ * valor de repouso é o único que existe.
+ */
+.sa-plate {
+  --tilt: 0deg;
+  --from-x: 0%;
+  transform: rotate(var(--tilt));
+}
+
 @media (min-width: 46rem) {
   .sa-plate[data-tilt='a'] {
+    --tilt: -1.6deg;
+    --from-x: -7%;
+    --open-x: 9%;
     aspect-ratio: 4 / 5;
-    transform: rotate(-1.6deg);
   }
 
   .sa-plate[data-tilt='b'] {
+    --tilt: 1.8deg;
+    --from-x: 7%;
+    --open-x: -9%;
     aspect-ratio: 3 / 4;
     margin-block-start: clamp(2rem, 6vw, 5rem);
-    transform: rotate(1.8deg);
   }
 }
 
@@ -836,7 +859,6 @@ body {
   grid-template-columns: auto 1fr;
   gap: 1.25rem;
   padding-block: clamp(1.75rem, 3vw, 2.5rem);
-  border-block-start: 1px solid var(--line-warm);
 }
 
 .sa-ledger-n {
@@ -890,7 +912,6 @@ body {
   display: grid;
   gap: 1rem;
   padding-block: clamp(2rem, 4vw, 3.25rem);
-  border-block-start: 1px solid var(--line-warm);
 }
 
 @media (min-width: 58rem) {
@@ -1008,7 +1029,6 @@ body {
   grid-template-columns: auto 1fr;
   gap: clamp(1.25rem, 3vw, 2.5rem);
   padding-block: clamp(1.75rem, 3vw, 2.5rem);
-  border-block-start: 1px solid var(--line-warm);
 }
 
 .sa-step:last-child {
@@ -1045,7 +1065,7 @@ body {
 }
 
 .sa-faq details {
-  border-block-start: 1px solid var(--line-warm);
+  display: block;
 }
 
 .sa-faq details:last-child {
@@ -1331,38 +1351,229 @@ body:has(.sa-menu[open]) .sa-wa {
 /* ------------------------------------------------------------- movimento */
 
 /*
- * Uma entrada por seção, ancorada na própria rolagem: sem observador em
- * JavaScript e sem nada que continue se mexendo depois de chegar. Onde o
- * recurso não existe, a página simplesmente já está visível.
+ * A rolagem é a mão que gira a pedra sob a luz.
+ *
+ * Todo movimento daqui é ancorado na própria rolagem — `animation-timeline`,
+ * não relógio nem observador em JavaScript. A página não roda nada em laço:
+ * cada peça tem uma faixa de rolagem, e dentro dela o quadro é função exata
+ * de onde o visitante está. Isso dá o que um motor de scroll daria, sem
+ * sequestrar a rolagem do sistema e sem um único byte de script.
+ *
+ * Três gestos, nesta ordem de importância:
+ *   entrar   — a peça sobe e acende ao cruzar a tela (`sa-in`, `sa-w`);
+ *   revelar  — a moldura abre sobre a foto (`sa-wipe`, arco e placas);
+ *   respirar — foto e luz derivam enquanto a seção atravessa (`sa-drift`).
+ *
+ * As faixas são medidas em `cover`: a travessia inteira do elemento pela
+ * tela. Entradas terminam cedo — por volta de um quarto da travessia — para
+ * que nada que já esteja sendo lido ainda esteja se mexendo. O escalonamento
+ * vem de `--i`, com teto, porque uma lista longa não pode virar fila de
+ * espera.
+ *
+ * Fora do `@supports` nada se esconde: sem o recurso, a página é a mesma,
+ * inteira e opaca. Com movimento reduzido, o site inteiro fica parado.
  */
+
+/*
+ * As peças do título existem sempre; só o movimento delas é condicional.
+ * A caixa própria de cada palavra reabre o recuo de primeira linha herdado do
+ * título — dentro dela ele empurraria a palavra inteira, então aqui ele é
+ * zerado e continua valendo só onde foi desenhado: na primeira linha do bloco.
+ */
+.sa-w {
+  display: inline-block;
+  text-indent: 0;
+}
+
 @media (prefers-reduced-motion: no-preference) {
-  @supports (animation-timeline: view()) {
-    /*
-     * A faixa termina ainda dentro da entrada: qualquer seção que apareça no
-     * campo de visão já está opaca. O movimento acompanha a rolagem em vez de
-     * disputar com a leitura.
-     */
-    .sa-reveal {
-      animation: sa-rise both;
-      animation-timeline: view();
-      animation-range: entry 4% entry 72%;
-    }
+  /*
+   * A abertura não espera rolagem: ela é a primeira coisa na tela. Letra a
+   * letra, o nome da casa acende como a luz percorrendo as facetas — o único
+   * movimento do site marcado por relógio, e ainda assim curto.
+   */
+  .sa-c {
+    display: inline-block;
+    animation: sa-cut-in 0.85s cubic-bezier(0.2, 0.9, 0.24, 1) backwards;
+    animation-delay: calc(0.1s + min(var(--i, 0), 22) * 0.028s);
   }
 
-  .sa-hero-inner > * {
+  .sa-hero-inner > *:not(.sa-cut-open),
+  .sa-opening .sa-shell > *:not(.sa-cut-open) {
     animation: sa-rise 0.9s cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
   }
 
-  .sa-hero-inner > *:nth-child(2) {
-    animation-delay: 0.08s;
+  .sa-hero-inner > *:nth-child(2),
+  .sa-opening .sa-shell > *:nth-child(2) {
+    animation-delay: 0.3s;
   }
 
-  .sa-hero-inner > *:nth-child(3) {
-    animation-delay: 0.16s;
+  .sa-hero-inner > *:nth-child(3),
+  .sa-opening .sa-shell > *:nth-child(3) {
+    animation-delay: 0.38s;
   }
 
-  .sa-hero-inner > *:nth-child(4) {
-    animation-delay: 0.24s;
+  .sa-hero-inner > *:nth-child(4),
+  .sa-opening .sa-shell > *:nth-child(4) {
+    animation-delay: 0.46s;
+  }
+
+  @supports (animation-timeline: view()) {
+    /* ---------------------------------------------------------- entrar */
+
+    .sa-in,
+    .sa-cut .sa-w {
+      animation: sa-rise both cubic-bezier(0.22, 0.61, 0.36, 1);
+      animation-timeline: view();
+      animation-range: cover calc(1% + min(var(--i, 0), 9) * 2.4%) cover
+        calc(23% + min(var(--i, 0), 9) * 2.4%);
+    }
+
+    /* O título de capítulo sobe com mais curso e mais firmeza que o corpo. */
+    .sa-cut .sa-w {
+      animation-name: sa-cut-in;
+      animation-timing-function: cubic-bezier(0.2, 0.9, 0.24, 1);
+      animation-range: cover calc(1% + min(var(--i, 0), 9) * 1.8%) cover
+        calc(26% + min(var(--i, 0), 9) * 1.8%);
+    }
+
+    /* A abertura já tem o seu tempo: aqui a palavra é só a caixa da letra. */
+    .sa-cut-open .sa-w {
+      animation: none;
+    }
+
+    /* O fio corre e a gaveta abre junto — um gesto, não dois. */
+    .sa-drawer {
+      animation: sa-drawer both cubic-bezier(0.22, 0.61, 0.36, 1);
+      animation-timeline: view();
+      animation-range: cover calc(1% + min(var(--i, 0), 9) * 2.4%) cover
+        calc(25% + min(var(--i, 0), 9) * 2.4%);
+    }
+
+    .sa-thread {
+      animation: sa-thread both cubic-bezier(0.22, 0.61, 0.36, 1);
+      animation-timeline: view();
+      animation-range: cover calc(1% + min(var(--i, 0), 9) * 2.4%) cover
+        calc(25% + min(var(--i, 0), 9) * 2.4%);
+    }
+
+    /* ---------------------------------------------------------- revelar */
+
+    /*
+     * A moldura abre sobre a foto enquanto a foto entra do lado contrário:
+     * dois planos em sentidos opostos é o que faz uma revelação parecer
+     * profundidade, e não um retângulo aparecendo.
+     */
+    .sa-plate.sa-wipe {
+      animation: sa-plate-in both cubic-bezier(0.22, 0.61, 0.36, 1);
+      animation-timeline: view();
+      animation-range: cover 2% cover 34%;
+    }
+
+    /* O vidro curvo se levanta: a mesma elipse, aberta pela rolagem. */
+    .sa-arc.sa-wipe {
+      animation: sa-arc-open both cubic-bezier(0.22, 0.61, 0.36, 1);
+      animation-timeline: view();
+      animation-range: cover 0% cover 36%;
+    }
+
+    /* --------------------------------------------------------- respirar */
+
+    /* Deriva contínua e linear: a foto acompanha a rolagem em vez de saltar. */
+    .sa-drift {
+      animation: sa-drift both linear;
+      animation-timeline: view();
+      animation-range: cover 0% cover 100%;
+    }
+
+    .sa-bloom-drift::before {
+      animation: sa-bloom-drift both linear;
+      animation-timeline: view();
+      animation-range: cover 0% cover 100%;
+    }
+
+    /* No fechamento a luz cresce em vez de passar: a pedra fica acesa. */
+    .sa-bloom-rise::before {
+      animation: sa-bloom-rise both linear;
+      animation-timeline: view();
+      animation-range: cover 0% cover 62%;
+    }
+
+    /* ------------------------------------------------------- acender */
+
+    /*
+     * O texto de apoio acende de cima para baixo, na direção da leitura e na
+     * direção da rolagem. Os dois tons do degradê são os mesmos já medidos
+     * para esta superfície, então nenhum trecho fica abaixo do contraste.
+     */
+    @supports (background-clip: text) or (-webkit-background-clip: text) {
+      .sa-kindle {
+        background-image: linear-gradient(
+          180deg,
+          var(--fg) 0%,
+          var(--fg) 38%,
+          var(--sub) 62%,
+          var(--sub) 100%
+        );
+        background-repeat: no-repeat;
+        background-size: 100% 260%;
+        background-position: 0 100%;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        animation: sa-kindle both linear;
+        animation-timeline: view();
+        animation-range: cover 12% cover 58%;
+      }
+    }
+
+    /* ---------------------------------------------------------- foco */
+
+    /*
+     * Quem navega por teclado chega ao link antes de a faixa de rolagem
+     * terminar: o browser rola o necessário para revelar o alvo, não para
+     * completar uma animação. Onde há foco, o movimento é cancelado e o bloco
+     * volta ao estado de repouso — visível, legível e no lugar.
+     */
+    .sa-in:focus-within,
+    .sa-drawer:focus-within,
+    .sa-thread:focus-within,
+    .sa-wipe:focus-within,
+    .sa-cut .sa-w:focus-within {
+      animation: none;
+    }
+
+    .sa-kindle:focus-within {
+      animation: none;
+      background-image: none;
+      color: var(--sub);
+    }
+
+    /* ------------------------------------------------------- bandeja */
+
+    /*
+     * A bandeja acompanha a página: compacta um pouco depois da abertura e
+     * ganha o fio de leitura na base. O tom não muda — o contraste medido
+     * sobre marfim e sobre tinta continua sendo o mesmo.
+     */
+    .sa-nav-inner {
+      animation: sa-tray both linear;
+      animation-timeline: scroll(root);
+      animation-range: 0 180px;
+    }
+
+    .sa-nav-inner::after {
+      content: '';
+      position: absolute;
+      inset-inline: 1.25rem;
+      inset-block-end: 0.34rem;
+      height: 1px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--gold), var(--sapphire-lit));
+      transform: scaleX(0);
+      transform-origin: 0 50%;
+      animation: sa-gauge both linear;
+      animation-timeline: scroll(root);
+    }
   }
 }
 
@@ -1378,6 +1589,135 @@ body:has(.sa-menu[open]) .sa-wa {
   }
 }
 
+@keyframes sa-cut-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.52em);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sa-drawer {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem);
+    background-size: 0 1px;
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    background-size: 100% 1px;
+  }
+}
+
+@keyframes sa-thread {
+  from {
+    background-size: 0 1px;
+  }
+
+  to {
+    background-size: 100% 1px;
+  }
+}
+
+/*
+ * A bandeja abrindo: as duas placas chegam do centro, mais tortas e mais
+ * juntas do que ficam, e assumem o lugar enquanto a moldura sobe sobre a
+ * foto. É o gesto de abrir um mostruário — as peças se separam para serem
+ * vistas — e a foto, que anda em sentido contrário, dá a profundidade.
+ */
+@keyframes sa-plate-in {
+  from {
+    clip-path: inset(0 0 100% 0);
+    transform: translate(var(--open-x, 0%), 1.75rem)
+      rotate(calc(var(--tilt) * 2.2)) scale(0.94);
+  }
+
+  to {
+    clip-path: inset(0 0 0 0);
+    transform: translate(0%, 0) rotate(var(--tilt)) scale(1);
+  }
+}
+
+@keyframes sa-arc-open {
+  from {
+    clip-path: ellipse(46% 100% at 50% 0%);
+  }
+
+  to {
+    clip-path: var(--arc);
+  }
+}
+
+@keyframes sa-drift {
+  0% {
+    transform: translate3d(var(--from-x, 0%), -3.4%, 0) scale(1.12);
+  }
+
+  34% {
+    transform: translate3d(0, -1.6%, 0) scale(1.09);
+  }
+
+  100% {
+    transform: translate3d(0, 3.4%, 0) scale(1.09);
+  }
+}
+
+@keyframes sa-bloom-drift {
+  from {
+    transform: translate(-50%, -58%) scale(0.94);
+  }
+
+  to {
+    transform: translate(-50%, -38%) scale(1.1);
+  }
+}
+
+@keyframes sa-bloom-rise {
+  from {
+    opacity: 0.18;
+    transform: translate(-50%, -34%) scale(0.82);
+  }
+
+  to {
+    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(1.04);
+  }
+}
+
+@keyframes sa-kindle {
+  to {
+    background-position: 0 0;
+  }
+}
+
+@keyframes sa-tray {
+  to {
+    transform: scale(0.972);
+    box-shadow: 0 22px 46px -26px rgb(11 10 20 / 0.95);
+  }
+}
+
+@keyframes sa-gauge {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* O fio das gavetas existe mesmo parado: é a régua do mostruário. */
+.sa-drawer,
+.sa-thread {
+  background-image: linear-gradient(var(--line-warm), var(--line-warm));
+  background-repeat: no-repeat;
+  background-size: 100% 1px;
+  background-position: 0 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -1388,5 +1728,11 @@ body:has(.sa-menu[open]) .sa-wa {
   .sa *::after {
     animation: none !important;
     transition-duration: 0.01ms !important;
+  }
+
+  /* Sem a faixa que o acende, o texto volta a ser tinta e não recorte. */
+  .sa-kindle {
+    background-image: none;
+    color: var(--sub);
   }
 }
