@@ -69,15 +69,11 @@ export type CommercialVariant = {
   /** Identidade persistida no perfil; sobrevive a reordenar o par. */
   key: string;
   /**
-   * `silhueta` troca a assinatura `bloco:layout` e aparece no pre-flight, na
-   * silhueta e na unicidade. `tratamento` preserva a assinatura e muda só o CSS
-   * por um `data-*` no tema — serve onde o enum de layout já está amarrado por
-   * outra regra, como a navegação, presa a `bar` na faixa da vibe.
+   * A assinatura `bloco:layout` da área. Toda variação é de silhueta: o
+   * pre-flight, o plano de cenas, o prompt e o CSS miram o mesmo par, então
+   * não existe variação invisível a um deles.
    */
-  kind: 'silhueta' | 'tratamento';
   signature: string;
-  /** Valor do `data-commercial-<área>` quando `kind` é `tratamento`. */
-  treatment?: string;
   label: string;
   /** Uma frase para o prompt: o que esta versão faz, não como ela é bonita. */
   intent: string;
@@ -97,23 +93,43 @@ export type CommercialVariant = {
 export const COMMERCIAL_VARIANTS = {
   navegacao: [
     {
-      key: 'nav-sobreposta',
-      kind: 'tratamento',
+      key: 'nav-flutuante',
       signature: 'nav.bar:bar',
-      treatment: 'sobreposta',
-      label: 'Navegação sobre a fachada',
+      label: 'Barra flutuante',
       intent:
-        'A barra flutua sobre a foto de abertura, sem reservar cabeçalho próprio.',
+        'Barra sólida da cor da marca flutuando sobre a abertura, sem reservar cabeçalho próprio. Grave layout bar no bloco.',
+    },
+    {
+      key: 'nav-ancorada',
+      signature: 'nav.bar:split',
+      label: 'Barra ancorada',
+      intent:
+        'Faixa da cor da marca de borda a borda no topo, com altura própria acima da abertura. Grave layout split no bloco.',
     },
   ],
   abertura: [
     {
       key: 'abertura-fachada',
-      kind: 'silhueta',
       signature: 'hero.split:brand',
       label: 'Fachada panorâmica',
       intent:
-        'A fachada real ocupa a tela inteira sob uma camada da cor da marca.',
+        'A fachada real ocupa a tela inteira sob uma camada da cor da marca, com título e ações sobre a foto.',
+      scenes: [
+        {
+          role: 'hero',
+          targetBlock: 'hero.brand',
+          ratio: '16:9',
+          count: 1,
+          hint: 'Fotografia documental panorâmica da fachada real do comércio, com o nome ou logo da própria marca claramente visível no letreiro. Use apenas foto enviada pelo operador ou importada do site oficial; nunca gere ou invente a fachada.',
+        },
+      ],
+    },
+    {
+      key: 'abertura-painel',
+      signature: 'hero.split:brand-frame',
+      label: 'Fachada emoldurada',
+      intent:
+        'A mesma fachada real entra como painel emoldurado no topo e o título, o apoio e as ações assentam abaixo, sobre a cor da marca.',
       scenes: [
         {
           role: 'hero',
@@ -128,17 +144,22 @@ export const COMMERCIAL_VARIANTS = {
   ligacao: [
     {
       key: 'ligacao-painel',
-      kind: 'silhueta',
       signature: 'editorial.text:bridge',
       label: 'Painel da unidade',
       intent:
         'Painel na cor da marca com nome e endereço confirmado, texto institucional ao lado, encostado na base do hero.',
     },
+    {
+      key: 'ligacao-verga',
+      signature: 'editorial.text:threshold',
+      label: 'Verga da unidade',
+      intent:
+        'Nome da unidade em faixa de largura cheia sobre um fio, endereço confirmado logo abaixo e o texto institucional em duas colunas equilibradas.',
+    },
   ],
   setores: [
     {
       key: 'setores-grade',
-      kind: 'silhueta',
       signature: 'feature.bento:gallery',
       label: 'Grade de seis setores',
       intent: 'Seis setores em grade de três colunas, todos com o mesmo peso.',
@@ -154,11 +175,28 @@ export const COMMERCIAL_VARIANTS = {
         },
       ],
     },
+    {
+      key: 'setores-lista',
+      signature: 'feature.bento:stack',
+      label: 'Lista de cinco setores',
+      intent:
+        'Cinco setores em linhas de largura cheia, com a foto alternando de lado e espaço para uma descrição mais longa.',
+      items: { exact: 5 },
+      distinctImages: true,
+      scenes: [
+        {
+          role: 'protagonista',
+          targetBlock: 'feature.bento',
+          ratio: '4:3',
+          count: 5,
+          hint: 'Uma categoria real e diferente do comércio, fotografada de modo simples e reconhecível para a linha {i} da lista de cinco setores.',
+        },
+      ],
+    },
   ],
   ofertas: [
     {
       key: 'ofertas-faixa',
-      kind: 'silhueta',
       signature: 'cta.band:band',
       label: 'Faixa de ofertas',
       intent: 'Faixa sólida com a chamada de ofertas e uma ação.',
@@ -167,7 +205,6 @@ export const COMMERCIAL_VARIANTS = {
   redes: [
     {
       key: 'redes-galeria',
-      kind: 'silhueta',
       signature: 'social.follow:gallery',
       label: 'Redes com galeria',
       intent: 'Texto das redes ao lado de três fotos do acervo.',
@@ -177,7 +214,6 @@ export const COMMERCIAL_VARIANTS = {
   'faixa-abertura': [
     {
       key: 'faixa-abertura-imersiva',
-      kind: 'silhueta',
       signature: 'media.image:immersive',
       label: 'Faixa imersiva',
       intent: 'Fotografia de largura cheia com parallax entre duas leituras.',
@@ -195,7 +231,6 @@ export const COMMERCIAL_VARIANTS = {
   historia: [
     {
       key: 'historia-centrada',
-      kind: 'silhueta',
       signature: 'editorial.text:narrow',
       label: 'História centrada',
       intent: 'Texto da história em coluna estreita e centralizada.',
@@ -204,7 +239,6 @@ export const COMMERCIAL_VARIANTS = {
   'faixa-fechamento': [
     {
       key: 'faixa-fechamento-imersiva',
-      kind: 'silhueta',
       signature: 'media.image:immersive',
       label: 'Segunda faixa imersiva',
       intent: 'Segunda pausa fotográfica, com foto distinta da primeira.',
@@ -213,7 +247,6 @@ export const COMMERCIAL_VARIANTS = {
   carreira: [
     {
       key: 'carreira-dividida',
-      kind: 'silhueta',
       signature: 'cta.band:split',
       label: 'Carreira em duas metades',
       intent: 'Convite de carreira com foto do ambiente em metade da seção.',
@@ -231,7 +264,6 @@ export const COMMERCIAL_VARIANTS = {
   galeria: [
     {
       key: 'galeria-grade',
-      kind: 'silhueta',
       signature: 'media.gallery:grid',
       label: 'Galeria em grade',
       intent: 'Pelo menos seis fotos do comércio em grade regular.',
@@ -241,7 +273,6 @@ export const COMMERCIAL_VARIANTS = {
   convite: [
     {
       key: 'convite-minimo',
-      kind: 'silhueta',
       signature: 'cta.band:minimal',
       label: 'Convite mínimo',
       intent: 'Chamada curta de contato antes do formulário.',
@@ -250,7 +281,6 @@ export const COMMERCIAL_VARIANTS = {
   formulario: [
     {
       key: 'formulario-dividido',
-      kind: 'silhueta',
       signature: 'form.lead:split',
       label: 'Formulário em duas metades',
       intent: 'Formulário ao lado do texto de contato.',
@@ -259,7 +289,6 @@ export const COMMERCIAL_VARIANTS = {
   unidades: [
     {
       key: 'unidades-largas',
-      kind: 'silhueta',
       signature: 'media.map:wide',
       label: 'Unidades em largura cheia',
       intent: 'Cada unidade cadastrada com endereço, horário, rota e mapa.',
@@ -268,7 +297,6 @@ export const COMMERCIAL_VARIANTS = {
   rodape: [
     {
       key: 'rodape-dividido',
-      kind: 'silhueta',
       signature: 'footer.compact:split',
       label: 'Rodapé dividido',
       intent: 'Rodapé em duas colunas com contatos e navegação.',
@@ -347,19 +375,6 @@ export function commercialSequence(
 /** A variante obrigatória do rodapé, que fica fora da sequência por semântica. */
 export function commercialFooter(resolved: ResolvedCommercialVariants): string {
   return resolved.rodape.signature;
-}
-
-/** Os `data-commercial-*` que o tema publica para o CSS das variações. */
-export function commercialTreatments(
-  resolved: ResolvedCommercialVariants,
-): Record<string, string> {
-  const attributes: Record<string, string> = {};
-  for (const area of COMMERCIAL_AREAS) {
-    const variant = resolved[area];
-    if (variant.kind === 'tratamento' && variant.treatment)
-      attributes[`data-commercial-${area}`] = variant.treatment;
-  }
-  return attributes;
 }
 
 /** A área que responde por uma assinatura, quando ela aparece uma única vez. */
