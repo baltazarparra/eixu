@@ -412,16 +412,6 @@ export function commercialFooter(resolved: ResolvedCommercialVariants): string {
   return resolved.rodape.signature;
 }
 
-/** A área que responde por uma assinatura, quando ela aparece uma única vez. */
-export function commercialAreaOf(
-  resolved: ResolvedCommercialVariants,
-  signature: string,
-): CommercialArea | undefined {
-  return COMMERCIAL_SEQUENCE_AREAS.find(
-    (area) => resolved[area].signature === signature,
-  );
-}
-
 /** Quantas seções da home usam esta assinatura na combinação resolvida. */
 export function commercialSignatureCount(
   resolved: ResolvedCommercialVariants,

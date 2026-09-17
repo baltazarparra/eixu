@@ -272,3 +272,157 @@ await test('commercialScenes numera as vagas repetidas', () => {
   assert.match(setores[5].hint, /item 6 da grade/);
   assert.ok(cenas.every((c) => !c.hint.includes('{i}')));
 });
+
+const { sceneCoverage } = await j.import('../lib/images/scene-plan.ts');
+const { composePrompt } = await j.import('../lib/images/generate.ts');
+const { styleOfPrompt, transparentPrompt } = await j.import(
+  '../lib/images/style.ts',
+);
+const { structuralFindings } = await j.import('../lib/taste/metrics.ts');
+
+const designDe = (chaves) => ({
+  version: 8,
+  structure: 'comercial-marca',
+  structureRationale: 'A jornada completa da vibe comercial.',
+  concept: 'O comércio apresentado por cenas simples e informação direta',
+  signatureElement: 'Fotografia ampla entre blocos de leitura calma',
+  displayFont: 'humanist',
+  bodyFont: 'source',
+  heroComposition: 'brand',
+  navigation: 'bar',
+  rhythm: 'alternating',
+  imageTreatment: 'full-bleed',
+  surfaceStyle: 'flat',
+  motif: 'none',
+  signature: 'fixture',
+  definedAt: '2026-09-17T00:00:00.000Z',
+  commercialVariants: chaves,
+});
+
+await test('uma foto não cobre a vaga de gravura, nem o contrário', () => {
+  const plan = scenePlan(
+    designDe({ ...base, setores: 'setores-lista' }),
+    3,
+    'comercial',
+  );
+  const vagaGravura = plan.filter((s) => s.targetBlock === 'feature.bento');
+  assert.equal(vagaGravura.length, 5);
+
+  const foto = {
+    targetBlock: 'feature.bento',
+    ratio: '4:3',
+    promptFinal: composePrompt(
+      {},
+      'Uma banca de frutas',
+      '4:3',
+      'feature.bento',
+    ),
+  };
+  const gravura = {
+    targetBlock: 'feature.bento',
+    ratio: '4:3',
+    promptFinal: composePrompt(
+      {},
+      'Uma cesta de frutas',
+      '4:3',
+      'feature.bento',
+      {
+        estilo: 'gravura',
+        transparent: true,
+      },
+    ),
+  };
+  assert.equal(styleOfPrompt(gravura.promptFinal), 'gravura');
+  assert.equal(styleOfPrompt(foto.promptFinal), 'fotografia');
+  assert.ok(transparentPrompt(gravura.promptFinal));
+  assert.ok(!transparentPrompt(foto.promptFinal));
+
+  // Cinco fotos do mesmo bloco e proporção não podem cobrir as cinco gravuras.
+  const comFotos = sceneCoverage(
+    plan,
+    Array.from({ length: 5 }, () => foto),
+  );
+  assert.equal(
+    comFotos.missing.filter((s) => s.targetBlock === 'feature.bento').length,
+    5,
+  );
+  const comGravuras = sceneCoverage(
+    plan,
+    Array.from({ length: 5 }, () => gravura),
+  );
+  assert.equal(
+    comGravuras.missing.filter((s) => s.targetBlock === 'feature.bento').length,
+    0,
+  );
+
+  // E uma gravura não pode cobrir a vaga fotográfica da grade.
+  const planoFoto = scenePlan(designDe(base), 3, 'comercial');
+  const trocado = sceneCoverage(
+    planoFoto,
+    Array.from({ length: 6 }, () => gravura),
+  );
+  assert.equal(
+    trocado.missing.filter((s) => s.targetBlock === 'feature.bento').length,
+    6,
+  );
+});
+
+await test('estilo desconhecido no guia não derruba a composição do prompt', () => {
+  // image_guide vem de JSONB sem validação; um valor fora da união chegava ao
+  // spread das negativas e quebrava toda a geração com TypeError.
+  const prompt = composePrompt(
+    { estilo: 'aquarela' },
+    'Uma banca de frutas do comércio',
+    '4:3',
+    'feature.bento',
+  );
+  assert.equal(styleOfPrompt(prompt), 'fotografia');
+});
+
+await test('a navegação da combinação vale em toda página, não só na home', () => {
+  const design = designDe({ ...base, navegacao: 'nav-ancorada' });
+  const nav = (layout) => ({
+    id: 'nav',
+    type: 'nav.bar',
+    props: {
+      ...(layout ? { layout } : {}),
+      logoText: 'Mercado da Praça',
+      links: [{ label: 'Início', href: '/' }],
+    },
+  });
+  const interna = (navBlock) => ({
+    type: 'page',
+    title: 'Sobre nós',
+    slug: 'sobre',
+    seo: { title: 'Sobre nós', description: 'A história do comércio.' },
+    blocks: [
+      navBlock,
+      {
+        id: 'hero',
+        type: 'hero.statement',
+        props: {
+          layout: 'framed',
+          headline: 'Uma história construída no bairro',
+          subtext: 'Mais de seis décadas perto das pessoas.',
+        },
+      },
+      {
+        id: 'texto',
+        type: 'editorial.text',
+        props: {
+          layout: 'narrow',
+          body: 'O comércio nasceu para deixar as compras do dia a dia mais simples e organizadas para a vizinhança inteira.',
+        },
+      },
+    ],
+  });
+  const regra = (page) =>
+    structuralFindings([page], [], { vibe: 'comercial', design }).filter(
+      (finding) => finding.rule === 'comercial-v8-navegacao',
+    );
+  // Sem layout explícito o renderer cai em design.navigation, travado em bar:
+  // a interna sairia com a barra flutuante num site de barra ancorada.
+  assert.equal(regra(interna(nav(undefined))).length, 1);
+  assert.equal(regra(interna(nav('bar'))).length, 1);
+  assert.equal(regra(interna(nav('split'))).length, 0);
+});

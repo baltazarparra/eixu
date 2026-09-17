@@ -206,6 +206,12 @@ export type TenantImage = {
   targetBlock: string | null;
   ratio: string;
   model: string;
+  /**
+   * O prompt que gerou a imagem. É o que diz a natureza dela — fotografia ou
+   * gravura recortada — sem coluna nova: a cobertura do plano e a alteração
+   * pelo número precisam disso para não trocar um desenho por uma foto.
+   */
+  promptFinal: string;
   url: string;
   blobPath: string;
   status: ImageStatus;

@@ -18,6 +18,7 @@ import {
 } from '@/lib/design/vibes';
 import type { DesignProfile } from '@/lib/design/profile';
 import type { ImageStyle } from '@/lib/types';
+import { styleOfPrompt } from '@/lib/images/style';
 import {
   commercialScenes,
   resolveCommercialVariants,
@@ -194,17 +195,29 @@ export function scenePlanText(scenes: PlannedScene[]): string {
 }
 
 /** O que uma imagem precisa expor para preencher uma vaga do plano. */
-export type CoverageImage = { targetBlock: string | null; ratio: string };
+export type CoverageImage = {
+  targetBlock: string | null;
+  ratio: string;
+  promptFinal?: string;
+};
 
 /**
- * `ratioFits` aceita proporção desconhecida, porque lá ela só vira aviso. Aqui
- * ela decidiria pular uma geração inteira: foto sem proporção legível não pode
- * dar a vaga por preenchida.
+ * Proporção e natureza. `ratioFits` aceita proporção desconhecida, porque lá ela
+ * só vira aviso; aqui ela decidiria pular uma geração inteira, e foto sem
+ * proporção legível não pode dar a vaga por preenchida.
+ *
+ * A natureza importa pelo mesmo motivo: um upload 4:3 do comércio tem o bloco e
+ * a proporção da vaga de gravura, e sem esta comparação daria a vaga por
+ * coberta — a seção renderizaria fotos sob o CSS feito para traço recortado.
  */
 function fits(image: CoverageImage, scene: PlannedScene): boolean {
-  return (
-    ratioValue(image.ratio) !== null && ratioFits(image.ratio, scene.ratio)
-  );
+  if (ratioValue(image.ratio) === null || !ratioFits(image.ratio, scene.ratio))
+    return false;
+  const natureza = styleOfPrompt(image.promptFinal);
+  // Vaga sem estilo próprio segue o guia do cliente, que nunca é gravura: só
+  // precisa recusar um desenho recortado. Assim um tenant com guia de
+  // ilustração continua aproveitando o que já gerou.
+  return scene.estilo ? natureza === scene.estilo : natureza !== 'gravura';
 }
 
 /**

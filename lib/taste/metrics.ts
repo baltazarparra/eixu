@@ -629,15 +629,6 @@ function grammarFindings(
             rule: 'comercial-v8-estrutura',
             message: `A Comercial v8 exige a sequência exata ${grammar.structure.sequence.join(' > ')}. Recebeu ${exactSequence.join(' > ')}.`,
           });
-        const navLayout = variants.navegacao.signature.split(':')[1]!;
-        const navs = page.blocks.filter((block) => block.type === 'nav.bar');
-        if (navs.length !== 1 || resolvedLayout(navs[0]!, design) !== navLayout)
-          findings.push({
-            page: path,
-            level: 'error',
-            rule: 'comercial-v8-navegacao',
-            message: `A Comercial v8 exige exatamente uma nav.bar:${navLayout} coerente com a abertura desta composição.`,
-          });
         const openingLayout = variants.abertura.signature.split(':')[1]!;
         const hero = marks.find((mark) => mark.block.type === 'hero.split');
         const heroLayout = hero ? resolvedLayout(hero.block, design) : '';
@@ -780,6 +771,23 @@ function grammarFindings(
               'A chamada de carreira cta.band:split precisa de uma foto e texto alternativo.',
           });
       }
+    }
+    // A navegação é a mesma em toda a jornada. A regra ficava no bloco da home,
+    // e sem `layout` nas props o renderer cai em `design.navigation`, travado em
+    // `bar` pela faixa da vibe: a barra ancorada aparecia na home e a flutuante
+    // nas internas do mesmo site.
+    if (design.version === 8 && grammar.structure) {
+      const navLayout = resolveCommercialVariants(
+        design.commercialVariants,
+      ).navegacao.signature.split(':')[1]!;
+      const navs = page.blocks.filter((block) => block.type === 'nav.bar');
+      if (navs.length !== 1 || resolvedLayout(navs[0]!, design) !== navLayout)
+        findings.push({
+          page: path,
+          level: 'error',
+          rule: 'comercial-v8-navegacao',
+          message: `A Comercial v8 exige exatamente uma nav.bar:${navLayout} em cada página, gravando layout "${navLayout}" no bloco.`,
+        });
     }
     const opening = marks[0];
     const allowedOpenings = home

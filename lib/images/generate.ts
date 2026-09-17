@@ -6,27 +6,12 @@ import { FRAMING, dimensionsFor, type Ratio } from '@/lib/images/ratios';
 import { insertImage } from '@/lib/images/queries';
 import { trackImageUsage } from '@/lib/ai/usage-ledger';
 import type { ImageGuide, ImageStyle, Tenant, TenantImage } from '@/lib/types';
-
-const ESTILO: Record<ImageStyle, string> = {
-  fotografia:
-    'Fotografia documental, câmera com lente 35mm, profundidade de campo natural',
-  ilustracao: 'Ilustração editorial vetorial, traço limpo, sem contorno pesado',
-  '3d': 'Render 3D suave, materiais foscos, iluminação de estúdio',
-  gravura:
-    'Gravura de traço, desenho a bico de pena com hachura fina e monocromática, assunto isolado e recortado, sem cenário ao redor',
-};
-
-/** As negativas de fotografia não servem a um desenho e vice-versa. */
-const NEGATIVAS: Record<ImageStyle, readonly string[]> = {
-  fotografia: ['sem cara de banco de imagens, sem pose artificial'],
-  ilustracao: ['sem cara de banco de imagens'],
-  '3d': ['sem cara de banco de imagens'],
-  gravura: [
-    'sem fotografia, sem render, sem textura fotográfica',
-    'sem cenário, sem chão, sem sombra projetada',
-    'sem preenchimento de cor chapada no fundo',
-  ],
-};
+import {
+  ESTILO,
+  NEGATIVAS,
+  TRANSPARENTE,
+  knownStyle,
+} from '@/lib/images/style';
 
 /**
  * Monta o prompt final: guia do cliente, pedido, enquadramento do bloco e as
@@ -47,9 +32,10 @@ export function composePrompt(
     transparent?: boolean;
   },
 ): string {
-  const estilo = options?.estilo ?? guide.estilo ?? 'fotografia';
+  const estilo =
+    knownStyle(options?.estilo) ?? knownStyle(guide.estilo) ?? 'fotografia';
   const parts: string[] = [];
-  parts.push(ESTILO[estilo] ?? ESTILO.fotografia);
+  parts.push(ESTILO[estilo]);
   parts.push(request.trim());
   // Ambiente, presença e luz descrevem uma cena fotográfica. Numa gravura
   // recortada eles pediriam o cenário que a arte justamente não deve ter; a
@@ -66,10 +52,7 @@ export function composePrompt(
   // Ambiente e luz descrevem uma cena fotográfica; numa gravura recortada eles
   // pediriam justamente o cenário que a arte não deve ter.
   if (estilo !== 'gravura') parts.push(FRAMING[targetBlock] ?? FRAMING.livre);
-  if (options?.transparent)
-    parts.push(
-      'Fundo totalmente transparente, sem cor de fundo, com a arte recortada até a borda do traço',
-    );
+  if (options?.transparent) parts.push(TRANSPARENTE);
   parts.push(`Proporção ${ratio}`);
 
   const negatives = [

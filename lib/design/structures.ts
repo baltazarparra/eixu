@@ -294,7 +294,7 @@ export const SITE_STRUCTURES: Record<StructureKey, SiteStructure> = {
     vibe: 'comercial',
     label: 'Comercial completa',
     intent:
-      'Reproduz a jornada completa da Minatel Brotas: fachada, unidade, seis setores, ofertas, redes, história, imagens amplas, carreira, galeria, contato e unidades.',
+      'Reproduz a jornada completa da Minatel Brotas: fachada, unidade, setores, ofertas, redes, história, pausas visuais amplas, carreira, galeria, contato e unidades. As contagens e a natureza de cada área vêm da composição sorteada para o cliente, em lib/design/commercial-variants.ts.',
     sequence: [
       'hero.split:brand',
       'editorial.text:bridge',
