@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "tenantId": "743edf92-428b-4ca3-bfd2-851c3ea8dc04",
+  "projectKey": "goodbom",
+  "canonicalHost": "goodbom.eixu.com.br",
+  "conversionId": "68e650e4-081e-48eb-a737-4409930c116b",
+  "sourceHash": "c7898cb09842bbd1c11890c2f9ea5c95e4284a9c01fb95259cb092486132d6ac",
+  "sourceCommit": "5ab9ad04a8193da19f4cc0bc4da82fc8dfbad0f3",
+  "converterVersion": "1",
+  "platformUrl": "https://eixu.com.br",
+  "assets": [
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/2c26c19b-37ec-4253-8b43-602c84613178/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/50c62351-a7e9-406f-80c1-aaeba98dbea6/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/576c43b0-fc3f-4d8b-851a-c249640583c3/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/8a3c7162-4d46-43c6-b2cf-58ab2fefb2db/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/cf6c46be-3865-4bb0-9e90-9b766179b3e0/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/gerado/f6abc461-5fb9-4dfd-8cec-9bde1741f11a/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/1789603553540-logo-prancheta-1-alice-vieira-9d55af00-d9ed-470f-a1c5-7ffc429a842f-441cc643-bcf2-4463-a392-8224d57e40aa.png",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/a960a6ea-200e-4674-9670-94a28a12a872/branca.png",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/9af2671931e7-v1/nav-dark.png",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/apple-180.png",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/icon-192.png",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/icon-32.png",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/icon-512.png",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/icon-maskable-512.png",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/icon.svg",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/logo.svg",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/master.png",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/nav.png",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/goodbom/logo/asset/f39fb152b229-v1/og.png"
+  ]
+}
