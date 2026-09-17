@@ -307,6 +307,51 @@ alter table premium_projects add column if not exists active_release_id uuid
 create index if not exists premium_releases_project_time_idx
   on premium_releases (project_id, created_at desc);
 
+-- O código Premium define a composição e o contrato dos campos; o conteúdo
+-- publicado pelo painel vive em revisões imutáveis. O ponteiro troca apenas
+-- depois da validação completa, preservando concorrência e histórico.
+create table if not exists premium_content_revisions (
+  id                    uuid primary key default gen_random_uuid(),
+  project_id            uuid not null references premium_projects(id) on delete restrict,
+  revision              integer not null check (revision > 0),
+  schema_version        integer not null check (schema_version > 0),
+  contract_hash         text not null check (contract_hash ~ '^[0-9a-f]{64}$'),
+  content               jsonb not null check (jsonb_typeof(content) = 'object'),
+  created_by            uuid references admin_users(id) on delete set null,
+  created_at            timestamptz not null default now(),
+  unique (project_id, revision)
+);
+alter table premium_content_revisions
+  add column if not exists contract_hash text not null default repeat('0', 64)
+  check (contract_hash ~ '^[0-9a-f]{64}$');
+alter table premium_content_revisions alter column contract_hash drop default;
+alter table premium_projects add column if not exists active_content_revision_id uuid
+  references premium_content_revisions(id) on delete set null;
+create index if not exists premium_content_revisions_project_time_idx
+  on premium_content_revisions (project_id, created_at desc);
+
+-- A prévia usa o frontend canônico com um rascunho efêmero. O token cru só
+-- aparece no navegador autenticado; o banco guarda SHA-256 e expiração curta.
+create table if not exists premium_preview_sessions (
+  id                    uuid primary key default gen_random_uuid(),
+  project_id            uuid not null references premium_projects(id) on delete cascade,
+  token_hash            text not null unique,
+  schema_version        integer not null check (schema_version > 0),
+  contract_hash         text not null check (contract_hash ~ '^[0-9a-f]{64}$'),
+  content               jsonb not null check (jsonb_typeof(content) = 'object'),
+  client_version        integer not null default 0 check (client_version >= 0),
+  created_by            uuid references admin_users(id) on delete set null,
+  expires_at            timestamptz not null,
+  created_at            timestamptz not null default now(),
+  updated_at            timestamptz not null default now()
+);
+alter table premium_preview_sessions
+  add column if not exists contract_hash text not null default repeat('0', 64)
+  check (contract_hash ~ '^[0-9a-f]{64}$');
+alter table premium_preview_sessions alter column contract_hash drop default;
+create index if not exists premium_preview_sessions_project_expiry_idx
+  on premium_preview_sessions (project_id, expires_at desc);
+
 -- Execução da geração em etapas. O laço vivia no navegador: fechar a aba ou
 -- recarregar matava a sequência sem deixar rastro, e o painel voltava
 -- oferecendo "Continuar" enquanto um turno ainda rodava no servidor.

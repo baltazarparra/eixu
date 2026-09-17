@@ -104,7 +104,20 @@ export function workspaceState(
       canonicalUrl: `https://${tenant.slug}.eixu.com.br`,
       project: null,
       conversion: null,
+      editor: null,
     },
+    media: images
+      .filter((image) => image.status !== 'rejeitada')
+      .map((image) => ({
+        id: image.id,
+        seq: image.seq,
+        kind: image.kind,
+        url: image.url,
+        alt: image.alt,
+        description: image.description,
+        width: image.width,
+        height: image.height,
+      })),
     generation: generationState(tenant, pages, images, generationFindings),
     review: {
       current: Boolean(review),

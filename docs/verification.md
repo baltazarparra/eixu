@@ -6,21 +6,21 @@ nova execução. Os scripts e dependências vêm de [package.json](../package.js
 
 ## Verificação pelo impacto
 
-| Mudança                            | Evidência necessária                                                                                                                                                |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| README, AGENTS e docs              | Links e âncoras locais, comandos existentes, fatos conferidos no código e formatação. Não exige geração, banco ou testes novos.                                     |
-| Institucional ou CSS               | Tipos, lint, build Next.js e navegador em desktop/celular; navegação, CTA, metadados e aparência.                                                                   |
-| Blocos, lint, edição ou publicação | Contratos válidos e inválidos; recusas sem escrita; concorrência; rascunho e snapshot preservados; render e fluxo no navegador.                                     |
-| Auth, tenant ou proxy              | Sessão ausente/expirada, tenant incorreto, host reservado, acesso a `/s/*`, query de prévia e conteúdo público.                                                     |
-| Formulário ou tracking             | Em ambiente de teste autorizado, envio, atribuição, consentimento, gravação e destino; duplicação de clique.                                                        |
-| Imagens ou ferramentas             | Falha parcial, disponibilidade, alteração por número, isolamento, aplicação de logo e recusa de exclusão em uso.                                                    |
-| Tokens e custos de IA              | SDK real com modelo simulado, idempotência, ausências, falhas, isolamento por cliente, datas de Brasília, paginação, migração repetível e UI responsiva.            |
-| Schema                             | Aplicação e reaplicação em PostgreSQL descartável, com verificação dos consumidores.                                                                                |
-| Projeto Premium                    | Snapshot público, locks, workspace isolado, build, ponte por token/host, domínio canônico, release posterior e proteção de assets.                                  |
-| Pastas de sites                    | CRUD, nomes únicos, preservação ao excluir, lote atômico, conflito entre sessões, desfazer, arrasto, teclado e celular.                                             |
-| Kanban interno                     | Sessão, rota canônica e redirecionamento, host de cliente, origem, upgrade idempotente, vínculo, filtros, arquivo, ordem, concorrência por cartão, teclado e toque. |
-| Skills e cliente do Kanban         | Validação estrutural das skills, bearer restrito, sessão humana/Origin, host de cliente, parser, payloads/versionamento e leitura real sem escrita no destino.      |
-| Modelo ou prompt                   | Contratos e [avaliação reproduzível](harness.md#avaliação-reproduzível), com chamadas reais autorizadas e limitações registradas.                                   |
+| Mudança                            | Evidência necessária                                                                                                                                                                        |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| README, AGENTS e docs              | Links e âncoras locais, comandos existentes, fatos conferidos no código e formatação. Não exige geração, banco ou testes novos.                                                             |
+| Institucional ou CSS               | Tipos, lint, build Next.js e navegador em desktop/celular; navegação, CTA, metadados e aparência.                                                                                           |
+| Blocos, lint, edição ou publicação | Contratos válidos e inválidos; recusas sem escrita; concorrência; rascunho e snapshot preservados; render e fluxo no navegador.                                                             |
+| Auth, tenant ou proxy              | Sessão ausente/expirada, tenant incorreto, host reservado, acesso a `/s/*`, query de prévia e conteúdo público.                                                                             |
+| Formulário ou tracking             | Em ambiente de teste autorizado, envio, atribuição, consentimento, gravação e destino; duplicação de clique.                                                                                |
+| Imagens ou ferramentas             | Falha parcial, disponibilidade, alteração por número, isolamento, aplicação de logo e recusa de exclusão em uso.                                                                            |
+| Tokens e custos de IA              | SDK real com modelo simulado, idempotência, ausências, falhas, isolamento por cliente, datas de Brasília, paginação, migração repetível e UI responsiva.                                    |
+| Schema                             | Aplicação e reaplicação em PostgreSQL descartável, com verificação dos consumidores.                                                                                                        |
+| Projeto Premium                    | Snapshot público, locks, workspace isolado, contrato editorial, revisão concorrente, prévia efêmera, build, ponte por token/host, domínio canônico, release posterior e proteção de assets. |
+| Pastas de sites                    | CRUD, nomes únicos, preservação ao excluir, lote atômico, conflito entre sessões, desfazer, arrasto, teclado e celular.                                                                     |
+| Kanban interno                     | Sessão, rota canônica e redirecionamento, host de cliente, origem, upgrade idempotente, vínculo, filtros, arquivo, ordem, concorrência por cartão, teclado e toque.                         |
+| Skills e cliente do Kanban         | Validação estrutural das skills, bearer restrito, sessão humana/Origin, host de cliente, parser, payloads/versionamento e leitura real sem escrita no destino.                              |
+| Modelo ou prompt                   | Contratos e [avaliação reproduzível](harness.md#avaliação-reproduzível), com chamadas reais autorizadas e limitações registradas.                                                           |
 
 O lint de código e o pre-flight `lintPage` são verificações diferentes.
 Compilação, fixtures e crítica de IA não substituem a validação do fluxo afetado.
@@ -89,11 +89,14 @@ movimento reduzido. Elas não comprovam latência
 do modelo, persistência no Neon ou comportamento em aparelhos físicos/Safari.
 Sem Chrome, os casos dependentes são pulados; informe isso no resultado.
 
-Para Premium, gere um projeto sintético com `premium:export`, rode typecheck,
-lint e build do workspace e depois `premium:validate`. O ensaio de infraestrutura
+Para Premium, valide também `.agents/skills/premium-frontend`, gere um projeto
+sintético com `premium:export`, rode typecheck, lint e build do workspace e
+depois `premium:validate`. `tests/admin-premium.test.mjs` cobre contrato, export e
+schema; `tests/browser/admin-premium.test.mjs` percorre o CMS, o hot refresh e a
+publicação em desktop/celular. O ensaio de infraestrutura
 deve usar um projeto Vercel descartável: confirmar que o domínio exato passa a
-servir o filho, editar um texto, publicar outra vez e observar a mudança na mesma
-URL. Remova projeto e domínio sintéticos ao terminar. A ponte de formulário,
+servir o filho, editar texto e imagem pelo CMS, publicar e observar a mudança na
+mesma URL. Remova projeto e domínio sintéticos ao terminar. A ponte de formulário,
 evento e WhatsApp exige token e host corretos e deve gravar apenas em banco de
 teste. A primeira ativação e uma release posterior são caminhos diferentes e
 ambos precisam ser exercitados.

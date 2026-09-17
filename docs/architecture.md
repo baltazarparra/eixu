@@ -317,24 +317,26 @@ Uploads manuais em `/api/admin/[tenant]/upload` aceitam PNG, JPEG, WebP, GIF e S
 
 ## Dados, conversão e tráfego
 
-| Tabela                | Responsabilidade                                                        |
-| --------------------- | ----------------------------------------------------------------------- |
-| `tenants`             | Identidade, rascunho e snapshot da apresentação global                  |
-| `site_folders`        | Pastas compartilhadas que organizam os tenants no painel                |
-| `admin_users`         | Operadores globais, estado da conta e hash do PIN                       |
-| `admin_sessions`      | Sessões opacas, expiração e revogação                                   |
-| `admin_activity`      | Autoria, resultado e snapshots das ações administrativas                |
-| `pages`               | Rascunho e snapshot publicado de conteúdo, SEO e dados editoriais       |
-| `images`              | Biblioteca, sequência por tenant, geração, crítica e disponibilidade    |
-| `generation_runs`     | Execução da geração em etapas: estado, fase, saltos e origem            |
-| `generation_events`   | Linha do tempo que o painel mostra: fases, ferramentas, pausas          |
-| `chat_messages`       | Texto da conversa do site; o canal `imagens` só guarda histórico antigo |
-| `leads`               | Campos recebidos, origem e consentimento informado                      |
-| `events`              | Eventos de primeira parte por tenant/página/campanha                    |
-| `campaign_spend`      | Gastos manuais em centavos, com campanha, canal e período               |
-| `premium_projects`    | Pasta, domínio, token em hash e release ativa de cada Premium           |
-| `premium_conversions` | Snapshot público, hash, SHA de origem, lease e PR de conversão          |
-| `premium_releases`    | Deployments imutáveis e manifesto de assets de cada Premium             |
+| Tabela                      | Responsabilidade                                                        |
+| --------------------------- | ----------------------------------------------------------------------- |
+| `tenants`                   | Identidade, rascunho e snapshot da apresentação global                  |
+| `site_folders`              | Pastas compartilhadas que organizam os tenants no painel                |
+| `admin_users`               | Operadores globais, estado da conta e hash do PIN                       |
+| `admin_sessions`            | Sessões opacas, expiração e revogação                                   |
+| `admin_activity`            | Autoria, resultado e snapshots das ações administrativas                |
+| `pages`                     | Rascunho e snapshot publicado de conteúdo, SEO e dados editoriais       |
+| `images`                    | Biblioteca, sequência por tenant, geração, crítica e disponibilidade    |
+| `generation_runs`           | Execução da geração em etapas: estado, fase, saltos e origem            |
+| `generation_events`         | Linha do tempo que o painel mostra: fases, ferramentas, pausas          |
+| `chat_messages`             | Texto da conversa do site; o canal `imagens` só guarda histórico antigo |
+| `leads`                     | Campos recebidos, origem e consentimento informado                      |
+| `events`                    | Eventos de primeira parte por tenant/página/campanha                    |
+| `campaign_spend`            | Gastos manuais em centavos, com campanha, canal e período               |
+| `premium_projects`          | Pasta, domínio, token em hash e release ativa de cada Premium           |
+| `premium_conversions`       | Snapshot público, hash, SHA de origem, lease e PR de conversão          |
+| `premium_releases`          | Deployments imutáveis e manifesto de assets de cada Premium             |
+| `premium_content_revisions` | Revisões editoriais imutáveis publicadas pelo CMS Premium               |
+| `premium_preview_sessions`  | Rascunhos efêmeros e tokens em hash para a prévia Premium               |
 
 O script de atribuição guarda primeiro/último toque, click IDs e identificador de visita em `localStorage`. Preenche campos de formulário e envia eventos para `/api/e`. Formulários nativos passam por honeypot, gravam contato e evento e redirecionam com 303. `/go/wa` registra clique e redireciona para `wa.me`; `?n=` escolhe outro WhatsApp do cadastro, e índice ausente ou inválido usa o principal.
 
@@ -357,13 +359,23 @@ repositório. A primeira PR exige revisão; o merge publica, associa o domínio
 exato `<slug>.eixu.com.br` e registra a release. Merges posteriores na pasta
 disparam o mesmo release e atualizam essa URL sem DNS manual.
 
+Cada release também registra o contrato `content/editor.json`. Quando o runtime
+está em `premium`, `/admin/[tenant]` carrega somente o CMS Premium: página e
+seções à esquerda, domínio canônico à direita. Texto e imagem passam por esse
+contrato; a publicação cria uma revisão imutável e troca o ponteiro do projeto
+na mesma transação. A prévia usa um token aleatório de curta duração, guardado
+apenas como SHA-256, e o próprio frontend Premium busca o rascunho pelo bearer
+do projeto. O iframe só confirma a atualização por `postMessage` vindo do host
+canônico. O conteúdo publicado é separado de releases de código: composição,
+campos e integrações mudam por PR; valores declarados mudam pelo CMS.
+
 Formulários, eventos e WhatsApp entram pelas rotas server-side do Premium e são
 encaminhados às APIs centrais. O bearer é exclusivo do projeto, seu hash fica em
 `premium_projects` e o host canônico precisa coincidir. O projeto filho nunca
 recebe `DATABASE_URL`, cookie administrativo ou token do Kanban. Um banco próprio
 opcional usa credenciais e migrações daquele workspace.
 
-O manifesto da release protege imagens centrais em uso. Cadastro, acervo, leads,
+O manifesto da release e as revisões editoriais protegem imagens centrais em uso. Cadastro, acervo, leads,
 tráfego e pastas continuam no painel. Arquivamento e exclusão ficam bloqueados
 até existir um ciclo que retire o domínio e preserve os releases. O contrato
 completo está em [Projetos Premium](plano-projetos-premium.md).

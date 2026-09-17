@@ -33,7 +33,11 @@ export default async function TenantWorkspace({
     pagesWithUndo(tenant.id),
     premiumWorkspaceState(tenant),
   ]);
-  const history = await chatHistory(tenant.id, 'site');
+  const premiumActive =
+    premium.maintenanceMode === 'premium' &&
+    premium.publicRuntime === 'premium';
+  const history = premiumActive ? [] : await chatHistory(tenant.id, 'site');
+  const initial = workspaceState(tenant, pages, images, undoPages, premium);
   const { imagem, pedido } = await searchParams;
   const imageRequest =
     typeof imagem === 'string' && /^[1-9]\d{0,8}$/.test(imagem)
@@ -44,7 +48,7 @@ export default async function TenantWorkspace({
   return (
     <Workspace
       key={tenant.slug}
-      initial={workspaceState(tenant, pages, images, undoPages, premium)}
+      initial={initial}
       history={history}
       lastMessageId={messageCursor(history)}
       imageRequest={imageRequest}

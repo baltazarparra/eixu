@@ -1,4 +1,5 @@
 import type { Page, PublishedTenantSnapshot, Tenant } from '@/lib/types';
+import type { PremiumEditorState } from '@/lib/premium/editor';
 
 export const PREMIUM_CONVERTER_VERSION = '1';
 
@@ -68,4 +69,5 @@ export type PremiumWorkspaceState = {
     error: string | null;
     createdAt: string;
   };
+  editor: PremiumEditorState | null;
 };

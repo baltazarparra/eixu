@@ -17,6 +17,19 @@ const favicon =
 const config: NextConfig = {
   turbopack: { root: resolve(process.cwd(), '../../..') },
   htmlLimitedBots: /.*/,
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        has: [{ type: 'query', key: 'eixu_preview' }],
+        headers: [
+          { key: 'Cache-Control', value: 'private, no-store' },
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' },
+        ],
+      },
+    ];
+  },
   async redirects() {
     return favicon
       ? [

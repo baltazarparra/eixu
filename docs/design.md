@@ -97,6 +97,23 @@ ficam no [histórico](archive/verification-2026-09-13.md); não certificam o est
 
 ## Painel administrativo
 
+### CMS dos projetos Premium
+
+Quando `maintenance_mode` e `public_runtime` são `premium`, a área Site não
+monta conversa, compositor ou ferramentas do gerador. A coluna editorial lista
+somente as páginas, seções, textos e imagens de `content/editor.json`; composição
+e comportamento continuam sob responsabilidade do Creative Developer no código.
+O cabeçalho mantém página, Desktop/Celular, link público e a decisão única
+**Salvar e publicar**. Alterações não salvas recebem contagem por página e aviso
+ao sair.
+
+A coluna direita abre a URL Premium canônica com uma sessão efêmera. Cada edição
+é validada no servidor e aplicada após um debounce curto; a confirmação vem do
+iframe por origem, janela, requisição e revisão exatas. O recarregamento preserva
+rolagem e desativa envio de formulário e navegação externa dentro da prévia. A
+troca de imagem usa o acervo do próprio tenant. No celular, Conteúdo e Prévia
+ocupam vistas alternáveis com os mesmos alvos de 44 px do restante do painel.
+
 ### Operação pelo celular
 
 Abaixo de 1024 px, o cabeçalho tem 57 px: retorno, nome do cliente,

@@ -83,6 +83,16 @@ alegação de consciência ou memória contínua. `lib/ai/soul.ts` carrega esse 
 arquivo no prompt do produto, e `next.config.ts` o inclui no artefato do chat.
 Não há uma segunda cópia da identidade dentro do código.
 
+Projetos convertidos têm um contrato distinto em
+[`apps/premium/SOUL.md`](../apps/premium/SOUL.md). Ele define a persona de
+Creative Developer Sênior, com direção específica, detalhe, acessibilidade e
+factualidade como critérios conjuntos. [`apps/premium/AGENTS.md`](../apps/premium/AGENTS.md)
+mantém os limites compartilhados, e a skill local `premium-frontend` oferece o
+fluxo sob demanda e a adaptação verificada da Taste Skill v1. Esse harness atua
+em composição e código. Edições rotineiras dos campos de
+`content/editor.json` passam pelo CMS determinístico, sem modelo e sem acesso ao
+chat do gerador.
+
 [Manual do gerador](manual-gerador-sites.md) reúne funcionalidades, fluxos,
 blocos, ferramentas e limites. `lib/ai/generator-manual.ts` valida as seções no
 boot; `read_generator_manual` entrega de uma a seis delas. O prompt do chat leva

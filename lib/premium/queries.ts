@@ -10,6 +10,7 @@ import {
   premiumSourceHash,
   premiumSourceSnapshot,
 } from '@/lib/premium/snapshot';
+import { premiumEditorStateByTenant } from '@/lib/premium/content';
 import type { AdminUser } from '@/lib/auth';
 import type { Tenant } from '@/lib/types';
 
@@ -176,6 +177,7 @@ export async function premiumWorkspaceState(
 ): Promise<PremiumWorkspaceState> {
   let project: PremiumWorkspaceState['project'] = null;
   let conversion: PremiumWorkspaceState['conversion'] = null;
+  let editor: PremiumWorkspaceState['editor'] = null;
   try {
     const rows = (await db()`
       select p.id, p.project_key, p.directory, p.status as project_status,
@@ -225,12 +227,27 @@ export async function premiumWorkspaceState(
       error: error instanceof Error ? error.name : 'unknown',
     });
   }
+  if (
+    project?.status === 'active' &&
+    tenant.maintenanceMode === 'premium' &&
+    tenant.publicRuntime === 'premium'
+  ) {
+    try {
+      editor = await premiumEditorStateByTenant(tenant.id);
+    } catch (error) {
+      console.warn('[premium] editor indisponivel', {
+        tenantId: tenant.id,
+        error: error instanceof Error ? error.name : 'unknown',
+      });
+    }
+  }
   return {
     maintenanceMode: tenant.maintenanceMode,
     publicRuntime: tenant.publicRuntime,
     canonicalUrl: `https://${tenant.slug}.eixu.com.br`,
     project,
     conversion,
+    editor,
   };
 }
 
@@ -471,12 +488,15 @@ export async function activatePremiumRelease(input: {
   });
 }
 
-export async function premiumProjectByToken(
-  token: string,
-): Promise<{ tenantId: string; slug: string; canonicalHost: string } | null> {
+export async function premiumProjectByToken(token: string): Promise<{
+  projectId: string;
+  tenantId: string;
+  slug: string;
+  canonicalHost: string;
+} | null> {
   const hash = bridgeTokenHash(token);
   const rows = (await db()`
-    select p.tenant_id, p.canonical_host, t.slug
+    select p.id as project_id, p.tenant_id, p.canonical_host, t.slug
     from premium_projects p
     join tenants t on t.id = p.tenant_id
     where p.bridge_token_hash = ${hash}
@@ -493,6 +513,7 @@ export async function premiumProjectByToken(
   const row = rows[0];
   return row
     ? {
+        projectId: string(row.project_id),
         tenantId: string(row.tenant_id),
         slug: string(row.slug),
         canonicalHost: string(row.canonical_host),

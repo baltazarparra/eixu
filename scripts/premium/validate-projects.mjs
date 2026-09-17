@@ -1,5 +1,6 @@
 import { existsSync, globSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { assertEditorContract } from './editor-contract.mjs';
 
 const manifests = globSync('apps/premium/*/eixu.project.json');
 for (const manifestPath of manifests) {
@@ -12,6 +13,7 @@ for (const manifestPath of manifests) {
     'app/robots.txt/route.ts',
     'app/sitemap.xml/route.ts',
     'content/site.json',
+    'content/editor.json',
   ])
     if (!existsSync(resolve(root, required)))
       throw new Error(`${manifestPath}: ausente ${required}`);
@@ -19,5 +21,8 @@ for (const manifestPath of manifests) {
     throw new Error(`${manifestPath}: projectKey inválida`);
   if (manifest.canonicalHost !== `${manifest.projectKey}.eixu.com.br`)
     throw new Error(`${manifestPath}: host canônico divergente`);
+  assertEditorContract(
+    JSON.parse(readFileSync(resolve(root, 'content/editor.json'), 'utf8')),
+  );
 }
 process.stdout.write(`${manifests.length} projeto(s) Premium válido(s).\n`);

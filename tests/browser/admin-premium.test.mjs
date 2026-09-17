@@ -69,3 +69,123 @@ await test(
     }
   },
 );
+
+await test(
+  'CMS Premium: substitui o chat, atualiza a prévia e publica uma revisão',
+  { skip: !process.env.EIXU_CHROME_PATH },
+  async (t) => {
+    const browser = await puppeteer.launch({
+      executablePath: process.env.EIXU_CHROME_PATH,
+      headless: true,
+      args: ['--no-sandbox', '--disable-dev-shm-usage'],
+    });
+    const fixture = await handoffFixture({ premiumCms: true });
+    t.after(async () => {
+      await browser.close();
+      await fixture.server.close();
+    });
+    const page = await browser.newPage();
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.setViewport({ width: 1440, height: 900 });
+    await page.goto(`${fixture.base}/admin/marcenaria-horizonte`, {
+      waitUntil: 'networkidle0',
+    });
+    await page.waitForSelector('.admin-premium-editor');
+    assert.equal(await page.$('.admin-composer'), null);
+    assert.match(
+      await page.$eval(
+        '.admin-premium-editor-head',
+        (node) => node.textContent,
+      ),
+      /layout e os componentes/i,
+    );
+    await page.waitForFunction(() => {
+      const frame = document.querySelector('iframe');
+      return (
+        frame?.contentDocument?.querySelector('#premium-title')?.textContent ===
+        'Marcenaria Horizonte'
+      );
+    });
+
+    const title = await page.$('.admin-premium-field input');
+    await title.click({ count: 3 });
+    await title.type('Uma marcenaria feita para durar');
+    await page.waitForFunction(
+      () =>
+        document.querySelector('.admin-premium-preview-meta span')
+          ?.textContent === 'Alterações em tempo real',
+    );
+    await page.waitForFunction(() => {
+      const frame = document.querySelector('iframe');
+      return (
+        frame?.contentDocument?.querySelector('#premium-title')?.textContent ===
+        'Uma marcenaria feita para durar'
+      );
+    });
+    assert.ok(fixture.premiumPreviewWrites.length > 0);
+
+    await page.click('.admin-premium-image-field');
+    await page.waitForSelector('.admin-premium-image-dialog[open]');
+    const imageChoices = await page.$$('.admin-premium-image-grid button');
+    assert.equal(imageChoices.length, 2);
+    await imageChoices[1].click();
+
+    await page.evaluate(() => {
+      const button = [...document.querySelectorAll('button')].find(
+        (candidate) => candidate.textContent.includes('Salvar e publicar'),
+      );
+      button.click();
+    });
+    await page.waitForFunction(() =>
+      document.body.textContent.includes('Revisão 2 publicada.'),
+    );
+    assert.equal(fixture.premiumContentWrites.length, 1);
+    assert.equal(
+      fixture.premiumContentWrites[0].values['hero.title'],
+      'Uma marcenaria feita para durar',
+    );
+    assert.equal(
+      fixture.premiumContentWrites[0].values['hero.image'],
+      '/favicon.svg',
+    );
+
+    await page.click('.admin-bar-page');
+    await page.waitForSelector('[role="menuitemradio"]');
+    await page.evaluate(() => {
+      const option = [
+        ...document.querySelectorAll('[role="menuitemradio"]'),
+      ].find((candidate) => candidate.textContent.includes('/obrigado'));
+      option.click();
+    });
+    await page.waitForFunction(() => {
+      const frame = document.querySelector('iframe');
+      return (
+        frame?.contentDocument?.querySelector('#premium-title')?.textContent ===
+        'Recebemos seu pedido'
+      );
+    });
+
+    await page.setViewport({ width: 390, height: 844 });
+    await page.waitForFunction(
+      () =>
+        getComputedStyle(document.querySelector('.admin-mobile-views'))
+          .display === 'flex',
+    );
+    await page.evaluate(() => {
+      const button = [
+        ...document.querySelectorAll('.admin-mobile-views button'),
+      ].find((candidate) => candidate.textContent.includes('Prévia'));
+      button.click();
+    });
+    assert.equal(
+      await page.$eval(
+        '.admin-premium-preview',
+        (node) => getComputedStyle(node).display,
+      ),
+      'flex',
+    );
+    assert.deepEqual(errors, []);
+    await page.close();
+  },
+);

@@ -10,6 +10,7 @@ import {
 import { dirname, join, relative, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+import { premiumEditorContract } from './editor-contract.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const TEMPLATE = join(ROOT, 'scripts/premium/template');
@@ -154,6 +155,10 @@ function writeProject(job, target) {
   put(join(target, 'package.json'), packageJson(job.projectKey));
   put(join(target, 'content/site.json'), JSON.stringify(job.snapshot, null, 2));
   put(
+    join(target, 'content/editor.json'),
+    JSON.stringify(premiumEditorContract(job.snapshot), null, 2),
+  );
+  put(
     join(target, 'eixu.project.json'),
     JSON.stringify(
       {
@@ -174,7 +179,7 @@ function writeProject(job, target) {
   );
   put(
     join(target, 'AGENTS.md'),
-    `# Projeto Premium ${job.projectKey}\n\nEste app pertence à EIXU e atende https://${job.canonicalHost}. Edite e valide dentro desta pasta. O gerador não mantém mais a implementação.\n\n- npm run typecheck\n- npm run lint\n- npm run build\n\nMantenha EIXU_PREMIUM_TOKEN apenas no ambiente da Vercel. Leads, eventos e WhatsApp passam pelas rotas server-side locais para a plataforma central.`,
+    `# Projeto Premium ${job.projectKey}\n\nEste app pertence à EIXU e atende https://${job.canonicalHost}. Leia [o contrato Premium](../AGENTS.md) e [a identidade do Creative Developer](../SOUL.md) antes de mudar a composição. O gerador não mantém mais a implementação.\n\n- npm run typecheck\n- npm run lint\n- npm run build\n\nMantenha \`content/editor.json\` coerente com todo texto e imagem que o operador deve editar sem release. Mantenha EIXU_PREMIUM_TOKEN apenas no ambiente da Vercel. Leads, eventos, conteúdo e WhatsApp passam pelas rotas server-side locais para a plataforma central.`,
   );
   put(
     join(target, 'README.md'),

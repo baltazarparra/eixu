@@ -165,7 +165,9 @@ export function handoffData() {
         canonicalUrl: `https://${tenant.slug}.eixu.com.br`,
         project: null,
         conversion: null,
+        editor: null,
       },
+      media: [],
       previewRevision: 'test-v1',
       review: {
         current: false,
@@ -228,7 +230,12 @@ export function handoffData() {
   };
 }
 
-export async function handoffFixture({ port = 0, imageUpload, publish } = {}) {
+export async function handoffFixture({
+  port = 0,
+  imageUpload,
+  publish,
+  premiumCms = false,
+} = {}) {
   const root = process.cwd();
   const directory = path.join(root, '.next/static/chunks');
   const css = (
@@ -251,6 +258,9 @@ export async function handoffFixture({ port = 0, imageUpload, publish } = {}) {
   let holdingFeed = false;
   const heldFeeds = [];
   const editWrites = [];
+  const premiumPreviewWrites = [];
+  const premiumContentWrites = [];
+  let fixtureOrigin = '';
   const server = await createServer({
     configFile: false,
     root,
@@ -282,10 +292,16 @@ export async function handoffFixture({ port = 0, imageUpload, publish } = {}) {
         enforce: 'pre',
         resolveId(id) {
           if (id === 'next/navigation') return '\0handoff-navigation';
+          if (id === 'next/dynamic') return '\0handoff-dynamic';
+          if (id === 'next/image') return '\0handoff-image';
         },
         load(id) {
           if (id === '\0handoff-navigation')
             return `export function usePathname(){return location.pathname;} export function useSearchParams(){return new URLSearchParams(location.search);} export function useRouter(){return {push:url=>location.assign(url),refresh:()=>{window.__refreshes=(window.__refreshes||0)+1}}}`;
+          if (id === '\0handoff-dynamic')
+            return `import React from 'react'; export default function dynamic(loader){const Lazy=React.lazy(async()=>{const loaded=await loader();return {default:loaded?.default??loaded}});return function DynamicComponent(props){return React.createElement(React.Suspense,{fallback:null},React.createElement(Lazy,props))}}`;
+          if (id === '\0handoff-image')
+            return `import React from 'react'; export default React.forwardRef(function Image({fill,unoptimized,priority,sizes,...props},ref){return React.createElement('img',{...props,ref})})`;
         },
         transform(_source, id) {
           if (id.endsWith('/app/(admin)/admin/actions.ts'))
@@ -315,6 +331,39 @@ export async function handoffFixture({ port = 0, imageUpload, publish } = {}) {
                 ...data.site,
                 tenant: { ...data.site.tenant, ...client },
               };
+              if (url.pathname.endsWith('/premium/preview')) {
+                if (req.method === 'POST') {
+                  res.end(
+                    JSON.stringify({
+                      token: 'preview-token-'.padEnd(40, 'x'),
+                      expiresAt: '2026-09-16T13:00:00.000Z',
+                      contractHash: data.site.premium.editor.contractHash,
+                      content: data.site.premium.editor.content,
+                    }),
+                  );
+                  return;
+                }
+                const chunks = [];
+                for await (const chunk of req) chunks.push(chunk);
+                const body = JSON.parse(Buffer.concat(chunks).toString());
+                premiumPreviewWrites.push(body);
+                res.end(JSON.stringify({ version: body.version }));
+                return;
+              }
+              if (url.pathname.endsWith('/premium/content')) {
+                const chunks = [];
+                for await (const chunk of req) chunks.push(chunk);
+                const body = JSON.parse(Buffer.concat(chunks).toString());
+                premiumContentWrites.push(body);
+                const content = {
+                  revision: body.expectedRevision + 1,
+                  values: body.values,
+                  updatedAt: '2026-09-16T12:30:00.000Z',
+                };
+                data.site.premium.editor.content = content;
+                res.end(JSON.stringify({ content }));
+                return;
+              }
               if (url.pathname.endsWith('/edit')) {
                 const chunks = [];
                 for await (const chunk of req) chunks.push(chunk);
@@ -486,6 +535,22 @@ export async function handoffFixture({ port = 0, imageUpload, publish } = {}) {
               return;
             }
             if (
+              premiumCms &&
+              (url.pathname === '/' || url.pathname === '/obrigado')
+            ) {
+              const previewValues =
+                premiumPreviewWrites.at(-1)?.values ??
+                data.site.premium.editor.content.values;
+              const key =
+                url.pathname === '/obrigado' ? 'thanks.title' : 'hero.title';
+              const title = String(previewValues[key] ?? 'Sem conteúdo');
+              res.setHeader('content-type', 'text/html; charset=utf-8');
+              res.end(
+                `<!doctype html><html lang="pt-BR"><body style="font:18px system-ui;background:#f0ece4;color:#2b251f;padding:30px"><main><h1 id="premium-title">${title.replaceAll('&', '&amp;').replaceAll('<', '&lt;')}</h1><p>Frontend Premium real da fixture.</p></main><script>parent.postMessage({type:'eixu:premium-preview-ready',revision:${premiumPreviewWrites.at(-1)?.version ?? 0},requestId:${JSON.stringify(url.searchParams.get('eixu_request') ?? '')}},location.origin);addEventListener('scroll',()=>parent.postMessage({type:'eixu:premium-preview-scroll',y:scrollY},location.origin),{passive:true});</script></body></html>`,
+              );
+              return;
+            }
+            if (
               url.pathname === '/admin' ||
               url.pathname.startsWith('/admin/')
             ) {
@@ -517,11 +582,117 @@ export async function handoffFixture({ port = 0, imageUpload, publish } = {}) {
     logLevel: 'error',
   });
   await server.listen();
+  fixtureOrigin = `http://127.0.0.1:${server.httpServer.address().port}`;
+  if (premiumCms) {
+    data.clients[0].maintenanceMode = 'premium';
+    data.clients[0].publicRuntime = 'premium';
+    data.tenant.maintenanceMode = 'premium';
+    data.tenant.publicRuntime = 'premium';
+    data.site.tenant.maintenanceMode = 'premium';
+    data.site.tenant.publicRuntime = 'premium';
+    data.site.media = data.images
+      .filter((image) => image.status !== 'rejeitada')
+      .map((image) => ({
+        id: image.id,
+        seq: image.seq,
+        kind: image.kind,
+        url: image.url,
+        alt: image.alt,
+        description: image.description,
+        width: 1200,
+        height: 800,
+      }));
+    data.site.premium = {
+      maintenanceMode: 'premium',
+      publicRuntime: 'premium',
+      canonicalUrl: fixtureOrigin,
+      project: {
+        id: 'premium-project',
+        key: data.tenant.slug,
+        directory: `apps/premium/${data.tenant.slug}`,
+        status: 'active',
+        vercelProjectName: `eixu-premium-${data.tenant.slug}`,
+      },
+      conversion: {
+        id: 'premium-conversion',
+        status: 'activated',
+        pullRequestUrl: null,
+        error: null,
+        createdAt: '2026-09-16T12:00:00.000Z',
+      },
+      editor: {
+        contractHash: 'a'.repeat(64),
+        contract: {
+          version: 1,
+          pages: [
+            {
+              slug: '',
+              label: 'Início',
+              sections: [
+                {
+                  id: 'hero',
+                  label: 'Abertura',
+                  fields: [
+                    {
+                      key: 'hero.title',
+                      label: 'Título',
+                      type: 'text',
+                      value: 'Marcenaria Horizonte',
+                      required: true,
+                      maxLength: 80,
+                    },
+                    {
+                      key: 'hero.image',
+                      label: 'Imagem principal',
+                      type: 'image',
+                      value: '/cases/saldo-flow.webp',
+                      required: true,
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              slug: 'obrigado',
+              label: 'Obrigado',
+              sections: [
+                {
+                  id: 'message',
+                  label: 'Confirmação',
+                  fields: [
+                    {
+                      key: 'thanks.title',
+                      label: 'Título',
+                      type: 'text',
+                      value: 'Recebemos seu pedido',
+                      required: true,
+                      maxLength: 80,
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        content: {
+          revision: 1,
+          values: {
+            'hero.title': 'Marcenaria Horizonte',
+            'hero.image': '/cases/saldo-flow.webp',
+            'thanks.title': 'Recebemos seu pedido',
+          },
+          updatedAt: '2026-09-16T12:00:00.000Z',
+        },
+      },
+    };
+  }
   return {
     server,
     data,
     writes,
     editWrites,
+    premiumPreviewWrites,
+    premiumContentWrites,
     holdFeed() {
       holdingFeed = true;
     },
@@ -535,6 +706,6 @@ export async function handoffFixture({ port = 0, imageUpload, publish } = {}) {
     failSave(value) {
       failSave = value;
     },
-    base: `http://127.0.0.1:${server.httpServer.address().port}`,
+    base: fixtureOrigin,
   };
 }
