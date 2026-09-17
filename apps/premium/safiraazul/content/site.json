@@ -1,0 +1,729 @@
+{
+  "pages": [
+    {
+      "id": "3b067ca8-3e83-4951-9dd6-6b06108a4ae9",
+      "seo": {
+        "title": "Safira Azul | Joias de Alto Padrão",
+        "noindex": false,
+        "description": "Conheça as coleções de joias da Safira Azul em Porto Feliz. Peças marcantes em metais nobres e pedras preciosas com atendimento exclusivo."
+      },
+      "meta": {
+        "inbound": {
+          "stage": "discovery",
+          "intent": "Apresentar a marca e atrair clientes para a loja e o WhatsApp."
+        }
+      },
+      "slug": "",
+      "type": "page",
+      "title": "Safira Azul | Joias de Alto Padrão em Porto Feliz",
+      "blocks": [
+        {
+          "id": "1vei16y6",
+          "type": "nav.bar",
+          "props": {
+            "links": [
+              {
+                "href": "/joias",
+                "label": "Coleções"
+              },
+              {
+                "href": "/contato",
+                "label": "Espaço Físico"
+              }
+            ],
+            "layout": "bar",
+            "logoText": "SAFIRA AZUL",
+            "position": "fixed",
+            "logoHeight": 100,
+            "presentation": {
+              "tone": "paper"
+            }
+          }
+        },
+        {
+          "id": "yqhzutq0",
+          "type": "hero.split",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/",
+              "label": "Falar pelo WhatsApp"
+            },
+            "image": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/safiraazul/gerado/3180a3d6-ecd6-4274-b7b6-6180f32e7e9e/1.webp",
+            "layout": "poster",
+            "bullets": [
+              "Atendimento com hora marcada",
+              "Rua Salvador Arruda 100",
+              "Metais nobres e gemas"
+            ],
+            "eyebrow": "ALTA JOALHERIA",
+            "subtext": "Criações autênticas em metais nobres e pedras preciosas. Conheça nossa loja na Salvador Arruda.",
+            "headline": "Joias raras",
+            "imageAlt": "Anel de metal prateado com safira azul facetada sobre rocha escura.",
+            "secondary": {
+              "href": "/joias",
+              "label": "Ver coleções"
+            },
+            "presentation": {
+              "tone": "ink",
+              "motion": "image",
+              "spacing": "airy"
+            },
+            "imagePosition": "right"
+          }
+        },
+        {
+          "id": "oy6od13r",
+          "type": "media.gallery",
+          "props": {
+            "title": "Lapidação precisa e design puro",
+            "images": [
+              {
+                "alt": "Colar prateado com pingente de gota azul sobre bloco de pedra preta polida.",
+                "src": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/safiraazul/gerado/0e56fd2b-8bb2-496b-bebd-fbf38545cb9c/1.webp"
+              },
+              {
+                "alt": "Par de brincos geométricos de metal polido com diamante sobre base reflexiva escura.",
+                "src": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/safiraazul/gerado/fc4691c7-b534-478a-b9fd-c21b5b6bccdc/1.webp"
+              }
+            ],
+            "layout": "collage",
+            "presentation": {
+              "tone": "ink",
+              "width": "full",
+              "motion": "reveal",
+              "spacing": "airy"
+            }
+          }
+        },
+        {
+          "id": "z3z2jbng",
+          "type": "feature.numbered",
+          "props": {
+            "lead": "Peças criadas para destacar momentos com volume marcante e acabamento impecável.",
+            "items": [
+              {
+                "body": "Safiras, diamantes e pedras nobres lapidadas com precisão para realçar a cor e o brilho natural.",
+                "href": "/joias",
+                "icon": "cube",
+                "title": "Gemas selecionadas"
+              },
+              {
+                "body": "Estruturas firmes em ouro e platina tratadas com polimento cuidadoso que resiste ao tempo.",
+                "href": "/joias",
+                "icon": "layers",
+                "title": "Metais nobres"
+              },
+              {
+                "body": "Silhuetas geométricas com presença forte, pensadas para compor trajes formais e celebrações.",
+                "href": "/joias",
+                "icon": "palette",
+                "title": "Desenho contemporâneo"
+              },
+              {
+                "body": "Atendimento dedicado na Rua Salvador Arruda, 100, para você experimentar cada peça com calma.",
+                "href": "/contato",
+                "icon": "pin",
+                "title": "Espaço em Porto Feliz"
+              }
+            ],
+            "title": "O rigor em cada detalhe mineral",
+            "layout": "ledger",
+            "eyebrow": "DETALHES E MATERIAIS",
+            "presentation": {
+              "tone": "paper",
+              "spacing": "normal"
+            }
+          }
+        },
+        {
+          "id": "hez7iex1",
+          "type": "editorial.facts",
+          "props": {
+            "body": "A Safira Azul traz para Porto Feliz uma curadoria que une gemas de tom intenso e metais preciosos em linhas marcantes. Cada peça é apresentada com orientação atenta para você encontrar a joia ideal para ocasiões memoráveis.",
+            "dark": false,
+            "facts": [
+              {
+                "label": "Localização",
+                "value": "Rua Salvador Arruda, 100, Porto Feliz"
+              },
+              {
+                "label": "Atendimento",
+                "value": "Segunda a sábado com horário agendado"
+              },
+              {
+                "label": "Contato",
+                "value": "WhatsApp (15) 99844-7407"
+              },
+              {
+                "label": "Segmento",
+                "value": "Joalheria de alto padrão"
+              }
+            ],
+            "title": "Joalheria pensada para receber você",
+            "layout": "split",
+            "eyebrow": "NOSSO ESPAÇO",
+            "presentation": {
+              "edge": "line",
+              "tone": "soft",
+              "spacing": "normal"
+            }
+          }
+        },
+        {
+          "id": "2oh1j4wu",
+          "type": "cta.band",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/",
+              "label": "Falar pelo WhatsApp"
+            },
+            "body": "Converse com nossa equipe pelo WhatsApp e combine uma visita à nossa loja física em Porto Feliz.",
+            "title": "Encontre sua próxima joia",
+            "layout": "poster",
+            "whatsapp": true,
+            "presentation": {
+              "tone": "accent",
+              "spacing": "airy"
+            }
+          }
+        },
+        {
+          "id": "n27k3luf",
+          "type": "footer.compact",
+          "props": {
+            "legal": "Safira Azul. Todos os direitos reservados.",
+            "links": [
+              {
+                "href": "/joias",
+                "label": "Coleções"
+              },
+              {
+                "href": "/contato",
+                "label": "Contato"
+              },
+              {
+                "href": "/go/wa?from=/",
+                "label": "WhatsApp"
+              }
+            ],
+            "layout": "split",
+            "tagline": "Joalheria de alto padrão na Rua Salvador Arruda, 100, em Porto Feliz.",
+            "logoText": "SAFIRA AZUL",
+            "presentation": {
+              "tone": "ink"
+            }
+          }
+        }
+      ],
+      "navOrder": 0,
+      "publishedAt": "2026-09-12T21:42:05.990Z"
+    },
+    {
+      "id": "721b6e0f-558f-41d2-a25d-48f677bcd3da",
+      "seo": {
+        "title": "Contato e Localização | Safira Azul",
+        "noindex": false,
+        "description": "Visite a loja Safira Azul na Salvador Arruda, 100, em Porto Feliz. Fale conosco pelo WhatsApp (15) 99844-7407 para agendar sua visita."
+      },
+      "meta": {
+        "inbound": {
+          "stage": "conversion",
+          "intent": "Localizar a loja física da Safira Azul em Porto Feliz e iniciar atendimento no WhatsApp."
+        }
+      },
+      "slug": "contato",
+      "type": "page",
+      "title": "Contato e Localização | Safira Azul Porto Feliz",
+      "blocks": [
+        {
+          "id": "e2xfonae",
+          "type": "nav.bar",
+          "props": {
+            "links": [
+              {
+                "href": "/",
+                "label": "Início"
+              },
+              {
+                "href": "/joias",
+                "label": "Coleções"
+              },
+              {
+                "href": "/contato",
+                "label": "Espaço Físico"
+              }
+            ],
+            "layout": "bar",
+            "logoText": "SAFIRA AZUL",
+            "position": "fixed",
+            "logoHeight": 100,
+            "presentation": {
+              "tone": "ink"
+            }
+          }
+        },
+        {
+          "id": "y1ukj4kh",
+          "type": "hero.statement",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/contato",
+              "label": "Iniciar conversa"
+            },
+            "layout": "center",
+            "eyebrow": "ATENDIMENTO DEDICADO",
+            "subtext": "Recebemos você na Rua Salvador Arruda, 100, em Porto Feliz. Reserve seu horário pelo WhatsApp.",
+            "headline": "Visite nosso espaço exclusivo",
+            "presentation": {
+              "tone": "ink",
+              "motion": "reveal",
+              "spacing": "airy"
+            }
+          }
+        },
+        {
+          "id": "34dg7yl0",
+          "type": "media.image",
+          "props": {
+            "alt": "Conjunto de joias prateadas com pedras roxas distribuídas sobre placas de ardósia escura.",
+            "src": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/safiraazul/gerado/9c8805c2-a0bd-4a68-889a-1ebe82600cad/1.webp",
+            "layout": "wide",
+            "caption": "Ambiente reservado para você apreciar detalhes, texturas e lapidações de cada coleção.",
+            "presentation": {
+              "edge": "line",
+              "tone": "paper",
+              "spacing": "normal"
+            }
+          }
+        },
+        {
+          "id": "cfocbtdp",
+          "type": "editorial.facts",
+          "props": {
+            "body": "Localizada em endereço central de Porto Feliz, nossa loja foi planejada para oferecer discrição, conforto e tempo para sua escolha. Converse antes pelo WhatsApp para preparar a recepção com as peças do seu interesse.",
+            "dark": false,
+            "facts": [
+              {
+                "label": "Endereço",
+                "value": "Rua Salvador Arruda, 100, Porto Feliz"
+              },
+              {
+                "label": "WhatsApp",
+                "value": "(15) 99844-7407"
+              },
+              {
+                "label": "Correio eletrônico",
+                "value": "mail@mail.com"
+              },
+              {
+                "label": "Cidade",
+                "value": "Porto Feliz, São Paulo"
+              }
+            ],
+            "title": "Como encontrar e falar conosco",
+            "layout": "split",
+            "eyebrow": "INFORMAÇÕES PRÁTICAS",
+            "presentation": {
+              "tone": "soft",
+              "spacing": "normal"
+            }
+          }
+        },
+        {
+          "id": "9o26s13j",
+          "type": "narrative.steps",
+          "props": {
+            "steps": [
+              {
+                "body": "Mande uma mensagem no WhatsApp informando a peça de interesse ou a data em que deseja nos visitar.",
+                "title": "Primeiro contato"
+              },
+              {
+                "body": "Separamos modelos de colares, anéis ou brincos compatíveis com o seu gosto para a apresentação.",
+                "title": "Seleção personalizada"
+              },
+              {
+                "body": "No endereço da Salvador Arruda, você prova cada item com iluminação adequada e suporte atencioso.",
+                "title": "Visita e prova"
+              }
+            ],
+            "title": "Passo a passo do seu atendimento",
+            "layout": "timeline",
+            "eyebrow": "COMO FUNCIONA",
+            "presentation": {
+              "tone": "paper",
+              "spacing": "normal"
+            }
+          }
+        },
+        {
+          "id": "fvgy0pc3",
+          "type": "cta.band",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/contato",
+              "label": "Falar pelo WhatsApp"
+            },
+            "body": "Estamos prontos para atender você com atenção exclusiva em Porto Feliz. Toque abaixo e fale direto conosco.",
+            "title": "Agende sua recepção",
+            "layout": "poster",
+            "whatsapp": true,
+            "presentation": {
+              "tone": "accent",
+              "spacing": "airy"
+            }
+          }
+        },
+        {
+          "id": "hks17gyl",
+          "type": "footer.compact",
+          "props": {
+            "legal": "Safira Azul. Todos os direitos reservados.",
+            "links": [
+              {
+                "href": "/",
+                "label": "Início"
+              },
+              {
+                "href": "/joias",
+                "label": "Coleções"
+              },
+              {
+                "href": "/go/wa?from=/contato",
+                "label": "WhatsApp"
+              }
+            ],
+            "layout": "split",
+            "tagline": "Atendimento presencial e remoto na Rua Salvador Arruda, 100, Porto Feliz.",
+            "logoText": "SAFIRA AZUL",
+            "presentation": {
+              "tone": "ink"
+            }
+          }
+        }
+      ],
+      "navOrder": 0,
+      "publishedAt": "2026-09-12T21:42:05.990Z"
+    },
+    {
+      "id": "7960ac8a-ee54-4a1f-b3ba-21e63627fc30",
+      "seo": {
+        "title": "Coleções de Joias | Safira Azul",
+        "noindex": false,
+        "description": "Explore colares, anéis, brincos e pulseiras em ouro e pedras preciosas na Safira Azul em Porto Feliz. Conheça as peças."
+      },
+      "meta": {
+        "inbound": {
+          "stage": "consideration",
+          "intent": "Comparar linhas de joias finas, anéis e colares para escolher uma peça sofisticada."
+        }
+      },
+      "slug": "joias",
+      "type": "page",
+      "title": "Coleções de Joias | Safira Azul Porto Feliz",
+      "blocks": [
+        {
+          "id": "8kpl5s9t",
+          "type": "nav.bar",
+          "props": {
+            "links": [
+              {
+                "href": "/",
+                "label": "Início"
+              },
+              {
+                "href": "/joias",
+                "label": "Coleções"
+              },
+              {
+                "href": "/contato",
+                "label": "Espaço Físico"
+              }
+            ],
+            "layout": "bar",
+            "logoText": "SAFIRA AZUL",
+            "position": "fixed",
+            "logoHeight": 100,
+            "presentation": {
+              "tone": "ink"
+            }
+          }
+        },
+        {
+          "id": "c44pgmju",
+          "type": "hero.statement",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/joias",
+              "label": "Consultar modelos"
+            },
+            "layout": "oversize",
+            "eyebrow": "COLEÇÃO PERMANENTE",
+            "subtext": "Anéis, colares e brincos desenvolvidos com pedras naturais e acabamento artesanal rigoroso.",
+            "headline": "Linhas nobres e presença marcante",
+            "presentation": {
+              "tone": "ink",
+              "motion": "reveal",
+              "spacing": "airy"
+            }
+          }
+        },
+        {
+          "id": "f1xmd0no",
+          "type": "media.image",
+          "props": {
+            "alt": "Conjunto de joias douradas com pedras ovais azuis incluindo brincos, anel, colar e pulseira em expositor preto.",
+            "src": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/safiraazul/gerado/3775b601-a921-4193-87fd-afc558ca8d66/1.webp",
+            "layout": "wide",
+            "caption": "Composições em ouro e gemas azuis selecionadas para eventos e uso refinado.",
+            "presentation": {
+              "edge": "line",
+              "tone": "paper",
+              "spacing": "normal"
+            }
+          }
+        },
+        {
+          "id": "mvpt6b0s",
+          "type": "feature.bento",
+          "props": {
+            "items": [
+              {
+                "body": "Estruturas firmes em metais nobres com cravação segura de pedras centrais e acabamento lapidado.",
+                "icon": "cube",
+                "title": "Anéis e solitários"
+              },
+              {
+                "body": "Correntes e pontos de luz com caimento equilibrado, valorizando decotes e composições elegantes.",
+                "icon": "layers",
+                "title": "Colares e pingentes"
+              },
+              {
+                "body": "Pares anatômicos com brilho constante para iluminar o rosto com discrição ou destaque.",
+                "icon": "sun",
+                "title": "Brincos esculturais"
+              },
+              {
+                "body": "Brazaletes e elos com fechos resistentes e desenho que une conforto e presença geométrica.",
+                "icon": "palette",
+                "title": "Pulseiras estruturadas"
+              }
+            ],
+            "title": "Categorias pensadas para presentear",
+            "layout": "mosaic",
+            "eyebrow": "CATEGORIAS",
+            "presentation": {
+              "tone": "soft",
+              "spacing": "normal"
+            }
+          }
+        },
+        {
+          "id": "x0lc86to",
+          "type": "faq.accordion",
+          "props": {
+            "items": [
+              {
+                "a": "Recomendamos visitar nossa loja na Salvador Arruda para medir no aneleiro oficial, ou solicitar orientação via WhatsApp para confirmar a medida ideal.",
+                "q": "Como saber a numeração correta de um anel?"
+              },
+              {
+                "a": "Sim, trabalhamos apenas com pedras naturais selecionadas e metais certificados de alta pureza.",
+                "q": "As gemas possuem procedência verificada?"
+              },
+              {
+                "a": "Sim, nosso atendimento em Porto Feliz é preparado para receber você com tranquilidade e discrição para conhecer e provar cada peça.",
+                "q": "É possível provar as peças antes da compra?"
+              },
+              {
+                "a": "Oferecemos retirada direta na loja física em Porto Feliz e combinamos envio seguro para clientes da região pelo WhatsApp.",
+                "q": "Vocês realizam entregas ou apenas retirada?"
+              }
+            ],
+            "title": "Perguntas frequentes sobre nossas joias",
+            "layout": "split",
+            "presentation": {
+              "tone": "paper",
+              "spacing": "airy"
+            }
+          }
+        },
+        {
+          "id": "ur9o8o1e",
+          "type": "cta.band",
+          "props": {
+            "cta": {
+              "href": "/go/wa?from=/joias",
+              "label": "Falar pelo WhatsApp"
+            },
+            "body": "Envie uma mensagem pelo WhatsApp para verificar disponibilidade de modelos e tirar dúvidas com nossa equipe.",
+            "title": "Gostou de algum modelo?",
+            "layout": "poster",
+            "whatsapp": true,
+            "presentation": {
+              "tone": "accent",
+              "spacing": "airy"
+            }
+          }
+        },
+        {
+          "id": "s8d91qq3",
+          "type": "footer.compact",
+          "props": {
+            "legal": "Safira Azul. Todos os direitos reservados.",
+            "links": [
+              {
+                "href": "/",
+                "label": "Início"
+              },
+              {
+                "href": "/contato",
+                "label": "Contato"
+              },
+              {
+                "href": "/go/wa?from=/joias",
+                "label": "WhatsApp"
+              }
+            ],
+            "layout": "split",
+            "tagline": "Joias contemporâneas e atendimento na Salvador Arruda 100, Porto Feliz.",
+            "logoText": "SAFIRA AZUL",
+            "presentation": {
+              "tone": "ink"
+            }
+          }
+        }
+      ],
+      "navOrder": 0,
+      "publishedAt": "2026-09-12T21:42:05.990Z"
+    }
+  ],
+  "assets": [
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/safiraazul/gerado/0e56fd2b-8bb2-496b-bebd-fbf38545cb9c/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/safiraazul/gerado/3180a3d6-ecd6-4274-b7b6-6180f32e7e9e/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/safiraazul/gerado/3775b601-a921-4193-87fd-afc558ca8d66/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/safiraazul/gerado/9c8805c2-a0bd-4a68-889a-1ebe82600cad/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/safiraazul/gerado/fc4691c7-b534-478a-b9fd-c21b5b6bccdc/1.webp",
+    "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/safiraazul/logo/7a72ce85-c434-481c-921f-3414ccc095d0/ousada.png"
+  ],
+  "tenant": {
+    "id": "1e571877-807a-41a1-83f1-6762218c2c03",
+    "name": "safira azul",
+    "slug": "safiraazul",
+    "brand": {
+      "ink": "#0c0a1a",
+      "font": "sans",
+      "vibe": "ousado",
+      "paper": "#ffffff",
+      "accent": "#3b2f92",
+      "design": {
+        "motif": "stripes",
+        "rhythm": "continuous",
+        "concept": "Escultura e precisão mineral em alta joalheria contemporânea",
+        "version": 4,
+        "bodyFont": "sans",
+        "definedAt": "2026-09-12T20:13:02.250Z",
+        "signature": "expressive|sans|poster|contrast|continuous|full-bleed|contrast|stripes",
+        "navigation": "contrast",
+        "displayFont": "expressive",
+        "surfaceStyle": "contrast",
+        "imageTreatment": "full-bleed",
+        "heroComposition": "poster",
+        "signatureElement": "Faixas sólidas no azul safira profundo com tipografia escultural de alto contraste"
+      },
+      "radius": "none",
+      "logoUrl": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/safiraazul/logo/7a72ce85-c434-481c-921f-3414ccc095d0/ousada.png",
+      "surface": "#f9f9fb",
+      "accentAlt": "#ffffff",
+      "highlight": "#000000",
+      "paletteSource": "operador"
+    },
+    "dials": {
+      "motion": 5,
+      "density": 4,
+      "variance": 8
+    },
+    "ga4Id": null,
+    "locale": "pt-BR",
+    "status": "published",
+    "contacts": {
+      "phones": [
+        {
+          "number": "15998447407",
+          "whatsapp": true
+        }
+      ],
+      "social": [
+        "https://www.instagram.com/safiraazul/"
+      ],
+      "addresses": [
+        {
+          "text": "salvador arruda, 100",
+          "label": "loja"
+        }
+      ]
+    },
+    "whatsapp": "15998447407",
+    "metaPixelId": null,
+    "contactEmail": "mail@mail.com",
+    "publicRuntime": "premium",
+    "maintenanceMode": "premium",
+    "publishedSnapshot": {
+      "name": "safira azul",
+      "brand": {
+        "ink": "#0c0a1a",
+        "font": "sans",
+        "vibe": "ousado",
+        "paper": "#ffffff",
+        "accent": "#3b2f92",
+        "design": {
+          "motif": "stripes",
+          "rhythm": "continuous",
+          "concept": "Escultura e precisão mineral em alta joalheria contemporânea",
+          "version": 4,
+          "bodyFont": "sans",
+          "definedAt": "2026-09-12T20:13:02.250Z",
+          "signature": "expressive|sans|poster|contrast|continuous|full-bleed|contrast|stripes",
+          "navigation": "contrast",
+          "displayFont": "expressive",
+          "surfaceStyle": "contrast",
+          "imageTreatment": "full-bleed",
+          "heroComposition": "poster",
+          "signatureElement": "Faixas sólidas no azul safira profundo com tipografia escultural de alto contraste"
+        },
+        "radius": "none",
+        "logoUrl": "https://ymqzywawtrbgbpti.public.blob.vercel-storage.com/tenants/safiraazul/logo/7a72ce85-c434-481c-921f-3414ccc095d0/ousada.png",
+        "surface": "#f9f9fb",
+        "accentAlt": "#ffffff",
+        "highlight": "#000000",
+        "paletteSource": "operador"
+      },
+      "dials": {
+        "motion": 5,
+        "density": 4,
+        "variance": 8
+      },
+      "locale": "pt-BR",
+      "contacts": {
+        "phones": [
+          {
+            "number": "15998447407",
+            "whatsapp": true
+          }
+        ],
+        "social": [
+          "https://www.instagram.com/safiraazul/"
+        ],
+        "addresses": [
+          {
+            "text": "salvador arruda, 100",
+            "label": "loja"
+          }
+        ]
+      },
+      "whatsapp": "15998447407",
+      "contactEmail": "mail@mail.com"
+    }
+  },
+  "version": 1
+}
