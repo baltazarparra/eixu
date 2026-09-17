@@ -134,9 +134,13 @@ valida os dois layouts, HTML, campos editáveis e contraste do painel institucio
 empilhamento, conteúdo e contraste em cinco vibes e larguras de 320 a 1440 px,
 incluindo tela baixa e HTML sem JavaScript. A suíte Comercial v8 verifica a ligação
 com o hero depois da hidratação e a sequência completa com CSS de produção.
-O contrato de estruturas mantém `bridge` obrigatório na geração, mas trata
-`comercial-v8-estrutura` como recomendação ao publicar: textos antigos e a
-variante `split` solicitada pelo operador não ganham um bloqueio novo.
+O contrato de estruturas mantém as exigências da Comercial v8 na geração,
+mas trata sua composição como recomendação ao publicar: sequência, navegação,
+rodapé, foto do hero, setores, faixas imersivas, galeria, redes e carreira.
+`admin-publish` e `browser/admin-publication` verificam a publicação da imagem
+aprovada, mesmo sem corresponder à fachada exigida na geração, preservando
+blocos, metadados e evidências. Schema e destinos inválidos continuam recusando
+o lote sem escrita; o navegador cobre o botão em desktop e celular.
 A suíte Comercial v8 também percorre reveals em 320, 390, 844 e 1440 px,
 incluindo tela baixa: recorte intermediário, limpeza ao terminar, entrada única,
 fotos fora da viewport ainda pendentes, foco imediato, edição, movimento

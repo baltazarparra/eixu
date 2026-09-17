@@ -7,6 +7,10 @@ const j = createJiti(import.meta.url, { alias: { '@': process.cwd() } });
 const taste = await j.import('../lib/taste/site.ts');
 const lint = await j.import('../lib/taste/lint.ts');
 const { DESIGN_AXES } = await j.import('../lib/design/profile.ts');
+const { commercialPublicationFixture } = await j.import(
+  './helpers/commercial-publication-data.ts',
+);
+const { workspaceState } = await j.import('../lib/admin/state.ts');
 
 const design = {
   version: 2,
@@ -222,4 +226,76 @@ await test('site arquivado não pode ser publicado sem reativação explícita',
   assert.deepEqual(result.published, []);
   assert.match(result.blocked[0].preflight, /arquivado/i);
   assert.equal(writes.length, 0);
+});
+
+await test('Comercial aprovada publica sem reparar escolhas editoriais; destino inválido recusa sem escrita', async () => {
+  const f = commercialPublicationFixture();
+  const before = structuredClone(f);
+  const writes = [];
+  const sql = Object.assign(
+    (parts, ...values) => ({ sql: parts.join('?'), values }),
+    { transaction: async (batch) => writes.push(...batch) },
+  );
+  const { publishSite } = await loadModule('lib/sites/publish.ts', {
+    '@/lib/db': { db: () => sql },
+    '@/lib/tenant-queries': { listPages: async () => f.pages },
+    '@/lib/images/queries': { listImages: async () => f.images },
+    '@/lib/design/uniqueness': {
+      compositionConflict: async () => null,
+      compositionConflictMessage: () => '',
+    },
+  });
+  const generated = taste.lintSite(
+    f.pages,
+    f.images,
+    'draft',
+    f.tenant.brand,
+    f.tenant.brief,
+  );
+  assert.equal(
+    generated.find((finding) => finding.rule === 'comercial-v8-hero-imagem')
+      ?.level,
+    'error',
+  );
+  const state = workspaceState(f.tenant, f.pages, f.images);
+  assert.deepEqual(
+    state.pages.flatMap((page) => page.errors),
+    [],
+  );
+  const result = plain(await publishSite(f.tenant));
+  assert.deepEqual(result.blocked, []);
+  assert.deepEqual(result.published, ['/', '/obrigado']);
+  for (const rule of [
+    'comercial-v8-hero-imagem',
+    'comercial-v8-navegacao',
+    'comercial-v8-categorias',
+    'comercial-v8-galeria',
+    'comercial-v8-rodape',
+  ]) {
+    assert.ok(
+      result.warnings.some(
+        (finding) => finding.rule === rule && finding.level === 'warn',
+      ),
+      rule,
+    );
+  }
+  assert.equal(writes.length, 4);
+  for (const [index, page] of f.pages.entries()) {
+    assert.deepEqual(
+      JSON.parse(writes[index + 1].values[0]),
+      page.blocks,
+      'snapshot preserva a versão aprovada',
+    );
+  }
+  assert.deepEqual(
+    f,
+    before,
+    'publicação não reescreve imagens, metadados nem evidências',
+  );
+  const hero = f.pages[0].blocks.find((block) => block.type === 'hero.split');
+  hero.props.cta.href = '/destino-inexistente';
+  const blocked = plain(await publishSite(f.tenant));
+  assert.deepEqual(blocked.published, []);
+  assert.match(blocked.blocked[0].preflight, /link-interno/);
+  assert.equal(writes.length, 4, 'falha técnica recusa o lote sem escrita');
 });

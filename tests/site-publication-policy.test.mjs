@@ -30,6 +30,14 @@ await test('qualidade editorial não veta o operador e regras técnicas continua
     'hero-headline',
     'composicao-duplicada',
     'comercial-v8-estrutura',
+    'comercial-v8-navegacao',
+    'comercial-v8-hero-imagem',
+    'comercial-v8-rodape',
+    'comercial-v8-categorias',
+    'comercial-v8-imagens-imersivas',
+    'comercial-v8-galeria',
+    'comercial-v8-redes',
+    'comercial-v8-carreira',
   ]) {
     const finding = {
       level: 'error',
@@ -47,7 +55,8 @@ await test('qualidade editorial não veta o operador e regras técnicas continua
     'slug-duplicado',
     'link-interno',
     'texto-contraste',
-    'comercial-v8-hero-imagem',
+    'anchor-inexistente',
+    'pagina-vazia',
     'regra-nova',
   ])
     assert.equal(
