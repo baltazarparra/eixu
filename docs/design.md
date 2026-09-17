@@ -26,12 +26,16 @@ endereço, telefone, horário, rota e mapa para cada unidade cadastrada.
 
 A abertura entra junto do primeiro paint, sem desaparecer depois da hidratação.
 As seções seguintes são preparadas antes de aparecer e entram uma única vez,
-somente ao alcançar a viewport: deslocamento máximo de 12 px para conteúdo e
-escala de 2,2% para fotografias, sempre com curva contínua e sem recuo de
-opacidade. Categorias, galeria e unidades preservam entradas individuais no
-celular; no desktop, a sequência curta respeita a leitura por linha. O parallax
-é amortecido entre quadros para não acompanhar o scroll com trancos. O HTML
-continua visível no servidor, a edição desliga o movimento e
+somente ao alcançar a viewport. Scroll reveal e fade in formam o vocabulário
+principal: títulos, ações e conteúdo de cards sobem 28 px no desktop e 20 px no
+celular durante 1 segundo; o título e a ação do hero usam 32 px no desktop.
+Textos de apoio, formulários, mapas e fotografias usam fade gradual de 1,05 a
+1,15 segundo. Título, descrição e ação entram em sequência de 100–120 ms.
+Categorias coordenam foto, título e descrição sem mover o card inteiro; galeria
+e unidades preservam entradas individuais. Cada propriedade recebe um único
+controle de animação, evitando efeitos somados no hero. O parallax é amortecido
+entre quadros para não acompanhar o scroll com trancos. O HTML continua visível
+no servidor, a edição desliga o movimento e
 `prefers-reduced-motion` preserva o conteúdo sem animação. A paleta usa até três
 tons de seção, superfícies planas, texto curto e nenhuma textura ou prova
 inventada.
