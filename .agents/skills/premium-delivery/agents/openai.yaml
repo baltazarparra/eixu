@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Premium Delivery'
+  short_description: 'Converte e publica projetos Premium com segurança'
+  default_prompt: 'Use $premium-delivery para converter ou atualizar este projeto Premium e verificar sua publicação.'

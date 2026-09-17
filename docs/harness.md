@@ -87,9 +87,10 @@ Projetos convertidos têm um contrato distinto em
 [`apps/premium/SOUL.md`](../apps/premium/SOUL.md). Ele define a persona de
 Creative Developer Sênior, com direção específica, detalhe, acessibilidade e
 factualidade como critérios conjuntos. [`apps/premium/AGENTS.md`](../apps/premium/AGENTS.md)
-mantém os limites compartilhados, e a skill local `premium-frontend` oferece o
-fluxo sob demanda e a adaptação verificada da Taste Skill v1. Esse harness atua
-em composição e código. Edições rotineiras dos campos de
+mantém os limites compartilhados. A skill local `premium-delivery` distingue
+conversão, CMS e atualização por código até a release verificada;
+`premium-frontend` oferece a direção de composição e a adaptação da Taste Skill
+v1. Edições rotineiras dos campos de
 `content/editor.json` passam pelo CMS determinístico, sem modelo e sem acesso ao
 chat do gerador.
 

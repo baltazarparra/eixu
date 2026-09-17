@@ -16,6 +16,7 @@ const j = createJiti(import.meta.url, {
 const snapshotModule = await j.import('../lib/premium/snapshot.ts');
 const access = await j.import('../lib/premium/access.ts');
 const editorModule = await j.import('../lib/premium/editor.ts');
+const editorContractModule = await import('../lib/premium/editor-contract.mjs');
 const execFileAsync = promisify(execFile);
 
 function fixture() {
@@ -182,6 +183,37 @@ await test('contrato editorial valida chaves, limites e imagens do tenant', () =
       error.status === 422 &&
       Boolean(error.fields['hero.image']) &&
       Boolean(error.fields.inesperado),
+  );
+});
+
+await test('scripts e CMS usam o mesmo validador de contrato editorial', () => {
+  const invalid = {
+    version: 1,
+    pages: [
+      {
+        slug: '',
+        label: 'Início',
+        sections: [
+          {
+            id: 'hero',
+            label: 'x'.repeat(121),
+            fields: [
+              {
+                key: 'hero.title',
+                label: 'Título',
+                type: 'text',
+                value: 'Inicial',
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+  assert.equal(editorModule.parsePremiumEditorContract(invalid), null);
+  assert.throws(
+    () => editorContractModule.assertEditorContract(invalid),
+    /Contrato editorial Premium inválido/,
   );
 });
 
@@ -443,6 +475,24 @@ await test('exportador materializa um workspace isolado sem conteúdo de rascunh
       releaseManifest.assets.some((url) => url.includes('nao-incluir')),
       false,
     );
+
+    const customization = join(project, 'app/customized.tsx');
+    await writeFile(customization, 'export const Customized = true;\n');
+    await assert.rejects(
+      () =>
+        execFileAsync(process.execPath, [
+          'scripts/premium/export-project.mjs',
+          '--input',
+          input,
+          '--output-root',
+          root,
+        ]),
+      /não sobrescreve uma pasta Premium existente/,
+    );
+    assert.equal(
+      await readFile(customization, 'utf8'),
+      'export const Customized = true;\n',
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -568,7 +618,20 @@ await test('schema e workflows preservam fila, pasta e URL canonica', async () =
   );
   assert.match(conversion, /node scripts\/premium\/export-project\.mjs/);
   assert.match(conversion, /--source-root "\$source_root"/);
+  assert.match(conversion, /\$\{RUNNER_TEMP\}\/premium-job\.json/);
+  assert.match(conversion, /npm run premium:check -- "\$key"/);
   assert.match(release, /apps\/premium\/\$\{key\}/);
+  assert.match(release, /found=false/);
+  assert.match(release, /deploy --prod --skip-domain/);
+  assert.match(release, /--retry 5 --retry-all-errors --retry-delay 2/);
   assert.match(release, /vercel alias set "\$deployment_url" "\$host"/);
   assert.match(release, /api\/internal\/premium\/releases/);
+  assert.ok(
+    release.indexOf('release-manifest.mjs') <
+      release.indexOf('deploy --prod --skip-domain'),
+  );
+  assert.ok(
+    release.indexOf('"$deployment_url/"') <
+      release.indexOf('vercel alias set "$deployment_url" "$host"'),
+  );
 });

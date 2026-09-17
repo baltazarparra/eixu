@@ -110,6 +110,13 @@ function statusMessage(site: SiteState, now: number) {
       description:
         'A URL só será transferida depois do build, do deployment e do smoke passarem.',
     };
+  if (conversion.status === 'failed')
+    return {
+      title: 'A conversão não terminou',
+      description:
+        conversion.error ??
+        'O site continua no ar e o gerador foi liberado para uma nova tentativa.',
+    };
   return {
     title: 'Conversão em andamento',
     description: 'A versão publicada continua disponível na mesma URL.',
@@ -139,10 +146,7 @@ export function PremiumConversionWorkspace({ initial }: Props) {
           { signal: AbortSignal.timeout(20_000) },
         );
         setRefreshError(null);
-        if (
-          next.premium.maintenanceMode === 'premium' &&
-          next.premium.publicRuntime === 'premium'
-        ) {
+        if (next.premium.maintenanceMode !== 'converting') {
           window.location.reload();
           return;
         }

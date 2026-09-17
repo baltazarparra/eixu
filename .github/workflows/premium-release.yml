@@ -51,12 +51,18 @@ jobs:
               | awk -F/ '$1=="apps" && $2=="premium" && NF>=4 {print $3}' \
               | sort -u > premium-projects.txt
           fi
-          test -s premium-projects.txt
+          if test -s premium-projects.txt; then
+            echo 'found=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'found=false' >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Install repository dependencies
+        if: steps.projects.outputs.found == 'true'
         run: npm ci --ignore-scripts
 
       - name: Validate, deploy and move canonical URL
+        if: steps.projects.outputs.found == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -67,13 +73,13 @@ jobs:
             project="eixu-premium-${key}"
             host="$(jq --raw-output '.canonicalHost' "$manifest")"
             conversion="$(jq --raw-output '.conversionId // empty' "$manifest")"
-            workspace="@eixu/premium-${key}"
             jq --null-input --arg conversion "$conversion" \
               --arg key "$key" '{conversion:$conversion,key:$key}' \
-              > premium-release-context.json
+              > "${RUNNER_TEMP}/premium-release-context.json"
 
             if [ -n "$conversion" ]; then
               curl --fail --silent --show-error \
+                --retry 5 --retry-all-errors --retry-delay 2 \
                 --request PATCH \
                 --header "authorization: Bearer ${PREMIUM_WORKER_TOKEN}" \
                 --header 'content-type: application/json' \
@@ -81,16 +87,19 @@ jobs:
                 "${EIXU_URL}/api/internal/premium/jobs/${conversion}"
             fi
 
-            npm run typecheck --workspace "$workspace"
-            npm run lint --workspace "$workspace"
-            npm run build --workspace "$workspace"
+            npm run premium:check -- "$key"
+            node scripts/premium/release-manifest.mjs \
+              --project "$directory" > "${RUNNER_TEMP}/release-manifest.json"
 
             npx vercel link --yes --team "$VERCEL_TEAM" --project "$project" \
               --cwd "$directory" --token "$VERCEL_TOKEN"
-            deployment_url="$(npx vercel deploy --prod --yes --cwd "$directory" \
+            deployment_url="$(npx vercel deploy --prod --skip-domain --yes --cwd "$directory" \
               --scope "$VERCEL_TEAM" --token "$VERCEL_TOKEN")"
             npx vercel inspect "$deployment_url" --wait --timeout 10m \
               --scope "$VERCEL_TEAM" --token "$VERCEL_TOKEN"
+            npx vercel inspect "$deployment_url" --format json \
+              --scope "$VERCEL_TEAM" --token "$VERCEL_TOKEN" \
+              > "${RUNNER_TEMP}/deployment.json"
 
             curl --fail --silent --show-error --location "$deployment_url/" >/dev/null
             npx vercel domains add "$host" "$project" --force \
@@ -100,10 +109,7 @@ jobs:
               --retry 10 --retry-all-errors --retry-delay 3 \
               "https://${host}/" >/dev/null
 
-            npx vercel inspect "$deployment_url" --format json \
-              --scope "$VERCEL_TEAM" --token "$VERCEL_TOKEN" > deployment.json
-            node scripts/premium/release-manifest.mjs --project "$directory" > release-manifest.json
-            deployment_id="$(jq --raw-output '.id' deployment.json)"
+            deployment_id="$(jq --raw-output '.id' "${RUNNER_TEMP}/deployment.json")"
             project_id="$(jq --raw-output '.projectId' "$directory/.vercel/project.json")"
             test -n "$deployment_id"
             test -n "$project_id"
@@ -114,23 +120,25 @@ jobs:
               --arg deploymentId "$deployment_id" \
               --arg deploymentUrl "$deployment_url" \
               --arg vercelProjectId "$project_id" \
-              --slurpfile manifest release-manifest.json \
+              --slurpfile manifest "${RUNNER_TEMP}/release-manifest.json" \
               '{projectKey:$projectKey, commitSha:$commitSha, deploymentId:$deploymentId, deploymentUrl:$deploymentUrl, vercelProjectId:$vercelProjectId, manifest:$manifest[0]} + (if $conversion == "" then {} else {conversionId:$conversion} end)' \
-              > release.json
+              > "${RUNNER_TEMP}/release.json"
             curl --fail --silent --show-error \
+              --retry 5 --retry-all-errors --retry-delay 2 \
               --request POST \
               --header "authorization: Bearer ${PREMIUM_WORKER_TOKEN}" \
               --header 'content-type: application/json' \
-              --data @release.json \
+              --data @"${RUNNER_TEMP}/release.json" \
               "${EIXU_URL}/api/internal/premium/releases"
           done < premium-projects.txt
 
       - name: Record release failure
-        if: failure()
+        if: failure() && steps.projects.outputs.found == 'true'
         shell: bash
         run: |
-          if [ ! -f premium-release-context.json ]; then exit 0; fi
-          conversion="$(jq --raw-output '.conversion' premium-release-context.json)"
+          context="${RUNNER_TEMP}/premium-release-context.json"
+          if [ ! -f "$context" ]; then exit 0; fi
+          conversion="$(jq --raw-output '.conversion' "$context")"
           if [ -z "$conversion" ]; then exit 0; fi
           jq --null-input \
             '{status:"release_failed",error:"O release Premium falhou. Reexecute o workflow depois de corrigir a causa."}' \

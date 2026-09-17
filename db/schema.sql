@@ -286,8 +286,8 @@ create unique index if not exists premium_conversions_active_tenant_idx
 create index if not exists premium_conversions_queue_idx
   on premium_conversions (status, created_at);
 
--- Cada deploy e imutavel. O dominio canonico permanece ligado ao projeto; um
--- novo deploy de producao troca automaticamente o que a mesma URL entrega.
+-- Cada deploy e imutavel. O workflow testa a URL do novo deployment antes de
+-- promover o dominio canonico para a revisao aprovada.
 create table if not exists premium_releases (
   id                    uuid primary key default gen_random_uuid(),
   project_id            uuid not null references premium_projects(id) on delete restrict,
