@@ -603,18 +603,20 @@ await test('Comercial exige a ligação na geração e permite publicar variante
   }
 });
 
-await test('a Comercial v8 recusa hero sem descrição da fachada', () => {
+await test('a geração Comercial v8 exige descrição da fachada; publicação recomenda sem vetar', () => {
   const structure = structures.SITE_STRUCTURES['comercial-marca'];
   const page = homeFor(structure);
   const hero = page.blocks.find((block) => block.type === 'hero.split');
   delete hero.props.imageAlt;
-  const rules = metrics
-    .structuralFindings([page], imagesFor(structure), {
-      vibe: 'comercial',
-      design: designFor(structure),
-    })
-    .map((finding) => finding.rule);
-  assert.ok(rules.includes('comercial-v8-hero-imagem'));
+  const findings = metrics.structuralFindings([page], imagesFor(structure), {
+    vibe: 'comercial',
+    design: designFor(structure),
+  });
+  const finding = findings.find(
+    (item) => item.rule === 'comercial-v8-hero-imagem',
+  );
+  assert.equal(finding?.level, 'error');
+  assert.equal(publicationFinding(finding).level, 'warn');
 });
 
 await test('pre-flight recusa sequência fora de ordem e ausência da assinatura', () => {

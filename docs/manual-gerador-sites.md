@@ -300,18 +300,18 @@ blocos.
 
 ### Conteúdo, mídia e conversão
 
-| Tipo                  | Capacidade                                                                     |
-| --------------------- | ------------------------------------------------------------------------------ |
-| `editorial.resources` | Próximas leituras e páginas de consideração com imagem e link                  |
-| `editorial.facts`     | Texto institucional e pares de fatos                                           |
+| Tipo                  | Capacidade                                                                                                                                          |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `editorial.resources` | Próximas leituras e páginas de consideração com imagem e link                                                                                       |
+| `editorial.facts`     | Texto institucional e pares de fatos                                                                                                                |
 | `editorial.text`      | Texto institucional; `bridge` liga hero e setores com painel da marca e texto; `split` divide foto e texto em metades iguais, sem botão obrigatório |
-| `editorial.postList`  | Índice único da página `/blog`                                                 |
-| `editorial.postBody`  | Corpo único de uma página do tipo post                                         |
-| `faq.accordion`       | Perguntas frequentes acessíveis                                                |
-| `media.gallery`       | Duas a oito fotos em grid, masonry, filmstrip, collage ou carrossel            |
-| `media.image`         | Uma imagem grande; na Comercial v8 usa `immersive` em duas faixas com parallax |
-| `media.map`           | Mapa adicional; na Comercial v8 substitui a localização automática da home     |
-| `pricing.table`       | Planos ou pacotes com preços confirmados                                       |
+| `editorial.postList`  | Índice único da página `/blog`                                                                                                                      |
+| `editorial.postBody`  | Corpo único de uma página do tipo post                                                                                                              |
+| `faq.accordion`       | Perguntas frequentes acessíveis                                                                                                                     |
+| `media.gallery`       | Duas a oito fotos em grid, masonry, filmstrip, collage ou carrossel                                                                                 |
+| `media.image`         | Uma imagem grande; na Comercial v8 usa `immersive` em duas faixas com parallax                                                                      |
+| `media.map`           | Mapa adicional; na Comercial v8 substitui a localização automática da home                                                                          |
+| `pricing.table`       | Planos ou pacotes com preços confirmados                                                                                                            |
 
 Todos os blocos relevantes aceitam `presentation`: tom, decoração, cor local,
 degradê controlado, cor de texto validada, movimento, largura, espaçamento,
@@ -478,7 +478,10 @@ dados editoriais do snapshot. Publicação pontual preserva a marca já publicad
 publicação completa promove o conjunto.
 
 Recomendações de copy, prova, SEO, imagem ou composição aparecem ao operador,
-mas não vetam uma publicação que ele solicitou. Erros técnicos, acesso inválido,
+mas não vetam uma publicação que ele solicitou. Isso inclui a foto de fachada
+e a composição padrão da Comercial v8: exigências da geração tornam-se
+recomendações na publicação, sem trocar a imagem aprovada ou alterar sua origem.
+Erros técnicos, acesso inválido,
 props incorretas, página vazia ou destino inexistente bloqueiam e conservam o
 snapshot anterior. Publicar não confirma fatos, não corrige o rascunho e não
 resolve pendências por conta própria.

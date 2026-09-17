@@ -26,6 +26,16 @@ const EDITORIAL_RULES = new Set([
   'pagina-isolada',
   'estrutura-v5-incompleta',
   'comercial-v8-estrutura',
+  // O contrato visual orienta a geração; não veta a versão aprovada.
+  // Schema, âncoras e destinos continuam validados pelas regras técnicas.
+  'comercial-v8-navegacao',
+  'comercial-v8-hero-imagem',
+  'comercial-v8-rodape',
+  'comercial-v8-categorias',
+  'comercial-v8-imagens-imersivas',
+  'comercial-v8-galeria',
+  'comercial-v8-redes',
+  'comercial-v8-carreira',
   'composicao-autoral-obrigatoria',
   'abertura-fora-da-vibe',
   'headline-fora-da-vibe',
