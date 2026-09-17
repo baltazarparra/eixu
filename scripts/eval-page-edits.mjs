@@ -15,6 +15,11 @@ import {
   landingFrameData,
   landingFrameRequest,
 } from '../tests/helpers/landing-frame-fixture.mjs';
+import {
+  editorialImageRequest,
+  editorialImage,
+  editorialPages,
+} from '../tests/helpers/editorial-text-fixture.mjs';
 const j = createJiti(import.meta.url, {
   alias: { '@': process.cwd() },
   fsCache: false,
@@ -81,11 +86,41 @@ function carouselPages(unsupported = false) {
 }
 if (!process.argv.includes('--live')) {
   console.log(
-    'Use npm run eval:edits -- --live [--case=hero-carousel|hero-carousel-unsupported|text|nested|color|footer-gray|footer-gradient|hero-decoration-off|insert|move|move-within|impossible-move|ambiguous|recognition-image|landing-frame] [--attachment=fixture.png]. Modelo de edição configurado, fixture sintética, executores reais; nenhuma gravação remota.',
+    'Use npm run eval:edits -- --live [--case=editorial-image|hero-carousel|hero-carousel-unsupported|text|nested|color|footer-gray|footer-gradient|hero-decoration-off|insert|move|move-within|impossible-move|ambiguous|recognition-image|landing-frame] [--attachment=fixture.png]. Modelo de edição configurado, fixture sintética, executores reais; nenhuma gravação remota.',
   );
   process.exit(0);
 }
 const cases = [
+  {
+    id: 'editorial-image',
+    text: editorialImageRequest,
+    initialPages: editorialPages(),
+    images: [editorialImage],
+    check: (pages, result, run) => {
+      const expected = editorialPages();
+      const props = expected[0].blocks.find(
+        (block) => block.id === 'intro',
+      ).props;
+      Object.assign(props, {
+        layout: 'split',
+        image: editorialImage.url,
+        imageAlt: editorialImage.alt,
+      });
+      const actual = structuredClone(pages);
+      const edited = actual[0].blocks.find(
+        (block) => block.id === 'intro',
+      ).props;
+      assert.ok(!edited.imagePosition || edited.imagePosition === 'left');
+      delete edited.imagePosition;
+      assert.deepEqual(actual, expected);
+      assert.equal(run.writes.length, 1);
+      assert.deepEqual(
+        run.trace.flatMap((step) => step.calls.map((call) => call.toolName)),
+        ['edit_page'],
+      );
+      assert.doesNotMatch(result.text, /\?/);
+    },
+  },
   {
     id: 'hero-carousel',
     text: CAROUSEL_REQUEST,
@@ -365,7 +400,7 @@ if (!process.argv.includes('--live')) {
     'Fixtures hero-carousel e hero-carousel-unsupported validadas com executores reais; nenhuma gravação remota.',
   );
   console.log(
-    'Use npm run eval:edits -- --live [--case=hero-carousel|hero-carousel-unsupported|text|nested|color|insert|move|move-within|impossible-move|ambiguous|recognition-image|landing-frame] [--attachment=fixture.png] para medir o modelo configurado.',
+    'Use npm run eval:edits -- --live [--case=editorial-image|hero-carousel|hero-carousel-unsupported|text|nested|color|insert|move|move-within|impossible-move|ambiguous|recognition-image|landing-frame] [--attachment=fixture.png] para medir o modelo configurado.',
   );
   process.exit(0);
 }

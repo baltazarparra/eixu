@@ -109,10 +109,15 @@ function propsFor(
       };
     case 'editorial.text':
       return {
-        anchor: 'historia',
+        anchor: layout === 'bridge' ? 'unidade' : 'historia',
         layout,
-        eyebrow: 'Nossa história',
-        title: 'Um comércio que faz parte da rotina do bairro',
+        title:
+          layout === 'bridge'
+            ? 'Loja Brotas'
+            : 'Um comércio que faz parte da rotina do bairro',
+        ...(layout === 'bridge'
+          ? { lead: 'Rua da Praça, 100\nCentro, Brotas' }
+          : {}),
         body: 'O Mercado da Praça nasceu para deixar as compras do dia a dia mais simples. A equipe conhece a região e organiza o atendimento com proximidade.\n\nCada categoria é apresentada com clareza para ajudar as pessoas a encontrar o que procuram.',
       };
     case 'feature.bento':

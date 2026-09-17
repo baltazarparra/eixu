@@ -218,7 +218,7 @@ function namedVisualScope(text: string, pages: Page[], pageSlug?: string) {
   )
     return undefined;
   if (
-    /\b(reescreva|remova|apague|exclua|insira|adicione|reordene|mov\w*|reposicion\w*|disposi[cç][aã]o|substitua|troque|analise|revise|revisao|confira)\b/.test(
+    /\b(reescreva|remova|apague|exclua|insira|inser\w*|adicion\w*|divid\w*|reordene|mov\w*|reposicion\w*|disposi[cç][aã]o|substitua|troque|analise|revise|revisao|confira)\b/.test(
       request,
     )
   )

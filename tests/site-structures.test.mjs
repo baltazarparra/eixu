@@ -563,6 +563,27 @@ await test('a estrutura fixa v8 atravessa o pre-flight com o contrato completo',
   }
 });
 
+await test('Comercial exige a ligação institucional entre hero e setores, sem aceitar texto simples', () => {
+  const structure = structures.SITE_STRUCTURES['comercial-marca'];
+  assert.deepEqual(structure.sequence.slice(0, 3), [
+    'hero.split:brand',
+    'editorial.text:bridge',
+    'feature.bento:gallery',
+  ]);
+  for (const layout of ['lead', 'narrow', 'split']) {
+    const page = homeFor(structure);
+    page.blocks.find((block) => block.type === 'editorial.text').props.layout =
+      layout;
+    const rules = metrics
+      .structuralFindings([page], imagesFor(structure), {
+        vibe: 'comercial',
+        design: designFor(structure),
+      })
+      .map((finding) => finding.rule);
+    assert.ok(rules.includes('comercial-v8-estrutura'), layout);
+  }
+});
+
 await test('a Comercial v8 recusa hero sem descrição da fachada', () => {
   const structure = structures.SITE_STRUCTURES['comercial-marca'];
   const page = homeFor(structure);

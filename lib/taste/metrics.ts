@@ -66,6 +66,8 @@ function showsWholeImage(block: BlockInstance, url: string): boolean {
     return whole(block.props.imagePresentation);
   if (block.type === 'hero.split' && (block.props.image === url || usesSlide))
     return block.props.imageFit === 'contain';
+  if (block.type === 'editorial.text' && block.props.image === url)
+    return block.props.imageFit === 'contain';
   if (
     block.type === 'signature.composition' &&
     Array.isArray(block.props.items)

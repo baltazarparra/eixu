@@ -63,6 +63,22 @@ conservam seu fechamento próprio. Erro fatal descarta texto ainda não exibido.
 Se o loop terminar após ferramentas sem resposta textual, o stream produz um
 resumo do estado salvo.
 
+## Texto institucional com identidade ou foto
+
+O pedido “no segundo bloco Loja Brotas, dividir meio a meio e adicionar a
+imagem #10” usa o próprio `editorial.text`, com `layout: split`, `image`,
+`imageAlt` e `imagePosition`. A ferramenta aplica esses campos em um lote,
+preservando o corpo completo, título, lead, ID, âncora e apresentação. Não
+exige conversão para CTA, botão ou confirmação da foto já escolhida. O layout
+tem colunas iguais no desktop e empilha no celular; `imageFit: contain`
+preserva a foto inteira. Imagem ausente ou sem descrição recusa o lote.
+
+Para novas homes Comerciais v8, a introdução é `editorial.text:bridge`:
+identidade e endereço confirmado no painel da marca, texto ao lado e ritmo
+contínuo entre hero e setores. Alterar esse bloco para `split` por pedido do
+operador preserva os textos e segue a política normal de recomendações de
+composição. Não reescreve páginas ou snapshots já existentes.
+
 ## Andamento e atualização da prévia
 
 Durante uma edição, a atividade e o tempo ficam fora da área rolável do

@@ -304,7 +304,7 @@ blocos.
 | --------------------- | ------------------------------------------------------------------------------ |
 | `editorial.resources` | Próximas leituras e páginas de consideração com imagem e link                  |
 | `editorial.facts`     | Texto institucional e pares de fatos                                           |
-| `editorial.text`      | Texto corrido para páginas institucionais                                      |
+| `editorial.text`      | Texto institucional; `bridge` liga hero e setores com painel da marca e texto; `split` divide foto e texto em metades iguais, sem botão obrigatório |
 | `editorial.postList`  | Índice único da página `/blog`                                                 |
 | `editorial.postBody`  | Corpo único de uma página do tipo post                                         |
 | `faq.accordion`       | Perguntas frequentes acessíveis                                                |
@@ -323,6 +323,20 @@ ou tamanho exato, peso, altura de linha, letras, transformação, itálico,
 alinhamento e cor por campo dentro de limites. Imagens compatíveis aceitam fit, foco e, em
 alguns blocos, `imagePresentation` para retirar moldura, manter proporção
 natural, ocupar o box e remover espaço superior.
+
+Na Comercial v8, a home usa `editorial.text:bridge` imediatamente após o hero
+e antes de `feature.bento:gallery`. `title` identifica a unidade ou o negócio;
+`lead` destaca o endereço da unidade somente quando confirmado no cadastro;
+`body` apresenta o contexto local em texto curto. O renderer reúne o painel
+da marca e a apresentação em duas colunas, empilhadas no celular. O pre-flight
+confere essa posição; um texto simples em `lead` ou `narrow` não cumpre a nova
+composição. Páginas já salvas conservam o layout que está em suas props.
+
+Para adicionar uma foto ao texto existente, o chat usa `editorial.text:split`
+com `image` e `imageAlt`, preservando título, lead, corpo, âncora e estilos.
+`imagePosition` escolhe esquerda ou direita e `imageFit: contain` mostra a foto
+inteira. A foto escolhida por número não exige nova confirmação nem um botão.
+Reutilização de foto é recomendação editorial, sem impedir a edição solicitada.
 
 O carrossel usa Embla como melhoria progressiva. Sem JavaScript, as fotos
 continuam acessíveis por rolagem e snap. Com JavaScript, há drag/toque, loop,

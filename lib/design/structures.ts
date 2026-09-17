@@ -297,7 +297,7 @@ export const SITE_STRUCTURES: Record<StructureKey, SiteStructure> = {
       'Reproduz a jornada completa da Minatel Brotas: fachada, unidade, seis setores, ofertas, redes, história, imagens amplas, carreira, galeria, contato e unidades.',
     sequence: [
       'hero.split:brand',
-      'editorial.text:lead',
+      'editorial.text:bridge',
       'feature.bento:gallery',
       'cta.band:band',
       'social.follow:gallery',

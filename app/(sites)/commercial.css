@@ -270,6 +270,13 @@
 
 /* Introdução e história. */
 .site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-block:has(> .site-text-bridge)
+  + .site-block[data-block='feature.bento']
+  > .site-section {
+  padding-top: clamp(2rem, 4vw, 3.5rem);
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
   .site-text-lead
   .site-shell {
   max-width: 70rem;

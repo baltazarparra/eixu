@@ -27,6 +27,12 @@ export function fieldBackgrounds(
     ...themeVars(brand),
     ...sectionColorVars(presentation, brand, surfaceContext),
   };
+  if (
+    block.type === 'editorial.text' &&
+    p.layout === 'bridge' &&
+    ['title', 'lead'].includes(field)
+  )
+    return [tokens['--accent']];
   const fieldContext = { ...surfaceContext, field };
   const section = sectionBackgrounds(presentation, brand, fieldContext);
   const modern = renderingVibeOf(brand) === 'moderno';

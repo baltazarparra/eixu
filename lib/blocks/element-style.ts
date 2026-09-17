@@ -188,7 +188,7 @@ function relativeSelectors(style: ElementStyle): string[] {
       return ['.site-shell'];
     case 'content':
       return [
-        ':is(.site-hero-copy, .site-landing-hero-copy, .site-signature-copy, .site-cta-copy, .site-resource-copy, .site-showcase-copy, .site-explorer-copy, .site-form .site-shell > :first-child, .site-footer .site-shell > :first-child)',
+        ':is(.site-hero-copy, .site-landing-hero-copy, .site-signature-copy, .site-cta-copy, .site-text-copy, .site-resource-copy, .site-showcase-copy, .site-explorer-copy, .site-form .site-shell > :first-child, .site-footer .site-shell > :first-child)',
       ];
     case 'heading':
       return [':is(h1, h2, h3, h4, h5, h6)'];
