@@ -29,6 +29,7 @@ await test('qualidade editorial não veta o operador e regras técnicas continua
     'home-protagonista',
     'hero-headline',
     'composicao-duplicada',
+    'comercial-v8-estrutura',
   ]) {
     const finding = {
       level: 'error',
@@ -46,6 +47,7 @@ await test('qualidade editorial não veta o operador e regras técnicas continua
     'slug-duplicado',
     'link-interno',
     'texto-contraste',
+    'comercial-v8-hero-imagem',
     'regra-nova',
   ])
     assert.equal(

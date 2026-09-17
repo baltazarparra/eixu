@@ -134,6 +134,9 @@ valida os dois layouts, HTML, campos editáveis e contraste do painel institucio
 empilhamento, conteúdo e contraste em cinco vibes e larguras de 320 a 1440 px,
 incluindo tela baixa e HTML sem JavaScript. A suíte Comercial v8 verifica a ligação
 com o hero depois da hidratação e a sequência completa com CSS de produção.
+O contrato de estruturas mantém `bridge` obrigatório na geração, mas trata
+`comercial-v8-estrutura` como recomendação ao publicar: textos antigos e a
+variante `split` solicitada pelo operador não ganham um bloqueio novo.
 `npm run eval:edits -- --live --case=editorial-image` mede a decisão do modelo
 nessa mesma frase sobre dados sintéticos; é uma chamada paga separada dos contratos.
 
