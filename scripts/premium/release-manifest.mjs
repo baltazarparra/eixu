@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
+import { assertEditorContract } from './editor-contract.mjs';
 
 const INCLUDED_EXTENSIONS = new Set(['.css', '.json', '.md', '.ts', '.tsx']);
 const IGNORED_DIRECTORIES = new Set([
@@ -33,6 +34,9 @@ if (!/^apps\/premium\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(directory))
 const project = JSON.parse(
   readFileSync(resolve(directory, 'eixu.project.json'), 'utf8'),
 );
+const editor = assertEditorContract(
+  JSON.parse(readFileSync(resolve(directory, 'content/editor.json'), 'utf8')),
+);
 const assets = new Set();
 for (const file of sourceFiles(resolve(directory))) {
   const source = readFileSync(file, 'utf8');
@@ -44,6 +48,7 @@ process.stdout.write(
     {
       version: 1,
       project,
+      editor,
       assets: [...assets].sort((left, right) => left.localeCompare(right)),
     },
     null,

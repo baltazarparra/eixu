@@ -35,6 +35,7 @@ eixu/
     <project-key>/                  # criado pela conversão e versionado
       app/                          # rotas e integrações server-side
       content/site.json             # snapshot público congelado
+      content/editor.json           # campos estáveis expostos ao CMS
       lib/                          # runtime visual copiado e editável
       eixu.project.json             # vínculo técnico, sem segredos
       package.json                  # dependências exclusivas do projeto
@@ -92,14 +93,15 @@ chegam automaticamente à URL original depois do merge.
 
 ## Fronteira de dados
 
-| Responsabilidade                                 | Fonte depois da ativação                          |
-| ------------------------------------------------ | ------------------------------------------------- |
-| Páginas, componentes, CSS, SEO e backend próprio | Código e release Premium                          |
-| Identidade do tenant, acervo e operação          | Plataforma EIXU                                   |
-| Leads, eventos, atribuição e WhatsApp            | APIs centrais autenticadas por projeto            |
-| Dados de uma funcionalidade exclusiva            | Banco opcional do próprio Premium                 |
-| Histórico e snapshot de origem                   | Banco central, somente para consulta e recibo     |
-| Runtime da URL pública                           | Projeto Vercel Premium associado ao domínio exato |
+| Responsabilidade                                    | Fonte depois da ativação                          |
+| --------------------------------------------------- | ------------------------------------------------- |
+| Páginas, componentes, CSS, SEO e backend próprio    | Código e release Premium                          |
+| Valores dos textos e imagens declarados no contrato | Revisão editorial publicada pelo CMS central      |
+| Identidade do tenant, acervo e operação             | Plataforma EIXU                                   |
+| Leads, eventos, atribuição e WhatsApp               | APIs centrais autenticadas por projeto            |
+| Dados de uma funcionalidade exclusiva               | Banco opcional do próprio Premium                 |
+| Histórico e snapshot de origem                      | Banco central, somente para consulta e recibo     |
+| Runtime da URL pública                              | Projeto Vercel Premium associado ao domínio exato |
 
 O app Premium chama suas rotas locais `/api/form`, `/api/e` e `/go/wa`. Elas
 encaminham a operação ao domínio central com bearer e `x-eixu-site-host`. O
@@ -115,6 +117,8 @@ de formulários entre a transferência do domínio e o recibo final.
 - `premium_projects`: vínculo único entre tenant, pasta, domínio e projeto.
 - `premium_conversions`: snapshot, hash, SHA de origem, lease e PR.
 - `premium_releases`: commit, deployment imutável, manifesto de assets e estado.
+- `premium_content_revisions`: valores validados e imutáveis por revisão.
+- `premium_preview_sessions`: rascunho efêmero, versão do cliente e expiração.
 
 O índice parcial permite uma conversão ativa por tenant. Mutadores do gerador
 verificam o modo antes da operação e também sob lock dentro da escrita, fechando
@@ -126,8 +130,20 @@ conversão correspondente. Releases posteriores não reutilizam essa conversão.
 
 A biblioteca continua disponível. O manifesto de cada release enumera URLs
 usadas pelo código e impede excluir uma imagem central ainda referenciada pelo
-Premium ativo. Aplicar uma imagem ao site exige editar o código e publicar uma
-nova release; mudar apenas o rascunho do gerador não altera o Premium.
+Premium ativo. Depois da ativação, o chat do gerador é substituído pelo CMS
+Premium. O operador escolhe uma página, edita os textos declarados e troca
+imagens pelo acervo; a prévia recarrega o frontend canônico preservando página
+e rolagem. **Salvar e publicar** valida contrato, tenant, revisão esperada e
+imagem permitida antes de criar a próxima revisão. O hash do contrato invalida
+abas e prévias abertas antes de uma nova release. Uma mudança estrutural ou um
+campo novo continua exigindo código e release; o rascunho antigo do gerador não
+altera o Premium.
+
+O contrato editorial pertence ao projeto. Chaves permanecem estáveis entre
+releases; campos novos começam pelo valor empacotado e valores removidos deixam
+de circular. A leitura combina o contrato da release ativa com a revisão
+publicada. A ausência temporária da API central conserva o conteúdo empacotado
+para visitas públicas; em prévia, a falha fica visível em vez de simular êxito.
 
 Mover o cliente entre pastas, consultar leads, tráfego, imagens e dados continua
 funcionando. Arquivar e excluir estão bloqueados para `converting` e `premium`:
@@ -176,6 +192,8 @@ Além dos gates gerais, a validação Premium deve cobrir:
 - formulário, evento e WhatsApp no tenant correto;
 - primeira transferência do domínio sem mudar a URL;
 - edição posterior publicada na mesma URL;
+- contrato editorial compatível, conflito de revisão e recusa de campo/imagem externos;
+- CMS sem chat, troca de página, prévia canônica e publicação em desktop/celular;
 - imagem usada por release recusada na exclusão.
 
 ## Limites e próximas etapas

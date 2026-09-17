@@ -13,21 +13,37 @@ import { structuredData } from '@/lib/sites/structured-data';
 import { attributionScript } from '@/lib/tracking';
 import { pages, posts, tenant } from '@/content/site';
 import { RaizenCardHome } from '@/app/raizen-card-home';
+import { applyPremiumValues, loadPremiumContent } from '@/lib/premium-content';
+import { PremiumPreviewReporter } from '@/app/premium-preview';
 
-type Props = { params: Promise<{ slug?: string[] }> };
+type Props = {
+  params: Promise<{ slug?: string[] }>;
+  searchParams: Promise<{
+    eixu_preview?: string | string[];
+    eixu_request?: string | string[];
+    eixu_scroll?: string | string[];
+  }>;
+};
 const origin = `https://${tenant.slug}.eixu.com.br`;
 
 function resolvePage(parts: string[] = []) {
   return pages.find((page) => page.slug === parts.join('/'));
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+  searchParams,
+}: Props): Promise<Metadata> {
   const page = resolvePage((await params).slug);
   if (!page) return { title: 'Página não encontrada' };
   const seo = page.seo ?? {};
   const title = seo.title || page.title;
+  const preview = typeof (await searchParams).eixu_preview === 'string';
   const noindex =
-    seo.noindex || page.type === 'thank_you' || page.type === 'paid_lp';
+    preview ||
+    seo.noindex ||
+    page.type === 'thank_you' ||
+    page.type === 'paid_lp';
   const canonical =
     seo.canonical || (page.slug ? `${origin}/${page.slug}` : `${origin}/`);
   const asset = currentLogoAsset(tenant.brand);
@@ -106,8 +122,24 @@ export async function generateViewport({ params }: Props): Promise<Viewport> {
   return page ? { themeColor: logoThemeColor(tenant.brand, page.blocks) } : {};
 }
 
-export default async function PremiumPage({ params }: Props) {
-  const page = resolvePage((await params).slug);
+export default async function PremiumPage({ params, searchParams }: Props) {
+  const { slug = [] } = await params;
+  const query = await searchParams;
+  const previewToken =
+    typeof query.eixu_preview === 'string' ? query.eixu_preview : undefined;
+  const content = await loadPremiumContent(tenant.slug, previewToken);
+  const renderedPages = applyPremiumValues(pages, content.values);
+  const renderedPosts = renderedPages
+    .filter((candidate) => candidate.type === 'post')
+    .map((post) => ({
+      slug: post.slug,
+      title: post.title,
+      excerpt: post.meta.excerpt,
+      date: post.meta.date,
+    }));
+  const page = renderedPages.find(
+    (candidate) => candidate.slug === slug.join('/'),
+  );
   if (!page) notFound();
   const referenceDirected = hasReferenceDirection(tenant.brand);
   const designVersion = tenant.brand.design?.version;
@@ -120,13 +152,13 @@ export default async function PremiumPage({ params }: Props) {
   const pagePath = `/${page.slug}`;
   const pageContent =
     page.slug === '' ? (
-      <RaizenCardHome />
+      <RaizenCardHome values={content.values} />
     ) : (
       <RenderBlocks
         blocks={page.blocks}
         ctx={{
           tenant,
-          posts,
+          posts: renderedPosts.length ? renderedPosts : posts,
           pagePath,
           pageType: page.type,
         }}
@@ -170,10 +202,27 @@ export default async function PremiumPage({ params }: Props) {
         }}
       />
       {pageContent}
-      <script
-        dangerouslySetInnerHTML={{
-          __html: attributionScript(tenant.slug, pagePath),
-        }}
+      {!previewToken ? (
+        <script
+          dangerouslySetInnerHTML={{
+            __html: attributionScript(tenant.slug, pagePath),
+          }}
+        />
+      ) : null}
+      <PremiumPreviewReporter
+        enabled={Boolean(previewToken)}
+        adminOrigin={
+          new URL(process.env.EIXU_PLATFORM_URL || 'https://eixu.com.br').origin
+        }
+        revision={content.revision}
+        requestId={
+          typeof query.eixu_request === 'string' ? query.eixu_request : ''
+        }
+        initialScroll={
+          typeof query.eixu_scroll === 'string'
+            ? Number(query.eixu_scroll) || 0
+            : 0
+        }
       />
     </div>
   );
