@@ -4701,6 +4701,13 @@ div.admin-attention-item strong {
   font-size: 11.5px;
   line-height: 1.45;
 }
+.admin-premium-review-action {
+  min-height: 44px;
+  margin-top: 12px;
+}
+.admin-premium-review-dialog .admin-dialog-footer > :is(a, button) {
+  min-height: 44px;
+}
 .admin-premium-conversion-meta {
   display: flex;
   align-items: center;

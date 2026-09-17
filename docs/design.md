@@ -139,10 +139,13 @@ continua disponível. Tempo decorrido, atualização manual, falha e ação huma
 ficam no mesmo contexto. No celular, **Andamento** e **Site atual** alternam sem
 duplicar avisos ou manter os controles antigos do gerador.
 
-O botão de revisão só aparece quando a PR existe. Falha de release preserva a
-entrega e oferece a recuperação operacional no workflow; ativação recarrega a
-rota e abre o CMS Premium. Movimento se
-limita ao indicador do trabalho ativo e some com movimento reduzido.
+Quando a preparação termina e a PR existe, uma modal avisa que a conversão
+aguarda aprovação e destaca **Revisar e aprovar**. Ela também abre ao entrar
+nesse estado; **Revisar depois** ou Escape fecha o aviso sem que as atualizações
+automáticas o reabram. A ação permanece junto ao passo de revisão e no cabeçalho.
+Falha de release preserva a entrega e oferece a recuperação operacional no
+workflow; ativação recarrega a rota e abre o CMS Premium. Movimento se limita
+ao indicador do trabalho ativo e some com movimento reduzido.
 
 ### CMS dos projetos Premium
 
