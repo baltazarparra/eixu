@@ -189,8 +189,8 @@ export const VIBE_LANE: Record<Vibe, Lane> = {
     axes: {
       displayFont: ['humanist', 'grotesk'],
       bodyFont: ['humanist', 'source', 'sans'],
-      // split permanece aceito para a continuidade de perfis antigos, mas as
-      // três estruturas novas abrem somente em brand, cover ou info.
+      // split, cover e info permanecem aceitos para a continuidade de perfis
+      // antigos. A estrutura Comercial atual abre somente em brand.
       heroComposition: ['split', 'brand', 'cover', 'info'],
       navigation: ['bar'],
       rhythm: ['alternating', 'compact'],
@@ -670,13 +670,12 @@ export function laneIssues(
 export const VIBE_DIRECTION: Record<Vibe, string> = {
   landing: `Vibe Landing Page: uma página, uma ação. Menu minimal em pílulas e âncoras; hero.landing stage com produto em moldura ou form com formulário curto. Benefício concreto, prova real, protagonista com duas fotos, passos, FAQ e fechamento sobre acento. De 6 a 11 seções de conteúdo. Repita o destino primário na abertura, no meio e no fechamento. nav.bar com stickyCta true e position fixed. A referência modula os eixos visuais, mas nunca a forma de página única.`,
   comercial: `Vibe Comercial v8: referência visual absoluta em https://minatelsupermercados.com.br/brotas, adaptada aos fatos e à marca de cada comércio.
-- Escolha uma das três jornadas completas: comercial-marca, comercial-imagem ou comercial-informacao. Preserve a sequência integral da estrutura e o rodapé indicado.
-- Abertura: hero.split brand destaca o logo sobre foto ampla; cover usa fotografia de fundo com título e CTA; info usa superfície simples, título, descrição e CTA. Texto curto e direto.
-- História: editorial.text narrow, columns ou lead. Categorias: feature.bento gallery, showcase ou featured-masonry, com 3 a 6 itens; cada item tem foto, nome e descrição útil.
-- Presença social: social.follow banner, profile ou gallery usa apenas redes cadastradas. Depois vem media.image immersive, statement ou caption em largura e altura de viewport para dar ritmo visual.
-- Fechamento: form.lead, media.map e footer.compact nas variantes fixadas pela estrutura. O mapa usa o endereço cadastrado quando existir.
-- Paleta clara e curta, tipografia sem ornamento, superfícies planas, bordas discretas e componentes simples. Não crie catálogo de funcionalidades, cartões decorativos, textura, grade ou prova inventada.
-- Todo componente entra uma vez ao aparecer: reveal suave para texto e formulário, stagger nas categorias e redes, scale discreto nas fotografias. Sem loops; respeite movimento reduzido e o modo de edição.`,
+- Use sempre a estrutura fixa comercial-marca e preserve toda a sequência. Ela é o piso da página, não uma lista de blocos opcionais.
+- A navegação faz parte visualmente do hero. Mostre o logo somente na navegação e use no fundo do hero uma fotografia real da fachada do próprio comércio, com o logo ou nome visível no letreiro. A fachada deve vir de upload ou do site oficial; nunca gere ou invente esse registro. Aplique sobre a foto uma camada da cor principal da marca. Título, descrição e CTA são curtos.
+- Apresente a unidade ou contexto local, depois exatamente seis setores em feature.bento gallery, cada um com foto, nome e descrição útil. Em seguida entram ofertas, redes sociais, uma faixa fotográfica panorâmica com parallax, história, outra faixa fotográfica, carreira, galeria com pelo menos seis fotos, convite de contato, formulário, todas as unidades no mapa e rodapé.
+- Use somente contatos e redes cadastrados. Cada unidade renderiza nome, endereço, telefone, horário, rota e mapa quando esses dados existirem.
+- Paleta curta, tipografia sem ornamento, superfícies planas, bordas discretas e componentes simples. Não crie catálogo de funcionalidades, cartões decorativos, textura, grade ou prova inventada.
+- Todo componente entra uma vez quando aparece na tela: reveal suave para texto e formulário, entrada individual nas categorias e fotos, scale discreto nas fotografias. As duas faixas panorâmicas têm parallax no scroll. Sem loops; respeite movimento reduzido e o modo de edição.`,
   moderno: `Vibe moderno: papel quase preto e liso, fios de 1px entre capítulos, rótulos em mono e muito respiro, como linear.app e resend.com.
 - paper e surface quase pretos, ink quase branco, radius sm ou md, motif none. Não existe grade nem textura de fundo: os capítulos se separam por um fio de 1px.
 - nav.bar layout minimal com position "fixed". Abra com hero.split layout editorial: headline de até 56 caracteres, lead curto e o painel de foto largo abaixo, que some no papel.
@@ -702,7 +701,7 @@ export const VIBE_IMAGE_DIRECTION: Record<Vibe, string> = {
   landing:
     'Produto ou resultado em primeiro plano, fundo limpo e luz uniforme. Sem pessoa posando. Upload de produto ou tela fornecido pelo cliente prevalece no hero; não invente interface nem use foto gerada como depoimento.',
   comercial:
-    'Fotografia documental do negócio real, luz natural, sem cara de banco de imagens.',
+    'Fotografia documental do negócio real, luz natural e sem cara de banco de imagens. O hero sempre usa a fachada real do próprio comércio, com o logo ou nome visível no letreiro, importada do site oficial ou enviada pelo operador; nunca gere uma fachada.',
   moderno:
     'Luz fria e controlada, foco em objeto, detalhe ou processo, fundo escuro ou neutro e liso, pouca presença humana. Nada de sorriso para a câmera. Um painel de produto ou processo aceita sumir no papel pela borda de baixo.',
   ousado:

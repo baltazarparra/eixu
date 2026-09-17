@@ -7,8 +7,9 @@ implementado está em [Design](design.md).
 
 ## O que já foi entregue
 
-As quatro vibes multipágina têm três estruturas cada, um bloco autoral controlado
+As três vibes autorais multipágina têm três estruturas cada, um bloco autoral controlado
 com doze layouts, plano de cenas coerente e verificação de ordem e composição.
+Comercial usa a jornada fixa `comercial-marca`, derivada da Minatel Brotas.
 V5 seleciona dentro da vibe. V6 dá prioridade à referência verificada na escolha
 da estrutura e dos eixos visuais; a vibe permanece como voz e fallback. Landing
 Page usa perfil v7 com jornada de página única. Perfis publicados mantêm sua

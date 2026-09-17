@@ -10,7 +10,7 @@ import react from '@vitejs/plugin-react';
 import puppeteer from 'puppeteer-core';
 
 await test(
-  'Comercial v8 realiza as três jornadas em desktop, mobile e movimento reduzido',
+  'Comercial v8 realiza a jornada fixa em desktop, mobile e movimento reduzido',
   { skip: !process.env.EIXU_CHROME_PATH },
   async (t) => {
     const root = process.cwd();
@@ -153,6 +153,64 @@ await test(
               waitUntil: 'networkidle0',
             });
             await page.evaluate(() => document.fonts.ready);
+            const entrance =
+              width === 1440
+                ? await page.evaluate(async () => {
+                    const cards = [
+                      ...document.querySelectorAll(
+                        "[data-block='feature.bento'] article",
+                      ),
+                    ];
+                    const target = cards.at(-1);
+                    if (!target) return null;
+                    const previousBehavior =
+                      document.documentElement.style.scrollBehavior;
+                    document.documentElement.style.scrollBehavior = 'auto';
+                    scrollTo(0, 0);
+                    await new Promise((resolve) =>
+                      requestAnimationFrame(() =>
+                        requestAnimationFrame(resolve),
+                      ),
+                    );
+                    const before = target.getAttribute('style') ?? '';
+                    target.scrollIntoView({ block: 'center' });
+                    await new Promise((resolve) => setTimeout(resolve, 80));
+                    const during = Number.parseFloat(
+                      getComputedStyle(target).opacity,
+                    );
+                    await new Promise((resolve) => setTimeout(resolve, 700));
+                    const after = Number.parseFloat(
+                      getComputedStyle(target).opacity,
+                    );
+                    scrollTo(0, 0);
+                    document.documentElement.style.scrollBehavior =
+                      previousBehavior;
+                    return { before, during, after };
+                  })
+                : null;
+            const parallax = await page.evaluate(async () => {
+              const section = document.querySelector('[data-parallax="true"]');
+              const figure = section?.querySelector('figure');
+              if (!section || !figure) return null;
+              const previousBehavior =
+                document.documentElement.style.scrollBehavior;
+              document.documentElement.style.scrollBehavior = 'auto';
+              section.scrollIntoView({ block: 'center' });
+              await new Promise((resolve) =>
+                requestAnimationFrame(() => requestAnimationFrame(resolve)),
+              );
+              const before =
+                getComputedStyle(figure).getPropertyValue('--site-parallax-y');
+              scrollBy(0, 140);
+              await new Promise((resolve) =>
+                requestAnimationFrame(() => requestAnimationFrame(resolve)),
+              );
+              const after =
+                getComputedStyle(figure).getPropertyValue('--site-parallax-y');
+              scrollTo(0, 0);
+              document.documentElement.style.scrollBehavior = previousBehavior;
+              return { before, after };
+            });
             await page.evaluate(async () => {
               const limit = document.documentElement.scrollHeight - innerHeight;
               const step = Math.max(320, Math.round(innerHeight * 0.75));
@@ -177,9 +235,11 @@ await test(
               });
             });
             const report = await page.evaluate(() => {
-              const immersive = document.querySelector(
-                "[data-block='media.image'] img",
-              );
+              const immersive = [
+                ...document.querySelectorAll(
+                  "[data-block='media.image'] .site-media-immersive",
+                ),
+              ];
               const heroMedia = document.querySelector('.site-hero-media');
               const map = document.querySelector("[data-block='media.map']");
               const blocks = [...document.querySelectorAll('.site-block')];
@@ -193,6 +253,11 @@ await test(
                 categoryImages: document.querySelectorAll(
                   "[data-block='feature.bento'] img",
                 ).length,
+                categoryBoxes: [
+                  ...document.querySelectorAll(
+                    "[data-block='feature.bento'] .site-bento-item",
+                  ),
+                ].map((item) => item.getBoundingClientRect().toJSON()),
                 categoryImagesLoaded: [
                   ...document.querySelectorAll(
                     "[data-block='feature.bento'] img",
@@ -201,15 +266,26 @@ await test(
                 socialLinks: document.querySelectorAll(
                   "[data-block='social.follow'] .site-social-link",
                 ).length,
-                immersive: immersive
-                  ? immersive.getBoundingClientRect().toJSON()
-                  : null,
-                immersiveLoaded: immersive?.naturalWidth > 0,
+                socialImages: document.querySelectorAll(
+                  "[data-block='social.follow'] img",
+                ).length,
+                galleryImages: document.querySelectorAll(
+                  "[data-block='media.gallery'] img",
+                ).length,
+                immersive: immersive.map((section) =>
+                  section.getBoundingClientRect().toJSON(),
+                ),
+                immersiveLoaded: immersive.every(
+                  (section) => section.querySelector('img')?.naturalWidth > 0,
+                ),
                 heroMedia: heroMedia
                   ? heroMedia.getBoundingClientRect().toJSON()
                   : null,
                 mapId: map?.id,
                 mapAddress: map?.textContent,
+                mapUnits: document.querySelectorAll('.site-map-unit').length,
+                mapFrames: document.querySelectorAll('.site-map-unit iframe')
+                  .length,
                 form: Boolean(
                   document.querySelector('form[action^="/api/form"]'),
                 ),
@@ -220,6 +296,7 @@ await test(
                 brandLogo: Boolean(
                   document.querySelector('.site-hero-brand-logo'),
                 ),
+                navLogo: Boolean(document.querySelector('.site-nav-logo')),
               };
             });
             assert.ok(
@@ -243,44 +320,57 @@ await test(
               expected.length,
               `${structure} ${width}`,
             );
-            assert.equal(report.categoryImages, 3, `${structure} ${width}`);
+            assert.equal(report.categoryImages, 6, `${structure} ${width}`);
+            if (width === 1440) {
+              const cardWidths = report.categoryBoxes.map((box) => box.width);
+              assert.ok(
+                Math.max(...cardWidths) - Math.min(...cardWidths) <= 2,
+                `${structure}: setores precisam formar uma grade 3 × 2`,
+              );
+              assert.equal(
+                new Set(report.categoryBoxes.map((box) => Math.round(box.top)))
+                  .size,
+                2,
+                `${structure}: setores precisam ocupar duas linhas`,
+              );
+            }
             assert.equal(
               report.categoryImagesLoaded,
               true,
               `${structure} ${width}`,
             );
             assert.equal(report.socialLinks, 2, `${structure} ${width}`);
-            assert.ok(
-              report.immersive.height >= height * 0.98,
-              `${structure} ${width}`,
-            );
-            assert.ok(
-              report.immersive.width >= width - 1,
-              `${structure} ${width}`,
-            );
+            assert.equal(report.socialImages, 6, `${structure} ${width}`);
+            assert.equal(report.galleryImages, 6, `${structure} ${width}`);
+            assert.equal(report.immersive.length, 2, `${structure} ${width}`);
+            for (const rect of report.immersive) {
+              assert.ok(
+                rect.height >= height * 0.5,
+                `${structure} ${width}: faixa ${rect.height}`,
+              );
+              assert.ok(rect.width >= width - 1, `${structure} ${width}`);
+            }
             assert.equal(report.immersiveLoaded, true, `${structure} ${width}`);
             assert.equal(report.mapId, 'onde-estamos', `${structure} ${width}`);
             assert.match(report.mapAddress, /Rua da Praça, 100/);
+            assert.match(report.mapAddress, /Dois Córregos/);
+            assert.match(report.mapAddress, /Mineiros do Tietê/);
+            assert.equal(report.mapUnits, 3, `${structure} ${width}`);
+            assert.equal(report.mapFrames, 3, `${structure} ${width}`);
             assert.equal(report.form, true, `${structure} ${width}`);
             assert.equal(report.footer, true, `${structure} ${width}`);
-            assert.match(
-              report.heroClass,
-              new RegExp(
-                {
-                  'comercial-marca': 'site-hero-brand',
-                  'comercial-imagem': 'site-hero-cover',
-                  'comercial-informacao': 'site-hero-info',
-                }[structure],
-              ),
-            );
-            if (structure === 'comercial-informacao') {
-              assert.equal(report.heroImages, 0);
-              assert.equal(report.brandLogo, false);
-            } else {
-              assert.equal(report.heroImages, 1);
-              assert.ok(report.heroMedia.width >= width - 1);
-              assert.ok(Math.abs(report.heroMedia.left) <= 1);
-              assert.equal(report.brandLogo, structure === 'comercial-marca');
+            assert.match(report.heroClass, /site-hero-brand/);
+            assert.equal(report.heroImages, 1);
+            assert.ok(report.heroMedia.width >= width - 1);
+            assert.ok(Math.abs(report.heroMedia.left) <= 1);
+            assert.equal(report.brandLogo, false);
+            assert.equal(report.navLogo, true);
+            assert.ok(parallax);
+            assert.notEqual(parallax.before, parallax.after);
+            if (entrance) {
+              assert.equal(entrance.before, '');
+              assert.ok(entrance.during < 1, JSON.stringify(entrance));
+              assert.equal(entrance.after, 1);
             }
             await page.screenshot({
               path:

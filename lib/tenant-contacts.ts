@@ -42,6 +42,8 @@ export const addressSchema = z.object({
     .trim()
     .min(8, 'Endereço curto demais: informe rua, número e cidade.')
     .max(200),
+  phone: z.string().trim().max(40).optional(),
+  hours: z.string().trim().max(240).optional(),
 });
 
 /**
@@ -284,7 +286,13 @@ export function contactsSummary(
     rows.push(
       `Endereços: ${contacts.addresses
         .map((address) =>
-          address.label ? `${address.label}: ${address.text}` : address.text,
+          [
+            address.label ? `${address.label}: ${address.text}` : address.text,
+            address.phone,
+            address.hours,
+          ]
+            .filter(Boolean)
+            .join(' · '),
         )
         .join(' | ')}`,
     );

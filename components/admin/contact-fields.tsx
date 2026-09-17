@@ -71,6 +71,8 @@ export function ContactFields({
   const addresses = useRows(contacts.addresses, () => ({
     label: '',
     text: '',
+    phone: '',
+    hours: '',
   }));
   const social = useRows<string>(contacts.social, () => '');
 
@@ -181,6 +183,22 @@ export function ContactFields({
                   aria-label="Endereço completo"
                   placeholder="Rua, número, bairro, cidade e estado"
                   defaultValue={value.text}
+                />
+                <input
+                  className="admin-input min-w-0 grow basis-40"
+                  name="addressPhone"
+                  maxLength={40}
+                  aria-label="Telefone da unidade"
+                  placeholder="Telefone da unidade"
+                  defaultValue={value.phone ?? ''}
+                />
+                <input
+                  className="admin-input min-w-0 grow basis-full"
+                  name="addressHours"
+                  maxLength={240}
+                  aria-label="Horário da unidade"
+                  placeholder="Segunda a sábado, 8h às 21h; domingo, 8h às 18h"
+                  defaultValue={value.hours ?? ''}
                 />
                 <button
                   type="button"

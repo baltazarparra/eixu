@@ -8,22 +8,21 @@ marca, texto, fotografias e contatos aos fatos de cada tenant. O perfil v8 fica
 isolado por `data-profile-version="8"`; perfis v2–v7 e seus snapshots continuam
 com o renderer anterior.
 
-As três estruturas preservam a mesma jornada comercial completa e variam a
-composição de cada família:
+A Comercial v8 usa somente `comercial-marca`. A silhueta é fixa: navegação
+integrada ao hero; hero sobre a fachada; apresentação da unidade; seis setores;
+ofertas; redes sociais; faixa fotográfica; história; segunda faixa fotográfica;
+carreira; galeria; convite de contato; formulário; todas as unidades; rodapé.
 
-| Estrutura              | Hero    | História  | Categorias         | Social    | Imagem      | Formulário | Mapa     | Rodapé    |
-| ---------------------- | ------- | --------- | ------------------ | --------- | ----------- | ---------- | -------- | --------- |
-| `comercial-marca`      | `brand` | `narrow`  | `gallery`          | `banner`  | `immersive` | `stack`    | `wide`   | `split`   |
-| `comercial-imagem`     | `cover` | `columns` | `showcase`         | `profile` | `statement` | `split`    | `split`  | `stack`   |
-| `comercial-informacao` | `info`  | `lead`    | `featured-masonry` | `gallery` | `caption`   | `panel`    | `framed` | `minimal` |
-
-`hero.split:brand` exige fotografia panorâmica e destaca o logo cadastrado;
-`cover` usa a fotografia como fundo; `info` é uma abertura simples sem imagem.
-`feature.bento` exige de três a seis categorias, todas com foto, título,
-descrição e texto alternativo. `social.follow` recebe apenas composição e texto
-do bloco: links e ícones vêm das redes cadastradas. `media.map` usa o endereço
-cadastrado e assume `onde-estamos`, substituindo a localização automática nessa
-versão. A imagem intermediária ocupa a largura e pelo menos `100svh`.
+`hero.split:brand` exige fotografia panorâmica da fachada real do próprio
+comércio, importada do site oficial ou enviada pelo operador, com o logo ou nome
+visível no letreiro. A arte do logo aparece na navegação, sem uma segunda cópia
+no hero. A foto recebe uma camada da cor principal da marca. `feature.bento`
+exige exatamente seis setores, todos com foto distinta, título, descrição e
+texto alternativo. `social.follow` recebe texto e fotos, enquanto links e ícones
+vêm das redes cadastradas. As duas `media.image:immersive` ocupam toda a largura,
+têm pelo menos 56% da altura da tela e recebem parallax. `media.gallery` exige
+pelo menos seis fotos. `media.map` assume `onde-estamos` e renderiza nome,
+endereço, telefone, horário, rota e mapa para cada unidade cadastrada.
 
 Todo bloco, incluindo navegação e rodapé, recebe uma entrada curta por Framer
 Motion. Categorias e redes entram em sequência; fotografias ganham escala
@@ -308,7 +307,7 @@ tamanho segue editável. Não se presume uma cor de fundo a partir da imagem.
 
 A composição parte da história do cliente, da marca e de cenas coerentes: uma
 seção protagonista, hierarquia de texto e variação de layout. Na Comercial, o
-perfil v8 escolhe uma das três estruturas acima e mantém a Minatel Brotas como
+perfil v8 usa a estrutura fixa `comercial-marca` e mantém a Minatel Brotas como
 referência de forma; uma referência do tenant complementa marca e fotografia.
 Nas demais vibes sem referência, o perfil v5 escolhe uma de três estruturas.
 Com uma referência visual verificada, o perfil v6 escolhe a estrutura mais
@@ -544,7 +543,7 @@ texto, foto ou ação.
 O bloco recebe duas fotos disponíveis do assunto do cliente. Não aceita HTML,
 JavaScript ou CSS gerado por tenant.
 
-As três estruturas comerciais também ordenam camadas opcionais de aprofundamento.
+As estruturas comerciais v5/v6 preservadas também ordenam camadas opcionais de aprofundamento.
 O catálogo só as oferece quando o briefing sustenta o conteúdo: números exigem
 evidência numérica, depoimentos exigem citações literais, narrativa exige história
 e `feature.showcase` exige três fotos que sobrem depois das cinco ou seis cenas do

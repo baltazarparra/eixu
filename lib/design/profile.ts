@@ -40,7 +40,7 @@ export const creativeBriefSchema = z.object({
     .max(12)
     .optional(),
   /** Nasce junto do plano editorial; o estúdio executa sem novo turno de IA. */
-  imageScenes: z.array(plannedSceneInputSchema).min(5).max(6).optional(),
+  imageScenes: z.array(plannedSceneInputSchema).min(5).max(10).optional(),
 });
 
 export const designProfileInputSchema = z.object({
@@ -48,7 +48,7 @@ export const designProfileInputSchema = z.object({
   structure: structureKeySchema
     .optional()
     .describe(
-      'Na Comercial, uma das três estruturas v8. Nas demais vibes sem referência, uma das três da vibe; com referência verificada, a mais próxima entre as doze estruturas gerais.',
+      'Na Comercial, a estrutura fixa comercial-marca. Nas demais vibes sem referência, uma das três da vibe; com referência verificada, a mais próxima entre as doze estruturas gerais.',
     ),
   structureRationale: z
     .string()
@@ -168,6 +168,18 @@ export function designSchemaFor(vibe: string) {
           ['brief', 'pagePlan'],
           'Site multipágina exige no mínimo três páginas orgânicas.',
         );
+      if (vibe === 'comercial') {
+        if (!isCommercialV8Structure(input.structure))
+          issue(
+            ['structure'],
+            'A Comercial v8 usa a estrutura fixa comercial-marca.',
+          );
+        if (input.heroComposition !== 'brand')
+          issue(
+            ['heroComposition'],
+            'A Comercial v8 abre sempre em hero brand com fachada identificada.',
+          );
+      }
     }
   });
 }
@@ -183,7 +195,7 @@ export type DesignProfileInput = z.infer<typeof designProfileInputSchema>;
  * referência verificada autoridade sobre a estrutura e toda a direção visual;
  * a vibe permanece como voz e fallback. A 7 é a landing de página única,
  * sem estrutura multipágina, com ou sem direção por referência. A 8 recria a
- * Comercial com o contrato integral inspirado na unidade Brotas da Minatel,
+ * Comercial com o contrato integral e fixo da unidade Brotas da Minatel,
  * sem alterar os perfis comerciais antigos já publicados.
  */
 export const DESIGN_PROFILE_VERSION = 6;

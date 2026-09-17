@@ -110,7 +110,8 @@ Clareza e voz precisam de nota pelo menos 2, além da regra geral de aceite.
 Uma média alta em aparência não compensa texto difícil.
 
 Para avaliar a escrita e a variação estrutural, use a mesma oferta confirmada
-nas quatro vibes multipágina e execute as três estruturas de cada uma. Avalie Landing Page separadamente, com jornada de página única. Inclua
+nas quatro vibes multipágina, execute a estrutura fixa da Comercial e as três
+estruturas de cada uma das demais. Avalie Landing Page separadamente, com jornada de página única. Inclua
 um negócio de serviço e um de produto; repita a geração e uma edição pontual.
 Registre textos automáticos antes de qualquer intervenção. Inclua nomes oficiais,
 um termo técnico necessário e explicado, e casos com inglês desnecessário,

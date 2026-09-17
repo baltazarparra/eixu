@@ -665,7 +665,7 @@ export const blockSchemas = {
         z.object({
           icon,
           title: z.string().max(60),
-          body: z.string().max(220),
+          body: z.string().max(420),
           href: z
             .string()
             .min(1)
@@ -874,7 +874,7 @@ export const blockSchemas = {
           'cover aplica image como fundo da faixa; os demais layouts preservam a foto separada do texto.',
         ),
       title: z.string().min(4).max(90),
-      body: z.string().max(200).optional(),
+      body: z.string().max(600).optional(),
       items: z
         .array(
           z.object({
@@ -944,10 +944,10 @@ export const blockSchemas = {
           alt: z.string().min(3).max(140),
         }),
       )
-      .max(3)
+      .max(6)
       .optional()
       .describe(
-        'Até três fotos do acervo para a variante gallery. Os links das redes vêm somente do cadastro do tenant.',
+        'Até seis fotos do acervo para a variante gallery. Os links das redes vêm somente do cadastro do tenant.',
       ),
   }),
 
@@ -1201,7 +1201,7 @@ export const blockMeta: Record<BlockType, Meta> = {
   'media.map': {
     family: 'media',
     label: 'Mapa',
-    use: 'Endereço com mapa embutido, carregado sob demanda.',
+    use: 'Endereço com mapa embutido, carregado sob demanda. Na Comercial v8, renderiza todas as unidades cadastradas com endereço, telefone e horário.',
   },
   'pricing.table': {
     family: 'pricing',

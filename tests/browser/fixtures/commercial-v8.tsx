@@ -56,7 +56,24 @@ function fixtureTenant(structureKey: CommercialStructure): Tenant {
     contacts: {
       phones: [{ number: '5514999999999', whatsapp: true }],
       addresses: [
-        { label: 'Loja Centro', text: 'Rua da Praça, 100, Centro, Brotas' },
+        {
+          label: 'Loja Brotas',
+          text: 'Rua da Praça, 100, Centro, Brotas',
+          phone: '(14) 3653-4185',
+          hours: 'Segunda a sábado, 8h às 21h. Domingo, 8h às 18h.',
+        },
+        {
+          label: 'Loja Dois Córregos',
+          text: 'Avenida Central, 1055, Centro, Dois Córregos',
+          phone: '(14) 3652-9466',
+          hours: 'Segunda a sábado, 8h às 21h. Domingo, 8h às 18h.',
+        },
+        {
+          label: 'Loja Mineiros do Tietê',
+          text: 'Rua do Comércio, 319, Centro, Mineiros do Tietê',
+          phone: '(14) 3646-9900',
+          hours: 'Segunda a sábado, 8h às 21h. Domingo, 8h às 18h.',
+        },
       ],
       social: [
         'https://www.instagram.com/mercadodapraca/',
@@ -73,7 +90,11 @@ function fixtureTenant(structureKey: CommercialStructure): Tenant {
   } as Tenant;
 }
 
-function propsFor(type: string, layout: string): Record<string, unknown> {
+function propsFor(
+  type: string,
+  layout: string,
+  index: number,
+): Record<string, unknown> {
   switch (type) {
     case 'hero.split':
       return {
@@ -82,12 +103,9 @@ function propsFor(type: string, layout: string): Record<string, unknown> {
         headline: 'Boas escolhas começam por perto',
         subtext: 'Conheça nossa história, categorias e formas de atendimento.',
         cta: { label: 'Ver categorias', href: '#categorias' },
-        ...(layout === 'info'
-          ? {}
-          : {
-              image: image(1),
-              imageAlt: 'Fachada clara de um comércio de bairro',
-            }),
+        image: image(1),
+        imageAlt:
+          'Fachada real do Mercado da Praça com o logo visível no letreiro',
       };
     case 'editorial.text':
       return {
@@ -103,18 +121,31 @@ function propsFor(type: string, layout: string): Record<string, unknown> {
         layout,
         eyebrow: 'Categorias',
         title: 'Encontre o que precisa',
-        items: [1, 2, 3].map((item) => ({
-          title: ['Hortifruti', 'Padaria', 'Mercearia'][item - 1],
+        items: [1, 2, 3, 4, 5, 6].map((item) => ({
+          title: [
+            'Hortifruti',
+            'Padaria',
+            'Mercearia',
+            'Açougue',
+            'Bebidas',
+            'Frios',
+          ][item - 1],
           body: [
             'Frutas, verduras e legumes para a rotina da semana.',
             'Pães e preparos para diferentes momentos do dia.',
             'Itens essenciais organizados para uma escolha rápida.',
+            'Cortes selecionados e atendimento próximo.',
+            'Opções para acompanhar refeições e encontros.',
+            'Queijos, presuntos e acompanhamentos para o dia a dia.',
           ][item - 1],
           image: image(item + 1),
           imageAlt: [
             'Frutas e verduras organizadas em uma banca',
             'Pães frescos organizados sobre uma bancada',
             'Produtos de mercearia organizados em prateleiras',
+            'Cortes de carne organizados no balcão do açougue',
+            'Bebidas organizadas em expositores refrigerados',
+            'Frios e queijos apresentados no balcão',
           ][item - 1],
         })),
       };
@@ -124,25 +155,54 @@ function propsFor(type: string, layout: string): Record<string, unknown> {
         eyebrow: 'Redes sociais',
         title: 'Acompanhe as novidades',
         body: 'Veja informações e novidades nos nossos perfis oficiais.',
-        ...(layout === 'gallery'
-          ? {
-              images: [2, 3, 4].map((item) => ({
-                src: image(item),
-                alt: `Cena ${item - 1} do comércio`,
-              })),
-            }
-          : {}),
+        images: [2, 3, 4, 5, 6, 7].map((item) => ({
+          src: image(item),
+          alt: `Cena ${item - 1} do comércio`,
+        })),
       };
     case 'media.image':
       return {
         layout,
-        src: image(5),
+        src: image(20 + index),
         alt: 'Vista ampla do interior do comércio com produtos organizados',
         ...(layout === 'immersive'
           ? {}
           : {
               caption: 'Um ambiente simples, organizado e pronto para receber.',
             }),
+      };
+    case 'cta.band':
+      return {
+        layout,
+        anchor:
+          layout === 'band'
+            ? 'ofertas'
+            : layout === 'split'
+              ? 'trabalhe-conosco'
+              : 'contato',
+        title:
+          layout === 'band'
+            ? 'Ofertas para deixar a rotina mais leve'
+            : layout === 'split'
+              ? 'Venha fazer parte da nossa equipe'
+              : 'Quer falar com a gente?',
+        body: 'Confira as informações e escolha o próximo passo.',
+        cta: { label: 'Saiba mais', href: '#contato' },
+        ...(layout === 'split'
+          ? {
+              image: image(20 + index),
+              imageAlt: 'Equipe trabalhando no ambiente do mercado',
+            }
+          : {}),
+      };
+    case 'media.gallery':
+      return {
+        layout,
+        title: 'Nosso dia a dia',
+        images: [2, 3, 4, 5, 6, 7].map((item) => ({
+          src: image(item),
+          alt: `Cena ${item - 1} do comércio`,
+        })),
       };
     case 'form.lead':
       return {
@@ -205,7 +265,7 @@ function fixtureBlocks(structureKey: CommercialStructure): BlockInstance[] {
               ],
               cta: { label: 'Fale conosco', href: '#contato' },
             }
-          : propsFor(type, layout),
+          : propsFor(type, layout, index),
     } as BlockInstance;
   });
 }

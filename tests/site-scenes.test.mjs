@@ -7,7 +7,11 @@ const j = createJiti(import.meta.url, {
   alias: { '@': process.cwd() },
   fsCache: false,
 });
-const { SITE_STRUCTURES } = await j.import('../lib/design/structures.ts');
+const {
+  COMMERCIAL_V8_STRUCTURE_KEYS,
+  REFERENCE_STRUCTURE_KEYS,
+  SITE_STRUCTURES,
+} = await j.import('../lib/design/structures.ts');
 const { scenePlan } = await j.import('../lib/images/scene-plan.ts');
 
 const tenant = {
@@ -280,8 +284,12 @@ await test('chat livre preserva oito cenas por turno, inclusive em chamadas para
   );
 });
 
-await test('o lote da etapa cobre o plano de cada estrutura na proporção prevista', async () => {
-  for (const structure of Object.values(SITE_STRUCTURES)) {
+await test('o lote da etapa cobre o plano de cada estrutura atual na proporção prevista', async () => {
+  for (const key of [
+    ...REFERENCE_STRUCTURE_KEYS,
+    ...COMMERCIAL_V8_STRUCTURE_KEYS,
+  ]) {
+    const structure = SITE_STRUCTURES[key];
     const brand = brandFor(structure);
     const f = await fixture(brand);
     // O mesmo lote que o runner monta a partir do plano, com a proporção que
@@ -312,10 +320,11 @@ await test('o lote da etapa cobre o plano de cada estrutura na proporção previ
         structure.key,
       );
     } else {
-      assert.ok(
+      assert.equal(
         f.calls[0].scenes.filter(
           (scene) => scene.targetBlock === 'feature.bento',
-        ).length >= 3,
+        ).length,
+        6,
         structure.key,
       );
       assert.equal(
