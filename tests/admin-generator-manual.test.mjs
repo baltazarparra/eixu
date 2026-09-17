@@ -33,7 +33,7 @@ await test('todas as seções indexadas existem e podem ser lidas', () => {
 });
 
 await test('manual cobre todos os tipos de bloco do catálogo atual', () => {
-  assert.equal(BLOCK_TYPES.length, 30);
+  assert.equal(BLOCK_TYPES.length, 31);
   for (const type of BLOCK_TYPES)
     assert.ok(manual.includes(`\`${type}\``), `bloco ausente: ${type}`);
 });

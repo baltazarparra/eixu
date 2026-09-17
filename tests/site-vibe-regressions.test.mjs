@@ -635,7 +635,7 @@ await test('wash substitui o grid em toda direção nova sem alterar o perfil v2
     renderedMotif({ design: { version: 2, motif: 'grid' } }),
     'grid',
   );
-  for (const version of [3, 4, 5, 6, 7])
+  for (const version of [3, 4, 5, 6, 7, 8])
     assert.equal(
       renderedMotif({ design: { version, motif: 'grid' } }),
       'wash',
@@ -653,14 +653,14 @@ await test('wash substitui o grid em toda direção nova sem alterar o perfil v2
       goal: 'Começar uma conversa com o contexto necessário',
       personality: ['clara', 'acolhedora'],
     },
-    structure: 'comercial-atendimento',
+    structure: 'comercial-informacao',
     structureRationale:
-      'A jornada guiada organiza a necessidade antes do contato comercial.',
+      'A informação direta organiza a necessidade antes do contato comercial.',
     concept: 'Uma conversa que organiza cada etapa da decisão',
     signatureElement: 'Caminho visual que conecta contexto e próximo passo',
     displayFont: 'humanist',
     bodyFont: 'humanist',
-    heroComposition: 'split',
+    heroComposition: 'info',
     navigation: 'bar',
     rhythm: 'alternating',
     imageTreatment: 'framed',
@@ -671,7 +671,7 @@ await test('wash substitui o grid em toda direção nova sem alterar o perfil v2
     paper: '#ffffff',
     surface: '#f5f3ef',
     variance: 3,
-    motion: 3,
+    motion: 4,
     density: 5,
   };
   const schema = profile.designSchemaFor('comercial').safeParse(input);

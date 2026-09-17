@@ -8,6 +8,7 @@ import {
 } from './typography';
 import { plannedSceneInputSchema } from '@/lib/images/scene-slots';
 import {
+  isCommercialV8Structure,
   isStructureKey,
   structureKeySchema,
   type StructureKey,
@@ -47,7 +48,7 @@ export const designProfileInputSchema = z.object({
   structure: structureKeySchema
     .optional()
     .describe(
-      'Sem referência, uma das três estruturas da vibe. Com referência visual verificada, a mais próxima entre as doze estruturas disponíveis.',
+      'Na Comercial, uma das três estruturas v8. Nas demais vibes sem referência, uma das três da vibe; com referência verificada, a mais próxima entre as doze estruturas gerais.',
     ),
   structureRationale: z
     .string()
@@ -93,6 +94,8 @@ export const designProfileInputSchema = z.object({
       BODY_FONTS.map((id) => `${id}: ${BODY_TYPE[id].name}`).join('; '),
     ),
   heroComposition: z.enum([
+    'brand',
+    'info',
     'split',
     'cover',
     'poster',
@@ -176,12 +179,15 @@ export type DesignProfileInput = z.infer<typeof designProfileInputSchema>;
  * Versões do perfil. 2 e 3 preservam sites publicados: uma referência
  * verificada os renderiza na base comercial neutra. A 4 traz a gramática por
  * vibe, a referência modulando aspectos e a vibe preservada no renderer. A 5
- * fixa uma das três estruturas da vibe e sua composição autoral. A 6 dá à
+ * fixa uma das três estruturas gerais da vibe e sua composição autoral. A 6 dá à
  * referência verificada autoridade sobre a estrutura e toda a direção visual;
  * a vibe permanece como voz e fallback. A 7 é a landing de página única,
- * sem estrutura multipágina, com ou sem direção por referência.
+ * sem estrutura multipágina, com ou sem direção por referência. A 8 recria a
+ * Comercial com o contrato integral inspirado na unidade Brotas da Minatel,
+ * sem alterar os perfis comerciais antigos já publicados.
  */
 export const DESIGN_PROFILE_VERSION = 6;
+export const COMMERCIAL_PROFILE_VERSION = 8;
 
 export type DesignProfile = Omit<
   DesignProfileInput,
@@ -198,7 +204,7 @@ export type DesignProfile = Omit<
   | 'motion'
   | 'density'
 > & {
-  version: 2 | 3 | 4 | 5 | 6 | 7;
+  version: 2 | 3 | 4 | 5 | 6 | 7 | 8;
   structure?: StructureKey;
   structureRationale?: string;
   signature: string;
@@ -248,11 +254,13 @@ export function completeDesignProfile(
       : {}),
   };
   return {
-    version: ['stage', 'form'].includes(input.heroComposition)
-      ? 7
-      : input.referenceDirection
-        ? DESIGN_PROFILE_VERSION
-        : 5,
+    version: isCommercialV8Structure(input.structure)
+      ? COMMERCIAL_PROFILE_VERSION
+      : ['stage', 'form'].includes(input.heroComposition)
+        ? 7
+        : input.referenceDirection
+          ? DESIGN_PROFILE_VERSION
+          : 5,
     ...structural,
     signature: designSignature(structural),
     definedAt: now,
@@ -266,19 +274,22 @@ export function isDesignProfile(value: unknown): value is DesignProfile {
     profile.referenceDirection,
   );
   return (
-    [2, 3, 4, 5, 6, 7].includes(profile.version ?? 0) &&
+    [2, 3, 4, 5, 6, 7, 8].includes(profile.version ?? 0) &&
     typeof profile.concept === 'string' &&
     typeof profile.signatureElement === 'string' &&
     ((profile.version === 7 &&
       ['stage', 'form'].includes(profile.heroComposition ?? '') &&
       !profile.structure) ||
       (profile.version ?? 0) < 5 ||
-      ([5, 6].includes(profile.version ?? 0) &&
+      ([5, 6, 8].includes(profile.version ?? 0) &&
         isStructureKey(profile.structure) &&
-        typeof profile.structureRationale === 'string')) &&
+        typeof profile.structureRationale === 'string' &&
+        (profile.version !== 8 ||
+          isCommercialV8Structure(profile.structure)))) &&
     (!(
       profile.version === 6 ||
-      (profile.version === 7 && profile.referenceDirection)
+      (profile.version === 7 && profile.referenceDirection) ||
+      (profile.version === 8 && profile.referenceDirection)
     ) ||
       (reference.success &&
         REFERENCE_ASPECTS.every((aspect) =>

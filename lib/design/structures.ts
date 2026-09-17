@@ -11,6 +11,9 @@ export const STRUCTURE_KEYS = [
   'comercial-atendimento',
   'comercial-vitrine',
   'comercial-confianca',
+  'comercial-marca',
+  'comercial-imagem',
+  'comercial-informacao',
   'moderno-editorial',
   'moderno-sistema',
   'moderno-exploracao',
@@ -24,6 +27,42 @@ export const STRUCTURE_KEYS = [
 
 export type StructureKey = (typeof STRUCTURE_KEYS)[number];
 export const structureKeySchema = z.enum(STRUCTURE_KEYS);
+
+/**
+ * As doze estruturas que o perfil v6 já podia escolher por referência.
+ * O conjunto fica congelado para que uma reconstrução de outra vibe não passe
+ * a adotar, por acidente, o contrato exclusivo da Comercial v8.
+ */
+export const REFERENCE_STRUCTURE_KEYS = [
+  'comercial-atendimento',
+  'comercial-vitrine',
+  'comercial-confianca',
+  'moderno-editorial',
+  'moderno-sistema',
+  'moderno-exploracao',
+  'ousado-manifesto',
+  'ousado-campanha',
+  'ousado-mostruario',
+  'artistico-atelier',
+  'artistico-revista',
+  'artistico-galeria',
+] as const satisfies readonly StructureKey[];
+
+/** Três composições completas da Comercial recriada no perfil v8. */
+export const COMMERCIAL_V8_STRUCTURE_KEYS = [
+  'comercial-marca',
+  'comercial-imagem',
+  'comercial-informacao',
+] as const satisfies readonly StructureKey[];
+
+export function isCommercialV8Structure(
+  value: unknown,
+): value is (typeof COMMERCIAL_V8_STRUCTURE_KEYS)[number] {
+  return (
+    typeof value === 'string' &&
+    (COMMERCIAL_V8_STRUCTURE_KEYS as readonly string[]).includes(value)
+  );
+}
 
 /** Cada estrutura usa um arranjo autoral próprio no bloco de assinatura. */
 export const SIGNATURE_LAYOUTS = [
@@ -102,8 +141,11 @@ export type SiteStructure = {
   innerOpenings: readonly string[];
   closings: readonly string[];
   support: readonly string[];
-  signatureLayout: SignatureLayout;
-  signatureRatio: '4:3' | '16:9' | '4:5';
+  /** Perfis v5/v6 usam uma composição autoral; a Comercial v8 usa famílias fixas. */
+  signatureLayout?: SignatureLayout;
+  signatureRatio?: '4:3' | '16:9' | '4:5';
+  /** Variante obrigatória do rodapé, mantida fora de `sequence` por semântica. */
+  footer?: string;
   /** Camadas opcionais, liberadas somente por sinais verificáveis do briefing. */
   expansions?: readonly HomeExpansion[];
 };
@@ -243,6 +285,72 @@ export const SITE_STRUCTURES: Record<StructureKey, SiteStructure> = {
           'estrutura, cobertura ou horários confirmados antes da composição autoral',
       },
     ],
+  },
+  'comercial-marca': {
+    key: 'comercial-marca',
+    vibe: 'comercial',
+    label: 'Marca em primeiro plano',
+    intent:
+      'Abre com a marca sobre uma fotografia ampla e conduz por história, categorias, presença social, ambiente, contato e localização.',
+    sequence: [
+      'hero.split:brand',
+      'editorial.text:narrow',
+      'feature.bento:gallery',
+      'social.follow:banner',
+      'media.image:immersive',
+      'form.lead:stack',
+      'media.map:wide',
+    ],
+    openings: ['hero.split:brand'],
+    protagonists: ['feature.bento:gallery'],
+    innerOpenings: ['hero.statement:framed', 'hero.split:info'],
+    closings: ['media.map:wide'],
+    support: ['narrative.split', 'media.image'],
+    footer: 'footer.compact:split',
+  },
+  'comercial-imagem': {
+    key: 'comercial-imagem',
+    vibe: 'comercial',
+    label: 'Imagem de abertura',
+    intent:
+      'Usa uma fotografia de fundo como abertura e alterna conteúdo simples com uma vitrine visual de categorias e uma cena imersiva.',
+    sequence: [
+      'hero.split:cover',
+      'editorial.text:columns',
+      'feature.bento:showcase',
+      'social.follow:profile',
+      'media.image:statement',
+      'form.lead:split',
+      'media.map:split',
+    ],
+    openings: ['hero.split:cover'],
+    protagonists: ['feature.bento:showcase'],
+    innerOpenings: ['hero.statement:framed', 'hero.split:info'],
+    closings: ['media.map:split'],
+    support: ['media.image', 'narrative.split'],
+    footer: 'footer.compact:stack',
+  },
+  'comercial-informacao': {
+    key: 'comercial-informacao',
+    vibe: 'comercial',
+    label: 'Informação direta',
+    intent:
+      'Começa por uma mensagem objetiva, organiza a história e as categorias com sobriedade e usa fotografia apenas nos momentos de maior impacto.',
+    sequence: [
+      'hero.split:info',
+      'editorial.text:lead',
+      'feature.bento:featured-masonry',
+      'social.follow:gallery',
+      'media.image:caption',
+      'form.lead:panel',
+      'media.map:framed',
+    ],
+    openings: ['hero.split:info'],
+    protagonists: ['feature.bento:featured-masonry'],
+    innerOpenings: ['hero.statement:framed', 'hero.split:info'],
+    closings: ['media.map:framed'],
+    support: ['narrative.split', 'media.image'],
+    footer: 'footer.compact:minimal',
   },
   'moderno-editorial': {
     key: 'moderno-editorial',
@@ -439,9 +547,7 @@ export const STRUCTURES_BY_VIBE: Record<
   Exclude<Vibe, 'landing'>,
   readonly SiteStructure[]
 > = {
-  comercial: STRUCTURE_KEYS.filter((key) => key.startsWith('comercial-')).map(
-    (key) => SITE_STRUCTURES[key],
-  ),
+  comercial: COMMERCIAL_V8_STRUCTURE_KEYS.map((key) => SITE_STRUCTURES[key]),
   moderno: STRUCTURE_KEYS.filter((key) => key.startsWith('moderno-')).map(
     (key) => SITE_STRUCTURES[key],
   ),
@@ -482,7 +588,7 @@ export function structuresDirection(vibe: Vibe): string {
 }
 
 export function allStructuresDirection(): string {
-  return STRUCTURE_KEYS.map((key) => SITE_STRUCTURES[key])
+  return REFERENCE_STRUCTURE_KEYS.map((key) => SITE_STRUCTURES[key])
     .map(
       (structure) =>
         `- ${structure.key} (${structure.label}): ${structure.intent} Sequência mínima: ${structure.sequence.join(' > ')}.`,

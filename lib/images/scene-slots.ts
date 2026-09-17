@@ -22,6 +22,8 @@ export const SCENE_TARGET_BLOCKS = [
   'cta.band',
   'hero.split',
   'hero.cover',
+  'hero.brand',
+  'hero.info',
   'hero.poster',
   'hero.editorial',
   'hero.offset',

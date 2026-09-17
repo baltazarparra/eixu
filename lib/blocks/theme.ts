@@ -120,7 +120,7 @@ export function renderedDesignVersionOf(
 ): number | 'reference' | undefined {
   const version = brand.design?.version;
   const reference = hasReferenceDirection(brand);
-  if (reference && ![4, 5, 6].includes(version ?? 0)) return 'reference';
+  if (reference && ![4, 5, 6, 8].includes(version ?? 0)) return 'reference';
   return version === 5 || version === 6 ? 4 : version;
 }
 

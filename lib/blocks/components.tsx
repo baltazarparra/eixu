@@ -23,6 +23,8 @@ import { SocialIcon } from '@/lib/blocks/social-icons';
 import {
   contactsOf,
   formatPhone,
+  mapsDirectionsUrl,
+  mapsEmbedUrl,
   phoneE164,
   socialLinks,
 } from '@/lib/tenant-contacts';
@@ -56,6 +58,7 @@ export type FaqAccordionProps = S<'faq.accordion'>;
 export type CtaBandProps = S<'cta.band'>;
 export type FormLeadProps = S<'form.lead'>;
 export type EditorialTextProps = S<'editorial.text'>;
+export type SocialFollowProps = S<'social.follow'>;
 export type EditorialPostListProps = S<'editorial.postList'>;
 export type EditorialPostBodyProps = S<'editorial.postBody'>;
 export type MediaGalleryProps = S<'media.gallery'>;
@@ -257,12 +260,17 @@ export function HeroSplit({
   secondaryCaption,
   slides,
   carousel,
+  presentation,
   ctx,
 }: HeroSplitProps & { ctx: RenderContext }) {
   const text = textAttrs(textStyles, editing);
   const hasImage = Boolean(image && /^https?:\/\//.test(image));
   const resolvedLayout =
     layout ?? ctx.tenant.brand.design?.heroComposition ?? 'split';
+  const brandLogo =
+    resolvedLayout === 'brand'
+      ? logoImage(ctx.tenant.brand, presentation)
+      : undefined;
   const carouselSlides =
     image && slides?.length
       ? [
@@ -295,10 +303,25 @@ export function HeroSplit({
   ) : null;
   return (
     <section
-      className={`site-hero ${hasImage ? `site-hero-${resolvedLayout}` : 'site-hero-text'} site-image-${imagePosition}`}
+      className={`site-hero site-hero-${resolvedLayout} ${hasImage ? '' : 'site-hero-text'} site-image-${imagePosition}`}
     >
       <div className={`${shell} site-hero-grid`}>
         <div className="site-hero-copy flex flex-col items-start gap-6">
+          {resolvedLayout === 'brand' ? (
+            brandLogo ? (
+              <img
+                src={brandLogo.src}
+                alt={ctx.tenant.name}
+                width={brandLogo.width}
+                height={brandLogo.height}
+                className="site-hero-brand-logo h-auto max-w-full object-contain object-left"
+                fetchPriority="high"
+                decoding="async"
+              />
+            ) : (
+              <p className="site-hero-brand-name">{ctx.tenant.name}</p>
+            )
+          ) : null}
           <Eyebrow {...text.mark('eyebrow')}>
             {text.content('eyebrow', eyebrow)}
           </Eyebrow>
@@ -1304,6 +1327,82 @@ export function EditorialText({
   );
 }
 
+/**
+ * A composição vem do bloco; os destinos vêm do cadastro. Assim o modelo não
+ * consegue inventar um perfil social para preencher a seção obrigatória.
+ */
+export function SocialFollow({
+  textStyles,
+  editing,
+  vibe = 'comercial',
+  eyebrow,
+  title,
+  body,
+  images = [],
+  layout = 'banner',
+  ctx,
+}: SocialFollowProps & { ctx: RenderContext }) {
+  const text = textAttrs(textStyles, editing);
+  const links = socialLinks(
+    contactsOf(ctx.tenant.contacts, ctx.tenant.whatsapp),
+  );
+  return (
+    <section className={`${section} site-social site-social-${layout}`}>
+      <div className={`${shell} site-social-inner`}>
+        <div className="site-social-copy">
+          <Eyebrow {...text.mark('eyebrow')}>
+            {text.content('eyebrow', eyebrow)}
+          </Eyebrow>
+          <h2 className={h2Class} {...text.mark('title')}>
+            {text.content('title', title)}
+          </h2>
+          {body ? (
+            <p {...text.mark('body')}>{text.content('body', body)}</p>
+          ) : null}
+        </div>
+        {images.length ? (
+          <div
+            className="site-social-images"
+            aria-label="Fotos das redes sociais"
+          >
+            {images.map((image) => (
+              <img
+                key={image.src}
+                src={image.src}
+                alt={image.alt}
+                width={720}
+                height={720}
+                loading="lazy"
+                decoding="async"
+                className="site-social-image"
+              />
+            ))}
+          </div>
+        ) : null}
+        <ul className="site-social-links" aria-label="Redes sociais">
+          {links.map((item) => (
+            <li key={item.url}>
+              <MotionLink
+                href={item.url}
+                rel="noreferrer"
+                className="site-social-link"
+                aria-label={`Acompanhar no ${item.label}`}
+              >
+                <SocialIcon network={item.key} vibe={vibe} />
+                <span>{item.label}</span>
+                <SiteIcon name="arrow-up-right" vibe={vibe} size={18} />
+              </MotionLink>
+            </li>
+          ))}
+        </ul>
+        {!links.length ? (
+          <p className="site-social-empty">Redes sociais em atualização.</p>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 export function EditorialResources({
   textStyles,
   editing,
@@ -1552,8 +1651,15 @@ export function MediaMap({
   address,
   query,
   layout = 'split',
-}: MediaMapProps) {
+  ctx,
+}: MediaMapProps & { ctx: RenderContext }) {
   const text = textAttrs(textStyles, editing);
+  const registered =
+    ctx.tenant.brand.design?.version === 8
+      ? contactsOf(ctx.tenant.contacts, ctx.tenant.whatsapp).addresses[0]?.text
+      : undefined;
+  const resolvedAddress = registered ?? address;
+  const resolvedQuery = registered ?? query;
   return (
     <section
       className={`${section} site-map site-map-${layout} border-b border-[var(--line)]`}
@@ -1569,10 +1675,10 @@ export function MediaMap({
             className="text-[1rem] not-italic leading-relaxed text-[var(--muted)]"
             {...text.mark('address')}
           >
-            {text.content('address', address)}
+            {text.content('address', resolvedAddress)}
           </address>
           <a
-            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`}
+            href={mapsDirectionsUrl(resolvedQuery)}
             rel="noreferrer"
             className="text-[0.95rem] font-medium text-[var(--highlight-text)] underline underline-offset-4"
           >
@@ -1581,11 +1687,11 @@ export function MediaMap({
         </div>
         <div className="md:col-span-8">
           <iframe
-            title={`Mapa de ${address}`}
+            title={`Mapa de ${resolvedAddress}`}
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
             className="aspect-[16/10] w-full rounded-[var(--radius)] border border-[var(--line)]"
-            src={`https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed`}
+            src={mapsEmbedUrl(resolvedQuery)}
           />
         </div>
       </div>

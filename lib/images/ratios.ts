@@ -11,6 +11,8 @@ export const RATIO_BY_BLOCK: Record<string, Ratio> = {
   'cta.band': '16:9',
   'hero.split': '4:5',
   'hero.cover': '16:9',
+  'hero.brand': '16:9',
+  'hero.info': '16:9',
   'hero.poster': '4:5',
   'hero.editorial': '16:9',
   'hero.offset': '4:5',
@@ -60,6 +62,10 @@ export const FRAMING: Record<string, string> = {
     'enquadramento vertical, assunto no terço superior, área respirável em volta',
   'hero.cover':
     'enquadramento panorâmico, assunto no terço direito e área limpa à esquerda para texto',
+  'hero.brand':
+    'enquadramento panorâmico do comércio, assunto reconhecível e área limpa para logo e mensagem',
+  'hero.info':
+    'a abertura info não usa fotografia; reserve cenas para categorias e imagem imersiva',
   'hero.poster':
     'enquadramento vertical gráfico, assunto inteiro e silhueta legível',
   'hero.editorial':
@@ -142,7 +148,9 @@ export function expectedRatio(type: string, layout?: string): Ratio {
       return layout === 'form' ? '4:5' : '16:9';
     case 'hero.split':
       // O layout do bloco é a composição: cover e editorial são panorâmicos.
-      return layout === 'cover' || layout === 'editorial' ? '16:9' : '4:5';
+      return layout === 'brand' || layout === 'cover' || layout === 'editorial'
+        ? '16:9'
+        : '4:5';
     case 'narrative.split':
       return layout === 'editorial' ? '16:9' : '5:6';
     case 'media.image':

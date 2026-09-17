@@ -8,6 +8,8 @@ import {
 } from './references';
 import {
   allStructuresDirection,
+  isCommercialV8Structure,
+  REFERENCE_STRUCTURE_KEYS,
   structureByKey,
   structureFor,
   structuresDirection,
@@ -25,8 +27,10 @@ import {
  * Referências lidas em 10/09/2026: linear.app (moderno), 14islands.com
  * (ousado) e actionline.io (artistico). Em 12/09/2026 o moderno foi recriado
  * sobre linear.app, resend.com e untold.site/pt: sistema tipográfico com fio
- * de 1px, rótulos em mono e nenhuma grade decorativa. Elas orientam a
- * linguagem visual; o conteúdo continua vindo do briefing do cliente.
+ * de 1px, rótulos em mono e nenhuma grade decorativa. Em 17/09/2026 a
+ * Comercial foi recriada a partir de minatelsupermercados.com.br/brotas: marca
+ * e fotografia amplas, texto direto, categorias, social, contato e mapa.
+ * Elas orientam a linguagem visual; o conteúdo continua vindo do briefing.
  */
 export const VIBES = [
   'comercial',
@@ -112,7 +116,7 @@ export const VIBE_HINT: Record<Vibe, string> = {
   landing:
     'Uma página, uma ação: benefício, prova e formulário curto, com botão fixo no celular.',
   comercial:
-    'Clareza acolhedora: benefício, prova e contato em um percurso direto e simples.',
+    'Comércio em primeiro plano: marca, história, categorias, presença social, contato e localização em uma página simples.',
   moderno:
     'Sistema tipográfico: papel quase preto, fios de 1px, rótulos em mono e muito respiro, com voz clara e tranquila.',
   ousado:
@@ -183,18 +187,20 @@ export const VIBE_LANE: Record<Vibe, Lane> = {
   },
   comercial: {
     axes: {
-      displayFont: ['humanist', 'slab'],
-      bodyFont: ['humanist', 'source'],
-      heroComposition: ['split', 'cover'],
+      displayFont: ['humanist', 'grotesk'],
+      bodyFont: ['humanist', 'source', 'sans'],
+      // split permanece aceito para a continuidade de perfis antigos, mas as
+      // três estruturas novas abrem somente em brand, cover ou info.
+      heroComposition: ['split', 'brand', 'cover', 'info'],
       navigation: ['bar'],
       rhythm: ['alternating', 'compact'],
-      imageTreatment: ['framed'],
+      imageTreatment: ['full-bleed', 'framed'],
       surfaceStyle: ['flat'],
       motif: ['none', 'wash'],
     },
-    radius: ['sm', 'md'],
+    radius: ['none', 'sm', 'md'],
     paper: [0.82, 1],
-    dials: { variance: [2, 5], motion: [2, 4], density: [4, 7] },
+    dials: { variance: [2, 5], motion: [4, 6], density: [4, 7] },
   },
   // O motivo grid saiu da faixa: a grade atravessava todas as seções e
   // nenhuma referência a usa. Perfis v2 já gravados com grid continuam sendo
@@ -281,7 +287,7 @@ type GrammarProfile =
   | { version?: number; structure?: unknown; heroComposition?: string }
   | undefined;
 
-/** V5 usa a família da vibe; v6 pode usar qualquer família guiada pela fonte. */
+/** V5 usa a família antiga; v6 usa a fonte do tenant; v8 fixa a Comercial nova. */
 export function structureGrammar(
   vibe: Vibe,
   design?: GrammarProfile,
@@ -295,11 +301,13 @@ export function structureGrammar(
         : {}),
     };
   const selected =
-    design?.version === 6
-      ? structureByKey(design.structure)
-      : design?.version === 5
-        ? structureFor(vibe, design.structure)
-        : null;
+    design?.version === 8
+      ? structureFor('comercial', design.structure)
+      : design?.version === 6
+        ? structureByKey(design.structure)
+        : design?.version === 5
+          ? structureFor(vibe, design.structure)
+          : null;
   const base =
     design?.version === 6 && selected
       ? VIBE_GRAMMAR[selected.vibe]
@@ -369,7 +377,7 @@ export const VIBE_GRAMMAR: Record<Vibe, VibeGrammar> = {
     support: ['narrative.split', 'media.image'],
     headline: 56,
     summary:
-      'abre em hero.split split ou cover, carrega a home com feature.explorer showroom ou feature.bento gallery e fecha em cta.band band ou form.lead.',
+      'nas estruturas v8, abre em hero de marca, imagem ou informação e percorre história, categorias, social, fotografia imersiva, formulário, mapa e rodapé.',
   },
   moderno: {
     openings: openingsOf('moderno'),
@@ -469,7 +477,7 @@ ${allStructuresDirection()}`;
 - Sequência mínima: ${grammar.structure.sequence.join(' > ')}.
 Realize as seis aplicações documentadas da referência em estrutura, hero, tipografia, imagens, ritmo, superfície, mobile, movimento e densidade. Adapte somente por factualidade, marca, acessibilidade e limites do catálogo.${homeDirection}`;
   const choices =
-    design?.version === 5
+    design?.version === 5 || design?.version === 8
       ? ''
       : `\nEstruturas disponíveis para sites novos:\n${structuresDirection(vibe)}`;
   return `Gramática obrigatória da vibe ${VIBE_LABEL[vibe]}, em tipo:layout. A vibe ${grammar.summary}
@@ -479,7 +487,7 @@ Realize as seis aplicações documentadas da referência em estrutura, hero, tip
 - Fechamento de cada página: ${grammar.closings.join(' ou ')}.
 - Headline de todo hero: até ${grammar.headline} caracteres. O que sobrar vai para o subtext.
 - Evite nesta vibe: ${grammar.avoid.join(', ')}.
-${grammar.structure ? `- Estrutura selecionada: ${grammar.structure.key}. Sequência mínima: ${grammar.structure.sequence.join(' > ')}.` : ''}
+${grammar.structure ? `- Estrutura selecionada: ${grammar.structure.key}. Sequência mínima: ${grammar.structure.sequence.join(' > ')}.${grammar.structure.footer ? ` Rodapé: ${grammar.structure.footer}.` : ''}` : ''}
 Sem referência visual verificada, esta gramática define a direção completa.${homeDirection}${choices}`;
 }
 
@@ -550,7 +558,7 @@ export function laneIssues(
     aspectList.includes(aspect),
   );
   const relaxed = relaxedBy(aspectList);
-  if (referenceLed) {
+  if (referenceLed && vibe !== 'comercial') {
     for (const axis of DESIGN_AXES) relaxed.axes.add(axis);
     relaxed.axes.add('radius');
     for (const dial of ['variance', 'motion', 'density'])
@@ -568,17 +576,29 @@ export function laneIssues(
     );
   if (vibe === 'landing' && input.navigation !== 'minimal')
     issues.push('Landing Page mantém navigation minimal mesmo com referência.');
-  // O schema de set_design exige estrutura em v5/v6. A ausência segue aceita
+  // O schema de set_design exige estrutura em v5/v6/v8. A ausência segue aceita
   // aqui porque esta função também audita perfis v2-v4 publicados.
   if (input.structure !== undefined) {
-    const selectedStructure = referenceLed
+    const referenceStructure = (
+      REFERENCE_STRUCTURE_KEYS as readonly string[]
+    ).includes(input.structure)
       ? structureByKey(input.structure)
-      : structureFor(vibe, input.structure);
+      : null;
+    const selectedStructure =
+      vibe === 'comercial'
+        ? isCommercialV8Structure(input.structure)
+          ? structureFor(vibe, input.structure)
+          : null
+        : referenceLed
+          ? referenceStructure
+          : structureFor(vibe, input.structure);
     if (!selectedStructure)
       issues.push(
-        referenceLed
-          ? `structure: "${input.structure}" não é uma estrutura disponível. Use ${allStructuresDirection().replaceAll('\n', ' ')}`
-          : `structure: "${input.structure}" não pertence à vibe ${VIBE_LABEL[vibe]}. Use ${structuresDirection(vibe).replaceAll('\n', ' ')}`,
+        vibe === 'comercial'
+          ? `structure: "${input.structure}" não pertence à Comercial v8. Use ${structuresDirection(vibe).replaceAll('\n', ' ')}`
+          : referenceLed
+            ? `structure: "${input.structure}" não é uma estrutura disponível. Use ${allStructuresDirection().replaceAll('\n', ' ')}`
+            : `structure: "${input.structure}" não pertence à vibe ${VIBE_LABEL[vibe]}. Use ${structuresDirection(vibe).replaceAll('\n', ' ')}`,
       );
     else if (
       !selectedStructure.openings.includes(
@@ -649,12 +669,14 @@ export function laneIssues(
  */
 export const VIBE_DIRECTION: Record<Vibe, string> = {
   landing: `Vibe Landing Page: uma página, uma ação. Menu minimal em pílulas e âncoras; hero.landing stage com produto em moldura ou form com formulário curto. Benefício concreto, prova real, protagonista com duas fotos, passos, FAQ e fechamento sobre acento. De 6 a 11 seções de conteúdo. Repita o destino primário na abertura, no meio e no fechamento. nav.bar com stickyCta true e position fixed. A referência modula os eixos visuais, mas nunca a forma de página única.`,
-  comercial: `Vibe comercial: percurso direto, acolhedor e orientado à decisão.
-- Display humanist ou slab com corpo humanist/source. Navegação bar, imagem framed e superfície flat.
-- motif wash ou none. A cor de marca aparece como brilho radial que nasce na borda e some no papel antes do texto; nunca degradê reto entre duas cores, nunca escurecendo para o preto. O brilho ocupa o hero e uma seção intermediária; sem linha, textura, repetição ou grade.
-- A home abre com benefício, foto documental e CTA visível, e o miolo alterna oferta, aplicações reais, dúvidas e contato. Não transforme tudo em cartões.
-- feature.numbered layout ledger para serviços, proof.testimonial só com depoimento real, faq.accordion layout split. Quando uma categoria precisa dominar a seção, feature.bento featured-masonry dá largura integral ao primeiro item e mantém os demais em colunas abaixo.
-- Ícones regulares e semânticos só onde aceleram leitura. Cantos discretos, movimento funcional e hierarquia de conversão clara.`,
+  comercial: `Vibe Comercial v8: referência visual absoluta em https://minatelsupermercados.com.br/brotas, adaptada aos fatos e à marca de cada comércio.
+- Escolha uma das três jornadas completas: comercial-marca, comercial-imagem ou comercial-informacao. Preserve a sequência integral da estrutura e o rodapé indicado.
+- Abertura: hero.split brand destaca o logo sobre foto ampla; cover usa fotografia de fundo com título e CTA; info usa superfície simples, título, descrição e CTA. Texto curto e direto.
+- História: editorial.text narrow, columns ou lead. Categorias: feature.bento gallery, showcase ou featured-masonry, com 3 a 6 itens; cada item tem foto, nome e descrição útil.
+- Presença social: social.follow banner, profile ou gallery usa apenas redes cadastradas. Depois vem media.image immersive, statement ou caption em largura e altura de viewport para dar ritmo visual.
+- Fechamento: form.lead, media.map e footer.compact nas variantes fixadas pela estrutura. O mapa usa o endereço cadastrado quando existir.
+- Paleta clara e curta, tipografia sem ornamento, superfícies planas, bordas discretas e componentes simples. Não crie catálogo de funcionalidades, cartões decorativos, textura, grade ou prova inventada.
+- Todo componente entra uma vez ao aparecer: reveal suave para texto e formulário, stagger nas categorias e redes, scale discreto nas fotografias. Sem loops; respeite movimento reduzido e o modo de edição.`,
   moderno: `Vibe moderno: papel quase preto e liso, fios de 1px entre capítulos, rótulos em mono e muito respiro, como linear.app e resend.com.
 - paper e surface quase pretos, ink quase branco, radius sm ou md, motif none. Não existe grade nem textura de fundo: os capítulos se separam por um fio de 1px.
 - nav.bar layout minimal com position "fixed". Abra com hero.split layout editorial: headline de até 56 caracteres, lead curto e o painel de foto largo abaixo, que some no papel.

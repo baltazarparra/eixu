@@ -20,6 +20,7 @@ export const FAMILIES = [
   'faq',
   'cta',
   'form',
+  'social',
   'editorial',
   'media',
   'pricing',
@@ -480,7 +481,16 @@ export const blockSchemas = {
       presentation,
       textStyles: textStylesSchema.optional(),
       layout: z
-        .enum(['split', 'cover', 'poster', 'editorial', 'offset', 'atelier'])
+        .enum([
+          'brand',
+          'info',
+          'split',
+          'cover',
+          'poster',
+          'editorial',
+          'offset',
+          'atelier',
+        ])
         .optional(),
       imagePosition: z.enum(['left', 'right']).optional(),
       imageFit: z.enum(['cover', 'contain']).optional(),
@@ -526,6 +536,28 @@ export const blockSchemas = {
       carousel,
     })
     .superRefine((value, ctx) => {
+      // `cover` já existia antes do perfil v8 e há snapshots sem `imageAlt`.
+      // O pre-flight da Comercial nova exige ambos sem invalidar esse legado.
+      const imageHero = value.layout === 'brand';
+      if (imageHero && !value.image)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['image'],
+          message: `O layout ${value.layout} exige uma imagem de fundo.`,
+        });
+      if (imageHero && !value.imageAlt)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['imageAlt'],
+          message: `Descreva a imagem de fundo do layout ${value.layout}.`,
+        });
+      if (value.layout === 'info' && (value.image || value.slides?.length))
+        ctx.addIssue({
+          code: 'custom',
+          path: ['image'],
+          message:
+            'O layout info é uma abertura simples de texto. Use brand ou cover para abrir com fotografia.',
+        });
       if (!value.slides?.length) return;
       if (!value.image || !value.imageAlt)
         ctx.addIssue({
@@ -541,7 +573,12 @@ export const blockSchemas = {
           message:
             'Defina split, poster, editorial ou offset para usar carrossel neste hero.',
         });
-      if (value.layout === 'cover' || value.layout === 'atelier')
+      if (
+        value.layout === 'brand' ||
+        value.layout === 'info' ||
+        value.layout === 'cover' ||
+        value.layout === 'atelier'
+      )
         ctx.addIssue({
           code: 'custom',
           path: ['slides'],
@@ -892,6 +929,28 @@ export const blockSchemas = {
     body: z.string().min(20).max(4000),
   }),
 
+  'social.follow': z.object({
+    anchor,
+    presentation,
+    textStyles: textStylesSchema.optional(),
+    layout: z.enum(['banner', 'profile', 'gallery']).optional(),
+    eyebrow: z.string().max(48).optional(),
+    title: z.string().min(4).max(90),
+    body: z.string().max(220).optional(),
+    images: z
+      .array(
+        z.object({
+          src: z.url().startsWith('http'),
+          alt: z.string().min(3).max(140),
+        }),
+      )
+      .max(3)
+      .optional()
+      .describe(
+        'Até três fotos do acervo para a variante gallery. Os links das redes vêm somente do cadastro do tenant.',
+      ),
+  }),
+
   'editorial.postList': z.object({
     anchor,
     presentation,
@@ -923,7 +982,17 @@ export const blockSchemas = {
     anchor,
     presentation,
     textStyles: textStylesSchema.optional(),
-    layout: z.enum(['wide', 'bleed', 'portrait', 'offset']).optional(),
+    layout: z
+      .enum([
+        'wide',
+        'bleed',
+        'portrait',
+        'offset',
+        'immersive',
+        'statement',
+        'caption',
+      ])
+      .optional(),
     src: z.url().startsWith('http'),
     alt: z.string().max(140),
     caption: z.string().max(160).optional(),
@@ -1102,6 +1171,11 @@ export const blockMeta: Record<BlockType, Meta> = {
     label: 'Texto',
     use: 'Bloco de texto corrido para páginas institucionais.',
   },
+  'social.follow': {
+    family: 'social',
+    label: 'Redes sociais',
+    use: 'Presença social usando exclusivamente os perfis cadastrados do tenant. banner é uma faixa direta, profile dá protagonismo aos links e gallery aceita até três fotos do acervo.',
+  },
   'editorial.postList': {
     family: 'editorial',
     label: 'Lista de posts',
@@ -1174,6 +1248,7 @@ export const DEFAULT_LAYOUT: Record<BlockType, string> = {
   'editorial.resources': 'feature',
   'editorial.facts': 'split',
   'editorial.text': 'narrow',
+  'social.follow': 'banner',
   'editorial.postList': 'grid',
   'editorial.postBody': 'default',
   'faq.accordion': 'split',
@@ -1251,9 +1326,26 @@ const IMAGE_LAYOUTS: Partial<Record<BlockType, string[]>> = {
   'feature.showcase': [],
   'proof.testimonials': [],
   'cta.band': [],
-  'hero.split': ['split', 'cover', 'poster', 'editorial', 'offset', 'atelier'],
+  'hero.split': [
+    'brand',
+    'split',
+    'cover',
+    'poster',
+    'editorial',
+    'offset',
+    'atelier',
+  ],
   'narrative.split': ['split', 'reverse', 'overlap', 'editorial'],
-  'media.image': ['wide', 'bleed', 'portrait', 'offset'],
+  'media.image': [
+    'wide',
+    'bleed',
+    'portrait',
+    'offset',
+    'immersive',
+    'statement',
+    'caption',
+  ],
+  'social.follow': [],
   'feature.bento': [],
   'feature.explorer': [],
   'media.gallery': [],

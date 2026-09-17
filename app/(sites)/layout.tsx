@@ -22,6 +22,7 @@ import './vibes.css';
 import './typography.css';
 import './iconography.css';
 import './navigation.css';
+import './commercial.css';
 // Por último: escolhas explícitas do operador vencem a decoração da vibe.
 import './operator.css';
 

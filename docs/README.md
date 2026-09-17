@@ -27,7 +27,8 @@ produto, ambiente e comandos.
 
 O produto tem quatro vibes multipágina e Landing Page. Perfis v2–v4 preservam
 contratos anteriores; v5 escolhe uma estrutura da vibe, v6 usa a referência
-verificada para escolher entre as doze estruturas, e v7 atende à página única.
+verificada para escolher entre as doze estruturas gerais, v7 atende à página
+única e v8 recria a Comercial a partir da Minatel Brotas sem migrar sites no ar.
 História do cliente, leitura do Site atual, upload de fotos, estúdio de logo e
 edição direta na prévia já fazem parte da implementação.
 

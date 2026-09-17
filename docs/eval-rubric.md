@@ -34,10 +34,10 @@ Medido por `siteMetrics` e pelo lint da geração. Este piso orienta o aceite do
 | Fotos disponíveis distintas na home         | 2                                                    |
 | Páginas orgânicas com pelo menos uma imagem | todas                                                |
 | Seção protagonista na home                  | 1                                                    |
-| Estrutura v5 ou v6 escolhida e preservada   | 1 da vibe ou 1 das 12 pela referência                |
-| Composição autoral v5/v6                    | 1, com duas fotos e papéis próprios                  |
-| Tons distintos na home                      | 3 sem referência; ritmo da fonte no v6               |
-| Momentos de motion                          | 1 a 3 sem referência; ritmo da fonte no v6           |
+| Estrutura v5, v6 ou v8 preservada           | 1 da vibe, 1 das 12 gerais ou 1 das 3 comerciais     |
+| Protagonista da estrutura                   | assinatura no v5/v6; categorias ilustradas no v8     |
+| Tons distintos na home                      | 3 sem referência; até 3 na Comercial v8              |
+| Momentos de motion                          | 1 a 3 no v5/v6; entrada em todo componente no v8     |
 | Erros de `lintPage` e `lintSite`            | 0                                                    |
 | Overflow horizontal em 1440 e 390           | nenhum                                               |
 | Palavra visível partida em qualquer captura | nenhuma                                              |
@@ -48,6 +48,12 @@ história acima de 1.500 caracteres acrescentam outra. Só contam camadas opcion
 sustentadas pelos dados e na ordem da estrutura. Seis seções pedem 180 palavras;
 sete ou mais, 220. A contagem evita uma home desproporcional, mas não substitui a
 nota humana de utilidade, factualidade e jornada.
+
+Na Comercial v8, a home preserva a sequência da estrutura escolhida: hero,
+história, categorias, redes sociais, imagem imersiva, formulário, mapa e rodapé.
+São três a seis categorias, todas com fotografia e texto alternativo; a imagem
+intermediária ocupa a largura e a altura da viewport. Navegação, seções e rodapé
+recebem uma entrada curta, e movimento reduzido mantém tudo visível sem animação.
 
 Para `landing` (perfil v7), estrutura v5/v6 e composição autoral não se aplicam.
 A home tem 6–11 seções, protagonista com duas fotos, prova confirmada e uma ação

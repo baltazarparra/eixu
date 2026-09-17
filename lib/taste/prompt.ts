@@ -67,13 +67,13 @@ export type PromptContext = {
 
 /** Piso de composição. Sem isto o resultado passa nos validadores como lista de texto. */
 const COMPOSITION = `## Briefing de composição
-- A home precisa de uma seção protagonista com pelo menos duas fotos deste cliente. O hero atelier conta como protagonista só quando outra seção também mostra o negócio em foto. Nos perfis v5/v6 essas fotos ficam na seção indicada pela estrutura.
+- A home precisa de uma seção protagonista com pelo menos duas fotos deste cliente. O hero atelier conta como protagonista só quando outra seção também mostra o negócio em foto. Nos perfis v5/v6 essas fotos ficam na signature.composition; na Comercial v8, ficam nas categorias de feature.bento.
 - A profundidade da home responde aos dados do briefing. Briefing amplo sem as camadas liberadas é recusado como home rasa; camada de prova sem a evidence literal correspondente continua pendente. Não acrescente seção só para atingir contagem.
 - Sem referência, a home não pode repetir a composição de outro cliente. No perfil v6 guiado por referência, fidelidade à fonte prevalece e a composição não deve ser alterada só para parecer diferente.
 - Toda página orgânica mostra pelo menos uma foto. Página de texto puro é recusada no pre-flight.
-- Sem referência, a home alterna pelo menos três tons entre paper, soft, accent, secondary e ink, incluindo accent ou secondary. Com referência, reproduza o ritmo tonal observado e use a marca sem contrariar a fonte.
+- A Comercial v8 usa paleta curta e sóbria, com no máximo três tons de seção. Nas demais vibes sem referência, a home alterna pelo menos três tons entre paper, soft, accent, secondary e ink, incluindo accent ou secondary. Com referência, reproduza o ritmo tonal observado e use a marca sem contrariar a fonte.
 - A proporção da foto acompanha o layout do bloco: o catálogo diz qual proporção cada variante exibe. Foto vertical em slot panorâmico perde o assunto no recorte.
-- Sem referência, use de 1 a 3 momentos de motion. Com referência, aproxime quantidade e intensidade do comportamento observado.
+- Na Comercial v8, todo componente entra uma vez ao aparecer, com movimento curto e sem loop. Nas demais vibes sem referência, use de 1 a 3 momentos de motion. Com referência, aproxime quantidade e intensidade do comportamento observado.
 - A abertura carrega uma decisão reconhecível além de cor e fonte: escala tipográfica, recorte, composição deslocada ou contraste entre áreas. Realize a decisão nas props, não só no conceito.
 - Não repita o mesmo tipo com o mesmo layout em seções seguidas.`;
 
@@ -109,11 +109,11 @@ ${TYPOGRAPHY_DIRECTION}
     '; ',
   )}). Sem referência, use a família da vibe; no perfil v6, use a família da estrutura escolhida pela fonte. icon é opcional: prefira texto e fotos; use símbolo só quando ajudar a distinguir assuntos. Títulos de seção, rótulos, números, etapas e legendas não recebem adornos automáticos. Evite repetir símbolos na lista ou em seções vizinhas; omita os dispensáveis, sem trocar por ícones aleatórios para variar. Não use shield como promessa de certificação nem troque fotos por ícones. Foco, toque, abertura e seleção têm microinterações; elas não contam como seções com motion.
 - Comece pelo assunto: público, oferta, ação esperada, personalidade e evidências. Para site novo, ${referenceAuthority ? 'compare as doze estruturas e escolha a mais próxima da referência' : 'compare as três estruturas da vibe e escolha a que melhor organiza a jornada'}; grave a decisão em structure e explique em structureRationale. Escolha também um conceito concreto e um elemento-assinatura reconhecível.
-- set_design oferece doze estruturas completas, seis composições de hero, ritmos, tratamentos de imagem, superfícies, motivos e pares tipográficos. ${referenceAuthority ? 'A referência verificada pode escolher qualquer estrutura e qualquer eixo ou dial; a vibe não bloqueia essas decisões. Fidelidade à referência prevalece sobre a trava de similaridade entre clientes.' : 'Sem referência, estrutura, eixos e dials permanecem na faixa da vibe. A home com composição estrutural repetida continua recusada.'}
+- set_design oferece doze estruturas gerais preservadas para v5/v6 e três estruturas exclusivas da Comercial v8, além das composições de hero, ritmos, tratamentos de imagem, superfícies, motivos e pares tipográficos. ${referenceAuthority ? 'A referência verificada pode escolher qualquer uma das doze estruturas gerais e qualquer eixo ou dial; a vibe não bloqueia essas decisões. Fidelidade à referência prevalece sobre a trava de similaridade entre clientes.' : 'Na Comercial, escolha uma das três estruturas v8; nas demais vibes sem referência, estrutura, eixos e dials permanecem na faixa. A home com composição estrutural repetida continua recusada.'}
 - As cores da marca vêm do cadastro do cliente e não mudam: accent pinta seções e superfícies fortes, accentAlt é o tom complementar e a cor de acento fica nos botões e links, aplicada pelo renderizador. Escolha ink, paper e surface que leiam bem com elas. Não deixe a segunda cor apenas armazenada no perfil. Faça a tipografia cumprir um papel e evite vidro genérico, repetição de cards e rótulos.
-- hero.split aceita split, cover, poster, editorial, offset ou atelier. Atelier é composição de ambiente mais detalhe com secondaryImage, alt e captions. Outras composições distribuem a segunda imagem na narrativa. Não use imagem gerada como prova de obra, equipe ou instalação real: identifique como inspiração na legenda.
+- hero.split aceita brand, info, split, cover, poster, editorial, offset ou atelier. brand destaca o logo sobre foto ampla; info é somente texto, descrição e CTA; atelier combina ambiente e detalhe com secondaryImage, alt e captions. Não use imagem gerada como prova de obra, equipe ou instalação real: identifique como inspiração na legenda.
 - Em cada seção relevante, escolha layout e presentation. Em cada página orgânica, pelo menos duas seções variam tone, width, spacing, align ou edge; somente motion não satisfaz esse contrato.
-- signatureElement descreve o que a seção signature.composition realiza. Todo perfil v5 ou v6 usa exatamente um desses blocos na home, no layout indicado pela estrutura, com papéis de conteúdo próprios e duas fotos da biblioteca, geradas ou enviadas. Não prometa faixas, veios ou grafismos fora das opções escolhidas.
+- Nos perfis v5/v6, signatureElement descreve o que a seção signature.composition realiza e a home usa exatamente um desses blocos no layout indicado. Na Comercial v8, signatureElement descreve a decisão visual que reaparece com sobriedade; não crie signature.composition, pois a protagonista é a listagem de categorias com fotos.
 - Escolha uma abertura, conteúdo que responda à necessidade e fechamento com cta.band ou form.lead. Prova só com evidência. Formulário exige obrigado (thank_you). paid_lp e thank_you com noindex.
 - Âncoras internas apontam ao campo anchor do bloco, sem # nesse campo. Use #contato para form.lead sem anchor. Links de navegação apontam a páginas ou âncoras que existem.`;
 
@@ -126,8 +126,8 @@ const LIMITS = `## Conteúdo e limites
 - logoText é obrigatório em nav.bar e footer.compact mesmo com logo enviado. Nos itens de listas, body tem no máximo 160 caracteres; textos longos pertencem a editorial.text.
 - CTA para /go/wa?from=/ quando há WhatsApp; senão para o formulário. Toda página comum precisa de cta.band ou form.lead.
 - Imagens: use a biblioteca e as URLs fornecidas, exatas. Nunca invente URL. Toda imagem gerada, enviada ou importada do site atual fica disponível na biblioteca com número e URL, sem aprovação. Fotos enviadas pelo operador e fotos importadas podem ser usadas normalmente nos blocos e contam na composição quando forem coerentes com o conteúdo. Origem, nome do arquivo, alt ou presença da foto não comprovam obra, equipe, cliente ou serviço. A crítica orienta ajustes, mas não é uma etapa de decisão.
-- Telefones, e-mail, endereços e redes do cadastro já são renderizados fora dos blocos: os contatos no rodapé e o mapa na seção "Onde estamos", logo acima dele. Não repita esses dados em blocos nem invente contato que não esteja no cadastro. media.map serve só para um mapa adicional em outro ponto da página.
-- Não use "onde-estamos" como anchor nem como destino de link: a âncora pertence à seção automática e o pre-flight recusa as duas coisas. Um segundo WhatsApp do cadastro é /go/wa?n=1.`;
+- Telefones, e-mail, endereços e redes vêm somente do cadastro. Na Comercial v8, social.follow renderiza as redes cadastradas e media.map usa o endereço cadastrado, substituindo a seção automática. Nas demais versões, os contatos ficam no rodapé e no "Onde estamos" automático; não os repita nem invente dados.
+- Na Comercial v8, media.map recebe automaticamente a âncora onde-estamos e o rodapé aponta para ela. Nas demais versões, não use "onde-estamos" como anchor nem como destino de link. Um segundo WhatsApp do cadastro é /go/wa?n=1.`;
 
 const FREE = `## Execução com critério de qualidade
 - O estado atual abaixo é a fonte editorial. O histórico recente conserva ferramentas e referências; o antigo conserva decisões, erros e pendências. Releia a página antes de uma edição dependente de props ou IDs antigos, pois o operador pode ter alterado o rascunho.
@@ -253,7 +253,13 @@ export function systemPrompt(
     persistedReferenceStillConfigured ||
     visualSources.some((s) => s.reading || !s.attempted);
   const designVersion = tenant.brand.design?.version;
+  const commercialV8 =
+    vibe === 'comercial' &&
+    (designVersion === undefined ||
+      designVersion === 8 ||
+      phase === 'briefing');
   const referenceAuthority =
+    !commercialV8 &&
     referenceLed &&
     (designVersion === 6 ||
       designVersion === undefined ||
@@ -291,7 +297,9 @@ export function systemPrompt(
     (visualSources.length || persistedReferenceStillConfigured)
       ? landing
         ? 'Referência visual verificada orienta os eixos da landing; preserve página única, hero stage/form e navegação minimal. Registre as seis aplicações em referenceDirection; fonte sem pixels é lacuna.'
-        : referencesDirection(legacy, referenceAuthority)
+        : commercialV8
+          ? 'A Comercial v8 usa minatelsupermercados.com.br/brotas como referência visual absoluta da vibe. Leia outras referências configuradas para compreender marca, fotografia e conteúdo do tenant, sem trocar a sequência nem as três estruturas v8.'
+          : referencesDirection(legacy, referenceAuthority)
       : '',
     phase
       ? phaseBrief(phase, landing ? 'landing' : 'multi')
@@ -320,11 +328,15 @@ export function systemPrompt(
     wantsDirection
       ? landing
         ? LANDING_DESIGN
-        : referenceLed
-          ? legacy
-            ? `## Direção visual por referências\nVibe de apoio: ${VIBE_LABEL[vibe]}. Preserve as decisões verificadas do perfil existente, inclusive sua composição.`
-            : `## Direção visual por referência\nVibe do cadastro: ${VIBE_LABEL[vibe]}. A referência decide a estrutura e todos os eixos visuais. Use a vibe somente para a voz e para lacunas que a leitura não resolver.`
-          : `## Vibe do site: ${VIBE_LABEL[vibe]}\n${VIBE_DIRECTION[vibe]}`
+        : commercialV8
+          ? `## Vibe do site: Comercial
+## Referência absoluta da Comercial
+${VIBE_DIRECTION.comercial}`
+          : referenceLed
+            ? legacy
+              ? `## Direção visual por referências\nVibe de apoio: ${VIBE_LABEL[vibe]}. Preserve as decisões verificadas do perfil existente, inclusive sua composição.`
+              : `## Direção visual por referência\nVibe do cadastro: ${VIBE_LABEL[vibe]}. A referência decide a estrutura e todos os eixos visuais. Use a vibe somente para a voz e para lacunas que a leitura não resolver.`
+            : `## Vibe do site: ${VIBE_LABEL[vibe]}\n${VIBE_DIRECTION[vibe]}`
       : '',
     wantsImageDirection
       ? referenceLed

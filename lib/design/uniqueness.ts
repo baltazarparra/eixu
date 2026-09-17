@@ -41,7 +41,11 @@ export async function compositionConflict(
     'version' | 'heroComposition' | 'navigation' | 'referenceDirection'
   >,
 ): Promise<CompositionConflict | null> {
-  if (design?.version === 6 && design.referenceDirection) return null;
+  if (
+    design?.version === 8 ||
+    (design?.version === 6 && design.referenceDirection)
+  )
+    return null;
   const legacy = !design?.version || design.version < 4;
   const own =
     (design?.version ?? 0) >= 5

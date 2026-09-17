@@ -27,6 +27,12 @@ const { publicationFinding } = await j.import(
 );
 
 const photo = (index) => `https://assets.test/signature-${index}.webp`;
+const legacyStructures = Object.values(structures.SITE_STRUCTURES).filter(
+  (structure) => structure.signatureLayout,
+);
+const commercialV8Structures = structures.COMMERCIAL_V8_STRUCTURE_KEYS.map(
+  (key) => structures.SITE_STRUCTURES[key],
+);
 
 function signatureProps(layout, variant = 0) {
   const items = [
@@ -74,7 +80,7 @@ function designFor(structure) {
   const dark = structure.vibe === 'moderno';
   const lane = VIBE_LANE[structure.vibe];
   return {
-    version: 5,
+    version: structure.signatureLayout ? 5 : 8,
     structure: structure.key,
     structureRationale:
       'Esta jornada corresponde ao conteúdo disponível e ao objetivo principal do cliente.',
@@ -100,6 +106,87 @@ function designFor(structure) {
   };
 }
 
+function commercialV8Props(type, layout) {
+  switch (type) {
+    case 'hero.split':
+      return {
+        layout,
+        headline: 'Tudo o que você procura, perto de você',
+        subtext: 'Conheça o comércio, as categorias e as formas de contato.',
+        cta: { label: 'Ver categorias', href: '#categorias' },
+        ...(layout === 'info'
+          ? {}
+          : {
+              image: photo(10),
+              imageAlt: 'Fachada e ambiente do comércio',
+            }),
+      };
+    case 'editorial.text':
+      return {
+        layout,
+        title: 'Uma história construída perto das pessoas',
+        body: 'Este texto institucional apresenta a origem do comércio e a relação que ele mantém com a comunidade.\n\nA trajetória é contada com fatos simples e linguagem direta.',
+      };
+    case 'feature.bento':
+      return {
+        anchor: 'categorias',
+        layout,
+        title: 'Encontre por categoria',
+        items: [1, 2, 3].map((item) => ({
+          title: `Categoria ${item}`,
+          body: `Uma descrição curta e útil da categoria ${item}.`,
+          image: photo(10 + item),
+          imageAlt: `Produtos da categoria ${item}`,
+        })),
+      };
+    case 'social.follow':
+      return {
+        layout,
+        eyebrow: 'Redes sociais',
+        title: 'Acompanhe as novidades',
+        body: 'Veja novidades e informações nos perfis oficiais cadastrados.',
+      };
+    case 'media.image':
+      return {
+        layout,
+        src: photo(20),
+        alt: 'Vista ampla e detalhada do ambiente do comércio',
+        ...(layout === 'immersive'
+          ? {}
+          : { caption: 'Um espaço feito para receber bem todos os dias.' }),
+      };
+    case 'form.lead':
+      return {
+        layout,
+        title: 'Fale com a nossa equipe',
+        body: 'Envie sua mensagem e responderemos pelos canais cadastrados.',
+        fields: [
+          { name: 'nome', label: 'Nome', type: 'text', required: true },
+          { name: 'email', label: 'E-mail', type: 'email', required: true },
+        ],
+        submitLabel: 'Enviar mensagem',
+        redirectTo: '/obrigado',
+      };
+    case 'media.map':
+      return {
+        layout,
+        title: 'Onde estamos',
+        address: 'Rua Comercial, 100, Centro',
+        query: 'Rua Comercial, 100, Centro',
+      };
+    case 'footer.compact':
+      return {
+        layout,
+        logoText: 'Comércio local',
+        tagline: 'Informação simples e contato direto.',
+        links: [],
+        legal: 'Todos os direitos reservados.',
+      };
+    default:
+      throw new Error(`Bloco v8 inesperado: ${type}`);
+  }
+}
+
 function blockFromMark(mark, index, variant = 0) {
   const separator = mark.indexOf(':');
   const type = mark.slice(0, separator);
@@ -110,7 +197,19 @@ function blockFromMark(mark, index, variant = 0) {
     props:
       type === 'signature.composition'
         ? blockSchemas[type].parse(signatureProps(layout, variant))
-        : { layout },
+        : type in blockSchemas &&
+            [
+              'hero.split',
+              'editorial.text',
+              'feature.bento',
+              'social.follow',
+              'media.image',
+              'form.lead',
+              'media.map',
+              'footer.compact',
+            ].includes(type)
+          ? blockSchemas[type].parse(commercialV8Props(type, layout))
+          : { layout },
   };
 }
 
@@ -126,13 +225,45 @@ function homeFor(structure, variant = 0) {
     meta: {
       inbound: { stage: 'conversion', intent: structure.intent },
     },
-    blocks: structure.sequence.map((mark, index) =>
-      blockFromMark(mark, index, variant),
-    ),
+    blocks: [
+      ...structure.sequence.map((mark, index) =>
+        blockFromMark(mark, index, variant),
+      ),
+      ...(structure.footer
+        ? [blockFromMark(structure.footer, 90, variant)]
+        : []),
+    ],
   };
 }
 
 function imagesFor(structure) {
+  if (!structure.signatureLayout) {
+    const hero = structure.openings[0] === 'hero.split:info' ? [] : [10];
+    return [...hero, 11, 12, 13, 20].map((seq) => ({
+      id: `image-${seq}`,
+      seq,
+      kind: 'foto',
+      referenceUrls: [],
+      batchId: 'commercial-v8-fixture',
+      requestText: `Cena comercial ${seq}`,
+      targetBlock:
+        seq === 10
+          ? `hero.${structure.openings[0].split(':')[1]}`
+          : seq === 20
+            ? 'media.image'
+            : 'feature.bento',
+      ratio: seq >= 11 && seq <= 13 ? '4:3' : '16:9',
+      model: 'openai/gpt-image-2',
+      url: photo(seq),
+      blobPath: `tenants/fixture/gerado/commercial-${seq}.webp`,
+      status: 'disponivel',
+      score: null,
+      critique: {},
+      alt: null,
+      description: null,
+      createdAt: '2026-09-17T00:00:00.000Z',
+    }));
+  }
   return [1, 2].map((seq) => ({
     id: `image-${seq}`,
     seq,
@@ -155,15 +286,19 @@ function imagesFor(structure) {
 }
 
 await test('cada vibe oferece três estruturas completas e distintas', () => {
-  assert.equal(structures.STRUCTURE_KEYS.length, 12);
-  assert.equal(new Set(structures.STRUCTURE_KEYS).size, 12);
+  assert.equal(structures.STRUCTURE_KEYS.length, 15);
+  assert.equal(new Set(structures.STRUCTURE_KEYS).size, 15);
+  assert.equal(structures.REFERENCE_STRUCTURE_KEYS.length, 12);
+  assert.equal(structures.COMMERCIAL_V8_STRUCTURE_KEYS.length, 3);
   assert.equal(new Set(structures.SIGNATURE_LAYOUTS).size, 12);
   for (const [vibe, choices] of Object.entries(structures.STRUCTURES_BY_VIBE)) {
     assert.equal(choices.length, 3, vibe);
-    assert.equal(
-      new Set(choices.map((choice) => choice.signatureLayout)).size,
-      3,
-    );
+    if (vibe !== 'comercial')
+      assert.equal(
+        new Set(choices.map((choice) => choice.signatureLayout)).size,
+        3,
+      );
+    else assert.equal(new Set(choices.map((choice) => choice.footer)).size, 3);
     assert.equal(
       new Set(choices.map((choice) => choice.sequence.join('>'))).size,
       3,
@@ -193,18 +328,23 @@ await test('cada vibe oferece três estruturas completas e distintas', () => {
 });
 
 await test('perfil v5 persiste estrutura e a gramática resolve somente a escolhida', () => {
-  for (const structure of Object.values(structures.SITE_STRUCTURES)) {
+  for (const structure of legacyStructures) {
     const design = designFor(structure);
     const grammar = structureGrammar(structure.vibe, design);
     assert.equal(grammar.structure?.key, structure.key);
     assert.deepEqual(grammar.openings, structure.openings);
     assert.deepEqual(grammar.protagonists, structure.protagonists);
-    assert.deepEqual(laneIssues(structure.vibe, design), []);
+    if (structure.vibe === 'comercial')
+      assert.match(
+        laneIssues(structure.vibe, design).join(' '),
+        /Comercial v8/,
+      );
+    else assert.deepEqual(laneIssues(structure.vibe, design), []);
   }
   const wrong = structures.SITE_STRUCTURES['moderno-sistema'];
   assert.match(
     laneIssues('comercial', designFor(wrong)).join(' '),
-    /não pertence à vibe Comercial/,
+    /Comercial v8/,
   );
 
   const input = profile.designProfileInputSchema.parse({
@@ -227,8 +367,38 @@ await test('perfil v5 persiste estrutura e a gramática resolve somente a escolh
   );
 });
 
+await test('perfil v8 nasce somente das três estruturas da Comercial nova', () => {
+  for (const structure of commercialV8Structures) {
+    const design = designFor(structure);
+    const grammar = structureGrammar('comercial', design);
+    assert.equal(grammar.structure?.key, structure.key);
+    assert.deepEqual(grammar.openings, structure.openings);
+    assert.deepEqual(laneIssues('comercial', design), []);
+    const input = profile.designProfileInputSchema.parse({
+      ...design,
+      brief: {
+        audience: 'Pessoas que compram e se relacionam com este comércio',
+        offer: 'Categorias e atendimento informados pelo próprio comércio',
+        goal: 'Apresentar o negócio e facilitar um contato direto',
+        personality: ['simples', 'acolhedora'],
+        evidence: ['O comércio confirmou sua história e seus contatos.'],
+      },
+    });
+    const completed = profile.completeDesignProfile(input);
+    assert.equal(completed.version, 8);
+    assert.equal(profile.isDesignProfile(completed), true);
+  }
+  assert.match(
+    laneIssues(
+      'moderno',
+      designFor(structures.SITE_STRUCTURES['comercial-marca']),
+    ).join(' '),
+    /não pertence à vibe Moderno|não é uma estrutura disponível/,
+  );
+});
+
 await test('plano de cenas usa a assinatura e a proporção da estrutura', () => {
-  for (const structure of Object.values(structures.SITE_STRUCTURES)) {
+  for (const structure of legacyStructures) {
     const scenes = scenePlan(designFor(structure), 3, structure.vibe);
     const signatureScenes = scenes.filter(
       (scene) => scene.targetBlock === 'signature.composition',
@@ -248,8 +418,31 @@ await test('plano de cenas usa a assinatura e a proporção da estrutura', () =>
   }
 });
 
+await test('plano v8 cobre abertura quando visual, categorias e imagem imersiva', () => {
+  for (const structure of commercialV8Structures) {
+    const scenes = scenePlan(designFor(structure), 3, 'comercial');
+    const categories = scenes.filter(
+      (scene) => scene.targetBlock === 'feature.bento',
+    );
+    assert.ok(categories.length >= 3, structure.key);
+    assert.equal(
+      scenes.filter((scene) => scene.targetBlock === 'media.image').length,
+      1,
+      structure.key,
+    );
+    assert.equal(
+      scenes.some((scene) => scene.targetBlock === 'hero.info'),
+      false,
+      structure.key,
+    );
+    if (structure.key === 'comercial-informacao')
+      assert.equal(scenes.length, 5);
+    else assert.match(scenes[0].targetBlock, /^hero\.(brand|cover)$/);
+  }
+});
+
 await test('as doze estruturas atravessam o pre-flight com composição e cenas próprias', () => {
-  for (const structure of Object.values(structures.SITE_STRUCTURES)) {
+  for (const structure of legacyStructures) {
     const findings = metrics.structuralFindings(
       [homeFor(structure)],
       imagesFor(structure),
@@ -278,6 +471,47 @@ await test('as doze estruturas atravessam o pre-flight com composição e cenas 
       structure.key,
     );
   }
+});
+
+await test('as três estruturas v8 atravessam o pre-flight com o contrato completo', () => {
+  for (const structure of commercialV8Structures) {
+    const findings = metrics.structuralFindings(
+      [homeFor(structure)],
+      imagesFor(structure),
+      { vibe: 'comercial', design: designFor(structure) },
+    );
+    const rules = findings
+      .filter((finding) => finding.level === 'error')
+      .map((finding) => finding.rule);
+    assert.equal(
+      rules.includes('estrutura-v5-incompleta'),
+      false,
+      structure.key,
+    );
+    assert.equal(rules.includes('comercial-v8-familias'), false, structure.key);
+    assert.equal(rules.includes('comercial-v8-rodape'), false, structure.key);
+    assert.equal(
+      rules.includes('comercial-v8-categorias'),
+      false,
+      structure.key,
+    );
+    assert.equal(rules.includes('home-protagonista'), false, structure.key);
+  }
+});
+
+await test('cover legado continua legível e a Comercial v8 exige descrição da foto', () => {
+  const structure = structures.SITE_STRUCTURES['comercial-imagem'];
+  const page = homeFor(structure);
+  const hero = page.blocks.find((block) => block.type === 'hero.split');
+  delete hero.props.imageAlt;
+  assert.equal(blockSchemas['hero.split'].safeParse(hero.props).success, true);
+  const rules = metrics
+    .structuralFindings([page], imagesFor(structure), {
+      vibe: 'comercial',
+      design: designFor(structure),
+    })
+    .map((finding) => finding.rule);
+  assert.ok(rules.includes('comercial-v8-hero-imagem'));
 });
 
 await test('pre-flight recusa sequência fora de ordem e ausência da assinatura', () => {
@@ -309,7 +543,7 @@ await test('composição exige foco único, apoio e alt, e renderiza as quatro f
   const paths = new Set(['decision-path', 'campaign-sequence', 'story-orbit']);
   const lenses = new Set(['service-lens', 'detail-lens', 'visual-selector']);
   const maps = new Set(['proof-route', 'system-map', 'material-table']);
-  for (const structure of Object.values(structures.SITE_STRUCTURES)) {
+  for (const structure of legacyStructures) {
     const parsed = blockSchemas['signature.composition'].parse(
       signatureProps(structure.signatureLayout),
     );
