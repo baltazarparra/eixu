@@ -45,8 +45,12 @@ Para verificar apenas a composição depois de uma correção, `--resume=<caso.j
 reaproveita o briefing e as páginas salvas pelo ensaio correspondente, junto de
 `--case`. O relatório identifica a retomada; ela não conta como uma nova leitura
 de fontes. Quando o pre-flight recusa um lote em memória, o loop direciona o
-próximo passo a `repair_site` antes de encerrar. Isso preserva os limites, a pausa,
-a gravação atômica e a revisão humana após a composição.
+próximo passo a `repair_site` antes de encerrar. A direção é pelo `toolChoice`, e
+as ferramentas que o histórico do turno já cita continuam declaradas: estreitar
+`activeTools` nesse passo deixava um `functionResponse` de `build_site` sem a
+declaração correspondente, e o provedor recusava a requisição inteira. Isso
+preserva os limites, a pausa, a gravação atômica e a revisão humana após a
+composição.
 
 ## Fluxo da Landing Page
 

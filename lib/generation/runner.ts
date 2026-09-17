@@ -97,6 +97,48 @@ function isTimeout(error: unknown): boolean {
   return (error as { name?: string } | null)?.name === 'TimeoutError';
 }
 
+/**
+ * O erro do Gateway carrega o que explica a recusa fora da mensagem: status
+ * HTTP, id da geração — a chave para achar a requisição na observabilidade — e
+ * a causa do provedor. Guardar só nome e mensagem deixava uma recusa de
+ * argumento chegar ao painel sem nada para investigar. Apenas nome, mensagem e
+ * identificadores entram aqui; corpo de requisição e credenciais não.
+ */
+function failureDetail(
+  error: unknown,
+): { error: string } & Record<string, unknown> {
+  if (!(error instanceof Error))
+    return { error: 'Falha inesperada na geração.' };
+  const gateway = error as Error & {
+    statusCode?: unknown;
+    generationId?: unknown;
+    isRetryable?: unknown;
+  };
+  const cause = causeText(error.cause);
+  return {
+    error: `${error.name}: ${error.message.slice(0, 200)}`,
+    ...(typeof gateway.statusCode === 'number'
+      ? { statusCode: gateway.statusCode }
+      : {}),
+    ...(typeof gateway.generationId === 'string'
+      ? { generationId: gateway.generationId }
+      : {}),
+    ...(typeof gateway.isRetryable === 'boolean'
+      ? { retryable: gateway.isRetryable }
+      : {}),
+    ...(cause ? { cause } : {}),
+  };
+}
+
+/** Causa fora do formato de erro entra só como tipo: log não é despejo de payload. */
+function causeText(cause: unknown): string | undefined {
+  if (!cause) return undefined;
+  if (cause instanceof Error)
+    return `${cause.name}: ${cause.message}`.slice(0, 500);
+  if (typeof cause === 'string') return cause.slice(0, 500);
+  return `causa do tipo ${typeof cause}`;
+}
+
 async function persistMessage(
   tenantId: string,
   role: 'user' | 'assistant',
@@ -342,6 +384,7 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
   let steps = 0;
   let timedOut = false;
   let phaseError: string | null = null;
+  let phaseErrorDetail: Record<string, unknown> = {};
   let spoken = '';
   let usage: Record<string, unknown> | undefined;
   const toolStartedAt = new Map<string, number>();
@@ -575,19 +618,25 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
       });
       return { kind: 'paused' };
     }
-    const message =
-      error instanceof Error
-        ? `${error.name}: ${error.message.slice(0, 200)}`
-        : 'Falha inesperada na geração.';
+    const detail = failureDetail(error);
+    const message = detail.error;
     console.error('[generation] falha na fase', {
       tenantId: tenant.id,
       runId: run.id,
       phase,
-      error: message,
+      ...detail,
     });
     // Tempo esgotado não apaga o que as ferramentas já salvaram: o turno
     // termina como qualquer outro e o progresso decide a continuação.
-    if (!isTimeout(error)) phaseError = message;
+    if (!isTimeout(error)) {
+      // O id da geração acompanha o texto que o operador vê: sem ele, o relato
+      // da falha não permite achar a requisição recusada.
+      phaseError =
+        typeof detail.generationId === 'string'
+          ? `${message} (geração ${detail.generationId})`
+          : message;
+      phaseErrorDetail = detail;
+    }
     timedOut = isTimeout(error);
   } finally {
     if (stopRequested) logoAbort.abort();
@@ -614,7 +663,7 @@ export async function executeStep(run: GenerationRun): Promise<StepOutcome> {
       phase,
       kind: 'error',
       label: `A etapa ${PHASE_LABEL[phase]} falhou`,
-      payload: { error: phaseError },
+      payload: { ...phaseErrorDetail, error: phaseError },
     });
     return { kind: 'failed', error: phaseError };
   }
