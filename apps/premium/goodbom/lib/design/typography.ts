@@ -10,6 +10,7 @@ export const DISPLAY_FONTS = [
   'expressive',
   'classic',
   'slab',
+  'dmserif',
 ] as const;
 export const BODY_FONTS = [
   'sans',
@@ -19,6 +20,7 @@ export const BODY_FONTS = [
   'work',
   'literary',
   'source',
+  'outfit',
 ] as const;
 
 export const DISPLAY_TYPE = {
@@ -92,6 +94,13 @@ export const DISPLAY_TYPE = {
     leading: 1.1,
     tracking: '-0.03em',
   },
+  dmserif: {
+    name: 'DM Serif Display',
+    variable: '--font-dmserif',
+    weight: 400,
+    leading: 1.08,
+    tracking: '-0.03em',
+  },
 } as const;
 
 export const BODY_TYPE = {
@@ -136,6 +145,12 @@ export const BODY_TYPE = {
     variable: '--font-source',
     leading: 1.7,
     measure: '65ch',
+  },
+  outfit: {
+    name: 'Outfit',
+    variable: '--font-outfit',
+    leading: 1.75,
+    measure: '62ch',
   },
 } as const;
 

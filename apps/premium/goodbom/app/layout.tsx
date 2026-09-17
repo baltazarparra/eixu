@@ -14,6 +14,8 @@ import {
   Work_Sans,
   Literata,
   Source_Sans_3,
+  DM_Serif_Display,
+  Outfit,
 } from 'next/font/google';
 import './site.css';
 import './creative.css';
@@ -22,6 +24,7 @@ import './vibes.css';
 import './typography.css';
 import './iconography.css';
 import './navigation.css';
+import './minatel.css';
 // Por último: escolhas explícitas do operador vencem a decoração da vibe.
 import './operator.css';
 
@@ -53,6 +56,20 @@ const geometric = Space_Grotesk({
 const humanist = Manrope({
   subsets: ['latin'],
   variable: '--font-humanist',
+  preload: false,
+  display: 'swap',
+});
+const dmserif = DM_Serif_Display({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-dmserif',
+  preload: false,
+  style: ['normal', 'italic'],
+  display: 'swap',
+});
+const outfit = Outfit({
+  subsets: ['latin'],
+  variable: '--font-outfit',
   preload: false,
   display: 'swap',
 });
@@ -124,7 +141,7 @@ export default function SitesRootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="pt-BR"
-      className={`${sans.variable} ${serif.variable} ${mono.variable} ${geometric.variable} ${humanist.variable} ${displayEditorial.variable} ${grotesk.variable} ${condensed.variable} ${expressive.variable} ${classic.variable} ${slab.variable} ${work.variable} ${literary.variable} ${source.variable}`}
+      className={`${sans.variable} ${serif.variable} ${mono.variable} ${geometric.variable} ${humanist.variable} ${displayEditorial.variable} ${grotesk.variable} ${condensed.variable} ${expressive.variable} ${classic.variable} ${slab.variable} ${work.variable} ${literary.variable} ${source.variable} ${dmserif.variable} ${outfit.variable}`}
     >
       <body>{children}</body>
     </html>
