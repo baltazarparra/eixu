@@ -352,8 +352,11 @@ deployment passou pelos gates e respondeu na URL canônica. Enquanto o estado é
 `converting`, o snapshot do gerador continua no ar, mas chat, geração, edição
 direta e publicação recusam novas escritas também sob lock transacional.
 
-O pedido dispara o executor imediatamente e o cron cobre indisponibilidades. O
-conversor vigente exporta somente dados publicados para
+O pedido entra na fila persistida e duas agendas intercaladas do GitHub procuram
+trabalho nos minutos 1/6/11… e 3/8/13… de cada hora. Cada agenda respeita o
+intervalo mínimo de cinco minutos; juntas reduzem a espera normal sem exigir uma
+credencial do GitHub no painel. O claim acontece antes do checkout, portanto uma
+execução sem trabalho termina imediatamente. O conversor vigente exporta somente dados publicados para
 `apps/premium/<project-key>` e cria o contrato editorial atual; o fechamento do
 renderer e do CSS continua vindo do SHA que atendia produção. Cada pasta é uma
 aplicação Next.js e um projeto Vercel independentes, mas permanece neste

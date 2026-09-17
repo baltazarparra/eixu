@@ -35,26 +35,24 @@ npm run dev:vercel
 
 O institucional e a tela de login abrem sem banco. Para usar o painel e os sites, configure `.env.local` com recursos de desenvolvimento:
 
-| Variável                    | Uso                                                                                                         |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`              | Conexão Postgres/Neon das rotas dinâmicas e scripts de banco.                                               |
-| `DATABASE_URL_UNPOOLED`     | Conexão direta preferida pelos scripts de migração e provisionamento.                                       |
-| `ADMIN_PIN_PEPPER`          | Segredo adicional usado no hash dos PINs; obrigatório em produção e estável entre provisionamento e login.  |
-| `ADMIN_SESSION_SECRET`      | Segredo dos tokens internos de prévia; obrigatório em produção.                                             |
-| `KANBAN_AGENT_TOKEN`        | Bearer exclusivo para agentes operarem somente as rotas do Kanban; preferível à sessão administrativa.      |
-| `PREMIUM_WORKER_TOKEN`      | Bearer exclusivo dos workflows de conversão e release Premium; obrigatório na raiz em produção.             |
-| `GITHUB_WORKFLOW_TOKEN`     | Token fino com Actions `read/write` para disparar conversão e nova tentativa de release sem esperar o cron. |
-| `PREMIUM_GITHUB_REPOSITORY` | Repositório dos workflows Premium; opcional quando usa `baltazarparra/eixu`.                                |
-| `AI_GATEWAY_API_KEY`        | Autenticação explícita do AI Gateway, útil localmente. O SDK também aceita OIDC da Vercel.                  |
-| `EIXU_MODEL`                | Modelo do chat do site; fallback no código: `google/gemini-3.8-flash`.                                      |
-| `EIXU_EDIT_MODEL`           | Override opcional só para edições; sem ele, usa `EIXU_MODEL` e o mesmo fallback.                            |
-| `EIXU_CRITIC_MODEL`         | Modelo da crítica visual e leitura de avatar social; fallback em `EIXU_MODEL`, depois Gemini 3.8 Flash.     |
-| `EIXU_LOGO_CRITIC_MODEL`    | Modelo de leitura e crítica do logo; prevalece sobre os fallbacks descritos em [Harness](docs/harness.md).  |
-| `EIXU_LOGO_IMAGE_MODEL`     | Gerador de logos; padrão `openai/gpt-image-2`.                                                              |
-| `EIXU_LOGO_AUTO_APPLY`      | `0` desativa a aplicação automática do estúdio; as propostas continuam disponíveis.                         |
-| `BLOB_READ_WRITE_TOKEN`     | Upload, geração e remoção de imagens no Vercel Blob.                                                        |
-| `EIXU_REVIEW_CAPTURE`       | Chromium e crítica visual ligados por padrão; `0` desliga também a medição pós-edição e declara a ausência. |
-| `EIXU_CHROME_PATH`          | Caminho do Chrome local para a captura em desenvolvimento.                                                  |
+| Variável                 | Uso                                                                                                         |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`           | Conexão Postgres/Neon das rotas dinâmicas e scripts de banco.                                               |
+| `DATABASE_URL_UNPOOLED`  | Conexão direta preferida pelos scripts de migração e provisionamento.                                       |
+| `ADMIN_PIN_PEPPER`       | Segredo adicional usado no hash dos PINs; obrigatório em produção e estável entre provisionamento e login.  |
+| `ADMIN_SESSION_SECRET`   | Segredo dos tokens internos de prévia; obrigatório em produção.                                             |
+| `KANBAN_AGENT_TOKEN`     | Bearer exclusivo para agentes operarem somente as rotas do Kanban; preferível à sessão administrativa.      |
+| `PREMIUM_WORKER_TOKEN`   | Bearer exclusivo dos workflows de conversão e release Premium; obrigatório na raiz em produção.             |
+| `AI_GATEWAY_API_KEY`     | Autenticação explícita do AI Gateway, útil localmente. O SDK também aceita OIDC da Vercel.                  |
+| `EIXU_MODEL`             | Modelo do chat do site; fallback no código: `google/gemini-3.8-flash`.                                      |
+| `EIXU_EDIT_MODEL`        | Override opcional só para edições; sem ele, usa `EIXU_MODEL` e o mesmo fallback.                            |
+| `EIXU_CRITIC_MODEL`      | Modelo da crítica visual e leitura de avatar social; fallback em `EIXU_MODEL`, depois Gemini 3.8 Flash.     |
+| `EIXU_LOGO_CRITIC_MODEL` | Modelo de leitura e crítica do logo; prevalece sobre os fallbacks descritos em [Harness](docs/harness.md).  |
+| `EIXU_LOGO_IMAGE_MODEL`  | Gerador de logos; padrão `openai/gpt-image-2`.                                                              |
+| `EIXU_LOGO_AUTO_APPLY`   | `0` desativa a aplicação automática do estúdio; as propostas continuam disponíveis.                         |
+| `BLOB_READ_WRITE_TOKEN`  | Upload, geração e remoção de imagens no Vercel Blob.                                                        |
+| `EIXU_REVIEW_CAPTURE`    | Chromium e crítica visual ligados por padrão; `0` desliga também a medição pós-edição e declara a ausência. |
+| `EIXU_CHROME_PATH`       | Caminho do Chrome local para a captura em desenvolvimento.                                                  |
 
 Crie o arquivo localmente, sem versionar credenciais. Se já tiver acesso ao projeto Vercel, `vercel link --project eixu` e `vercel env pull .env.local --environment=development` são uma alternativa; confira o destino de `DATABASE_URL` antes de qualquer escrita. O nome do ambiente Vercel não garante que o banco conectado seja de desenvolvimento.
 

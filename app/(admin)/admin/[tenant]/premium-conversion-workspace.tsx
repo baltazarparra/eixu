@@ -8,7 +8,6 @@ import {
   GitPullRequest,
   LoaderCircle,
   RefreshCw,
-  Rocket,
   ShieldCheck,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -18,6 +17,9 @@ import type { SiteState } from '@/lib/admin/state';
 
 type Props = { initial: SiteState };
 type Status = NonNullable<SiteState['premium']['conversion']>['status'];
+
+const RELEASE_WORKFLOW_URL =
+  'https://github.com/baltazarparra/eixu/actions/workflows/premium-release.yml';
 
 const STEPS: Array<{
   status: Status;
@@ -119,7 +121,6 @@ export function PremiumConversionWorkspace({ initial }: Props) {
   const [view, setView] = useState<'chat' | 'content'>('chat');
   const [now, setNow] = useState(() => Date.now());
   const [refreshing, setRefreshing] = useState(false);
-  const [retrying, setRetrying] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const refreshInFlight = useRef(false);
   const conversion = site.premium.conversion;
@@ -174,39 +175,17 @@ export function PremiumConversionWorkspace({ initial }: Props) {
     };
   }, [refresh]);
 
-  const retryRelease = useCallback(async () => {
-    setRetrying(true);
-    setRefreshError(null);
-    try {
-      await adminFetch(`/api/admin/${initial.tenant.slug}/premium/retry`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: '{}',
-      });
-      await refresh(true);
-    } catch (error) {
-      setRefreshError(
-        error instanceof Error
-          ? error.message
-          : 'Não foi possível tentar a publicação novamente.',
-      );
-    } finally {
-      setRetrying(false);
-    }
-  }, [initial.tenant.slug, refresh]);
-
   const decision = useMemo(() => {
     if (status === 'exported' && conversion?.error)
       return (
-        <button
-          type="button"
+        <a
           className="admin-primary"
-          disabled={retrying}
-          onClick={() => void retryRelease()}
+          href={RELEASE_WORKFLOW_URL}
+          target="_blank"
+          rel="noreferrer"
         >
-          <Rocket size={15} aria-hidden="true" />
-          {retrying ? 'Reiniciando…' : 'Tentar publicar novamente'}
-        </button>
+          <ExternalLink size={15} aria-hidden="true" /> Abrir recuperação
+        </a>
       );
     if (status === 'exported' && conversion?.pullRequestUrl)
       return (
@@ -225,7 +204,7 @@ export function PremiumConversionWorkspace({ initial }: Props) {
         {status === 'deploying' ? 'Publicando…' : 'Preparando…'}
       </span>
     );
-  }, [conversion, retryRelease, retrying, status]);
+  }, [conversion, status]);
 
   return (
     <div className="admin-workspace admin-premium-conversion" data-view={view}>

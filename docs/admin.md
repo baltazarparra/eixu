@@ -501,7 +501,8 @@ etapas à esquerda: pedido, preparação, revisão, publicação e ativação. O
 decorrido e a última etapa persistem mesmo se a aba for fechada. Quando aparecer
 **Revisar e aprovar**, abra a PR, confira e faça merge. O release valida a
 aplicação, publica e move a mesma URL para o projeto próprio. Falha de release
-oferece **Tentar publicar novamente**, sem refazer o projeto. O CMS Premium abre
+preserva a entrega e oferece **Abrir recuperação**, que leva ao workflow manual
+sem refazer o projeto. O CMS Premium abre
 automaticamente somente depois do smoke na URL original.
 
 A partir daí, páginas, estilos, bibliotecas e backend são alterados na pasta
