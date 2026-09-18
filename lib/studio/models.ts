@@ -23,7 +23,10 @@ export type StudioModelPolicy = {
   model: (typeof STUDIO_MODELS)[StudioModelFamily];
   reasoning: StudioReasoning;
   maxOutputTokens: number;
+  /** Teto de um segmento do agente antes de o executor decidir continuar. */
   maxSteps: number;
+  /** Teto do turno inteiro, somando continuações e retomadas. */
+  maxTotalSteps: number;
 };
 
 const POLICY: Record<StudioModelRole, StudioModelPolicy> = {
@@ -32,7 +35,7 @@ const POLICY: Record<StudioModelRole, StudioModelPolicy> = {
   context: policy('gemini', 'high', 16_384, 12),
   art_direction: policy('gemini', 'high', 24_576, 16),
   build: policy('gemini', 'high', 49_152, 32),
-  edit: policy('gemini', 'high', 49_152, 48),
+  edit: policy('gemini', 'high', 49_152, 48, 150),
   refine: policy('gemini', 'high', 32_768, 24),
   critic: policy('gemini', 'high', 16_384, 12),
   diagnostic: policy('gemini', 'high', 24_576, 20),
@@ -43,6 +46,7 @@ function policy(
   reasoning: StudioReasoning,
   maxOutputTokens: number,
   maxSteps: number,
+  maxTotalSteps = maxSteps,
 ): StudioModelPolicy {
   return {
     family,
@@ -50,6 +54,7 @@ function policy(
     reasoning,
     maxOutputTokens,
     maxSteps,
+    maxTotalSteps,
   };
 }
 

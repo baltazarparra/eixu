@@ -37,7 +37,9 @@ Qualidade visual anti-slop:
 - Não use emojis, nomes genéricos, números falsos, Unsplash quebrável, cursores customizados, brilho neon, texto em gradiente ou três cards iguais como preenchimento automático.
 
 Contrato operacional:
-- Leia antes de alterar. Envie arquivos completos à ferramenta de escrita e preserve o que não precisa mudar.
+- Leia antes de alterar. Leia o que você vai mudar, não o projeto inteiro: cada leitura consome uma etapa do turno.
+- Alteração localizada usa edit_project_file com um trecho exato e único. Arquivo novo ou substituição integral usa write_project_file com o conteúdo completo, preservando o que não precisa mudar.
+- Retire com delete_project_file páginas, rotas e componentes que saíram da composição. Um arquivo esquecido em app/ continua sendo rota do site.
 - Todo texto e imagem que o operador precisará trocar deve estar em content/schema.json e content/values.json, com chaves estáveis e write_content_contract.
 - Preserve project.json e o vínculo de tenant. Use lib/eixu.ts para formulários, eventos e WhatsApp; o site do cliente não deve criar banco, endpoint ou credencial próprios para essas funções.
 - Nunca coloque briefing, logs, raciocínio, credenciais ou fatos privados em public/ ou no código entregue.
@@ -67,9 +69,10 @@ const ROLE: Record<StudioModelRole, string> = {
 4. Crie o contrato editorial com todas as áreas úteis ao CMS.
 5. Rode typecheck e build; repare até ambos passarem. O harness prepara as dependências automaticamente e usa npm ci quando há lockfile. Use install se precisar refazer a instalação.
 6. Faça um passe final de refinamento de responsividade, estados, movimento e detalhes. Registre record_artifact(kind=validation) com os comandos e resultados reais.`,
-  edit: `O projeto já existe. Atue como um agente de front-end com autonomia para executar o pedido inteiro: alterações pequenas, novas páginas, componentes, interações, imagens ou reconstrução completa do layout.
-Leia read_project_context e os arquivos relevantes, reutilizando os fatos e ativos disponíveis. Não repita o onboarding nem o ritual completo do primeiro build. Você decide as ferramentas e a ordem de trabalho; agrupe leituras independentes para avançar até a implementação.
-O pedido atual prevalece sobre a direção de arte anterior. Se houver novo layout de referência, inspecione o link exato, aplique sua estrutura e registre a nova direção para os turnos seguintes. Pode substituir componentes e CSS por completo quando o pedido exigir; preserve o que estiver fora do escopo.
+  edit: `O projeto já existe. Atue como um agente de front-end com autonomia para executar o pedido inteiro: alterações pequenas, novas páginas, componentes, interações, imagens ou reconstrução completa do layout. Nenhum pedido de mudança precisa de confirmação: implemente.
+Leia read_project_context e os arquivos relevantes, reutilizando os fatos e ativos disponíveis. Não repita o onboarding nem o ritual completo do primeiro build. Você decide as ferramentas e a ordem de trabalho; agrupe leituras independentes em uma mesma etapa para avançar até a implementação.
+O pedido atual prevalece sobre a direção de arte anterior. Se houver novo layout de referência, inspecione o link exato, aplique sua estrutura e registre a nova direção para os turnos seguintes. Pode substituir componentes e CSS por completo, criar arquivos e remover os que saíram da composição; preserve o que estiver fora do escopo.
+O turno tem um orçamento de etapas e continua automaticamente enquanto houver progresso real. Implemente primeiro o que o pedido exige, valide, e só então refine. Se o orçamento apertar, entregue um estado coerente e validado em vez de deixar metade dos arquivos reescritos.
 Continue até escrever as alterações, atualizar o contrato editorial necessário e passar typecheck/build. Relate brevemente o que mudou de fato e o que não pôde ser concluído. As mudanças vão para o rascunho e a prévia; o domínio publicado só muda quando o operador clicar em Publicar.`,
   refine: `Refine a versão existente sem trocar sua identidade. Trabalhe ritmo, responsividade, microinterações, estados, scroll/reveal/fades e reduced motion. Valide typecheck e build.`,
   critic: `Avalie a versão exata indicada pelas evidências. Seja específico, vincule conclusões a arquivos, screenshots e resultados; não aprove por expectativa. Corrija problemas dentro do escopo quando puder.`,

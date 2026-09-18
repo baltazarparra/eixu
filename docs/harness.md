@@ -11,22 +11,31 @@ Documentação oficial relevante: [WorkflowAgent](https://ai-sdk.dev/docs/agents
 ## Política de modelos
 
 `lib/studio/models.ts` é a fonte única da política `studio-gemini-3.8-flash-v3`.
-
 O loop usa `providerOptions.gateway.only: ['google']` desde o primeiro passo, inclusive em retomadas e correção de validação. As assinaturas de raciocínio do Gemini permanecem intactas e vinculadas ao provedor que as emitiu: trocar implicitamente Google por Vertex no meio do turno pode produzir `Invalid thought signature`. A indisponibilidade do Google segue os retries limitados do SDK e, se persistir, encerra o turno com erro; não há fallback entre provedores com assinaturas incompatíveis. A geração de imagens tem roteamento próprio.
 
-| Papel           | Modelo                  | Reasoning | Passos máx. | Uso                                  |
-| --------------- | ----------------------- | --------- | ----------- | ------------------------------------ |
-| `assistant`     | google/gemini-3.8-flash | high      | 12          | Conversa e pedido geral.             |
-| `batch`         | google/gemini-3.8-flash | high      | 4           | Extração/classificação curta.        |
-| `context`       | google/gemini-3.8-flash | high      | 12          | Fontes, fatos, tom e lacunas.        |
-| `art_direction` | google/gemini-3.8-flash | high      | 16          | Leitura visual e direção de arte.    |
-| `build`         | google/gemini-3.8-flash | high      | 32          | Primeiro projeto, sem checkpoint.    |
-| `edit`          | google/gemini-3.8-flash | high      | 48          | Agente de front-end após a criação.  |
-| `refine`        | google/gemini-3.8-flash | high      | 24          | Responsividade, motion e acabamento. |
-| `critic`        | google/gemini-3.8-flash | high      | 12          | Crítica vinculada a evidência atual. |
-| `diagnostic`    | google/gemini-3.8-flash | high      | 20          | Falhas complexas de código/build.    |
+| Papel           | Modelo                  | Reasoning | Segmento | Turno | Uso                                  |
+| --------------- | ----------------------- | --------- | -------- | ----- | ------------------------------------ |
+| `assistant`     | google/gemini-3.8-flash | high      | 12       | 12    | Conversa e pedido geral.             |
+| `batch`         | google/gemini-3.8-flash | high      | 4        | 4     | Extração/classificação curta.        |
+| `context`       | google/gemini-3.8-flash | high      | 12       | 12    | Fontes, fatos, tom e lacunas.        |
+| `art_direction` | google/gemini-3.8-flash | high      | 16       | 16    | Leitura visual e direção de arte.    |
+| `build`         | google/gemini-3.8-flash | high      | 32       | 32    | Primeiro projeto, sem checkpoint.    |
+| `edit`          | google/gemini-3.8-flash | high      | 48       | 150   | Agente de front-end após a criação.  |
+| `refine`        | google/gemini-3.8-flash | high      | 24       | 24    | Responsividade, motion e acabamento. |
+| `critic`        | google/gemini-3.8-flash | high      | 12       | 12    | Crítica vinculada a evidência atual. |
+| `diagnostic`    | google/gemini-3.8-flash | high      | 20       | 20    | Falhas complexas de código/build.    |
 
-CMS e publicação são determinísticos e não consomem inferência. O servidor escolhe `build` quando não há checkpoint e `edit` depois da primeira versão, sem classificar o texto por palavras-chave. O agente interpreta livremente se o pedido é conversa, análise, ajuste ou reconstrução ampla. `edit` tem o mesmo limite de saída do build (49.152 tokens) e até 48 passos, encerrando antes quando termina o trabalho. Os demais papéis continuam disponíveis para recuperação e recibos históricos. O papel, modelo efetivamente servido, reasoning, tokens, cache, custo e `generationId` são armazenados por passo.
+CMS e publicação são determinísticos e não consomem inferência. O servidor escolhe `build` quando não há checkpoint e `edit` depois da primeira versão, sem classificar o texto por palavras-chave. O agente interpreta livremente se o pedido é conversa, análise, ajuste ou reconstrução ampla. `edit` tem o mesmo limite de saída do build (49.152 tokens). Os demais papéis continuam disponíveis para recuperação e recibos históricos. O papel, modelo efetivamente servido, reasoning, tokens, cache, custo e `generationId` são armazenados por passo.
+
+## Orçamento do turno e continuação
+
+`maxSteps` limita um segmento do agente; `maxTotalSteps` limita o turno inteiro. Copiar um layout completo não cabe em 48 passos, então o executor continua sozinho: ao terminar um segmento ainda em `tool-calls`, ele reaproveita as mensagens e os resultados de ferramentas, registra `model.continuing` e abre o segmento seguinte dentro do mesmo run, até 150 passos na edição. O pedido de continuação diz quantas etapas já foram usadas e manda priorizar escrita e validação.
+
+Continuar exige progresso: um segmento sem escrita, remoção, imagem ou comando é ocioso, e dois ociosos seguidos encerram o turno sem gastar o resto do orçamento. Cancelamento interrompe a continuação antes do próximo segmento. Retomada por interrupção do provedor continua limitada a duas tentativas seguidas e soma no mesmo orçamento; um segmento que produziu efeito antes de cair devolve essa cota, senão um turno longo morreria por soma de falhas transitórias.
+
+O Sandbox do projeto é persistente: uma sessão que expira no meio de um turno longo suspende a máquina sem descartar o rascunho, e a chamada seguinte retoma o mesmo disco. O checkpoint só é restaurado quando a estrutura do projeto não está mais lá.
+
+Esgotar o orçamento é falha, não conclusão: não há checkpoint nem publicação. A mensagem de erro lista os arquivos que o turno alterou; eles permanecem no diretório vivo do Sandbox, e o pedido seguinte continua de lá.
 
 ## Ordem do primeiro build
 
@@ -45,23 +54,29 @@ O WorkflowAgent mantém os overrides de `prepareStep` entre passos. Ao sair do c
 
 ## Ferramentas
 
-Após a primeira criação, o catálogo inteiro fica disponível desde o início e não há repetição obrigatória do onboarding. O pedido atual prevalece sobre artefatos e vibe anteriores. O agente pode reconstruir componentes e CSS, inspecionar uma URL nova, gerar imagens e atualizar o contrato editorial. Perguntas e análises não exigem escrita. Alterações continuam sujeitas a checkpoint e publicação manual.
+Após a primeira criação, o catálogo inteiro fica disponível desde o início e não há repetição obrigatória do onboarding. O pedido atual prevalece sobre artefatos e vibe anteriores. O agente pode reconstruir componentes e CSS, criar e remover arquivos, inspecionar uma URL nova, gerar imagens e atualizar o contrato editorial. Perguntas e análises não exigem escrita. Alterações continuam sujeitas a checkpoint e publicação manual.
 
-| Ferramenta                                 | Responsabilidade                                                    |
-| ------------------------------------------ | ------------------------------------------------------------------- |
-| `read_project_context`                     | Dados, contatos, marca, logo e evidências existentes.               |
-| `read_official_site`                       | Crawl limitado da fonte factual cadastrada.                         |
-| `inspect_visual_reference`                 | Screenshots desktop/mobile da URL do chat ou, sem URL, do cadastro. |
-| `list_project_files` / `read_project_file` | Inspeção dentro da raiz autorizada.                                 |
-| `write_project_file`                       | Escrita de arquivo completo após política de path e tamanho.        |
-| `write_content_contract`                   | Validação e gravação atômica de schema/valores.                     |
-| `generate_project_image`                   | Geração com referências autorizadas, recibo e acervo numerado.      |
-| `run_project_check`                        | Comando permitido, como typecheck ou build.                         |
-| `record_artifact`                          | Contexto, direção de arte e validação tipados e versionados.        |
+| Ferramenta                                 | Responsabilidade                                                          |
+| ------------------------------------------ | ------------------------------------------------------------------------- |
+| `read_project_context`                     | Dados, contatos, marca, logo e evidências existentes.                     |
+| `read_official_site`                       | Crawl limitado da fonte factual cadastrada.                               |
+| `inspect_visual_reference`                 | Screenshots e leitura estrutural da URL do chat ou, sem URL, do cadastro. |
+| `list_project_files` / `read_project_file` | Inspeção dentro da raiz autorizada.                                       |
+| `write_project_file`                       | Escrita de arquivo completo após política de path e tamanho.              |
+| `edit_project_file`                        | Substituição de um trecho exato e único, preservando o resto do arquivo.  |
+| `delete_project_file`                      | Remoção de página ou componente que saiu da composição.                   |
+| `write_content_contract`                   | Validação e gravação atômica de schema/valores.                           |
+| `generate_project_image`                   | Geração com referências autorizadas, recibo e acervo numerado.            |
+| `run_project_check`                        | Comando permitido, como typecheck ou build.                               |
+| `record_artifact`                          | Contexto, direção de arte e validação tipados e versionados.              |
+
+`edit_project_file` recusa um trecho ausente e, sem `replaceAll`, um trecho repetido: reescrever o arquivo inteiro a cada ajuste consumia saída e etapas sem necessidade. `delete_project_file` usa a mesma política de path da escrita — arquivos de integração continuam reservados — e recusa `content/schema.json` e `content/values.json`, atualizados como unidade por `write_content_contract`. Remoção conta como mutação do turno para o checkpoint, e o gate de build continua sendo quem prova que a página retirada não era necessária. O agente escreve os formatos textuais enumerados, incluindo `.svg`; dependências, lockfile e `package.json` seguem fora do seu alcance.
 
 As ferramentas revalidam o run e o vínculo projeto/tenant antes do efeito. `activeTools` e `toolChoice` reduzem o catálogo do passo; autorização continua no executor.
 
 ## Contexto e fontes
+
+A captura entrega screenshots e uma leitura estrutural da página: sequência das faixas de primeiro nível com geometria, grid, espaçamento, cor e densidade de imagens, links e botões, mais navegação, escala tipográfica e paleta ordenada por uso. A extração desce wrappers de framework antes de listar as faixas. O seletor anterior só olhava `main > section` e `main > article`: em um layout montado com divs, o modelo recebia pouco além de `body` e dois títulos, e nenhuma sequência para reproduzir. `lib/references/outline.ts` roda dentro da página por `page.evaluate` e por isso não pode depender de nada do módulo.
 
 `inspect_visual_reference({ url })` aceita uma referência pública nova sem alterar `/dados`. O executor revalida o input, resolve o acesso ao projeto e usa a mesma captura sem credenciais, com DNS/IP fixado ao socket e bloqueio de redes privadas em cada requisição. IPv4 e IPv6 usam listas separadas: bloquear IPv4 mapeado em uma lista única também bloquearia os IPv4 públicos. Screenshots de URLs diferentes no mesmo run recebem chaves privadas diferentes e chegam ao modelo como imagens. Falha na URL pedida retorna `unavailable`, sem substituir silenciosamente pelo cadastro.
 
@@ -110,7 +125,7 @@ Cancelar marca o run, cancela o Workflow quando disponível e impede ferramentas
 
 ## Checkpoint e conclusão
 
-`finishReason: tool-calls` no limite de passos indica uma execução incompleta, não sucesso. O Workflow encerra com erro e não passa ao checkpoint nem publica. Isso evita registrar como concluído um pedido que gastou o orçamento apenas lendo arquivos. A execução só segue para validação final após uma conclusão normal do agente; retomadas continuam dentro do orçamento global.
+`finishReason: tool-calls` no teto do turno indica uma execução incompleta, não sucesso. O Workflow encerra com erro e não passa ao checkpoint nem publica. Isso evita registrar como concluído um pedido que gastou o orçamento apenas lendo arquivos. A execução só segue para validação final após uma conclusão normal do agente; continuações e retomadas permanecem dentro do orçamento global.
 
 O agente pode terminar texto antes de cumprir um trabalho. O Workflow só cria checkpoint automático quando o run continua válido e os gates do papel permitem. O checkpoint:
 

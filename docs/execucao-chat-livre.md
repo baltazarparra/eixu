@@ -31,12 +31,30 @@ contrato editorial versionado.
 
 ## Modelos e direção
 
-A política `studio-gemini-3.8-flash-v1` usa
+A política `studio-gemini-3.8-flash-v3` usa
 `google/gemini-3.8-flash` com reasoning `high`, o maior nível aceito pelo
 modelo no AI Gateway, para conversa, contexto, direção, código e crítica. A
 geração e a edição de imagens usam `openai/gpt-image-2.5-sunburst` por padrão.
 O prompt incorpora o contrato anti-slop do Taste Skill v1 e mantém a fonte
 oficial do cliente acima de qualquer referência estética.
+
+## Agente de front-end depois da primeira criação
+
+Decisão do usuário nesta entrega: o turno de edição continua automaticamente
+enquanto avança, até 150 etapas, e as dependências do projeto do cliente
+continuam fixadas em Next, React e React DOM. O executor abre um novo segmento
+do agente ao esgotar os 48 passos de um segmento, registra `model.continuing` e
+encerra quando dois segmentos seguidos não escrevem nem validam. Esgotar o
+orçamento continua sendo falha sem checkpoint, agora informando no chat quais
+arquivos ficaram alterados no rascunho.
+
+O catálogo ganhou `edit_project_file`, para substituir um trecho exato sem
+reescrever o arquivo, e `delete_project_file`, para retirar páginas e
+componentes que saíram da composição; arquivos de integração e o contrato
+editorial continuam protegidos. A captura da referência passou a entregar a
+sequência real das faixas, com geometria, grid, tipografia e paleta, além dos
+screenshots. Nenhuma chamada paga de modelo, geração de imagem, publicação ou
+escrita remota foi executada nesta entrega.
 
 ## Dados, acesso e efeitos externos
 

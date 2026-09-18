@@ -16,7 +16,9 @@ O piloto pertence ao workspace interno da EIXU. Cada tenant já carrega esse ví
 6. Pedidos posteriores no mesmo chat atualizam apenas o rascunho e a prévia. O domínio público muda quando o operador clica em **Publicar**.
 7. Textos e imagens declarados em `content/schema.json` também podem ser mantidos no CMS leve e na aba de imagens.
 
-Depois do primeiro checkpoint, o chat atua como agente de front-end: o pedido atual pode mudar componentes, páginas, interações ou toda a composição. Um pedido como “copie esse layout” com uma nova URL faz o agente inspecionar essa referência e reproduzir sua estrutura na prévia, usando a marca e os fatos do cliente. O cadastro e a direção anterior não limitam essa edição.
+Depois do primeiro checkpoint, o chat atua como agente de front-end: o pedido atual pode mudar componentes, páginas, interações ou toda a composição. Um pedido como “copie esse layout” com uma nova URL faz o agente inspecionar essa referência — screenshots e leitura estrutural das faixas, grid, tipografia e paleta — e reproduzir sua composição na prévia, usando a marca e os fatos do cliente. O cadastro e a direção anterior não limitam essa edição.
+
+O agente cria, reescreve, ajusta trechos e remove arquivos do projeto, e o turno continua sozinho por vários segmentos enquanto o trabalho avança, até o teto de etapas da edição. Publicação, banco e infraestrutura continuam fora do seu alcance; dependências seguem fixadas pela plataforma.
 
 A referência visual comanda composição, tipografia, ritmo, superfícies e movimento. A direção escolhida serve como fallback:
 

@@ -11,12 +11,17 @@ import {
 } from './scaffold';
 import { assertStudioPackageContract } from './package-contract.mjs';
 import {
+  compatibleStudioEditorValues,
+  parseStudioEditorContract,
+} from './editor';
+import {
   STUDIO_PREVIEW_SERVER,
   STUDIO_PREVIEW_SERVER_PATH,
 } from './preview-server';
 import {
   isEditableStudioFile,
   isReadableStudioFile,
+  isRemovableStudioFile,
   STUDIO_WORKSPACE_ROOT,
   studioWorkspacePath,
 } from './path-policy';
@@ -347,6 +352,27 @@ export async function studioSandbox(name: string): Promise<Sandbox> {
   return sandbox;
 }
 
+/**
+ * Um turno anterior pode ter deixado um schema novo no rascunho sem chegar ao
+ * checkpoint. Escrever a revisão ativa crua deixaria valores e contrato
+ * incompatíveis; os campos novos entram com o padrão do próprio schema.
+ */
+async function contentForWorkspace(
+  sandbox: Sandbox,
+  stored: Record<string, string>,
+): Promise<Record<string, string>> {
+  const buffer = await sandbox.readFileToBuffer({
+    path: posix.join(STUDIO_WORKSPACE_ROOT, 'content/schema.json'),
+  });
+  if (!buffer || buffer.byteLength > MAX_READ_BYTES) return stored;
+  try {
+    const contract = parseStudioEditorContract(JSON.parse(buffer.toString()));
+    return contract ? compatibleStudioEditorValues(contract, stored) : stored;
+  } catch {
+    return stored;
+  }
+}
+
 export async function syncStudioContentToSandbox(name: string): Promise<void> {
   const sandbox = await studioSandbox(name);
   const contents = (await db()`
@@ -358,10 +384,11 @@ export async function syncStudioContentToSandbox(name: string): Promise<void> {
     limit 1
   `) as { content: Record<string, string> }[];
   if (!contents[0]) return;
+  const content = await contentForWorkspace(sandbox, contents[0].content);
   await sandbox.writeFiles([
     {
       path: posix.join(STUDIO_WORKSPACE_ROOT, 'content/values.json'),
-      content: `${JSON.stringify(contents[0].content, null, 2)}\n`,
+      content: `${JSON.stringify(content, null, 2)}\n`,
     },
   ]);
 }
@@ -447,6 +474,60 @@ export async function writeStudioFile(
   await createStudioDirectory(sandbox, posix.dirname(path));
   await sandbox.writeFiles([{ path, content }]);
   return { path: posix.relative(STUDIO_WORKSPACE_ROOT, path), bytes };
+}
+
+/**
+ * Substituição exata dentro de um arquivo existente. Uma alteração localizada
+ * não precisa reenviar o arquivo inteiro: o turno gasta menos saída e o que
+ * está fora do trecho permanece byte a byte igual.
+ */
+export async function editStudioFile(
+  name: string,
+  relativePath: string,
+  find: string,
+  replace: string,
+  replaceAll = false,
+): Promise<{ path: string; bytes: number; replacements: number }> {
+  if (!isEditableStudioFile(relativePath))
+    throw new Error('Este tipo de arquivo não pode ser alterado pelo agente.');
+  if (!find) throw new Error('Informe o trecho exato que deve ser alterado.');
+  if (find === replace)
+    throw new Error('O trecho novo é igual ao atual; nada seria alterado.');
+  const current = await readStudioFile(name, relativePath);
+  const occurrences = current.split(find).length - 1;
+  if (occurrences === 0)
+    throw new Error(
+      'O trecho não foi encontrado neste arquivo. Leia o arquivo atual e copie o texto exato, com a mesma indentação.',
+    );
+  if (occurrences > 1 && !replaceAll)
+    throw new Error(
+      `O trecho aparece ${occurrences} vezes. Inclua mais contexto para torná-lo único ou use replaceAll.`,
+    );
+  const content = replaceAll
+    ? current.split(find).join(replace)
+    : current.replace(find, replace);
+  const receipt = await writeStudioFile(name, relativePath, content);
+  return { ...receipt, replacements: replaceAll ? occurrences : 1 };
+}
+
+/** Uma página ou componente que sobra continua sendo rota e peso no release. */
+export async function deleteStudioFile(
+  name: string,
+  relativePath: string,
+): Promise<{ path: string }> {
+  if (!isRemovableStudioFile(relativePath))
+    throw new Error('Este tipo de arquivo não pode ser removido pelo agente.');
+  const path = studioWorkspacePath(relativePath);
+  const sandbox = await studioSandbox(name);
+  await assertSandboxPath(sandbox, path);
+  if ((await sandbox.readFileToBuffer({ path })) === null)
+    throw new Error('Arquivo não encontrado.');
+  const removed = await sandbox.runCommand('rm', ['-f', '--', path], {
+    timeoutMs: 10_000,
+  });
+  if (removed.exitCode !== 0)
+    throw new Error('Não foi possível remover o arquivo do projeto.');
+  return { path: posix.relative(STUDIO_WORKSPACE_ROOT, path) };
 }
 
 export async function runStudioCommand(

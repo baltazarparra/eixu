@@ -584,3 +584,116 @@ void test('pedido de novo layout usa o agente de edição e passa da leitura par
     calls,
   );
 });
+
+/** Um pedido grande de front-end passa de um segmento do agente. */
+function continuationFixture(toolName) {
+  const { studioTools: realTools, studioToolsContext } = loadModuleGraph(
+    'lib/studio/tools.ts',
+  );
+  const tools = Object.fromEntries(
+    Object.entries(realTools).map(([name, tool]) => [
+      name,
+      {
+        ...tool,
+        toModelOutput: undefined,
+        execute: async () => ({ ok: true }),
+      },
+    ]),
+  );
+  const model = new MockLanguageModelV4({
+    doStream: async () => ({
+      stream: convertArrayToReadableStream([
+        { type: 'stream-start', warnings: [] },
+        {
+          type: 'tool-call',
+          toolCallId: `call-${model.doStreamCalls.length}`,
+          toolName,
+          input: JSON.stringify(
+            toolName === 'write_project_file'
+              ? { path: 'app/page.tsx', content: 'export default () => null;' }
+              : {},
+          ),
+        },
+        {
+          type: 'finish',
+          finishReason: { unified: 'tool-calls', raw: undefined },
+          usage: { inputTokens: { total: 1 }, outputTokens: { total: 1 } },
+        },
+      ]),
+    }),
+  });
+  const events = [];
+  const { streamStudioAgent } = loadModuleGraph('lib/studio/workflow.ts', {
+    '@ai-sdk/workflow': {
+      ...workflowSdk,
+      WorkflowAgent: class extends workflowSdk.WorkflowAgent {
+        constructor(settings) {
+          super({ ...settings, model });
+        }
+      },
+    },
+    './tools': { studioTools: tools, studioToolsContext },
+    './usage': {
+      beginStudioUsage: async () => {},
+      recordStudioUsage: async () => {},
+    },
+    './runs': {
+      studioRunMayContinue: async () => true,
+      nextStudioEvent: async (_runId, type, data) =>
+        events.push({ type, data }),
+    },
+  });
+  return { model, events, streamStudioAgent };
+}
+
+const continuationContext = {
+  runId: '00000000-0000-4000-8000-000000000001',
+  projectId: '00000000-0000-4000-8000-000000000002',
+  tenantId: '00000000-0000-4000-8000-000000000003',
+  sandboxName: 'fixture',
+  workflowRunId: 'workflow',
+};
+
+void test('a edição continua em novos segmentos enquanto escreve, até o teto do turno', async () => {
+  const fixture = continuationFixture('write_project_file');
+  await assert.rejects(
+    fixture.streamStudioAgent(
+      {
+        role: 'edit',
+        runId: continuationContext.runId,
+        tenantId: continuationContext.tenantId,
+        messages: [{ role: 'user', content: 'Copie o layout inteiro.' }],
+      },
+      continuationContext,
+    ),
+    /limite de 150 etapas antes de concluir/,
+  );
+  assert.equal(fixture.model.doStreamCalls.length, 150);
+  assert.deepEqual(
+    fixture.events.map((event) => event.type),
+    ['model.continuing', 'model.continuing', 'model.continuing'],
+  );
+  assert.deepEqual(fixture.events.at(-1).data, {
+    completedSteps: 144,
+    budget: 150,
+    completedSegments: 3,
+  });
+});
+
+void test('dois segmentos sem escrita nem verificação encerram o turno antes do teto', async () => {
+  const fixture = continuationFixture('list_project_files');
+  await assert.rejects(
+    fixture.streamStudioAgent(
+      {
+        role: 'edit',
+        runId: continuationContext.runId,
+        tenantId: continuationContext.tenantId,
+        messages: [{ role: 'user', content: 'Copie o layout inteiro.' }],
+      },
+      continuationContext,
+    ),
+    /96 etapas sem escrever no projeto/,
+  );
+  assert.equal(fixture.model.doStreamCalls.length, 96);
+  assert.equal(fixture.events.length, 1);
+});

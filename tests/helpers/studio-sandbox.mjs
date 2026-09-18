@@ -100,8 +100,10 @@ export function studioSandboxFixture({
         return result();
       }
       if (input.cmd === 'rm') {
-        for (const path of files.keys())
-          if (path.startsWith(`${workspace}/.next`)) files.delete(path);
+        for (const target of input.args.filter((arg) => !arg.startsWith('-')))
+          for (const path of files.keys())
+            if (path === target || path.startsWith(`${target}/`))
+              files.delete(path);
         return result();
       }
       if (input.cmd === 'find') {

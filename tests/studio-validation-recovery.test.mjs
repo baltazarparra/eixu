@@ -152,6 +152,7 @@ for (const outcome of ['repaired', 'invalid', 'cancelled'])
         'list_project_files',
         'read_project_file',
         'write_project_file',
+        'edit_project_file',
         'write_content_contract',
         'run_project_check',
         'record_artifact',
