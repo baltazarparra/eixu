@@ -203,7 +203,7 @@ export async function checkpointStudioProject(input: {
         .digest('hex');
       const pathname = `studio/${input.projectId}/code/${codeRevision}.tar.gz`;
       await put(pathname, archive, {
-        ...privateBlobOptions(),
+        ...(await privateBlobOptions()),
         access: 'private',
         addRandomSuffix: false,
         allowOverwrite: true,

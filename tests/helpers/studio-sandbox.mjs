@@ -8,7 +8,8 @@ import { loadModuleGraph } from './load-module.mjs';
 export const workspace = '/vercel/sandbox/project';
 export const fixtureEnv = {
   BLOB_READ_WRITE_TOKEN: 'vercel_blob_rw_public_fixture',
-  STUDIO_BLOB_READ_WRITE_TOKEN: 'vercel_blob_rw_private_fixture',
+  STUDIO_BLOB_STORE_ID: 'store_private',
+  VERCEL_OIDC_TOKEN: 'oidc_private_fixture',
 };
 
 /** Só os serviços são simulados: checkpoint, restauração, paths e comandos são reais. */
@@ -220,6 +221,9 @@ export function studioSandboxFixture({
         blobCalls.push({ type: 'put', path, data, options });
         return { pathname: path };
       },
+    },
+    '@vercel/oidc': {
+      getVercelOidcToken: async () => fixtureEnv.VERCEL_OIDC_TOKEN,
     },
     './tool-lease': { withStudioToolLease: async ({ run }) => run() },
     './runs': {

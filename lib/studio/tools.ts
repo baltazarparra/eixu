@@ -253,7 +253,7 @@ async function inspectVisualReferenceStep(
       shots.map(async (shot) => {
         const pathname = `studio/${context.projectId}/references/${context.runId}-${shot.viewport}.jpg`;
         await put(pathname, shot.jpeg, {
-          ...privateBlobOptions(),
+          ...(await privateBlobOptions()),
           access: 'private',
           addRandomSuffix: false,
           allowOverwrite: true,
@@ -341,7 +341,7 @@ async function readVisualReferenceFilesStep(
   const files = await Promise.all(
     shots.map(async (shot) => {
       const blob = await get(shot.storageKey, {
-        ...privateBlobOptions(),
+        ...(await privateBlobOptions()),
         access: 'private',
         useCache: false,
       });

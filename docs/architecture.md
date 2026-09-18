@@ -71,7 +71,7 @@ O Sandbox usa egress restrito e não recebe credenciais administrativas. O manif
 
 Restauração verifica o SHA-256 antes de extrair o checkpoint e executa `npm ci` quando o lockfile existe. A prontidão das dependências exige o digest de manifesto/lockfile e os executáveis Next.js/TypeScript; a presença do lockfile sozinha não basta. A primeira instalação gera o lockfile com `npm install`.
 
-Imagens públicas em `tenants/` usam `BLOB_READ_WRITE_TOKEN`. Checkpoints e screenshots de referência em `studio/` usam `STUDIO_BLOB_READ_WRITE_TOKEN`, de um store separado configurado como privado. Os tokens são explícitos em upload, leitura, listagem e exclusão. O SDK não recebe credenciais Blob dentro do Sandbox.
+Imagens públicas em `tenants/` usam `BLOB_READ_WRITE_TOKEN`. Checkpoints e screenshots de referência em `studio/` usam um store separado configurado como privado, selecionado por `STUDIO_BLOB_STORE_ID` e autenticado pelo OIDC curto da Vercel. Upload, leitura, listagem e exclusão recebem a identidade do store explicitamente. O SDK não recebe credenciais Blob dentro do Sandbox.
 
 ## Preview
 
@@ -99,13 +99,13 @@ Fluxo:
 2. assegurar o projeto dedicado, confirmar que nunca é o projeto raiz e exigir proteção Vercel Auth em `preview`;
 3. materializar os arquivos com a revisão de conteúdo congelada;
 4. enviar cada arquivo à API `/v2/files` por SHA-1 e criar o deployment com referências de digest;
-5. aguardar `READY` e verificar, com bypass de automação derivado por projeto, o marcador de revisão e uma página;
+5. aguardar `READY`, criar um bypass de automação efêmero, verificar o marcador de revisão e as páginas e revogar o bypass;
 6. adicionar o domínio canônico ao projeto correto;
 7. promover o deployment candidato;
 8. repetir o smoke no host canônico;
 9. ativar release e ponteiros em transação.
 
-O domínio canônico público nunca recebe o bypass: seu smoke comprova acesso real depois da promoção. O reconciliador registra a intenção antes da promoção e cobre a janela em que a Vercel pode ter promovido o deployment antes de a gravação no banco terminar. O marcador servido pelo host canônico é a prova final. Rollback cria uma nova release pelo mesmo pipeline. Arquivar remove o domínio; restaurar promove a release ativa e verifica o host; excluir remove somente o projeto dedicado comprovado.
+O bypass existe apenas durante o smoke do candidato e é revogado também quando a verificação falha. O domínio canônico público nunca recebe o bypass: seu smoke comprova acesso real depois da promoção. O reconciliador registra a intenção antes da promoção e cobre a janela em que a Vercel pode ter promovido o deployment antes de a gravação no banco terminar. O marcador servido pelo host canônico é a prova final. Rollback cria uma nova release pelo mesmo pipeline. Arquivar remove o domínio; restaurar promove a release ativa e verifica o host; excluir remove somente o projeto dedicado comprovado.
 
 ## Integrações públicas
 

@@ -9,25 +9,37 @@ import { loadModuleGraph } from './helpers/load-module.mjs';
 
 const env = {
   BLOB_READ_WRITE_TOKEN: 'vercel_blob_rw_public_fixture',
-  STUDIO_BLOB_READ_WRITE_TOKEN: 'vercel_blob_rw_private_fixture',
+  STUDIO_BLOB_STORE_ID: 'store_private',
+  VERCEL_OIDC_TOKEN: 'oidc_private_fixture',
   BLOB_STORE_ID: 'store_default_ignored',
 };
 
-void test('Blob exige stores distintos e nunca cai no token público para checkpoint', () => {
+const oidcToken = async () => env.VERCEL_OIDC_TOKEN;
+
+void test('Blob exige stores distintos e autentica o privado somente com OIDC', async () => {
   assert.equal(publicBlobOptions(env).token, env.BLOB_READ_WRITE_TOKEN);
-  assert.equal(privateBlobOptions(env).token, env.STUDIO_BLOB_READ_WRITE_TOKEN);
+  assert.deepEqual(await privateBlobOptions(env, oidcToken), {
+    storeId: 'private',
+    oidcToken: env.VERCEL_OIDC_TOKEN,
+  });
   assert.equal(blobStoreId('private', env), 'private');
-  assert.throws(
-    () => privateBlobOptions({ ...env, STUDIO_BLOB_READ_WRITE_TOKEN: '' }),
-    /STUDIO_BLOB_READ_WRITE_TOKEN/,
+  await assert.rejects(
+    privateBlobOptions({ ...env, STUDIO_BLOB_STORE_ID: '' }, oidcToken),
+    /STUDIO_BLOB_STORE_ID/,
   );
-  assert.throws(
-    () =>
-      privateBlobOptions({
+  await assert.rejects(
+    privateBlobOptions(
+      {
         ...env,
-        STUDIO_BLOB_READ_WRITE_TOKEN: 'vercel_blob_rw_public_rotated',
-      }),
+        STUDIO_BLOB_STORE_ID: 'store_public',
+      },
+      oidcToken,
+    ),
     /distintos/,
+  );
+  await assert.rejects(
+    privateBlobOptions(env, async () => ''),
+    /OIDC da Vercel/,
   );
 });
 
@@ -58,6 +70,7 @@ void test('uploads e limpezas usam o store correspondente ao tipo de arquivo', a
           calls.push({ type: 'del', paths, options });
         },
       },
+      '@vercel/oidc': { getVercelOidcToken: oidcToken },
     },
     { process: { env } },
   );
@@ -81,12 +94,14 @@ void test('uploads e limpezas usam o store correspondente ao tipo de arquivo', a
   );
   for (const call of calls) {
     const path = call.path ?? call.options.prefix ?? call.paths[0];
-    assert.equal(
-      call.options.token,
-      path.startsWith('studio/')
-        ? env.STUDIO_BLOB_READ_WRITE_TOKEN
-        : env.BLOB_READ_WRITE_TOKEN,
-    );
+    if (path.startsWith('studio/')) {
+      assert.equal(call.options.token, undefined);
+      assert.equal(call.options.storeId, 'private');
+      assert.equal(call.options.oidcToken, env.VERCEL_OIDC_TOKEN);
+    } else {
+      assert.equal(call.options.token, env.BLOB_READ_WRITE_TOKEN);
+      assert.equal(call.options.storeId, undefined);
+    }
     if (call.type === 'put') assert.equal(call.options.access, 'public');
   }
   assert.equal(calls.filter((call) => call.type === 'del').length, 2);

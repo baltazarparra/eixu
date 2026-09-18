@@ -21,7 +21,9 @@ void test('checkpoint completo aceita .gitignore original, valida e persiste art
   const saved = await checkpointStudioProject(input);
   const blob = fixture.blobCalls.find((call) => call.type === 'put');
   assert.ok(blob);
-  assert.equal(blob.options.token, fixtureEnv.STUDIO_BLOB_READ_WRITE_TOKEN);
+  assert.equal(blob.options.token, undefined);
+  assert.equal(blob.options.storeId, 'private');
+  assert.equal(blob.options.oidcToken, fixtureEnv.VERCEL_OIDC_TOKEN);
   assert.equal(blob.options.access, 'private');
   assert.equal(
     saved.codeRevision,
