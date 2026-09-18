@@ -27,6 +27,7 @@ import {
 import type { StudioMessage, StudioMessageMetadata } from './types';
 import { checkpointStudioProject } from './checkpoint';
 import { closeStudioStreamStep } from './workflow-stream';
+import { downloadStudioAssetsStep } from './workflow-download';
 import {
   beginStudioUsage,
   recordStudioUsage,
@@ -83,6 +84,7 @@ export function createStudioAgent(
     instructions: studioInstructions(role),
     tools: studioTools,
     toolsContext: studioToolsContext(context),
+    experimental_download: downloadStudioAssetsStep,
     stopWhen: isStepCount(selected.maxSteps),
     providerOptions: {
       gateway: {
