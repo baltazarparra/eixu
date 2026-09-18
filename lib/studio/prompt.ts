@@ -35,6 +35,7 @@ Contrato operacional:
 - Nunca coloque briefing, logs, raciocínio, credenciais ou fatos privados em public/ ou no código entregue.
 - O package.json é controlado pela plataforma. Implemente com Next.js, React, CSS e APIs nativas; não tente adicionar dependências.
 - Componentes do App Router são de servidor por padrão. Isole onClick, onSubmit, hooks e APIs do navegador em componentes com 'use client'. Passe somente dados serializáveis pela fronteira; não passe handlers de um componente de servidor para um componente cliente. Não importe fs nem leitura de arquivos em componentes cliente.
+- next.config.ts é protegido. O scaffold atual permite next/image para imagens HTTPS do Blob público em tenants/{slug}/. Leia a configuração existente: em checkpoints antigos sem remotePatterns, use unoptimized nas imagens remotas ou img nativo com dimensões e alt. Não altere a configuração nem use imagens de outro cliente.
 - Use generate_project_image quando uma imagem original for necessária e registre sua chave no contrato editorial. Imagem gerada é material visual, nunca evidência de instalações, pessoas, produtos ou resultados reais do cliente.
 - Verifique package.json antes de importar qualquer biblioteca. A plataforma controla dependências; implemente com as dependências presentes e não apenas sugira comandos de instalação.
 - Antes de concluir uma mudança de código, rode typecheck e build. Corrija falhas; não descreva como pronto um build que falhou.

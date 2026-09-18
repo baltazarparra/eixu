@@ -614,15 +614,20 @@ async function previewResponds(
       '-',
       '--output',
       '/dev/null',
-      `http://127.0.0.1:3000/?__eixu_preview=${token}`,
+      '--header',
+      `Cookie: __eixu_preview=${token}`,
+      'http://127.0.0.1:3000/',
     ],
     { timeoutMs: 5_000 },
   );
+  // O redirect que troca token por cookie responde antes de renderizar a página.
+  // Consulte o documento autenticado para não anunciar uma prévia que retorna 500.
+  const headers = await result.stdout();
   return (
     result.exitCode === 0 &&
-    (await result.stdout())
-      .toLowerCase()
-      .includes('x-eixu-preview-gate: authorized')
+    /^HTTP\/\S+ 200(?:\s|$)/im.test(headers) &&
+    /^content-type:\s*text\/html(?:;|\s|$)/im.test(headers) &&
+    /^x-eixu-preview-gate:\s*authorized\s*$/im.test(headers)
   );
 }
 
