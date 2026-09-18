@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
   // Chromium captura a referência visual cadastrada antes da direção de arte.
   serverExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
   outputFileTracingIncludes: {
+    // O AI SDK resolve undici via createRequire a partir do chunk compilado.
+    // Essa dependência dinâmica não é detectada pelo tracing automático.
+    '/*': ['./node_modules/undici/**/*'],
     '/.well-known/workflow/*': [
       './SOUL.md',
       './node_modules/@sparticuz/chromium/bin/**/*',

@@ -16,6 +16,7 @@ npm run build:vercel
 - `test:studio` cobre contratos, checkpoint/restauração com serviços simulados, conclusão e retomada do stream, seleção de stores e disponibilidade pública durante edições. O SELECT de disponibilidade é exercitado em SQLite local com o SQL real; não substitui os ensaios PostgreSQL.
 - `test:admin` cobre autenticação, limites de entrada pública/administrativa e reset.
 - `build:vercel` é o artefato de produção. Não substitua por Vinext, Vite ou outro bundler.
+- Após o build, `check-studio-runtime.mjs` verifica os manifests de arquivos do Workflow e do chat: copia apenas o `undici` rastreado para um diretório isolado e carrega `Agent`/`fetch` a partir do caminho de um chunk. Assim, dependências locais não escondem ausência do transporte HTTP no deploy. `undici` é dependência direta e entra explicitamente no tracing porque o downloader do AI SDK usa `createRequire` dinâmico.
 
 Use `npm run test:sites` quando a mudança estiver limitada aos contratos puros do Studio. Rode ambos os grupos quando a alteração cruzar painel, autenticação ou APIs públicas.
 
