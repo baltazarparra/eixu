@@ -83,6 +83,8 @@ Antes da primeira mensagem, o histórico canônico é `[]`: o painel abre normal
 
 Escrita e fechamento do stream acontecem somente em steps. O stream do modelo fecha para permitir sua leitura canônica; a resposta HTTP continua aberta até o Workflow persistir mensagem e estado terminal. O mesmo contrato vale para retomada, evitando anunciar conclusão e pedir prévia enquanto o run ainda está ativo. Falha de persistência também chega ao cliente.
 
+O SDK pode retornar uma resposta interrompida (`finishReason: error`, `length`, `other` ou `unknown`) sem lançar exceção. O Studio retoma até duas vezes usando as mensagens, resultados e pré-condições já concluídas, sem reiniciar leitura, artefatos ou geração de imagens. O limite de passos vale para o conjunto das tentativas; índices e uso são acumulados sem sobrescrever recibos anteriores. Cancelamento e filtro de conteúdo impedem retomada. Erros lançados ou emitidos explicitamente pelo stream continuam falhando; esgotar a recuperação informa a interrupção do modelo antes de tentar checkpoint.
+
 ## Durabilidade e idempotência
 
 - Um projeto aceita um run ativo por vez.

@@ -80,131 +80,314 @@ const validationArtifact = {
   },
 };
 
-void test('WorkflowAgent libera escrita e checks após a direção de arte e recupera uma chamada inválida', async () => {
+for (const interrupted of [false, true])
+  void test(`WorkflowAgent completa o build com chamada inválida${interrupted ? ' e retoma erro do provedor sem repetir efeitos' : ''}`, async () => {
+    const { studioTools: realTools, studioToolsContext } = loadModuleGraph(
+      'lib/studio/tools.ts',
+    );
+    const executed = [];
+    const tools = Object.fromEntries(
+      Object.entries(realTools).map(([name, tool]) => [
+        name,
+        {
+          ...tool,
+          toModelOutput: undefined,
+          execute: async (input) => {
+            executed.push({ name, input });
+            if (name === 'generate_project_image')
+              return { ok: true, image: { id: 'saved-image' } };
+            return { ok: true };
+          },
+        },
+      ]),
+    );
+    const invalidValidation = structuredClone(validationArtifact);
+    invalidValidation.payload.checks[2].kind = 'brand';
+    const calls = [
+      ['read_project_context', {}],
+      ['read_official_site', {}],
+      ['record_artifact', contextArtifact],
+      ['inspect_visual_reference', {}],
+      ['record_artifact', artArtifact],
+      [
+        'generate_project_image',
+        {
+          prompt: 'Fotografia editorial de madeira natural.',
+          alt: 'Madeira',
+          aspectRatio: '16:9',
+        },
+      ],
+      ['list_project_files', {}],
+      [
+        'write_project_file',
+        {
+          path: 'app/page.tsx',
+          content:
+            'export default function Page() { return <main>Oficina Demo</main>; }',
+        },
+      ],
+      [
+        'write_content_contract',
+        {
+          contract: {
+            version: 1,
+            pages: [
+              {
+                slug: '',
+                label: 'Início',
+                sections: [
+                  {
+                    id: 'hero',
+                    label: 'Abertura',
+                    fields: [
+                      {
+                        key: 'hero.title',
+                        label: 'Título',
+                        type: 'text',
+                        value: 'Oficina Demo',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ],
+      ['run_project_check', { command: 'typecheck' }],
+      ['run_project_check', { command: 'build' }],
+      ['record_artifact', invalidValidation],
+      ['record_artifact', validationArtifact],
+    ];
+    const model = new MockLanguageModelV4({
+      doStream: async (options) => {
+        const index = model.doStreamCalls.length - 1;
+        const interruption = interrupted && index === 6;
+        const callIndex = index - (interrupted && index > 6 ? 1 : 0);
+        if (index < 5) {
+          assert.deepEqual(
+            options.tools.map((tool) => tool.name),
+            [calls[index][0]],
+          );
+          assert.deepEqual(options.toolChoice, {
+            type: 'tool',
+            toolName: calls[index][0],
+          });
+        } else {
+          assert.deepEqual(
+            options.tools.map((tool) => tool.name),
+            Object.keys(tools),
+          );
+          assert.deepEqual(options.toolChoice, { type: 'auto' });
+        }
+        assert.equal(options.maxOutputTokens, index < 3 ? 16_384 : 49_152);
+        if (interrupted && index === 7) {
+          assert.ok(
+            options.prompt.some(
+              (message) =>
+                message.role === 'tool' &&
+                message.content.some(
+                  (part) =>
+                    part.toolName === 'generate_project_image' &&
+                    part.output?.value?.image?.id === 'saved-image',
+                ),
+            ),
+          );
+        }
+        if (callIndex === calls.length - 1) {
+          assert.ok(
+            options.prompt.some(
+              (message) =>
+                message.role === 'tool' &&
+                message.content.some((part) =>
+                  part.output?.type?.startsWith('error-'),
+                ),
+            ),
+          );
+        }
+        assert.ok(
+          callIndex <= calls.length,
+          'O fluxo não deve repetir os artefatos.',
+        );
+        const call = interruption ? null : calls[callIndex];
+        return {
+          stream: convertArrayToReadableStream([
+            { type: 'stream-start', warnings: [] },
+            ...(interruption
+              ? []
+              : call
+                ? [
+                    {
+                      type: 'tool-call',
+                      toolCallId: `call-${index}`,
+                      toolName: call[0],
+                      input: JSON.stringify(call[1]),
+                    },
+                  ]
+                : [
+                    { type: 'text-start', id: 'final' },
+                    {
+                      type: 'text-delta',
+                      id: 'final',
+                      delta: 'Projeto validado.',
+                    },
+                    { type: 'text-end', id: 'final' },
+                  ]),
+            {
+              type: 'finish',
+              finishReason: {
+                unified: interruption ? 'error' : call ? 'tool-calls' : 'stop',
+                raw: undefined,
+              },
+              usage: { inputTokens: { total: 1 }, outputTokens: { total: 1 } },
+            },
+          ]),
+        };
+      },
+    });
+    const receipts = [];
+    const started = [];
+    const recoveries = [];
+    const { streamStudioAgent } = loadModuleGraph('lib/studio/workflow.ts', {
+      '@ai-sdk/workflow': {
+        ...workflowSdk,
+        WorkflowAgent: class extends workflowSdk.WorkflowAgent {
+          constructor(settings) {
+            super({
+              ...settings,
+              model,
+              prepareStep: async (input) => ({
+                ...(await settings.prepareStep(input)),
+                model,
+              }),
+            });
+          }
+        },
+      },
+      './tools': { studioTools: tools, studioToolsContext },
+      './usage': {
+        beginStudioUsage: async (input) => started.push(input.step),
+        recordStudioUsage: async (input) => receipts.push(...input.receipts),
+      },
+      './runs': {
+        studioRunMayContinue: async () => true,
+        nextStudioEvent: async (_runId, type, data) =>
+          recoveries.push({ type, data }),
+      },
+    });
+    const context = {
+      runId: '00000000-0000-4000-8000-000000000001',
+      projectId: '00000000-0000-4000-8000-000000000002',
+      tenantId: '00000000-0000-4000-8000-000000000003',
+      sandboxName: 'fixture',
+      workflowRunId: 'wrun_fixture',
+    };
+    const result = await streamStudioAgent(
+      {
+        role: 'build',
+        runId: context.runId,
+        tenantId: context.tenantId,
+        messages: [{ role: 'user', content: 'Crie a página da Oficina Demo.' }],
+      },
+      context,
+    );
+    assert.equal(result.error, undefined);
+    assert.equal(result.finishReason, 'stop');
+    assert.equal(result.steps.length, calls.length + 1 + Number(interrupted));
+    assert.equal(result.totalUsage.totalTokens, 2 * result.steps.length);
+    assert.deepEqual(
+      started,
+      Array.from({ length: result.steps.length }, (_, index) => index),
+    );
+    assert.deepEqual(
+      receipts.map((receipt) => receipt.step),
+      started,
+    );
+    assert.equal(recoveries.length, Number(interrupted));
+    assert.deepEqual(
+      executed.map((call) => call.name),
+      calls
+        .filter((_, index) => index !== calls.length - 2)
+        .map((call) => call[0]),
+    );
+    assert.deepEqual(executed.at(-1).input, validationArtifact);
+  });
+
+for (const scenario of [
+  'repeated-error',
+  'content-filter',
+  'budget',
+  'cancelled',
+  'thrown',
+])
+  void test(`retomada do modelo respeita ${scenario}`, async () => {
+    let calls = 0;
+    let recoveries = 0;
+    const { streamStudioAgent } = loadModuleGraph('lib/studio/workflow.ts', {
+      '@ai-sdk/workflow': {
+        ...workflowSdk,
+        WorkflowAgent: class {
+          async stream() {
+            calls++;
+            if (scenario === 'thrown') throw new Error('HTTP indisponível');
+            return {
+              finishReason:
+                scenario === 'content-filter' ? 'content-filter' : 'error',
+              steps:
+                scenario === 'budget'
+                  ? Array.from({ length: 32 }, () => ({}))
+                  : [],
+              messages: [],
+              totalUsage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+            };
+          }
+        },
+      },
+      './runs': {
+        studioRunMayContinue: async () => scenario !== 'cancelled',
+        nextStudioEvent: async () => recoveries++,
+      },
+    });
+    await assert.rejects(
+      streamStudioAgent(
+        { role: 'build', runId: 'run', tenantId: 'tenant', messages: [] },
+        {},
+      ),
+    );
+    assert.equal(calls, scenario === 'repeated-error' ? 3 : 1);
+    assert.equal(recoveries, scenario === 'repeated-error' ? 2 : 0);
+  });
+
+void test('o orçamento de passos continua global depois da retomada no SDK real', async () => {
   const { studioTools: realTools, studioToolsContext } = loadModuleGraph(
     'lib/studio/tools.ts',
   );
-  const executed = [];
-  const tools = Object.fromEntries(
-    Object.entries(realTools).map(([name, tool]) => [
-      name,
-      {
-        ...tool,
-        toModelOutput: undefined,
-        execute: async (input) => {
-          executed.push({ name, input });
-          return { ok: true };
-        },
-      },
-    ]),
-  );
-  const invalidValidation = structuredClone(validationArtifact);
-  invalidValidation.payload.checks[2].kind = 'brand';
-  const calls = [
-    ['read_project_context', {}],
-    ['read_official_site', {}],
-    ['record_artifact', contextArtifact],
-    ['inspect_visual_reference', {}],
-    ['record_artifact', artArtifact],
-    ['list_project_files', {}],
-    [
-      'write_project_file',
-      {
-        path: 'app/page.tsx',
-        content:
-          'export default function Page() { return <main>Oficina Demo</main>; }',
-      },
-    ],
-    [
-      'write_content_contract',
-      {
-        contract: {
-          version: 1,
-          pages: [
-            {
-              slug: '',
-              label: 'Início',
-              sections: [
-                {
-                  id: 'hero',
-                  label: 'Abertura',
-                  fields: [
-                    {
-                      key: 'hero.title',
-                      label: 'Título',
-                      type: 'text',
-                      value: 'Oficina Demo',
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      },
-    ],
-    ['run_project_check', { command: 'typecheck' }],
-    ['run_project_check', { command: 'build' }],
-    ['record_artifact', invalidValidation],
-    ['record_artifact', validationArtifact],
-  ];
+  const tools = {
+    list_project_files: {
+      ...realTools.list_project_files,
+      execute: async () => ({ files: [] }),
+    },
+  };
   const model = new MockLanguageModelV4({
-    doStream: async (options) => {
+    doStream: async () => {
       const index = model.doStreamCalls.length - 1;
-      if (index < 5) {
-        assert.deepEqual(
-          options.tools.map((tool) => tool.name),
-          [calls[index][0]],
-        );
-        assert.deepEqual(options.toolChoice, {
-          type: 'tool',
-          toolName: calls[index][0],
-        });
-      } else {
-        assert.deepEqual(
-          options.tools.map((tool) => tool.name),
-          Object.keys(tools),
-        );
-        assert.deepEqual(options.toolChoice, { type: 'auto' });
-      }
-      assert.equal(options.maxOutputTokens, index < 3 ? 16_384 : 49_152);
-      if (index === calls.length - 1) {
-        assert.ok(
-          options.prompt.some(
-            (message) =>
-              message.role === 'tool' &&
-              message.content.some((part) =>
-                part.output?.type?.startsWith('error-'),
-              ),
-          ),
-        );
-      }
-      assert.ok(
-        index <= calls.length,
-        'O fluxo não deve repetir os artefatos.',
-      );
-      const call = calls[index];
       return {
         stream: convertArrayToReadableStream([
           { type: 'stream-start', warnings: [] },
-          ...(call
-            ? [
+          ...(index === 3
+            ? []
+            : [
                 {
                   type: 'tool-call',
                   toolCallId: `call-${index}`,
-                  toolName: call[0],
-                  input: JSON.stringify(call[1]),
+                  toolName: 'list_project_files',
+                  input: '{}',
                 },
-              ]
-            : [
-                { type: 'text-start', id: 'final' },
-                { type: 'text-delta', id: 'final', delta: 'Projeto validado.' },
-                { type: 'text-end', id: 'final' },
               ]),
           {
             type: 'finish',
             finishReason: {
-              unified: call ? 'tool-calls' : 'stop',
+              unified: index === 3 ? 'error' : 'tool-calls',
               raw: undefined,
             },
             usage: { inputTokens: { total: 1 }, outputTokens: { total: 1 } },
@@ -213,41 +396,42 @@ void test('WorkflowAgent libera escrita e checks após a direção de arte e rec
       };
     },
   });
-  const { createStudioAgent } = loadModuleGraph('lib/studio/workflow.ts', {
+  const { streamStudioAgent } = loadModuleGraph('lib/studio/workflow.ts', {
     '@ai-sdk/workflow': {
       ...workflowSdk,
       WorkflowAgent: class extends workflowSdk.WorkflowAgent {
         constructor(settings) {
-          super({
-            ...settings,
-            model,
-            prepareStep: async (input) => ({
-              ...(await settings.prepareStep(input)),
-              model,
-            }),
-          });
+          super({ ...settings, model });
         }
       },
     },
     './tools': { studioTools: tools, studioToolsContext },
+    './usage': {
+      beginStudioUsage: async () => {},
+      recordStudioUsage: async () => {},
+    },
+    './runs': {
+      studioRunMayContinue: async () => true,
+      nextStudioEvent: async () => {},
+    },
   });
-  const result = await createStudioAgent('build', {
+  const context = {
     runId: '00000000-0000-4000-8000-000000000001',
     projectId: '00000000-0000-4000-8000-000000000002',
     tenantId: '00000000-0000-4000-8000-000000000003',
     sandboxName: 'fixture',
-    workflowRunId: 'wrun_fixture',
-  }).stream({
-    messages: [{ role: 'user', content: 'Crie a página da Oficina Demo.' }],
-  });
-  assert.equal(result.error, undefined);
-  assert.equal(result.finishReason, 'stop');
-  assert.equal(result.steps.length, calls.length + 1);
-  assert.deepEqual(
-    executed.map((call) => call.name),
-    calls
-      .filter((_, index) => index !== calls.length - 2)
-      .map((call) => call[0]),
+    workflowRunId: 'workflow',
+  };
+  const result = await streamStudioAgent(
+    {
+      role: 'assistant',
+      runId: context.runId,
+      tenantId: context.tenantId,
+      messages: [{ role: 'user', content: 'Inspecione o projeto.' }],
+    },
+    context,
   );
-  assert.deepEqual(executed.at(-1).input, validationArtifact);
+  assert.equal(result.steps.length, 12);
+  assert.equal(model.doStreamCalls.length, 12);
+  assert.equal(result.totalUsage.totalTokens, 24);
 });

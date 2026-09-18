@@ -1,6 +1,7 @@
 import {
   createModelCallToUIChunkTransform,
   type ModelCallStreamPart,
+  type WorkflowAgentStreamResult,
   WorkflowAgent,
 } from '@ai-sdk/workflow';
 import {
@@ -9,6 +10,10 @@ import {
   type LanguageModelUsage,
   type ModelMessage,
 } from 'ai';
+import {
+  addLanguageModelUsage,
+  createNullLanguageModelUsage,
+} from 'ai/internal';
 import { getWorkflowMetadata, getWritable } from 'workflow';
 import { db } from '@/lib/db';
 import {
@@ -17,7 +22,12 @@ import {
   type StudioModelRole,
 } from './models';
 import { studioInstructions } from './prompt';
-import { attachWorkflowRun, finishStudioRun } from './runs';
+import {
+  attachWorkflowRun,
+  finishStudioRun,
+  nextStudioEvent,
+  studioRunMayContinue,
+} from './runs';
 import { persistStudioMessage } from './messages';
 import {
   studioTools,
@@ -76,6 +86,7 @@ function languageModelId(model: unknown, fallback: string): string {
 export function createStudioAgent(
   role: StudioModelRole,
   context: StudioToolContext,
+  previousSteps: unknown[] = [],
 ) {
   const selected = studioModelPolicy(role);
   return new WorkflowAgent({
@@ -87,15 +98,18 @@ export function createStudioAgent(
     tools: studioTools,
     toolsContext: studioToolsContext(context),
     experimental_download: downloadStudioAssetsStep,
-    stopWhen: isStepCount(selected.maxSteps),
+    stopWhen: isStepCount(
+      Math.max(1, selected.maxSteps - previousSteps.length),
+    ),
     providerOptions: {
       gateway: {
         caching: 'auto',
         tags: ['eixu', 'studio', role, STUDIO_MODEL_POLICY_VERSION],
       },
     },
-    prepareStep: ({ steps }) => {
+    prepareStep: ({ steps: currentSteps }) => {
       if (role !== 'build') return {};
+      const steps = [...previousSteps, ...currentSteps];
       const contextPolicy = studioModelPolicy('context');
       const contextModel = {
         model: contextPolicy.model,
@@ -208,12 +222,13 @@ function stepUsageReceipts(
     usage: LanguageModelUsage;
     providerMetadata?: Record<string, Record<string, unknown>>;
   }>,
+  firstStep = 0,
 ): StudioStepUsageReceipt[] {
-  return steps.map((step) => {
+  return steps.map((step, index) => {
     const gateway = step.providerMetadata?.gateway;
     const cost = Number(gateway?.cost);
     return {
-      step: step.stepNumber,
+      step: firstStep + index,
       role,
       model: step.model.modelId,
       inputTokens: step.usage.inputTokens,
@@ -267,6 +282,104 @@ async function recordWorkflowStepUsageStep(input: {
     runId: input.runId,
     receipts: [input.receipt],
   });
+}
+
+async function recordModelRecoveryStep(input: {
+  runId: string;
+  finishReason: string;
+  completedSteps: number;
+  attempt: number;
+}) {
+  'use step';
+  if (!(await studioRunMayContinue(input.runId)))
+    throw new Error('A execução foi cancelada antes da retomada do modelo.');
+  await nextStudioEvent(input.runId, 'model.recovering', {
+    finishReason: input.finishReason,
+    completedSteps: input.completedSteps,
+    attempt: input.attempt,
+  });
+}
+
+/** O SDK pode retornar finishReason=error sem lançar; isso não é conclusão. */
+export async function streamStudioAgent(
+  input: Pick<StudioWorkflowInput, 'role' | 'messages' | 'tenantId' | 'runId'>,
+  context: StudioToolContext,
+  writable?: WritableStream<ModelCallStreamPart>,
+) {
+  const policy = studioModelPolicy(input.role);
+  const steps: WorkflowAgentStreamResult['steps'] = [];
+  let totalUsage = createNullLanguageModelUsage();
+  let messages = input.messages;
+
+  for (let attempt = 0; attempt <= 2; attempt++) {
+    const offset = steps.length;
+    const result = await createStudioAgent(input.role, context, steps).stream({
+      messages,
+      writable,
+      preventClose: true,
+      sendFinish: false,
+      toolsContext: studioToolsContext(context),
+      providerOptions: {
+        gateway: {
+          caching: 'auto',
+          user: input.tenantId,
+          tags: ['eixu', 'studio', input.role, STUDIO_MODEL_POLICY_VERSION],
+        },
+      },
+      maxOutputTokens: policy.maxOutputTokens,
+      reasoning: policy.reasoning,
+      onStepStart: async (step) => {
+        await beginWorkflowStepUsageStep({
+          tenantId: input.tenantId,
+          runId: input.runId,
+          step: offset + step.stepNumber,
+          role: input.role,
+          model: languageModelId(step.model, policy.model),
+        });
+      },
+      onStepEnd: async (step) => {
+        const [receipt] = stepUsageReceipts(
+          input.role,
+          [step],
+          offset + step.stepNumber,
+        );
+        await recordWorkflowStepUsageStep({
+          tenantId: input.tenantId,
+          runId: input.runId,
+          receipt,
+        });
+      },
+    });
+    steps.push(...result.steps);
+    totalUsage = addLanguageModelUsage(totalUsage, result.totalUsage);
+
+    if ('error' in result || result.finishReason === 'content-filter')
+      throw new Error('O provedor não conseguiu concluir esta geração.');
+    if (result.finishReason === 'stop' || result.finishReason === 'tool-calls')
+      return { ...result, steps, totalUsage };
+    if (attempt === 2 || steps.length >= policy.maxSteps)
+      throw new Error(
+        'O modelo interrompeu a geração após as tentativas de retomada. Os arquivos e imagens já salvos foram preservados.',
+      );
+
+    await recordModelRecoveryStep({
+      runId: input.runId,
+      finishReason: result.finishReason,
+      completedSteps: steps.length,
+      attempt: attempt + 1,
+    });
+    messages = [
+      // O SDK devolve as instruções como system, mas não as aceita de volta
+      // em messages. createStudioAgent reaplica as mesmas instruções do papel.
+      ...result.messages.filter((message) => message.role !== 'system'),
+      {
+        role: 'user',
+        content:
+          'A última resposta do modelo foi interrompida antes de concluir. Retome do ponto atual usando os resultados das ferramentas já presentes nesta conversa. Não repita artefatos ou gere novamente as imagens disponíveis. Faça uma chamada de ferramenta por vez; divida código extenso em componentes menores e conclua os arquivos, o conteúdo editável e as validações.',
+      },
+    ];
+  }
+  throw new Error('A geração excedeu o limite de retomadas.');
 }
 
 async function persistWorkflowMessageStep(input: {
@@ -486,40 +599,7 @@ export async function studioTurnWorkflow(input: StudioWorkflowInput) {
   try {
     await activateStudioWorkflowStep(input.runId, workflowRunId);
     await prepareStudioWorkspaceStep(input.sandboxName);
-    const policy = studioModelPolicy(input.role);
-    const result = await createStudioAgent(input.role, context).stream({
-      messages: input.messages,
-      writable,
-      preventClose: true,
-      sendFinish: false,
-      toolsContext: studioToolsContext(context),
-      providerOptions: {
-        gateway: {
-          caching: 'auto',
-          user: input.tenantId,
-          tags: ['eixu', 'studio', input.role, STUDIO_MODEL_POLICY_VERSION],
-        },
-      },
-      maxOutputTokens: policy.maxOutputTokens,
-      reasoning: policy.reasoning,
-      onStepStart: async (step) => {
-        await beginWorkflowStepUsageStep({
-          tenantId: input.tenantId,
-          runId: input.runId,
-          step: step.stepNumber,
-          role: input.role,
-          model: languageModelId(step.model, policy.model),
-        });
-      },
-      onStepEnd: async (step) => {
-        const [receipt] = stepUsageReceipts(input.role, [step]);
-        await recordWorkflowStepUsageStep({
-          tenantId: input.tenantId,
-          runId: input.runId,
-          receipt,
-        });
-      },
-    });
+    const result = await streamStudioAgent(input, context, writable);
     await checkpointStudioProject({
       runId: input.runId,
       projectId: input.projectId,
