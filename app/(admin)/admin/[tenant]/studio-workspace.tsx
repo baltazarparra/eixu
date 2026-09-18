@@ -192,7 +192,7 @@ export function StudioWorkspace({
 
   const loadPreview = useCallback(
     async (reload = false) => {
-      if (!hasProject) return;
+      if (!hasProject && !reload) return;
       setPreviewLoading(true);
       try {
         const response = await adminFetch<PreviewResponse>(

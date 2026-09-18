@@ -4,7 +4,6 @@ import {
   createUIMessageStreamResponse,
   validateUIMessages,
 } from 'ai';
-import { createModelCallToUIChunkTransform } from '@ai-sdk/workflow';
 import { start } from 'workflow/api';
 import { z } from 'zod';
 import { currentUser } from '@/lib/auth';
@@ -32,6 +31,7 @@ import {
 } from '@/lib/studio/workflow';
 import type { StudioMessage } from '@/lib/studio/types';
 import { sitesWriteGuard } from '@/lib/sites-maintenance';
+import { studioUIMessageStream } from '@/lib/studio/ui-stream';
 import {
   parseBoundedPublicJson,
   PublicInputTooLargeError,
@@ -263,9 +263,7 @@ export async function POST(request: Request) {
       if (!attached)
         throw new Error('O run do produto não aceitou o vínculo do workflow.');
       const response = createUIMessageStreamResponse({
-        stream: workflowRun.readable.pipeThrough(
-          createModelCallToUIChunkTransform(),
-        ),
+        stream: studioUIMessageStream(workflowRun),
         headers: {
           'x-workflow-run-id': workflowRun.runId,
           'x-studio-run-id': run.id,

@@ -21,6 +21,17 @@ Implementado:
 - reset por manifesto de produção ou preview, preservando institucional, operadores e Kanban;
 - remoção do renderer de blocos, filas do gerador, conversão Premium, projetos Premium versionados, documentação e testes legados.
 
+## Correções da revisão da PR #110
+
+- Checkpoint aceita a leitura do `.gitignore` original e continua recusando alterações nos arquivos protegidos.
+- Escrita e fechamento do stream ocorrem em step; a UI aguarda mensagem e estado terminal persistidos, inclusive na retomada.
+- Assets públicos e artefatos privados usam stores separados, com tokens explícitos em leitura, gravação e limpeza. O manifesto de reset v2 inclui a identidade dos stores no digest.
+- Formulário, eventos e WhatsApp usam a release ativa e continuam disponíveis durante edição ou falha do rascunho.
+- A prévia relê as revisões sob lock, verifica o hash do checkpoint, elimina arquivos de turnos falhos e aplica a revisão de conteúdo escolhida.
+- Restauração recupera dependências com `npm ci`; lockfile sem dependências instaladas não é tratado como workspace pronto.
+
+Os testes novos executam os módulos reais com Blob, Sandbox e persistência simulados. A consulta de disponibilidade pública é executada em SQLite local. Isso comprova as regressões de código, sem substituir o ensaio dos serviços remotos.
+
 ## Limites da execução
 
 Nenhuma chamada paga de modelo/imagem, Sandbox remoto, deployment de produção ou limpeza de banco/Blob/Vercel foi executada. A migração aditiva foi aplicada depois da abertura da PR, com o recibo abaixo. Reset e ensaio funcional remoto continuam separados da migração.
@@ -53,23 +64,29 @@ Também faltam nos dois ambientes os dois segredos novos realmente necessários:
 `EIXU_VERCEL_BYPASS_MASTER_SECRET`, para o smoke isolado dos previews
 protegidos. O AI Gateway usa o `VERCEL_OIDC_TOKEN` injetado automaticamente.
 
+A correção de armazenamento também exige `STUDIO_BLOB_READ_WRITE_TOKEN` de
+um store com acesso privado, distinto do store público de `BLOB_READ_WRITE_TOKEN`.
+As listagens de variáveis da Vercel confirmaram em 18/09/2026 que esse token
+ainda não está configurado em Preview nem Production.
+Esta revisão adiciona o contrato e a validação dessa configuração; não cria stores,
+não move objetos existentes e não configura credenciais remotas.
+
 ## Validação local
 
 Executada em 18/09/2026 sobre o estado final da implementação:
 
 | Gate                                                | Resultado                                                                                      |
 | --------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `npx next typegen && npx tsc --noEmit`              | passou; 123 steps e 2 workflows compilados                                                     |
+| `npx next typegen && npx tsc --noEmit`              | passou; 124 steps e 2 workflows compilados                                                     |
 | `npm run lint`                                      | passou sem avisos                                                                              |
-| `npm run test:sites`                                | 15/15 testes passaram                                                                          |
-| `npm run test:studio`                               | 20/20 testes passaram                                                                          |
+| `npm run test:studio`                               | 35/35 testes passaram, incluindo 15 regressões novas                                           |
 | `npm run test:admin`                                | 50 testes passaram; 3 integrações PostgreSQL foram puladas sem banco local                     |
 | `npm run build:vercel`                              | passou com Next.js 16.3.3 e Workflow compilado                                                 |
 | scaffold independente                               | `next typegen`, TypeScript e build passaram; a home foi pré-renderizada como conteúdo estático |
 | `node --check scripts/reset-sites.mjs` e biblioteca | passaram; nenhum reset foi executado                                                           |
 | `npm audit --audit-level=moderate`                  | zero vulnerabilidades                                                                          |
 | `git diff --check`                                  | passou                                                                                         |
-| varredura dos 118 paths alterados ou novos          | nenhum valor com formato de credencial encontrado                                              |
+| varredura da correção                               | sem credenciais reais; os tokens dos fixtures são sintéticos                                   |
 
 O scaffold foi validado com o executável Linux do Node apontando diretamente
 para os binários instalados na raiz. O wrapper `npm` dentro do diretório
@@ -80,7 +97,7 @@ gerado.
 ## Ações posteriores à PR
 
 1. Criar um branch Neon dedicado a preview e apontar somente o ambiente Vercel Preview para ele.
-2. Configurar os segredos e IDs novos da publicação por projeto na Vercel.
+2. Configurar os segredos da publicação e um store Blob privado separado com `STUDIO_BLOB_READ_WRITE_TOKEN` em cada ambiente.
 3. Corrigir/confirmar o acesso da integração Vercel e executar o ensaio remoto em recursos descartáveis.
 4. Gerar e revisar os manifestos de reset de preview e produção.
 5. Executar o reset somente após confirmação explícita dos manifestos frescos.

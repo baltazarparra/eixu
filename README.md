@@ -86,7 +86,8 @@ Variáveis principais:
 | `DATABASE_URL`                                        | Neon usado pela aplicação.                                      |
 | `ADMIN_PIN_PEPPER` / `ADMIN_SESSION_SECRET`           | Login e sessão dos operadores.                                  |
 | `AI_GATEWAY_API_KEY`                                  | Opcional fora da Vercel; deployments usam OIDC automaticamente. |
-| `BLOB_READ_WRITE_TOKEN`                               | Assets, checkpoints e artefatos.                                |
+| `BLOB_READ_WRITE_TOKEN`                               | Store público: logos, uploads e imagens em `tenants/`.          |
+| `STUDIO_BLOB_READ_WRITE_TOKEN`                        | Outro store, privado: checkpoints e referências em `studio/`.   |
 | `EIXU_IMAGE_MODEL`                                    | Modelo de imagem; padrão `openai/gpt-image-2`.                  |
 | `EIXU_VERCEL_TOKEN`                                   | API de projetos, deployments, domínios e promoção.              |
 | `EIXU_VERCEL_BYPASS_MASTER_SECRET`                    | Deriva o bypass isolado de smoke para cada preview protegido.   |
@@ -95,6 +96,8 @@ Variáveis principais:
 | `KANBAN_AGENT_TOKEN`                                  | Bearer restrito às rotas do Kanban.                             |
 
 O arquivo [.env.example](.env.example) contém a lista completa sem valores secretos.
+
+Crie dois stores Blob com modos de acesso distintos. O Studio passa o token de cada store explicitamente, inclusive em leituras e limpezas; `BLOB_STORE_ID`/OIDC não escolhe o destino dessas operações. A ausência do token privado ou o uso do mesmo store nos dois tokens bloqueia artefatos privados. Configure recursos próprios para Preview e Production.
 
 ## Verificação
 

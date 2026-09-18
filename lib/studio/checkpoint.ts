@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { put } from '@vercel/blob';
 import { db, transaction } from '@/lib/db';
+import { privateBlobOptions } from '@/lib/blob/stores.mjs';
 import {
   parseStudioEditorContract,
   validateStudioEditorValues,
@@ -21,6 +22,7 @@ export async function checkpointStudioProject(input: {
   'use step';
   const {
     archiveStudioProject,
+    ensureStudioDependencies,
     listStudioFiles,
     readStudioFile,
     runStudioCommand,
@@ -117,9 +119,8 @@ export async function checkpointStudioProject(input: {
           reused: true,
         };
       }
-      const files = await listStudioFiles(input.sandboxName);
-      if (!files.includes('package-lock.json')) {
-        const installed = await runStudioCommand(input.sandboxName, 'install');
+      const installed = await ensureStudioDependencies(input.sandboxName);
+      if (installed) {
         await nextStudioEvent(input.runId, 'command.finished', {
           command: 'install',
           exitCode: installed.exitCode,
@@ -130,6 +131,7 @@ export async function checkpointStudioProject(input: {
             `A instalação falhou. ${installed.stderr}`.slice(0, 4_000),
           );
       }
+      const files = await listStudioFiles(input.sandboxName);
       const sourceDigest = await studioProjectDigest(input.sandboxName);
       const gates: Gate[] = [];
       for (const command of ['typecheck', 'build'] as const) {
@@ -201,6 +203,7 @@ export async function checkpointStudioProject(input: {
         .digest('hex');
       const pathname = `studio/${input.projectId}/code/${codeRevision}.tar.gz`;
       await put(pathname, archive, {
+        ...privateBlobOptions(),
         access: 'private',
         addRandomSuffix: false,
         allowOverwrite: true,

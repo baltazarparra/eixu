@@ -69,9 +69,15 @@ O projeto começa em um scaffold mínimo com Next.js, TypeScript, conteúdo vers
 
 O Sandbox usa egress restrito e não recebe credenciais administrativas. O manifesto fixa Next.js, React, TypeScript e os scripts de build; a primeira versão não aceita dependências adicionais. A instalação usa `--ignore-scripts`. Seu estado é reconstruível: o código validado é compactado e salvo em Blob privado com revisão SHA-256. A coluna `draft_code_revision` aponta ao checkpoint atual; restaurar seleciona exatamente esse artefato.
 
+Restauração verifica o SHA-256 antes de extrair o checkpoint e executa `npm ci` quando o lockfile existe. A prontidão das dependências exige o digest de manifesto/lockfile e os executáveis Next.js/TypeScript; a presença do lockfile sozinha não basta. A primeira instalação gera o lockfile com `npm install`.
+
+Imagens públicas em `tenants/` usam `BLOB_READ_WRITE_TOKEN`. Checkpoints e screenshots de referência em `studio/` usam `STUDIO_BLOB_READ_WRITE_TOKEN`, de um store separado configurado como privado. Os tokens são explícitos em upload, leitura, listagem e exclusão. O SDK não recebe credenciais Blob dentro do Sandbox.
+
 ## Preview
 
 A prévia só nasce de checkpoint válido. O Sandbox inicia o servidor do projeto com um token aleatório de alta entropia. O `proxy.ts` protegido exige o token na primeira navegação e o troca por cookie HTTP-only, Secure, SameSite=None e Partitioned.
+
+A rota relê código e conteúdo sob o lock do projeto e recusa runs ativos. Antes de abrir a prévia, encerra o dev server, remove fontes/cache do rascunho anterior, restaura o checkpoint verificado e sobrepõe exatamente a revisão de conteúdo solicitada. Arquivos de turnos falhos ou cancelados não podem aparecer como parte de um checkpoint anterior.
 
 O banco armazena apenas o hash, a URL sem query e uma expiração curta. A resposta recebe `noindex`, política de referrer e `frame-ancestors` limitado à plataforma. Expiração gira o token e reinicia o servidor quando necessário.
 
@@ -109,7 +115,7 @@ O scaffold usa `lib/eixu.ts` para formular ação de formulário, evento e Whats
 - `/api/e` registra eventos;
 - `/go/wa` registra atribuição e redireciona ao WhatsApp.
 
-As rotas validam host/origin, payload e limites. O redirecionamento do formulário é resolvido contra o host canônico e recusa mudança de origem. O tenant precisa estar publicado, com projeto e release ativos. Atribuição é limitada por forma e tamanho.
+As rotas validam host/origin, payload e limites. O redirecionamento do formulário é resolvido contra o host canônico e recusa mudança de origem. O tenant precisa estar publicado, com projeto não arquivado e release ativa pertencente a esse projeto. Edição, validação ou falha do rascunho não desativam formulário, eventos ou WhatsApp da release já publicada. Atribuição é limitada por forma e tamanho.
 
 O `proxy.ts` da plataforma não tenta renderizar sites de clientes no projeto raiz. Hosts wildcard sem projeto dedicado recebem 404.
 
@@ -121,7 +127,7 @@ Cada chamada registra primeiro um recibo `pending`; sucesso grava `recorded`, me
 
 ## Reset controlado
 
-`scripts/reset-sites.mjs` opera em modo manifesto por padrão. O escopo inclui dados de sites, prefixos Blob `tenants/` e `studio/` e projetos Vercel identificados no banco ou pelos prefixos `eixu-site-` e `eixu-premium-`. O projeto raiz é excluído do conjunto e cada ID/nome remoto é conferido novamente antes da remoção.
+`scripts/reset-sites.mjs` opera em modo manifesto por padrão. O escopo inclui dados de sites, prefixo Blob `tenants/` no store público, `studio/` no store privado e projetos Vercel identificados no banco ou pelos prefixos `eixu-site-` e `eixu-premium-`. O manifesto v2 inclui o modo de acesso e ID de cada store no digest, sem tokens; mudar de store invalida o aceite. O projeto raiz é excluído do conjunto e cada ID/nome remoto é conferido novamente antes da remoção.
 
 Execução requer ambiente explícito, confirmação textual, digest do manifesto, fingerprint do banco, timestamp de manifesto com no máximo 30 minutos, deployment raiz READY e referência de recuperação. A manutenção é ativada antes da primeira remoção. Em falha após esse ponto, permanece ativa para evitar recriação até intervenção. Operadores, autenticação, Kanban e atividade de acesso/Kanban são preservados; referências de cards a tenants viram nulas.
 

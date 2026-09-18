@@ -93,11 +93,11 @@ export class StudioProjectBusyError extends Error {
  */
 export function withIdleStudioProject<T>(
   projectId: string,
-  run: () => Promise<T>,
+  run: (project: StudioProject) => Promise<T>,
 ): Promise<T> {
   return transaction(async (connection) => {
     const project = await connection.query(
-      'select id from studio_projects where id = $1 for no key update',
+      'select * from studio_projects where id = $1 for no key update',
       [projectId],
     );
     if (!project.rows[0]) throw new Error('Projeto não encontrado.');
@@ -109,6 +109,6 @@ export function withIdleStudioProject<T>(
       [projectId],
     );
     if (active.rows[0]) throw new StudioProjectBusyError();
-    return run();
+    return run(studioProjectFromRow(project.rows[0]));
   });
 }

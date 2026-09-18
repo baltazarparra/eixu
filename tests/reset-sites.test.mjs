@@ -146,7 +146,7 @@ void test('digest do manifesto independe da ordem e muda com o escopo', () => {
 
 void test('digest vincula timestamp, banco e identidades do manifesto', () => {
   const manifest = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     environment: 'preview',
     createdAt: '2026-09-18T12:00:00.000Z',
     database: {
@@ -164,6 +164,8 @@ void test('digest vincula timestamp, banco e identidades do manifesto', () => {
     blob: {
       inventories: [
         {
+          access: 'private',
+          storeId: 'store_fixture',
           prefix: 'studio/',
           count: 1,
           bytes: 20,
@@ -173,6 +175,21 @@ void test('digest vincula timestamp, banco e identidades do manifesto', () => {
     },
   };
   const accepted = manifestScopeDigest(manifest, createHash);
+  assert.notEqual(
+    accepted,
+    manifestScopeDigest(
+      {
+        ...manifest,
+        blob: {
+          inventories: manifest.blob.inventories.map((item) => ({
+            ...item,
+            storeId: 'store_outro',
+          })),
+        },
+      },
+      createHash,
+    ),
+  );
   assert.notEqual(
     accepted,
     manifestScopeDigest(

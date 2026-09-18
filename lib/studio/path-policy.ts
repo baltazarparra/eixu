@@ -33,7 +33,10 @@ export function studioWorkspacePath(input: string): string {
 
 export function isReadableStudioFile(input: string): boolean {
   const path = studioWorkspacePath(input);
-  return /\.(?:css|json|js|jsx|md|mjs|ts|tsx|txt)$/i.test(path);
+  return (
+    posix.relative(STUDIO_WORKSPACE_ROOT, path) === '.gitignore' ||
+    /\.(?:css|json|js|jsx|md|mjs|ts|tsx|txt)$/i.test(path)
+  );
 }
 
 export function isEditableStudioFile(input: string): boolean {

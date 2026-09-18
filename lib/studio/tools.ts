@@ -241,6 +241,7 @@ async function inspectVisualReferenceStep(
 ) {
   'use step';
   const { put } = await import('@vercel/blob');
+  const { privateBlobOptions } = await import('@/lib/blob/stores.mjs');
   await authorized(context);
   const { visualReferenceUrl, visualReferenceSource } =
     await configuredSources(context);
@@ -252,6 +253,7 @@ async function inspectVisualReferenceStep(
       shots.map(async (shot) => {
         const pathname = `studio/${context.projectId}/references/${context.runId}-${shot.viewport}.jpg`;
         await put(pathname, shot.jpeg, {
+          ...privateBlobOptions(),
           access: 'private',
           addRandomSuffix: false,
           allowOverwrite: true,
@@ -335,9 +337,11 @@ async function readVisualReferenceFilesStep(
 ) {
   'use step';
   const { get } = await import('@vercel/blob');
+  const { privateBlobOptions } = await import('@/lib/blob/stores.mjs');
   const files = await Promise.all(
     shots.map(async (shot) => {
       const blob = await get(shot.storageKey, {
+        ...privateBlobOptions(),
         access: 'private',
         useCache: false,
       });
@@ -461,8 +465,8 @@ async function runCheckStep(
     projectId: context.projectId,
     runId: context.runId,
     operation: `command:${input.command}`,
-    ttlSeconds:
-      input.command === 'build' || input.command === 'install' ? 420 : 300,
+    // Inclui a instalação automática em um Sandbox restaurado sem dependências.
+    ttlSeconds: 720,
     run: async () => {
       const result = await runStudioCommand(context.sandboxName, input.command);
       await nextStudioEvent(context.runId, 'command.finished', {
@@ -636,6 +640,7 @@ async function generatedImageStep(
   ]);
   const { generateImage } = ai;
   const { del } = blobModule;
+  const { publicBlobOptions } = await import('@/lib/blob/stores.mjs');
   const sharp = sharpModule.default;
   await authorized(context);
   const model = process.env.EIXU_IMAGE_MODEL || 'openai/gpt-image-2';
@@ -807,7 +812,7 @@ async function generatedImageStep(
             height: processed.info.height,
           });
         } catch (error) {
-          await del(blob.url).catch(() => undefined);
+          await del(blob.url, publicBlobOptions()).catch(() => undefined);
           throw error;
         }
         await nextStudioEvent(context.runId, 'image.generated', {
@@ -1018,7 +1023,7 @@ export const studioTools = {
   }),
   run_project_check: tool({
     description:
-      'Executa um comando enumerado no Sandbox. Rode install quando o lockfile não existir e finalize com typecheck e build.',
+      'Executa um comando enumerado no Sandbox, preparando as dependências quando necessário. Install usa npm ci se houver lockfile. Finalize com typecheck e build.',
     inputSchema: z
       .object({
         command: z.enum(['install', 'typecheck', 'lint', 'test', 'build']),

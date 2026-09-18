@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { get } from '@vercel/blob';
+import { readStudioCheckpoint } from './checkpoint-storage';
 import { db, transaction } from '@/lib/db';
 import { studioDeploymentFiles, type StudioDeploymentFile } from './sandbox';
 import {
@@ -578,18 +578,10 @@ async function releaseSnapshot(release: StudioRelease) {
     };
   }[];
   if (!rows[0]) throw new Error('O conteúdo congelado do release não existe.');
-  const blob = await get(release.codeArtifactKey, {
-    access: 'private',
-    useCache: false,
-  });
-  if (!blob || blob.statusCode !== 200)
-    throw new Error('O checkpoint congelado do release não existe.');
-  const archive = Buffer.from(await new Response(blob.stream).arrayBuffer());
-  const digest = createHash('sha256').update(archive).digest('hex');
-  if (digest !== release.codeRevision)
-    throw new Error(
-      'O checkpoint do release não corresponde à revisão registrada.',
-    );
+  const archive = await readStudioCheckpoint(
+    release.codeArtifactKey,
+    release.codeRevision,
+  );
   return { ...rows[0], archive };
 }
 

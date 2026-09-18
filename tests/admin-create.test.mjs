@@ -36,6 +36,9 @@ async function fixture({ insert = 'ok', direction = 'moderno' } = {}) {
       '@vercel/blob': {
         del: async (url) => deleted.push(url),
       },
+      '@/lib/blob/stores.mjs': {
+        publicBlobOptions: () => ({ token: 'fixture-public-token' }),
+      },
       '@/lib/db': {
         db:
           () =>

@@ -13,7 +13,7 @@ npm run build:vercel
 ```
 
 - `next typegen` compila os workflows e gera tipos de rota antes do TypeScript.
-- `test:studio` cobre roteamento, política de paths, manifesto de pacotes, contrato editorial, reset e demais contratos puros.
+- `test:studio` cobre contratos, checkpoint/restauração com serviços simulados, conclusão e retomada do stream, seleção de stores e disponibilidade pública durante edições. O SELECT de disponibilidade é exercitado em SQLite local com o SQL real; não substitui os ensaios PostgreSQL.
 - `test:admin` cobre autenticação, limites de entrada pública/administrativa e reset.
 - `build:vercel` é o artefato de produção. Não substitua por Vinext, Vite ou outro bundler.
 
@@ -59,9 +59,13 @@ Valide o projeto gerado em desktop, mobile, teclado, toque e movimento reduzido.
 
 Tente path absoluto, `..`, symlink, arquivo excessivo, arquivo protegido e comando fora da allowlist. Todos devem falhar antes do efeito. Restaure o Sandbox do digest do checkpoint e compare os arquivos protegidos.
 
+Remova o Sandbox e restaure um checkpoint que contém lockfile, mas não `node_modules`: typecheck, build e prévia precisam funcionar após `npm ci`. `.gitignore` original deve passar no checkpoint; uma alteração deve ser recusada.
+
 ### Preview
 
 Sem sessão administrativa, a rota central deve recusar. A URL do banco não pode conter token. Token inválido ou expirado deve falhar; token válido cria cookie efêmero e a página deve receber `noindex`, referrer policy e frame ancestor da EIXU.
+
+Depois de uma edição falha/cancelada, abra a prévia: compare código e revisão de conteúdo com o último checkpoint e confirme a ausência de arquivos extras. Hash de arquivo compactado divergente ou instalação recusada não pode criar sessão de prévia.
 
 ### CMS
 
@@ -89,6 +93,8 @@ Nunca considere um alias genérico ou um deployment anterior como prova da relea
 
 Exercite origin/host válido, ausente quando permitido e divergente. Teste limites de JSON, nomes/campos, attribution, campaign e redirecionamento. Um tenant sem projeto/release ativa deve receber 404 ou recusa equivalente.
 
+Mantenha uma release ativa e edite seu rascunho: formulário, eventos e WhatsApp devem continuar disponíveis com projeto `building`, `ready` ou `failed`. Arquivar o tenant/projeto ou remover a release ativa deve bloquear o tráfego.
+
 ## Banco
 
 `npm run db:migrate` escreve no recurso indicado. Antes:
@@ -109,7 +115,7 @@ npm run db:reset-sites -- --environment=preview --manifest
 npm run db:reset-sites -- --environment=production --manifest
 ```
 
-Revise timestamp, fingerprint, contagens preservadas, pares exatos de ID/nome dos projetos Vercel e inventário Blob. Se o escopo mudar, descarte o manifesto. A execução exige `--scope-digest`, `--database-fingerprint` e `--manifest-created-at` do mesmo manifesto, confirmação do ambiente, `EIXU_RESET_PLATFORM_DEPLOYMENT_ID` READY e `EIXU_RESET_RECOVERY_REF`. O timestamp expira em 30 minutos.
+Revise timestamp, fingerprint, contagens preservadas, pares exatos de ID/nome dos projetos Vercel e inventário Blob com modo de acesso e ID de cada store. Ambos os tokens Blob são obrigatórios; os stores precisam ser distintos. Se o escopo mudar, descarte o manifesto. A execução exige `--scope-digest`, `--database-fingerprint` e `--manifest-created-at` do mesmo manifesto, confirmação do ambiente, `EIXU_RESET_PLATFORM_DEPLOYMENT_ID` READY e `EIXU_RESET_RECOVERY_REF`. O timestamp expira em 30 minutos.
 
 Depois, o recibo precisa mostrar:
 

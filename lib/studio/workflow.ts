@@ -26,6 +26,7 @@ import {
 } from './tools';
 import type { StudioMessage, StudioMessageMetadata } from './types';
 import { checkpointStudioProject } from './checkpoint';
+import { closeStudioStreamStep } from './workflow-stream';
 import {
   beginStudioUsage,
   recordStudioUsage,
@@ -459,9 +460,7 @@ export async function studioTurnWorkflow(input: StudioWorkflowInput) {
       userId: input.operator.id,
       workflowRunId,
     });
-    const writer = writable.getWriter();
-    await writer.close();
-    writer.releaseLock();
+    await closeStudioStreamStep(writable);
     await persistWorkflowMessageStep({
       workflowRunId,
       runId: input.runId,
@@ -489,15 +488,6 @@ export async function studioTurnWorkflow(input: StudioWorkflowInput) {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Falha inesperada.';
-    try {
-      const writer = writable.getWriter();
-      await writer.write({ type: 'error', error: message });
-      await writer.close();
-      writer.releaseLock();
-    } catch {
-      // O agente pode ter fechado o stream ao falhar; o estado persistido abaixo
-      // continua sendo a fonte de verdade do painel.
-    }
     await failStudioWorkflowStep({
       runId: input.runId,
       tenantId: input.tenantId,
@@ -505,6 +495,12 @@ export async function studioTurnWorkflow(input: StudioWorkflowInput) {
       operator: input.operator,
       message,
     });
+    try {
+      await closeStudioStreamStep(writable, message);
+    } catch {
+      // O agente pode ter fechado o stream ao falhar; o estado persistido
+      // continua sendo a fonte de verdade do painel.
+    }
     throw error;
   }
 }

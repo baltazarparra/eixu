@@ -3,10 +3,15 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { Client } from '@neondatabase/serverless';
 import { del, list } from '@vercel/blob';
 import {
+  blobStoreId,
+  privateBlobOptions,
+  publicBlobOptions,
+} from '../lib/blob/stores.mjs';
+import {
   CLIENT_PROJECT_PREFIX,
   LEGACY_CLIENT_PROJECT_PREFIX,
   PRESERVED_TABLES,
-  RESET_BLOB_PREFIXES,
+  RESET_BLOB_TARGETS,
   SITE_TABLES,
   clientProjects,
   manifestScopeDigest,
@@ -26,8 +31,12 @@ if (!vercelTeamId?.startsWith('team_'))
   throw new Error('EIXU_VERCEL_TEAM_ID é obrigatório.');
 if (!rootProjectId?.startsWith('prj_'))
   throw new Error('EIXU_VERCEL_ROOT_PROJECT_ID é obrigatório.');
-if (!process.env.BLOB_READ_WRITE_TOKEN)
-  throw new Error('BLOB_READ_WRITE_TOKEN é obrigatório.');
+const blobTargets = RESET_BLOB_TARGETS.map((target) => ({
+  ...target,
+  storeId: blobStoreId(target.access),
+  options:
+    target.access === 'private' ? privateBlobOptions() : publicBlobOptions(),
+}));
 
 const client = new Client(databaseUrl);
 await client.connect();
@@ -186,12 +195,12 @@ async function listVercelProjects() {
   return projects;
 }
 
-async function blobInventory(prefix) {
+async function blobInventory({ access, prefix, storeId, options }) {
   let cursor;
   const paths = [];
   let bytes = 0;
   do {
-    const page = await list({ prefix, cursor, limit: 1000 });
+    const page = await list({ ...options, prefix, cursor, limit: 1000 });
     for (const blob of page.blobs) {
       paths.push(blob.pathname);
       bytes += blob.size;
@@ -199,6 +208,8 @@ async function blobInventory(prefix) {
     cursor = page.hasMore ? page.cursor : undefined;
   } while (cursor);
   return {
+    access,
+    storeId,
     prefix,
     count: paths.length,
     bytes,
@@ -247,7 +258,7 @@ async function buildManifest() {
     counts(PRESERVED_TABLES),
     databaseInventories(existing),
     listVercelProjects(),
-    Promise.all(RESET_BLOB_PREFIXES.map(blobInventory)),
+    Promise.all(blobTargets.map(blobInventory)),
   ]);
   const databaseProjects = await databaseVercelProjects(existing);
   const projects = clientProjects({
@@ -256,7 +267,7 @@ async function buildManifest() {
     rootProjectId,
   });
   const manifest = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     mode: args.execute ? 'execute' : 'manifest',
     environment: args.environment,
     createdAt:
@@ -317,15 +328,15 @@ async function removeVercelProjects(projects) {
   }
 }
 
-async function removeBlobPrefix(prefix) {
+async function removeBlobPrefix({ prefix, options }) {
   let deleted = 0;
   for (;;) {
-    const page = await list({ prefix, limit: 1000 });
+    const page = await list({ ...options, prefix, limit: 1000 });
     const urls = page.blobs.map((blob) => blob.url);
     if (!urls.length) break;
     for (let index = 0; index < urls.length; index += 100) {
       const batch = urls.slice(index, index + 100);
-      if (batch.length) await del(batch);
+      if (batch.length) await del(batch, options);
       deleted += batch.length;
     }
   }
@@ -469,7 +480,7 @@ async function verifyReset(projects) {
     if (!project.notFound)
       throw new Error(`O projeto Vercel ${target.id} ainda existe.`);
   }
-  const blob = await Promise.all(RESET_BLOB_PREFIXES.map(blobInventory));
+  const blob = await Promise.all(blobTargets.map(blobInventory));
   if (blob.some((item) => item.count !== 0))
     throw new Error('Ainda existem objetos Blob nos prefixos de sites.');
   return {
@@ -520,8 +531,9 @@ try {
     maintenanceEnabled = true;
     await removeVercelProjects(manifest.vercel.deleteProjects);
     const deletedBlobs = {};
-    for (const prefix of RESET_BLOB_PREFIXES)
-      deletedBlobs[prefix] = await removeBlobPrefix(prefix);
+    for (const target of blobTargets)
+      deletedBlobs[`${target.storeId}/${target.prefix}`] =
+        await removeBlobPrefix(target);
     await resetDatabase(manifest, deploymentId, recoveryRef);
     const verification = await verifyReset(manifest.vercel.deleteProjects);
     await setMaintenance(false);

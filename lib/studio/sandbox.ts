@@ -1,8 +1,8 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { posix } from 'node:path';
 import { Sandbox, type NetworkPolicy } from '@vercel/sandbox';
-import { get } from '@vercel/blob';
 import { db } from '@/lib/db';
+import { readStudioCheckpoint } from './checkpoint-storage';
 import { STUDIO_SCAFFOLD_FILES, studioScaffoldContent } from './scaffold';
 import { assertStudioPackageContract } from './package-contract.mjs';
 import {
@@ -181,8 +181,12 @@ async function assertStudioPackage(sandbox: Sandbox): Promise<void> {
 async function seedOrRestore(sandbox: Sandbox, name: string) {
   await sandbox.mkDir(STUDIO_WORKSPACE_ROOT);
   const rows = (await db()`
-    select project.slug, artifact.storage_key
+    select project.slug, project.draft_code_revision, artifact.storage_key,
+           revision.content
     from studio_projects project
+    left join studio_content_revisions revision
+      on revision.id = project.active_content_revision_id
+      and revision.project_id = project.id
     left join lateral (
       select storage_key
       from studio_artifacts
@@ -194,11 +198,16 @@ async function seedOrRestore(sandbox: Sandbox, name: string) {
     ) artifact on true
     where project.sandbox_name = ${name}
     limit 1
-  `) as { slug: string; storage_key: string | null }[];
+  `) as {
+    slug: string;
+    draft_code_revision: string | null;
+    storage_key: string | null;
+    content: Record<string, string> | null;
+  }[];
   const project = rows[0];
   if (!project) throw new Error('Projeto do Sandbox não encontrado.');
   const storageKey = project.storage_key;
-  if (!storageKey) {
+  if (!project.draft_code_revision) {
     await sandbox.writeFiles(
       STUDIO_SCAFFOLD_FILES.map((file) => ({
         path: posix.join(STUDIO_WORKSPACE_ROOT, file.path),
@@ -207,11 +216,64 @@ async function seedOrRestore(sandbox: Sandbox, name: string) {
     );
     return;
   }
-  const blob = await get(storageKey, { access: 'private', useCache: false });
-  if (!blob || blob.statusCode !== 200)
-    throw new Error('Checkpoint privado do projeto não foi encontrado.');
-  const archive = Buffer.from(await new Response(blob.stream).arrayBuffer());
-  const archivePath = `/tmp/${name}-restore.tar.gz`;
+  if (!storageKey || !project.content)
+    throw new Error('O checkpoint ou conteúdo ativo do projeto não existe.');
+  await restoreStudioCheckpoint(sandbox, {
+    storageKey,
+    codeRevision: project.draft_code_revision,
+    content: project.content,
+  });
+}
+
+async function stopStudioPreview(sandbox: Sandbox) {
+  await sandbox
+    .runCommand('pkill', ['-f', 'next dev.*--port 3000'], { timeoutMs: 5_000 })
+    .catch(() => undefined);
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  await sandbox
+    .runCommand('pkill', ['-KILL', '-f', 'next dev.*--port 3000'], {
+      timeoutMs: 5_000,
+    })
+    .catch(() => undefined);
+}
+
+/** Descarta inclusive arquivos extras deixados por um turno que não passou nos gates. */
+async function restoreStudioCheckpoint(
+  sandbox: Sandbox,
+  input: {
+    storageKey: string;
+    codeRevision: string;
+    content: Record<string, string>;
+  },
+) {
+  const archive = await readStudioCheckpoint(
+    input.storageKey,
+    input.codeRevision,
+  );
+  await stopStudioPreview(sandbox);
+  const cleaned = await sandbox.runCommand(
+    'find',
+    [
+      STUDIO_WORKSPACE_ROOT,
+      '-mindepth',
+      '1',
+      '-maxdepth',
+      '1',
+      '!',
+      '-name',
+      'node_modules',
+      '-exec',
+      'rm',
+      '-rf',
+      '--',
+      '{}',
+      '+',
+    ],
+    { timeoutMs: 30_000 },
+  );
+  if (cleaned.exitCode !== 0)
+    throw new Error('Não foi possível limpar o rascunho anterior.');
+  const archivePath = '/tmp/eixu-checkpoint-restore.tar.gz';
   await sandbox.writeFiles([{ path: archivePath, content: archive }]);
   const restored = await sandbox.runCommand(
     'tar',
@@ -222,21 +284,17 @@ async function seedOrRestore(sandbox: Sandbox, name: string) {
     throw new Error(
       `Não foi possível restaurar o projeto: ${await restored.stderr()}`,
     );
-  const contents = (await db()`
-    select revision.content
-    from studio_projects project
-    join studio_content_revisions revision
-      on revision.id = project.active_content_revision_id
-    where project.sandbox_name = ${name}
-    limit 1
-  `) as { content: Record<string, string> }[];
-  if (contents[0])
-    await sandbox.writeFiles([
-      {
-        path: posix.join(STUDIO_WORKSPACE_ROOT, 'content/values.json'),
-        content: `${JSON.stringify(contents[0].content, null, 2)}\n`,
-      },
-    ]);
+  await sandbox.writeFiles([
+    {
+      path: posix.join(STUDIO_WORKSPACE_ROOT, 'content/values.json'),
+      content: `${JSON.stringify(input.content, null, 2)}\n`,
+    },
+  ]);
+  const installed = await ensureSandboxDependencies(sandbox);
+  if (installed && installed.exitCode !== 0)
+    throw new Error(
+      `A instalação do checkpoint falhou. ${installed.stderr}`.slice(0, 4_000),
+    );
 }
 
 export async function studioSandbox(name: string): Promise<Sandbox> {
@@ -277,17 +335,7 @@ export async function prepareStudioWorkspaceForRun(
   name: string,
 ): Promise<void> {
   const sandbox = await studioSandbox(name);
-  await sandbox
-    .runCommand('pkill', ['-f', 'next dev.*--port 3000'], {
-      timeoutMs: 5_000,
-    })
-    .catch(() => undefined);
-  await new Promise((resolve) => setTimeout(resolve, 200));
-  await sandbox
-    .runCommand('pkill', ['-KILL', '-f', 'next dev.*--port 3000'], {
-      timeoutMs: 5_000,
-    })
-    .catch(() => undefined);
+  await stopStudioPreview(sandbox);
   const cleaned = await sandbox.runCommand(
     'rm',
     ['-rf', posix.join(STUDIO_WORKSPACE_ROOT, '.next')],
@@ -369,8 +417,18 @@ export async function runStudioCommand(
   name: string,
   commandName: StudioCommand,
 ): Promise<StudioCommandResult> {
-  const definition = COMMANDS[commandName];
   const sandbox = await studioSandbox(name);
+  if (commandName === 'install') return installSandboxDependencies(sandbox);
+  const installed = await ensureSandboxDependencies(sandbox);
+  if (installed && installed.exitCode !== 0) return installed;
+  return executeStudioCommand(sandbox, commandName, COMMANDS[commandName]);
+}
+
+async function executeStudioCommand(
+  sandbox: Sandbox,
+  commandName: StudioCommand,
+  definition: { command: string; args: string[]; timeoutMs: number },
+): Promise<StudioCommandResult> {
   await assertNoStudioSymlinks(sandbox);
   await assertStudioPackage(sandbox);
   const result = await sandbox.runCommand({
@@ -398,6 +456,81 @@ export async function runStudioCommand(
     stderr: stderr.text,
     truncated: stdout.truncated || stderr.truncated,
   };
+}
+
+const DEPENDENCIES_DIGEST_PATH = '/tmp/eixu-dependencies-sha256';
+
+async function dependencyDigest(sandbox: Sandbox): Promise<string | null> {
+  const [manifest, lockfile] = await Promise.all([
+    sandbox.readFileToBuffer({
+      path: posix.join(STUDIO_WORKSPACE_ROOT, 'package.json'),
+    }),
+    sandbox.readFileToBuffer({
+      path: posix.join(STUDIO_WORKSPACE_ROOT, 'package-lock.json'),
+    }),
+  ]);
+  if (!manifest || !lockfile) return null;
+  return createHash('sha256')
+    .update(manifest)
+    .update('\0')
+    .update(lockfile)
+    .digest('hex');
+}
+
+async function installSandboxDependencies(
+  sandbox: Sandbox,
+): Promise<StudioCommandResult> {
+  const hasLockfile = await sandbox.readFileToBuffer({
+    path: posix.join(STUDIO_WORKSPACE_ROOT, 'package-lock.json'),
+  });
+  const result = await executeStudioCommand(sandbox, 'install', {
+    ...COMMANDS.install,
+    args: [
+      hasLockfile ? 'ci' : 'install',
+      '--ignore-scripts',
+      '--no-audit',
+      '--no-fund',
+    ],
+  });
+  const digest = result.exitCode === 0 ? await dependencyDigest(sandbox) : null;
+  if (digest)
+    await sandbox.writeFiles([
+      { path: DEPENDENCIES_DIGEST_PATH, content: digest },
+    ]);
+  return result;
+}
+
+async function ensureSandboxDependencies(
+  sandbox: Sandbox,
+): Promise<StudioCommandResult | null> {
+  await assertNoStudioSymlinks(sandbox);
+  await assertStudioPackage(sandbox);
+  const digest = await dependencyDigest(sandbox);
+  const installed = await sandbox.readFileToBuffer({
+    path: DEPENDENCIES_DIGEST_PATH,
+  });
+  if (digest && installed?.toString('utf8') === digest) {
+    const checks = await Promise.all(
+      ['next', 'tsc'].map((binary) =>
+        sandbox.runCommand(
+          'test',
+          [
+            '-x',
+            posix.join(STUDIO_WORKSPACE_ROOT, 'node_modules/.bin', binary),
+          ],
+          { timeoutMs: 5_000 },
+        ),
+      ),
+    );
+    if (checks.every((check) => check.exitCode === 0)) return null;
+  }
+  return installSandboxDependencies(sandbox);
+}
+
+export async function ensureStudioDependencies(
+  name: string,
+): Promise<StudioCommandResult | null> {
+  return ensureSandboxDependencies(await studioSandbox(name));
 }
 
 export async function studioProjectDigest(name: string): Promise<string> {
@@ -489,8 +622,25 @@ export async function ensureStudioPreview(input: {
   userId: string;
 }): Promise<string> {
   const { name } = input;
+  const rows = (await db()`
+    select artifact.storage_key, revision.content
+    from studio_projects project
+    join studio_artifacts artifact on artifact.project_id = project.id
+      and artifact.kind = 'code' and artifact.content_hash = ${input.codeRevision}
+    join studio_content_revisions revision on revision.project_id = project.id
+      and revision.id = ${input.contentRevisionId}
+    where project.id = ${input.projectId} and project.sandbox_name = ${name}
+    order by artifact.version desc limit 1
+  `) as { storage_key: string; content: Record<string, string> }[];
+  const snapshot = rows[0];
+  if (!snapshot?.storage_key)
+    throw new Error('O checkpoint solicitado para a prévia não existe.');
   const sandbox = await studioSandbox(name);
-  await syncStudioContentToSandbox(name);
+  await restoreStudioCheckpoint(sandbox, {
+    storageKey: snapshot.storage_key,
+    codeRevision: input.codeRevision,
+    content: snapshot.content,
+  });
   const token = await previewToken(sandbox, input.projectId);
   if (!(await previewResponds(sandbox, token))) {
     await sandbox

@@ -71,6 +71,8 @@ O navegador usa `useChat<StudioMessage>` com `WorkflowChatTransport`. Envia some
 
 `chat_messages.parts` conserva as partes tipadas. `convertToModelMessages` ocorre somente na fronteira do agente. O stream do run exige um operador ativo e um Workflow registrado; o admin continua global. O step final recompõe a mensagem do assistente a partir do stream durável, persiste metadata e registra recibos de uso.
 
+Escrita e fechamento do stream acontecem somente em steps. O stream do modelo fecha para permitir sua leitura canônica; a resposta HTTP continua aberta até o Workflow persistir mensagem e estado terminal. O mesmo contrato vale para retomada, evitando anunciar conclusão e pedir prévia enquanto o run ainda está ativo. Falha de persistência também chega ao cliente.
+
 ## Durabilidade e idempotência
 
 - Um projeto aceita um run ativo por vez.

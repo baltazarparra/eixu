@@ -1,6 +1,9 @@
 export const CLIENT_PROJECT_PREFIX = 'eixu-site-';
 export const LEGACY_CLIENT_PROJECT_PREFIX = 'eixu-premium-';
-export const RESET_BLOB_PREFIXES = ['tenants/', 'studio/'];
+export const RESET_BLOB_TARGETS = [
+  { access: 'public', prefix: 'tenants/' },
+  { access: 'private', prefix: 'studio/' },
+];
 export const RESET_MANIFEST_MAX_AGE_MS = 30 * 60 * 1000;
 
 export function resetConfirmation(environment) {
@@ -154,7 +157,7 @@ export function manifestScopeDigest(manifest, createHash) {
       ),
       ...manifest.blob.inventories.map(
         (item) =>
-          `blob:${item.prefix}:${item.count}:${item.bytes}:${item.digest}`,
+          `blob:${item.access}:${item.storeId}:${item.prefix}:${item.count}:${item.bytes}:${item.digest}`,
       ),
     ],
     createHash,

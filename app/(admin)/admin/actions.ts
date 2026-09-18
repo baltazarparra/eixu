@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { del } from '@vercel/blob';
+import { publicBlobOptions } from '@/lib/blob/stores.mjs';
 import { currentUser, signIn, signOut, type AdminUser } from '@/lib/auth';
 import { recordActivity } from '@/lib/admin/activity';
 import { db, transaction } from '@/lib/db';
@@ -168,12 +169,13 @@ export async function createTenantAction(
       on conflict (slug) do nothing returning id
     `) as { id: string }[];
     if (!rows.length) {
-      if (logoUrl) await del(logoUrl).catch(() => undefined);
+      if (logoUrl)
+        await del(logoUrl, publicBlobOptions()).catch(() => undefined);
       return 'Esse endereço já pertence a um cliente. Escolha outro ou abra o cliente existente.';
     }
     tenantId = rows[0].id;
   } catch {
-    if (logoUrl) await del(logoUrl).catch(() => undefined);
+    if (logoUrl) await del(logoUrl, publicBlobOptions()).catch(() => undefined);
     return 'Não foi possível criar o cliente. Seus dados continuam no formulário; tente novamente.';
   }
 

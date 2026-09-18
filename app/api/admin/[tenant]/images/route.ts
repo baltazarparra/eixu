@@ -1,4 +1,5 @@
 import { del } from '@vercel/blob';
+import { publicBlobOptions } from '@/lib/blob/stores.mjs';
 import { z } from 'zod';
 import { currentUser } from '@/lib/auth';
 import { recordActivity } from '@/lib/admin/activity';
@@ -192,7 +193,7 @@ export async function DELETE(
     );
 
   try {
-    await del(image.url);
+    await del(image.url, publicBlobOptions());
   } catch {
     return Response.json(
       {

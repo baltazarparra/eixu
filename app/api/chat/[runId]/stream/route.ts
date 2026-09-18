@@ -1,8 +1,8 @@
-import { createModelCallToUIChunkTransform } from '@ai-sdk/workflow';
 import { createUIMessageStreamResponse } from 'ai';
 import { getRun } from 'workflow/api';
 import { currentUser } from '@/lib/auth';
 import { studioRunByWorkflowId } from '@/lib/studio/runs';
+import { studioUIMessageStream } from '@/lib/studio/ui-stream';
 
 export const maxDuration = 800;
 
@@ -37,11 +37,7 @@ export async function GET(
         { status: 404 },
       );
     return createUIMessageStreamResponse({
-      stream: workflowRun
-        .getReadable({ startIndex: 0 })
-        .pipeThrough(
-          createModelCallToUIChunkTransform({ uiStartIndex: index }),
-        ),
+      stream: studioUIMessageStream(workflowRun, index),
       headers: {
         'x-workflow-run-id': workflowRunId,
         'x-studio-run-id': studioRun.id,

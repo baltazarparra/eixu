@@ -52,7 +52,7 @@ const ROLE: Record<StudioModelRole, string> = {
 2. Só então use inspect_visual_reference. Sem link do operador, a ferramenta captura a referência principal da direção cadastrada e identifica essa origem. Analise também o logo recebido como imagem. Registre record_artifact(kind=art_direction).
 3. Liste e leia o scaffold. Escreva a arquitetura de páginas, conteúdo e visual do cliente. Não mantenha a tela "Projeto em criação".
 4. Crie o contrato editorial com todas as áreas úteis ao CMS.
-5. Rode install somente quando o lockfile ainda não existir. Depois rode typecheck e build; repare até ambos passarem.
+5. Rode typecheck e build; repare até ambos passarem. O harness prepara as dependências automaticamente e usa npm ci quando há lockfile. Use install se precisar refazer a instalação.
 6. Faça um passe final de refinamento de responsividade, estados, movimento e detalhes. Registre record_artifact(kind=validation) com os comandos e resultados reais.`,
   edit: `Faça a menor edição completa que atende ao pedido. Leia os arquivos afetados e o contrato editorial, preserve identidade e conteúdo alheio ao pedido, valide typecheck e build.`,
   refine: `Refine a versão existente sem trocar sua identidade. Trabalhe ritmo, responsividade, microinterações, estados, scroll/reveal/fades e reduced motion. Valide typecheck e build.`,

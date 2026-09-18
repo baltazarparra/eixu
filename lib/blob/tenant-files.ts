@@ -1,5 +1,6 @@
 import { del, list, put } from '@vercel/blob';
 import { withTenantLock } from '@/lib/tenant-lock';
+import { privateBlobOptions, publicBlobOptions } from './stores.mjs';
 
 export type BlobDeps = { list?: typeof list; del?: typeof del };
 
@@ -63,7 +64,12 @@ export async function putNewTenantBlob(slug: string, file: File) {
   const blob = await put(
     `${tenantBlobPrefix(slug)}logo/${Date.now()}-${uploadFileName(file.name)}`,
     file,
-    { access: 'public', addRandomSuffix: false, contentType: file.type },
+    {
+      ...publicBlobOptions(),
+      access: 'public',
+      addRandomSuffix: false,
+      contentType: file.type,
+    },
   );
   return blob.url;
 }
@@ -76,7 +82,11 @@ export function putTenantBlob(
   options: Parameters<typeof put>[2],
 ) {
   return withTenantLock(tenantId, 'upload', (tenant) =>
-    put(`${tenantBlobPrefix(tenant.slug)}${path}`, body, options),
+    put(`${tenantBlobPrefix(tenant.slug)}${path}`, body, {
+      ...options,
+      ...publicBlobOptions(),
+      access: 'public',
+    }),
   );
 }
 
@@ -91,11 +101,11 @@ export function putTenantBlobs(tenantId: string, files: TenantBlobFile[]) {
   return withTenantLock(tenantId, 'upload', async (tenant) => {
     const results = await Promise.allSettled(
       files.map((file) =>
-        put(
-          `${tenantBlobPrefix(tenant.slug)}${file.path}`,
-          file.body,
-          file.options,
-        ),
+        put(`${tenantBlobPrefix(tenant.slug)}${file.path}`, file.body, {
+          ...file.options,
+          ...publicBlobOptions(),
+          access: 'public',
+        }),
       ),
     );
     return results.map((result) => {
@@ -112,18 +122,19 @@ export function putTenantBlobs(tenantId: string, files: TenantBlobFile[]) {
  */
 async function deleteBlobPrefix(
   prefix: string,
+  options: { token: string },
   deps: BlobDeps = {},
 ): Promise<{ deleted: number }> {
   const listBlobs = deps.list ?? list;
   const delBlobs = deps.del ?? del;
   let deleted = 0;
   for (;;) {
-    const page = await listBlobs({ prefix, limit: 1000 });
+    const page = await listBlobs({ ...options, prefix, limit: 1000 });
     const urls = page.blobs.map((blob) => blob.url);
     if (!urls.length) break;
     for (let index = 0; index < urls.length; index += BATCH) {
       const batch = urls.slice(index, index + BATCH);
-      await delBlobs(batch);
+      await delBlobs(batch, options);
       deleted += batch.length;
     }
   }
@@ -131,7 +142,7 @@ async function deleteBlobPrefix(
 }
 
 export function deleteTenantBlobs(slug: string, deps: BlobDeps = {}) {
-  return deleteBlobPrefix(tenantBlobPrefix(slug), deps);
+  return deleteBlobPrefix(tenantBlobPrefix(slug), publicBlobOptions(), deps);
 }
 
 /** Checkpoints, referências visuais e artefatos privados usam o ID do projeto. */
@@ -139,5 +150,9 @@ export function deleteStudioProjectBlobs(
   projectId: string,
   deps: BlobDeps = {},
 ) {
-  return deleteBlobPrefix(studioProjectBlobPrefix(projectId), deps);
+  return deleteBlobPrefix(
+    studioProjectBlobPrefix(projectId),
+    privateBlobOptions(),
+    deps,
+  );
 }
