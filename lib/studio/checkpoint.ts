@@ -8,7 +8,10 @@ import {
 } from './editor';
 import { nextStudioEvent } from './runs';
 import { withStudioToolLease } from './tool-lease';
-import { STUDIO_PROTECTED_FILES, studioScaffoldContent } from './scaffold';
+import {
+  STUDIO_PROTECTED_FILES,
+  isStudioProtectedFileContent,
+} from './scaffold';
 
 type Gate = { command: 'typecheck' | 'build'; exitCode: number };
 
@@ -189,13 +192,13 @@ export async function checkpointStudioProject(input: {
           'project.json não corresponde ao tenant e ao domínio autorizados.',
         );
       for (const path of STUDIO_PROTECTED_FILES) {
-        const expected = binding
-          ? studioScaffoldContent(path, binding.slug)
-          : null;
         const actual = await readStudioFile(input.sandboxName, path).catch(
           () => null,
         );
-        if (!expected || actual !== expected)
+        if (
+          !binding ||
+          !isStudioProtectedFileContent(path, actual, binding.slug)
+        )
           throw new Error(`O arquivo reservado ${path} foi alterado.`);
       }
       const contract = parseStudioEditorContract(JSON.parse(schemaText));

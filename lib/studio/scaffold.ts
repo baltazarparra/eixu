@@ -1,3 +1,7 @@
+// Checkpoints antigos são imutáveis: continue aceitando somente a configuração
+// exata que a plataforma gerava antes de habilitar imagens remotas.
+export const STUDIO_LEGACY_NEXT_CONFIG = `import type { NextConfig } from 'next';\n\nconst config: NextConfig = {\n  output: 'standalone',\n};\n\nexport default config;\n`;
+
 export const STUDIO_SCAFFOLD_FILES: ReadonlyArray<{
   path: string;
   content: string;
@@ -67,7 +71,24 @@ export const STUDIO_SCAFFOLD_FILES: ReadonlyArray<{
   },
   {
     path: 'next.config.ts',
-    content: `import type { NextConfig } from 'next';\n\nconst config: NextConfig = {\n  output: 'standalone',\n};\n\nexport default config;\n`,
+    content: `import type { NextConfig } from 'next';
+
+const config: NextConfig = {
+  output: 'standalone',
+  images: {
+    remotePatterns: [{
+      protocol: 'https',
+      hostname: '*.public.blob.vercel-storage.com',
+      port: '',
+      pathname: '/tenants/__EIXU_TENANT__/**',
+      search: '',
+    }],
+    maximumRedirects: 0,
+  },
+};
+
+export default config;
+`,
   },
   {
     path: '.gitignore',
@@ -249,4 +270,16 @@ export function studioScaffoldContent(
     (candidate) => candidate.path === path,
   );
   return file ? file.content.replaceAll('__EIXU_TENANT__', slug) : null;
+}
+
+export function isStudioProtectedFileContent(
+  path: string,
+  content: string | null,
+  slug: string,
+): boolean {
+  const expected = studioScaffoldContent(path, slug);
+  return (
+    (expected !== null && content === expected) ||
+    (path === 'next.config.ts' && content === STUDIO_LEGACY_NEXT_CONFIG)
+  );
 }

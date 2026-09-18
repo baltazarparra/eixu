@@ -23,6 +23,9 @@ export function studioSandboxFixture({
   corruptArchive = false,
   checkFailure,
   activeOperation,
+  previewStatus = 200,
+  previewAuthorized = true,
+  previewContentType = 'text/html; charset=utf-8',
 } = {}) {
   const sources = Object.fromEntries(
     STUDIO_SCAFFOLD_FILES.map((file) => [
@@ -180,10 +183,24 @@ export function studioSandboxFixture({
         }
         return result('ok');
       }
-      if (input.cmd === 'curl')
-        return serverRunning
-          ? result('HTTP/1.1 200 OK\r\nx-eixu-preview-gate: authorized\r\n')
-          : result('', 7);
+      if (input.cmd === 'curl') {
+        if (!serverRunning) return result('', 7);
+        // O proxy troca query por cookie antes de renderizar o documento: esse
+        // redirect funciona mesmo quando a página real tem erro de execução.
+        const status = input.args.at(-1).includes('?__eixu_preview=')
+          ? 307
+          : previewStatus;
+        const authorized =
+          input.args.at(-1).includes('?__eixu_preview=') ||
+          (previewAuthorized &&
+            input.args.some((arg) =>
+              arg.startsWith('Cookie: __eixu_preview='),
+            ));
+        return result(
+          `HTTP/1.1 ${status}\r\ncontent-type: ${previewContentType}\r\n${authorized ? 'x-eixu-preview-gate: authorized\r\n' : ''}`,
+          status >= 400 ? 22 : 0,
+        );
+      }
       throw new Error(`Comando inesperado no fixture: ${input.cmd}`);
     },
   };

@@ -70,6 +70,8 @@ O projeto começa em um scaffold mínimo com Next.js, TypeScript, conteúdo vers
 
 O Sandbox usa egress restrito e não recebe credenciais administrativas. O manifesto fixa Next.js, React, TypeScript e os scripts de build; a primeira versão não aceita dependências adicionais. A instalação usa `--ignore-scripts`. Seu estado é reconstruível: o código validado é compactado e salvo em Blob privado com revisão SHA-256. A coluna `draft_code_revision` aponta ao checkpoint atual; restaurar seleciona exatamente esse artefato.
 
+Novos scaffolds permitem `next/image` somente com HTTPS, sem query ou porta customizada, no Blob público sob `tenants/{slug}/`, sem seguir redirects da imagem. Checkpoints antigos preservam a configuração original exata, que continua aceita pelo gate de arquivos protegidos; neles, imagens remotas usam `unoptimized` ou `img`. A plataforma não reescreve arquivos de um checkpoint ao restaurar ou publicar.
+
 A imagem universal pode começar em `/vercel`, sem `/vercel/sandbox`. A plataforma cria a raiz e diretórios aninhados recursivamente, inclusive na materialização de releases. Cada recuperação do Sandbox confere a presença dos arquivos protegidos: inicialização interrompida é retomada mesmo quando a VM já existe. Sem checkpoint, o bootstrap completa apenas arquivos ausentes, preservando edições existentes; com checkpoint, restaura a revisão canônica. Não dependemos de `onCreate`, pois o SDK não repete esse callback quando a inicialização falha depois de criar a VM.
 
 Restauração verifica o SHA-256 antes de extrair o checkpoint e executa `npm ci` quando o lockfile existe. A prontidão das dependências exige o digest de manifesto/lockfile e os executáveis Next.js/TypeScript; a presença do lockfile sozinha não basta. A primeira instalação gera o lockfile com `npm install`.
@@ -79,6 +81,8 @@ Imagens públicas em `tenants/` usam `BLOB_READ_WRITE_TOKEN`. Checkpoints e scre
 ## Preview
 
 O Sandbox inicia o servidor do projeto com um token aleatório de alta entropia. O `proxy.ts` protegido exige o token na primeira navegação e o troca por cookie HTTP-only, Secure, SameSite=None e Partitioned.
+
+A prontidão consulta a página com o cookie e exige HTTP 200, HTML e o cabeçalho de autorização. O redirect que entrega o cookie não comprova renderização: uma página com erro 500 não pode criar uma sessão de prévia.
 
 Durante um run, a rota abre o workspace daquele run com o servidor de desenvolvimento e HMR. Escritas de arquivo aparecem na prévia sem esperar o checkpoint. Um lease de comando pausa o servidor durante typecheck/build e o reinicia depois, evitando corrida entre compilação e leitura. Essa prévia de trabalho é transitória, autenticada e nunca serve como fonte de release.
 
