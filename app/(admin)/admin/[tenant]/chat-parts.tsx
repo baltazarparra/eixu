@@ -3,7 +3,6 @@
 import { getToolName, isToolUIPart, type UIMessage } from 'ai';
 import { useEffect, useState } from 'react';
 import { Check, Loader2, X } from 'lucide-react';
-import { describeTool } from '@/lib/generation/labels';
 import { useAdminSession } from '@/components/admin/session';
 
 type ToolPart = {
@@ -17,11 +16,62 @@ type ToolPart = {
 
 /** Junta chamadas repetidas de consulta numa linha só, para a lista não virar ruído. */
 const REPEATABLE = new Set([
-  'describe_block',
-  'list_state',
-  'get_page',
-  'list_images',
+  'list_project_files',
+  'read_project_file',
+  'read_project_context',
 ]);
+
+const TOOL_LABELS: Record<string, { active: string; done: string }> = {
+  read_project_context: {
+    active: 'Lendo os dados, a marca e os ativos do cliente',
+    done: 'Dados, marca e ativos analisados',
+  },
+  read_official_site: {
+    active: 'Consultando o site oficial',
+    done: 'Site oficial consultado',
+  },
+  inspect_visual_reference: {
+    active: 'Analisando a referência visual em desktop e celular',
+    done: 'Referência visual analisada',
+  },
+  list_project_files: {
+    active: 'Mapeando os arquivos do projeto',
+    done: 'Arquivos do projeto mapeados',
+  },
+  read_project_file: {
+    active: 'Lendo um arquivo do projeto',
+    done: 'Arquivo do projeto lido',
+  },
+  write_project_file: {
+    active: 'Escrevendo o projeto',
+    done: 'Projeto atualizado',
+  },
+  write_content_contract: {
+    active: 'Organizando o conteúdo editável',
+    done: 'Conteúdo editável organizado',
+  },
+  generate_project_image: {
+    active: 'Criando uma imagem para o projeto',
+    done: 'Imagem criada e salva no acervo',
+  },
+  run_project_check: {
+    active: 'Validando o projeto',
+    done: 'Validação executada',
+  },
+  record_artifact: {
+    active: 'Registrando uma decisão do projeto',
+    done: 'Decisão registrada',
+  },
+};
+
+function describeTool(name: string, state: string): string {
+  const labels = TOOL_LABELS[name];
+  if (!labels)
+    return state === 'output-available'
+      ? 'Etapa concluída'
+      : 'Trabalhando no projeto';
+  return state === 'output-available' ? labels.done : labels.active;
+}
 
 function collapse(parts: ToolPart[]) {
   const out: {
@@ -44,7 +94,7 @@ function collapse(parts: ToolPart[]) {
     const label =
       raw.state === 'output-error'
         ? (raw.errorText ?? `Tentativa recusada: ${name}`)
-        : describeTool(name, raw.input, raw.output, raw.state ?? '');
+        : describeTool(name, raw.state ?? '');
     const last = out[out.length - 1];
     if (
       last &&
@@ -189,12 +239,7 @@ export function ChatActivity({
       : undefined;
   const activity =
     pending && isToolUIPart(pending)
-      ? describeTool(
-          getToolName(pending),
-          pending.input,
-          undefined,
-          pending.state,
-        )
+      ? describeTool(getToolName(pending), pending.state)
       : last?.role === 'assistant' && last.parts.some(isToolUIPart)
         ? 'Preparando a resposta'
         : last?.role === 'assistant' &&
@@ -248,6 +293,8 @@ export function Bubble({
 /** Erro do gateway em linguagem de gente. */
 export function chatErrorMessage(message: string): string {
   return /rate.?limit|429|free tier|not have access/i.test(message)
-    ? 'O AI Gateway recusou a chamada. Verifique créditos e o modelo em EIXU_MODEL.'
-    : message;
+    ? 'O AI Gateway recusou a chamada. Confira os créditos e tente novamente.'
+    : /Failed to fetch chat: 409/i.test(message)
+      ? 'Já existe um trabalho em andamento neste projeto.'
+      : message;
 }

@@ -1,47 +1,48 @@
 import { db } from '@/lib/db';
 import { defaultPeriod, periodSchema } from '@/lib/admin/traffic';
-import type { UsageKind } from '@/lib/ai/usage-ledger';
+
+export type UsageKind =
+  | 'assistant'
+  | 'batch'
+  | 'context'
+  | 'art_direction'
+  | 'build'
+  | 'edit'
+  | 'refine'
+  | 'critic'
+  | 'diagnostic'
+  | 'image'
+  | 'publish'
+  | 'sandbox';
 
 export const USAGE_LABELS: Record<UsageKind, string> = {
-  conversa: 'Conversa',
-  geracao: 'Geração do site',
-  imagem: 'Geração de imagem',
-  logo: 'Geração de logo',
-  'critica-imagem': 'Análise de imagem',
-  'critica-logo': 'Análise de logo',
-  'critica-visual': 'Revisão visual',
-  referencia: 'Leitura de referência',
-  'site-atual': 'Leitura do site atual',
-  'leitura-logo': 'Leitura de logo',
-  avatar: 'Leitura de avatar',
-  desenvolvimento: 'Desenvolvimento',
-  'ia-runtime': 'IA no site',
-  'servico-externo': 'Serviço externo',
+  assistant: 'Conversa',
+  batch: 'Classificação',
+  context: 'Análise de contexto',
+  art_direction: 'Direção de arte',
+  build: 'Construção',
+  edit: 'Edição',
+  refine: 'Refinamento',
+  critic: 'Crítica visual',
+  diagnostic: 'Diagnóstico',
+  image: 'Imagem',
+  publish: 'Publicação',
+  sandbox: 'Sandbox',
 };
 
 export const SOURCE_LABELS: Record<string, string> = {
-  gateway: 'Gerador EIXU',
+  gateway: 'AI Gateway',
   codex: 'Codex',
   claude: 'Claude',
   external: 'Serviço externo',
 };
 export const LIFECYCLE_LABELS: Record<string, string> = {
-  generator: 'Gerador',
-  converting: 'Conversão',
-  premium: 'Premium',
+  studio: 'Studio',
   unknown: 'Fase não registrada',
 };
 
-/** Etapa da geração escrita como o operador lê no painel, não como no banco. */
-const PHASE_LABELS: Record<string, string> = {
-  briefing: 'briefing',
-  cenas: 'cenas',
-  composicao: 'composição',
-  revisao: 'revisão',
-};
-
 export function phaseLabel(phase: string | null): string | null {
-  return phase ? (PHASE_LABELS[phase] ?? phase) : null;
+  return phase;
 }
 
 /** Nome da operação: a etapa distingue as fases de uma mesma geração. */
@@ -206,8 +207,8 @@ export async function usageHistory(
           and ($3::date is null or created_at < (($3::date + 1)::timestamp at time zone 'America/Sao_Paulo'))
       ), grouped as (
         select operation_id as "operationId", kind, model, phase, source, lifecycle,
-          run_id as "runId", min(created_at) as "createdAt", ${aggregates}
-        from filtered group by operation_id, kind, model, phase, run_id, source, lifecycle
+          studio_run_id as "runId", min(created_at) as "createdAt", ${aggregates}
+        from filtered group by operation_id, kind, model, phase, studio_run_id, source, lifecycle
       ), pagination as (
         select count(*)::int as "totalRows",
           greatest(1, ceil(count(*) / 20.0))::int as pages,

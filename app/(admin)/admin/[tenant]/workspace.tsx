@@ -1,36 +1,47 @@
 'use client';
 
-import dynamic from 'next/dynamic';
-import type { SiteState } from '@/lib/admin/state';
-import type { ChatMessage } from '@/lib/ai/usage';
+import type { StudioEditorState, StudioMessage } from '@/lib/studio/types';
+import { StudioWorkspace } from './studio-workspace';
 
 type Props = {
-  initial: SiteState;
-  history: ChatMessage[];
-  lastMessageId: number;
+  tenant: { slug: string; name: string; status: string };
+  initialMessages: StudioMessage[];
+  initialEditor: StudioEditorState | null;
+  initialRun: {
+    id: string;
+    workflowRunId: string | null;
+    status: 'queued' | 'running' | 'cancel_requested';
+  } | null;
+  initialProject: {
+    status:
+      | 'draft'
+      | 'building'
+      | 'ready'
+      | 'published'
+      | 'archived'
+      | 'failed';
+    canonicalHost: string;
+    draftCodeRevision: string | null;
+    dirty: boolean;
+  } | null;
+  initialRelease: {
+    id: string;
+    status:
+      | 'preparing'
+      | 'validating'
+      | 'ready'
+      | 'active'
+      | 'failed'
+      | 'rolled_back';
+    url: string | null;
+    error: string | null;
+  } | null;
+  rollbackCandidate: { id: string; activatedAt: string | null } | null;
+  images: { seq: number; url: string; alt: string | null }[];
   imageRequest?: string;
 };
 
-const GeneratorWorkspace = dynamic(() =>
-  import('./generator-workspace').then((module) => module.GeneratorWorkspace),
-);
-const PremiumCms = dynamic(() =>
-  import('./premium-cms').then((module) => module.PremiumCms),
-);
-const PremiumConversionWorkspace = dynamic(() =>
-  import('./premium-conversion-workspace').then(
-    (module) => module.PremiumConversionWorkspace,
-  ),
-);
-
-/** Carrega somente o editor que pode escrever no runtime atual do tenant. */
+/** Uma única jornada: conversa, prévia e conteúdo do mesmo projeto. */
 export function Workspace(props: Props) {
-  if (
-    props.initial.premium.maintenanceMode === 'premium' &&
-    props.initial.premium.publicRuntime === 'premium'
-  )
-    return <PremiumCms initial={props.initial} />;
-  if (props.initial.premium.maintenanceMode === 'converting')
-    return <PremiumConversionWorkspace initial={props.initial} />;
-  return <GeneratorWorkspace {...props} />;
+  return <StudioWorkspace {...props} />;
 }

@@ -24,13 +24,15 @@
   },
   "ignorePatterns": [
     ".next/**",
-    ".vinext/**",
+    ".claude/**",
+    ".ds-sync/**",
+    "ds-bundle/**",
+    "app/.well-known/workflow/**",
     "out/**",
     "build/**",
     "dist/**",
     "coverage/**",
-    "next-env.d.ts",
-    "scripts/premium/template/**"
+    "next-env.d.ts"
   ],
   "rules": {
     "no-array-constructor": "error",

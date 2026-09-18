@@ -1,22 +1,21 @@
 import { z } from 'zod';
-import { after } from 'next/server';
 import { currentUser } from '@/lib/auth';
 import { recordActivity } from '@/lib/admin/activity';
 import { db } from '@/lib/db';
-import { getTenantBySlug } from '@/lib/tenant-queries';
-import { intakeSchema, intakeWriteSchema } from '@/lib/tenant-intake';
+import { getTenantBySlug, setBrandLogo } from '@/lib/tenant-queries';
+import { intakeWriteSchema } from '@/lib/tenant-intake';
 import { contactsSchema, primaryWhatsapp } from '@/lib/tenant-contacts';
 import { tenantDetailsSchema } from '@/lib/admin/tenant-input';
-import { vibeOf, vibeSchema } from '@/lib/design/vibes';
-import { canApplyLogo } from '@/lib/images/logo-access';
-import { applyBrandLogo, applyBrandLogoDark } from '@/lib/images/logo-apply';
-import { normalizeSocialUrl, parseSocialRecord } from '@/lib/social-profile';
 import {
-  clearSocialProfile,
-  markSocialReading,
-  syncSocialProfile,
-} from '@/lib/ai/social';
-import { activeRun } from '@/lib/generation/runs';
+  studioDirectionOf,
+  studioDirectionSchema,
+} from '@/lib/studio/directions';
+import { tenantBlobPrefix } from '@/lib/blob/tenant-files';
+import { sitesWriteGuard } from '@/lib/sites-maintenance';
+import {
+  parseBoundedPublicJson,
+  PublicInputTooLargeError,
+} from '@/lib/public-input.mjs';
 
 const patch = z
   .object({
@@ -24,150 +23,117 @@ const patch = z
     contacts: contactsSchema.optional(),
     contactEmail: tenantDetailsSchema.shape.contactEmail.nullable().optional(),
     logoUrl: z.url().nullable().optional(),
-    /** Versão do logo para superfície escura; null remove a escolha. */
-    logoDarkUrl: z.url().nullable().optional(),
     intake: intakeWriteSchema.optional(),
-    vibe: vibeSchema.optional(),
+    direction: studioDirectionSchema.optional(),
   })
+  .strict()
   .refine(
     (value) => Object.keys(value).length > 0,
     'Informe os dados que deseja alterar.',
   );
 
-/** Ajusta dados do cliente. O logo entra em brand.logoUrl e a nav e o rodapé passam a usá-lo. */
+function belongsToTenant(slug: string, url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.protocol === 'https:' &&
+      parsed.pathname.includes(`/${tenantBlobPrefix(slug)}`)
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ tenant: string }> },
 ) {
-  const user = await currentUser();
-  if (!user) return new Response('Não autorizado', { status: 401 });
+  const operator = await currentUser();
+  if (!operator) return new Response('Não autorizado', { status: 401 });
+  const maintenance = await sitesWriteGuard();
+  if (maintenance) return maintenance;
   const { tenant: slug } = await params;
   const tenant = await getTenantBySlug(slug);
   if (!tenant) return new Response('Cliente não encontrado', { status: 404 });
 
-  const parsed = patch.safeParse(await request.json().catch(() => null));
+  let body: unknown;
+  try {
+    body = await parseBoundedPublicJson(request, 128_000);
+  } catch (error) {
+    return Response.json(
+      { error: 'Dados inválidos.' },
+      { status: error instanceof PublicInputTooLargeError ? 413 : 400 },
+    );
+  }
+  const parsed = patch.safeParse(body);
   if (!parsed.success)
     return Response.json(
-      { error: parsed.error.issues[0]?.message },
+      { error: parsed.error.issues[0]?.message ?? 'Dados inválidos.' },
       { status: 400 },
     );
   const input = parsed.data;
-  const nameChanged = input.name !== undefined && input.name !== tenant.name;
-
-  // O mesmo portão vale para o logo principal e para a versão de fundo
-  // escuro: logo da biblioteca deste cliente ou upload no caminho dele.
-  for (const url of [input.logoUrl, input.logoDarkUrl]) {
-    if (!url) continue;
-    const images =
-      (await db()`select kind, status from images where tenant_id = ${tenant.id} and url = ${url} limit 1`) as {
-        kind: string;
-        status: string;
-      }[];
-    if (!canApplyLogo(tenant.slug, url, images[0]))
+  if (input.logoUrl) {
+    const known = (await db()`
+      select 1 from images
+      where tenant_id = ${tenant.id} and url = ${input.logoUrl}
+      limit 1
+    `) as unknown[];
+    if (!known.length && !belongsToTenant(tenant.slug, input.logoUrl))
       return Response.json(
-        {
-          error:
-            'Escolha um logo disponível deste cliente ou envie o arquivo em Dados.',
-        },
+        { error: 'Escolha um logo enviado para este cliente.' },
         { status: 409 },
       );
   }
 
-  const previousIntake = intakeSchema.safeParse(tenant.brief.intake).data;
-  const previousSocial = previousIntake?.socialUrl;
-  const vibeChanged =
-    input.vibe !== undefined && input.vibe !== vibeOf(tenant.brand);
-  const storyChanged =
-    input.intake !== undefined &&
-    input.intake.story !== (previousIntake?.story ?? '');
-  const referenceChanged =
-    input.intake !== undefined &&
-    JSON.stringify(input.intake.references) !==
-      JSON.stringify(previousIntake?.references ?? []);
-  const currentSiteChanged =
-    input.intake !== undefined &&
-    input.intake.currentSiteUrl !== (previousIntake?.currentSiteUrl ?? '');
-  const directionChanged =
-    nameChanged ||
-    vibeChanged ||
-    storyChanged ||
-    referenceChanged ||
-    currentSiteChanged;
-  if (directionChanged && (await activeRun(tenant.id)))
-    return Response.json(
-      {
-        error:
-          'Pause a geração em andamento antes de alterar o nome, a história, o site atual, a referência ou a direção visual.',
-      },
-      { status: 409 },
-    );
-
-  // brief.evidence sobrevive à troca de direção: são fatos confirmados pelo
-  // operador, no cadastro ou pelo chat, e apagá-los transformava um salvamento
-  // em Dados em bloqueio de publicação por prova ausente. O resto do briefing
-  // derivado continua sendo refeito.
-  // whatsapp continua sendo coluna própria, derivada da lista de contatos:
-  // /go/wa, botão flutuante e JSON-LD seguem lendo um número só.
   const contacts = input.contacts;
+  const currentDirection = studioDirectionOf(tenant.brand);
   await db()`
     update tenants set
-      name = case when ${input.name !== undefined} then ${input.name ?? null} else name end,
-      contacts = case when ${contacts !== undefined} then ${JSON.stringify(contacts ?? {})}::jsonb else contacts end,
-      whatsapp = case when ${contacts !== undefined} then ${contacts ? primaryWhatsapp(contacts) : null} else whatsapp end,
-      contact_email = case when ${input.contactEmail !== undefined} then ${input.contactEmail ?? null} else contact_email end,
-      brief = (case when ${nameChanged || storyChanged || referenceChanged || currentSiteChanged}
-                    then (case when ${nameChanged || currentSiteChanged || storyChanged} then brief - 'currentSite' else brief end)
-                      - 'audience' - 'offer' - 'goal' - 'personality' - 'constraints' - 'gaps' - 'pagePlan' - 'imageScenes'
-                    else brief end)
-              || (case when ${input.intake !== undefined}
-                       then jsonb_build_object('intake', ${JSON.stringify(input.intake ?? {})}::jsonb)
-                       else '{}'::jsonb end),
-      brand = case when ${vibeChanged}
-                   then (brand - 'design') || jsonb_build_object('vibe', ${input.vibe ?? null}::text)
-                   else brand end,
+      name = case
+        when ${input.name !== undefined} then ${input.name ?? null}
+        else name
+      end,
+      contacts = case
+        when ${contacts !== undefined}
+          then ${JSON.stringify(contacts ?? {})}::jsonb
+        else contacts
+      end,
+      whatsapp = case
+        when ${contacts !== undefined}
+          then ${contacts ? primaryWhatsapp(contacts) : null}
+        else whatsapp
+      end,
+      contact_email = case
+        when ${input.contactEmail !== undefined}
+          then ${input.contactEmail ?? null}
+        else contact_email
+      end,
+      brief = brief || case
+        when ${input.intake !== undefined}
+          then jsonb_build_object('intake', ${JSON.stringify(input.intake ?? {})}::jsonb)
+        else '{}'::jsonb
+      end,
+      brand = case
+        when ${input.direction !== undefined}
+          then (brand - 'vibe') || jsonb_build_object('direction', ${input.direction ?? currentDirection}::text)
+        else brand
+      end,
       updated_at = now()
     where id = ${tenant.id}
   `;
-  // O logo principal agenda medição e versão escura; a versão escura escolhida
-  // à mão só troca o campo. As duas podem vir no mesmo pedido, nessa ordem.
+
   let brand = tenant.brand;
   if (input.logoUrl !== undefined)
-    brand = await applyBrandLogo(tenant, input.logoUrl);
-  if (input.logoDarkUrl !== undefined)
-    brand = await applyBrandLogoDark({ ...tenant, brand }, input.logoDarkUrl);
+    brand = await setBrandLogo(tenant.id, input.logoUrl);
 
-  // O perfil vive em brief.social, fora de brief.intake, porque o update acima
-  // substitui o intake inteiro. A leitura corre depois da resposta.
-  let social = parseSocialRecord(tenant.brief.social);
-  const nextSocial = input.intake?.socialUrl;
-  if (nextSocial !== undefined && nextSocial !== (previousSocial ?? '')) {
-    const normalized = nextSocial ? normalizeSocialUrl(nextSocial) : null;
-    if (normalized) {
-      const reading = await markSocialReading(tenant.id, normalized);
-      social = reading;
-      if (reading)
-        after(() =>
-          syncSocialProfile({ id: tenant.id, slug: tenant.slug }, reading),
-        );
-    } else {
-      social = null;
-      await clearSocialProfile(tenant.id);
-    }
-  }
   await recordActivity({
-    actor: user,
-    actorType: 'user',
+    actor: operator,
     tenant,
     action: 'tenant.settings.update',
+    summary: `${operator.name} atualizou os dados de ${tenant.name}`,
     resourceType: 'tenant',
     resourceId: tenant.id,
-    summary: `${user.name} atualizou os dados de ${tenant.name}`,
     detail: { fields: Object.keys(input) },
   });
-  return Response.json({
-    ok: true,
-    brand,
-    social,
-    regenerationRequired: directionChanged,
-  });
+  return Response.json({ ok: true, brand });
 }

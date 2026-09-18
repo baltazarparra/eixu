@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import sharp from 'sharp';
 import { del } from '@vercel/blob';
+import { publicBlobOptions } from '@/lib/blob/stores.mjs';
 import { putTenantBlob, UploadError } from '@/lib/blob/tenant-files';
 import { insertImage } from '@/lib/images/queries';
 import {
@@ -78,7 +79,7 @@ export async function uploadLibraryImage(tenantId: string, file: File) {
       height,
     });
   } catch (error) {
-    await del(blob.url).catch(() => undefined);
+    await del(blob.url, publicBlobOptions()).catch(() => undefined);
     throw error;
   }
 }

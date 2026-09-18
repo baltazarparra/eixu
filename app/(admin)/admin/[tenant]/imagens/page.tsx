@@ -1,10 +1,7 @@
-import { logoStudioSummary } from '@/lib/images/logo-studio-state';
-import { adminTenant } from '@/lib/admin/queries';
 import { notFound, redirect } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
-import { getGuide, listImages } from '@/lib/images/queries';
-import { imageUsage } from '@/lib/images/usage';
-import { listPages } from '@/lib/tenant-queries';
+import { adminTenant } from '@/lib/admin/queries';
+import { listImages } from '@/lib/images/queries';
 import { ImagesLibrary } from './images-library';
 
 export const dynamic = 'force-dynamic';
@@ -21,24 +18,12 @@ export default async function ImagesPage({
     );
   const tenant = await adminTenant(slug);
   if (!tenant) notFound();
-
-  const [images, guide, pages] = await Promise.all([
-    listImages(tenant.id),
-    getGuide(tenant.id),
-    listPages(tenant.id),
-  ]);
-
   return (
     <ImagesLibrary
-      key={tenant.slug}
       tenant={{ slug: tenant.slug, name: tenant.name }}
       initial={{
-        guide,
-        images,
+        images: await listImages(tenant.id),
         logoUrl: tenant.brand.logoUrl ?? null,
-        logoDarkUrl: tenant.brand.logoDarkUrl ?? null,
-        logoStudioSummary: logoStudioSummary(tenant.brief, tenant.brand),
-        usage: imageUsage(tenant, pages, images),
       }}
     />
   );

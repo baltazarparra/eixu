@@ -268,8 +268,8 @@ export function UsageHistoryPanel({
             tokens
           </p>
           <p>
-            Inclui os recibos registrados antes e depois da conversão Premium,
-            independentemente do período abaixo.
+            Inclui todos os recibos disponíveis deste cliente, independentemente
+            do período abaixo.
           </p>
         </section>
       ) : null}
@@ -397,9 +397,7 @@ export function UsageHistoryPanel({
                   <div>
                     <dt>Origem / fase</dt>
                     <dd>
-                      {SOURCE_LABELS[row.source] ??
-                        row.source ??
-                        'Gerador EIXU'}{' '}
+                      {SOURCE_LABELS[row.source] ?? row.source ?? 'EIXU Studio'}{' '}
                       ·{' '}
                       {LIFECYCLE_LABELS[row.lifecycle] ?? 'Fase não registrada'}
                     </dd>

@@ -7,7 +7,6 @@ export type DeletableTenant = {
   slug: string;
   name: string;
   status: string;
-  maintenanceMode?: 'generator' | 'converting' | 'premium';
   pageCount: number;
   leadCount: number;
   imageCount?: number;
@@ -33,16 +32,12 @@ const plural = (count: number, one: string, many: string) =>
 /** O que some com a exclusão, para o operador ler antes de confirmar. */
 export function deletionImpact(tenant: DeletableTenant): string[] {
   const impact: string[] = [];
-  if (tenant.maintenanceMode && tenant.maintenanceMode !== 'generator')
-    impact.push(
-      'O domínio, o código e os releases Premium precisam ser tratados antes da exclusão dos dados centrais.',
-    );
   if (tenant.status === 'published')
     impact.push(
       `O site ${tenant.slug}.eixu.com.br sai do ar imediatamente e passa a responder 404.`,
     );
   impact.push(
-    `${plural(tenant.pageCount, 'página', 'páginas')} do rascunho e do snapshot publicado.`,
+    `${plural(tenant.pageCount, 'página', 'páginas')} do projeto e suas revisões.`,
   );
   impact.push(
     `${plural(tenant.leadCount, 'contato recebido', 'contatos recebidos')} por formulário, além dos eventos de tráfego e gastos lançados.`,
@@ -52,9 +47,7 @@ export function deletionImpact(tenant: DeletableTenant): string[] {
       ? 'Biblioteca de imagens, logo e arquivos enviados.'
       : `${plural(tenant.imageCount, 'imagem', 'imagens')} da biblioteca, o logo e os arquivos enviados.`,
   );
-  impact.push(
-    'Histórico das conversas, do estúdio de imagens e do consumo de IA.',
-  );
+  impact.push('Histórico das conversas, execuções, releases e consumo de IA.');
   impact.push(
     'Cartões vinculados permanecem no Kanban, mas deixam de apontar para este cliente.',
   );

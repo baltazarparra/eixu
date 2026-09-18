@@ -13,15 +13,10 @@ jspm_packages/
 
 # Builds and framework output
 .next/
-.vinext/
 out/
 dist/
 .output/
 .vercel/
-.wrangler/
-.vite/
-vite.config.js.timestamp-*
-vite.config.ts.timestamp-*
 
 # Tests and coverage
 coverage/
@@ -59,6 +54,7 @@ work/
 *.pem
 .vercel
 .env*
+!.env.example
 
 # Artefatos de teste local
 .playwright-mcp/
@@ -69,3 +65,5 @@ work/
 ds-bundle/
 .design-sync/sb-reference/
 .design-sync/learnings/
+/.swc
+.claude/worktrees/

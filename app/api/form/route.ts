@@ -1,7 +1,15 @@
 import { db } from '@/lib/db';
 import { checked, text } from '@/lib/form-data';
-import { getPage, getTenantBySlug } from '@/lib/tenant-queries';
-import { isTenantPublic } from '@/lib/sites/availability';
+import { publicTenantBySlug } from '@/lib/site-availability';
+import {
+  matchesTenantOrigin,
+  tenantRedirectUrl,
+} from '@/lib/public-origin.mjs';
+import {
+  parseBoundedPublicFormData,
+  parseBoundedPublicSource,
+  PublicInputTooLargeError,
+} from '@/lib/public-input.mjs';
 
 const RESERVED = new Set([
   'tenant',
@@ -23,41 +31,47 @@ export async function POST(request: Request) {
       { error: 'Envios desativados na prévia.' },
       { status: 409 },
     );
-  const form = await request.formData();
-  const origin = new URL(request.url).origin;
+  let form: FormData;
+  try {
+    form = await parseBoundedPublicFormData(request, 256_000);
+  } catch (error) {
+    return new Response(
+      error instanceof PublicInputTooLargeError
+        ? 'Formulário acima do limite.'
+        : 'Formulário inválido.',
+      { status: error instanceof PublicInputTooLargeError ? 413 : 400 },
+    );
+  }
   const slug = text(form, 'tenant');
-  const pagePath = text(form, 'page', '/');
+  const pagePath = text(form, 'page', '/').slice(0, 500);
   const redirectTo = text(form, 'redirect', '/obrigado');
 
-  // Em preview não há subdomínio, então o tenant viaja na query.
-  const carry = new URL(request.url).searchParams.get('__tenant') ?? '';
-  const target = (path: string) =>
-    carry
-      ? `${origin}${path}${path.includes('?') ? '&' : '?'}__tenant=${carry}`
-      : `${origin}${path}`;
+  const tenant = await publicTenantBySlug(slug);
+  if (!tenant) return new Response('Site indisponível.', { status: 404 });
+  const safeRedirect = tenantRedirectUrl(tenant.slug, redirectTo);
+  if (!safeRedirect) return new Response('Site indisponível.', { status: 404 });
+  const origin = request.headers.get('origin');
+  if (!matchesTenantOrigin(origin, tenant.slug, { allowMissing: true }))
+    return new Response('Origem inválida.', { status: 403 });
 
   // Campo-armadilha: preenchido significa robô.
   if (text(form, 'company_website')) {
-    return Response.redirect(target(redirectTo), 303);
+    return Response.redirect(safeRedirect, 303);
   }
-
-  const tenant = await getTenantBySlug(slug);
-  if (!isTenantPublic(tenant))
-    return new Response('Site indisponível.', { status: 404 });
 
   const fields: Record<string, string> = {};
   for (const [key, value] of form.entries()) {
-    if (!RESERVED.has(key) && typeof value === 'string') fields[key] = value;
+    if (
+      Object.keys(fields).length < 40 &&
+      key.length <= 64 &&
+      !RESERVED.has(key) &&
+      typeof value === 'string'
+    )
+      fields[key] = value.slice(0, 4_000);
   }
 
-  let source: Record<string, unknown> = {};
-  try {
-    source = JSON.parse(text(form, 'attribution', '{}'));
-  } catch {
-    source = {};
-  }
+  const source = parseBoundedPublicSource(text(form, 'attribution', '{}'));
 
-  const page = await getPage(tenant.id, pagePath.replace(/^\//, ''));
   const consent = {
     given: checked(form, 'consent'),
     whatsappOptIn: checked(form, 'whatsapp_optin'),
@@ -66,10 +80,10 @@ export async function POST(request: Request) {
   };
 
   await db()`
-    insert into leads (tenant_id, page_id, name, email, phone, fields, source, consent)
+    insert into leads (tenant_id, page_path, name, email, phone, fields, source, consent)
     values (
       ${tenant.id},
-      ${page?.id ?? null},
+      ${pagePath},
       ${fields.nome ?? fields.name ?? null},
       ${fields.email ?? null},
       ${fields.telefone ?? fields.phone ?? fields.whatsapp ?? null},
@@ -84,5 +98,5 @@ export async function POST(request: Request) {
     values (${tenant.id}, 'form_submit', ${pagePath}, ${JSON.stringify(source)}::jsonb)
   `;
 
-  return Response.redirect(target(redirectTo), 303);
+  return Response.redirect(safeRedirect, 303);
 }

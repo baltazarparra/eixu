@@ -2,12 +2,12 @@
 
 import { randomUUID } from 'node:crypto';
 import { redirect } from 'next/navigation';
-import { after } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { del } from '@vercel/blob';
+import { publicBlobOptions } from '@/lib/blob/stores.mjs';
 import { currentUser, signIn, signOut, type AdminUser } from '@/lib/auth';
 import { recordActivity } from '@/lib/admin/activity';
-import { db } from '@/lib/db';
+import { db, transaction } from '@/lib/db';
 import { text } from '@/lib/form-data';
 import {
   brandColorsFromForm,
@@ -15,7 +15,7 @@ import {
   intakeFromForm,
   tenantDetailsSchema,
   tenantSlugSchema,
-  vibeFromForm,
+  directionFromForm,
 } from '@/lib/admin/tenant-input';
 import { primaryWhatsapp } from '@/lib/tenant-contacts';
 import { spendSchema } from '@/lib/admin/traffic';
@@ -26,20 +26,26 @@ import {
 } from '@/lib/tenant-queries';
 import {
   UploadError,
+  deleteStudioProjectBlobs,
   deleteTenantBlobs,
   putNewTenantBlob,
 } from '@/lib/blob/tenant-files';
 import { TenantRemovedError, withTenantLock } from '@/lib/tenant-lock';
 import { confirmationAccepted } from '@/lib/admin/tenant-delete';
-import { normalizeSocialUrl } from '@/lib/social-profile';
-import { markSocialReading, syncSocialProfile } from '@/lib/ai/social';
-import { deriveLogoAssets } from '@/lib/images/logo-apply';
-import type { Brand } from '@/lib/types';
 import {
   folderNameSchema,
   optionalFolderIdSchema,
   parseFolderAssignments,
 } from '@/lib/admin/site-folders';
+import { sitesAreInMaintenance } from '@/lib/sites-maintenance';
+import {
+  archiveStudioVercelProject,
+  deleteStudioVercelProject,
+  restoreStudioVercelProject,
+} from '@/lib/studio/releases';
+
+const maintenanceMessage =
+  'A gestão de sites está em manutenção. O institucional e o Kanban continuam disponíveis.';
 
 async function guard(): Promise<AdminUser> {
   const user = await currentUser();
@@ -92,6 +98,7 @@ export async function createTenantAction(
   formData: FormData,
 ): Promise<string | null> {
   const actor = await guard();
+  if (await sitesAreInMaintenance()) return maintenanceMessage;
   const details = tenantDetailsSchema.safeParse(Object.fromEntries(formData));
   const slugResult = tenantSlugSchema.safeParse(text(formData, 'slug'));
   const intake = intakeFromForm(formData);
@@ -99,7 +106,7 @@ export async function createTenantAction(
   const paletteSource =
     text(formData, 'paletteSource') === 'operador' ? 'operador' : 'sugerida';
   const contacts = contactsFromForm(formData);
-  const vibe = vibeFromForm(formData);
+  const direction = directionFromForm(formData);
   const folderIdResult = optionalFolderIdSchema.safeParse(
     text(formData, 'folderId') || null,
   );
@@ -116,7 +123,7 @@ export async function createTenantAction(
     );
   if (!colors.success)
     return colors.error.issues[0]?.message ?? 'Confira as cores da marca.';
-  if (!vibe.success) return 'Escolha uma vibe para o site.';
+  if (!direction.success) return 'Escolha uma direção visual para o site.';
   if (!folderIdResult.success) return 'A pasta selecionada é inválida.';
   if (folderIdResult.data && !(await siteFolderExists(folderIdResult.data)))
     return 'Essa pasta não existe mais. Escolha outra pasta ou crie o site sem pasta.';
@@ -146,8 +153,8 @@ export async function createTenantAction(
     accentAlt: colors.data.secondary,
     highlight: colors.data.highlight,
     paletteSource,
-    vibe: vibe.data,
-    ...(logoUrl ? { logoUrl, logoRevision: randomUUID() } : {}),
+    direction: direction.data,
+    ...(logoUrl ? { logoUrl, assetRevision: randomUUID() } : {}),
   };
 
   let tenantId: string;
@@ -162,38 +169,16 @@ export async function createTenantAction(
       on conflict (slug) do nothing returning id
     `) as { id: string }[];
     if (!rows.length) {
-      if (logoUrl) await del(logoUrl).catch(() => undefined);
+      if (logoUrl)
+        await del(logoUrl, publicBlobOptions()).catch(() => undefined);
       return 'Esse endereço já pertence a um cliente. Escolha outro ou abra o cliente existente.';
     }
     tenantId = rows[0].id;
   } catch {
-    if (logoUrl) await del(logoUrl).catch(() => undefined);
+    if (logoUrl) await del(logoUrl, publicBlobOptions()).catch(() => undefined);
     return 'Não foi possível criar o cliente. Seus dados continuam no formulário; tente novamente.';
   }
 
-  // O logo do cadastro é medido e ganha a versão para fundo escuro depois da
-  // resposta, como a leitura social; uma falha não desfaz o cadastro.
-  if (logoUrl) {
-    const id = tenantId;
-    after(() =>
-      deriveLogoAssets({ id, slug, name, brand: brand as Brand }, logoUrl),
-    );
-  }
-
-  // O cadastro já existe: falhas da leitura social não podem apagar seu logo
-  // nem apresentar a criação como recusada. O operador pode reler no painel.
-  const social = normalizeSocialUrl(intake.data.socialUrl);
-  if (social) {
-    try {
-      const reading = await markSocialReading(tenantId, social);
-      if (reading)
-        after(() => syncSocialProfile({ id: tenantId, slug }, reading));
-    } catch {
-      console.error(
-        '[admin] Não foi possível iniciar a leitura social após o cadastro.',
-      );
-    }
-  }
   await recordActivity({
     actor,
     tenant: { id: tenantId, slug, name },
@@ -220,6 +205,8 @@ export async function createSiteFolderAction(
   formData: FormData,
 ): Promise<FolderActionResult> {
   const actor = await guard();
+  if (await sitesAreInMaintenance())
+    return { ok: false, message: maintenanceMessage };
   const name = folderNameSchema.safeParse(text(formData, 'name'));
   if (!name.success)
     return {
@@ -260,6 +247,8 @@ export async function renameSiteFolderAction(
   formData: FormData,
 ): Promise<FolderActionResult> {
   const actor = await guard();
+  if (await sitesAreInMaintenance())
+    return { ok: false, message: maintenanceMessage };
   const id = folderId(formData);
   const name = folderNameSchema.safeParse(text(formData, 'name'));
   if (!id.success || !id.data) return { ok: false, message: 'Pasta inválida.' };
@@ -315,6 +304,8 @@ export async function deleteSiteFolderAction(
   formData: FormData,
 ): Promise<FolderActionResult> {
   const actor = await guard();
+  if (await sitesAreInMaintenance())
+    return { ok: false, message: maintenanceMessage };
   const id = folderId(formData);
   if (!id.success || !id.data) return { ok: false, message: 'Pasta inválida.' };
   try {
@@ -356,6 +347,8 @@ export async function moveSitesToFolderAction(
   formData: FormData,
 ): Promise<MoveSitesResult> {
   const actor = await guard();
+  if (await sitesAreInMaintenance())
+    return { ok: false, message: maintenanceMessage, moved: 0 };
   const parsed = parseFolderAssignments(text(formData, 'assignments'));
   if (!parsed.success)
     return {
@@ -428,15 +421,14 @@ export type ArchiveTenantResult = {
   message: string;
 };
 
-/**
- * Arquivar só muda a disponibilidade pública. Rascunho, snapshot publicado,
- * arquivos e dados operacionais permanecem no tenant e na prévia autenticada.
- */
+/** Arquivar preserva projeto, conteúdo e releases e retira sua disponibilidade. */
 export async function setTenantArchivedAction(
   _prev: ArchiveTenantResult | null,
   formData: FormData,
 ): Promise<ArchiveTenantResult> {
   const actor = await guard();
+  if (await sitesAreInMaintenance())
+    return { ok: false, message: maintenanceMessage };
   const slugResult = tenantSlugSchema.safeParse(text(formData, 'slug'));
   if (!slugResult.success)
     return { ok: false, message: 'Endereço de cliente inválido.' };
@@ -445,36 +437,91 @@ export async function setTenantArchivedAction(
     return { ok: false, message: 'Ação de arquivamento inválida.' };
 
   try {
-    const rows = (await db()`
-      update tenants t
-      set status = case
-            when ${intent === 'archive'}::boolean then 'archived'
-            when exists (
-              select 1 from pages p
-              where p.tenant_id = t.id and p.published_blocks is not null
-            ) then 'published'
-            else 'draft'
-          end,
-          updated_at = now()
-      where t.slug = ${slugResult.data}
-        and (${intent === 'restore'}::boolean or t.maintenance_mode = 'generator')
-      returning t.id, t.name, t.status
+    const tenants = (await db()`
+      select id, name, status from tenants where slug = ${slugResult.data} limit 1
     `) as {
-      id?: string;
+      id: string;
       name: string;
       status: 'draft' | 'published' | 'archived';
     }[];
-    const changed = rows[0];
-    if (!changed) {
-      const current = await getTenantBySlug(slugResult.data);
-      if (current && current.maintenanceMode !== 'generator')
-        return {
-          ok: false,
-          message:
-            'Projetos Premium não podem ser arquivados por este controle. Publique uma alteração no projeto para desativar a experiência pública.',
-        };
-      return { ok: false, message: 'Cliente não encontrado.' };
-    }
+    const tenant = tenants[0];
+    if (!tenant) return { ok: false, message: 'Cliente não encontrado.' };
+    const changed = await transaction(async (connection) => {
+      const projects = await connection.query(
+        `select id, active_release_id, draft_code_revision
+         from studio_projects where tenant_id = $1 for update`,
+        [tenant.id],
+      );
+      const lockedTenant = await connection.query(
+        `select id, name from tenants where id = $1 for update`,
+        [tenant.id],
+      );
+      if (!lockedTenant.rows[0]) throw new Error('Cliente não encontrado.');
+      const project = projects.rows[0] as
+        | {
+            id: string;
+            active_release_id: string | null;
+            draft_code_revision: string | null;
+          }
+        | undefined;
+      if (project) {
+        const work = await connection.query(
+          `select
+             exists(
+               select 1 from studio_runs where project_id = $1
+               and status in ('queued', 'running', 'cancel_requested')
+             ) as active_run,
+             exists(
+               select 1 from studio_releases where project_id = $1
+               and status in ('preparing', 'validating', 'ready')
+             ) as active_release`,
+          [project.id],
+        );
+        if (work.rows[0]?.active_run || work.rows[0]?.active_release)
+          throw new Error(
+            'Há um turno ou publicação em andamento. Aguarde a conclusão antes de arquivar o cliente.',
+          );
+      }
+
+      if (intent === 'archive') await archiveStudioVercelProject(tenant.id);
+      else await restoreStudioVercelProject(tenant.id);
+
+      let nextStatus: 'draft' | 'published' | 'archived' = 'archived';
+      let projectStatus: 'draft' | 'ready' | 'published' | 'archived' =
+        'archived';
+      if (intent === 'restore') {
+        const active = project?.active_release_id
+          ? await connection.query(
+              `select 1 from studio_releases
+               where id = $1 and project_id = $2 and status = 'active'`,
+              [project.active_release_id, project.id],
+            )
+          : null;
+        if (active?.rows[0]) {
+          nextStatus = 'published';
+          projectStatus = 'published';
+        } else {
+          nextStatus = 'draft';
+          projectStatus = project?.draft_code_revision ? 'ready' : 'draft';
+        }
+      }
+      const updated = await connection.query(
+        `update tenants set status = $2, updated_at = now()
+         where id = $1 returning id, name, status`,
+        [tenant.id, nextStatus],
+      );
+      if (project)
+        await connection.query(
+          `update studio_projects set status = $2, updated_at = now()
+           where id = $1`,
+          [project.id, projectStatus],
+        );
+      return updated.rows[0] as {
+        id: string;
+        name: string;
+        status: 'draft' | 'published' | 'archived';
+      };
+    });
     await recordActivity({
       actor,
       tenant: { id: changed.id, slug: slugResult.data, name: changed.name },
@@ -498,13 +545,15 @@ export async function setTenantArchivedAction(
             ? `${changed.name} foi reativado com a última versão publicada.`
             : `${changed.name} voltou como rascunho.`,
     };
-  } catch {
+  } catch (error) {
     return {
       ok: false,
       message:
-        intent === 'archive'
-          ? 'Não foi possível arquivar o site. Tente novamente.'
-          : 'Não foi possível reativar o site. Tente novamente.',
+        error instanceof Error
+          ? error.message
+          : intent === 'archive'
+            ? 'Não foi possível arquivar o site. Tente novamente.'
+            : 'Não foi possível reativar o site. Tente novamente.',
     };
   }
 }
@@ -518,29 +567,19 @@ export async function deleteTenantAction(
   formData: FormData,
 ): Promise<DeleteTenantResult> {
   const actor = await guard();
+  if (await sitesAreInMaintenance())
+    return { ok: false, message: maintenanceMessage };
   const slugResult = tenantSlugSchema.safeParse(text(formData, 'slug'));
   if (!slugResult.success)
     return { ok: false, message: 'Endereço de cliente inválido.' };
   const tenant = await getTenantBySlug(slugResult.data);
   if (!tenant) return { ok: false, message: 'Cliente não encontrado.' };
-  if (tenant.maintenanceMode !== 'generator')
-    return {
-      ok: false,
-      message:
-        'A exclusão de um projeto Premium exige retirar o domínio e preservar seus releases antes de apagar os dados centrais.',
-    };
-  let stage: 'prepare' | 'files' | 'record' = 'prepare';
+  let stage: 'prepare' | 'vercel' | 'files' | 'record' = 'prepare';
   try {
     const result = await withTenantLock(
       tenant.id,
       'delete',
       async (locked, connection): Promise<DeleteTenantResult> => {
-        if (locked.maintenanceMode !== 'generator')
-          return {
-            ok: false,
-            message:
-              'A exclusão foi interrompida porque este projeto está em conversão ou já é Premium.',
-          };
         const counts = await countTenantData(locked.id);
         // Reconfere o estado depois de adquirir o lock: publicação e contatos
         // podem ter mudado desde a abertura do diálogo.
@@ -554,8 +593,41 @@ export async function deleteTenantAction(
             ok: false,
             message: 'Digite o endereço do cliente para confirmar a exclusão.',
           };
+        const activeWork = await connection.query(
+          `select
+             exists(
+               select 1 from studio_runs run
+               join studio_projects project on project.id = run.project_id
+               where project.tenant_id = $1
+                 and run.status in ('queued', 'running', 'cancel_requested')
+             ) as active_run,
+             exists(
+               select 1 from studio_releases release
+               join studio_projects project on project.id = release.project_id
+               where project.tenant_id = $1
+                 and release.status in ('preparing', 'validating', 'ready')
+             ) as active_release`,
+          [locked.id],
+        );
+        if (
+          activeWork.rows[0]?.active_run ||
+          activeWork.rows[0]?.active_release
+        )
+          return {
+            ok: false,
+            message:
+              'Há um turno ou publicação em andamento. Aguarde a conclusão antes de excluir o cliente.',
+          };
+        const projects = await connection.query(
+          `select id from studio_projects where tenant_id = $1 limit 1`,
+          [locked.id],
+        );
+        stage = 'vercel';
+        await deleteStudioVercelProject(locked.id);
         stage = 'files';
         await deleteTenantBlobs(locked.slug);
+        if (projects.rows[0]?.id)
+          await deleteStudioProjectBlobs(String(projects.rows[0].id));
         stage = 'record';
         await connection.query('DELETE FROM tenants WHERE id = $1', [
           locked.id,
@@ -582,8 +654,10 @@ export async function deleteTenantAction(
   } catch (error) {
     const messages = {
       prepare: 'Não foi possível iniciar a exclusão. Tente novamente.',
+      vercel:
+        'O projeto do cliente não pôde ser removido da Vercel. O cadastro continua no painel.',
       files:
-        'Os arquivos do cliente não puderam ser removidos. Ele continua no painel; tente novamente.',
+        'O projeto Vercel foi removido, mas os arquivos não. O cadastro continua no painel e a exclusão pode ser repetida.',
       record:
         'Os arquivos foram removidos, mas o cadastro não. Tente excluir novamente.',
     };
@@ -602,6 +676,8 @@ export async function saveSpendAction(
   formData: FormData,
 ): Promise<SpendResult> {
   const actor = await guard();
+  if (await sitesAreInMaintenance())
+    return { ok: false, message: maintenanceMessage };
   const tenantSlug = text(formData, 'tenant');
   const parsed = spendSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success)

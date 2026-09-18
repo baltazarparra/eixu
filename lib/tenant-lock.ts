@@ -6,7 +6,6 @@ type LockedTenant = {
   slug: string;
   name: string;
   status: string;
-  maintenanceMode: 'generator' | 'converting' | 'premium';
 };
 
 export class TenantRemovedError extends Error {
@@ -26,15 +25,21 @@ export function withTenantLock<T>(
   run: (tenant: LockedTenant, connection: Client) => Promise<T>,
 ): Promise<T> {
   return transaction(async (connection) => {
+    // Operações do Studio bloqueiam primeiro o projeto. A exclusão segue a
+    // mesma ordem para não criar ciclo entre a FK do tenant e o projeto.
+    if (mode === 'delete')
+      await connection.query(
+        `select id from studio_projects where tenant_id = $1 for update`,
+        [tenantId],
+      );
     const lock = mode === 'upload' ? 'FOR KEY SHARE' : 'FOR UPDATE';
     const result = await connection.query<{
       id: string;
       slug: string;
       name: string;
       status: string;
-      maintenance_mode: LockedTenant['maintenanceMode'];
     }>(
-      `SELECT id, slug, name, status, maintenance_mode
+      `SELECT id, slug, name, status
        FROM tenants WHERE id = $1 ${lock}`,
       [tenantId],
     );
@@ -46,7 +51,6 @@ export function withTenantLock<T>(
         slug: row.slug,
         name: row.name,
         status: row.status,
-        maintenanceMode: row.maintenance_mode ?? 'generator',
       },
       connection,
     );

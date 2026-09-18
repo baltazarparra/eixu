@@ -1,12 +1,16 @@
 import { adminTenant } from '@/lib/admin/queries';
-import { notFound, redirect } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
-import { chatHistory, messageCursor } from '@/lib/ai/history';
-import { workspaceState } from '@/lib/admin/state';
 import { listImages } from '@/lib/images/queries';
-import { pagesWithUndo } from '@/lib/sites/revisions';
-import { listPages } from '@/lib/tenant-queries';
-import { premiumWorkspaceState } from '@/lib/premium/queries';
+import { studioEditorStateByTenant } from '@/lib/studio/content';
+import { studioMessages } from '@/lib/studio/messages';
+import { studioProjectByTenant } from '@/lib/studio/projects';
+import { activeStudioRun } from '@/lib/studio/runs';
+import {
+  hasStudioDraftChanges,
+  latestStudioRelease,
+  rollbackCandidateStudioRelease,
+} from '@/lib/studio/releases';
+import { notFound, redirect } from 'next/navigation';
 import { Workspace } from './workspace';
 
 export const dynamic = 'force-dynamic';
@@ -27,30 +31,79 @@ export default async function TenantWorkspace({
   const tenant = await adminTenant(slug);
   if (!tenant) notFound();
 
-  const [pages, images, undoPages, premium] = await Promise.all([
-    listPages(tenant.id),
-    listImages(tenant.id),
-    pagesWithUndo(tenant.id),
-    premiumWorkspaceState(tenant),
-  ]);
-  const premiumActive =
-    premium.maintenanceMode === 'premium' &&
-    premium.publicRuntime === 'premium';
-  const history = premiumActive ? [] : await chatHistory(tenant.id, 'site');
-  const initial = workspaceState(tenant, pages, images, undoPages, premium);
+  const project = await studioProjectByTenant(tenant.id);
+  const [messages, editor, images, run, release, dirty, rollbackCandidate] =
+    await Promise.all([
+      studioMessages(tenant.id),
+      studioEditorStateByTenant(tenant.id),
+      listImages(tenant.id),
+      project ? activeStudioRun(project.id) : null,
+      project ? latestStudioRelease(project.id) : null,
+      project ? hasStudioDraftChanges(project.id) : false,
+      project ? rollbackCandidateStudioRelease(project.id) : null,
+    ]);
   const { imagem, pedido } = await searchParams;
   const imageRequest =
     typeof imagem === 'string' && /^[1-9]\d{0,8}$/.test(imagem)
-      ? `Quero atualizar a imagem #${imagem}: `
+      ? `Use a imagem #${imagem} neste projeto: `
       : typeof pedido === 'string'
-        ? pedido.slice(0, 2000)
+        ? pedido.slice(0, 2_000)
         : '';
+
   return (
     <Workspace
       key={tenant.slug}
-      initial={initial}
-      history={history}
-      lastMessageId={messageCursor(history)}
+      tenant={{ slug: tenant.slug, name: tenant.name, status: tenant.status }}
+      initialMessages={messages}
+      initialEditor={editor}
+      initialRun={
+        run &&
+        (run.status === 'queued' ||
+          run.status === 'running' ||
+          run.status === 'cancel_requested')
+          ? {
+              id: run.id,
+              workflowRunId: run.workflowRunId,
+              status: run.status,
+            }
+          : null
+      }
+      initialProject={
+        project
+          ? {
+              status: project.status,
+              canonicalHost: project.canonicalHost,
+              draftCodeRevision: project.draftCodeRevision,
+              dirty,
+            }
+          : null
+      }
+      initialRelease={
+        release
+          ? {
+              id: release.id,
+              status: release.status,
+              url:
+                release.status === 'active'
+                  ? `https://${release.canonicalHost}`
+                  : release.deploymentUrl,
+              error: release.error,
+            }
+          : null
+      }
+      rollbackCandidate={
+        rollbackCandidate
+          ? {
+              id: rollbackCandidate.id,
+              activatedAt: rollbackCandidate.activatedAt,
+            }
+          : null
+      }
+      images={images.map((image) => ({
+        seq: image.seq,
+        url: image.url,
+        alt: image.alt,
+      }))}
       imageRequest={imageRequest}
     />
   );
