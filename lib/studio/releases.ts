@@ -15,7 +15,7 @@ function vercelTeamId(): string {
   const id = process.env.EIXU_VERCEL_TEAM_ID || process.env.VERCEL_ORG_ID;
   if (!id?.startsWith('team_'))
     throw new Error(
-      'VERCEL_ORG_ID não está disponível. Fora da Vercel, configure EIXU_VERCEL_TEAM_ID.',
+      'Configure EIXU_VERCEL_TEAM_ID no ambiente da plataforma. VERCEL_ORG_ID não é injetado automaticamente no runtime.',
     );
   return id;
 }
@@ -25,7 +25,7 @@ function rootVercelProjectId(): string {
     process.env.EIXU_VERCEL_ROOT_PROJECT_ID || process.env.VERCEL_PROJECT_ID;
   if (!id?.startsWith('prj_'))
     throw new Error(
-      'VERCEL_PROJECT_ID não está disponível. Fora da Vercel, configure EIXU_VERCEL_ROOT_PROJECT_ID.',
+      'VERCEL_PROJECT_ID não está disponível. Configure EIXU_VERCEL_ROOT_PROJECT_ID com o ID do projeto da plataforma.',
     );
   return id;
 }

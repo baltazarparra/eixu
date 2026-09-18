@@ -24,6 +24,10 @@ import {
 } from '@/components/admin/navigation';
 import { useCompactLayout } from '@/components/admin/use-compact-layout';
 import { adminFetch, AdminHttpError } from '@/lib/admin/http';
+import {
+  studioOperationErrorMessage,
+  type StudioOperation,
+} from '@/lib/admin/studio-feedback';
 import type { StudioEditorField } from '@/lib/studio/editor';
 import type { StudioMessage, StudioEditorState } from '@/lib/studio/types';
 import { ChatActivity, Message, chatErrorMessage } from './chat-parts';
@@ -171,6 +175,7 @@ export function StudioWorkspace({
   const [notice, setNotice] = useState<{
     tone: 'info' | 'ok' | 'warn' | 'err';
     text: string;
+    source?: StudioOperation;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -179,8 +184,12 @@ export function StudioWorkspace({
   const automaticPublicationPending = useRef(false);
   const previewRequest = useRef(0);
 
-  const fail = useCallback((message: string) => {
-    setNotice({ tone: 'err', text: chatErrorMessage(message) });
+  const fail = useCallback((message: string, source: StudioOperation) => {
+    setNotice({
+      tone: 'err',
+      text: studioOperationErrorMessage(message, source),
+      source,
+    });
   }, []);
 
   const loadEditor = useCallback(async () => {
@@ -235,6 +244,9 @@ export function StudioWorkspace({
         if (!response) throw new Error('A prévia ainda não está disponível.');
         setPreviewUrl(response.url);
         setPreviewProblem(null);
+        setNotice((current) =>
+          current?.source === 'preview' ? null : current,
+        );
         setProjectStatus(response.status);
         setDirty(response.dirty);
         if (reload) setPreviewNonce((value) => value + 1);
@@ -249,6 +261,7 @@ export function StudioWorkspace({
         if (!quiet)
           fail(
             error instanceof Error ? error.message : 'Falha ao abrir a prévia.',
+            'preview',
           );
       } finally {
         if (requestId === previewRequest.current) setPreviewLoading(false);
@@ -428,7 +441,10 @@ export function StudioWorkspace({
           if (emptyPolls >= 300) {
             setPublishing(false);
             automaticPublicationPending.current = false;
-            fail('A publicação automática não foi iniciada após a criação.');
+            fail(
+              'A publicação automática não foi iniciada após a criação.',
+              'publish',
+            );
             return;
           }
           timer = window.setTimeout(poll, 3_000);
@@ -449,7 +465,7 @@ export function StudioWorkspace({
         if (release?.status === 'failed') {
           setPublishing(false);
           automaticPublicationPending.current = false;
-          fail(release.error ?? 'A publicação falhou.');
+          fail(release.error ?? 'A publicação falhou.', 'publish');
           return;
         }
         timer = window.setTimeout(poll, 3_000);
@@ -460,6 +476,7 @@ export function StudioWorkspace({
           failure instanceof Error
             ? failure.message
             : 'Falha ao acompanhar a publicação.',
+          'publish',
         );
       }
     };
@@ -500,7 +517,10 @@ export function StudioWorkspace({
         ]);
       }
     } catch (failure) {
-      fail(failure instanceof Error ? failure.message : 'Falha no upload.');
+      fail(
+        failure instanceof Error ? failure.message : 'Falha no upload.',
+        'upload',
+      );
     } finally {
       setUploading(false);
     }
@@ -538,7 +558,10 @@ export function StudioWorkspace({
       setActiveRun(null);
       setNotice({ tone: 'info', text: 'Turno cancelado.' });
     } catch (failure) {
-      fail(failure instanceof Error ? failure.message : 'Falha ao cancelar.');
+      fail(
+        failure instanceof Error ? failure.message : 'Falha ao cancelar.',
+        'cancel',
+      );
     }
   }
 
@@ -568,7 +591,10 @@ export function StudioWorkspace({
     } catch (failure) {
       if (failure instanceof AdminHttpError && failure.fields)
         setEditorErrors(failure.fields);
-      fail(failure instanceof Error ? failure.message : 'Falha ao salvar.');
+      fail(
+        failure instanceof Error ? failure.message : 'Falha ao salvar.',
+        'content',
+      );
       if (failure instanceof AdminHttpError && failure.status === 409)
         void loadEditor();
     } finally {
@@ -606,7 +632,10 @@ export function StudioWorkspace({
       });
     } catch (failure) {
       setPublishing(false);
-      fail(failure instanceof Error ? failure.message : 'Falha ao publicar.');
+      fail(
+        failure instanceof Error ? failure.message : 'Falha ao publicar.',
+        'publish',
+      );
     }
   }
 
@@ -632,7 +661,10 @@ export function StudioWorkspace({
       });
     } catch (failure) {
       setPublishing(false);
-      fail(failure instanceof Error ? failure.message : 'Falha no rollback.');
+      fail(
+        failure instanceof Error ? failure.message : 'Falha no rollback.',
+        'rollback',
+      );
     }
   }
 
