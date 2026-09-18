@@ -25,6 +25,8 @@ O site oficial é fonte factual. A referência visual é fonte de layout, tipogr
 
 A criação redireciona para `/studio/[tenant]` e envia o primeiro pedido automaticamente. A página reúne conversa, prévia e conteúdo; o operador não precisa repetir o briefing.
 
+O widget de progresso acima do campo de mensagem concentra a etapa atual e o tempo de execução. A conversa mostra os pedidos e as respostas do agente, sem repetir a lista de ferramentas e etapas. Chamadas internas continuam no histórico canônico para retomada e auditoria.
+
 O primeiro build segue uma ordem obrigatória:
 
 1. lê o cadastro e os assets;

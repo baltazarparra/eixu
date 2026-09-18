@@ -2,136 +2,39 @@
 
 import { getToolName, isToolUIPart, type UIMessage } from 'ai';
 import { useEffect, useState } from 'react';
-import { Check, Loader2, X } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useAdminSession } from '@/components/admin/session';
 
-type ToolPart = {
-  type: string;
-  toolName?: string;
-  state?: string;
-  input?: unknown;
-  output?: unknown;
-  errorText?: string;
+const TOOL_LABELS: Record<string, string> = {
+  read_project_context: 'Lendo os dados, a marca e os ativos do cliente',
+  read_official_site: 'Consultando o site oficial',
+  inspect_visual_reference:
+    'Analisando a referência visual em desktop e celular',
+  list_project_files: 'Mapeando os arquivos do projeto',
+  read_project_file: 'Lendo um arquivo do projeto',
+  write_project_file: 'Escrevendo o projeto',
+  write_content_contract: 'Organizando o conteúdo editável',
+  generate_project_image: 'Criando uma imagem para o projeto',
+  run_project_check: 'Validando o projeto',
+  record_artifact: 'Registrando uma decisão do projeto',
 };
 
-/** Junta chamadas repetidas de consulta numa linha só, para a lista não virar ruído. */
-const REPEATABLE = new Set([
-  'list_project_files',
-  'read_project_file',
-  'read_project_context',
-]);
-
-const TOOL_LABELS: Record<string, { active: string; done: string }> = {
-  read_project_context: {
-    active: 'Lendo os dados, a marca e os ativos do cliente',
-    done: 'Dados, marca e ativos analisados',
-  },
-  read_official_site: {
-    active: 'Consultando o site oficial',
-    done: 'Site oficial consultado',
-  },
-  inspect_visual_reference: {
-    active: 'Analisando a referência visual em desktop e celular',
-    done: 'Referência visual analisada',
-  },
-  list_project_files: {
-    active: 'Mapeando os arquivos do projeto',
-    done: 'Arquivos do projeto mapeados',
-  },
-  read_project_file: {
-    active: 'Lendo um arquivo do projeto',
-    done: 'Arquivo do projeto lido',
-  },
-  write_project_file: {
-    active: 'Escrevendo o projeto',
-    done: 'Projeto atualizado',
-  },
-  write_content_contract: {
-    active: 'Organizando o conteúdo editável',
-    done: 'Conteúdo editável organizado',
-  },
-  generate_project_image: {
-    active: 'Criando uma imagem para o projeto',
-    done: 'Imagem criada e salva no acervo',
-  },
-  run_project_check: {
-    active: 'Validando o projeto',
-    done: 'Validação executada',
-  },
-  record_artifact: {
-    active: 'Registrando uma decisão do projeto',
-    done: 'Decisão registrada',
-  },
+const ARTIFACT_LABELS: Record<string, string> = {
+  context: 'Organizando o contexto do projeto',
+  art_direction: 'Definindo a direção de arte',
+  validation: 'Registrando as verificações do projeto',
 };
 
-const ARTIFACT_LABELS: Record<string, { active: string; done: string }> = {
-  context: {
-    active: 'Organizando o contexto do projeto',
-    done: 'Contexto do projeto registrado',
-  },
-  art_direction: {
-    active: 'Definindo a direção de arte',
-    done: 'Direção de arte registrada',
-  },
-  validation: {
-    active: 'Registrando as verificações do projeto',
-    done: 'Verificações do projeto registradas',
-  },
-};
-
-function describeTool(name: string, state: string, input?: unknown): string {
+function describeTool(name: string, input?: unknown): string {
   const kind =
     input && typeof input === 'object' && 'kind' in input
       ? String(input.kind)
       : '';
-  const labels =
+  return (
     (name === 'record_artifact' ? ARTIFACT_LABELS[kind] : undefined) ??
-    TOOL_LABELS[name];
-  if (!labels)
-    return state === 'output-available'
-      ? 'Etapa concluída'
-      : 'Trabalhando no projeto';
-  return state === 'output-available' ? labels.done : labels.active;
-}
-
-function collapse(parts: ToolPart[]) {
-  const out: {
-    label: string;
-    done: boolean;
-    failed: boolean;
-    count: number;
-  }[] = [];
-  for (const raw of parts) {
-    const name =
-      raw.type === 'dynamic-tool'
-        ? (raw.toolName ?? 'ferramenta')
-        : raw.type.replace('tool-', '');
-    const done = raw.state === 'output-available';
-    const output = (raw.output ?? {}) as Record<string, unknown>;
-    const failed =
-      raw.state === 'output-error' ||
-      output.ok === false ||
-      Boolean(output.error);
-    const label =
-      raw.state === 'output-error'
-        ? chatErrorMessage(
-            raw.errorText ?? 'Esta etapa não pôde ser concluída.',
-          )
-        : describeTool(name, raw.state ?? '', raw.input);
-    const last = out[out.length - 1];
-    if (
-      last &&
-      REPEATABLE.has(name) &&
-      last.label.startsWith(label.replace(/ \(\d+\)$/, ''))
-    ) {
-      last.count += 1;
-      last.done = last.done && done;
-      last.label = `${label} (${last.count})`;
-      continue;
-    }
-    out.push({ label, done, failed, count: 1 });
-  }
-  return out;
+    TOOL_LABELS[name] ??
+    'Trabalhando no projeto'
+  );
 }
 
 export function Message({ message }: { message: UIMessage }) {
@@ -177,56 +80,20 @@ export function Message({ message }: { message: UIMessage }) {
     );
   }
 
-  // Renderiza na ordem em que o agente trabalhou: pensa, age, pensa, age, resume.
-  const groups: (
-    | { kind: 'text'; text: string }
-    | { kind: 'tools'; parts: ToolPart[] }
-  )[] = [];
-  for (const part of message.parts) {
-    if (part.type === 'text') {
-      const text = (part as { text: string }).text;
-      if (!text.trim()) continue;
-      const last = groups[groups.length - 1];
-      if (last?.kind === 'text') last.text += text;
-      else groups.push({ kind: 'text', text });
-    } else if (isToolUIPart(part)) {
-      const last = groups[groups.length - 1];
-      if (last?.kind === 'tools') last.parts.push(part as ToolPart);
-      else groups.push({ kind: 'tools', parts: [part as ToolPart] });
-    }
-  }
+  // As ferramentas alimentam o widget de progresso, sem repetir etapas no chat.
+  const texts = message.parts
+    .filter((part) => part.type === 'text')
+    .map((part) => part.text.trim())
+    .filter(Boolean);
+  if (!texts.length) return null;
 
   return (
     <div className="admin-turn">
-      {groups.map((group, index) =>
-        group.kind === 'text' ? (
-          <Bubble key={index} from="assistant" author={author}>
-            {chatErrorMessage(group.text.trim())}
-          </Bubble>
-        ) : (
-          <ol key={index} className="admin-tools">
-            {collapse(group.parts).map((item, itemIndex) => (
-              <li
-                key={itemIndex}
-                data-state={
-                  item.failed ? 'failed' : item.done ? 'done' : 'pending'
-                }
-              >
-                <span className="admin-tools-mark" aria-hidden="true">
-                  {item.failed ? (
-                    <X size={12} strokeWidth={3} />
-                  ) : item.done ? (
-                    <Check size={12} strokeWidth={3} />
-                  ) : (
-                    <Loader2 size={12} strokeWidth={2.5} />
-                  )}
-                </span>
-                <span>{item.label}</span>
-              </li>
-            ))}
-          </ol>
-        ),
-      )}
+      {texts.map((text, index) => (
+        <Bubble key={index} from="assistant" author={author}>
+          {chatErrorMessage(text)}
+        </Bubble>
+      ))}
     </div>
   );
 }
@@ -262,7 +129,7 @@ export function ChatActivity({
       : undefined;
   const activity =
     pending && isToolUIPart(pending)
-      ? describeTool(getToolName(pending), pending.state)
+      ? describeTool(getToolName(pending), pending.input)
       : last?.role === 'assistant' && last.parts.some(isToolUIPart)
         ? 'Preparando a resposta'
         : last?.role === 'assistant' &&
