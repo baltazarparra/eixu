@@ -178,7 +178,7 @@ export function Message({ message }: { message: UIMessage }) {
       {groups.map((group, index) =>
         group.kind === 'text' ? (
           <Bubble key={index} from="assistant" author={author}>
-            {group.text.trim()}
+            {chatErrorMessage(group.text.trim())}
           </Bubble>
         ) : (
           <ol key={index} className="admin-tools">
@@ -296,5 +296,7 @@ export function chatErrorMessage(message: string): string {
     ? 'O AI Gateway recusou a chamada. Confira os créditos e tente novamente.'
     : /Failed to fetch chat: 409/i.test(message)
       ? 'Já existe um trabalho em andamento neste projeto.'
-      : message;
+      : /Step ["“].+["”] failed|unknown format|after \d+ retries/i.test(message)
+        ? 'Não consegui concluir esta etapa. Tente novamente; se o erro continuar, revise os dados do projeto.'
+        : message;
 }

@@ -1,9 +1,7 @@
-export const STUDIO_MODEL_POLICY_VERSION = 'studio-gpt-5.6-v1';
+export const STUDIO_MODEL_POLICY_VERSION = 'studio-gemini-3.8-flash-v1';
 
 export const STUDIO_MODELS = {
-  sol: 'openai/gpt-5.6-sol',
-  terra: 'openai/gpt-5.6-terra',
-  luna: 'openai/gpt-5.6-luna',
+  gemini: 'google/gemini-3.8-flash',
 } as const;
 
 export type StudioModelFamily = keyof typeof STUDIO_MODELS;
@@ -29,15 +27,15 @@ export type StudioModelPolicy = {
 };
 
 const POLICY: Record<StudioModelRole, StudioModelPolicy> = {
-  assistant: policy('terra', 'medium', 16_384, 12),
-  batch: policy('luna', 'low', 4_096, 4),
-  context: policy('terra', 'high', 16_384, 12),
-  art_direction: policy('sol', 'high', 24_576, 16),
-  build: policy('sol', 'high', 49_152, 32),
-  edit: policy('terra', 'medium', 24_576, 20),
-  refine: policy('sol', 'high', 32_768, 24),
-  critic: policy('sol', 'high', 16_384, 12),
-  diagnostic: policy('sol', 'xhigh', 24_576, 20),
+  assistant: policy('gemini', 'high', 16_384, 12),
+  batch: policy('gemini', 'high', 4_096, 4),
+  context: policy('gemini', 'high', 16_384, 12),
+  art_direction: policy('gemini', 'high', 24_576, 16),
+  build: policy('gemini', 'high', 49_152, 32),
+  edit: policy('gemini', 'high', 24_576, 20),
+  refine: policy('gemini', 'high', 32_768, 24),
+  critic: policy('gemini', 'high', 16_384, 12),
+  diagnostic: policy('gemini', 'high', 24_576, 20),
 };
 
 function policy(

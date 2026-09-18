@@ -7,7 +7,11 @@ import type { Intake } from '@/lib/tenant-intake';
 import type { Contacts } from '@/lib/tenant-contacts';
 
 /** No cadastro novo a nota ensina; no cadastro salvo ela só relembra. */
-type FieldProps = { intake: Partial<Intake>; compact?: boolean };
+type FieldProps = {
+  intake: Partial<Intake>;
+  compact?: boolean;
+  referenceRequired?: boolean;
+};
 
 function StoryField({ intake, compact }: FieldProps) {
   return (
@@ -33,7 +37,11 @@ function StoryField({ intake, compact }: FieldProps) {
   );
 }
 
-function ReferenceField({ intake, compact }: FieldProps) {
+function ReferenceField({
+  intake,
+  compact,
+  referenceRequired = false,
+}: FieldProps) {
   const legacy =
     (intake.references?.length ?? 0) > 1
       ? ` Este cadastro antigo tem ${intake.references?.length} referências; ao salvar, confirme acima qual será a única.`
@@ -41,7 +49,8 @@ function ReferenceField({ intake, compact }: FieldProps) {
   return (
     <label className="admin-field">
       <span>
-        Referência visual <em>· opcional</em>
+        Referência visual{' '}
+        <em>{referenceRequired ? '· obrigatória nesta vibe' : '· opcional'}</em>
       </span>
       <input
         name="reference"
@@ -49,6 +58,7 @@ function ReferenceField({ intake, compact }: FieldProps) {
         type="url"
         inputMode="url"
         maxLength={2000}
+        required={referenceRequired}
         defaultValue={intake.references?.[0] ?? ''}
         placeholder="https://exemplo.com"
       />
@@ -111,6 +121,7 @@ export function TenantFields({
   withSlug = false,
   compact = false,
   socialCard,
+  referenceRequired = false,
 }: {
   values?: {
     name?: string;
@@ -124,6 +135,8 @@ export function TenantFields({
   compact?: boolean;
   /** Perfil social lido, renderizado dentro do grupo Redes sociais. */
   socialCard?: ReactNode;
+  /** A vibe Referência transforma o link visual em pré-requisito. */
+  referenceRequired?: boolean;
 }) {
   const identity = (
     <>
@@ -212,7 +225,11 @@ export function TenantFields({
             Se houver uma referência, ela passa a comandar a direção visual.
           </HelpNote>
           <div className="admin-field-stack">
-            <ReferenceField intake={intake} compact />
+            <ReferenceField
+              intake={intake}
+              compact
+              referenceRequired={referenceRequired}
+            />
           </div>
         </FormSection>
         <details className="admin-optional-fields">
@@ -256,7 +273,10 @@ export function TenantFields({
           <StoryField intake={intake} />
           <div className="admin-field-grid">
             <CurrentSiteField intake={intake} />
-            <ReferenceField intake={intake} />
+            <ReferenceField
+              intake={intake}
+              referenceRequired={referenceRequired}
+            />
           </div>
           <EvidenceFields initial={intake.evidence} />
           <ConstraintsField intake={intake} />

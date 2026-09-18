@@ -54,20 +54,26 @@ function statusPresentation(status?: string) {
 function TenantHeader({
   tenant,
   active,
+  surface = 'admin',
   conversation,
   preview,
   decision,
 }: {
   tenant: TenantIdentity;
   active: Area;
+  surface?: 'admin' | 'studio';
   conversation?: ReactNode;
   preview?: ReactNode;
   decision?: ReactNode;
 }) {
-  const root = `/admin/${tenant.slug}`;
+  const base = surface === 'studio' ? '/studio' : '/admin';
+  const root = `${base}/${tenant.slug}`;
   const session = useAdminSession();
   const status = statusPresentation(tenant.status);
-  const links = AREAS.map(([key, suffix, label]) => (
+  const links = AREAS.filter(
+    ([key]) =>
+      surface === 'admin' || ['site', 'imagens', 'dados'].includes(key),
+  ).map(([key, suffix, label]) => (
     <Link
       key={key}
       href={`${root}${suffix}`}
@@ -80,7 +86,7 @@ function TenantHeader({
     <header className="admin-bar">
       <div className="admin-bar-identity">
         <Link
-          href="/admin"
+          href={base}
           className="admin-secondary admin-back"
           aria-label="Voltar para a lista de clientes"
           title="Clientes"
@@ -108,13 +114,17 @@ function TenantHeader({
       {preview}
       <div className="admin-bar-decide">
         {decision}
-        <Link
-          className="admin-activity-link"
-          href={`/admin/atividade?tenant=${encodeURIComponent(tenant.slug)}`}
-          title={`Atividade · ${session?.operator ?? 'operação'}`}
-        >
-          {session?.operator ?? 'Atividade'}
-        </Link>
+        {surface === 'admin' ? (
+          <Link
+            className="admin-activity-link"
+            href={`/admin/atividade?tenant=${encodeURIComponent(tenant.slug)}`}
+            title={`Atividade · ${session?.operator ?? 'operação'}`}
+          >
+            {session?.operator ?? 'Atividade'}
+          </Link>
+        ) : (
+          <span className="admin-activity-link">{session?.operator}</span>
+        )}
         <div className="admin-bar-logout">{session?.logout}</div>
       </div>
       <MobileMenu
@@ -124,11 +134,13 @@ function TenantHeader({
       >
         <nav aria-label="Áreas do cliente no celular">
           {links}
-          <Link
-            href={`/admin/atividade?tenant=${encodeURIComponent(tenant.slug)}`}
-          >
-            Atividade · {session?.operator ?? 'operação'}
-          </Link>
+          {surface === 'admin' ? (
+            <Link
+              href={`/admin/atividade?tenant=${encodeURIComponent(tenant.slug)}`}
+            >
+              Atividade · {session?.operator ?? 'operação'}
+            </Link>
+          ) : null}
         </nav>
       </MobileMenu>
     </header>
@@ -142,9 +154,11 @@ function TenantHeader({
 export function TenantFrame({
   tenant,
   children,
+  surface = 'admin',
 }: {
   tenant: TenantIdentity;
   children: ReactNode;
+  surface?: 'admin' | 'studio';
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -171,6 +185,7 @@ export function TenantFrame({
           <TenantHeader
             tenant={tenant}
             active={active}
+            surface={surface}
             conversation={
               editor ? (
                 <div ref={setConversation} className="admin-bar-slot" />
@@ -185,7 +200,10 @@ export function TenantFrame({
               editor ? (
                 <div ref={setDecision} className="admin-bar-slot" />
               ) : (
-                <Link className="admin-primary" href={`/admin/${tenant.slug}`}>
+                <Link
+                  className="admin-primary"
+                  href={`${surface === 'studio' ? '/studio' : '/admin'}/${tenant.slug}`}
+                >
                   <span className="admin-preview-link-desktop">
                     Revisar e publicar
                   </span>

@@ -39,6 +39,9 @@ type Props = {
   rollbackCandidate: { id: string; activatedAt: string | null } | null;
   images: { seq: number; url: string; alt: string | null }[];
   imageRequest?: string;
+  basePath?: '/admin' | '/studio';
+  autoStartPrompt?: string;
+  autoPublishFirst?: boolean;
 };
 
 /** Uma única jornada: conversa, prévia e conteúdo do mesmo projeto. */

@@ -485,11 +485,14 @@ async function recordArtifactStep(
 ) {
   'use step';
   await authorized(context);
-  const serialized = JSON.stringify(input.payload);
+  // Tool inputs cross a serialized Workflow boundary. Revalidate with the
+  // canonical Zod contract before checking prerequisites or persisting data.
+  const artifact = studioArtifactInputSchema.parse(input);
+  const serialized = JSON.stringify(artifact.payload);
   if (Buffer.byteLength(serialized, 'utf8') > 120_000)
     throw new Error('O artefato excede o limite de 120 KB. Resuma o conteúdo.');
   const contentHash = createHash('sha256').update(serialized).digest('hex');
-  if (input.kind === 'context') {
+  if (artifact.kind === 'context') {
     const checks = (await db()`
       select
         bool_or(type = 'context.read') as context_read,
@@ -501,7 +504,7 @@ async function recordArtifactStep(
         'Leia os dados do projeto e confira o site oficial antes de registrar o contexto.',
       );
   }
-  if (input.kind === 'art_direction') {
+  if (artifact.kind === 'art_direction') {
     const checks = (await db()`
       select
         exists(select 1 from studio_artifacts where project_id = ${context.projectId} and kind = 'context') as has_context,
@@ -512,8 +515,8 @@ async function recordArtifactStep(
         'Registre o contexto e inspecione a referência visual antes da direção de arte.',
       );
   }
-  if (input.kind === 'validation')
-    await verifyValidationArtifact(input.payload, context);
+  if (artifact.kind === 'validation')
+    await verifyValidationArtifact(artifact.payload, context);
   const receipt = await transaction(async (connection) => {
     await connection.query(
       'select id from studio_projects where id = $1 for update',
@@ -522,7 +525,7 @@ async function recordArtifactStep(
     const existing = await connection.query(
       `select id, version from studio_artifacts
        where project_id = $1 and run_id = $2 and kind = $3 limit 1`,
-      [context.projectId, context.runId, input.kind],
+      [context.projectId, context.runId, artifact.kind],
     );
     if (existing.rows[0]) {
       await connection.query(
@@ -535,7 +538,7 @@ async function recordArtifactStep(
     const versions = await connection.query(
       `select coalesce(max(version), 0) + 1 as version
        from studio_artifacts where project_id = $1 and kind = $2`,
-      [context.projectId, input.kind],
+      [context.projectId, artifact.kind],
     );
     const version = Number(versions.rows[0].version);
     const inserted = await connection.query(
@@ -546,7 +549,7 @@ async function recordArtifactStep(
       [
         context.projectId,
         context.runId,
-        input.kind,
+        artifact.kind,
         version,
         contentHash,
         serialized,
@@ -556,7 +559,7 @@ async function recordArtifactStep(
   });
   await nextStudioEvent(context.runId, 'artifact.recorded', {
     id: receipt.id,
-    kind: input.kind,
+    kind: artifact.kind,
     version: receipt.version,
     contentHash,
   });
@@ -643,7 +646,7 @@ async function generatedImageStep(
   const { publicBlobOptions } = await import('@/lib/blob/stores.mjs');
   const sharp = sharpModule.default;
   await authorized(context);
-  const model = process.env.EIXU_IMAGE_MODEL || 'openai/gpt-image-2';
+  const model = process.env.EIXU_IMAGE_MODEL || 'openai/gpt-image-2.5-sunburst';
   const requestKey = createHash('sha256')
     .update(
       JSON.stringify({

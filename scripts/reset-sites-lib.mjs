@@ -194,6 +194,7 @@ export const SITE_TABLES = [
 ];
 
 export const PRESERVED_TABLES = [
+  'studio_workspaces',
   'admin_users',
   'admin_sessions',
   'admin_login_attempts',

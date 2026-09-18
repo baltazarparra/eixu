@@ -12,7 +12,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 Não concorde por conveniência. Verifique código, dados e serviços antes de assumir. Comunique-se em português do Brasil, com objetividade.
 
-A EIXU reúne o institucional e o Studio interno de sites em `/admin`. O operador usa uma única jornada de dados, chat, preview, CMS leve, imagens e publicação. Cada cliente recebe um projeto Next.js independente e continua acessível em `cliente.eixu.com.br`.
+A EIXU reúne o institucional, o Studio interno em `/studio` e a operação administrativa em `/admin`. O operador cria e gerencia projetos no Studio por uma única jornada de dados, chat, preview, CMS leve, imagens e publicação. Cada cliente recebe um projeto Next.js independente e continua acessível em `cliente.eixu.com.br`.
 
 Leia [README.md](README.md) para setup, [SOUL.md](SOUL.md) para identidade e [docs/README.md](docs/README.md) para o mapa da documentação.
 
@@ -53,12 +53,12 @@ O card é o contrato entre conversas. Use `npm run kanban` pelas rotas; não esc
 - `WorkflowAgent` coordena o loop durável. Ferramentas com efeitos usam steps, leases e chaves idempotentes.
 - A primeira criação lê `/dados` e a fonte oficial antes de produzir o artefato de contexto; depois inspeciona a referência e registra direção de arte. Build exige ambos.
 - Logo e screenshots entram como partes multimodais. Base64 em texto não comprova análise visual.
-- GPT-5.6 Terra atende contexto e conversa, Sol direção de arte/código/crítica e Luna tarefas curtas. O roteamento está em `lib/studio/models.ts`; não invente um modelo fora dessa política.
+- `google/gemini-3.8-flash` atende todos os papéis com reasoning `high`; geração visual usa `openai/gpt-image-2.5-sunburst` por padrão. A política está em `lib/studio/models.ts`; não invente modelo ou effort fora dela.
 - Ferramentas não recebem credenciais. Paths passam pela política de workspace, symlinks são rejeitados e comandos são enumerados.
 - Sandbox é efêmero. Checkpoints e código de release ficam em Blob privado; uma sessão não é a fonte de verdade.
 - `content/schema.json` e `content/values.json` formam o contrato do CMS. Cada edição cria revisão imutável com hash e controle otimista.
-- Preview exige sessão administrativa, checkpoint atual e token efêmero cujo hash fica no banco. A URL persistida não contém o token.
-- Publicação congela código e conteúdo, executa build e smoke e só então promove. Um projeto Vercel por cliente; o projeto raiz nunca é alvo.
+- Preview exige sessão administrativa e token efêmero cujo hash fica no banco. Durante um run, acompanha o workspace autorizado; ao terminar, volta ao checkpoint validado. A URL persistida não contém o token.
+- A primeira criação validada inicia publicação automaticamente. Alterações posteriores só publicam por ação explícita. Toda publicação congela código e conteúdo, executa build e smoke e só então promove. Um projeto Vercel por cliente; o projeto raiz nunca é alvo.
 - Formulários, eventos e WhatsApp públicos exigem tenant, projeto e release ativos e usam a integração central.
 - Erro técnico, isolamento, autoria e gates de release são garantias de código, não instruções de prompt.
 
@@ -70,7 +70,7 @@ Siga [SOUL.md](SOUL.md) e os princípios anti-slop de [Taste Skill](https://www.
 
 ## Segurança e operação
 
-Rotas administrativas e chats exigem sessão. As rotas do Kanban também aceitam `KANBAN_AGENT_TOKEN`, restrito ao quadro e com autoria de agente. O admin é global; ainda não há papéis por tenant.
+Rotas administrativas e chats exigem sessão. As rotas do Kanban também aceitam `KANBAN_AGENT_TOKEN`, restrito ao quadro e com autoria de agente. O piloto usa o workspace interno da EIXU e o admin continua global; ainda não há papéis por workspace ou tenant.
 
 Antes de migração, reset, geração paga, Sandbox remoto, deploy ou outra escrita remota, confirme recurso e escopo já autorizados. O reset de sites preserva operadores, autenticação, Kanban e institucional; exige manifesto fresco, digest, fingerprint, deployment raiz READY e referência de recuperação. Nunca use `DROP DATABASE`, `DROP SCHEMA` ou `TRUNCATE ... CASCADE` genérico.
 

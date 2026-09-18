@@ -76,6 +76,9 @@ type Props = {
   rollbackCandidate: { id: string; activatedAt: string | null } | null;
   images: StudioImage[];
   imageRequest?: string;
+  basePath?: '/admin' | '/studio';
+  autoStartPrompt?: string;
+  autoPublishFirst?: boolean;
 };
 
 type PreviewResponse = {
@@ -118,6 +121,9 @@ export function StudioWorkspace({
   rollbackCandidate: initialRollbackCandidate,
   images: initialImages,
   imageRequest = '',
+  basePath = '/admin',
+  autoStartPrompt = '',
+  autoPublishFirst = false,
 }: Props) {
   const refreshTenant = useRefreshTenant();
   const compact = useCompactLayout();
@@ -152,9 +158,10 @@ export function StudioWorkspace({
     initialRollbackCandidate,
   );
   const [publishing, setPublishing] = useState(
-    initialRelease
-      ? ['preparing', 'validating', 'ready'].includes(initialRelease.status)
-      : false,
+    autoPublishFirst ||
+      (initialRelease
+        ? ['preparing', 'validating', 'ready'].includes(initialRelease.status)
+        : false),
   );
   const [notice, setNotice] = useState<{
     tone: 'info' | 'ok' | 'warn' | 'err';
@@ -163,6 +170,8 @@ export function StudioWorkspace({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const threadRef = useRef<HTMLDivElement>(null);
+  const autoStartSent = useRef(false);
+  const automaticPublicationPending = useRef(false);
 
   const fail = useCallback((message: string) => {
     setNotice({ tone: 'err', text: chatErrorMessage(message) });
@@ -191,22 +200,39 @@ export function StudioWorkspace({
   }, [tenant.slug]);
 
   const loadPreview = useCallback(
-    async (reload = false) => {
+    async (reload = false, quiet = false) => {
       if (!hasProject && !reload) return;
       setPreviewLoading(true);
       try {
-        const response = await adminFetch<PreviewResponse>(
-          `/api/admin/${tenant.slug}/studio/preview`,
-          { method: 'POST' },
-        );
+        let response: PreviewResponse | null = null;
+        const attempts = reload ? 20 : 1;
+        for (let attempt = 0; attempt < attempts; attempt += 1) {
+          try {
+            response = await adminFetch<PreviewResponse>(
+              `/api/admin/${tenant.slug}/studio/preview`,
+              { method: 'POST' },
+            );
+            break;
+          } catch (error) {
+            if (
+              !(error instanceof AdminHttpError) ||
+              error.status !== 409 ||
+              attempt === attempts - 1
+            )
+              throw error;
+            await new Promise((resolve) => window.setTimeout(resolve, 750));
+          }
+        }
+        if (!response) throw new Error('A prévia ainda não está disponível.');
         setPreviewUrl(response.url);
         setProjectStatus(response.status);
         setDirty(response.dirty);
         if (reload) setPreviewNonce((value) => value + 1);
       } catch (error) {
-        fail(
-          error instanceof Error ? error.message : 'Falha ao abrir a prévia.',
-        );
+        if (!quiet)
+          fail(
+            error instanceof Error ? error.message : 'Falha ao abrir a prévia.',
+          );
       } finally {
         setPreviewLoading(false);
       }
@@ -214,42 +240,59 @@ export function StudioWorkspace({
     [fail, hasProject, tenant.slug],
   );
 
-  const finishTurn = useCallback(() => {
-    setActiveRun(null);
-    setHasProject(true);
-    void Promise.allSettled([
-      loadPreview(true),
-      loadEditor(),
-      loadImages(),
-    ]).then(() => {
-      refreshTenant?.();
-    });
-  }, [loadEditor, loadImages, loadPreview, refreshTenant]);
-
-  const transport = useMemo(
-    () =>
-      new WorkflowChatTransport<StudioMessage>({
-        api: '/api/chat',
-        initialStartIndex: 0,
-        prepareSendMessagesRequest: ({ messages }) => ({
-          body: { tenant: tenant.slug, messages: messages.slice(-1) },
-          headers: { 'content-type': 'application/json' },
-        }),
-        onChatSendMessage: (response) => {
-          const workflowRunId = response.headers.get('x-workflow-run-id');
-          const studioRunId = response.headers.get('x-studio-run-id');
-          if (studioRunId) {
-            setHasProject(true);
-            setActiveRun({
-              id: studioRunId,
-              workflowRunId,
-              status: 'running',
-            });
-          }
-        },
-      }),
-    [tenant.slug],
+  const finishTurn = useCallback(
+    ({
+      isAbort,
+      isDisconnect,
+      isError,
+    }: {
+      isAbort: boolean;
+      isDisconnect: boolean;
+      isError: boolean;
+    }) => {
+      if (!isDisconnect) setActiveRun(null);
+      setHasProject(true);
+      const succeeded = !isAbort && !isDisconnect && !isError;
+      if (!succeeded && automaticPublicationPending.current) {
+        automaticPublicationPending.current = false;
+        setPublishing(false);
+      }
+      const updates = succeeded
+        ? [loadPreview(true), loadEditor(), loadImages()]
+        : [];
+      void Promise.allSettled(updates).then(() => {
+        refreshTenant?.();
+      });
+    },
+    [loadEditor, loadImages, loadPreview, refreshTenant],
   );
+
+  const transport = useMemo(() => {
+    return new WorkflowChatTransport<StudioMessage>({
+      api: '/api/chat',
+      initialStartIndex: 0,
+      prepareSendMessagesRequest: ({ messages }) => ({
+        body: {
+          tenant: tenant.slug,
+          messages: messages.slice(-1),
+          ...(autoPublishFirst ? { autoPublish: true } : {}),
+        },
+        headers: { 'content-type': 'application/json' },
+      }),
+      onChatSendMessage: (response) => {
+        const workflowRunId = response.headers.get('x-workflow-run-id');
+        const studioRunId = response.headers.get('x-studio-run-id');
+        if (studioRunId) {
+          setHasProject(true);
+          setActiveRun({
+            id: studioRunId,
+            workflowRunId,
+            status: 'running',
+          });
+        }
+      },
+    });
+  }, [autoPublishFirst, tenant.slug]);
 
   const { messages, sendMessage, status, error, stop } = useChat<StudioMessage>(
     {
@@ -269,10 +312,66 @@ export function StudioWorkspace({
   const writeBlocked = projectStatus === 'archived';
 
   useEffect(() => {
+    if (
+      !autoStartPrompt ||
+      autoStartSent.current ||
+      initialMessages.length > 0 ||
+      initialRun ||
+      busy ||
+      writeBlocked
+    )
+      return;
+    const timer = window.setTimeout(() => {
+      if (autoStartSent.current) return;
+      autoStartSent.current = true;
+      automaticPublicationPending.current = autoPublishFirst;
+      setNotice({
+        tone: 'info',
+        text: autoPublishFirst
+          ? 'Criação iniciada. A primeira versão será publicada automaticamente depois dos gates.'
+          : 'Criação iniciada com os dados do projeto.',
+      });
+      void sendMessage({ text: autoStartPrompt });
+      window.history.replaceState(null, '', `${basePath}/${tenant.slug}`);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [
+    autoPublishFirst,
+    autoStartPrompt,
+    basePath,
+    busy,
+    initialMessages.length,
+    initialRun,
+    sendMessage,
+    tenant.slug,
+    writeBlocked,
+  ]);
+
+  useEffect(() => {
     if (busy || !hasProject || !initialProject?.draftCodeRevision) return;
     const timer = window.setTimeout(() => void loadPreview(), 0);
     return () => window.clearTimeout(timer);
   }, [busy, hasProject, initialProject?.draftCodeRevision, loadPreview]);
+
+  useEffect(() => {
+    if (!busy || !hasProject || writeBlocked) return;
+    let inFlight = false;
+    const tick = async () => {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        await loadPreview(false, true);
+      } finally {
+        inFlight = false;
+      }
+    };
+    const first = window.setTimeout(() => void tick(), 700);
+    const interval = window.setInterval(() => void tick(), 4_000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(interval);
+    };
+  }, [busy, hasProject, loadPreview, writeBlocked]);
 
   useEffect(() => {
     const thread = threadRef.current;
@@ -280,20 +379,36 @@ export function StudioWorkspace({
   }, [messages, busy]);
 
   useEffect(() => {
-    if (!publishing || !releaseId) return;
+    if (!publishing) return;
     let cancelled = false;
     let timer: number | undefined;
+    let emptyPolls = 0;
     const poll = async () => {
       try {
         const result = await adminFetch<PublishResponse>(
-          `/api/admin/${tenant.slug}/studio/publish?release=${encodeURIComponent(releaseId)}`,
+          releaseId
+            ? `/api/admin/${tenant.slug}/studio/publish?release=${encodeURIComponent(releaseId)}`
+            : `/api/admin/${tenant.slug}/studio/publish`,
         );
         if (cancelled) return;
         setDirty(result.dirty);
         setRollbackCandidate(result.rollbackCandidate);
         const release = result.release;
+        if (!release) {
+          emptyPolls += 1;
+          if (emptyPolls >= 300) {
+            setPublishing(false);
+            automaticPublicationPending.current = false;
+            fail('A publicação automática não foi iniciada após a criação.');
+            return;
+          }
+          timer = window.setTimeout(poll, 3_000);
+          return;
+        }
+        if (!releaseId) setReleaseId(release.id);
         if (release?.status === 'active') {
           setPublishing(false);
+          automaticPublicationPending.current = false;
           setProjectStatus('published');
           setNotice({
             tone: 'ok',
@@ -304,6 +419,7 @@ export function StudioWorkspace({
         }
         if (release?.status === 'failed') {
           setPublishing(false);
+          automaticPublicationPending.current = false;
           fail(release.error ?? 'A publicação falhou.');
           return;
         }
@@ -852,6 +968,8 @@ export function StudioWorkspace({
               Conteúdo
             </button>
             <span>
+              {busy ? 'Atualizando a prévia ao vivo' : null}
+              {busy ? ' · ' : null}
               {initialProject?.canonicalHost ?? `${tenant.slug}.eixu.com.br`}
             </span>
           </div>
@@ -882,14 +1000,18 @@ export function StudioWorkspace({
                           <Loader2 className="admin-studio-spin" size={22} />
                         ) : null}
                         <strong>
-                          {hasProject
+                          {previewLoading || busy
                             ? 'Preparando a prévia'
-                            : 'O projeto começa na conversa'}
+                            : hasProject
+                              ? 'Ainda não há uma prévia'
+                              : 'O projeto começa na conversa'}
                         </strong>
                         <p>
-                          {hasProject
+                          {previewLoading || busy
                             ? 'A primeira compilação pode levar alguns instantes.'
-                            : 'Envie o briefing livre. O agente usa os dados já cadastrados.'}
+                            : hasProject
+                              ? 'Peça uma nova versão na conversa para criar o site.'
+                              : 'Envie o briefing livre. O agente usa os dados já cadastrados.'}
                         </p>
                       </div>
                     </div>
@@ -996,7 +1118,9 @@ export function StudioWorkspace({
                                       </option>
                                     ))}
                                   </select>
-                                  <Link href={`/admin/${tenant.slug}/imagens`}>
+                                  <Link
+                                    href={`${basePath}/${tenant.slug}/imagens`}
+                                  >
                                     Gerenciar imagens
                                   </Link>
                                 </>

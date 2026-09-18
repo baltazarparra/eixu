@@ -4,9 +4,15 @@ import { loadModule } from './helpers/load-module.mjs';
 
 const FOLDER_ID = '11111111-1111-4111-8111-111111111111';
 
-async function fixture({ insert = 'ok', direction = 'moderno' } = {}) {
+async function fixture({
+  insert = 'ok',
+  direction = 'referencia',
+  reference = 'https://referencia.example/',
+  surface = 'admin',
+} = {}) {
   const inserted = [];
   const deleted = [];
+  const uploaded = [];
   const refreshed = [];
   const activities = [];
   const logoUrl = 'https://blob.test/tenants/fixture/logo/cadastro.png';
@@ -31,7 +37,10 @@ async function fixture({ insert = 'ok', direction = 'moderno' } = {}) {
       },
       '@/lib/blob/tenant-files': {
         UploadError: class UploadError extends Error {},
-        putNewTenantBlob: async () => logoUrl,
+        putNewTenantBlob: async () => {
+          uploaded.push(logoUrl);
+          return logoUrl;
+        },
       },
       '@vercel/blob': {
         del: async (url) => deleted.push(url),
@@ -47,6 +56,7 @@ async function fixture({ insert = 'ok', direction = 'moderno' } = {}) {
             if (insert === 'error') throw new Error('insert recusado');
             if (insert === 'duplicate') return [];
             const [
+              workspaceId,
               slug,
               name,
               whatsapp,
@@ -57,6 +67,7 @@ async function fixture({ insert = 'ok', direction = 'moderno' } = {}) {
               folderId,
             ] = values;
             inserted.push({
+              workspaceId,
               slug,
               name,
               whatsapp,
@@ -90,7 +101,7 @@ async function fixture({ insert = 'ok', direction = 'moderno' } = {}) {
     evidence: 'Fundada em 2012\nAtendimento residencial',
     constraints: 'Não prometer prazo sem confirmação',
     currentSiteUrl: 'https://fixture.example/',
-    reference: 'https://referencia.example/',
+    reference,
     primary: '#112233',
     secondary: '#f0f1f2',
     highlight: '#ff5500',
@@ -99,6 +110,7 @@ async function fixture({ insert = 'ok', direction = 'moderno' } = {}) {
     folderId: FOLDER_ID,
   }))
     form.set(name, value);
+  form.set('surface', surface);
   form.append('phone', '11 3333-4444');
   form.append('phoneKind', 'telefone');
   form.append('phone', '+55 11 98888-7777');
@@ -112,6 +124,7 @@ async function fixture({ insert = 'ok', direction = 'moderno' } = {}) {
     run: () => createTenantAction(null, form),
     inserted,
     deleted,
+    uploaded,
     refreshed,
     activities,
     logoUrl,
@@ -124,6 +137,7 @@ void test('cadastro preserva dados, direção visual e organização do cliente'
 
   assert.equal(current.inserted.length, 1);
   const row = current.inserted[0];
+  assert.equal(row.workspaceId, '00000000-0000-4000-8000-000000000001');
   assert.equal(row.slug, 'fixture');
   assert.equal(row.whatsapp, '5511988887777');
   assert.equal(row.folderId, FOLDER_ID);
@@ -135,7 +149,7 @@ void test('cadastro preserva dados, direção visual e organização do cliente'
     'Fundada em 2012',
     'Atendimento residencial',
   ]);
-  assert.equal(row.brand.direction, 'moderno');
+  assert.equal(row.brand.direction, 'referencia');
   assert.equal(row.brand.paletteSource, 'operador');
   assert.equal(row.brand.logoUrl, current.logoUrl);
   assert.match(row.brand.assetRevision, /^[0-9a-f-]{36}$/i);
@@ -144,7 +158,7 @@ void test('cadastro preserva dados, direção visual e organização do cliente'
     { number: '+5511988887777', whatsapp: true },
   ]);
   assert.deepEqual(current.deleted, []);
-  assert.deepEqual(current.refreshed, ['/admin']);
+  assert.deepEqual(current.refreshed, ['/admin', '/studio']);
   assert.equal(current.activities[0].action, 'tenant.create');
   assert.equal(current.activities[0].actor.name, 'Operador');
 });
@@ -154,6 +168,21 @@ void test('cadastro recusa direção desconhecida antes de enviar o logo', async
   assert.match(await current.run(), /direção visual/i);
   assert.equal(current.inserted.length, 0);
   assert.equal(current.deleted.length, 0);
+  assert.equal(current.uploaded.length, 0);
+});
+
+void test('vibe Referência exige o link antes de enviar o logo', async () => {
+  const current = await fixture({ reference: '' });
+  assert.match(await current.run(), /informe o link visual/i);
+  assert.equal(current.inserted.length, 0);
+  assert.equal(current.uploaded.length, 0);
+});
+
+void test('cadastro do Studio inicia a primeira criação uma única vez', async () => {
+  const current = await fixture({ surface: 'studio' });
+  await assert.rejects(current.run(), /redirect:\/studio\/fixture\?start=1/);
+  assert.equal(current.inserted.length, 1);
+  assert.deepEqual(current.refreshed, ['/admin', '/studio']);
 });
 
 for (const insert of ['duplicate', 'error'])

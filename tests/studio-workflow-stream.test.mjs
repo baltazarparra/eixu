@@ -115,11 +115,13 @@ for (const failure of [false, true])
       runId: 'run',
       projectId: 'project',
       tenantId: 'tenant',
+      tenant: { slug: 'fixture', name: 'Fixture' },
       sandboxName: 'sandbox',
       responseMessageUid: 'response',
       role: 'assistant',
       messages: [],
       operator: { id: 'user', name: 'Fixture', login: 'fixture' },
+      autoPublish: false,
     });
     if (failure) await assert.rejects(turn, /Gate recusado/);
     else assert.equal((await turn).status, 'succeeded');

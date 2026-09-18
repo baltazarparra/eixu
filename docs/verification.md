@@ -57,6 +57,8 @@ Use dados sintéticos com logo, site oficial e referência. Confirme a ordem de 
 
 Valide o projeto gerado em desktop, mobile, teclado, toque e movimento reduzido. Verifique que `content/schema.json` inclui os textos e imagens de operação frequente.
 
+Ao criar por `/studio/novo`, confirme o redirecionamento para `?start=1`, um único envio automático e `autoPublish` aceito apenas quando não há histórico, run ou draft. Depois do checkpoint, confirme uma única release automática. Em um turno posterior, confirme que o domínio público não muda até o clique em **Publicar**.
+
 ### Sandbox e arquivos
 
 Tente path absoluto, `..`, symlink, arquivo excessivo, arquivo protegido e comando fora da allowlist. Todos devem falhar antes do efeito. Restaure o Sandbox do digest do checkpoint e compare os arquivos protegidos.
@@ -67,7 +69,9 @@ Remova o Sandbox e restaure um checkpoint que contém lockfile, mas não `node_m
 
 Sem sessão administrativa, a rota central deve recusar. A URL do banco não pode conter token. Token inválido ou expirado deve falhar; token válido cria cookie efêmero e a página deve receber `noindex`, referrer policy e frame ancestor da EIXU.
 
-Depois de uma edição falha/cancelada, abra a prévia: compare código e revisão de conteúdo com o último checkpoint e confirme a ausência de arquivos extras. Hash de arquivo compactado divergente ou instalação recusada não pode criar sessão de prévia.
+Durante um run, altere um arquivo permitido e confirme a atualização do workspace na prévia. Inicie typecheck/build e confirme que o servidor de desenvolvimento pausa e volta sem concorrer com o comando.
+
+Depois de uma edição falha/cancelada, abra a prévia estável: compare código e revisão de conteúdo com o último checkpoint e confirme a ausência de arquivos extras. Hash de arquivo compactado divergente ou instalação recusada não pode criar sessão de prévia.
 
 ### CMS
 
@@ -108,6 +112,8 @@ Mantenha uma release ativa e edite seu rascunho: formulário, eventos e WhatsApp
 
 A compatibilidade relevante desta entrega é o acervo antigo poder repetir `batch_id`; a chave única do Studio é `studio_request_key` e só vale quando não nula.
 
+Confirme também que `studio_workspaces` contém o workspace interno da EIXU, todos os tenants existentes receberam seu `workspace_id` e o dashboard do Studio filtra por esse vínculo. O reset deve preservar o workspace ao zerar os tenants.
+
 ## Reset
 
 Gerar manifesto é leitura remota e não apaga dados:
@@ -135,7 +141,7 @@ Produção e preview recebem manifestos próprios. Se compartilham um time Verce
 
 Os checks locais não comprovam:
 
-- disponibilidade dos IDs/modelos GPT-5.6 no Gateway da conta;
+- disponibilidade de `google/gemini-3.8-flash` com reasoning `high` e `openai/gpt-image-2.5-sunburst` no Gateway da conta;
 - billing e metadata de custo;
 - durabilidade do Workflow beta;
 - política de rede e tempo do Sandbox;

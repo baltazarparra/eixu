@@ -2,6 +2,16 @@ import { z } from 'zod';
 
 const conciseText = (maximum: number) => z.string().trim().min(1).max(maximum);
 
+// `z.url()` emits JSON Schema's `format: uri`, but Workflow's bundled Ajv
+// does not install that optional format. Keep the schema portable across the
+// workflow boundary and parse it again with this source schema before writes.
+const httpUrl = z
+  .string()
+  .trim()
+  .min(1, 'URL inválida.')
+  .max(2_048)
+  .regex(/^https?:\/\/[^\s]+$/i, 'URL inválida.');
+
 const operatorSourceSchema = z
   .object({
     kind: z.literal('operator'),
@@ -12,7 +22,7 @@ const operatorSourceSchema = z
 const officialSourceSchema = z
   .object({
     kind: z.literal('official'),
-    url: z.url().max(2_048),
+    url: httpUrl,
   })
   .strict();
 
@@ -106,7 +116,7 @@ export const studioArtDirectionArtifactSchema = z
     ),
     reference: z
       .object({
-        url: z.url().max(2_048),
+        url: httpUrl,
         source: z.enum(['operator', 'direction']),
         observations: z.array(conciseText(600)).min(2).max(16),
       })
