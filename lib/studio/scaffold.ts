@@ -283,3 +283,12 @@ export function isStudioProtectedFileContent(
     (path === 'next.config.ts' && content === STUDIO_LEGACY_NEXT_CONFIG)
   );
 }
+
+/** O adaptador da Vercel produz o próprio bundle; standalone é só do Sandbox. */
+export function studioVercelNextConfig(content: string, slug: string): string {
+  if (!isStudioProtectedFileContent('next.config.ts', content, slug))
+    throw new Error(
+      'A configuração do Next não corresponde ao checkpoint autorizado.',
+    );
+  return content.replace("  output: 'standalone',\n", '');
+}

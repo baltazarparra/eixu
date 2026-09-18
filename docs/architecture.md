@@ -122,6 +122,8 @@ Fluxo:
 
 Quando o primeiro build de um projeto termina com checkpoint válido, o Workflow inicia essa release automaticamente em um step durável. Se a publicação falhar, o checkpoint permanece disponível e a falha fica registrada. Depois da primeira versão, chat e CMS alteram somente rascunho e prévia; uma nova release exige o botão **Publicar**.
 
+A materialização da release valida a configuração reservada do Next e retira `output: 'standalone'` somente da cópia enviada à Vercel. O Next 16.3 não combina essa saída com o adaptador da plataforma; checkpoint e Sandbox mantêm os arquivos originais, incluindo configurações históricas. O deployment candidato pede `target: 'staging'` explicitamente na API REST, evitando a promoção automática do primeiro deployment sem target.
+
 O bypass existe apenas durante o smoke do candidato e é revogado também quando a verificação falha. O domínio canônico público nunca recebe o bypass: seu smoke comprova acesso real depois da promoção. O reconciliador registra a intenção antes da promoção e cobre a janela em que a Vercel pode ter promovido o deployment antes de a gravação no banco terminar. O marcador servido pelo host canônico é a prova final. Rollback cria uma nova release pelo mesmo pipeline. Arquivar remove o domínio; restaurar promove a release ativa e verifica o host; excluir remove somente o projeto dedicado comprovado.
 
 ## Integrações públicas

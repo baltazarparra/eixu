@@ -7,6 +7,7 @@ import {
   STUDIO_PROTECTED_FILES,
   STUDIO_SCAFFOLD_FILES,
   studioScaffoldContent,
+  studioVercelNextConfig,
 } from './scaffold';
 import { assertStudioPackageContract } from './package-contract.mjs';
 import {
@@ -855,6 +856,7 @@ export type StudioDeploymentFile = {
 export async function studioDeploymentFiles(input: {
   archive: Buffer;
   content: Record<string, string>;
+  slug: string;
 }): Promise<StudioDeploymentFile[]> {
   const sandbox = await Sandbox.create({
     image: 'vercel/sandbox/universal:latest',
@@ -929,7 +931,15 @@ export async function studioDeploymentFiles(input: {
       total += content.byteLength;
       if (total > 4_000_000)
         throw new Error('O release excede o limite de 4 MB de fontes.');
-      files.push({ file, data: content });
+      files.push({
+        file,
+        data:
+          file === 'next.config.ts'
+            ? Buffer.from(
+                studioVercelNextConfig(content.toString('utf8'), input.slug),
+              )
+            : content,
+      });
     }
     return files;
   } finally {
