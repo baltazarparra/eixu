@@ -111,7 +111,7 @@ A release usa um projeto `eixu-site-{slug}` dentro do time configurado. Os IDs d
 Fluxo:
 
 1. criar a release e salvar o artefato privado;
-2. assegurar o projeto dedicado, confirmar que nunca é o projeto raiz e exigir proteção Vercel Auth em `preview`;
+2. assegurar o projeto dedicado, confirmar que nunca é o projeto raiz e exigir Vercel Auth em `prod_deployment_urls_and_all_previews`, protegendo as URLs de deployment e liberando os domínios de produção;
 3. materializar os arquivos com a revisão de conteúdo congelada;
 4. enviar cada arquivo à API `/v2/files` por SHA-1 e criar o deployment com referências de digest;
 5. aguardar `READY`, criar um bypass de automação efêmero, verificar o marcador de revisão e as páginas e revogar o bypass;
@@ -122,7 +122,9 @@ Fluxo:
 
 Quando o primeiro build de um projeto termina com checkpoint válido, o Workflow inicia essa release automaticamente em um step durável. Se a publicação falhar, o checkpoint permanece disponível e a falha fica registrada. Depois da primeira versão, chat e CMS alteram somente rascunho e prévia; uma nova release exige o botão **Publicar**.
 
-A materialização da release valida a configuração reservada do Next e retira `output: 'standalone'` somente da cópia enviada à Vercel. O Next 16.3 não combina essa saída com o adaptador da plataforma; checkpoint e Sandbox mantêm os arquivos originais, incluindo configurações históricas. O deployment candidato pede `target: 'staging'` explicitamente na API REST, evitando a promoção automática do primeiro deployment sem target.
+A materialização da release valida a configuração reservada do Next e retira `output: 'standalone'` somente da cópia enviada à Vercel. O Next 16.3 não combina essa saída com o adaptador da plataforma; checkpoint e Sandbox mantêm os arquivos originais, incluindo configurações históricas.
+
+O candidato usa `target: 'production'` com `autoAssignCustomDomains: false`, equivalente a [`vercel --prod --skip-domain`](https://vercel.com/docs/cli/deploying-from-cli#deploying-a-staged-production-build). Assim o build usa o ambiente final, permanece protegido em sua URL e não troca os domínios antes do smoke. O endpoint de promoção recebe exatamente o ID validado, sem reconstrução. Um candidato `staging` não pode ser promovido diretamente por esse endpoint e é recusado na consulta de status.
 
 O bypass existe apenas durante o smoke do candidato e é revogado também quando a verificação falha. O domínio canônico público nunca recebe o bypass: seu smoke comprova acesso real depois da promoção. O reconciliador registra a intenção antes da promoção e cobre a janela em que a Vercel pode ter promovido o deployment antes de a gravação no banco terminar. O marcador servido pelo host canônico é a prova final. Rollback cria uma nova release pelo mesmo pipeline. Arquivar remove o domínio; restaurar promove a release ativa e verifica o host; excluir remove somente o projeto dedicado comprovado.
 

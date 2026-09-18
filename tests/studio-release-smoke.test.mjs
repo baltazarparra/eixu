@@ -65,7 +65,9 @@ for (const scenario of ['propagates', 'foreign-redirect', 'never-propagates'])
             return Response.json({
               id: 'prj_fixture',
               name: 'eixu-site-fixture',
-              ssoProtection: { deploymentType: 'preview' },
+              ssoProtection: {
+                deploymentType: 'prod_deployment_urls_and_all_previews',
+              },
             });
           }
           requests.push({

@@ -4,7 +4,8 @@ import { db, transaction } from '@/lib/db';
 import { studioDeploymentFiles, type StudioDeploymentFile } from './sandbox';
 import {
   fetchStudioPreviewWithBypass,
-  hasStudioPreviewProtection,
+  hasStudioCandidateProtection,
+  STUDIO_VERCEL_PROTECTION,
   studioSameOriginRedirect,
   withTemporaryStudioVercelBypass,
   type VercelProjectProtection,
@@ -481,20 +482,20 @@ async function ensureVercelProjectProtection(
 ): Promise<VercelProjectIdentity> {
   let project = input;
 
-  if (!hasStudioPreviewProtection(project)) {
+  if (!hasStudioCandidateProtection(project)) {
     project = await vercelRequest<VercelProjectIdentity>(
       `/v9/projects/${encodeURIComponent(project.id)}`,
       {
         method: 'PATCH',
         body: JSON.stringify({
-          ssoProtection: { deploymentType: 'preview' },
+          ssoProtection: { deploymentType: STUDIO_VERCEL_PROTECTION },
         }),
       },
     );
     assertVercelProjectIdentity(project, { id: input.id, name: input.name });
-    if (!hasStudioPreviewProtection(project))
+    if (!hasStudioCandidateProtection(project))
       throw new Error(
-        'A Vercel não confirmou a proteção dos deployments de preview.',
+        'A Vercel não confirmou a proteção dos deployments candidatos.',
       );
   }
 
@@ -516,7 +517,7 @@ async function ensureVercelProject(release: StudioRelease) {
         framework: 'nextjs',
         installCommand: 'npm install --ignore-scripts --no-audit --no-fund',
         buildCommand: 'npm run build',
-        ssoProtection: { deploymentType: 'preview' },
+        ssoProtection: { deploymentType: STUDIO_VERCEL_PROTECTION },
       }),
     });
   } catch (error) {
@@ -597,9 +598,10 @@ export async function provisionStudioDeployment(releaseId: string) {
     body: JSON.stringify({
       name: project.name,
       project: project.id,
-      // O primeiro deployment sem target pode virar production automaticamente.
-      // staging é o target de prévia explícito da API REST; promoção vem após smoke.
-      target: 'staging',
+      // Equivale a --prod --skip-domain: promove o mesmo build após o smoke.
+      // Um target staging exigiria reconstrução para chegar a production.
+      target: 'production',
+      autoAssignCustomDomains: false,
       files: uploadedFiles,
       meta: {
         eixuReleaseId: release.id,
@@ -639,6 +641,7 @@ export async function studioDeploymentStatus(releaseId: string) {
     url: string;
     projectId?: string;
     project?: { id?: string };
+    target?: string | null;
     readyState?: string;
     status?: string;
     state?: string;
@@ -649,6 +652,10 @@ export async function studioDeploymentStatus(releaseId: string) {
     deploymentProjectId !== release.vercelProjectId
   )
     throw new Error('O deployment não pertence ao projeto Vercel do cliente.');
+  if (deployment.target !== 'production')
+    throw new Error(
+      'O candidato precisa ser um build de produção sem promoção automática. Publique novamente.',
+    );
   const status = deployment.readyState ?? deployment.status ?? deployment.state;
   return { status: status ?? 'UNKNOWN', url: `https://${deployment.url}` };
 }
@@ -705,9 +712,9 @@ export async function verifyStudioDeployment(releaseId: string) {
     release.vercelProjectId,
     projectName(release.slug),
   );
-  if (!hasStudioPreviewProtection(project))
+  if (!hasStudioCandidateProtection(project))
     throw new Error(
-      'O deployment candidato não tem a proteção de preview esperada.',
+      'O deployment candidato não tem a proteção esperada para URLs de produção.',
     );
   const base = release.deploymentUrl.replace(/\/$/, '');
   const paths = [

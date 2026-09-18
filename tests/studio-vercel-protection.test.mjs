@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   createStudioVercelBypassSecret,
-  hasStudioPreviewProtection,
+  hasStudioCandidateProtection,
   hasStudioVercelBypass,
   studioSameOriginRedirect,
   studioVercelBypassHeaders,
@@ -16,15 +16,22 @@ void test('o bypass temporário é aleatório e aceito pela API da Vercel', () =
   assert.match(first, /^[a-f0-9]{32}$/);
 });
 
-void test('a proteção exige preview e o bypass de automação exato', () => {
+void test('a proteção cobre candidatos de produção e exige o bypass exato', () => {
   const secret = createStudioVercelBypassSecret();
   const project = {
-    ssoProtection: { deploymentType: 'preview' },
+    ssoProtection: {
+      deploymentType: 'prod_deployment_urls_and_all_previews',
+    },
     protectionBypass: {
       [secret]: { scope: 'automation-bypass' },
     },
   };
-  assert.equal(hasStudioPreviewProtection(project), true);
+  assert.equal(hasStudioCandidateProtection(project), true);
+  for (const deploymentType of ['preview', 'all', undefined])
+    assert.equal(
+      hasStudioCandidateProtection({ ssoProtection: { deploymentType } }),
+      false,
+    );
   assert.equal(hasStudioVercelBypass(project, secret), true);
   assert.deepEqual(studioVercelBypassHeaders(secret), {
     'x-vercel-protection-bypass': secret,
