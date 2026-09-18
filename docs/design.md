@@ -6,13 +6,15 @@ O Studio não escolhe uma página em um catálogo. Ele transforma conteúdo real
 
 ## Hierarquia das fontes
 
+Na edição, a instrução atual do operador define o escopo e tem precedência sobre a direção anterior. Uma nova URL no chat pode substituir a referência visual para aquele trabalho e orientar os turnos seguintes por meio do artefato de direção atualizado.
+
 1. **Dados cadastrados e site oficial:** fatos, história, serviços, produtos, contatos e linguagem do cliente.
 2. **Logo, cores e imagens do cliente:** identidade e restrições de marca.
 3. **Referência visual informada:** layout, tipografia, densidade, superfícies, ritmo, imagem e movimento.
 4. **Direção cadastrada:** fallback para eixos que a referência não resolve.
 5. **Julgamento do agente:** composição final, sempre verificável pela prévia.
 
-A referência não fornece fatos nem ativos reutilizáveis. Copiar marca, texto, imagens, código ou uma página inteira é proibido.
+A referência não fornece fatos nem ativos reutilizáveis. Quando o operador pede para copiar o layout, reproduza sua composição, ordem de seções, proporções, tipografia, espaçamentos e interações com código próprio, conteúdo e ativos do cliente. Não substitua esse pedido por uma interpretação genérica da vibe. Marca, texto, imagens e código da referência não são transferidos ao projeto.
 
 ## Vibes
 

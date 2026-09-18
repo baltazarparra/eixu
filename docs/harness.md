@@ -10,21 +10,21 @@ Documentação oficial relevante: [WorkflowAgent](https://ai-sdk.dev/docs/agents
 
 ## Política de modelos
 
-`lib/studio/models.ts` é a fonte única da política `studio-gemini-3.8-flash-v1`.
+`lib/studio/models.ts` é a fonte única da política `studio-gemini-3.8-flash-v2`.
 
-| Papel           | Modelo                  | Reasoning | Passos máx. | Uso                                    |
-| --------------- | ----------------------- | --------- | ----------- | -------------------------------------- |
-| `assistant`     | google/gemini-3.8-flash | high      | 12          | Conversa e pedido geral.               |
-| `batch`         | google/gemini-3.8-flash | high      | 4           | Extração/classificação curta.          |
-| `context`       | google/gemini-3.8-flash | high      | 12          | Fontes, fatos, tom e lacunas.          |
-| `art_direction` | google/gemini-3.8-flash | high      | 16          | Leitura visual e direção de arte.      |
-| `build`         | google/gemini-3.8-flash | high      | 32          | Primeiro projeto e recomposição ampla. |
-| `edit`          | google/gemini-3.8-flash | high      | 20          | Alteração localizada.                  |
-| `refine`        | google/gemini-3.8-flash | high      | 24          | Responsividade, motion e acabamento.   |
-| `critic`        | google/gemini-3.8-flash | high      | 12          | Crítica vinculada a evidência atual.   |
-| `diagnostic`    | google/gemini-3.8-flash | high      | 20          | Falhas complexas de código/build.      |
+| Papel           | Modelo                  | Reasoning | Passos máx. | Uso                                  |
+| --------------- | ----------------------- | --------- | ----------- | ------------------------------------ |
+| `assistant`     | google/gemini-3.8-flash | high      | 12          | Conversa e pedido geral.             |
+| `batch`         | google/gemini-3.8-flash | high      | 4           | Extração/classificação curta.        |
+| `context`       | google/gemini-3.8-flash | high      | 12          | Fontes, fatos, tom e lacunas.        |
+| `art_direction` | google/gemini-3.8-flash | high      | 16          | Leitura visual e direção de arte.    |
+| `build`         | google/gemini-3.8-flash | high      | 32          | Primeiro projeto, sem checkpoint.    |
+| `edit`          | google/gemini-3.8-flash | high      | 48          | Agente de front-end após a criação.  |
+| `refine`        | google/gemini-3.8-flash | high      | 24          | Responsividade, motion e acabamento. |
+| `critic`        | google/gemini-3.8-flash | high      | 12          | Crítica vinculada a evidência atual. |
+| `diagnostic`    | google/gemini-3.8-flash | high      | 20          | Falhas complexas de código/build.    |
 
-CMS e publicação são determinísticos e não consomem inferência. O role nasce do classificador de intenção do servidor e fica registrado no run. O modelo efetivamente servido, reasoning, tokens, cache, custo e `generationId` são armazenados por passo.
+CMS e publicação são determinísticos e não consomem inferência. O servidor escolhe `build` quando não há checkpoint e `edit` depois da primeira versão, sem classificar o texto por palavras-chave. O agente interpreta livremente se o pedido é conversa, análise, ajuste ou reconstrução ampla. `edit` tem o mesmo limite de saída do build (49.152 tokens) e até 48 passos, encerrando antes quando termina o trabalho. Os demais papéis continuam disponíveis para recuperação e recibos históricos. O papel, modelo efetivamente servido, reasoning, tokens, cache, custo e `generationId` são armazenados por passo.
 
 ## Ordem do primeiro build
 
@@ -43,21 +43,25 @@ O WorkflowAgent mantém os overrides de `prepareStep` entre passos. Ao sair do c
 
 ## Ferramentas
 
-| Ferramenta                                 | Responsabilidade                                               |
-| ------------------------------------------ | -------------------------------------------------------------- |
-| `read_project_context`                     | Dados, contatos, marca, logo e evidências existentes.          |
-| `read_official_site`                       | Crawl limitado da fonte factual cadastrada.                    |
-| `inspect_visual_reference`                 | Screenshots desktop/mobile e leitura multimodal da referência. |
-| `list_project_files` / `read_project_file` | Inspeção dentro da raiz autorizada.                            |
-| `write_project_file`                       | Escrita de arquivo completo após política de path e tamanho.   |
-| `write_content_contract`                   | Validação e gravação atômica de schema/valores.                |
-| `generate_project_image`                   | Geração com referências autorizadas, recibo e acervo numerado. |
-| `run_project_check`                        | Comando permitido, como typecheck ou build.                    |
-| `record_artifact`                          | Contexto, direção de arte e validação tipados e versionados.   |
+Após a primeira criação, o catálogo inteiro fica disponível desde o início e não há repetição obrigatória do onboarding. O pedido atual prevalece sobre artefatos e vibe anteriores. O agente pode reconstruir componentes e CSS, inspecionar uma URL nova, gerar imagens e atualizar o contrato editorial. Perguntas e análises não exigem escrita. Alterações continuam sujeitas a checkpoint e publicação manual.
+
+| Ferramenta                                 | Responsabilidade                                                    |
+| ------------------------------------------ | ------------------------------------------------------------------- |
+| `read_project_context`                     | Dados, contatos, marca, logo e evidências existentes.               |
+| `read_official_site`                       | Crawl limitado da fonte factual cadastrada.                         |
+| `inspect_visual_reference`                 | Screenshots desktop/mobile da URL do chat ou, sem URL, do cadastro. |
+| `list_project_files` / `read_project_file` | Inspeção dentro da raiz autorizada.                                 |
+| `write_project_file`                       | Escrita de arquivo completo após política de path e tamanho.        |
+| `write_content_contract`                   | Validação e gravação atômica de schema/valores.                     |
+| `generate_project_image`                   | Geração com referências autorizadas, recibo e acervo numerado.      |
+| `run_project_check`                        | Comando permitido, como typecheck ou build.                         |
+| `record_artifact`                          | Contexto, direção de arte e validação tipados e versionados.        |
 
 As ferramentas revalidam o run e o vínculo projeto/tenant antes do efeito. `activeTools` e `toolChoice` reduzem o catálogo do passo; autorização continua no executor.
 
 ## Contexto e fontes
+
+`inspect_visual_reference({ url })` aceita uma referência pública nova sem alterar `/dados`. O executor revalida o input, resolve o acesso ao projeto e usa a mesma captura sem credenciais, com DNS/IP fixado ao socket e bloqueio de redes privadas em cada requisição. IPv4 e IPv6 usam listas separadas: bloquear IPv4 mapeado em uma lista única também bloquearia os IPv4 públicos. Screenshots de URLs diferentes no mesmo run recebem chaves privadas diferentes e chegam ao modelo como imagens. Falha na URL pedida retorna `unavailable`, sem substituir silenciosamente pelo cadastro.
 
 O prompt recebe uma visão reduzida da conversa, dados do projeto, artefatos atuais e evidências. Credenciais, handles do Sandbox e conexões não entram em estado serializado.
 
@@ -103,6 +107,8 @@ Falha ou cancelamento também retira o projeto de `building`: restaura `publishe
 Cancelar marca o run, cancela o Workflow quando disponível e impede ferramentas futuras. Efeitos já confirmados não são desfeitos silenciosamente.
 
 ## Checkpoint e conclusão
+
+`finishReason: tool-calls` no limite de passos indica uma execução incompleta, não sucesso. O Workflow encerra com erro e não passa ao checkpoint nem publica. Isso evita registrar como concluído um pedido que gastou o orçamento apenas lendo arquivos. A execução só segue para validação final após uma conclusão normal do agente; retomadas continuam dentro do orçamento global.
 
 O agente pode terminar texto antes de cumprir um trabalho. O Workflow só cria checkpoint automático quando o run continua válido e os gates do papel permitem. O checkpoint:
 
