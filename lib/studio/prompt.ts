@@ -43,7 +43,7 @@ Contrato operacional:
 const ARTIFACT_CONTRACT = `Contratos dos artefatos:
 - context: summary; tone { voice, traits, avoid }; facts atômicos com source operator:/dados ou official:url e status coerente; inferences com basis; gaps com impact; sitePlan; constraints.
 - art_direction: concept; reference { url, source, observations }; logo { observations, handling }; layout; typography; palette { role, value, use }; imagery; rhythm; motion { principles, reducedMotion }; mobile; avoid.
-- validation: summary; checks. Inclua checks command para typecheck e build com status/evidência reais, limitations e ready coerente. O servidor rejeita comandos ausentes ou status diferente do exit code.`;
+- validation: summary; checks; limitations; ready. Cada check tem somente um dos formatos: { kind: "command", command, status, evidence } para comandos realmente executados, ou { kind: "manual", name, status, evidence } para revisão visual, mobile, marca e conteúdo. Esses assuntos vão em name; nunca use brand, mobile ou content como kind. Inclua typecheck e build com status/evidência reais. Use not_run em uma revisão manual não realizada e ready=true somente se todos os checks passaram. O servidor rejeita comandos ausentes ou status diferente do exit code.`;
 
 const ROLE: Record<StudioModelRole, string> = {
   assistant: `Entenda o pedido e responda diretamente. Se ele exigir mudança no projeto, inspecione e execute a mudança completa; não entregue apenas sugestões.`,

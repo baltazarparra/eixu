@@ -27,6 +27,51 @@ void test('o artefato chega ao Gemini como objeto sem limites combinatórios de 
   ]);
   assert.equal(schema.properties.payload.anyOf.length, 3);
   assert.doesNotMatch(JSON.stringify(schema), /"maxItems":/);
+  assert.doesNotMatch(JSON.stringify(schema), /"const":/);
+  const validation = schema.properties.payload.anyOf[2];
+  assert.deepEqual(
+    validation.properties.checks.items.oneOf.map(
+      (check) => check.properties.kind.enum,
+    ),
+    [['command'], ['manual']],
+  );
+});
+
+void test('validação exige comandos realmente executados antes de registrar sucesso', async () => {
+  const queries = [];
+  const { studioTools } = loadModuleGraph('lib/studio/tools.ts', {
+    '@/lib/db': {
+      db: () => async (parts) => {
+        const query = parts.join('?');
+        queries.push(query);
+        return query.includes('select run.status')
+          ? [{ status: 'running' }]
+          : [];
+      },
+    },
+  });
+  await assert.rejects(
+    studioTools.record_artifact.execute(
+      {
+        kind: 'validation',
+        payload: {
+          summary: 'Comandos aprovados.',
+          ready: true,
+          limitations: [],
+          checks: ['typecheck', 'build'].map((command) => ({
+            kind: 'command',
+            command,
+            status: 'passed',
+            evidence: 'exit 0',
+          })),
+        },
+      },
+      { context: {} },
+    ),
+    /typecheck não foi executado/,
+  );
+  assert.equal(queries.length, 2);
+  assert.match(queries[1], /from studio_events/);
 });
 
 function contextInput() {

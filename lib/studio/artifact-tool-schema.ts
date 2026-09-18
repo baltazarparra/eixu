@@ -32,6 +32,12 @@ export const studioArtifactToolSchema = jsonSchema<StudioArtifactInput>(
         // Only generation omits these maxima: Zod checks them again in the
         // executor, including after Workflow replaces this validator with Ajv.
         delete schema.maxItems;
+        // Gemini's supported enum vocabulary also constrains discriminators;
+        // `const` alone can be ignored when it generates nested tool inputs.
+        if (schema.const !== undefined) {
+          schema.enum = [schema.const];
+          delete schema.const;
+        }
       },
     }),
   {
