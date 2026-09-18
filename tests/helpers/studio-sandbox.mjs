@@ -183,6 +183,15 @@ export function studioSandboxFixture({
         }
         return result('ok');
       }
+      if (
+        input.cmd === 'node' &&
+        input.args[0] === '/tmp/eixu-preview-server.cjs'
+      ) {
+        if (!files.has(`${workspace}/node_modules/.bin/next`))
+          return result('', 127, 'next: command not found');
+        serverRunning = true;
+        return result('ok');
+      }
       if (input.cmd === 'curl') {
         if (!serverRunning) return result('', 7);
         // O proxy troca query por cookie antes de renderizar o documento: esse

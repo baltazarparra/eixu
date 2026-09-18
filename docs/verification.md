@@ -81,6 +81,8 @@ Depois de uma edição falha/cancelada, abra a prévia estável: compare código
 
 Provoque erro de renderização depois do redirect de autenticação: HTTP 500, redirect isolado, ausência do cabeçalho de autorização ou resposta sem HTML não podem anunciar prontidão. Exercite `next/image` com logo e imagem do Blob do próprio cliente; outra pasta de tenant, origem não permitida, query e porta customizada devem ser recusadas. Checkpoints com a configuração antiga exata continuam válidos, sem reescrita do arquivo reservado.
 
+Abra a prévia pelo domínio real do Sandbox e confira os scripts, interação de um componente cliente e conexão HMR. HTTP 200 no documento sozinho não comprova hidratação. A origem deve ser o hostname exato da VM, sem liberar origens externas por wildcard nem alterar o checkpoint do cliente.
+
 ### CMS
 
 Salve uma revisão válida, tente editar com revisão antiga e confirme conflito. Valide tipo, tamanho, chave desconhecida e hash. A publicação precisa materializar exatamente a revisão congelada, mesmo se houver uma edição posterior.
