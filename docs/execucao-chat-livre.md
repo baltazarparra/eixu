@@ -78,6 +78,8 @@ No estado final antes do release:
 | `npm run test:studio`                  | 53/53 testes passaram                                                                             |
 | `npm run test:admin`                   | 52 passaram e 3 integrações sem PostgreSQL local foram puladas                                    |
 | `npm run build:vercel`                 | passou com Next.js 16.3.3 e runtime do Workflow validado                                          |
+| `node --check` nos scripts de reset    | passou; nenhum reset foi executado                                                                |
+| `npm audit --audit-level=moderate`     | zero vulnerabilidades                                                                             |
 | navegador desktop e mobile             | login protegido, lista, cadastro, workspace, dados e imagens verificados; sem overflow horizontal |
 | `git diff --check`                     | passou                                                                                            |
 
@@ -92,5 +94,8 @@ efeitos determinísticos foram exercitados localmente.
 
 O projeto raiz conferido pela CLI é `rvnn/eixu`, ID
 `prj_xVeSzlAAalV8xBD9NixqpSxLWXKk`, com build `npm run build:vercel` e Node.js
-24.x. O recibo do deployment final e os smokes de produção são registrados na
-entrega da branch depois que o commit é publicado.
+24.x. O commit funcional `4c319c4db9ede99d7e139b4e63f157a53efb1462` foi
+publicado em produção no deployment `dpl_Gy8xS1jfnmmftXeuFEkmkLNpKa3y`, que
+chegou a `READY` e recebeu os aliases `eixu.com.br`, `*.eixu.com.br` e
+`eixu.vercel.app`. O smoke anônimo confirmou que `/studio` responde no domínio
+canônico e redireciona para `/admin/login?returnTo=/studio` sem cache público.
