@@ -38,6 +38,8 @@ npx oxfmt --check <arquivos>
 
 ### Chat e Workflow
 
+Confirme no teste com SDK real que chamadas seguintes e retomadas conservam a assinatura das ferramentas e `gateway.only: ['google']`. Na verificação remota, confira o provedor efetivo nos recibos do Gateway; Google e Vertex não podem alternar dentro do loop do Gemini.
+
 Depois da primeira geração, envie uma referência diferente do cadastro e peça uma recomposição ampla. O run deve usar `edit`, ter o catálogo completo disponível e chegar a escrita/checks sem repetir o onboarding. O teste com SDK real deve ultrapassar 12 passos e concluir a edição; esgotar o orçamento ainda em ferramentas deve falhar antes de checkpoint, sem recibo de sucesso. Confirme que a prévia muda e a release pública permanece a mesma.
 
 Na captura de referências, valide IPv4 público (inclusive `104.17.57.49`, usado pelo Minatel), IPv6 público, redes privadas e IPv4 mapeado. A URL explícita deve prevalecer sobre `/dados`, duas URLs no mesmo run devem conservar screenshots próprios e as imagens precisam atravessar `toModelOutput` como partes multimodais. Faça também uma captura real desktop/mobile da referência indicada.

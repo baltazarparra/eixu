@@ -18,6 +18,7 @@ import { getWorkflowMetadata, getWritable } from 'workflow';
 import { db } from '@/lib/db';
 import {
   STUDIO_MODEL_POLICY_VERSION,
+  studioGatewayOptions,
   studioModelPolicy,
   type StudioModelRole,
 } from './models';
@@ -115,10 +116,7 @@ export function createStudioAgent(
       Math.max(1, selected.maxSteps - previousSteps.length),
     ),
     providerOptions: {
-      gateway: {
-        caching: 'auto',
-        tags: ['eixu', 'studio', role, STUDIO_MODEL_POLICY_VERSION],
-      },
+      gateway: studioGatewayOptions(role),
     },
     prepareStep: ({ steps: currentSteps }) => {
       if (role !== 'build') return {};
@@ -354,11 +352,7 @@ export async function streamStudioAgent(
       sendFinish: false,
       toolsContext: studioToolsContext(context),
       providerOptions: {
-        gateway: {
-          caching: 'auto',
-          user: input.tenantId,
-          tags: ['eixu', 'studio', input.role, STUDIO_MODEL_POLICY_VERSION],
-        },
+        gateway: studioGatewayOptions(input.role, input.tenantId),
       },
       maxOutputTokens: policy.maxOutputTokens,
       reasoning: policy.reasoning,

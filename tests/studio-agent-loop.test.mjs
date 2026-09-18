@@ -164,6 +164,20 @@ for (const interrupted of [false, true])
         const index = model.doStreamCalls.length - 1;
         const interruption = interrupted && index === 6;
         const callIndex = index - (interrupted && index > 6 ? 1 : 0);
+        assert.deepEqual(options.providerOptions.gateway.only, ['google']);
+        if (index > 0) {
+          const lastCall = options.prompt
+            .filter((message) => message.role === 'assistant')
+            .flatMap((message) => message.content)
+            .findLast((part) => part.type === 'tool-call');
+          const previousIndex =
+            interrupted && index === 7 ? index - 2 : index - 1;
+          assert.equal(
+            lastCall.providerOptions.google.thoughtSignature,
+            `signature-${previousIndex}`,
+            'A retomada mantém a assinatura e o provedor que a emitiu.',
+          );
+        }
         if (index < 5) {
           assert.deepEqual(
             options.tools.map((tool) => tool.name),
@@ -222,6 +236,9 @@ for (const interrupted of [false, true])
                       toolCallId: `call-${index}`,
                       toolName: call[0],
                       input: JSON.stringify(call[1]),
+                      providerMetadata: {
+                        google: { thoughtSignature: `signature-${index}` },
+                      },
                     },
                   ]
                 : [
