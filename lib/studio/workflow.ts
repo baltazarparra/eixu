@@ -375,7 +375,7 @@ export async function streamStudioAgent(
       {
         role: 'user',
         content:
-          'A última resposta do modelo foi interrompida antes de concluir. Retome do ponto atual usando os resultados das ferramentas já presentes nesta conversa. Não repita artefatos ou gere novamente as imagens disponíveis. Faça uma chamada de ferramenta por vez; divida código extenso em componentes menores e conclua os arquivos, o conteúdo editável e as validações.',
+          'A última resposta do modelo foi interrompida antes de concluir. Retome do ponto atual usando os resultados das ferramentas já presentes nesta conversa. Não repita efeitos já confirmados nem gere novamente as imagens disponíveis. Faça uma chamada de ferramenta por vez. Se o pedido exigir código, divida arquivos extensos em componentes menores. Conclua somente o pedido original e suas validações, respeitando o escopo deste turno.',
       },
     ];
   }
