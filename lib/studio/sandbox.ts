@@ -663,17 +663,22 @@ async function previewToken(
 }
 
 async function startStudioPreviewServer(sandbox: Sandbox, token: string) {
-  const bootstrap = await sandbox.readFileToBuffer({
-    path: STUDIO_PREVIEW_SERVER_PATH,
-  });
+  const hostname = new URL(sandbox.domain(3000)).hostname;
+  const hostPath = '/tmp/eixu-preview-host';
+  const [bootstrap, previousHost] = await Promise.all([
+    sandbox.readFileToBuffer({ path: STUDIO_PREVIEW_SERVER_PATH }),
+    sandbox.readFileToBuffer({ path: hostPath }),
+  ]);
   if (
     bootstrap?.toString('utf8') === STUDIO_PREVIEW_SERVER &&
+    previousHost?.toString('utf8') === hostname &&
     (await previewResponds(sandbox, token))
   )
     return;
   await stopStudioPreview(sandbox);
   await sandbox.writeFiles([
     { path: STUDIO_PREVIEW_SERVER_PATH, content: STUDIO_PREVIEW_SERVER },
+    { path: hostPath, content: hostname },
   ]);
   await sandbox.runCommand({
     cmd: 'node',
@@ -684,7 +689,7 @@ async function startStudioPreviewServer(sandbox: Sandbox, token: string) {
       NODE_ENV: 'development',
       NEXT_TELEMETRY_DISABLED: '1',
       EIXU_PREVIEW_TOKEN: token,
-      EIXU_PREVIEW_HOST: new URL(sandbox.domain(3000)).hostname,
+      EIXU_PREVIEW_HOST: hostname,
     },
   });
   for (let attempt = 0; attempt < 40; attempt += 1) {

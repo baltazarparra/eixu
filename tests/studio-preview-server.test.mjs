@@ -105,4 +105,23 @@ void test('prévia inicia o bootstrap fora do checkpoint com o hostname exato da
     fixture.files.get(`${workspace}/proxy.ts`).toString(),
     fixture.sources['proxy.ts'],
   );
+
+  // Uma VM retomada pode anunciar outra origem. Um processo que ainda responde
+  // HTML com a origem antiga não deve ser reutilizado para servir os scripts.
+  fixture.files.set(
+    '/tmp/eixu-preview-host',
+    Buffer.from('anterior.sandbox.example'),
+  );
+  await fixture.load('lib/studio/sandbox.ts').ensureStudioWorkingPreview({
+    name: 'fixture',
+    projectId: 'project',
+    runId: 'run',
+    contentRevisionId: 'content-A',
+    userId: 'user',
+  });
+  assert.equal(fixture.calls.filter((call) => call.cmd === 'node').length, 2);
+  assert.equal(
+    fixture.files.get('/tmp/eixu-preview-host').toString(),
+    'fixture.sandbox.example',
+  );
 });
