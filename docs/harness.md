@@ -71,6 +71,8 @@ O navegador usa `useChat<StudioMessage>` com `WorkflowChatTransport`. Envia some
 
 `chat_messages.parts` conserva as partes tipadas. `convertToModelMessages` ocorre somente na fronteira do agente. O stream do run exige um operador ativo e um Workflow registrado; o admin continua global. O step final recompõe a mensagem do assistente a partir do stream durável, persiste metadata e registra recibos de uso.
 
+Antes da primeira mensagem, o histórico canônico é `[]`: o painel abre normalmente e o primeiro envio acrescenta a mensagem do operador. A leitura só chama `validateUIMessages` quando há registros, pois o AI SDK rejeita uma lista vazia. Mensagens existentes e novas continuam validadas; falhas de leitura não viram histórico vazio.
+
 Escrita e fechamento do stream acontecem somente em steps. O stream do modelo fecha para permitir sua leitura canônica; a resposta HTTP continua aberta até o Workflow persistir mensagem e estado terminal. O mesmo contrato vale para retomada, evitando anunciar conclusão e pedir prévia enquanto o run ainda está ativo. Falha de persistência também chega ao cliente.
 
 ## Durabilidade e idempotência

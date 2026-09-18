@@ -39,6 +39,7 @@ npx oxfmt --check <arquivos>
 
 Prove:
 
+- cliente sem mensagens abre o painel e pode iniciar a conversa; histórico preenchido continua validado pelo AI SDK;
 - cliente envia só a nova mensagem;
 - servidor reconstrói o histórico autorizado;
 - partes inválidas, payload grande e Blob de outro tenant são recusados;
