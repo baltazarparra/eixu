@@ -1,8 +1,9 @@
 # AI SDK 7 aplicado ao chat de criação de sites
 
-**Natureza:** estudo técnico e decisões para o
-[plano de substituição do gerador](plano-chat-livre.md), sem implementação.
-Consulta em 17/09/2026, horário de Fortaleza.
+**Natureza:** estudo técnico datado que orientou o
+[plano de substituição do gerador](plano-chat-livre.md). A implementação está
+registrada em [Execução do chat livre](execucao-chat-livre.md). Consulta inicial
+em 17/09/2026, horário de Fortaleza.
 
 Foram examinados documentação oficial online, guias e código-fonte distribuídos
 com o pacote instalado, integração atual da EIXU e metadados públicos dos pacotes.
@@ -40,15 +41,15 @@ avaliadas no contrato do produto.
 
 ## 2. Versões e significado das APIs
 
-| Pacote | Evidência encontrada | Decisão |
-| --- | --- | --- |
-| `ai` | Instalado `7.0.97` | Usar documentação e tipos de v7. A EIXU já migrou boa parte das APIs. |
-| `@ai-sdk/react` | Instalado `4.0.100` | Preservar `useChat` e a abstração de transporte. |
-| `@ai-sdk/gateway` | Instalado `4.0.78` | Gateway continua sendo a entrada dos modelos. |
-| `@ai-sdk/provider` | Instalado `4.0.13` | Considerar as capacidades/tipos reais, inclusive `reasoning`. |
-| `@ai-sdk/workflow` | Registro público: `2.0.36`; peer `workflow ^5.0.0-beta.42` | Não está instalado; a proposta depende de ensaio de compatibilidade. |
-| `workflow` | Registro público: `latest 4.8.9`, `beta 5.0.0-beta.53` | Não supor que instalar `workflow` sem versão atende a `WorkflowAgent`. |
-| `@ai-sdk/harness-codex` | Registro público: `1.0.117`; documentação classifica harnesses como experimentais | Não está instalado nem foi validado em runtime. |
+| Pacote                  | Evidência encontrada                                                              | Decisão                                                                |
+| ----------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `ai`                    | Implementado com `7.0.105`                                                        | Usar documentação e tipos de v7.                                       |
+| `@ai-sdk/react`         | Implementado com `4.0.108`                                                        | Preservar `useChat` e a abstração de transporte.                       |
+| `@ai-sdk/gateway`       | Implementado com `4.0.85`                                                         | Gateway continua sendo a entrada dos modelos.                          |
+| `@ai-sdk/provider`      | Instalado `4.0.13`                                                                | Considerar as capacidades/tipos reais, inclusive `reasoning`.          |
+| `@ai-sdk/workflow`      | Fixado em `2.0.36`                                                                | Implementado com `WorkflowAgent`; integração remota continua pendente. |
+| `workflow`              | Fixado em `5.0.0-beta.53`                                                         | Manter a versão beta presa e repetir os gates em upgrades.             |
+| `@ai-sdk/harness-codex` | Registro público: `1.0.117`; documentação classifica harnesses como experimentais | Não está instalado nem foi validado em runtime.                        |
 
 Os rótulos do npm são móveis. Fixar o conjunto escolhido no lockfile e registrar
 o resultado do ensaio; não adicionar `@latest` ou `@beta` flutuante à execução
@@ -62,15 +63,15 @@ Referência: [migração para AI SDK 7](https://ai-sdk.dev/docs/migration-guides
 
 ## 3. O que aproveitar da EIXU atual
 
-| Superfície | Estado observado | Mudança necessária |
-| --- | --- | --- |
-| `lib/ai/agent.ts` | Já usa `ToolLoopAgent`, `prepareStep`, `activeTools`, limites e callbacks. | Reaproveitar o padrão; substituir regras de fases/blocos e ferramentas. |
-| `app/api/chat/route.ts` | Mistura conversa, geração, edição de blocos, publicação, recibos e contexto; passa `request.signal` ao agente. | Rota fina: autenticar, validar, persistir pedido e iniciar/acompanhar execução. Desconexão HTTP não deve cancelar criação durável. |
-| `lib/ai/history.ts` | Reconstitui cada mensagem como uma única parte de texto. | Armazenar `UIMessage` tipada e versionada, incluindo parts, anexos, resultados e metadados necessários. |
-| `lib/ai/chat-stream.ts` | Intercepta chunks, monta recibos e persiste texto. | Usar o protocolo/transformações oficiais; recibos de domínio viram dados tipados e persistidos. |
-| `lib/ai/context.ts` | Preserva parte do histórico recente, mas resume ferramentas antigas como texto. | Manter o histórico canônico inteiro no servidor e aplicar redução só à visão de contexto enviada ao modelo. |
-| `generator-workspace.tsx` | Já tem `useChat`, `DefaultChatTransport` e evento de atualização do preview. | Separar a nova workspace das regras do gerador; adicionar reconexão, cancelamento real e tipos de eventos. |
-| `lib/ai/usage-ledger.ts` | Recibos por chamada/passo com cache e reasoning; distingue total agregado. | Preservar a contabilidade e adicionar `generationId`, reconciliação e modelo efetivamente servido. |
+| Superfície                | Estado observado                                                                                               | Mudança necessária                                                                                                                 |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `lib/ai/agent.ts`         | Já usa `ToolLoopAgent`, `prepareStep`, `activeTools`, limites e callbacks.                                     | Reaproveitar o padrão; substituir regras de fases/blocos e ferramentas.                                                            |
+| `app/api/chat/route.ts`   | Mistura conversa, geração, edição de blocos, publicação, recibos e contexto; passa `request.signal` ao agente. | Rota fina: autenticar, validar, persistir pedido e iniciar/acompanhar execução. Desconexão HTTP não deve cancelar criação durável. |
+| `lib/ai/history.ts`       | Reconstitui cada mensagem como uma única parte de texto.                                                       | Armazenar `UIMessage` tipada e versionada, incluindo parts, anexos, resultados e metadados necessários.                            |
+| `lib/ai/chat-stream.ts`   | Intercepta chunks, monta recibos e persiste texto.                                                             | Usar o protocolo/transformações oficiais; recibos de domínio viram dados tipados e persistidos.                                    |
+| `lib/ai/context.ts`       | Preserva parte do histórico recente, mas resume ferramentas antigas como texto.                                | Manter o histórico canônico inteiro no servidor e aplicar redução só à visão de contexto enviada ao modelo.                        |
+| `generator-workspace.tsx` | Já tem `useChat`, `DefaultChatTransport` e evento de atualização do preview.                                   | Separar a nova workspace das regras do gerador; adicionar reconexão, cancelamento real e tipos de eventos.                         |
+| `lib/ai/usage-ledger.ts`  | Recibos por chamada/passo com cache e reasoning; distingue total agregado.                                     | Preservar a contabilidade e adicionar `generationId`, reconciliação e modelo efetivamente servido.                                 |
 
 Portanto, a limpeza deve remover o **domínio do gerador antigo**, preservando
 os padrões do SDK e as garantias que já servem ao produto. Uma reescrita cega
@@ -78,11 +79,11 @@ perderia capacidades úteis sem resolver os acoplamentos.
 
 ## 4. Comparação dos três caminhos de agente
 
-| Caminho | Resolve | Não entrega sozinho | Adequação à EIXU |
-| --- | --- | --- | --- |
-| `ToolLoopAgent` | Loop de modelo/ferramentas, contexto, controle por passo e streaming. | Persistência entre processos, workspace, autorização e publicação. | Base controlável e já conhecida no código. |
-| `WorkflowAgent` | Loop durável, ferramentas como steps, retomada e integração com streams. | Regras do produto, arquivos duráveis fora do Sandbox e idempotência de efeitos externos. | Candidato prioritário para criação e edição longa; validar a dependência beta. |
-| `HarnessAgent` | Integra runtime pronto com ferramentas de código, histórico nativo e sessões. | Contratos específicos da EIXU e equivalência de permissões entre adapters. | Alternativa para o motor de código, dependente de avaliação própria. |
+| Caminho         | Resolve                                                                       | Não entrega sozinho                                                                      | Adequação à EIXU                                                               |
+| --------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `ToolLoopAgent` | Loop de modelo/ferramentas, contexto, controle por passo e streaming.         | Persistência entre processos, workspace, autorização e publicação.                       | Base controlável e já conhecida no código.                                     |
+| `WorkflowAgent` | Loop durável, ferramentas como steps, retomada e integração com streams.      | Regras do produto, arquivos duráveis fora do Sandbox e idempotência de efeitos externos. | Candidato prioritário para criação e edição longa; validar a dependência beta. |
+| `HarnessAgent`  | Integra runtime pronto com ferramentas de código, histórico nativo e sessões. | Contratos específicos da EIXU e equivalência de permissões entre adapters.               | Alternativa para o motor de código, dependente de avaliação própria.           |
 
 O `ToolLoopAgent` tem limite padrão de 20 passos; isso não é um critério de
 “site concluído”. Usar limites explícitos e confirmar artefatos/validações de
@@ -230,12 +231,12 @@ Fonte: [streaming de dados](https://ai-sdk.dev/docs/ai-sdk-ui/streaming-data).
 
 São operações diferentes:
 
-| Operação | Resultado esperado |
-| --- | --- |
-| Reconectar o chat | O navegador volta a acompanhar mensagens/eventos existentes. |
-| Retomar execução | O servidor continua do checkpoint após interrupção do worker. |
-| Retomar workspace | Arquivos e estado de trabalho são recuperados após encerrar Sandbox. |
-| Cancelar | Um comando autenticado persiste a intenção e interrompe trabalho futuro. |
+| Operação          | Resultado esperado                                                       |
+| ----------------- | ------------------------------------------------------------------------ |
+| Reconectar o chat | O navegador volta a acompanhar mensagens/eventos existentes.             |
+| Retomar execução  | O servidor continua do checkpoint após interrupção do worker.            |
+| Retomar workspace | Arquivos e estado de trabalho são recuperados após encerrar Sandbox.     |
+| Cancelar          | Um comando autenticado persiste a intenção e interrompe trabalho futuro. |
 
 A receita de `resume: true` usa armazenamento de streams, por exemplo Redis;
 ela não cria sozinha durabilidade do agente. `consumeStream` mantém consumo no

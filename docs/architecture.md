@@ -1,419 +1,136 @@
-# Arquitetura e limites do MVP
-
-## Landing Page: forma de página única
-
-`siteShape(brand)` em `lib/design/vibes.ts` separa `landing` de `multi`. As
-quatro vibes anteriores mantêm no mínimo três páginas orgânicas. Landing Page
-exige uma home `page` indexável e uma `thank_you`; posts são opcionais e não
-substituem a home na conclusão da geração. Páginas `page` internas e `paid_lp`
-são recusadas pela criação e pelo lote de composição. Na publicação solicitada, `landing-pagina-extra` é recomendação editorial; regras técnicas continuam bloqueantes.
-
-O perfil v7 usa `hero.landing` em `stage` ou `form`, navegação mínima e nenhum
-`structure`/`structureRationale`. Referência verificada modula os eixos visuais,
-mas mantém a forma de página única. V2-v7 continuam legíveis sem migração; a
-Comercial nova usa v8 sem reescrever snapshots anteriores.
-Cinco cenas ficam na home: hero, duas da protagonista, apoio e fechamento.
-
-`lib/taste/landing.ts` verifica 6–11 seções, 250 palavras na home, jornada em
-seções, âncoras, ação principal única, prova vinculada ao briefing, preços
-confirmados e formulário curto com obrigado correspondente. O mesmo briefing
-atual entra nos gates do painel, geração e publicação. A publicação pontual
-considera o snapshot das páginas fora do lote, inclusive a página de obrigado.
-
-O formulário embutido reaproveita `FormLead` e `/api/form`: tenant, consentimento,
-atribuição e bloqueio na prévia permanecem. O botão fixo é opcional; desaparece
-com formulário visível, campo em foco, menu aberto ou tela baixa. O WhatsApp
-flutuante não é acrescentado à landing. Mudar a vibe preserva os rascunhos e
-snapshots existentes; páginas incompatíveis ficam apontadas até remoção
-explícita ou escolha de outra vibe.
-
-Mapa do admin e da geração revisado em 13/09/2026 sobre `main` `f9d5918` (PR #60), acrescido pelas alterações deste checkout. Descreve o comportamento implementado; os limites no fim deste arquivo não são funcionalidades entregues.
-
-## Superfícies e dependências
-
-| Superfície         | Rotas e fontes                                                                                                                      |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Institucional      | `/`, `/vibe-coding-para-producao`, `/cases/saldopix`, `/cases/naiacrm`; `app/(main)/`, `components/eixu.tsx`, `lib/site.ts`         |
-| Operação           | `/admin`, `/admin/login`, `/admin/[tenant]`; `app/(admin)/admin/actions.ts` e `app/(admin)/admin/[tenant]/workspace.tsx`            |
-| Edição direta      | `POST /api/admin/[tenant]/edit`; `lib/sites/inline-edits.ts` e `lib/sites/edits.ts`                                                 |
-| Imagens            | `/admin/[tenant]/imagens` (biblioteca), `/api/admin/[tenant]/images` e `/api/admin/[tenant]/upload`; a geração vive no chat do site |
-| Dados e briefing   | `/admin/[tenant]/dados`, `/api/admin/[tenant]/settings`, `/api/admin/[tenant]/social`; validação em `lib/admin/tenant-input.ts`     |
-| Consumo de IA      | `/admin/[tenant]/consumo`; leitura em `lib/admin/usage-history.ts`, com resumo leve para o cartão em Dados                          |
-| Tráfego e contatos | `/admin/[tenant]/trafego`, `/api/admin/[tenant]/contatos.csv`                                                                       |
-| Site de cliente    | Host do tenant → `proxy.ts` → `/s/[tenant]/[[...slug]]`, com sitemap e robots próprios                                              |
-| Conversão          | `/api/form`, `/api/e`, `/go/wa`; `lib/tracking.ts`                                                                                  |
-
-Next.js roda páginas, Server Actions e Route Handlers. `lib/db.ts` cria o cliente Neon sob demanda; importar módulos no build não exige conexão ativa. O schema está em `db/schema.sql`, sem ORM; `npm run db:migrate` o reaplica e precisa rodar antes de um deploy que dependa de coluna nova. Imagens ficam em Blob público, e o banco guarda URL, estado, crítica e referência. O AI SDK usa o AI Gateway para modelos de texto e imagem.
-
-O [contrato visual](design.md) descreve variantes, dials, âncoras e a aplicação das duas skills no gerador. Os grupos `(main)`, `(admin)` e `(sites)` têm layouts raiz e folhas de estilo próprios. O institucional usa componentes e efeitos próprios; os sites gerados combinam blocos renderizados no servidor, componentes interativos de Framer Motion, HTML nativo e um script de atribuição. Primitivos neutros dos sites ficam em `lib/blocks/ui/`, com CSS próprio em `(sites)` e melhoria progressiva no cliente; `components/ui/` pertence ao painel e não é compartilhado com o HTML público.
-
-## Composição administrativa
-
-A listagem em `/admin` consulta `tenants` e `site_folders` no servidor. As
-pastas têm um nível e são globais para a equipe; `tenants.folder_id` guarda a
-associação e usa `ON DELETE SET NULL` para preservar o site quando a pasta é
-excluída. O cliente aplica a movimentação de forma otimista e permite desfazer.
-A Server Action recebe a pasta anterior observada por site e só grava o lote
-completo quando todas as associações ainda coincidem, evitando sobrescrever uma
-mudança feita em outra sessão. Criação, renomeação, exclusão e movimentação
-entram em `admin_activity` com o operador autenticado.
-
-O Kanban da operação é uma página global em `/admin/kanban`, fora das abas de
-cliente. O endereço inicial `/admin/app/kanban` redireciona permanentemente para
-a rota canônica. `kanban` e o legado `app` são slugs reservados no cadastro. A
-página confere a sessão. Os handlers aceitam essa sessão ou o bearer dedicado
-`KANBAN_AGENT_TOKEN` e recusam ambos em hosts de clientes, pois `proxy.ts` deixa
-`/api/*` passar nesses subdomínios. Mutações feitas pela sessão verificam a
-origem do navegador; o bearer não autentica nenhuma outra rota administrativa.
-
-`kanban_boards`, `kanban_columns` e `kanban_cards` guardam o quadro único, as
-etapas e as tarefas. Um cartão pode referenciar um cliente por `tenant_id`; ao
-excluir esse cliente, a tarefa permanece e só perde o vínculo. Uma instalação
-nova recebe **A fazer**, **Em andamento**, **Em revisão** e **Concluído**. O
-upgrade do piloto acrescenta **Em revisão** uma única vez, e reaplicar o schema
-não restaura colunas que o operador removeu depois. O GET do quadro devolve
-metadados compactos, cartões ativos e arquivados e a lista de clientes; a
-descrição completa é lida só ao abrir um cartão.
-
-`kanban_cards.card_number` é um inteiro positivo único, gerado por sequência no
-banco e exposto como `number`. O UUID `id` continua sendo a identidade interna.
-A migração atribui números aos cartões existentes (inclusive arquivados) por
-`created_at, id`, preserva os demais campos e nunca reinicia a sequência.
-Reaplicar não renumera cartões. Aplique o schema antes de publicar o código que
-consulta essa coluna. As leituras de detalhe aceitam número ou UUID, sob a mesma
-autorização; comandos de escrita continuam usando UUID e revisão/versão.
-
-O cliente interno `scripts/kanban.mjs` consome esses handlers para o fluxo de
-desenvolvimento. Ele usa apenas o bearer restrito e não acessa as tabelas
-diretamente. Em worktrees, localiza também o `.env.local` do checkout principal.
-O destino padrão é a origem de produção e pode ser trocado por
-`EIXU_KANBAN_URL` em desenvolvimento. A descrição aceita 12.000 caracteres para
-acomodar a spec e recibos de entrega e revisão, sem mudança de schema SQL porque
-o campo persistido já é `text`.
-
-Cada comando trava a linha do quadro, compara a revisão recebida e reordena as
-posições em uma transação. Comandos estruturais e movimentos ainda exigem a
-revisão global atual. A edição de conteúdo também envia a versão do próprio
-cartão: uma mudança independente no quadro não bloqueia o salvamento, mas duas
-edições concorrentes no mesmo cartão recebem conflito. O cliente relê o quadro
-e preserva texto não salvo. Os comandos bem-sucedidos entram na atividade com
-o operador responsável ou com autoria de agente quando usam o bearer dedicado.
-Não há sincronização imediata entre operadores.
-
-O layout raiz consulta a sessão persistida antes de montar a casca e entrega
-nome, login e formulário de saída por contexto, desenhados nos cabeçalhos.
-`adminTenant` deduplica a resolução do cliente durante o render com React
-`cache`, sem persistir entre sessões. O
-layout de `[tenant]` repete a autenticação e fornece cabeçalho e abas. O editor
-insere suas ações no cabeçalho por um portal React, conservando a decisão de
-publicação junto ao estado vivo do workspace. Publicar atualiza também os
-layouts; a tela Dados faz o mesmo após salvar o cadastro. Quando a sessão vence,
-as páginas guardam o caminho administrativo em `returnTo` e o login retorna à
-tela de origem depois de validar que o destino permanece sob `/admin`.
-
-`operationSummary` agrega leads de 30 dias e execuções ativas para a operação
-global. A série de tráfego usa o ID do tenant, datas inclusivas de Brasília,
-dias sem evento preenchidos com zero e deduplicação por navegador/dia. Contatos
-na série exigem visita e ação no mesmo dia; cartões continuam mostrando ações
-brutas e visitantes distintos do período. O limite de 366 dias restringe a
-série. As métricas descrevem o cálculo atual, sem certificar os dados de produção.
-
-O parâmetro `pedido` do editor preenche até 2.000 caracteres da conversa; não
-envia mensagem sozinho. A imagem numerada em `imagem` tem precedência. O
-formulário Dados conserva um snapshot local do último salvamento para
-contagem de alterações e confirmação ao sair; nome, contatos, logo e vibe são
-alterações do rascunho e só chegam ao site público na próxima publicação. A
-biblioteca calcula referências exatas em blocos e logos do rascunho e do
-snapshot publicado; seu atalho abre a conversa com o número da imagem, sem
-presumir página ou hero.
-
-## Edição e publicação
-
-Antes de aplicar a política de edição, `/api/chat` classifica a última fala em
-`conversation` ou `action` por `lib/ai/interaction.ts`. Saudação, pergunta,
-hipótese, pedido de opinião, contexto solto e anexo sem instrução ficam em
-conversa. O conjunto de ferramentas é reduzido no runtime a manual, estado,
-página, catálogo, imagens e lint; não há mutador, publicação, geração, leitura
-externa, crítica visual ou registro de evidência. Verbo direto, resultado
-desejado, pedido “pode fazer…?” e confirmação de uma proposta executável do
-turno anterior seguem como ação. A confirmação determinística de remoção
-continua prevalecendo. O prompt recebe `conversationOnly`, muda o fechamento e
-omite o catálogo de escrita. `docs/manual-gerador-sites.md` é lido por seções
-por `read_generator_manual` e entra no tracing serverless junto de `SOUL.md`.
-
-A leitura em `lib/tenant-queries.ts` recupera o WhatsApp legado e a rede de
-`brief.intake.socialUrl` para clientes anteriores a `contacts`. A rede só é
-recuperada quando a chave `contacts.social` ainda não existe; uma lista vazia
-gravada pelo operador prevalece. Assim, o primeiro salvamento em Dados
-conserva o perfil e o avatar, sem impedir a remoção explícita. Telefones
-preservam o `+` informado em `contacts`; a coluna `whatsapp` e os destinos de
-WhatsApp continuam recebendo apenas dígitos.
-
-`presentation.elements` é a camada declarativa comum de edição visual:
-alvos semânticos e valores validados viram CSS escopado ao bloco, com regras
-separadas para mobile e desktop. O tenant não armazena seletor ou código livre.
-
-1. O operador autentica em `lib/auth.ts` com login e PIN de quatro dígitos. `admin_users` guarda o hash scrypt com salt e pepper; `admin_sessions` guarda apenas o SHA-256 de um token aleatório com validade de 12 horas. O cookie `eixu_admin` é HttpOnly, SameSite Lax e Secure em produção. Cinco falhas na mesma conta bloqueiam novas tentativas por 15 minutos. As páginas administrativas, ações e APIs resolvem o usuário da sessão no servidor.
-2. A criação do tenant exige nome, slug e `brief.intake.story`. A história reúne oferta, segmento, região, público, diferenciais, provas e a ação esperada; o formulário não grava mais esses cinco campos separadamente. Evidências, restrições, um Site atual, um link de referência visual, contatos, logo e cores são opcionais. Os dois URLs têm papéis separados: o Site atual fornece fatos e ativos do próprio cliente, enquanto a Referência visual define composição. O schema de leitura conserva o intake antigo; Dados sintetiza a história sem escrever até o operador salvar. Telefones, endereços e redes sociais vão para `tenants.contacts`; o primeiro WhatsApp é derivado para `tenants.whatsapp`, e a primeira rede suportada alimenta a leitura de perfil. Cada vibe mostra uma amostra comparável e uma paleta sugerida. `paletteSource` só vira `operador` quando uma cor é editada. O logo opcional sobe ao Blob antes do insert e é limpo se o cadastro falhar. O workspace reidrata as 60 mensagens textuais mais recentes do canal. Slug duplicado é recusado sem abrir ou sobrescrever o cliente existente.
-3. A interface apresenta duas etapas: **Preparar** e **Criar**. O servidor preserva três checkpoints (`briefing`, `cenas`, `composicao`) para retomar com precisão. Preparar chama `read_current_site` quando o campo existe: o crawler percorre até 12 páginas públicas do mesmo domínio, consulta sitemap, complementa páginas dependentes de JavaScript, extrai texto, links, contatos, JSON-LD e candidatos de imagem e grava um recibo em `brief.currentSite`. Um modelo focado, sem ferramentas, sintetiza fatos com procedência e seleciona ativos. Depois, a referência visual recebe captura desktop/mobile e exige aplicações verificadas para layout, tipografia, imagens, ritmo, superfície e mobile. Moderno, Ousado e Artístico continuam em v5 sem referência e v6 com escolha entre as doze estruturas gerais. Comercial usa a estrutura fixa `comercial-marca` e persiste v8; Minatel Brotas governa a forma, enquanto referências do tenant complementam marca e fotografia. O mesmo perfil guarda escolha, justificativa, plano editorial e pedidos semânticos para todas as vagas de imagem. Se os pedidos estão válidos, o runner executa `prepare_site_images` diretamente. Criar monta até 12 páginas com 1–20 blocos. A composição encerra a geração e a revisão passa ao operador pela prévia.
-4. Schemas e catálogo vivem em `lib/blocks/registry.ts`; o perfil e as faixas ficam em `lib/design/profile.ts` e `lib/design/vibes.ts`; as doze estruturas gerais e a estrutura fixa da Comercial v8 ficam em `lib/design/structures.ts`. `lib/blocks/render.tsx` despacha blocos para componentes de servidor e de interação. Primitivos em `lib/blocks/ui/` recebem apenas props serializáveis, entregam fallback completo no SSR e carregam seu motor sob demanda. `social.follow` recebe layouts e texto do modelo, mas resolve links pelas redes cadastradas. Na Comercial v8, `media.map` renderiza todas as unidades cadastradas, com telefone, horário, rota e mapa quando disponíveis, e substitui a localização automática. `cta.band:cover` mantém a foto 16:9 no HTML e a posiciona como fundo sob uma camada de contraste; `items` associa contatos ou endereços a ícones do enum e links opcionais. `feature.bento.items.href` transforma somente o card que recebeu destino em um link acessível e conserva foto, título, texto e layout; `featured-masonry` coloca o primeiro card na largura inteira. `signature.composition` permanece o singleton autoral de v5/v6, com quatro árvores semânticas e doze layouts. `build_site` valida páginas, estrutura e contrato de projeto antes de gravar o lote em uma transação. V8 dispensa a trava de unicidade entre tenants porque sua composição é deliberadamente compartilhada e verificada por sequência exata, fachada autêntica, seis setores, duas faixas e galeria. Um lote recusado fica apenas na memória da instância de ferramentas daquele tenant e turno; `repair_site` altera campos por slug/índice, revalida tudo pelo mesmo caminho e só grava se válido. Não altera snapshots nem páginas fora do lote e não publica. Na edição pós-gereração, `edit_page` recebe a revisão atual e aplica operações pontuais em lote. Toda escrita do rascunho guarda o estado anterior em `page_revisions` (vinte versões por página), e `undo_page_edit` restaura essa versão com os mesmos IDs, textos e posições; snapshots publicados não entram no histórico. Valida os blocos tocados e recusa novos erros de `lintPage` e `lintTextStyles`; pendências preexistentes permanecem no recibo. A escrita compara o JSONB anterior e o tenant, recusando alterações concorrentes. Rascunhos legados inválidos continuam apontados pelo lint e omitidos no render. O [contrato de edição](chat-edits.md) detalha texto literal, campos aninhados, cores locais e posição relativa.
-5. `lib/taste/pendencias.ts` reúne achados de página e site e oferece `alinhar`, `confirmar` para fatos já escritos, `reparar-prova`, `imagem` ou `editar`. O plano entra no prompt e nos recibos de validação e edição. `repair_publication` só entra no conjunto de ferramentas quando `isPublicationRepairRequest` confirma no texto atual um pedido explícito de resolver pendências; palavras genéricas como “corrigir” não bastam. O executor repete essa guarda antes de qualquer escrita. Quando autorizado, alinha evidências, retira alegações sem confirmação, preserva fatos confirmados em texto quando necessário e remove fotos de depoimentos sem origem de envio. Usa a escrita com comparação do rascunho, sem publicar nem registrar fatos. A comparação de evidência continua preservando números e negações e ignorando acento, caixa e pontuação terminal. O [contrato](chat-edits.md#pendências-de-publicação-pelo-chat) detalha as alternativas e limites.
-6. O painel atualiza `/api/admin/[tenant]/state` após mutações e recarrega o iframe somente quando `previewFingerprint` detecta mudança renderizada. Briefing operacional, recibos e imagens fora das páginas não recarregam a prévia. `workspaceState` distingue alteração global e por página, compara blocos e SEO com o snapshot e entrega cobertura, evidência, bloco e correção da revisão. O modo de rascunho exige sessão, recebe `noindex`, preserva o tenant nos links e desativa formulários e tracking. O cookie é passado somente ao capturador interno; não entra no prompt.
-7. `publish_page`, `publish_site` e `/api/admin/[tenant]/publish` usam `lib/sites/publish.ts`. Uma ordem direta como “publicar, eu autorizo” também chama esse serviço no servidor, sem passar pelo modelo. O pre-flight continua completo: `publication-policy.ts` classifica explicitamente avaliações editoriais como recomendações; regras técnicas e regras novas sem classificação continuam bloqueantes. O painel e o plano usam a mesma política. A transação promove blocos, SEO, título, tipo, metadados, ordem de navegação e apresentação global; erros técnicos recusam o lote inteiro e `warnings` conserva as recomendações. Publicar não confirma fatos. As ferramentas usam briefing, marca e dials atualizados no turno. A publicação pontual preserva a marca já publicada; a completa, ou a primeira sem snapshot, valida e promove a marca do rascunho.
-8. A página pública exige blocos publicados e combina `published_blocks`/`published_seo` com os campos editoriais publicados e `tenants.published_snapshot`. A migração inicializa esses campos com a apresentação que já estava no ar. Mudar vibe, marca, nome, contatos ou logo no rascunho não redesenha o site publicado.
-
-A geração em etapas não passa pelo chat. `POST /api/admin/[tenant]/generation` cria um run em `generation_runs` — um ativo por cliente, garantido por índice parcial — e envia run, slug e salto à Vercel Queues. O consumidor privado `/api/queues/generation`, registrado em `vercel.json`, reconfirma o tenant e reserva atomicamente o salto antes de executar a fase, com `maxDuration` de 800 segundos. A fila entrega uma invocação independente e espera a conclusão do trabalho; evita a recursão HTTP que causava 508. A chave de idempotência combina run e salto, e o banco impede trabalho duplicado mesmo em entregas simultâneas. Falha de envio só encerra a reserva que ainda pertence ao remetente. Localmente, `/api/admin/[tenant]/generation/step` mantém HTTP assinado, resposta 202 e `after()`, compartilhando `lib/generation/step.ts` com a fila.
-
-`lib/generation/runner.ts` monta o mesmo agente, ferramentas e prompt do chat (`lib/generation/context.ts`), exceto no lote de cenas já planejado, executado diretamente. Autentica a captura com um token interno curto, assinado e limitado ao tenant; esse token não representa uma sessão humana. O runner grava início/fim de fase e ferramenta em `generation_events`, correlacionando cada chamada por ID e duração, e associa mutações e conclusão ao operador que iniciou o run. Eventos incluem versão do fluxo/harness, modelo, SHA, espera de fila e motivo de parada; captura e crítico registram seu avanço em unidades. Ao terminar, `generationState` decide o próximo salto. O banco continua sendo a fonte do progresso e da retomada.
-
-`GET` devolve run, eventos, estado, `previewRevision`, a hora do servidor e as mensagens gravadas desde um id. A hora sincroniza os cronômetros sem depender da configuração do aparelho. O cursor vem do último registro entregue e lotes de 60 são drenados sem saltar mensagens. Mensagens internas que abrem uma fase não são persistidas como pedidos do operador. Enquanto um run está ativo, `/api/chat` responde 409. O `GET` informa ainda `everRan`; com ele, o painel inicia sozinho apenas um cliente sem tentativa, conversa ou página anterior.
-
-O PATCH de Dados também bloqueia mudança de nome, história, Site atual,
-referência ou vibe durante um run ativo. Quando uma dessas fontes muda, remove do rascunho o briefing
-derivado e o plano de cenas, preserva páginas, `brand.design`, `brief.evidence`
-e o snapshot publicado, e sinaliza que a nova direção exige reconstrução. Os
-fatos confirmados ficam porque são do operador, não do briefing derivado:
-apagá-los transformava um salvamento em Dados em bloqueio de publicação por
-prova ausente, com o site já no ar. Trocar o Site atual
-também invalida `brief.currentSite`; mudar o nome ou a história faz a mesma coisa
-para a comparação de identidade e conflitos ser refeita. As imagens já importadas permanecem porque
-podem estar em uso no rascunho ou no snapshot.
-
-Fora dos blocos, o render monta duas coisas a partir do cadastro. O rodapé recebe uma coluna de contato com e-mail, telefones (WhatsApp pelo redirecionador rastreado, comum em `tel:`) e redes sociais com ícone. Com endereço cadastrado, `lib/blocks/location.tsx` acrescenta a seção "Onde estamos" como último elemento de `<main>`, com o endereço, o link de rota e o mapa do Google carregado sob demanda; acima de um endereço, uma ilha de cliente alterna entre eles e o conteúdo continua legível sem JavaScript. A âncora `onde-estamos` é reservada antes dos blocos e `lintPage` recusa um bloco que tente usá-la. Post e obrigado não recebem a seção. Nada disso entra em `pages.blocks`, no catálogo ou na assinatura de composição: é dado do operador, como o botão flutuante de WhatsApp.
-
-O perfil de rede social informado é lido fora da resposta, por `after()`, na criação e quando o campo muda no PATCH de `/settings`; `/api/admin/[tenant]/social` refaz a leitura sob pedido do operador. `lib/social-profile.ts` normaliza `@handle` e URL de Instagram ou página de empresa do LinkedIn, e `lib/ai/social.ts` lê nome, bio, seguidores e avatar das meta tags, copia o avatar para `tenants/<slug>/social/` no Blob e descreve a imagem pelo modelo crítico, com uma chamada por avatar novo (comparado por hash). O resultado fica em `tenants.brief.social`, separado de `intake`, com estado `lendo`, `ok` ou `inacessivel` e o motivo. Cada leitura recebe um `readId`; o resultado só é gravado se esse ID e a URL do intake continuarem vigentes. Troca, remoção ou releitura invalidam respostas anteriores, e um upload descartado é removido. O avatar anterior permanece referenciado durante a leitura para reutilização ou limpeza após a troca. A leitura é melhor esforço: o LinkedIn responde 999 em perfil pessoal e o Instagram devolve a tela de login em boa parte das contas; nesses casos o prompt recebe a instrução de tratar o perfil como lacuna. `read_reference` reaproveita esse registro por 24 horas em vez de reabrir a rede. Cada escritor de `brief` mescla apenas suas próprias chaves: intake, fontes, progresso, perfil ou briefing consolidado. O chat do site recebe tanto o intake e o perfil quanto as evidências, restrições e lacunas do briefing consolidado.
-
-A leitura do Site atual registra coleta, síntese, importação e conclusão na
-linha do tempo. Coleta limita tempo (90 s) e tentativas (24), além das 12 páginas;
-a síntese tem cancelamento de 150 s e os downloads do lote têm 90 s. Material
-parcial e ativos já gravados são preservados com lacunas explícitas. O prazo de
-rede inclui DNS; a renderização também limita abertura e fechamento do Chromium.
-A leitura visual de referência compartilha chamadas simultâneas da mesma URL,
-limita captura e análise juntas a 120 s e registra as duas subetapas. A captura
-tem teto próprio de 55 s e mata o Chromium quando abertura, navegação, screenshot
-ou fechamento ignoram o cancelamento. Ao esgotar o prazo, o briefing segue com a
-referência marcada como lacuna.
-
-A captura visual independe do leitor de texto: sites que dependem de JavaScript
-podem fornecer uma referência utilizável mesmo sem HTML textual. O recibo salvo
-contém observações visuais e não alimenta a base factual com texto de outro
-negócio. A gravação exige que as referências do cadastro ainda sejam as mesmas;
-leituras duplicadas compartilham a promessa e recibos recentes evitam nova
-captura. O leitor textual usado em fontes adicionais tem um prazo total de
-20 segundos, inclusive DNS, redirects e corpo da resposta.
-
-O Site atual usa outra fronteira. `lib/current-site/crawl.ts` adota a origem final
-da home e só segue links HTML dessa origem, com profundidade dois, deduplicação
-de fragmentos e parâmetros de rastreamento, bloqueio de áreas administrativas e
-limites de páginas, HTML e texto. Links externos, documentos e contatos são
-inventariados sem navegação. A home e até três páginas pobres em HTML podem ser
-renderizadas por Chromium sem sessão e sem rede direta; cada GET continua
-passando por `publicResource`, e POST é recusado. O material normalizado vai para
-um gerador estruturado sem tools. História, evidências e contatos do operador
-prevalecem em conflitos; o resultado não entra em `brief.sources` e nunca libera
-`referenceDirection`.
-
-Ativos selecionados são baixados pela mesma fronteira pública, validados por
-MIME e pixels, reduzidos a raster estático, normalizados em WebP e gravados em
-`tenants/<slug>/current-site/<scanId>/<sha256>.webp`. Miniaturas, animações, SVGs
-e pixel bombs são recusados. A tabela `images` registra
-`model=current-site-import`, URL de origem, alt e proporção; fotos válidas entram
-na mesma biblioteca numerada e na cobertura de cenas. Logos podem ser importados,
-mas não são aplicados automaticamente. A gravação do recibo usa compare-and-set
-com o URL ainda vigente. Não há migração: intake e recibo continuam no JSONB.
-
-A exclusão de cliente em `/admin` e em Dados usa `deleteTenantAction`: adquire `FOR UPDATE` na linha do tenant, reconfirma estado e contatos, apaga o prefixo `tenants/<slug>/` no Blob e só então remove o registro na mesma transação. `pages`, `leads`, `events`, `campaign_spend`, `chat_messages` e `images` caem por `on delete cascade`. Todos os uploads do produto (fotos, logos, anexos e avatar social) usam `putTenantBlob`, que mantém `FOR KEY SHARE` durante o envio; o logo do cadastro é a exceção, porque sobe antes de existir linha para travar: a exclusão espera puts em andamento, e um upload que chega depois dela não encontra a linha nem grava arquivos. `lib/db.ts` mantém consultas comuns por HTTP e abre uma conexão WebSocket Neon por transação interativa, fechada no mesmo pedido, sem migração de schema. Os locks são de linha, portanto outros tenants continuam operando. Falha no Blob preserva o cadastro; uma limpeza parcial pode ser repetida. Cliente publicado ou com contato recebido exige o endereço digitado, conferido de novo dentro do lock. Não há lixeira nem restauração.
-
-`lintSite` também aplica o piso de composição de `lib/taste/metrics.ts`: seção protagonista com duas fotos na home, imagem em toda página orgânica, proporção coerente com o layout e ritmo entre seções. Fotos geradas, enviadas e importadas do Site atual contam quando pertencem ao caminho permitido do tenant; logo, ícone e ativo rejeitado não contam. No perfil v4 aplica a gramática ampla da vibe. V5 e v6 exigem a sequência mínima da estrutura, exatamente uma `signature.composition` e duas fotos disponíveis dentro dela. Para estruturas comerciais, `briefDepth` amplia o piso conforme história, evidências, números e acervo, sempre limitado a oito seções; `home-rasa` confere contagem, palavras e camadas opcionais na ordem própria da estrutura. O plano de cenas acompanha uma home ampla com uma cena de apoio, limitado a seis alvos. Sem referência, cor de marca e três tons continuam sendo o padrão; v6 mede o ritmo tonal da fonte e não exige uma faixa colorida que a contradiga. Abertura e protagonista da home são erro; aberturas internas, fechamentos e seções vetadas são aviso. `lintPage` bloqueia tipos ou props inválidos, duplicação de singletons, múltiplos heroes, baixa diversidade em páginas longas, ausência de decisões locais no perfil versionado, headline acima de 60 caracteres em `hero.landing` ou estimada acima de 56 nos demais heroes, subtexto acima de 20 palavras, copy genérico, placeholders, travessão e falta de conversão, com exceções para post ou obrigado. Fonte: `lib/taste/lint.ts`.
-
-### Edição direta na prévia
-
-`preview=1&edit=1` acrescenta uma ilha carregada sob demanda à prévia
-administrativa autenticada. Sem `preview=1`, `edit` é ignorado. O inventário de
-`lib/blocks/fields.ts` deriva os textos e limites dos schemas; URLs,
-configuração, posts e conteúdo automático ficam fora. `textStyles` guarda
-passos relativos e cores por campo no JSONB do bloco, sem migração.
-
-A rota `/edit` resolve tenant e página no servidor, aceita apenas campos do
-inventário e passa por `applyPageEdit` e `savePageEdit`. Chat e edição direta
-compartilham o pre-flight e a comparação atômica do JSONB anterior por página
-e tenant. Erros 422 retornam os campos; 409 exige releitura. O snapshot
-publicado continua intacto até passar pelo serviço de publicação.
-
-Workspace e iframe trocam mensagens `eixu-edit/1`, conferindo origem e janela.
-A sessão retém página e revisão. Atualizações do estado não substituem o iframe
-enquanto há edição; gravação congela os campos e impede envio duplicado. O
-operador pode cancelar ou corrigir recusas sem perder a tentativa local.
-
-## Imagens e logos
-
-A geração acontece no estúdio compartilhado com o chat. `prepare_site_images` recebe todas as vagas ausentes numa chamada e executa lotes concorrentes de até três cenas: uma imagem GPT Image 2 por cena, crítica estruturada e falhas parciais reportadas. Fora da geração aceita até seis cenas por chamada e oito por turno. Recusa proporção incoerente, reserva o orçamento antes do primeiro `await` e devolve apenas o que não chegou a tentar. O advisory lock por tenant impede lotes concorrentes; dentro dele a cobertura é relida antes de gerar. O número da imagem é reservado no próprio insert.
-
-`lib/images/scene-plan.ts` traduz a direção num plano de vagas: três páginas orgânicas em multipágina, ou cinco cenas na home em Landing Page v7. V2/v3 preservam os alvos antigos, v4 usa a gramática ampla da vibe, v5 usa a estrutura da vibe e v6 usa a estrutura escolhida pela referência, inclusive quando ela pertence a outra família. O hero, as duas cenas da composição autoral e suas proporções saem dessa mesma estrutura. O briefing anexa assunto e página a cada vaga; `sceneCoverage` casa a biblioteca disponível primeiro pelo bloco e depois pelo recorte. `nextPhase` só fecha a etapa quando o plano inteiro tem foto disponível.
-
-Logos podem ser criados ou modernizados por `generate_logo`; sem anexo, a modernização usa o master da marca atual. Wordmarks/combinados usam tela 1536 × 1024 no GPT Image 2; símbolos usam 1024². O PNG é limpo antes de entrar na biblioteca e no crítico, cuja miniatura representa 48 px de altura da arte recortada. Fotos e logos retornam número e URL sem aprovação; a crítica registra problemas sem bloquear disponibilidade. Aplicação pelo chat continua exigindo pedido.
-
-Aplicar um logo (`/settings` ou `set_site_logo`) passa por `applyBrandLogo` em `lib/images/logo-apply.ts`: grava `brand.logoUrl` com nova `logoRevision` e agenda a preparação. `wait: true` aguarda a derivação em executores sem request. O cadastro usa o mesmo pipeline com leitura multimodal; PATCH/chat a dispensam. A camada determinística usa Sharp para remover somente fundo uniforme conectado à borda, preservar formas internas grandes, recortar alfa e criar master até 1024 px, nav de 256 px de altura, ícones opacos, maskable, Apple e OG 1200 × 630. Imagens gravam largura/altura nas colunas existentes.
-
-SVG seguro de origem preserva os vetores. Raster usa ImageTracerJS 1.2.6 até 512 px e só publica o vetor com IoU de alfa ≥ 0,90, erro médio de cor ≤ 24/255 e até 150 KB. Uma checagem adicional exige que 12 grupos de cor cubram 90% dos pixels opacos, evitando a aprovação indevida de gradientes. SVG ativo ou com referência externa é recusado. Arquivos ficam em `tenants/<slug>/logo/asset/<sha256-12>-v1/`; um único lock de upload aguarda todo o lote, inclusive falhas parciais. Mesmo hash/versão não reenvia um asset já preparado. `logoAssetSchema` recusa JSONB incompleto; fonte diferente de `logoUrl` cai no render legado.
-
-Depois da limpeza, `measureLogoFit` mede o master (a origem se permaneceu opaca). A versão branca deriva do master e entra na biblioteca como `branca`; só após crítica em modo `derivar` vira `logoDarkUrl`, com `logoDarkAsset.nav`. Escolha manual usa `applyBrandLogoDark`. Cada gravação compara URL e revisão, incluindo mudanças manuais durante a crítica. Trocar URL limpa todos os derivados; reaplicar a mesma preserva os atuais e invalida trabalhos antigos. `set_brand`/`set_design` mesclam somente seus campos. Assets são apresentação e entram no snapshot; `logoFit`/`logoRevision` continuam operacionais, fora dele.
-
-O estúdio `runLogoStudio` roda em paralelo ao agente somente na fase de briefing. Uma reserva atômica em `brief.logoStudio` impede repetição pelo mesmo hash; trabalhos em andamento expiram após 15 minutos. O original manual vira imagem numerada, seguido das propostas fiel/ousada. Só a fiel pode ser aplicada automaticamente: crítica aprovada, grafia correta, nota ≥ 8, fidelidade ≥ 7, fonte ainda sendo upload manual e `EIXU_LOGO_AUTO_APPLY != 0`. A troca compara URL e revisão no mesmo UPDATE, seguido de derivação aguardada; não há segunda escrita incondicional. O recibo no chat informa números, aplicação no rascunho e reversão. Falhas preservam propostas e não determinam o resultado do agente. Pausa e limite de 300 segundos abortam o job. A ferramenta não entra em `PHASE_TOOLS`.
-
-Nav, rodapé e pre-flight compartilham a superfície real do CSS e preferem a rendição PNG fresca. A captura registra overflow e também palavras visíveis partidas, medidas por termo com `Intl.Segmenter` e `Range`; os dois sinais seguem para o recibo e para a crítica. `generateMetadata`, `generateViewport` e JSON-LD usam a mesma apresentação da página: rascunho autenticado na prévia, snapshot no público. Ícones e OG usam URLs absolutas do Blob; manifest e favicon são rotas por tenant reescritas pelo proxy. Manifest serve os ícones publicados, cores e `display: browser`; favicon redireciona com 302 para PNG32, ou 404/noindex sem asset. Ambos usam cache de dez minutos e nunca expõem o rascunho. Republicar promove os assets; prepará-los sozinho não altera o site no ar. Ver [Design](design.md#logo-sobre-superfície-escura).
-
-| Papel                      | Configuração no código                                                                      |
-| -------------------------- | ------------------------------------------------------------------------------------------- |
-| Chat do site               | `EIXU_MODEL` → `google/gemini-3.8-flash`                                                    |
-| Revisão visual do rascunho | Chromium + crítico Gemini, habilitados por padrão                                           |
-| Críticos de foto e site    | `EIXU_CRITIC_MODEL` → `EIXU_MODEL` → mesmo fallback                                         |
-| Leitura e crítica de logo  | `EIXU_LOGO_CRITIC_MODEL` → `EIXU_CRITIC_MODEL` → `EIXU_MODEL` → `anthropic/claude-sonnet-5` |
-| Cenas do site              | Uma chamada a `openai/gpt-image-2` por cena                                                 |
-| Logos                      | `EIXU_LOGO_IMAGE_MODEL` → `openai/gpt-image-2`                                              |
-
-A rota do chat tem duração máxima de 800 segundos, com 760 no SDK, e limite de 32 passos na edição livre; os checkpoints usam 12/4/24/32 passos. A revisão admite uma avaliação e uma conferência focal por turno. A primeira avaliação completa sem erro material já encerra; sugestões opcionais permanecem no relatório. Modelo, raciocínio `high` e saída por tarefa vêm de `lib/ai/models.ts`; `lib/ai/agent.ts` é compartilhado com os runners.
-
-No servidor, a composição encerra a geração quando as páginas estão gravadas. `nextPhase` reconhece sites montados mesmo sem recibo visual; o runner registra a entrega em `brief.generation.delivery` com data. Essa entrega permanece após edições; o fingerprint dos recibos antigos não reabre geração. Nenhuma fase automática de revisão é despachada. A revisão é humana pela prévia, com ajustes pelo chat. Erros técnicos continuam bloqueando publicação; a política converte avaliações editoriais em recomendações. Uma análise visual automática pode ser solicitada pelo operador, sem alterar a conclusão da geração. `review_pages` executa pre-flight antes de pixels, reaproveita recibos por página e recaptura somente páginas sem cobertura atual. Um Chromium atende o lote, duas páginas por vez; cada viewport espera fontes/imagens, tem repetição local e preserva capturas boas quando outro alvo falha. Achados mantêm ID, página, bloco, viewport, evidência, correção e estado. Erro material cuja âncora veio inválida continua como pendência técnica. O certificado só é atual quando todas as páginas têm desktop e mobile da versão vigente.
-
-O chat preserva quatro turnos recentes completos até 120.000 caracteres, com metadados do provedor. Material anterior vira recibo com erros e pendências, preservando instruções e respostas textuais. O loop ativo não é compactado. `lib/ai/usage.ts` registra modelo, versão do harness, tokens de raciocínio, cache, passos, tempo, motivo de término e custo retornado. A interface soma recibos das fases retornados nos eventos da geração e recibos dos turnos de chat desta abertura. Críticos e imagens têm medições separadas; valor ausente não é contado como zero. Não há faturamento consolidado por cliente.
-
-Imagens novas são inseridas explicitamente com estado `disponivel`, inclusive
-em bancos cujo default antigo continua sendo `candidata`; não é necessária
-migração para ativar o fluxo. `candidata` e `aprovada` são estados legados
-tratados como disponíveis. `rejeitada` continua no filtro próprio da galeria
-e bloqueia publicação se usada. A API da biblioteca edita somente o texto
-alternativo por PATCH; não existe ação de aprovar/recusar.
-
-`update_image` resolve o número diretamente por `(tenant_id, seq)`, inclusive
-fora das 200 imagens mais recentes da listagem. Usa os pixels originais como
-referência, conserva a proporção ou usa a informada em `ratio`, gera uma nova
-imagem numerada e mantém a original no acervo. O `ratio` atende à recomendação
-de proporção sem trocar a foto escolhida pelo operador e não vale para logo. A geração compartilha o orçamento de oito imagens do turno
-e o lock de cenas. `replaceDraftImage` reconfirma ambas as imagens dentro do
-tenant e relê as páginas sob `FOR UPDATE` antes de trocar campos de imagem e
-alt por URL exata, em uma transação. Links, textos, SEO, marca e snapshots
-publicados não são alterados. A imagem nova continua na biblioteca se a
-aplicação falhar, e a ferramenta informa a falha com o novo número.
-
-O POST de `/api/admin/[tenant]/images` recebe um arquivo por pedido, exige sessão e resolve o tenant pelo slug no servidor. A seleção múltipla do painel envia em sequência e preserva sucessos parciais. JPG, PNG, WebP e AVIF estáticos de até 4 MB e 40 megapixels passam por leitura completa dos pixels, orientação EXIF e conversão para WebP sem metadados. O limite por arquivo deixa margem para multipart dentro do [limite da função Vercel](https://vercel.com/docs/functions/limitations#request-body-size). `putTenantBlob` conserva o lock de upload/exclusão; `insertImage` reserva o número e grava dimensões, proporção real, alt inicial pelo nome do arquivo, estado `disponivel` e `model: upload`. O caminho é `tenants/<slug>/uploads/<uuid>.webp`; falha de insert tenta remover só esse blob. Não exige migração nem crítica paga. Anexos e logos de `/upload` mantêm seu fluxo separado.
-
-`availablePhotos` reúne as fotos geradas e os uploads registrados no acervo para composição, cobertura de cenas e publicação. `generatedPhotos` mantém a contagem exclusiva de geração. Logos, rejeitadas e arquivos sem registro no acervo não completam o piso. A proporção real também participa dos avisos de recorte; para alteração por IA, um upload fora das proporções suportadas usa a mais próxima.
-
-A galeria mostra as imagens disponíveis, onde cada URL aparece no rascunho e
-no publicado, e dois atalhos: **Usar no site** e **Solicitar alteração** abrem
-o chat com o número preenchido, sem enviar nem gerar automaticamente.
-Remoção verifica uso em rascunhos, publicados e marca, inclusive a versão do
-logo para fundo escuro e as URLs aninhadas em assets atuais/publicados; falha no Blob conserva o registro. Aplicar logo pelo chat exige
-um pedido detectado na última mensagem e uma imagem de tipo logo disponível;
-por `/settings`, exige logo da biblioteca do tenant ou upload manual no
-caminho de logo daquele cliente, e o mesmo portão vale para `logoDarkUrl`,
-que a biblioteca aplica por **Usar sobre fundo escuro** e Dados remove. A
-home tem piso de geração de duas fotos distintas da biblioteca do tenant, geradas, enviadas ou importadas.
-Fontes: `lib/ai/tools.ts`, `lib/images/queries.ts`, `lib/images/revise.ts`,
-`lib/images/replacement.ts`, `lib/images/logo-apply.ts`,
-`lib/sites/generation.ts` e `lib/taste/site.ts`.
-
-Uploads manuais em `/api/admin/[tenant]/upload` aceitam PNG, JPEG, WebP, GIF e SVG até 8 MB na aplicação. Atendem anexos do chat e logos em cadastro/Dados; o transporte pode impor um teto menor. Esses arquivos não entram na tabela `images`, não recebem número nem aparecem no acervo. O upload de fotos numeradas usa o POST de `/images`, descrito acima; o estúdio de logo pode registrar o original manual durante o briefing.
-
-## Dados, conversão e tráfego
-
-| Tabela                      | Responsabilidade                                                        |
-| --------------------------- | ----------------------------------------------------------------------- |
-| `tenants`                   | Identidade, rascunho e snapshot da apresentação global                  |
-| `site_folders`              | Pastas compartilhadas que organizam os tenants no painel                |
-| `admin_users`               | Operadores globais, estado da conta e hash do PIN                       |
-| `admin_sessions`            | Sessões opacas, expiração e revogação                                   |
-| `admin_activity`            | Autoria, resultado e snapshots das ações administrativas                |
-| `pages`                     | Rascunho e snapshot publicado de conteúdo, SEO e dados editoriais       |
-| `images`                    | Biblioteca, sequência por tenant, geração, crítica e disponibilidade    |
-| `generation_runs`           | Execução da geração em etapas: estado, fase, saltos e origem            |
-| `generation_events`         | Linha do tempo que o painel mostra: fases, ferramentas, pausas          |
-| `chat_messages`             | Texto da conversa do site; o canal `imagens` só guarda histórico antigo |
-| `leads`                     | Campos recebidos, origem e consentimento informado                      |
-| `events`                    | Eventos de primeira parte por tenant/página/campanha                    |
-| `campaign_spend`            | Gastos manuais em centavos, com campanha, canal e período               |
-| `premium_projects`          | Pasta, domínio, token em hash e release ativa de cada Premium           |
-| `premium_conversions`       | Snapshot público, hash, SHA de origem, lease e PR de conversão          |
-| `premium_releases`          | Deployments imutáveis e manifesto de assets de cada Premium             |
-| `premium_content_revisions` | Revisões editoriais imutáveis publicadas pelo CMS Premium               |
-| `premium_preview_sessions`  | Rascunhos efêmeros e tokens em hash para a prévia Premium               |
-
-O script de atribuição guarda primeiro/último toque, click IDs e identificador de visita em `localStorage`. Preenche campos de formulário e envia eventos para `/api/e`. Formulários nativos passam por honeypot, gravam contato e evento e redirecionam com 303. `/go/wa` registra clique e redireciona para `wa.me`; `?n=` escolhe outro WhatsApp do cadastro, e índice ausente ou inválido usa o principal.
-
-O painel filtra eventos por datas inclusivas no horário de Brasília e calcula visitantes identificados, formulários recebidos e cliques no WhatsApp separadamente. O total de visitantes conta IDs distintos no período, sem somar campanhas. O ID de navegador é persistido em `localStorage`, não representa pessoa nem sessão com expiração. Cliques que passam por `/go/wa` são registrados apenas no redirecionador, com atribuição e ID levados pela URL; links diretos a `wa.me` usam o evento do navegador. A correção não deduplica eventos antigos.
-
-Gastos de todos os canais da mesma campanha são somados, incluindo campanhas sem visita. Entram no custo apenas lançamentos integralmente contidos no filtro; períodos parcialmente sobrepostos são avisados e excluídos, sem rateio presumido. Os totais não dependem do limite de 50 campanhas exibidas. Custo por ação divide gastos por formulários mais cliques, não por pessoas. O CSV contém os últimos 5.000 contatos recebidos por formulário, de todos os períodos, e neutraliza fórmulas de planilha. O schema guarda IDs de GA4/Meta, mas esses campos, sozinhos, não significam integração ativa.
-
-## Projetos Premium
-
-Um tenant publicado pode reservar uma conversão Premium. `maintenance_mode`
-define se o gerador ainda escreve; `public_runtime` só muda depois que o novo
-deployment passou pelos gates e respondeu na URL canônica. Enquanto o estado é
-`converting`, o snapshot do gerador continua no ar, mas chat, geração, edição
-direta e publicação recusam novas escritas também sob lock transacional.
-
-O pedido entra na fila persistida e duas agendas intercaladas do GitHub procuram
-trabalho nos minutos 1/6/11… e 3/8/13… de cada hora. Cada agenda respeita o
-intervalo mínimo de cinco minutos; juntas reduzem a espera normal sem exigir uma
-credencial do GitHub no painel. O claim acontece antes do checkout, portanto uma
-execução sem trabalho termina imediatamente. O conversor vigente exporta somente dados publicados para
-`apps/premium/<project-key>` e cria o contrato editorial atual; o fechamento do
-renderer e do CSS continua vindo do SHA que atendia produção. Cada pasta é uma
-aplicação Next.js e um projeto Vercel independentes, mas permanece neste
-repositório. A primeira PR exige revisão; o merge publica, associa o domínio
-exato `<slug>.eixu.com.br` e registra a release. Merges posteriores na pasta
-disparam o mesmo release e atualizam essa URL sem DNS manual.
-
-Cada release também registra o contrato `content/editor.json`. Quando o runtime
-está em `premium`, `/admin/[tenant]` carrega somente o CMS Premium: página e
-seções à esquerda, domínio canônico à direita. Texto e imagem passam por esse
-contrato; a publicação cria uma revisão imutável e troca o ponteiro do projeto
-na mesma transação. A prévia usa um token aleatório de curta duração, guardado
-apenas como SHA-256, e o próprio frontend Premium busca o rascunho pelo bearer
-do projeto. O iframe só confirma a atualização por `postMessage` vindo do host
-canônico. O conteúdo publicado é separado de releases de código: composição,
-campos e integrações mudam por PR; valores declarados mudam pelo CMS.
-
-Formulários, eventos e WhatsApp entram pelas rotas server-side do Premium e são
-encaminhados às APIs centrais. O bearer é exclusivo do projeto, seu hash fica em
-`premium_projects` e o host canônico precisa coincidir. O projeto filho nunca
-recebe `DATABASE_URL`, cookie administrativo ou token do Kanban. Um banco próprio
-opcional usa credenciais e migrações daquele workspace.
-
-O manifesto da release e as revisões editoriais protegem imagens centrais em uso. Cadastro, acervo, leads,
-tráfego e pastas continuam no painel. Arquivamento e exclusão ficam bloqueados
-até existir um ciclo que retire o domínio e preserve os releases. O contrato
-completo está em [Projetos Premium](plano-projetos-premium.md).
+# Arquitetura do EIXU Studio
+
+## Visão geral
+
+A EIXU separa a plataforma de gestão dos projetos entregues aos clientes.
+
+```mermaid
+flowchart TD
+  U[Operador autenticado] --> A[Admin Next.js]
+  A --> DB[(Neon)]
+  A --> WF[Vercel Workflow]
+  WF --> GW[AI Gateway]
+  WF --> SB[Vercel Sandbox]
+  SB --> CP[Checkpoint privado no Blob]
+  A --> CMS[Revisões de conteúdo]
+  CP --> REL[Workflow de release]
+  CMS --> REL
+  REL --> VP[Projeto Vercel do cliente]
+  VP --> HOST[cliente.eixu.com.br]
+  HOST --> API[Form, eventos e WhatsApp centrais]
+```
+
+O projeto raiz hospeda institucional, painel, autenticação, APIs, Workflow e dados compartilhados. Cada cliente publicado tem um projeto Vercel dedicado. Não existe renderer central de blocos nem conversão Premium.
+
+## Fronteiras de confiança
+
+- A sessão resolve o operador no servidor.
+- O tenant é carregado pelo slug e vinculado ao projeto antes de qualquer ação.
+- Mensagens, anexos e metadata vindos do navegador são entrada não confiável.
+- O modelo recebe um `toolsContext` criado pelo servidor e não escolhe tenant, Sandbox, credenciais ou projeto Vercel.
+- Ferramentas de arquivo aplicam raiz fixa, normalização, limites de tamanho e rejeição de symlink.
+- Comandos são nomes enumerados (`typecheck`, `build` e verificações previstas), nunca shell arbitrário fornecido pelo modelo.
+- Publicação e reset são serviços determinísticos separados do agente.
+
+O admin continua global para operadores ativos. Isolamento impede cruzar tenants acidentalmente; não representa papéis granulares por cliente.
+
+## Modelo de dados
+
+`db/schema.sql` é aditivo para instalações existentes. O reset remove as tabelas antigas depois de desconectar seus vínculos.
+
+| Tabela                          | Papel                                                           |
+| ------------------------------- | --------------------------------------------------------------- |
+| `tenants`                       | Cadastro, contatos, marca e status do cliente.                  |
+| `images`                        | Acervo numerado; uploads e gerações do Studio.                  |
+| `studio_projects`               | Um projeto por tenant, Sandbox, host e ponteiros de revisão.    |
+| `chat_messages`                 | `UIMessage` versionada, partes e metadata persistidas.          |
+| `studio_runs` / `studio_events` | Execução do turno, Workflow, status e eventos ordenados.        |
+| `studio_tool_leases`            | Exclusão mútua de efeitos retomáveis.                           |
+| `studio_artifacts`              | Contexto, direção de arte e validação com versão e hash.        |
+| `studio_source_evidence`        | Fonte consultada, resultado e evidência datada.                 |
+| `studio_content_revisions`      | Contrato e valores imutáveis por revisão.                       |
+| `studio_preview_sessions`       | Hash do token, URL limpa, revisão e expiração.                  |
+| `studio_releases`               | Código, conteúdo, deployment e estado de ativação.              |
+| `ai_usage`                      | Recibos por passo e por imagem, modelo servido, tokens e custo. |
+
+IDs e constraints ligam cada recurso ao tenant/projeto. Revisões de conteúdo e artefatos são append-only. Ponteiros em `studio_projects` indicam o draft e a release ativa.
+
+## Conversa e execução
+
+`POST /api/chat` recebe exatamente uma nova mensagem, autentica, limita o corpo pelos bytes realmente lidos, valida partes e anexos, persiste o pedido, cria `studio_runs` e inicia `studioTurnWorkflow`. O histórico enviado pelo cliente é ignorado como autoridade; o servidor carrega a conversa canônica.
+
+`WorkflowAgent` transmite `ModelCallStreamPart` por Workflow. `/api/chat/[runId]/stream` exige operador ativo, aceita somente um Workflow registrado em `studio_runs` e retoma do índice recebido pelo transporte. O admin é global, como no restante do produto. Ao concluir, um step recompõe a `UIMessage`, registra uso e encerra o run. Falhas e cancelamento também viram mensagens e estados persistidos.
+
+Um índice único permite somente um run ativo por projeto. Tool leases impedem repetir efeitos concorrentes dentro de retomadas.
+
+## Workspace e Sandbox
+
+O projeto começa em um scaffold mínimo com Next.js, TypeScript, conteúdo versionado e integrações da EIXU. `package.json`, `project.json`, `proxy.ts`, `lib/eixu.ts`, `tsconfig.json`, `next.config.ts` e `.gitignore` são arquivos protegidos. `package-lock.json` só pode nascer do `npm install` controlado e não pode ser escrito pelo agente. `next-env.d.ts` é gerado pelo Next.js, fica ignorado e não participa do digest. O checkpoint compara os arquivos reservados com o scaffold esperado, rejeita symlinks e só arquiva o projeto depois dos gates.
+
+O Sandbox usa egress restrito e não recebe credenciais administrativas. O manifesto fixa Next.js, React, TypeScript e os scripts de build; a primeira versão não aceita dependências adicionais. A instalação usa `--ignore-scripts`. Seu estado é reconstruível: o código validado é compactado e salvo em Blob privado com revisão SHA-256. A coluna `draft_code_revision` aponta ao checkpoint atual; restaurar seleciona exatamente esse artefato.
+
+## Preview
+
+A prévia só nasce de checkpoint válido. O Sandbox inicia o servidor do projeto com um token aleatório de alta entropia. O `proxy.ts` protegido exige o token na primeira navegação e o troca por cookie HTTP-only, Secure, SameSite=None e Partitioned.
+
+O banco armazena apenas o hash, a URL sem query e uma expiração curta. A resposta recebe `noindex`, política de referrer e `frame-ancestors` limitado à plataforma. Expiração gira o token e reinicia o servidor quando necessário.
+
+Em produção do cliente, `EIXU_PREVIEW_TOKEN` não existe e o mesmo proxy permite tráfego normal.
+
+## Conteúdo e CMS
+
+Cada projeto declara `content/schema.json` e `content/values.json`. O servidor valida schema, tipo, tamanho, revisão e hash antes de salvar. Toda alteração cria nova `studio_content_revisions`; uma escrita nunca modifica a revisão anterior.
+
+O chat altera código e contrato. O CMS leve altera somente valores previstos. Publicação fixa uma revisão de conteúdo e um checkpoint de código, evitando combinar duas versões diferentes durante o build.
+
+## Release por cliente
+
+A release usa um projeto `eixu-site-{slug}` dentro do time configurado. Os IDs do time e do projeto raiz vêm do ambiente; não são constantes no código.
+
+Fluxo:
+
+1. criar a release e salvar o artefato privado;
+2. assegurar o projeto dedicado, confirmar que nunca é o projeto raiz e exigir proteção Vercel Auth em `preview`;
+3. materializar os arquivos com a revisão de conteúdo congelada;
+4. enviar cada arquivo à API `/v2/files` por SHA-1 e criar o deployment com referências de digest;
+5. aguardar `READY` e verificar, com bypass de automação derivado por projeto, o marcador de revisão e uma página;
+6. adicionar o domínio canônico ao projeto correto;
+7. promover o deployment candidato;
+8. repetir o smoke no host canônico;
+9. ativar release e ponteiros em transação.
+
+O domínio canônico público nunca recebe o bypass: seu smoke comprova acesso real depois da promoção. O reconciliador registra a intenção antes da promoção e cobre a janela em que a Vercel pode ter promovido o deployment antes de a gravação no banco terminar. O marcador servido pelo host canônico é a prova final. Rollback cria uma nova release pelo mesmo pipeline. Arquivar remove o domínio; restaurar promove a release ativa e verifica o host; excluir remove somente o projeto dedicado comprovado.
+
+## Integrações públicas
+
+O scaffold usa `lib/eixu.ts` para formular ação de formulário, evento e WhatsApp. Na plataforma:
+
+- `/api/form` registra leads;
+- `/api/e` registra eventos;
+- `/go/wa` registra atribuição e redireciona ao WhatsApp.
+
+As rotas validam host/origin, payload e limites. O redirecionamento do formulário é resolvido contra o host canônico e recusa mudança de origem. O tenant precisa estar publicado, com projeto e release ativos. Atribuição é limitada por forma e tamanho.
+
+O `proxy.ts` da plataforma não tenta renderizar sites de clientes no projeto raiz. Hosts wildcard sem projeto dedicado recebem 404.
+
+## Imagens
+
+Uploads são validados por tipo real, pixels, tamanho e tenant; depois são normalizados para WebP e entram no acervo. Imagens geradas usam AI Gateway, idempotency key, caminho determinístico no Blob e uma chave única própria do Studio. `batch_id` antigo permanece não único para que a migração seja compatível.
+
+Cada chamada registra primeiro um recibo `pending`; sucesso grava `recorded`, metadados do Gateway e custo, e falha grava `failed`. Se o Workflow retomar depois de salvar a imagem, a chave do pedido recupera o mesmo item.
+
+## Reset controlado
+
+`scripts/reset-sites.mjs` opera em modo manifesto por padrão. O escopo inclui dados de sites, prefixos Blob `tenants/` e `studio/` e projetos Vercel identificados no banco ou pelos prefixos `eixu-site-` e `eixu-premium-`. O projeto raiz é excluído do conjunto e cada ID/nome remoto é conferido novamente antes da remoção.
+
+Execução requer ambiente explícito, confirmação textual, digest do manifesto, fingerprint do banco, timestamp de manifesto com no máximo 30 minutos, deployment raiz READY e referência de recuperação. A manutenção é ativada antes da primeira remoção. Em falha após esse ponto, permanece ativa para evitar recriação até intervenção. Operadores, autenticação, Kanban e atividade de acesso/Kanban são preservados; referências de cards a tenants viram nulas.
+
+Como Neon, Blob e Vercel não compartilham transação, todas as etapas produzem recibos e a verificação final prova contagem zero e ausência dos recursos inventariados.
 
 ## Limites atuais
 
-- **Edição direta:** disponível para clientes publicados, por campo inteiro; sem posts, marcação inline ou mescla de conflitos. Tamanho, cor e alinhamento ficam em `textStyles`. No chat, “desfaz” alcança a página da revisão mais recente; o botão da prévia alcança a última escrita daquela página. Nenhum dos dois muda o publicado ou as imagens. Controles conservam seus estilos e cores sobre fotos sem superfície uniforme ficam automáticas.
-- **Conversa simultânea:** o run impede um turno de chat durante a geração, mas duas abas ainda podem abrir dois turnos livres para o mesmo cliente.
-- **Classificação de conversa:** o filtro é conservador e baseado em linguagem explícita, não uma compreensão universal de intenção. Ordens de remoção após uma descrição da seção e a grafia “sessão” são aceitas; pedidos realmente ambíguos podem ficar somente em leitura. Confirmação de exclusão usa a pendência interna da fala anterior, não uma frase anterior do assistente.
-- **Exclusão:** definitiva, sem lixeira. O CDN pode servir um arquivo apagado por cerca de um minuto, e uma exclusão durante geração ativa derruba as ferramentas daquele turno por chave estrangeira.
-- **Leitura de rede social:** depende do que a rede entrega a robôs e do IP de saída; o Instagram falha com frequência a partir de datacenter. Nome, bio e avatar lidos são material público, não verificação de identidade do cliente.
-- **Acesso:** admin global, com operadores individuais e sem vínculo usuário–tenant ou RLS no schema versionado. Rotas administrativas, chats e rascunhos exigem sessão persistida. Em produção, ausência de `ADMIN_PIN_PEPPER` impede validar PINs, e ausência de `ADMIN_SESSION_SECRET` impede os tokens internos de prévia. `__tenant` continua disponível para resolver o conteúdo publicado; não autentica. Arquivos no Blob continuam públicos.
-- **Domínios e SEO:** o host só resolve tenant em um subdomínio de `eixu.com.br` ou `.localhost`; nomes reservados e hosts numéricos não viram clientes. `lib/site.ts` ainda aponta para o endereço legado `chatgpt.site`, usado no sitemap/robots institucional. O tenant tem handler próprio de `robots.txt`; o endereço institucional legado permanece uma limitação a corrigir em trabalho de código.
-- **Snapshot:** publicações novas versionam apresentação global, título, tipo, metadados e ordem junto de blocos/SEO. O schema cria um snapshot inicial para clientes e páginas que já estavam publicados; a aplicação da migração precisa anteceder o código. GA4 e Meta Pixel continuam cadastro operacional fora do snapshot visual.
-- **Autorização do agente:** pedido para publicar é uma regra de prompt/tool description; o executor de `publish_page` não valida confirmação estruturada. Não há aprovação de imagens; a troca de logo por `set_site_logo` ainda usa regex sobre a última mensagem, sem garantia de interpretação de negação. As fases de geração não expõem ferramentas de publicação. Não confundir esses mecanismos com autorização formal.
-- **Revisão visual:** Chromium captura até 12 páginas, em desktop e mobile, com cookie restrito à origem. O crítico recebe imagens binárias e retorna evidências por página/bloco. Medições de overflow e imagens quebradas entram no relatório. Falha ou cobertura parcial deixa a análise solicitada incompleta, sem reabrir a geração; `EIXU_REVIEW_CAPTURE=0` só permite diagnóstico estrutural. O recibo v2 é incremental e precisa cobrir cada página e imagem usada da versão atual. Um parecer do crítico não autoriza publicação.
-- **Histórico e custos:** persistência textual dos últimos 60 itens por canal, sem trace completo, anexos ou recibos antigos. A compactação não resume decisões do operador. Conversas muito extensas são recusadas; recarregar retoma o histórico recente. `ai_usage` registra por cliente e chamada os tokens de entrada, saída, total, cache, raciocínio e custo em USD informado pelo Gateway, cobrindo chat, geração, imagens, logos, críticas e leituras auxiliares. Um registro pendente precede a chamada paga; falhas ou interrupções sem recibo continuam visíveis como lacuna. A migração recupera apenas resumos antigos de fases de geração. Outros consumos anteriores e tentativas internas sem recibo não podem ser reconstruídos, portanto o painel não substitui a fatura do provedor.
-- **Imagens antigas:** candidatas e aprovadas anteriores a esta entrega ficam disponíveis, inclusive as já usadas em página. Rejeitadas antigas permanecem no banco/Blob e no filtro Rejeitadas, fora dos prompts; não há limpeza automática. A listagem mostra as 200 imagens mais recentes; consulta por número não tem esse limite.
-- **Assets de logo:** hashes antigos e lotes parcialmente enviados ficam no Blob até excluir o cliente, pois snapshots podem referenciá-los. Traçado reprovado mantém PNG sem SVG. Fundo não uniforme fica opaco; branco interno grande é preservado e contadores pequenos podem ser removidos. Favicon de wordmark sem símbolo usa a marca inteira. Ícones/OG refletem o papel da preparação; mudar só a paleta não os regenera. `db:prepare-logo-assets` é dry-run por padrão, exige `--slug` ou `--all` e só escreve com `--apply`; prepara rascunhos, sem publicar ou apagar. Não foi executado em clientes existentes.
-- **Medição:** eventos são atribuição de navegador e ações, não pessoas únicas, conversas confirmadas ou receita. Dados anteriores ao release podem conter cliques duplicados; não foram apagados. Gasto é lançamento manual sem conciliação ou integração com anúncios.
-
-O [guia de verificação](verification.md) define os checks atuais; a [revisão do admin de 10/09](archive/admin-review-2026-09-10.md) conserva apenas a evidência daquela entrega. Testes de contrato e ensaio controlado não constituem pentest, benchmark universal de qualidade ou geração completa em todos os modelos.
-
-A política atual de identidade, raciocínio, contexto e revisão está em [Harness](harness.md). O recibo continua no JSONB existente; o snapshot completo exige reaplicar `db/schema.sql` antes do código que lê as novas colunas.
-
-## Arquivamento
-
-O estado `archived` em `tenants.status` preserva rascunho e snapshots, mas
-recusa a página pública, `robots.txt`, sitemap, manifesto, favicon, formulário,
-telemetria e o redirecionador de WhatsApp. A sessão administrativa continua
-resolvendo o tenant e acessa a prévia com `preview=1`. A reativação recupera
-`published` quando existe ao menos uma página publicada; caso contrário,
-recupera `draft`. Publicar não reativa um tenant arquivado implicitamente.
-Projetos Premium não usam este controle: arquivar sem retirar o domínio do
-projeto filho deixaria a URL ativa, por isso o servidor recusa a ação.
+- A integração real precisa de permissões para projeto, deployment, domínio, Blob, Sandbox e Gateway no time escolhido.
+- O código local não prova continuidade de Workflow ou Sandbox na conta da Vercel.
+- O reset não foi executado por esta implementação.
+- Não há portal de cliente nem RBAC por tenant.
+- Sites com autenticação, pagamento ou backend próprio ficam fora do Studio inicial.

@@ -13,6 +13,12 @@ export function tenantBlobPrefix(slug: string): string {
 
 const BATCH = 100;
 
+export function studioProjectBlobPrefix(projectId: string): string {
+  if (!/^[0-9a-f-]{36}$/i.test(projectId))
+    throw new Error('Projeto inválido para limpeza de arquivos.');
+  return `studio/${projectId}/`;
+}
+
 export const UPLOAD_TYPES = new Set([
   'image/png',
   'image/jpeg',
@@ -104,24 +110,34 @@ export function putTenantBlobs(tenantId: string, files: TenantBlobFile[]) {
  * cópia do avatar social. Idempotente, para uma segunda tentativa depois de
  * falha parcial não exigir limpeza manual.
  */
-export async function deleteTenantBlobs(
-  slug: string,
+async function deleteBlobPrefix(
+  prefix: string,
   deps: BlobDeps = {},
 ): Promise<{ deleted: number }> {
   const listBlobs = deps.list ?? list;
   const delBlobs = deps.del ?? del;
-  const prefix = tenantBlobPrefix(slug);
-  let cursor: string | undefined;
   let deleted = 0;
-  do {
-    const page = await listBlobs({ prefix, cursor, limit: 1000 });
+  for (;;) {
+    const page = await listBlobs({ prefix, limit: 1000 });
     const urls = page.blobs.map((blob) => blob.url);
+    if (!urls.length) break;
     for (let index = 0; index < urls.length; index += BATCH) {
       const batch = urls.slice(index, index + BATCH);
       await delBlobs(batch);
       deleted += batch.length;
     }
-    cursor = page.hasMore ? page.cursor : undefined;
-  } while (cursor);
+  }
   return { deleted };
+}
+
+export function deleteTenantBlobs(slug: string, deps: BlobDeps = {}) {
+  return deleteBlobPrefix(tenantBlobPrefix(slug), deps);
+}
+
+/** Checkpoints, referências visuais e artefatos privados usam o ID do projeto. */
+export function deleteStudioProjectBlobs(
+  projectId: string,
+  deps: BlobDeps = {},
+) {
+  return deleteBlobPrefix(studioProjectBlobPrefix(projectId), deps);
 }

@@ -1,28 +1,15 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createElement } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
-import { createJiti } from 'jiti';
+import test from 'node:test';
 import { loadModule } from './helpers/load-module.mjs';
 
-const j = createJiti(import.meta.url, {
-  alias: { '@': process.cwd() },
-  jsx: { runtime: 'automatic' },
-});
+const FOLDER_ID = '11111111-1111-4111-8111-111111111111';
 
-async function fixture({
-  insert = 'ok',
-  socialFails = false,
-  vibe = 'ousado',
-  currentSiteUrl = '',
-  folderId = '',
-} = {}) {
-  const deleted = [],
-    inserted = [],
-    scheduled = [],
-    refreshed = [],
-    derived = [];
-  const logo = 'https://blob.test/tenants/fixture/logo/cadastro.png';
+async function fixture({ insert = 'ok', direction = 'moderno' } = {}) {
+  const inserted = [];
+  const deleted = [];
+  const refreshed = [];
+  const activities = [];
+  const logoUrl = 'https://blob.test/tenants/fixture/logo/cadastro.png';
   const { createTenantAction } = await loadModule(
     'app/(admin)/admin/actions.ts',
     {
@@ -33,22 +20,29 @@ async function fixture({
           login: 'operador@eixu',
         }),
       },
-      '@/lib/admin/activity': { recordActivity: async () => undefined },
+      '@/lib/admin/activity': {
+        recordActivity: async (activity) => activities.push(activity),
+      },
+      '@/lib/sites-maintenance': {
+        sitesAreInMaintenance: async () => false,
+      },
       '@/lib/tenant-queries': {
-        countTenantData: async () => ({ pages: 0, leads: 0, images: 0 }),
-        getTenantBySlug: async () => null,
-        siteFolderExists: async () => true,
+        siteFolderExists: async (id) => id === FOLDER_ID,
+      },
+      '@/lib/blob/tenant-files': {
+        UploadError: class UploadError extends Error {},
+        putNewTenantBlob: async () => logoUrl,
+      },
+      '@vercel/blob': {
+        del: async (url) => deleted.push(url),
       },
       '@/lib/db': {
         db:
           () =>
           async (parts, ...values) => {
-            const sql = parts.join('?');
-            if (/select exists/i.test(sql)) return [{ exists: true }];
-            if (insert === 'error') throw new Error('Insert recusado');
+            assert.match(parts.join('?'), /insert into tenants/i);
+            if (insert === 'error') throw new Error('insert recusado');
             if (insert === 'duplicate') return [];
-            // Posicional: o insert grava slug, nome, WhatsApp derivado,
-            // e-mail, briefing, marca, contatos e pasta, nessa ordem.
             const [
               slug,
               name,
@@ -69,30 +63,12 @@ async function fixture({
               contacts: JSON.parse(contacts),
               folderId,
             });
-            return [{ id: 'fixture-id' }];
+            return [{ id: 'tenant-1' }];
           },
       },
-      '@/lib/blob/tenant-files': { putNewTenantBlob: async () => logo },
-      '@vercel/blob': { del: async (url) => deleted.push(url) },
-      '@/lib/ai/social': {
-        markSocialReading: async () => {
-          if (socialFails) throw new Error('Leitura indisponível');
-          return { readId: 'reading' };
-        },
-        syncSocialProfile: async () => {},
+      'next/cache': {
+        revalidatePath: (path) => refreshed.push(path),
       },
-      'next/server': { after: (callback) => scheduled.push(callback) },
-      '@/lib/images/logo-apply': {
-        deriveLogoAssets: async (tenant, url) => {
-          assert.ok(inserted[0].brand.logoRevision);
-          assert.equal(
-            tenant.brand.logoRevision,
-            inserted[0].brand.logoRevision,
-          );
-          derived.push(url);
-        },
-      },
-      'next/cache': { revalidatePath: (path) => refreshed.push(path) },
       'next/navigation': {
         redirect: (path) => {
           throw new Error(`redirect:${path}`);
@@ -100,149 +76,90 @@ async function fixture({
       },
     },
   );
+
   const form = new FormData();
-  for (const [key, value] of Object.entries({
+  for (const [name, value] of Object.entries({
     name: 'Fixture',
     slug: 'fixture',
     contactEmail: 'contato@fixture.com.br',
     story:
-      'A Fixture trabalha com pedras naturais para projetos de arquitetura em Bauru. Atende arquitetos e pessoas em reforma que procuram orientação para escolher os materiais e iniciar uma conversa comercial.',
+      'A Fixture atende projetos de arquitetura desde 2012 e usa materiais naturais em obras residenciais.',
+    evidence: 'Fundada em 2012\nAtendimento residencial',
+    constraints: 'Não prometer prazo sem confirmação',
+    currentSiteUrl: 'https://fixture.example/',
+    reference: 'https://referencia.example/',
     primary: '#112233',
-    secondary: '#445566',
-    highlight: '#ffffff',
-    vibe,
+    secondary: '#f0f1f2',
+    highlight: '#ff5500',
+    paletteSource: 'operador',
+    direction,
+    folderId: FOLDER_ID,
   }))
-    form.set(key, value);
-  if (currentSiteUrl) form.set('currentSiteUrl', currentSiteUrl);
-  if (folderId) form.set('folderId', folderId);
-  // Duas linhas de contato: a primeira é telefone comum, então o WhatsApp
-  // gravado precisa ser o segundo número.
-  for (const [number, kind] of [
-    ['11 3333-4444', 'telefone'],
-    ['+55 11 98888-7777', 'whatsapp'],
-  ]) {
-    form.append('phone', number);
-    form.append('phoneKind', kind);
-  }
+    form.set(name, value);
+  form.append('phone', '11 3333-4444');
+  form.append('phoneKind', 'telefone');
+  form.append('phone', '+55 11 98888-7777');
+  form.append('phoneKind', 'whatsapp');
   form.append('addressLabel', 'Loja');
-  form.append('addressText', 'Rua das Pedras, 100, Bauru');
-  form.append('social', 'https://www.instagram.com/fixture/');
-  form.set('logo', new File(['synthetic'], 'logo.png', { type: 'image/png' }));
+  form.append('addressText', 'Rua das Pedras, 100, Bauru - SP');
+  form.append('social', '@fixture');
+  form.set('logo', new File(['logo'], 'logo.png', { type: 'image/png' }));
+
   return {
     run: () => createTenantAction(null, form),
-    deleted,
     inserted,
-    scheduled,
+    deleted,
     refreshed,
-    derived,
-    logo,
+    activities,
+    logoUrl,
   };
 }
 
-await test('cadastro preserva o logo e abre o editor quando a leitura social falha', async () => {
-  const f = await fixture({ socialFails: true });
-  await assert.rejects(f.run, /redirect:\/admin\/fixture/);
-  assert.equal(f.inserted[0].brand.logoUrl, f.logo);
-  assert.equal(f.deleted.length, 0);
-  // Só a medição do logo fica agendada; a leitura social falhou antes.
-  assert.equal(f.scheduled.length, 1);
-  await Promise.all(f.scheduled.map((run) => run()));
-  assert.deepEqual(f.derived, [f.logo]);
-  assert.deepEqual(f.refreshed, ['/admin']);
-});
+void test('cadastro preserva dados, direção visual e organização do cliente', async () => {
+  const current = await fixture();
+  await assert.rejects(current.run(), /redirect:\/admin\/fixture/);
 
-await test('cadastro agenda a leitura social e a medição do logo depois de persistir a marca', async () => {
-  const f = await fixture();
-  await assert.rejects(f.run, /redirect:\/admin\/fixture/);
-  assert.equal(f.inserted.length, 1);
-  assert.equal(f.scheduled.length, 2);
-  assert.equal(f.deleted.length, 0);
-  // A leitura sai da lista de redes, que substituiu o campo do briefing.
-  assert.equal(
-    f.inserted[0].brief.intake.socialUrl,
-    'https://www.instagram.com/fixture/',
-  );
-});
-
-await test('cadastro grava contatos, vibe e o WhatsApp derivado da lista', async () => {
-  const f = await fixture();
-  await assert.rejects(f.run, /redirect:\/admin\/fixture/);
-  const row = f.inserted[0];
+  assert.equal(current.inserted.length, 1);
+  const row = current.inserted[0];
+  assert.equal(row.slug, 'fixture');
   assert.equal(row.whatsapp, '5511988887777');
-  assert.equal(row.contactEmail, 'contato@fixture.com.br');
-  assert.equal(row.brand.vibe, 'ousado');
-  assert.equal(row.folderId, null);
+  assert.equal(row.folderId, FOLDER_ID);
+  assert.equal(row.brief.intake.currentSiteUrl, 'https://fixture.example/');
+  assert.deepEqual(row.brief.intake.references, [
+    'https://referencia.example/',
+  ]);
+  assert.deepEqual(row.brief.intake.evidence, [
+    'Fundada em 2012',
+    'Atendimento residencial',
+  ]);
+  assert.equal(row.brand.direction, 'moderno');
+  assert.equal(row.brand.paletteSource, 'operador');
+  assert.equal(row.brand.logoUrl, current.logoUrl);
+  assert.match(row.brand.assetRevision, /^[0-9a-f-]{36}$/i);
   assert.deepEqual(row.contacts.phones, [
     { number: '1133334444', whatsapp: false },
     { number: '+5511988887777', whatsapp: true },
   ]);
-  assert.deepEqual(row.contacts.addresses, [
-    { label: 'Loja', text: 'Rua das Pedras, 100, Bauru' },
-  ]);
-  assert.deepEqual(row.contacts.social, ['https://www.instagram.com/fixture/']);
-  assert.match(row.brief.intake.story, /pedras naturais/);
-  assert.equal(row.brief.intake.currentSiteUrl, '');
-  assert.equal(row.brief.intake.offer, '');
-  assert.equal(row.brief.intake.references.length, 0);
+  assert.deepEqual(current.deleted, []);
+  assert.deepEqual(current.refreshed, ['/admin']);
+  assert.equal(current.activities[0].action, 'tenant.create');
+  assert.equal(current.activities[0].actor.name, 'Operador');
 });
 
-await test('cadastro dentro de uma pasta preserva a organização escolhida', async () => {
-  const folderId = '11111111-1111-4111-8111-111111111111';
-  const f = await fixture({ folderId });
-  await assert.rejects(f.run, /redirect:\/admin\/fixture/);
-  assert.equal(f.inserted[0].folderId, folderId);
-});
-
-await test('cadastro preserva o site atual separado da referência visual', async () => {
-  const f = await fixture({ currentSiteUrl: 'https://fixture.com.br/' });
-  await assert.rejects(f.run, /redirect:\/admin\/fixture/);
-  assert.equal(
-    f.inserted[0].brief.intake.currentSiteUrl,
-    'https://fixture.com.br/',
-  );
-  assert.deepEqual(f.inserted[0].brief.intake.references, []);
-});
-
-await test('vibe desconhecida recusa o cadastro antes de enviar o logo', async () => {
-  const f = await fixture({ vibe: 'inventada' });
-  assert.match(await f.run(), /vibe/i);
-  assert.equal(f.inserted.length, 0);
-  assert.equal(f.deleted.length, 0);
-  assert.equal(f.scheduled.length, 0);
+void test('cadastro recusa direção desconhecida antes de enviar o logo', async () => {
+  const current = await fixture({ direction: 'inventada' });
+  assert.match(await current.run(), /direção visual/i);
+  assert.equal(current.inserted.length, 0);
+  assert.equal(current.deleted.length, 0);
 });
 
 for (const insert of ['duplicate', 'error'])
-  await test(`cadastro limpa somente o upload de um insert ${insert}`, async () => {
-    const f = await fixture({ insert });
+  void test(`cadastro remove o upload quando o insert termina em ${insert}`, async () => {
+    const current = await fixture({ insert });
     assert.match(
-      await f.run(),
+      await current.run(),
       insert === 'duplicate' ? /já pertence/ : /Não foi possível criar/,
     );
-    assert.deepEqual(f.deleted, [f.logo]);
-    assert.equal(f.inserted.length, 0);
-    assert.equal(f.scheduled.length, 0);
+    assert.deepEqual(current.deleted, [current.logoUrl]);
+    assert.equal(current.inserted.length, 0);
   });
-
-await test('cadastro exibe história obrigatória e uma única referência fora do contexto opcional', async () => {
-  const { TenantFields } = await j.import(
-    '../components/admin/tenant-fields.tsx',
-  );
-  const markup = renderToStaticMarkup(
-    createElement(TenantFields, { compact: true, withSlug: true }),
-  );
-  assert.match(markup, /História do cliente/);
-  assert.match(markup, /name="story"[^>]*required/);
-  assert.match(markup, /<input[^>]*type="url"[^>]*name="reference"/);
-  assert.match(markup, /Referência para o site/);
-  assert.match(markup, /name="currentSiteUrl"/);
-  assert.ok(
-    markup.indexOf('name="currentSiteUrl"') <
-      markup.indexOf('name="reference"'),
-  );
-  assert.match(markup, /site que já pertence ao cliente/);
-  assert.equal(markup.includes('O que o site precisa fazer'), false);
-  assert.equal(markup.includes('Segmento</span>'), false);
-  assert.equal(markup.includes('Região atendida'), false);
-  assert.equal(markup.includes('Para quem vende'), false);
-  assert.equal(markup.includes('name="references"'), false);
-});

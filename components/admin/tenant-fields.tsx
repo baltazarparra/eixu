@@ -54,8 +54,8 @@ function ReferenceField({ intake, compact }: FieldProps) {
       />
       <HelpHint>
         {compact
-          ? `Use um site cuja aparência sirva de inspiração. Ele não fornece fatos nem contatos do cliente. Quando a captura puder ser analisada, sua composição, tipografia, imagens, ritmo e acabamento terão prioridade sobre a vibe e os padrões do gerador, dentro dos recursos disponíveis. Sem referência, seguimos a vibe escolhida.${legacy}`
-          : `Quando verificada, sua composição, tipografia e ritmo têm prioridade sobre a vibe escolhida.${legacy}`}
+          ? `Use um site cuja aparência sirva de inspiração. Ele não fornece fatos nem contatos do cliente. Quando a captura puder ser analisada, sua composição, tipografia, imagens, ritmo e acabamento terão prioridade sobre a direção inicial. Sem referência, seguimos a direção escolhida.${legacy}`
+          : `Quando verificada, sua composição, tipografia e ritmo têm prioridade sobre a direção escolhida.${legacy}`}
       </HelpHint>
     </label>
   );
@@ -241,11 +241,7 @@ export function TenantFields({
       <FormSection id="identificacao" ordinal="01" title="Identificação">
         {identity}
       </FormSection>
-      <ContactFields
-        contacts={contacts}
-        ordinal="02"
-        socialCard={socialCard}
-      />
+      <ContactFields contacts={contacts} ordinal="02" socialCard={socialCard} />
       <FormSection
         id="historia"
         ordinal="03"

@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import {
-  VIBES,
-  VIBE_HINT,
-  VIBE_LABEL,
-  VIBE_PALETTE,
-  type Vibe,
-} from '@/lib/design/vibes';
+  STUDIO_DIRECTIONS,
+  STUDIO_DIRECTION_HINT,
+  STUDIO_DIRECTION_LABEL,
+  STUDIO_DIRECTION_PALETTE,
+  type StudioDirection,
+} from '@/lib/studio/directions';
 
 const COLORS = [
   ['primary', 'Cor primária', 'Seções e superfícies com a cor da marca.'],
@@ -16,9 +16,17 @@ const COLORS = [
 ] as const;
 
 /** A mesma microcomposição torna as quatro linguagens comparáveis. */
-export function VibePreview({ vibe }: { vibe: Vibe }) {
+export function DirectionPreview({
+  direction,
+}: {
+  direction: StudioDirection;
+}) {
   return (
-    <span className="admin-vibe-preview" data-vibe={vibe} aria-hidden="true">
+    <span
+      className="admin-vibe-preview"
+      data-vibe={direction}
+      aria-hidden="true"
+    >
       <span className="admin-vibe-nav" />
       <span className="admin-vibe-copy">
         <span />
@@ -37,15 +45,15 @@ export function VibePreview({ vibe }: { vibe: Vibe }) {
  * partida ao negócio sem sobrescrever uma escolha consciente.
  */
 export function BrandFields() {
-  const [vibe, setVibe] = useState<Vibe>('comercial');
+  const [direction, setDirection] = useState<StudioDirection>('comercial');
   const [values, setValues] = useState<Record<string, string>>(
-    VIBE_PALETTE.comercial,
+    STUDIO_DIRECTION_PALETTE.comercial,
   );
   const [paletteEdited, setPaletteEdited] = useState(false);
 
-  function chooseVibe(next: Vibe) {
-    setVibe(next);
-    if (!paletteEdited) setValues(VIBE_PALETTE[next]);
+  function chooseDirection(next: StudioDirection) {
+    setDirection(next);
+    if (!paletteEdited) setValues(STUDIO_DIRECTION_PALETTE[next]);
   }
 
   function changeColor(name: string, value: string) {
@@ -55,7 +63,7 @@ export function BrandFields() {
 
   function resetPalette() {
     setPaletteEdited(false);
-    setValues(VIBE_PALETTE[vibe]);
+    setValues(STUDIO_DIRECTION_PALETTE[direction]);
   }
 
   return (
@@ -65,25 +73,25 @@ export function BrandFields() {
         <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
           Compare as cinco direções. A escolha coordena tipografia, navegação,
           escala, ícones, imagens e ritmo quando não houver referência. Com um
-          link visual verificado, a referência comanda o layout e a vibe passa a
-          definir a voz e completar apenas o que a fonte não resolver. Landing
-          Page mantém uma única página, mesmo com referência.
+          link visual verificado, a referência comanda o layout e a direção
+          passa a definir a voz e completar apenas o que a fonte não resolver.
+          Landing Page mantém uma única página, mesmo com referência.
         </p>
         <div className="admin-vibe-grid">
-          {VIBES.map((option) => (
+          {STUDIO_DIRECTIONS.map((option) => (
             <label key={option} className="admin-vibe-card">
-              <VibePreview vibe={option} />
+              <DirectionPreview direction={option} />
               <span className="admin-vibe-choice">
                 <input
                   type="radio"
-                  name="vibe"
+                  name="direction"
                   value={option}
-                  checked={vibe === option}
-                  onChange={() => chooseVibe(option)}
+                  checked={direction === option}
+                  onChange={() => chooseDirection(option)}
                 />
-                <strong>{VIBE_LABEL[option]}</strong>
+                <strong>{STUDIO_DIRECTION_LABEL[option]}</strong>
               </span>
-              <small>{VIBE_HINT[option]}</small>
+              <small>{STUDIO_DIRECTION_HINT[option]}</small>
             </label>
           ))}
         </div>
@@ -117,7 +125,7 @@ export function BrandFields() {
             <strong>
               {paletteEdited
                 ? 'Cores confirmadas por você'
-                : 'Sugestão da vibe'}
+                : 'Sugestão da direção'}
             </strong>
             {paletteEdited ? (
               <button
@@ -138,7 +146,7 @@ export function BrandFields() {
                   value={
                     /^#[0-9a-f]{6}$/i.test(values[name])
                       ? values[name]
-                      : VIBE_PALETTE[vibe][name]
+                      : STUDIO_DIRECTION_PALETTE[direction][name]
                   }
                   aria-label={label}
                   onChange={(event) => changeColor(name, event.target.value)}

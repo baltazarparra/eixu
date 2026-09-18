@@ -3,13 +3,14 @@
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
-    "types": ["node", "@cloudflare/workers-types"],
+    "types": ["node"],
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
@@ -33,9 +34,10 @@
   ],
   "exclude": [
     "node_modules",
+    ".claude",
+    ".ds-sync",
+    "ds-bundle",
     "outputs",
-    "work",
-    "apps/premium/*",
-    "scripts/premium/template"
+    "work"
   ]
 }

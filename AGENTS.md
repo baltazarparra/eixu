@@ -10,158 +10,80 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Orientação do projeto
 
-Não concorde com uma decisão apenas por conveniência. Verifique o código e os dados atuais antes de assumir informações. Quando houver dúvida relevante, pesquise ou peça contexto.
+Não concorde por conveniência. Verifique código, dados e serviços antes de assumir. Comunique-se em português do Brasil, com objetividade.
 
-Comunique-se em português do Brasil, com objetividade. EIXU reúne o institucional
-e um gerador de sites multi-tenant operado em `/admin`. O [README](README.md)
-apresenta produto, setup e comandos. Leia [SOUL.md](SOUL.md) para identidade e critérios de qualidade. Este contrato é compartilhado pelo
-Codex com GPT-6 Astra e GPT-5.6 Sol; `CLAUDE.md` continua importando-o como
-adaptador compatível.
+A EIXU reúne o institucional e o Studio interno de sites em `/admin`. O operador usa uma única jornada de dados, chat, preview, CMS leve, imagens e publicação. Cada cliente recebe um projeto Next.js independente e continua acessível em `cliente.eixu.com.br`.
+
+Leia [README.md](README.md) para setup, [SOUL.md](SOUL.md) para identidade e [docs/README.md](docs/README.md) para o mapa da documentação.
 
 ## Contexto sob demanda
 
-| Ao trabalhar em                            | Leia                                                                                                          |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| Rotas, publicação, dados ou limites do MVP | [Arquitetura](docs/architecture.md) e os arquivos do fluxo afetado                                            |
-| Frontend e composição visual               | [Design e aplicação das duas skills](docs/design.md)                                                          |
-| Conversão, manutenção e release Premium    | [Projetos Premium](docs/plano-projetos-premium.md) e a skill `premium-delivery`                               |
-| Prompts, ferramentas, modelos ou contexto  | [SOUL.md](SOUL.md), [Harness e modelos](docs/harness.md)                                                      |
-| Validação e release                        | [Verificação](docs/verification.md)                                                                           |
-| Cards, execução e revisão de PR            | [Fluxo AI Native](docs/ai-native-development.md) e a skill da fase em `.agents/skills/kanban-*`               |
-| Neon ou schema                             | `db/schema.sql`, `lib/db.ts` e a skill relevante em `.agents/skills/neon/` ou `.agents/skills/neon-postgres/` |
-| APIs do Next.js                            | Guia correspondente em `node_modules/next/dist/docs/`, na versão instalada                                    |
+| Ao trabalhar em                           | Leia                                                                          |
+| ----------------------------------------- | ----------------------------------------------------------------------------- |
+| Rotas, dados, publicação ou tenancy       | [Arquitetura](docs/architecture.md) e os produtores/consumidores afetados     |
+| Prompts, ferramentas, modelos ou Workflow | [Harness](docs/harness.md) e [SOUL.md](SOUL.md)                               |
+| Frontend ou direção visual                | [Design](docs/design.md)                                                      |
+| Validação e release                       | [Verificação](docs/verification.md)                                           |
+| Cards e PRs                               | [Fluxo AI Native](docs/ai-native-development.md) e a skill `kanban-*` da fase |
+| Neon/schema                               | `db/schema.sql`, `lib/db.ts` e a skill Neon relevante                         |
+| APIs Next.js                              | O guia correspondente em `node_modules/next/dist/docs/`                       |
 
-Consulte o [índice da documentação](docs/README.md) para distinguir guias vigentes, planos e histórico.
-
-Carregue apenas o material necessário. `.agents/skills/` contém as skills locais;
-`.claude/skills/` contém os adaptadores existentes. Evite copiar políticas entre
-arquivos ou criar camadas de instrução sem uma necessidade observada.
+Carregue apenas o material necessário. Preserve trabalho alheio e nunca toque em `.claude/worktrees/`.
 
 ## Como executar
 
-1. Confira `git status`, o pedido e o código atual. Preserve trabalho alheio.
-2. Identifique o resultado esperado e percorra os produtores e consumidores da
-   mudança. Planeje quando houver dependências, ambiguidade material ou risco.
-3. Faça a menor mudança completa. Análise/revisão sem pedido de execução permanece
-   leitura; implementação autorizada deve chegar à validação e à entrega.
-4. Resolva escolhas rotineiras com a evidência disponível. Pergunte quando faltar
-   informação que altere escopo, dados, custo ou resultado; avance no trabalho
-   independente enquanto isso. Não peça novamente autorização já dada.
-5. Valide conforme [o risco](docs/verification.md), revise o diff e atualize a
-   documentação afetada. Relate resultado, evidências e limitações reais.
+1. Confira `git status`, pedido, branch e código atual.
+2. Percorra o fluxo completo: entrada, autorização, persistência, efeito externo, consumidor e documentação.
+3. Faça a menor mudança completa. Análise e plano permanecem leitura até haver autorização de implementação.
+4. Resolva escolhas rotineiras com evidência. Pergunte quando faltar informação que mude escopo, dados, custo ou resultado.
+5. Valide conforme o risco, revise o diff e atualize os contratos afetados.
 
-Agrupe leituras e checks independentes; serialize operações dependentes e escritas
-no mesmo recurso. Use subagentes somente quando a tarefa ou o ambiente autorizar,
-com uma divisão que evite edição concorrente. Não há obrigação de delegar.
-Em trabalho longo, dê atualizações breves. Ao retomar após compactação, preserve
-objetivo, decisões, autorização, arquivos alterados e verificações pendentes.
+Use npm e o lockfile existente. Não imprima nem versione segredos, cookies, `.env*` ou dados pessoais.
 
 ## Fluxo AI Native pelo Kanban
 
-Quando o pedido envolver um card de desenvolvimento, use a skill da fase:
-`$kanban-spec` com GPT-6 Astra para especificar, `$kanban-delivery` com GPT-5.6
-Sol para planejar e entregar a PR e `$kanban-pr-review` com GPT-6 Astra para a
-revisão independente. A seleção do modelo ocorre no Codex; não afirme o modelo
-usado sem evidência da execução.
+Quando o pedido partir de um card, use `$kanban-spec` com GPT-6 Astra para especificar, `$kanban-delivery` com GPT-5.6 Sol para implementar e abrir a PR, e `$kanban-pr-review` com GPT-6 Astra para revisão independente. O modelo selecionado no editor é a única evidência do modelo em uso.
 
-O card é o contrato persistido entre conversas. Preserve seus critérios de
-aceite durante a implementação e registre PR, HEAD e validações antes de mover
-para **Em revisão**. Commit novo invalida o parecer anterior. Só mova para
-**Concluído** depois do merge e dos requisitos de release descritos no card.
-Use `npm run kanban` para ler e alterar o quadro pelas rotas; não escreva nas
-tabelas diretamente.
+O card é o contrato entre conversas. Use `npm run kanban` pelas rotas; não escreva diretamente nas tabelas. Registre PR, HEAD e validações antes de mover para **Em revisão**. Commit novo invalida o parecer anterior. Só conclua depois de merge e release exigidos pelo card.
 
-## Qualidade do harness
+## Invariantes do Studio
 
-O modelo interno é Gemini 3.8 Flash; a política em `lib/ai/models.ts` usa raciocínio
-`high` e orçamento de saída por tarefa. Priorize factualidade, identidade, conteúdo
-útil e resultado verificado. Economizar tokens não justifica cortar evidência,
-reparo ou verificação. Não confunda esse modelo com o selecionado no editor.
+- O servidor resolve operador e tenant. Slug, UUID ou metadata enviados pelo cliente ou modelo não provam acesso.
+- O cliente envia apenas a nova mensagem. O servidor carrega o histórico canônico, valida `UIMessage` e persiste partes tipadas.
+- `WorkflowAgent` coordena o loop durável. Ferramentas com efeitos usam steps, leases e chaves idempotentes.
+- A primeira criação lê `/dados` e a fonte oficial antes de produzir o artefato de contexto; depois inspeciona a referência e registra direção de arte. Build exige ambos.
+- Logo e screenshots entram como partes multimodais. Base64 em texto não comprova análise visual.
+- GPT-5.6 Terra atende contexto e conversa, Sol direção de arte/código/crítica e Luna tarefas curtas. O roteamento está em `lib/studio/models.ts`; não invente um modelo fora dessa política.
+- Ferramentas não recebem credenciais. Paths passam pela política de workspace, symlinks são rejeitados e comandos são enumerados.
+- Sandbox é efêmero. Checkpoints e código de release ficam em Blob privado; uma sessão não é a fonte de verdade.
+- `content/schema.json` e `content/values.json` formam o contrato do CMS. Cada edição cria revisão imutável com hash e controle otimista.
+- Preview exige sessão administrativa, checkpoint atual e token efêmero cujo hash fica no banco. A URL persistida não contém o token.
+- Publicação congela código e conteúdo, executa build e smoke e só então promove. Um projeto Vercel por cliente; o projeto raiz nunca é alvo.
+- Formulários, eventos e WhatsApp públicos exigem tenant, projeto e release ativos e usam a integração central.
+- Erro técnico, isolamento, autoria e gates de release são garantias de código, não instruções de prompt.
 
-O chat e os runners compartilham `lib/ai/agent.ts`. Preserve metadados/assinaturas
-do histórico recente e o loop ativo do SDK. A geração termina na composição das
-páginas; a revisão seguinte é humana pela prévia, com ajustes pelo chat. Não abra
-Conferir, não exiba revisão visual pendente nem ofereça Continuar para um site
-já gerado. Uma análise visual automática depende de pedido do operador e usa
-pixels como entrada multimodal do crítico, nunca base64 como texto de ferramenta.
-Somente evidência atual comprova essa análise. Preserve erros e gates de publicação.
+## Identidade e conteúdo
 
-## Invariantes do produto
+A fonte oficial do cliente sustenta fatos. A referência visual principal sustenta layout, tipografia, ritmo e movimento. A direção cadastrada serve de fallback. Não copie marca, texto, imagens ou código de referência.
 
-- Produção é Next.js na Vercel: use `dev:vercel` e `build:vercel`. Não substitua esse
-  gate pelo build Vinext. Preserve o bloco de instruções gerenciado pelo Next.js.
-- Mantenha separados os layouts e CSS de `app/(main)`, `app/(admin)` e
-  `app/(sites)`. Conteúdo comercial deve usar fatos verificáveis; experiência da
-  liderança não deve virar alegação de cliente da EIXU.
-- Rotas administrativas e chats exigem sessão. A única exceção são os handlers
-  do Kanban, que aceitam o bearer dedicado `KANBAN_AGENT_TOKEN`, restringem esse
-  acesso ao quadro e registram suas mutações como agente. Resolva o tenant no
-  servidor e escopo de leitura/escrita pelo seu ID; UUID ou slug recebido não
-  prova acesso. Cada operador tem login e PIN próprios, mas o admin continua
-  global, sem autorização individual por tenant. Preserve a autoria das ações.
-- Novo bloco exige schema/catálogo, renderizador, componente e pre-flight coerentes
-  em `lib/blocks/` e `lib/taste/`. Não afrouxe validação para aceitar uma geração.
-- Primitivos interativos dos sites vivem em `lib/blocks/ui/`, entregam HTML útil
-  no servidor, carregam o motor sob demanda e respeitam movimento reduzido,
-  edição, teclado e toque. Seus estilos ficam em `(sites)`; `components/ui/`
-  pertence ao painel. Conteúdo oculto por passagem continua no pre-flight e não
-  satisfaz sozinho o piso de protagonista.
-- Na edição pelo chat, um pedido que o schema não atende vira explicação, nunca
-  outra mudança: mover não pode apagar. Isso é gate em código
-  (`contentLossError`), não só instrução de prompt. Prova depende de fato
-  confirmado pelo operador, no cadastro ou por `confirm_evidence`.
-  Publicação pedida pelo operador usa a política de `lib/sites/publication-policy.ts`:
-  recomendações editoriais não vetam a decisão nem viram fatos confirmados.
-  Erros técnicos e isolamento permanecem obrigatórios. Resolver pendências pode
-  ajustar ou retirar alegações sem prova pelo reparo restrito, preservando os demais blocos.
-- Responsividade é requisito de todas as vibes e versões. Preserve o contrato de
-  `lib/design/responsive.ts` e valide navegação fechada/aberta, toque, teclado e
-  telas estreitas/baixas com o CSS de produção; ausência de overflow não basta.
-- Site novo sai pelo fluxo em etapas de `lib/taste/phases.ts` e cumpre o piso de
-  composição de `lib/taste/metrics.ts`: seção protagonista com fotos na home,
-  imagem em toda página orgânica, ritmo tonal e proporção coerente com o layout.
-- Sem referência, a vibe define a silhueta em `VIBE_GRAMMAR` e o perfil v5
-  escolhe uma de suas três estruturas. Com uma única referência visual
-  verificada, o perfil v6 escolhe a estrutura mais próxima entre as doze e a
-  fonte comanda os eixos visuais; a vibe permanece como voz e fallback. Plano
-  de cenas, catálogo, pre-flight, renderer e crítica usam a mesma decisão.
-  Landing Page usa perfil v7 sem estrutura multipágina: home e obrigado,
-  hero stage/form, navegação mínima e uma ação. A referência mantém essa forma.
-  Perfis v2-v6 publicados preservam o que está no ar.
-- Preserve a separação `blocks`/`seo` e `published_blocks`/`published_seo`, com
-  pre-flight nos dois caminhos de publicação. O snapshot também inclui apresentação global
-  e dados editoriais; a publicação pontual preserva a marca já publicada,
-  conforme a arquitetura. Preview por query não é controle de acesso.
-- Um site Premium permanece no mesmo tenant e na mesma URL, mas sua implementação
-  vive em `apps/premium/<project-key>`. Depois de reservar a conversão, nenhuma
-  escrita do gerador pode atravessar o lock. Releases Premium passam pelos gates,
-  pelo projeto Vercel próprio e pelo smoke canônico antes de ativar o runtime;
-  leads, eventos e WhatsApp continuam centrais por token e host vinculados.
-- Imagens ficam disponíveis com número e URL assim que são geradas, sem aprovação.
-  Mantenha o acervo em `/admin/[tenant]/imagens` e alterações pelo número no chat.
-  A crítica orienta ajustes. Só o estúdio paralelo ao briefing pode aplicar
-  automaticamente a proposta fiel sobre upload manual: exige os gates de nota,
-  grafia e fidelidade, troca condicional por URL/revisão, original numerado e
-  recibo reversível no rascunho. Fora dele, aplicar logo exige pedido do operador.
-  Preserve o escopo do tenant e o bloqueio de exclusão em uso; uma nova versão troca os rascunhos sem
-  alterar snapshots publicados nem apagar a original.
-- Regras em prompts e neste arquivo orientam agentes; garantias de acesso,
-  publicação e integridade precisam de código e verificação externa.
+Siga [SOUL.md](SOUL.md) e os princípios anti-slop de [Taste Skill](https://www.tasteskill.dev/): identidade específica, hierarquia intencional, texto concreto e refinamento que serve à leitura. Responsividade, teclado, toque, movimento reduzido e HTML útil no servidor são requisitos.
 
-## Ambiente, validação e entrega
+## Segurança e operação
 
-Use npm e o lockfile existente. Tipos: `npx next typegen && npx tsc --noEmit`.
-Código: `npm run lint`. Contratos: `npm run test:sites` e `npm run test:admin`. Produção: `npm run build:vercel`. Verifique o fluxo afetado
-além da compilação; não adicione testes que só repitam uma alteração documental.
-O lint global deve passar sem desligar regras. O build também verifica os arquivos
-necessários à captura serverless; o procedimento e o acesso aos registros estão em [Verificação](docs/verification.md).
+Rotas administrativas e chats exigem sessão. As rotas do Kanban também aceitam `KANBAN_AGENT_TOKEN`, restrito ao quadro e com autoria de agente. O admin é global; ainda não há papéis por tenant.
 
-Não imprima nem versione `.env*`, tokens, cookies ou dados pessoais. Antes de
-migração, seed, geração paga ou escrita remota, confirme o recurso e o escopo já
-autorizados. Seed e requantização sobrescrevem dados; não são checks. Para ação
-destrutiva sem autorização específica, explique o impacto e peça confirmação.
+Antes de migração, reset, geração paga, Sandbox remoto, deploy ou outra escrita remota, confirme recurso e escopo já autorizados. O reset de sites preserva operadores, autenticação, Kanban e institucional; exige manifesto fresco, digest, fingerprint, deployment raiz READY e referência de recuperação. Nunca use `DROP DATABASE`, `DROP SCHEMA` ou `TRUNCATE ... CASCADE` genérico.
 
-Quando publicar estiver no pedido, conclua pelo fluxo Git/Vercel autorizado e
-confira SHA, estado do deployment e smoke. Distinga código publicado, páginas de
-clientes publicadas e comportamento efetivamente testado. Não declare avaliação
-em ambos os modelos sem executá-la em ambos.
+## Validação e entrega
+
+Execute, conforme o risco:
+
+```bash
+npx next typegen && npx tsc --noEmit
+npm run lint
+npm run test:studio
+npm run test:admin
+npm run build:vercel
+```
+
+Verifique o fluxo afetado além da compilação. Não adicione testes que apenas repetem a implementação. Para publicação, confirme commit, deployment READY e smoke no domínio canônico. Diferencie código validado, código publicado e comportamento realmente exercitado.

@@ -1,4 +1,3 @@
-import { logoStudioSummary } from '@/lib/images/logo-studio-state';
 import { del } from '@vercel/blob';
 import { z } from 'zod';
 import { currentUser } from '@/lib/auth';
@@ -9,15 +8,19 @@ import { uploadLibraryImage } from '@/lib/images/upload';
 import { IMAGE_UPLOAD_MAX_BYTES } from '@/lib/images/upload-policy';
 import {
   deleteImage,
-  getGuide,
   getImage,
   listImages,
   referenceMessage,
   referenceReason,
   updateImageMetadata,
 } from '@/lib/images/queries';
-import { imageUsage } from '@/lib/images/usage';
-import { getTenantBySlug, listPages } from '@/lib/tenant-queries';
+import { getTenantBySlug } from '@/lib/tenant-queries';
+import { sitesWriteGuard } from '@/lib/sites-maintenance';
+import {
+  parseBoundedPublicJson,
+  parseBoundedPublicFormData,
+  PublicInputTooLargeError,
+} from '@/lib/public-input.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,17 +41,27 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ tenant: string }> },
 ) {
+  const maintenance = await sitesWriteGuard();
+  if (maintenance) return maintenance;
   const resolved = await resolve(params);
   if (resolved.error) return resolved.error;
-  if (
-    Number(request.headers.get('content-length')) >
-    IMAGE_UPLOAD_MAX_BYTES + 64 * 1024
-  )
-    return Response.json(
-      { error: 'A imagem deve ter até 4 MB.' },
-      { status: 413 },
+  let form: FormData | null = null;
+  try {
+    form = await parseBoundedPublicFormData(
+      request,
+      IMAGE_UPLOAD_MAX_BYTES + 64 * 1024,
     );
-  const form = await request.formData().catch(() => null);
+  } catch (error) {
+    return Response.json(
+      {
+        error:
+          error instanceof PublicInputTooLargeError
+            ? 'A imagem deve ter até 4 MB.'
+            : 'Upload inválido.',
+      },
+      { status: error instanceof PublicInputTooLargeError ? 413 : 400 },
+    );
+  }
   const files = form?.getAll('file');
   if (files?.length !== 1 || !(files[0] instanceof File))
     return Response.json(
@@ -90,21 +103,13 @@ export async function GET(
   const status = statuses.safeParse(asked);
   if (asked && !status.success)
     return Response.json({ error: 'Estado inválido.' }, { status: 400 });
-  const [images, guide, pages] = await Promise.all([
-    listImages(resolved.tenant.id, status.success ? status.data : undefined),
-    getGuide(resolved.tenant.id),
-    listPages(resolved.tenant.id),
-  ]);
+  const images = await listImages(
+    resolved.tenant.id,
+    status.success ? status.data : undefined,
+  );
   return Response.json({
-    guide,
     images,
     logoUrl: resolved.tenant.brand.logoUrl ?? null,
-    logoDarkUrl: resolved.tenant.brand.logoDarkUrl ?? null,
-    logoStudioSummary: logoStudioSummary(
-      resolved.tenant.brief,
-      resolved.tenant.brand,
-    ),
-    usage: imageUsage(resolved.tenant, pages, images),
   });
 }
 
@@ -117,9 +122,20 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ tenant: string }> },
 ) {
+  const maintenance = await sitesWriteGuard();
+  if (maintenance) return maintenance;
   const resolved = await resolve(params);
   if (resolved.error) return resolved.error;
-  const parsed = patch.safeParse(await request.json().catch(() => ({})));
+  let body: unknown;
+  try {
+    body = await parseBoundedPublicJson(request, 16_000);
+  } catch (error) {
+    return Response.json(
+      { error: 'Alteração inválida.' },
+      { status: error instanceof PublicInputTooLargeError ? 413 : 400 },
+    );
+  }
+  const parsed = patch.safeParse(body);
   if (!parsed.success)
     return Response.json(
       { error: parsed.error.issues[0]?.message },
@@ -149,9 +165,20 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ tenant: string }> },
 ) {
+  const maintenance = await sitesWriteGuard();
+  if (maintenance) return maintenance;
   const resolved = await resolve(params);
   if (resolved.error) return resolved.error;
-  const { id } = (await request.json().catch(() => ({}))) as { id?: string };
+  let body: { id?: unknown };
+  try {
+    body = (await parseBoundedPublicJson(request, 8_000)) as { id?: unknown };
+  } catch (error) {
+    return Response.json(
+      { error: 'Pedido de exclusão inválido.' },
+      { status: error instanceof PublicInputTooLargeError ? 413 : 400 },
+    );
+  }
+  const id = typeof body.id === 'string' ? body.id : '';
   if (!id) return Response.json({ error: 'Informe o id.' }, { status: 400 });
 
   const image = await getImage(resolved.tenant.id, id);

@@ -1,4 +1,0 @@
-interface:
-  display_name: 'Premium Frontend'
-  short_description: 'Cria e refina frontends Premium da EIXU'
-  default_prompt: 'Use $premium-frontend para compor e validar este projeto Premium com direção visual própria.'

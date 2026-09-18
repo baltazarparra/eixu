@@ -1,8 +1,8 @@
 import { db } from '@/lib/db';
-import { getTenantBySlug } from '@/lib/tenant-queries';
 import { tenantFromHost } from '@/lib/tenant-host';
 import { whatsappAt } from '@/lib/tenant-contacts';
-import { isTenantPublic } from '@/lib/sites/availability';
+import { publicTenantBySlug } from '@/lib/site-availability';
+import { boundedPublicSource } from '@/lib/public-input.mjs';
 
 /**
  * Redirecionador de WhatsApp rastreado. Registra o clique e injeta a origem
@@ -13,9 +13,8 @@ export async function GET(request: Request) {
   const host = request.headers.get('host') ?? '';
   const slug = url.searchParams.get('t') || tenantFromHost(host);
   if (!slug) return Response.redirect(new URL('/', request.url), 302);
-  const tenant = await getTenantBySlug(slug);
-
-  if (!isTenantPublic(tenant))
+  const tenant = await publicTenantBySlug(slug);
+  if (!tenant)
     return new Response('Site indisponível.', {
       status: 404,
       headers: { 'x-robots-tag': 'noindex' },
@@ -25,8 +24,8 @@ export async function GET(request: Request) {
     return Response.redirect(new URL('/', request.url), 302);
   }
 
-  const campaign = url.searchParams.get('utm_campaign') || '';
-  const from = url.searchParams.get('from') || '/';
+  const campaign = (url.searchParams.get('utm_campaign') || '').slice(0, 160);
+  const from = (url.searchParams.get('from') || '/').slice(0, 500);
   const session = url.searchParams.get('sid')?.slice(0, 160) || null;
   // `n` escolhe outro WhatsApp do cadastro; índice ausente ou inválido usa o
   // número principal, que é o que o botão flutuante e os CTAs já enviam.
@@ -44,7 +43,9 @@ export async function GET(request: Request) {
     await db()`
       insert into events (tenant_id, type, path, session_id, source)
       values (${tenant.id}, 'whatsapp_click', ${from}, ${session},
-              ${JSON.stringify(Object.fromEntries(url.searchParams))}::jsonb)
+              ${JSON.stringify(
+                boundedPublicSource(Object.fromEntries(url.searchParams)),
+              )}::jsonb)
     `;
   } catch {
     // Falha de registro não pode impedir o contato.

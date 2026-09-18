@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { loadModule } from './helpers/load-module.mjs';
 
-await test('atividade guarda snapshots do usuário e do cliente', async () => {
+void test('atividade preserva autoria, cliente e chave idempotente', async () => {
   const writes = [];
   const activity = await loadModule('lib/admin/activity.ts', {
     '@/lib/db': {
@@ -24,12 +24,17 @@ await test('atividade guarda snapshots do usuário e do cliente', async () => {
     slug: 'fixture',
     name: 'Fixture',
   };
+
   await activity.recordActivity({
     actor,
     tenant,
-    action: 'tenant.settings.update',
-    summary: 'Baltz atualizou os dados de Fixture',
+    action: 'studio.turn.start',
+    summary: 'Baltz iniciou um turno',
+    resourceType: 'studio_run',
+    resourceId: 'run-1',
+    operationId: 'studio-run:run-1',
   });
+
   assert.deepEqual(writes[0].values.slice(0, 7), [
     actor.id,
     'user',
@@ -39,22 +44,43 @@ await test('atividade guarda snapshots do usuário e do cliente', async () => {
     tenant.slug,
     tenant.name,
   ]);
-  await activity.recordAgentTool({
-    requestedBy: actor,
-    tenant,
-    tool: 'read_current_site',
-    callId: 'read-1',
-    output: { ok: true },
+  assert.equal(writes[0].values[7], 'studio.turn.start');
+  assert.equal(writes[0].values[12], 'studio-run:run-1');
+  assert.match(writes[0].sql, /on conflict \(operation_id\) do nothing/i);
+});
+
+void test('listagem normaliza datas e respeita o limite máximo', async () => {
+  const calls = [];
+  const activity = await loadModule('lib/admin/activity.ts', {
+    '@/lib/db': {
+      db:
+        () =>
+        async (parts, ...values) => {
+          calls.push({ sql: parts.join('?'), values });
+          return [
+            {
+              id: 9,
+              actor_type: 'agent',
+              actor_name: 'Studio',
+              actor_login: null,
+              tenant_id: null,
+              tenant_slug: 'fixture',
+              tenant_name: 'Fixture',
+              action: 'studio.turn.finish',
+              result: 'success',
+              summary: 'Turno concluído',
+              created_at: new Date('2026-09-18T12:00:00.000Z'),
+            },
+          ];
+        },
+    },
   });
-  assert.equal(writes.length, 1, 'leitura não polui a trilha de ações');
-  await activity.recordAgentTool({
-    requestedBy: actor,
-    tenant,
-    tool: 'update_block',
-    callId: 'write-1',
-    output: { ok: true },
+
+  const rows = await activity.listActivity({
+    tenantSlug: 'fixture',
+    limit: 500,
   });
-  assert.equal(writes[1].values[1], 'agent');
-  assert.equal(writes[1].values[7], 'agent.update_block');
-  assert.equal(writes[1].values[12], 'tool:write-1');
+  assert.equal(calls[0].values.at(-1), 200);
+  assert.equal(rows[0].actorType, 'agent');
+  assert.equal(rows[0].createdAt, '2026-09-18T12:00:00.000Z');
 });

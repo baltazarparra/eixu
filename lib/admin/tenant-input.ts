@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { intakeWriteSchema, lines } from '@/lib/tenant-intake';
 import { contactsSchema, derivedSocialUrl } from '@/lib/tenant-contacts';
-import { vibeSchema } from '@/lib/design/vibes';
+import { studioDirectionSchema } from '@/lib/studio/directions';
 import { text } from '@/lib/form-data';
 
 export const RESERVED_TENANTS = new Set([
@@ -75,8 +75,10 @@ export function contactsFromForm(form: FormData) {
   });
 }
 
-export function vibeFromForm(form: FormData) {
-  return vibeSchema.safeParse(text(form, 'vibe', 'comercial') || 'comercial');
+export function directionFromForm(form: FormData) {
+  return studioDirectionSchema.safeParse(
+    text(form, 'direction', 'comercial') || 'comercial',
+  );
 }
 
 export function intakeFromForm(form: FormData) {

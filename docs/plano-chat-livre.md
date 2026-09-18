@@ -1,7 +1,9 @@
 # Criação de sites por chat: plano de substituição do gerador
 
-**Status:** proposta para execução futura como goal; nenhuma limpeza, migração,
-geração paga ou publicação foi executada nesta análise.
+**Status:** plano datado que orientou a implementação em `codex/chat-livre`.
+Consulte [Execução do chat livre](execucao-chat-livre.md) para o estado atual.
+Nenhuma limpeza remota, migração, geração paga ou publicação foi executada pela
+entrega local.
 
 **Base da análise:** código local, Vercel, Neon, catálogo do AI Gateway e navegação
 nas cinco referências em 17/09/2026, horário de Fortaleza. O checkout estava em
@@ -49,16 +51,16 @@ schemas organizam conteúdo, execução e publicação, sem decidir a composiç�
 
 ## 2. O que a auditoria encontrou
 
-| Constatação atual | Consequência para a mudança |
-| --- | --- |
-| O chat opera `lib/ai/agent.ts` e ferramentas que escrevem blocos; não existe um ambiente de arquivos e execução de código por cliente. | Um prompt novo não resolve. São necessários workspace, ferramentas de código, execução isolada e releases. |
-| `lib/taste`, `lib/design` e `lib/blocks` coordenam perfis, estruturas e limites de composição. | Remover esse núcleo e seus consumidores após extrair as garantias ainda necessárias. |
-| `workspace.tsx` escolhe entre gerador, conversão e CMS Premium; o Premium deixa de carregar o chat normal. | Unificar a interface e o modelo de projeto. |
-| O Premium já tem projetos Vercel próprios, contrato editorial, revisões, preview e integração central de leads/eventos. | Aproveitar essas responsabilidades, retirando o exportador de blocos e a conversão. |
-| Existem runs persistidas, eventos, consumo e fila `eixu-generation-steps`. | Aproveitar os conceitos de rastreabilidade; substituir o executor antigo, sem manter dois orquestradores ativos. |
-| O modelo interno atual é Gemini 3.8 Flash; há outros modelos nas ferramentas de imagem/logo. | Substituir a política por papéis explícitos Sol/Terra/Luna e manter geração de imagem como capacidade separada. |
-| O repositório `baltazarparra/eixu` é público. | Código e contexto de novos clientes não devem ser enviados automaticamente a ele. |
-| Há quatro projetos Premium na Vercel e cinco registros Premium no banco; o quinto é uma conversão falha sem projeto Vercel. | O reset precisa reconciliar registros, recursos e referências, sem presumir correspondência um a um. |
+| Constatação atual                                                                                                                      | Consequência para a mudança                                                                                      |
+| -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| O chat opera `lib/ai/agent.ts` e ferramentas que escrevem blocos; não existe um ambiente de arquivos e execução de código por cliente. | Um prompt novo não resolve. São necessários workspace, ferramentas de código, execução isolada e releases.       |
+| `lib/taste`, `lib/design` e `lib/blocks` coordenam perfis, estruturas e limites de composição.                                         | Remover esse núcleo e seus consumidores após extrair as garantias ainda necessárias.                             |
+| `workspace.tsx` escolhe entre gerador, conversão e CMS Premium; o Premium deixa de carregar o chat normal.                             | Unificar a interface e o modelo de projeto.                                                                      |
+| O Premium já tem projetos Vercel próprios, contrato editorial, revisões, preview e integração central de leads/eventos.                | Aproveitar essas responsabilidades, retirando o exportador de blocos e a conversão.                              |
+| Existem runs persistidas, eventos, consumo e fila `eixu-generation-steps`.                                                             | Aproveitar os conceitos de rastreabilidade; substituir o executor antigo, sem manter dois orquestradores ativos. |
+| O modelo interno atual é Gemini 3.8 Flash; há outros modelos nas ferramentas de imagem/logo.                                           | Substituir a política por papéis explícitos Sol/Terra/Luna e manter geração de imagem como capacidade separada.  |
+| O repositório `baltazarparra/eixu` é público.                                                                                          | Código e contexto de novos clientes não devem ser enviados automaticamente a ele.                                |
+| Há quatro projetos Premium na Vercel e cinco registros Premium no banco; o quinto é uma conversão falha sem projeto Vercel.            | O reset precisa reconciliar registros, recursos e referências, sem presumir correspondência um a um.             |
 
 O MCP da Vercel reconheceu o time `rvnn`, mas listou somente outro projeto e
 retornou 404 ao consultar a EIXU. A investigação da EIXU foi completada pela
@@ -68,18 +70,18 @@ projetos.
 
 ### Inventário de recursos
 
-| Recurso | Identificação e estado observado |
-| --- | --- |
-| Time Vercel | `rvnn`, `team_B0VetRQybzsTsNn2yCkLm4D7`, plano Pro |
-| Plataforma EIXU — preservar | `prj_xVeSzlAAalV8xBD9NixqpSxLWXKk`; domínios `eixu.com.br` e `*.eixu.com.br` |
-| Produção da plataforma | `dpl_5DXYVmnm7aJDwLPSzde6TYwvPitm`, READY, SHA `669c4f3f97c17035b11bda2c18bb3ef333f99f1e` |
-| Premium Goodbom — candidato ao reset | `prj_bYseXFnkbTEWWu8i6LyTPLiDdL1f`, `goodbom.eixu.com.br` |
-| Premium RaizenCard — candidato ao reset | `prj_spcjxByqNLHzf4RhB6dl9Z2l8oAQ`, `raizencard.eixu.com.br` |
-| Premium RaizenBank — candidato ao reset | `prj_BfAk9ydmk8YRntsgT39eLB9ayzBB`, `raizenbank.eixu.com.br` |
-| Premium Safira Azul — candidato ao reset | `prj_GqvHuEgZN844NShuH8uS9D2jqFsG`, `safiraazul.eixu.com.br` |
-| Neon | Projeto `odd-art-94996868` / `eixu-sites`, banco `neondb` |
-| Branch principal Neon | `br-lively-thunder-awgxwa42`, `main` |
-| Branch de desenvolvimento encontrada | `br-billowing-base-aw71uz91`, `codex-kanban-route-20260915`; schema anterior ao da principal |
+| Recurso                                  | Identificação e estado observado                                                             |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Time Vercel                              | `rvnn`, `team_B0VetRQybzsTsNn2yCkLm4D7`, plano Pro                                           |
+| Plataforma EIXU — preservar              | `prj_xVeSzlAAalV8xBD9NixqpSxLWXKk`; domínios `eixu.com.br` e `*.eixu.com.br`                 |
+| Produção da plataforma                   | `dpl_5DXYVmnm7aJDwLPSzde6TYwvPitm`, READY, SHA `669c4f3f97c17035b11bda2c18bb3ef333f99f1e`    |
+| Premium Goodbom — candidato ao reset     | `prj_bYseXFnkbTEWWu8i6LyTPLiDdL1f`, `goodbom.eixu.com.br`                                    |
+| Premium RaizenCard — candidato ao reset  | `prj_spcjxByqNLHzf4RhB6dl9Z2l8oAQ`, `raizencard.eixu.com.br`                                 |
+| Premium RaizenBank — candidato ao reset  | `prj_BfAk9ydmk8YRntsgT39eLB9ayzBB`, `raizenbank.eixu.com.br`                                 |
+| Premium Safira Azul — candidato ao reset | `prj_GqvHuEgZN844NShuH8uS9D2jqFsG`, `safiraazul.eixu.com.br`                                 |
+| Neon                                     | Projeto `odd-art-94996868` / `eixu-sites`, banco `neondb`                                    |
+| Branch principal Neon                    | `br-lively-thunder-awgxwa42`, `main`                                                         |
+| Branch de desenvolvimento encontrada     | `br-billowing-base-aw71uz91`, `codex-kanban-route-20260915`; schema anterior ao da principal |
 
 Na branch principal: **37 tenants, 157 páginas, 399 imagens, 565 mensagens,
 39 runs de geração, 478 eventos, 471 registros de uso de IA, 5 projetos Premium,
@@ -100,19 +102,19 @@ qualidade dos três modelos nesta análise.
 
 ## 3. Limpeza: preservar capacidades e remover o motor antigo
 
-| Destino | Superfícies | Trabalho necessário |
-| --- | --- | --- |
-| Preservar | `app/(main)`, identidade institucional e seus assets | Manter domínio, conteúdo, SEO e isolamento de CSS. |
-| Preservar | Auth, operadores, Kanban, autoria e suas rotas | Verificar login/PIN, sessões, bearer exclusivo do Kanban e integridade dos cards. |
-| Preservar e adaptar | Gestão de sites, `/dados`, imagens, leads, métricas e custos | Manter a organização do produto; substituir dependências de blocos e Premium. |
-| Extrair | `lib/premium/{editor,content,access,bridge,queries}` e contratos associados | Generalizar CMS, revisões, preview e vínculo entre projeto, token e host. Não transportar o renderer antigo. |
-| Extrair | Normalização de contatos, evidências de fontes, política de publicação, acervo e atribuição de uso | Levar somente contratos úteis e verificáveis ao novo domínio. |
-| Substituir | Regras de domínio em `lib/ai/agent.ts`, `lib/ai/tools.ts`, prompts e roteamento de modelos | Preservar o padrão `ToolLoopAgent`/AI SDK; criar ferramentas de projeto, sem operações sobre catálogo de blocos. |
-| Remover | Núcleo de `lib/blocks`, perfis/estruturas em `lib/design`, fases/métricas do gerador em `lib/taste` | Percorrer imports, APIs, componentes, testes, fixtures, scripts e documentação antes de excluir. Extrair algum primitivo neutro apenas se houver uso real. |
-| Remover | Runner/fila antigos em `lib/generation`, `/api/queues/generation` e inscrição correspondente | Primeiro impedir novos trabalhos e neutralizar retries/callbacks; depois retirar código e configuração. |
-| Remover | Conversão Premium, `apps/premium/*`, exportador, template que copia blocos e workflows `premium-conversions.yml`/`premium-release.yml` | Encerrar recursos antigos no reset; substituição terá um único mecanismo de projeto e release. |
-| Remover ou reescrever | Rotas públicas do renderer em `app/(sites)`, schemas/migrações de sites antigos, demos, avaliações e documentação obsoletas | Manter apenas a resolução necessária para domínio não publicado/desativado; novos sites terão runtime próprio. |
-| Simplificar | Vinext, Wrangler, Cloudflare e scripts de execução redundantes | Consolidar execução na plataforma de produção. Vite também aparece em fixtures de testes; desacoplar antes de remover a dependência. |
+| Destino               | Superfícies                                                                                                                            | Trabalho necessário                                                                                                                                        |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Preservar             | `app/(main)`, identidade institucional e seus assets                                                                                   | Manter domínio, conteúdo, SEO e isolamento de CSS.                                                                                                         |
+| Preservar             | Auth, operadores, Kanban, autoria e suas rotas                                                                                         | Verificar login/PIN, sessões, bearer exclusivo do Kanban e integridade dos cards.                                                                          |
+| Preservar e adaptar   | Gestão de sites, `/dados`, imagens, leads, métricas e custos                                                                           | Manter a organização do produto; substituir dependências de blocos e Premium.                                                                              |
+| Extrair               | `lib/premium/{editor,content,access,bridge,queries}` e contratos associados                                                            | Generalizar CMS, revisões, preview e vínculo entre projeto, token e host. Não transportar o renderer antigo.                                               |
+| Extrair               | Normalização de contatos, evidências de fontes, política de publicação, acervo e atribuição de uso                                     | Levar somente contratos úteis e verificáveis ao novo domínio.                                                                                              |
+| Substituir            | Regras de domínio em `lib/ai/agent.ts`, `lib/ai/tools.ts`, prompts e roteamento de modelos                                             | Preservar o padrão `ToolLoopAgent`/AI SDK; criar ferramentas de projeto, sem operações sobre catálogo de blocos.                                           |
+| Remover               | Núcleo de `lib/blocks`, perfis/estruturas em `lib/design`, fases/métricas do gerador em `lib/taste`                                    | Percorrer imports, APIs, componentes, testes, fixtures, scripts e documentação antes de excluir. Extrair algum primitivo neutro apenas se houver uso real. |
+| Remover               | Runner/fila antigos em `lib/generation`, `/api/queues/generation` e inscrição correspondente                                           | Primeiro impedir novos trabalhos e neutralizar retries/callbacks; depois retirar código e configuração.                                                    |
+| Remover               | Conversão Premium, `apps/premium/*`, exportador, template que copia blocos e workflows `premium-conversions.yml`/`premium-release.yml` | Encerrar recursos antigos no reset; substituição terá um único mecanismo de projeto e release.                                                             |
+| Remover ou reescrever | Rotas públicas do renderer em `app/(sites)`, schemas/migrações de sites antigos, demos, avaliações e documentação obsoletas            | Manter apenas a resolução necessária para domínio não publicado/desativado; novos sites terão runtime próprio.                                             |
+| Simplificar           | Vinext, Wrangler, Cloudflare e scripts de execução redundantes                                                                         | Consolidar execução na plataforma de produção. Vite também aparece em fixtures de testes; desacoplar antes de remover a dependência.                       |
 
 Não apagar diretórios extensos às cegas. A mesma área pode conter uma regra de
 isolamento válida e um limite de composição a descartar. A limpeza termina
@@ -206,16 +208,16 @@ flowchart LR
 
 ### Responsabilidades
 
-| Componente | Responsabilidade |
-| --- | --- |
-| Projeto Vercel `eixu` | Institucional, admin, autenticação, APIs centrais, chat, gestão e orquestração. |
-| Neon | Fonte de verdade de tenants, `/dados`, conversas, revisões editoriais, execuções, evidências, custos e ponteiros de release. |
-| AI SDK + AI Gateway | Streaming, ferramentas, entrada multimodal, seleção de modelo/effort, uso e identificação das chamadas. |
-| Vercel Workflow | Coordenar etapas duráveis, espera, retries e retomada; não depender da aba aberta ou de uma única Function longa. |
-| Vercel Sandbox | Executar código gerado, instalar dependências permitidas, rodar build, navegador e dev server em ambiente isolado. |
-| Repositório privado de sites | Fonte versionada de código aprovado e lockfiles; alterações por projeto com controle de concorrência. |
-| Blob | Assets públicos realmente usados no site; referências, screenshots, checkpoints e outros artefatos internos com acesso privado separado. |
-| Um projeto Vercel por site | Build, preview, domínio, variáveis mínimas, logs e release independentes. |
+| Componente                   | Responsabilidade                                                                                                                         |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Projeto Vercel `eixu`        | Institucional, admin, autenticação, APIs centrais, chat, gestão e orquestração.                                                          |
+| Neon                         | Fonte de verdade de tenants, `/dados`, conversas, revisões editoriais, execuções, evidências, custos e ponteiros de release.             |
+| AI SDK + AI Gateway          | Streaming, ferramentas, entrada multimodal, seleção de modelo/effort, uso e identificação das chamadas.                                  |
+| Vercel Workflow              | Coordenar etapas duráveis, espera, retries e retomada; não depender da aba aberta ou de uma única Function longa.                        |
+| Vercel Sandbox               | Executar código gerado, instalar dependências permitidas, rodar build, navegador e dev server em ambiente isolado.                       |
+| Repositório privado de sites | Fonte versionada de código aprovado e lockfiles; alterações por projeto com controle de concorrência.                                    |
+| Blob                         | Assets públicos realmente usados no site; referências, screenshots, checkpoints e outros artefatos internos com acesso privado separado. |
+| Um projeto Vercel por site   | Build, preview, domínio, variáveis mínimas, logs e release independentes.                                                                |
 
 [Workflow](https://vercel.com/docs/workflows) oferece execução durável; o
 [Sandbox](https://vercel.com/docs/sandbox) oferece o ambiente para rodar código.
@@ -230,7 +232,7 @@ projeto. Uma sessão encerrada deve ser reconstruída pelo último checkpoint.
 
 ### Aplicação concreta do AI SDK 7
 
-A EIXU já usa `ai 7.0.97`. Reaproveitar suas primitivas: `ToolLoopAgent`,
+A implementação fixou `ai 7.0.105`. Reaproveitar suas primitivas: `ToolLoopAgent`,
 ferramentas tipadas, `prepareCall`/`prepareStep`, `Output.object`, `useChat` e
 protocolo oficial de mensagens. O código específico da EIXU cuida de contexto,
 acesso, arquivos, conteúdo e qualidade; não precisa recriar essas primitivas.
@@ -464,13 +466,13 @@ As observações abaixo vêm de navegação e capturas em desktop e celular, nã
 uma auditoria completa de acessibilidade ou de todas as animações. Manesco e
 Actionline redirecionaram para versões em inglês no navegador utilizado.
 
-| Direção e fonte | Linguagem observada | Transferir para o projeto do cliente |
-| --- | --- | --- |
-| [Comercial — Minatel Brotas](https://minatelsupermercados.com.br/brotas) | Fachada como protagonista, marca forte, azul/vermelho, informação prática e contato visível. | Fotografia autêntica, hierarquia comercial e acesso claro às informações. Adaptar ritmo e densidade ao conteúdo; não copiar setores ou obstruções de overlays. |
-| [Moderno — Reflect](https://reflect.app/) | Fundo escuro, brilho violeta, centro visual forte, interface do produto e bastante respiro. | Contraste, profundidade e progressão da narrativa. Brilho e roxo são justificáveis pela referência; não devem aparecer em todos os projetos modernos. |
-| [Ousado — Manesco](https://manesco.com.br/) | Imagem em escala grande, composição editorial, mistura tipográfica e linhas delicadas. | Coragem na escala, nos enquadramentos e na hierarquia. Ousadia também pode ser sóbria; não traduzir o rótulo em neon obrigatório. |
-| [Artístico — Actionline](https://actionline.io/) | Fotografia, sobreposições, contraste entre serifas e sans, áreas claras e campos de cor difusa. | Composição autoral, relações de planos e ritmo editorial. Ajustar os recursos à identidade real do cliente. |
-| [Landing Page — Nubank Ultravioleta](https://nubank.com.br/ultravioleta) | Fotografia de campanha, título de grande escala, formulário destacado e continuidade dos benefícios. | Clareza de oferta e continuidade da conversão. Não importar exigência de CPF, produto bancário ou alegações financeiras para outros negócios. |
+| Direção e fonte                                                          | Linguagem observada                                                                                  | Transferir para o projeto do cliente                                                                                                                           |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Comercial — Minatel Brotas](https://minatelsupermercados.com.br/brotas) | Fachada como protagonista, marca forte, azul/vermelho, informação prática e contato visível.         | Fotografia autêntica, hierarquia comercial e acesso claro às informações. Adaptar ritmo e densidade ao conteúdo; não copiar setores ou obstruções de overlays. |
+| [Moderno — Reflect](https://reflect.app/)                                | Fundo escuro, brilho violeta, centro visual forte, interface do produto e bastante respiro.          | Contraste, profundidade e progressão da narrativa. Brilho e roxo são justificáveis pela referência; não devem aparecer em todos os projetos modernos.          |
+| [Ousado — Manesco](https://manesco.com.br/)                              | Imagem em escala grande, composição editorial, mistura tipográfica e linhas delicadas.               | Coragem na escala, nos enquadramentos e na hierarquia. Ousadia também pode ser sóbria; não traduzir o rótulo em neon obrigatório.                              |
+| [Artístico — Actionline](https://actionline.io/)                         | Fotografia, sobreposições, contraste entre serifas e sans, áreas claras e campos de cor difusa.      | Composição autoral, relações de planos e ritmo editorial. Ajustar os recursos à identidade real do cliente.                                                    |
+| [Landing Page — Nubank Ultravioleta](https://nubank.com.br/ultravioleta) | Fotografia de campanha, título de grande escala, formulário destacado e continuidade dos benefícios. | Clareza de oferta e continuidade da conversão. Não importar exigência de CPF, produto bancário ou alegações financeiras para outros negócios.                  |
 
 No novo harness, manter essas URLs e perfis versionados como referências padrão.
 Atualizar capturas quando a fonte mudar, com data e hash, sem recapturar tudo em
@@ -488,18 +490,18 @@ documentação de [Sol](https://developers.openai.com/api/docs/models/gpt-5.6-so
 [Terra](https://developers.openai.com/api/docs/models/gpt-5.6-terra) e
 [Luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna).
 
-| Atividade | Modelo / effort inicial | Limite da responsabilidade |
-| --- | --- | --- |
-| Validar URLs, normalizar contatos, calcular hashes, aplicar CMS e publicar | Sem LLM | Código determinístico, autorização e validação externa. |
-| Classificar páginas/documentos, extrair candidatos e rotular assets em lote | Luna / low | Processar entradas delimitadas. Não decidir a direção de arte nem confirmar sozinho uma alegação. |
-| Conversa, entendimento do pedido, leitura factual e síntese do cadastro | Terra / medium | Responder naturalmente e separar conversa de execução; escalar ambiguidades relevantes. |
-| Consolidar história, tom, evidências e análise da marca | Terra / high | Preservar origem das informações; usar entrada visual quando a tarefa exigir. |
-| Interpretar referência, definir direção de arte e arquitetura de páginas | Sol / high | Decisões com impacto em todo o projeto. |
-| Construir o primeiro site e fazer alterações estruturais | Sol / high | Código livre, contrato editorial e verificação no ambiente real. |
-| Pequena alteração de código com alvo claro | Terra / medium | Patch limitado e checks; uma alteração puramente editorial usa diretamente o serviço de conteúdo. |
-| Refinar composição, responsividade e motion | Sol / high | Trabalhar sobre resultado renderizado e referência. |
-| Crítica visual independente | Sol / high | Contexto novo, pixels da versão atual e critérios explícitos. |
-| Diagnóstico difícil após falha localizada | Sol / xhigh | Escalonamento excepcional, com hipótese, orçamento e condição de parada. |
+| Atividade                                                                   | Modelo / effort inicial | Limite da responsabilidade                                                                        |
+| --------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------- |
+| Validar URLs, normalizar contatos, calcular hashes, aplicar CMS e publicar  | Sem LLM                 | Código determinístico, autorização e validação externa.                                           |
+| Classificar páginas/documentos, extrair candidatos e rotular assets em lote | Luna / low              | Processar entradas delimitadas. Não decidir a direção de arte nem confirmar sozinho uma alegação. |
+| Conversa, entendimento do pedido, leitura factual e síntese do cadastro     | Terra / medium          | Responder naturalmente e separar conversa de execução; escalar ambiguidades relevantes.           |
+| Consolidar história, tom, evidências e análise da marca                     | Terra / high            | Preservar origem das informações; usar entrada visual quando a tarefa exigir.                     |
+| Interpretar referência, definir direção de arte e arquitetura de páginas    | Sol / high              | Decisões com impacto em todo o projeto.                                                           |
+| Construir o primeiro site e fazer alterações estruturais                    | Sol / high              | Código livre, contrato editorial e verificação no ambiente real.                                  |
+| Pequena alteração de código com alvo claro                                  | Terra / medium          | Patch limitado e checks; uma alteração puramente editorial usa diretamente o serviço de conteúdo. |
+| Refinar composição, responsividade e motion                                 | Sol / high              | Trabalhar sobre resultado renderizado e referência.                                               |
+| Crítica visual independente                                                 | Sol / high              | Contexto novo, pixels da versão atual e critérios explícitos.                                     |
+| Diagnóstico difícil após falha localizada                                   | Sol / xhigh             | Escalonamento excepcional, com hipótese, orçamento e condição de parada.                          |
 
 Não fazer Luna → Terra → Sol em toda solicitação. Cada tarefa chama o papel
 necessário. Evitar classificação paga quando regras determinísticas resolvem;
@@ -647,17 +649,17 @@ Cada marco termina com código/documentação coerentes, validações registrada
 um checkpoint de retomada. Dividir commits/PRs por entrega verificável; não
 usar uma única mudança gigantesca para reset, novo runtime e novo harness.
 
-| Marco | Entrega | Dependência | Critério de conclusão |
-| --- | --- | --- | --- |
-| G0 — Base e escopo executável | Atualizar `main`, inventário, dependências, mapa real de ambientes, manifesto de reset e registro de execução. Fixar limites de avaliação paga e ensaiar o executor AI SDK/Workflow, Sandbox e modelos conforme o estudo técnico. | Início do goal | Recursos preservados/excluídos identificados; concorrência local respeitada; executor e versões escolhidos com evidência; riscos concretos resolvidos ou isolados. |
-| G1 — Gestão independente e reset | Desacoplar institucional/auth/Kanban/gestão da geração, publicar manutenção de sites, neutralizar jobs e executar o reset por recibos. | G0 | Sites/dados antigos zerados em todos os recursos confirmados; operadores, Kanban e institucional verificados; nenhum escritor antigo ativo. |
-| G2 — Remoção do legado | Extrair contratos úteis e remover catálogo, fases, conversão, apps Premium, pipelines antigos, compatibilidades e dependências sem uso. Reconciliar schema e instruções. | G1 | A plataforma compila e funciona vazia, sem referências operacionais ao motor antigo e sem caminhos de escrita alternativos. |
-| G3 — Fundação de projetos e execução | Contratos de projeto/conteúdo/release, repo privado, Sandbox, executor Workflow, ferramentas mínimas, checkpoints, UIMessage persistida, transporte, cancelamento e rastreamento de uso. | G2 | Criar projeto técnico mínimo, editar, executar, perder sessão, reconstruir e retomar sem perda, duplicação de efeitos ou acesso a outro tenant. |
-| G4 — Contexto, fontes e direção | Integrar `/dados`, marca, fonte oficial, referência visual, artefatos e política Sol/Terra/Luna. Adaptar Taste com versão e proveniência. | G3 | Conflitos e fontes inacessíveis tratados; fatos rastreáveis; pixels usados na análise; modelos/efforts e custos comprovados em chamadas reais delimitadas. |
-| G5 — Criação e manutenção no chat | Construção de páginas próprias, preview desktop/mobile, contrato CMS, acervo e edição incremental pela mesma conversa. | G4 | Uma landing page e um institucional completos; editar texto/foto pelo CMS e layout pelo chat, recarregar e desfazer sem perda de conteúdo. |
-| G6 — Refinamento e avaliações | Passe visual/motion, crítica independente, reparos limitados e matriz representativa das cinco referências. | G5 | Evidência de identidade e composição distintas, navegação mobile/teclado funcionando, conteúdo útil e ausência de defeitos técnicos bloqueantes. |
-| G7 — Publicação e rollback | Provisionamento Vercel, domínio canônico, build do snapshot, smoke, ativação/reconciliação e integrações de leads/eventos. | G5, G6 | Publicar, editar sem afetar o público, republicar e restaurar uma versão; falha injetada não deixa ponteiros divergentes sem recuperação. |
-| G8 — Entrega e encerramento | Release da plataforma, validação de produção, limpeza de recursos temporários, guias finais e reconciliação do escopo. | G7 | SHA/deployment corretos, jornada completa comprovada e inventário final; nenhum legado necessário para operar. |
+| Marco                                | Entrega                                                                                                                                                                                                                           | Dependência    | Critério de conclusão                                                                                                                                              |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| G0 — Base e escopo executável        | Atualizar `main`, inventário, dependências, mapa real de ambientes, manifesto de reset e registro de execução. Fixar limites de avaliação paga e ensaiar o executor AI SDK/Workflow, Sandbox e modelos conforme o estudo técnico. | Início do goal | Recursos preservados/excluídos identificados; concorrência local respeitada; executor e versões escolhidos com evidência; riscos concretos resolvidos ou isolados. |
+| G1 — Gestão independente e reset     | Desacoplar institucional/auth/Kanban/gestão da geração, publicar manutenção de sites, neutralizar jobs e executar o reset por recibos.                                                                                            | G0             | Sites/dados antigos zerados em todos os recursos confirmados; operadores, Kanban e institucional verificados; nenhum escritor antigo ativo.                        |
+| G2 — Remoção do legado               | Extrair contratos úteis e remover catálogo, fases, conversão, apps Premium, pipelines antigos, compatibilidades e dependências sem uso. Reconciliar schema e instruções.                                                          | G1             | A plataforma compila e funciona vazia, sem referências operacionais ao motor antigo e sem caminhos de escrita alternativos.                                        |
+| G3 — Fundação de projetos e execução | Contratos de projeto/conteúdo/release, repo privado, Sandbox, executor Workflow, ferramentas mínimas, checkpoints, UIMessage persistida, transporte, cancelamento e rastreamento de uso.                                          | G2             | Criar projeto técnico mínimo, editar, executar, perder sessão, reconstruir e retomar sem perda, duplicação de efeitos ou acesso a outro tenant.                    |
+| G4 — Contexto, fontes e direção      | Integrar `/dados`, marca, fonte oficial, referência visual, artefatos e política Sol/Terra/Luna. Adaptar Taste com versão e proveniência.                                                                                         | G3             | Conflitos e fontes inacessíveis tratados; fatos rastreáveis; pixels usados na análise; modelos/efforts e custos comprovados em chamadas reais delimitadas.         |
+| G5 — Criação e manutenção no chat    | Construção de páginas próprias, preview desktop/mobile, contrato CMS, acervo e edição incremental pela mesma conversa.                                                                                                            | G4             | Uma landing page e um institucional completos; editar texto/foto pelo CMS e layout pelo chat, recarregar e desfazer sem perda de conteúdo.                         |
+| G6 — Refinamento e avaliações        | Passe visual/motion, crítica independente, reparos limitados e matriz representativa das cinco referências.                                                                                                                       | G5             | Evidência de identidade e composição distintas, navegação mobile/teclado funcionando, conteúdo útil e ausência de defeitos técnicos bloqueantes.                   |
+| G7 — Publicação e rollback           | Provisionamento Vercel, domínio canônico, build do snapshot, smoke, ativação/reconciliação e integrações de leads/eventos.                                                                                                        | G5, G6         | Publicar, editar sem afetar o público, republicar e restaurar uma versão; falha injetada não deixa ponteiros divergentes sem recuperação.                          |
+| G8 — Entrega e encerramento          | Release da plataforma, validação de produção, limpeza de recursos temporários, guias finais e reconciliação do escopo.                                                                                                            | G7             | SHA/deployment corretos, jornada completa comprovada e inventário final; nenhum legado necessário para operar.                                                     |
 
 G1 exige manutenção planejada da criação/edição de sites. A estrutura de gestão
 continua disponível, mas não prometer geração funcional entre a remoção do
@@ -678,17 +680,17 @@ Consultar os guias da versão instalada do Next.js antes de escrever código.
 
 Casos essenciais, com fixtures sintéticas e efeitos pagos controlados:
 
-| Área | Evidência exigida |
-| --- | --- |
-| Preservação | Login/PIN de operadores, Kanban e institucional antes/depois do reset; vínculos removidos sem perda dos cards. |
-| Fontes | Cadastro completo/incompleto, site inexistente, timeout, fonte com negócio diferente, conflito de telefone e prompt injection em página externa. |
-| Isolamento | Tenant A não lê arquivos, imagens, preview, CMS ou publicação de B; manipular slug/UUID não amplia acesso. |
-| Continuidade | Recarregar chat, duplicar entrega de evento, encerrar Sandbox, cancelar e retomar sem duplicação de efeitos. |
-| Edição | CMS e chat concorrentes, mudança de layout preservando campos, imagem em uso protegida e desfazer íntegro. |
-| Visual | Cinco referências com conteúdo apropriado; pelo menos uma direção aplicada a dois negócios distintos para detectar template disfarçado. |
-| Responsividade | Capturas desktop/mobile e telas estreitas/baixas; menu aberto/fechado, toque, foco, teclado, overlays e movimento reduzido. |
-| Qualidade pública | HTML útil, metadata/canonical/sitemap corretos, imagens dimensionadas, links/WhatsApp e formulário com atribuição correta. |
-| Release | Código/conteúdo imutáveis, domínio exato, preview protegido, falha de build, falha entre ativação e gravação, rollback completo. |
+| Área              | Evidência exigida                                                                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Preservação       | Login/PIN de operadores, Kanban e institucional antes/depois do reset; vínculos removidos sem perda dos cards.                                   |
+| Fontes            | Cadastro completo/incompleto, site inexistente, timeout, fonte com negócio diferente, conflito de telefone e prompt injection em página externa. |
+| Isolamento        | Tenant A não lê arquivos, imagens, preview, CMS ou publicação de B; manipular slug/UUID não amplia acesso.                                       |
+| Continuidade      | Recarregar chat, duplicar entrega de evento, encerrar Sandbox, cancelar e retomar sem duplicação de efeitos.                                     |
+| Edição            | CMS e chat concorrentes, mudança de layout preservando campos, imagem em uso protegida e desfazer íntegro.                                       |
+| Visual            | Cinco referências com conteúdo apropriado; pelo menos uma direção aplicada a dois negócios distintos para detectar template disfarçado.          |
+| Responsividade    | Capturas desktop/mobile e telas estreitas/baixas; menu aberto/fechado, toque, foco, teclado, overlays e movimento reduzido.                      |
+| Qualidade pública | HTML útil, metadata/canonical/sitemap corretos, imagens dimensionadas, links/WhatsApp e formulário com atribuição correta.                       |
+| Release           | Código/conteúdo imutáveis, domínio exato, preview protegido, falha de build, falha entre ativação e gravação, rollback completo.                 |
 
 Automação de acessibilidade e desempenho complementa a inspeção do fluxo.
 Definir budgets técnicos a partir do scaffold medido em G3, com viewport,

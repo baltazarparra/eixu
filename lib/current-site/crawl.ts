@@ -1,4 +1,4 @@
-import { decode, metaContent, stripNoise } from '@/lib/ai/reference';
+import { decode, metaContent, stripNoise } from './html';
 import { publicResource, type PublicResource } from '@/lib/references/network';
 import { renderCurrentSitePages } from './render';
 import { abortable } from '@/lib/async/abort';

@@ -7,6 +7,11 @@ import {
 import { currentUser } from '@/lib/auth';
 import { recordActivity } from '@/lib/admin/activity';
 import { getTenantBySlug } from '@/lib/tenant-queries';
+import { sitesWriteGuard } from '@/lib/sites-maintenance';
+import {
+  parseBoundedPublicFormData,
+  PublicInputTooLargeError,
+} from '@/lib/public-input.mjs';
 
 /**
  * Sobe uma imagem para o Vercel Blob, público, no prefixo do cliente.
@@ -18,11 +23,29 @@ export async function POST(
 ) {
   const user = await currentUser();
   if (!user) return new Response('Não autorizado', { status: 401 });
+  const maintenance = await sitesWriteGuard();
+  if (maintenance) return maintenance;
   const { tenant: slug } = await params;
   const tenant = await getTenantBySlug(slug);
   if (!tenant) return new Response('Cliente não encontrado', { status: 404 });
 
-  const form = await request.formData();
+  let form: FormData;
+  try {
+    form = await parseBoundedPublicFormData(
+      request,
+      UPLOAD_MAX_BYTES + 64 * 1024,
+    );
+  } catch (error) {
+    return Response.json(
+      {
+        error:
+          error instanceof PublicInputTooLargeError
+            ? 'Imagem acima de 8 MB.'
+            : 'Upload inválido.',
+      },
+      { status: error instanceof PublicInputTooLargeError ? 413 : 400 },
+    );
+  }
   const file = form.get('file');
   if (!(file instanceof File))
     return Response.json({ error: 'Envie um arquivo.' }, { status: 400 });

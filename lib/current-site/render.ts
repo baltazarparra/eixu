@@ -1,4 +1,4 @@
-import { launchBrowser } from '@/lib/review/capture';
+import { launchBrowser } from '@/lib/references/browser';
 import { publicResource, type PublicResource } from '@/lib/references/network';
 import { abortable } from '@/lib/async/abort';
 

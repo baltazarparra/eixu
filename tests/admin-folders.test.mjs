@@ -46,47 +46,50 @@ async function actionsFixture({ stale = false } = {}) {
     deleteSiteFolderAction,
     moveSitesToFolderAction,
   } = await loadModule('app/(admin)/admin/actions.ts', {
-      '@/lib/auth': {
-        currentUser: async () => ({
-          id: 'user-1',
-          name: 'Operador',
-          login: 'operador@eixu',
-        }),
-      },
-      '@/lib/admin/activity': {
-        recordActivity: async (activity) => activities.push(activity),
-      },
-      '@/lib/db': {
-        db:
-          () =>
-          async (parts, ...values) => {
-            const sql = parts.join('?');
-            writes.push({ sql, values });
-            if (/insert into site_folders/i.test(sql))
-              return [{ id: FOLDER_ID, name: values[0] }];
-            if (/update site_folders/i.test(sql))
-              return [
-                {
-                  id: FOLDER_ID,
-                  name: values[0],
-                  site_count: 2,
-                },
-              ];
-            if (/delete from site_folders/i.test(sql))
-              return [{ id: FOLDER_ID, name: 'Projetos Baltz' }];
-            if (/with requested as/i.test(sql))
-              return stale
-                ? []
-                : JSON.parse(values[0]).map(({ slug }) => ({ slug }));
-            return [];
-          },
-      },
-      'next/cache': { revalidatePath: (path) => refreshed.push(path) },
-      'next/navigation': {
-        redirect: () => {
-          throw new Error('Redirecionamento inesperado');
+    '@/lib/auth': {
+      currentUser: async () => ({
+        id: 'user-1',
+        name: 'Operador',
+        login: 'operador@eixu',
+      }),
+    },
+    '@/lib/admin/activity': {
+      recordActivity: async (activity) => activities.push(activity),
+    },
+    '@/lib/sites-maintenance': {
+      sitesAreInMaintenance: async () => false,
+    },
+    '@/lib/db': {
+      db:
+        () =>
+        async (parts, ...values) => {
+          const sql = parts.join('?');
+          writes.push({ sql, values });
+          if (/insert into site_folders/i.test(sql))
+            return [{ id: FOLDER_ID, name: values[0] }];
+          if (/update site_folders/i.test(sql))
+            return [
+              {
+                id: FOLDER_ID,
+                name: values[0],
+                site_count: 2,
+              },
+            ];
+          if (/delete from site_folders/i.test(sql))
+            return [{ id: FOLDER_ID, name: 'Projetos Baltz' }];
+          if (/with requested as/i.test(sql))
+            return stale
+              ? []
+              : JSON.parse(values[0]).map(({ slug }) => ({ slug }));
+          return [];
         },
+    },
+    'next/cache': { revalidatePath: (path) => refreshed.push(path) },
+    'next/navigation': {
+      redirect: () => {
+        throw new Error('Redirecionamento inesperado');
       },
+    },
   });
   return {
     createSiteFolderAction,
