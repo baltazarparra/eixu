@@ -67,6 +67,8 @@ A leitura oficial e cada screenshot registram identidade e digest do conteúdo c
 
 Os artefatos não aceitam um objeto livre. `context` separa fatos com procedência, inferências com base e lacunas com impacto; `art_direction` descreve referência, logo, layout, tipografia, paleta, imagem, ritmo, motion e mobile; `validation` exige typecheck e build. O servidor compara cada check de comando com o evento e o exit code do run antes de persistir o relatório.
 
+`record_artifact` expõe ao modelo um schema com raiz `object` e omite somente `maxItems` das listas: a união na raiz e os limites combinados das listas são recusados pelo Gemini via Gateway com HTTP 400. O formato das mensagens continua `{ kind, payload }`. O contrato canônico em `artifact-contract.ts` preserva os limites e a correspondência entre tipo e payload; o executor o revalida antes da gravação, inclusive depois que o Workflow serializa o schema e substitui seu validador por Ajv.
+
 ## Mensagens e streaming
 
 O navegador usa `useChat<StudioMessage>` com `WorkflowChatTransport`. Envia somente a última mensagem e pode retomar um workflow existente. O servidor limita o stream de entrada sem confiar em `Content-Length` e valida tipos, texto, quantidade de anexos e prefixo Blob do tenant.
