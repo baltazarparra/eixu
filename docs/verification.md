@@ -38,6 +38,8 @@ npx oxfmt --check <arquivos>
 
 ### Chat e Workflow
 
+Confirme no teste com SDK real que chamadas seguintes e retomadas conservam a assinatura das ferramentas e `gateway.only: ['google']`. Na verificação remota, confira o provedor efetivo nos recibos do Gateway; Google e Vertex não podem alternar dentro do loop do Gemini.
+
 Depois da primeira geração, envie uma referência diferente do cadastro e peça uma recomposição ampla. O run deve usar `edit`, ter o catálogo completo disponível e chegar a escrita/checks sem repetir o onboarding. O teste com SDK real deve ultrapassar 12 passos e concluir a edição; esgotar o orçamento ainda em ferramentas deve falhar antes de checkpoint, sem recibo de sucesso. Confirme que a prévia muda e a release pública permanece a mesma.
 
 Prove também a continuação do turno: um segmento que termina em `tool-calls` deve registrar `model.continuing` e abrir o próximo dentro do mesmo run, até 150 etapas na edição, sem repetir efeitos já confirmados. Dois segmentos seguidos sem escrita, remoção, imagem ou comando encerram o turno antes do teto. Cancelar durante um segmento impede o próximo. Na falha por orçamento, a mensagem do chat deve listar os arquivos alterados e o pedido seguinte deve continuar do rascunho preservado no Sandbox.

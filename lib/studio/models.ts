@@ -66,6 +66,16 @@ export function studioModelPolicy(role: StudioModelRole): StudioModelPolicy {
   return POLICY[role];
 }
 
+/** Assinaturas do Gemini não são intercambiáveis entre Google e Vertex. */
+export function studioGatewayOptions(role: StudioModelRole, tenantId?: string) {
+  return {
+    only: ['google'],
+    caching: 'auto',
+    tags: ['eixu', 'studio', role, STUDIO_MODEL_POLICY_VERSION],
+    ...(tenantId ? { user: tenantId } : {}),
+  };
+}
+
 /** Trabalho puramente determinístico não deve consumir uma inferência. */
 export function roleUsesModel(role: StudioModelRole | 'cms' | 'publish') {
   return role !== 'cms' && role !== 'publish';
