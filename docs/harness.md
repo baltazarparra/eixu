@@ -10,7 +10,9 @@ Documentação oficial relevante: [WorkflowAgent](https://ai-sdk.dev/docs/agents
 
 ## Política de modelos
 
-`lib/studio/models.ts` é a fonte única da política `studio-gemini-3.8-flash-v2`.
+`lib/studio/models.ts` é a fonte única da política `studio-gemini-3.8-flash-v3`.
+
+O loop usa `providerOptions.gateway.only: ['google']` desde o primeiro passo, inclusive em retomadas e correção de validação. As assinaturas de raciocínio do Gemini permanecem intactas e vinculadas ao provedor que as emitiu: trocar implicitamente Google por Vertex no meio do turno pode produzir `Invalid thought signature`. A indisponibilidade do Google segue os retries limitados do SDK e, se persistir, encerra o turno com erro; não há fallback entre provedores com assinaturas incompatíveis. A geração de imagens tem roteamento próprio.
 
 | Papel           | Modelo                  | Reasoning | Passos máx. | Uso                                  |
 | --------------- | ----------------------- | --------- | ----------- | ------------------------------------ |

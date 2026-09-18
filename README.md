@@ -32,7 +32,7 @@ Essas referências orientam a leitura visual; não autorizam copiar marca, texto
 
 O chat usa AI SDK 7, `WorkflowAgent`, Vercel Workflow, AI Gateway e Vercel Sandbox. O catálogo de ferramentas é pequeno e tipado: leitura do contexto, inspeção de fontes, arquivos, comandos permitidos, artefatos, screenshots, imagens e checkpoints. Banco, Vercel e publicação ficam fora da autonomia do modelo e passam por serviços determinísticos.
 
-A política `studio-gemini-3.8-flash-v2` usa `google/gemini-3.8-flash` pelo AI Gateway com reasoning `high`, o maior nível aceito pelo modelo, em todos os papéis. Geração e edição visual usam `openai/gpt-image-2.5-sunburst` por padrão. O operador não escolhe modelo ou effort. Consulte [Harness e modelos](docs/harness.md) e o [estudo do AI SDK](docs/estudo-ai-sdk-chat-livre.md).
+A política `studio-gemini-3.8-flash-v3` usa `google/gemini-3.8-flash` pelo AI Gateway com reasoning `high`, o maior nível aceito pelo modelo, em todos os papéis. O provedor Google permanece fixo entre passos e retomadas para preservar as assinaturas de raciocínio. Geração e edição visual usam `openai/gpt-image-2.5-sunburst` por padrão. O operador não escolhe modelo ou effort. Consulte [Harness e modelos](docs/harness.md) e o [estudo do AI SDK](docs/estudo-ai-sdk-chat-livre.md).
 
 ## Arquitetura
 
