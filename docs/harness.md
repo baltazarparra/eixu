@@ -39,6 +39,8 @@ CMS e publicação são determinísticos e não consomem inferência. O role nas
 
 O checkpoint de um `build` recusa ausência dos dois artefatos. Assim, o agente não pode pular diretamente para código. Edições posteriores recebem os artefatos mais recentes e a evidência acumulada no contexto.
 
+O WorkflowAgent mantém os overrides de `prepareStep` entre passos. Ao sair do contexto, restauramos explicitamente o orçamento do build; depois da direção de arte, restauramos o catálogo completo e `toolChoice: auto`. Retornar `{}` nessa transição mantém `record_artifact` forçado e impede o agente de escrever o projeto. O teste do loop usa o SDK real com modelo e efeitos simulados para provar a passagem até escrita/checks e a recuperação de uma chamada inválida.
+
 ## Ferramentas
 
 | Ferramenta                                 | Responsabilidade                                               |
@@ -68,6 +70,8 @@ A leitura oficial e cada screenshot registram identidade e digest do conteúdo c
 Os artefatos não aceitam um objeto livre. `context` separa fatos com procedência, inferências com base e lacunas com impacto; `art_direction` descreve referência, logo, layout, tipografia, paleta, imagem, ritmo, motion e mobile; `validation` exige typecheck e build. O servidor compara cada check de comando com o evento e o exit code do run antes de persistir o relatório.
 
 `record_artifact` expõe ao modelo um schema com raiz `object` e omite somente `maxItems` das listas: a união na raiz e os limites combinados das listas são recusados pelo Gemini via Gateway com HTTP 400. O formato das mensagens continua `{ kind, payload }`. O contrato canônico em `artifact-contract.ts` preserva os limites e a correspondência entre tipo e payload; o executor o revalida antes da gravação, inclusive depois que o Workflow serializa o schema e substitui seu validador por Ajv.
+
+Os literais do schema enviado ao Gemini usam `enum` de um valor, preservando os discriminadores. Checks de validação usam somente `kind: command` ou `kind: manual`; marca, mobile e conteúdo são nomes de verificações manuais. Uma chamada inválida continua sendo recusada e volta ao modelo pelo mecanismo de correção do SDK, sem aprovar comandos que não foram executados. O chat apresenta uma mensagem legível e distingue contexto, direção de arte e verificações.
 
 ## Mensagens e streaming
 

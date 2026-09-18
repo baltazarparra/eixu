@@ -64,8 +64,29 @@ const TOOL_LABELS: Record<string, { active: string; done: string }> = {
   },
 };
 
-function describeTool(name: string, state: string): string {
-  const labels = TOOL_LABELS[name];
+const ARTIFACT_LABELS: Record<string, { active: string; done: string }> = {
+  context: {
+    active: 'Organizando o contexto do projeto',
+    done: 'Contexto do projeto registrado',
+  },
+  art_direction: {
+    active: 'Definindo a direção de arte',
+    done: 'Direção de arte registrada',
+  },
+  validation: {
+    active: 'Registrando as verificações do projeto',
+    done: 'Verificações do projeto registradas',
+  },
+};
+
+function describeTool(name: string, state: string, input?: unknown): string {
+  const kind =
+    input && typeof input === 'object' && 'kind' in input
+      ? String(input.kind)
+      : '';
+  const labels =
+    (name === 'record_artifact' ? ARTIFACT_LABELS[kind] : undefined) ??
+    TOOL_LABELS[name];
   if (!labels)
     return state === 'output-available'
       ? 'Etapa concluída'
@@ -93,8 +114,10 @@ function collapse(parts: ToolPart[]) {
       Boolean(output.error);
     const label =
       raw.state === 'output-error'
-        ? (raw.errorText ?? `Tentativa recusada: ${name}`)
-        : describeTool(name, raw.state ?? '');
+        ? chatErrorMessage(
+            raw.errorText ?? 'Esta etapa não pôde ser concluída.',
+          )
+        : describeTool(name, raw.state ?? '', raw.input);
     const last = out[out.length - 1];
     if (
       last &&
@@ -296,7 +319,13 @@ export function chatErrorMessage(message: string): string {
     ? 'O AI Gateway recusou a chamada. Confira os créditos e tente novamente.'
     : /Failed to fetch chat: 409/i.test(message)
       ? 'Já existe um trabalho em andamento neste projeto.'
-      : /Step ["“].+["”] failed|unknown format|after \d+ retries/i.test(message)
-        ? 'Não consegui concluir esta etapa. Tente novamente; se o erro continuar, revise os dados do projeto.'
-        : message;
+      : /AI_InvalidToolInputError|AI_TypeValidationError|Invalid input for tool/i.test(
+            message,
+          )
+        ? 'O agente enviou um formato inválido nesta etapa e precisa ajustá-lo.'
+        : /Step ["“].+["”] failed|unknown format|after \d+ retries/i.test(
+              message,
+            )
+          ? 'Não consegui concluir esta etapa. Peça para continuar a geração.'
+          : message;
 }

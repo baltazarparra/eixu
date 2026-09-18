@@ -102,6 +102,11 @@ export function createStudioAgent(
         reasoning: contextPolicy.reasoning,
         maxOutputTokens: contextPolicy.maxOutputTokens,
       };
+      const projectModel = {
+        model: selected.model,
+        reasoning: selected.reasoning,
+        maxOutputTokens: selected.maxOutputTokens,
+      };
       if (!hasToolResult(steps, 'read_project_context'))
         return {
           ...contextModel,
@@ -125,6 +130,7 @@ export function createStudioAgent(
         };
       if (!hasToolResult(steps, 'inspect_visual_reference'))
         return {
+          ...projectModel,
           activeTools: ['inspect_visual_reference'] as const,
           toolChoice: {
             type: 'tool' as const,
@@ -133,10 +139,17 @@ export function createStudioAgent(
         };
       if (!hasArtifact(steps, 'art_direction'))
         return {
+          ...projectModel,
           activeTools: ['record_artifact'] as const,
           toolChoice: { type: 'tool' as const, toolName: 'record_artifact' },
         };
-      return {};
+      // WorkflowAgent retains previous prepareStep overrides. An empty object
+      // would keep forcing record_artifact and never expose the file tools.
+      return {
+        ...projectModel,
+        activeTools: Object.keys(studioTools) as (keyof typeof studioTools)[],
+        toolChoice: 'auto' as const,
+      };
     },
   });
 }
