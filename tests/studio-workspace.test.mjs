@@ -100,6 +100,7 @@ void test('materialização da release cria a raiz na imagem universal antes de 
     .studioDeploymentFiles({
       archive: fixture.archive,
       content: fixture.content,
+      slug: 'fixture',
     });
   assert.equal(
     files.find((file) => file.file === 'app/page.tsx').data.toString(),

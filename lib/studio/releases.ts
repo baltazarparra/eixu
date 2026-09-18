@@ -574,6 +574,7 @@ export async function provisionStudioDeployment(releaseId: string) {
   const files = await studioDeploymentFiles({
     archive: snapshot.archive,
     content: snapshot.content,
+    slug: release.slug,
   });
   const marker = {
     releaseId: release.id,
@@ -595,6 +596,9 @@ export async function provisionStudioDeployment(releaseId: string) {
     body: JSON.stringify({
       name: project.name,
       project: project.id,
+      // O primeiro deployment sem target pode virar production automaticamente.
+      // staging é o target de prévia explícito da API REST; promoção vem após smoke.
+      target: 'staging',
       files: uploadedFiles,
       meta: {
         eixuReleaseId: release.id,
