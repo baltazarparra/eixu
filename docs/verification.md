@@ -83,6 +83,8 @@ Provoque erro de renderização depois do redirect de autenticação: HTTP 500, 
 
 Abra a prévia pelo domínio real do Sandbox e confira os scripts, interação de um componente cliente e conexão HMR. HTTP 200 no documento sozinho não comprova hidratação. A origem deve ser o hostname exato da VM, sem liberar origens externas por wildcard nem alterar o checkpoint do cliente.
 
+Provoque uma falha de prévia e recarregue com sucesso: o aviso deve desaparecer. Uma falha de publicação deve continuar visível após a recuperação da prévia. Falhas operacionais não podem pedir para continuar a geração no chat.
+
 ### CMS
 
 Salve uma revisão válida, tente editar com revisão antiga e confirme conflito. Valide tipo, tamanho, chave desconhecida e hash. A publicação precisa materializar exatamente a revisão congelada, mesmo se houver uma edição posterior.
@@ -90,6 +92,8 @@ Salve uma revisão válida, tente editar com revisão antiga e confirme conflito
 ### Publicação
 
 Em projeto descartável autorizado:
+
+Confira `EIXU_VERCEL_TEAM_ID`, `EIXU_VERCEL_TOKEN` e o ID do projeto raiz no ambiente do deployment. `VERCEL_ORG_ID` não é disponibilizado automaticamente às funções; `VERCEL_PROJECT_ID` é. Configuração ausente deve aparecer como falha de publicação e manter o rascunho.
 
 1. confirme team e root project IDs;
 2. crie o projeto dedicado;

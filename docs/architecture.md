@@ -90,6 +90,8 @@ Durante um run, a rota abre o workspace daquele run com o servidor de desenvolvi
 
 O lease de checkpoint também pausa a abertura da prévia enquanto seus gates rodam. Quando a rota informa pausa/indisponibilidade ou o turno falha/cancela, o painel retira a URL do iframe e mostra um estado de recuperação. Respostas de consultas iniciadas antes da falha são descartadas para não reabrir uma porta que já foi encerrada.
 
+Avisos operacionais identificam a ação que falhou: publicação, prévia, conteúdo, upload ou cancelamento. Somente falhas do chat orientam a continuar a geração. Recuperar a prévia limpa apenas o aviso daquela prévia, preservando uma falha de publicação ainda não resolvida.
+
 Sem run ativo, a rota usa a prévia estável: relê código e conteúdo sob o lock do projeto, encerra o servidor anterior, remove cache do rascunho, restaura o checkpoint verificado e sobrepõe exatamente a revisão de conteúdo solicitada. Arquivos de turnos falhos ou cancelados não entram no checkpoint anterior.
 
 O banco armazena apenas o hash, a URL sem query e uma expiração curta. A resposta recebe `noindex`, política de referrer e `frame-ancestors` limitado à plataforma. Expiração gira o token e reinicia o servidor quando necessário.

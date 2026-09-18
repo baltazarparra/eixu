@@ -74,20 +74,23 @@ A tela principal fica em [localhost:3000/studio](http://localhost:3000/studio) e
 
 Variáveis principais:
 
-| Variável                                              | Uso                                                             |
-| ----------------------------------------------------- | --------------------------------------------------------------- |
-| `DATABASE_URL`                                        | Neon usado pela aplicação.                                      |
-| `ADMIN_PIN_PEPPER` / `ADMIN_SESSION_SECRET`           | Login e sessão dos operadores.                                  |
-| `AI_GATEWAY_API_KEY`                                  | Opcional fora da Vercel; deployments usam OIDC automaticamente. |
-| `BLOB_READ_WRITE_TOKEN`                               | Store público: logos, uploads e imagens em `tenants/`.          |
-| `STUDIO_BLOB_STORE_ID`                                | ID do store privado usado por OIDC para artefatos em `studio/`. |
-| `EIXU_IMAGE_MODEL`                                    | Modelo de imagem; padrão `openai/gpt-image-2.5-sunburst`.       |
-| `EIXU_VERCEL_TOKEN`                                   | API de projetos, deployments, domínios e promoção.              |
-| `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID`                 | IDs nativos, expostos automaticamente pela Vercel.              |
-| `EIXU_VERCEL_TEAM_ID` / `EIXU_VERCEL_ROOT_PROJECT_ID` | Overrides opcionais somente fora da Vercel.                     |
-| `KANBAN_AGENT_TOKEN`                                  | Bearer restrito às rotas do Kanban.                             |
+| Variável                                    | Uso                                                              |
+| ------------------------------------------- | ---------------------------------------------------------------- |
+| `DATABASE_URL`                              | Neon usado pela aplicação.                                       |
+| `ADMIN_PIN_PEPPER` / `ADMIN_SESSION_SECRET` | Login e sessão dos operadores.                                   |
+| `AI_GATEWAY_API_KEY`                        | Opcional fora da Vercel; deployments usam OIDC automaticamente.  |
+| `BLOB_READ_WRITE_TOKEN`                     | Store público: logos, uploads e imagens em `tenants/`.           |
+| `STUDIO_BLOB_STORE_ID`                      | ID do store privado usado por OIDC para artefatos em `studio/`.  |
+| `EIXU_IMAGE_MODEL`                          | Modelo de imagem; padrão `openai/gpt-image-2.5-sunburst`.        |
+| `EIXU_VERCEL_TOKEN`                         | API de projetos, deployments, domínios e promoção.               |
+| `EIXU_VERCEL_TEAM_ID`                       | ID do time de publicação; configure também em produção.          |
+| `VERCEL_PROJECT_ID`                         | ID nativo do projeto raiz, exposto pela Vercel.                  |
+| `EIXU_VERCEL_ROOT_PROJECT_ID`               | Override do projeto raiz quando o ID nativo não está disponível. |
+| `KANBAN_AGENT_TOKEN`                        | Bearer restrito às rotas do Kanban.                              |
 
 O arquivo [.env.example](.env.example) contém a lista completa sem valores secretos.
+
+`VERCEL_ORG_ID` continua aceito como fallback explícito do CLI, mas não é uma [variável de sistema do runtime](https://vercel.com/docs/environment-variables/system-environment-variables). O time de publicação precisa ser configurado no projeto da plataforma; uma alteração de ambiente só chega às funções depois de um novo deployment.
 
 Crie dois stores Blob com modos de acesso distintos. O store público continua selecionado por `BLOB_READ_WRITE_TOKEN`; o privado deve ser conectado ao projeto com OIDC e identificado por `STUDIO_BLOB_STORE_ID`. O Studio obtém um token OIDC curto em cada operação e recusa IDs iguais, evitando que checkpoints caiam no store público. Configure recursos próprios para Preview e Production.
 
