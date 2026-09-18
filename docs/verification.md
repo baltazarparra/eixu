@@ -51,6 +51,8 @@ Prove:
 
 No ambiente Vercel isolado, feche a aba durante um turno, retorne e confirme retomada sem chamada duplicada. Cancele durante uma ferramenta longa e confirme que ferramentas futuras não iniciam.
 
+Simule um build final que recusa código gerado: a saída deve chegar a uma única rodada de diagnóstico, com orçamento próprio de 20 passos, sem ferramentas de imagem e sem sobrescrever recibos de uso. Somente um novo checkpoint aprovado permite concluir. Falha persistente ou cancelamento termina o run e retira o projeto de `building`, preservando revisão/release anterior.
+
 ### Primeiro build
 
 Use dados sintéticos com logo, site oficial e referência. Confirme a ordem de contexto e direção de arte pelos eventos/artefatos. O checkpoint deve falhar se qualquer artefato obrigatório faltar.
@@ -72,6 +74,8 @@ Remova o Sandbox e restaure um checkpoint que contém lockfile, mas não `node_m
 Sem sessão administrativa, a rota central deve recusar. A URL do banco não pode conter token. Token inválido ou expirado deve falhar; token válido cria cookie efêmero e a página deve receber `noindex`, referrer policy e frame ancestor da EIXU.
 
 Durante um run, altere um arquivo permitido e confirme a atualização do workspace na prévia. Inicie typecheck/build e confirme que o servidor de desenvolvimento pausa e volta sem concorrer com o comando.
+
+O lease de checkpoint também precisa impedir inicialização da prévia. Provoque uma falha enquanto há uma consulta de prévia pendente: a resposta atrasada não pode recolocar o iframe indisponível. O painel deve mostrar o estado de recuperação, sem manter o erro 502 do Sandbox.
 
 Depois de uma edição falha/cancelada, abra a prévia estável: compare código e revisão de conteúdo com o último checkpoint e confirme a ausência de arquivos extras. Hash de arquivo compactado divergente ou instalação recusada não pode criar sessão de prévia.
 

@@ -102,6 +102,7 @@ for (const failure of [false, true])
       './checkpoint': {
         checkpointStudioProject: async () => {
           if (failure) throw new Error('Gate recusado');
+          return { ok: true };
         },
       },
       './workflow-stream': {

@@ -86,6 +86,7 @@ export async function checkpointStudioProject(input: {
             'O checkpoint deste turno não corresponde mais ao rascunho ativo.',
           );
         return {
+          ok: true as const,
           codeRevision: state[0].checkpoint_code_revision,
           contractHash:
             typeof state[0].checkpoint_payload?.contractHash === 'string'
@@ -112,6 +113,7 @@ export async function checkpointStudioProject(input: {
             'O primeiro turno terminou sem construir o projeto. Escreva os arquivos e o contrato editorial antes de concluir.',
           );
         return {
+          ok: true as const,
           codeRevision: state[0].draft_code_revision,
           contractHash: state[0].contract_hash,
           contentRevision: state[0].content_revision,
@@ -143,12 +145,17 @@ export async function checkpointStudioProject(input: {
           durationMs: result.durationMs,
         });
         if (result.exitCode !== 0)
-          throw new Error(
-            `${command} falhou no gate final. ${result.stderr || result.stdout}`.slice(
-              0,
-              4_000,
-            ),
-          );
+          // Repetir o step executaria o mesmo código inválido. Devolva a
+          // evidência ao Workflow para uma correção limitada antes do checkpoint.
+          return {
+            ok: false as const,
+            command,
+            error:
+              `${command} falhou no gate final. ${result.stderr || result.stdout}`.slice(
+                0,
+                4_000,
+              ),
+          };
       }
 
       const verifiedDigest = await studioProjectDigest(input.sandboxName);
@@ -290,6 +297,7 @@ export async function checkpointStudioProject(input: {
         artifactVersion: saved.version,
       });
       return {
+        ok: true as const,
         codeRevision,
         contractHash,
         contentRevision: saved.revision,

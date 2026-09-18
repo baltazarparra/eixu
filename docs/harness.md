@@ -85,6 +85,10 @@ Escrita e fechamento do stream acontecem somente em steps. O stream do modelo fe
 
 O SDK pode retornar uma resposta interrompida (`finishReason: error`, `length`, `other` ou `unknown`) sem lançar exceção. O Studio retoma até duas vezes usando as mensagens e resultados anteriores, sem forçar novamente as pré-condições já concluídas. A orientação de retomada preserva o escopo original e pede reutilização dos efeitos confirmados. O limite de passos vale para o conjunto das tentativas; índices e uso são acumulados sem sobrescrever recibos anteriores. Cancelamento e filtro de conteúdo impedem retomada. Erros lançados ou emitidos explicitamente pelo stream continuam falhando; esgotar a recuperação informa a interrupção do modelo antes de tentar checkpoint.
 
+Se o typecheck ou build final recusar o código, o checkpoint devolve a saída real ao Workflow, sem repetir automaticamente o mesmo comando inválido como retry de infraestrutura. Há uma única rodada adicional de correção com o papel `diagnostic`, limitada aos seus 20 passos e às ferramentas de arquivos, contrato editorial, checks e artefatos. Ela reutiliza as mensagens anteriores e não pode pesquisar fontes nem gerar imagens. O uso mantém índices únicos depois da rodada original. O checkpoint completo roda novamente após a correção; nova falha encerra o turno sem publicar. Cancelamento impede iniciar essa recuperação. Erros de infraestrutura e de isolamento continuam falhando, sem virar instruções de reparo.
+
+Falha ou cancelamento também retira o projeto de `building`: restaura `published` quando há release, `ready` quando há checkpoint, ou `failed` quando a primeira criação ainda não produziu checkpoint. Essa atualização não sobrescreve um projeto arquivado nem outro run ativo.
+
 ## Durabilidade e idempotência
 
 - Um projeto aceita um run ativo por vez.
