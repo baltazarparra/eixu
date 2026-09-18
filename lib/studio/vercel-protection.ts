@@ -3,6 +3,9 @@ import { randomBytes } from 'node:crypto';
 const BYPASS_SECRET_BYTES = 16;
 const BYPASS_SECRET_PATTERN = /^[a-f0-9]{32}$/;
 
+// Protege URLs de deployment sem exigir autenticação no domínio público.
+export const STUDIO_VERCEL_PROTECTION = 'prod_deployment_urls_and_all_previews';
+
 type ProtectionBypass = {
   scope?: string;
 };
@@ -31,10 +34,10 @@ export function hasStudioVercelBypass(
   return project.protectionBypass?.[secret]?.scope === 'automation-bypass';
 }
 
-export function hasStudioPreviewProtection(
+export function hasStudioCandidateProtection(
   project: VercelProjectProtection,
 ): boolean {
-  return project.ssoProtection?.deploymentType === 'preview';
+  return project.ssoProtection?.deploymentType === STUDIO_VERCEL_PROTECTION;
 }
 
 export function studioVercelBypassHeaders(secret: string): HeadersInit {

@@ -113,93 +113,209 @@ void test(
   },
 );
 
-void test('provisionamento pede staging explicitamente e deixa promoção para depois do smoke', async () => {
-  const requests = [];
-  let materialized;
-  const release = {
-    id: 'release',
-    project_id: 'project',
-    tenant_id: 'tenant',
-    slug: 'fixture',
-    canonical_host: 'fixture.eixu.com.br',
-    code_revision: 'code',
-    code_artifact_key: 'artifact',
-    content_revision_id: 'content',
-    contract_hash: 'contract',
-    status: 'preparing',
-  };
-  const sql = async (strings) => {
-    const query = strings.join('?');
-    if (query.includes('revision.content'))
-      return [
-        { content: { title: 'Fixture' }, contract: { pages: [{ slug: '' }] } },
-      ];
-    return [{ id: 'project' }];
-  };
-  sql.query = async () => [release];
-  const { provisionStudioDeployment } = loadModuleGraph(
-    'lib/studio/releases.ts',
-    {
-      '@/lib/db': { db: () => sql },
-      './checkpoint-storage': {
-        readStudioCheckpoint: async () => Buffer.from('verified'),
-      },
-      './sandbox': {
-        studioDeploymentFiles: async (input) => {
-          materialized = input;
-          return [
-            {
-              file: 'next.config.ts',
-              data: Buffer.from(
-                studioScaffoldContent('next.config.ts', 'fixture'),
-              ),
-            },
-          ];
+for (const existingProject of [false, true])
+  void test(`projeto ${existingProject ? 'existente' : 'novo'} promove o mesmo build protegido somente após o smoke`, async () => {
+    const requests = [];
+    let materialized;
+    let candidate;
+    const previousDeployment = existingProject ? 'dpl_previous' : null;
+    let publicDeployment = previousDeployment;
+    let smokeCompleted = false;
+    const project = {
+      id: 'prj_fixture',
+      name: 'eixu-site-fixture',
+      ssoProtection: { deploymentType: 'preview' },
+      protectionBypass: {},
+    };
+    const release = {
+      id: 'release',
+      project_id: 'project',
+      tenant_id: 'tenant',
+      slug: 'fixture',
+      canonical_host: 'fixture.eixu.com.br',
+      code_revision: 'code',
+      code_artifact_key: 'artifact',
+      content_revision_id: 'content',
+      contract_hash: 'contract',
+      status: 'preparing',
+      vercel_project_id: existingProject ? project.id : null,
+    };
+    const sql = async (strings, ...values) => {
+      const query = strings.join('?');
+      if (query.includes('revision.content'))
+        return [
+          {
+            content: { title: 'Fixture' },
+            contract: { pages: [{ slug: '' }] },
+          },
+        ];
+      if (query.includes('select contract'))
+        return [{ contract: { pages: [{ slug: '' }] } }];
+      if (query.includes('set vercel_project_id'))
+        release.vercel_project_id = values[0];
+      if (query.includes('set deployment_id')) {
+        release.deployment_id = values[0];
+        release.deployment_url = values[1];
+        release.status = 'validating';
+      }
+      if (query.includes("set status = 'ready'")) {
+        release.status = 'ready';
+        smokeCompleted = true;
+      }
+      return [{ id: 'project' }];
+    };
+    sql.query = async () => [release];
+    const {
+      provisionStudioDeployment,
+      studioDeploymentStatus,
+      verifyStudioDeployment,
+      activateStudioDeployment,
+    } = loadModuleGraph(
+      'lib/studio/releases.ts',
+      {
+        '@/lib/db': { db: () => sql },
+        './checkpoint-storage': {
+          readStudioCheckpoint: async () => Buffer.from('verified'),
+        },
+        './sandbox': {
+          studioDeploymentFiles: async (input) => {
+            materialized = input;
+            return [
+              {
+                file: 'next.config.ts',
+                data: Buffer.from(
+                  studioScaffoldContent('next.config.ts', 'fixture'),
+                ),
+              },
+            ];
+          },
         },
       },
-    },
-    {
-      process: {
-        env: {
-          EIXU_VERCEL_TOKEN: 'fixture',
-          EIXU_VERCEL_TEAM_ID: 'team_fixture',
-          EIXU_VERCEL_ROOT_PROJECT_ID: 'prj_root',
+      {
+        process: {
+          env: {
+            EIXU_VERCEL_TOKEN: 'fixture',
+            EIXU_VERCEL_TEAM_ID: 'team_fixture',
+            EIXU_VERCEL_ROOT_PROJECT_ID: 'prj_root',
+          },
         },
-      },
-      fetch: async (url, init) => {
-        const path = new URL(url).pathname;
-        requests.push({
-          path,
-          method: init.method ?? 'GET',
-          body: typeof init.body === 'string' ? JSON.parse(init.body) : null,
-        });
-        if (path === '/v2/files') return Response.json({});
-        if (path === '/v13/deployments')
-          return Response.json({
-            id: 'dpl_fixture',
-            url: 'fixture.vercel.app',
-            target: 'staging',
+        fetch: async (url, init) => {
+          const target = new URL(url);
+          const path = target.pathname;
+          if (target.origin === 'https://fixture.vercel.app') {
+            const secret = new Headers(init.headers).get(
+              'x-vercel-protection-bypass',
+            );
+            assert.equal(
+              project.ssoProtection.deploymentType,
+              'prod_deployment_urls_and_all_previews',
+            );
+            assert.equal(
+              project.protectionBypass[secret]?.scope,
+              'automation-bypass',
+            );
+            assert.equal(publicDeployment, previousDeployment);
+            return path.endsWith('eixu-release.json')
+              ? Response.json({ releaseId: release.id })
+              : new Response('<html><h1>Fixture</h1></html>', {
+                  headers: { 'content-type': 'text/html' },
+                });
+          }
+          assert.equal(target.origin, 'https://api.vercel.com');
+          assert.equal(target.searchParams.get('teamId'), 'team_fixture');
+          const body =
+            typeof init.body === 'string' ? JSON.parse(init.body) : null;
+          requests.push({
+            path,
+            method: init.method ?? 'GET',
+            body,
           });
-        assert.match(path, /^\/v(?:9|11)\/projects(?:\/prj_fixture)?$/);
-        return Response.json({
-          id: 'prj_fixture',
-          name: 'eixu-site-fixture',
-          ssoProtection: { deploymentType: 'preview' },
-        });
+          if (path === '/v2/files') return Response.json({});
+          if (path === '/v11/projects') {
+            Object.assign(project, body);
+            return Response.json(project);
+          }
+          if (path === '/v13/deployments') {
+            candidate = {
+              id: 'dpl_fixture',
+              url: 'fixture.vercel.app',
+              projectId: body.project,
+              target: body.target,
+              readyState: 'READY',
+            };
+            if (
+              body.target === 'production' &&
+              body.autoAssignCustomDomains !== false
+            )
+              publicDeployment = candidate.id;
+            return Response.json(candidate);
+          }
+          if (path === '/v13/deployments/dpl_fixture')
+            return Response.json(candidate);
+          if (path === '/v1/projects/prj_fixture/protection-bypass') {
+            if (body.generate)
+              project.protectionBypass[body.generate.secret] = {
+                scope: 'automation-bypass',
+              };
+            else delete project.protectionBypass[body.revoke.secret];
+            return Response.json(project);
+          }
+          if (path === '/v9/projects/prj_fixture/domains')
+            return Response.json({
+              domains: [{ name: release.canonical_host, verified: true }],
+            });
+          if (path === '/v10/projects/prj_fixture/promote/dpl_fixture') {
+            assert.equal(
+              candidate.target,
+              'production',
+              'A promoção direta não reconstrói staging.',
+            );
+            assert.equal(smokeCompleted, true);
+            assert.equal(Object.keys(project.protectionBypass).length, 0);
+            publicDeployment = candidate.id;
+            return Response.json({});
+          }
+          assert.equal(path, '/v9/projects/prj_fixture');
+          if (init.method === 'PATCH') Object.assign(project, body);
+          return Response.json(project);
+        },
       },
-    },
-  );
-  await provisionStudioDeployment('release');
-  assert.equal(materialized.slug, 'fixture');
-  const deployment = requests.find(
-    (request) => request.path === '/v13/deployments',
-  );
-  assert.equal(deployment.body.target, 'staging');
-  assert.equal(deployment.body.project, 'prj_fixture');
-  assert.ok(
-    deployment.body.files.some(
-      (file) => file.file === 'public/.well-known/eixu-release.json',
-    ),
-  );
-  assert.ok(requests.every((request) => !request.path.includes('/promote')));
-});
+    );
+    await provisionStudioDeployment('release');
+    assert.equal(publicDeployment, previousDeployment);
+    await assert.rejects(
+      activateStudioDeployment('release'),
+      /Somente um deployment validado/,
+    );
+    assert.equal((await studioDeploymentStatus('release')).status, 'READY');
+    candidate.target = 'staging';
+    await assert.rejects(
+      studioDeploymentStatus('release'),
+      /build de produção/,
+    );
+    candidate.target = 'production';
+    await verifyStudioDeployment('release');
+    assert.equal(publicDeployment, previousDeployment);
+    await activateStudioDeployment('release');
+    assert.equal(publicDeployment, candidate.id);
+    assert.equal(materialized.slug, 'fixture');
+    const deployment = requests.find(
+      (request) => request.path === '/v13/deployments',
+    );
+    assert.equal(deployment.body.target, 'production');
+    assert.equal(deployment.body.autoAssignCustomDomains, false);
+    assert.equal(deployment.body.project, 'prj_fixture');
+    assert.ok(
+      deployment.body.files.some(
+        (file) => file.file === 'public/.well-known/eixu-release.json',
+      ),
+    );
+    assert.equal(
+      requests.filter((request) => request.path === '/v13/deployments').length,
+      1,
+    );
+    assert.equal(
+      requests.filter((request) => request.path.includes('/promote/')).length,
+      1,
+    );
+  });
