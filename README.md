@@ -81,18 +81,18 @@ A tela de login fica em [localhost:3000/admin](http://localhost:3000/admin). Nã
 
 Variáveis principais:
 
-| Variável                                    | Uso                                                              |
-| ------------------------------------------- | ---------------------------------------------------------------- |
-| `DATABASE_URL`                              | Neon usado pela aplicação.                                       |
-| `ADMIN_PIN_PEPPER` / `ADMIN_SESSION_SECRET` | Login e sessão dos operadores.                                   |
-| `AI_GATEWAY_API_KEY`                        | AI Gateway fora do OIDC da Vercel.                               |
-| `BLOB_READ_WRITE_TOKEN`                     | Assets, checkpoints e artefatos.                                 |
-| `EIXU_IMAGE_MODEL`                          | Modelo de imagem; padrão `openai/gpt-image-2`.                   |
-| `EIXU_VERCEL_TOKEN`                         | API de projetos, deployments, domínios e promoção.               |
-| `EIXU_VERCEL_TEAM_ID`                       | Time autorizado para os projetos de clientes.                    |
-| `EIXU_VERCEL_ROOT_PROJECT_ID`               | Projeto raiz que nunca pode ser alterado ou apagado pelo Studio. |
-| `EIXU_VERCEL_BYPASS_MASTER_SECRET`          | Deriva o bypass isolado de smoke para cada preview protegido.    |
-| `KANBAN_AGENT_TOKEN`                        | Bearer restrito às rotas do Kanban.                              |
+| Variável                                              | Uso                                                             |
+| ----------------------------------------------------- | --------------------------------------------------------------- |
+| `DATABASE_URL`                                        | Neon usado pela aplicação.                                      |
+| `ADMIN_PIN_PEPPER` / `ADMIN_SESSION_SECRET`           | Login e sessão dos operadores.                                  |
+| `AI_GATEWAY_API_KEY`                                  | Opcional fora da Vercel; deployments usam OIDC automaticamente. |
+| `BLOB_READ_WRITE_TOKEN`                               | Assets, checkpoints e artefatos.                                |
+| `EIXU_IMAGE_MODEL`                                    | Modelo de imagem; padrão `openai/gpt-image-2`.                  |
+| `EIXU_VERCEL_TOKEN`                                   | API de projetos, deployments, domínios e promoção.              |
+| `EIXU_VERCEL_BYPASS_MASTER_SECRET`                    | Deriva o bypass isolado de smoke para cada preview protegido.   |
+| `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID`                 | IDs nativos, expostos automaticamente pela Vercel.              |
+| `EIXU_VERCEL_TEAM_ID` / `EIXU_VERCEL_ROOT_PROJECT_ID` | Overrides opcionais somente fora da Vercel.                     |
+| `KANBAN_AGENT_TOKEN`                                  | Bearer restrito às rotas do Kanban.                             |
 
 O arquivo [.env.example](.env.example) contém a lista completa sem valores secretos.
 

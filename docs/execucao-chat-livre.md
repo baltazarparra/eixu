@@ -25,7 +25,7 @@ Implementado:
 
 Nenhuma chamada paga de modelo/imagem, Sandbox remoto, deployment de produção ou limpeza de banco/Blob/Vercel foi executada. A migração aditiva foi aplicada depois da abertura da PR, com o recibo abaixo. Reset e ensaio funcional remoto continuam separados da migração.
 
-A consulta ao MCP da Vercel em 18/09/2026 encontrou uma divergência de acesso: o arquivo local `.vercel/project.json` identifica o projeto raiz da EIXU, mas o conector retornou 404 para ele, listou somente outro projeto no time e retornou 403 ao listar deployments. Por isso, IDs não foram fixados no código. `EIXU_VERCEL_TEAM_ID` e `EIXU_VERCEL_ROOT_PROJECT_ID` são obrigatórios e a prova de integração real continua pendente até o token/conector enxergar os recursos da EIXU.
+A consulta ao MCP da Vercel em 18/09/2026 encontrou uma divergência de acesso: o arquivo local `.vercel/project.json` identifica o projeto raiz da EIXU, mas o conector retornou 404 para ele, listou somente outro projeto no time e retornou 403 ao listar deployments. A CLI autenticada confirmou depois o projeto raiz, o deployment da PR e `autoExposeSystemEnvs: true`. Produção usa `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID`; `EIXU_VERCEL_TEAM_ID` e `EIXU_VERCEL_ROOT_PROJECT_ID` são apenas overrides opcionais fora da Vercel.
 
 ## Migração aplicada
 
@@ -48,10 +48,10 @@ Em 18/09/2026, o schema foi aplicado ao projeto Neon
 Os ambientes Vercel `preview` e `production` ainda apontam para esse mesmo
 branch Neon principal. A migração, portanto, atende ambos hoje, mas a falta de
 isolamento precisa ser resolvida antes dos ensaios destrutivos de preview.
-Também faltam nos dois ambientes `EIXU_VERCEL_TOKEN`,
-`EIXU_VERCEL_TEAM_ID`, `EIXU_VERCEL_ROOT_PROJECT_ID` e
-`EIXU_VERCEL_BYPASS_MASTER_SECRET`; sem eles, a publicação de projetos de
-clientes permanece bloqueada.
+Também faltam nos dois ambientes os dois segredos novos realmente necessários:
+`EIXU_VERCEL_TOKEN`, para a API de gerenciamento, e
+`EIXU_VERCEL_BYPASS_MASTER_SECRET`, para o smoke isolado dos previews
+protegidos. O AI Gateway usa o `VERCEL_OIDC_TOKEN` injetado automaticamente.
 
 ## Validação local
 

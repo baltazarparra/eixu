@@ -16,7 +16,9 @@ const VERCEL_API = 'https://api.vercel.com';
 function vercelTeamId(): string {
   const id = process.env.EIXU_VERCEL_TEAM_ID || process.env.VERCEL_ORG_ID;
   if (!id?.startsWith('team_'))
-    throw new Error('Configure EIXU_VERCEL_TEAM_ID para publicar sites.');
+    throw new Error(
+      'VERCEL_ORG_ID não está disponível. Fora da Vercel, configure EIXU_VERCEL_TEAM_ID.',
+    );
   return id;
 }
 
@@ -25,7 +27,7 @@ function rootVercelProjectId(): string {
     process.env.EIXU_VERCEL_ROOT_PROJECT_ID || process.env.VERCEL_PROJECT_ID;
   if (!id?.startsWith('prj_'))
     throw new Error(
-      'Configure EIXU_VERCEL_ROOT_PROJECT_ID para proteger a plataforma.',
+      'VERCEL_PROJECT_ID não está disponível. Fora da Vercel, configure EIXU_VERCEL_ROOT_PROJECT_ID.',
     );
   return id;
 }
