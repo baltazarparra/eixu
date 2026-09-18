@@ -45,6 +45,35 @@ export function studioVercelBypassHeaders(secret: string): HeadersInit {
   };
 }
 
+/** A confirmação da API pode chegar antes de o bypass alcançar o edge. */
+export async function fetchStudioPreviewWithBypass(
+  url: string,
+  headers: HeadersInit,
+): Promise<Response> {
+  const origin = new URL(url);
+  const hasBypass = new Headers(headers).has('x-vercel-protection-bypass');
+  for (let attempt = 0; ; attempt += 1) {
+    const response = await fetch(url, {
+      redirect: 'manual',
+      headers,
+      signal: AbortSignal.timeout(30_000),
+      cache: 'no-store',
+    });
+    const location = response.headers.get('location');
+    const redirect = location ? new URL(location, url) : null;
+    const awaitingBypass =
+      hasBypass &&
+      origin.protocol === 'https:' &&
+      origin.hostname.endsWith('.vercel.app') &&
+      [302, 307].includes(response.status) &&
+      redirect?.origin === 'https://vercel.com' &&
+      redirect.pathname === '/sso-api';
+    if (!awaitingBypass || attempt >= 9) return response;
+    await response.body?.cancel();
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+  }
+}
+
 async function revokeTemporaryBypass(
   update: (
     body: VercelProtectionBypassUpdate,

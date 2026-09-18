@@ -97,6 +97,8 @@ Confira `EIXU_VERCEL_TEAM_ID`, `EIXU_VERCEL_TOKEN` e o ID do projeto raiz no amb
 
 Materialize configurações atuais e históricas: a cópia de release deve compilar com `NEXT_ADAPTER_PATH`, manter regras de imagens e deixar o checkpoint intacto. Uma configuração fora do contrato deve ser recusada. Antes de promover, confirme que o candidato foi criado como prévia, inclusive no primeiro deployment do projeto, e que o acesso anônimo está protegido.
 
+Simule o bypass ainda não propagado: o smoke deve repetir a URL original com o mesmo segredo até receber o marcador correto, dentro do limite. Ele nunca segue o redirect de SSO com credenciais. Redirect para outro destino e falha persistente não podem promover; em ambos os casos o bypass precisa ser revogado.
+
 1. confirme team e root project IDs;
 2. crie o projeto dedicado;
 3. confirme Vercel Auth restrita a `preview` e o bypass de automação exclusivo do projeto;

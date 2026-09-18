@@ -126,6 +126,8 @@ A materialização da release valida a configuração reservada do Next e retira
 
 O bypass existe apenas durante o smoke do candidato e é revogado também quando a verificação falha. O domínio canônico público nunca recebe o bypass: seu smoke comprova acesso real depois da promoção. O reconciliador registra a intenção antes da promoção e cobre a janela em que a Vercel pode ter promovido o deployment antes de a gravação no banco terminar. O marcador servido pelo host canônico é a prova final. Rollback cria uma nova release pelo mesmo pipeline. Arquivar remove o domínio; restaurar promove a release ativa e verifica o host; excluir remove somente o projeto dedicado comprovado.
 
+A criação do bypass é eventualmente consistente no edge. Durante o smoke, um redirect de autenticação para `https://vercel.com/sso-api` permite até dez consultas à mesma URL do deployment, com um segundo entre elas e o mesmo segredo. O redirect nunca é seguido com credenciais; outros destinos e falhas permanecem recusados. O bypass é revogado ao terminar essa janela, com sucesso ou falha.
+
 ## Integrações públicas
 
 O scaffold usa `lib/eixu.ts` para formular ação de formulário, evento e WhatsApp. Na plataforma:

@@ -3,6 +3,7 @@ import { readStudioCheckpoint } from './checkpoint-storage';
 import { db, transaction } from '@/lib/db';
 import { studioDeploymentFiles, type StudioDeploymentFile } from './sandbox';
 import {
+  fetchStudioPreviewWithBypass,
   hasStudioPreviewProtection,
   studioSameOriginRedirect,
   withTemporaryStudioVercelBypass,
@@ -661,12 +662,13 @@ async function smokeUrl(
   let response: Response | null = null;
 
   for (let redirects = 0; redirects <= 5; redirects += 1) {
-    response = await fetch(current, {
-      redirect: 'manual',
-      headers: options.headers,
-      signal: AbortSignal.timeout(30_000),
-      cache: 'no-store',
-    });
+    response = options.headers
+      ? await fetchStudioPreviewWithBypass(current, options.headers)
+      : await fetch(current, {
+          redirect: 'manual',
+          signal: AbortSignal.timeout(30_000),
+          cache: 'no-store',
+        });
     if (![301, 302, 303, 307, 308].includes(response.status)) break;
     current = studioSameOriginRedirect(
       current,
