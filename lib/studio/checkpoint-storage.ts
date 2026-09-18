@@ -7,7 +7,7 @@ export async function readStudioCheckpoint(
   codeRevision: string,
 ) {
   const blob = await get(storageKey, {
-    ...privateBlobOptions(),
+    ...(await privateBlobOptions()),
     access: 'private',
     useCache: false,
   });

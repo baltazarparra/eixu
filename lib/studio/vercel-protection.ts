@@ -1,7 +1,7 @@
-import { createHmac } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 
-const BYPASS_CONTEXT = 'eixu-studio-vercel-bypass:v1';
-const MINIMUM_MASTER_SECRET_BYTES = 32;
+const BYPASS_SECRET_BYTES = 16;
+const BYPASS_SECRET_PATTERN = /^[a-f0-9]{32}$/;
 
 type ProtectionBypass = {
   scope?: string;
@@ -12,31 +12,16 @@ export type VercelProjectProtection = {
   ssoProtection?: { deploymentType?: string } | null;
 };
 
-function masterSecret(value = process.env.EIXU_VERCEL_BYPASS_MASTER_SECRET) {
-  if (!value)
-    throw new Error(
-      'A publicação requer EIXU_VERCEL_BYPASS_MASTER_SECRET no ambiente da plataforma.',
-    );
-  if (Buffer.byteLength(value, 'utf8') < MINIMUM_MASTER_SECRET_BYTES)
-    throw new Error(
-      `EIXU_VERCEL_BYPASS_MASTER_SECRET precisa ter ao menos ${MINIMUM_MASTER_SECRET_BYTES} bytes.`,
-    );
-  return value;
-}
+export type VercelProtectionBypassUpdate =
+  | { generate: { secret: string; note: string } }
+  | { revoke: { secret: string; regenerate: false } };
 
 /**
- * Produz um bypass estável e isolado por projeto sem persistir seu valor no banco.
- * O prefixo versionado permite uma rotação futura com migração explícita.
+ * Produz um bypass efêmero aceito pela API da Vercel. O chamador deve revogá-lo
+ * assim que terminar o smoke do deployment protegido.
  */
-export function studioVercelBypassSecret(
-  projectId: string,
-  secret?: string,
-): string {
-  if (!projectId.trim()) throw new Error('O projeto Vercel é obrigatório.');
-  const key = masterSecret(secret);
-  return createHmac('sha256', key)
-    .update(`${BYPASS_CONTEXT}:${projectId}`)
-    .digest('hex');
+export function createStudioVercelBypassSecret(): string {
+  return randomBytes(BYPASS_SECRET_BYTES).toString('hex');
 }
 
 export function hasStudioVercelBypass(
@@ -52,13 +37,75 @@ export function hasStudioPreviewProtection(
   return project.ssoProtection?.deploymentType === 'preview';
 }
 
-export function studioVercelBypassHeaders(
-  projectId: string,
-  secret?: string,
-): HeadersInit {
+export function studioVercelBypassHeaders(secret: string): HeadersInit {
+  if (!BYPASS_SECRET_PATTERN.test(secret))
+    throw new Error('O bypass temporário da Vercel é inválido.');
   return {
-    'x-vercel-protection-bypass': studioVercelBypassSecret(projectId, secret),
+    'x-vercel-protection-bypass': secret,
   };
+}
+
+async function revokeTemporaryBypass(
+  update: (
+    body: VercelProtectionBypassUpdate,
+  ) => Promise<VercelProjectProtection>,
+  secret: string,
+) {
+  const project = await update({
+    revoke: { secret, regenerate: false },
+  });
+  if (hasStudioVercelBypass(project, secret))
+    throw new Error('A Vercel não revogou o bypass temporário do preview.');
+}
+
+/** Cria o bypass somente durante o smoke e tenta revogá-lo em toda saída. */
+export async function withTemporaryStudioVercelBypass<T>(
+  update: (
+    body: VercelProtectionBypassUpdate,
+  ) => Promise<VercelProjectProtection>,
+  run: (headers: HeadersInit) => Promise<T>,
+): Promise<T> {
+  const secret = createStudioVercelBypassSecret();
+  let project: VercelProjectProtection;
+  try {
+    project = await update({
+      generate: {
+        secret,
+        note: 'EIXU Studio: smoke temporário de preview',
+      },
+    });
+  } catch (error) {
+    // A API pode ter criado o bypass antes de a resposta se perder.
+    await revokeTemporaryBypass(update, secret).catch(() => undefined);
+    throw error;
+  }
+  if (!hasStudioVercelBypass(project, secret)) {
+    await revokeTemporaryBypass(update, secret).catch(() => undefined);
+    throw new Error('A Vercel não confirmou o bypass temporário do preview.');
+  }
+
+  let result: T | undefined;
+  let runFailed = false;
+  let runError: unknown;
+  try {
+    result = await run(studioVercelBypassHeaders(secret));
+  } catch (error) {
+    runFailed = true;
+    runError = error;
+  }
+
+  try {
+    await revokeTemporaryBypass(update, secret);
+  } catch (revokeError) {
+    if (runFailed)
+      throw new AggregateError(
+        [runError, revokeError],
+        'O smoke falhou e o bypass temporário também não foi revogado.',
+      );
+    throw revokeError;
+  }
+  if (runFailed) throw runError;
+  return result as T;
 }
 
 export function studioSameOriginRedirect(

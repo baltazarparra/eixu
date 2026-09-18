@@ -3,6 +3,9 @@ import { withTenantLock } from '@/lib/tenant-lock';
 import { privateBlobOptions, publicBlobOptions } from './stores.mjs';
 
 export type BlobDeps = { list?: typeof list; del?: typeof del };
+type BlobAuthOptions =
+  | { token: string }
+  | { storeId: string; oidcToken: string };
 
 /**
  * Barra final é obrigatória: sem ela, "tenants/porto" também casaria
@@ -122,7 +125,7 @@ export function putTenantBlobs(tenantId: string, files: TenantBlobFile[]) {
  */
 async function deleteBlobPrefix(
   prefix: string,
-  options: { token: string },
+  options: BlobAuthOptions,
   deps: BlobDeps = {},
 ): Promise<{ deleted: number }> {
   const listBlobs = deps.list ?? list;
@@ -146,13 +149,13 @@ export function deleteTenantBlobs(slug: string, deps: BlobDeps = {}) {
 }
 
 /** Checkpoints, referências visuais e artefatos privados usam o ID do projeto. */
-export function deleteStudioProjectBlobs(
+export async function deleteStudioProjectBlobs(
   projectId: string,
   deps: BlobDeps = {},
 ) {
   return deleteBlobPrefix(
     studioProjectBlobPrefix(projectId),
-    privateBlobOptions(),
+    await privateBlobOptions(),
     deps,
   );
 }

@@ -31,12 +31,16 @@ if (!vercelTeamId?.startsWith('team_'))
   throw new Error('EIXU_VERCEL_TEAM_ID é obrigatório.');
 if (!rootProjectId?.startsWith('prj_'))
   throw new Error('EIXU_VERCEL_ROOT_PROJECT_ID é obrigatório.');
-const blobTargets = RESET_BLOB_TARGETS.map((target) => ({
-  ...target,
-  storeId: blobStoreId(target.access),
-  options:
-    target.access === 'private' ? privateBlobOptions() : publicBlobOptions(),
-}));
+const blobTargets = await Promise.all(
+  RESET_BLOB_TARGETS.map(async (target) => ({
+    ...target,
+    storeId: blobStoreId(target.access),
+    options:
+      target.access === 'private'
+        ? await privateBlobOptions()
+        : publicBlobOptions(),
+  })),
+);
 
 const client = new Client(databaseUrl);
 await client.connect();

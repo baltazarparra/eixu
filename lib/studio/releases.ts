@@ -4,10 +4,8 @@ import { db, transaction } from '@/lib/db';
 import { studioDeploymentFiles, type StudioDeploymentFile } from './sandbox';
 import {
   hasStudioPreviewProtection,
-  hasStudioVercelBypass,
   studioSameOriginRedirect,
-  studioVercelBypassHeaders,
-  studioVercelBypassSecret,
+  withTemporaryStudioVercelBypass,
   type VercelProjectProtection,
 } from './vercel-protection';
 
@@ -480,7 +478,6 @@ async function verifiedVercelProject(
 async function ensureVercelProjectProtection(
   input: VercelProjectIdentity,
 ): Promise<VercelProjectIdentity> {
-  const bypass = studioVercelBypassSecret(input.id);
   let project = input;
 
   if (!hasStudioPreviewProtection(project)) {
@@ -500,33 +497,11 @@ async function ensureVercelProjectProtection(
       );
   }
 
-  if (!hasStudioVercelBypass(project, bypass)) {
-    await vercelRequest(
-      `/v1/projects/${encodeURIComponent(project.id)}/protection-bypass`,
-      {
-        method: 'PATCH',
-        body: JSON.stringify({
-          generate: {
-            secret: bypass,
-            note: 'EIXU Studio: smoke automatizado de preview',
-          },
-        }),
-      },
-    );
-    project = await verifiedVercelProject(project.id, project.name);
-    if (!hasStudioVercelBypass(project, bypass))
-      throw new Error(
-        'A Vercel não confirmou o bypass de automação do projeto.',
-      );
-  }
-
   return project;
 }
 
 async function ensureVercelProject(release: StudioRelease) {
   const name = projectName(release.slug);
-  // Falha antes de qualquer mutação remota quando o segredo da plataforma falta.
-  studioVercelBypassSecret(release.vercelProjectId ?? name);
   if (release.vercelProjectId) {
     const existing = await verifiedVercelProject(release.vercelProjectId, name);
     return ensureVercelProjectProtection(existing);
@@ -724,20 +699,11 @@ export async function verifyStudioDeployment(releaseId: string) {
     release.vercelProjectId,
     projectName(release.slug),
   );
-  const bypass = studioVercelBypassSecret(project.id);
-  if (
-    !hasStudioPreviewProtection(project) ||
-    !hasStudioVercelBypass(project, bypass)
-  )
+  if (!hasStudioPreviewProtection(project))
     throw new Error(
       'O deployment candidato não tem a proteção de preview esperada.',
     );
   const base = release.deploymentUrl.replace(/\/$/, '');
-  const headers = studioVercelBypassHeaders(project.id);
-  await smokeUrl(`${base}/.well-known/eixu-release.json`, {
-    expectedReleaseId: release.id,
-    headers,
-  });
   const paths = [
     ...new Set(
       (rows[0]?.contract.pages ?? [])
@@ -745,12 +711,25 @@ export async function verifyStudioDeployment(releaseId: string) {
         .slice(0, 30),
     ),
   ];
-  for (const path of paths.length ? paths : ['/']) {
-    const response = await smokeUrl(`${base}${path}`, { headers });
-    const type = response.headers.get('content-type') ?? '';
-    if (!type.includes('text/html'))
-      throw new Error(`A rota ${path} não retornou HTML.`);
-  }
+  await withTemporaryStudioVercelBypass(
+    (body) =>
+      vercelRequest<VercelProjectProtection>(
+        `/v1/projects/${encodeURIComponent(project.id)}/protection-bypass`,
+        { method: 'PATCH', body: JSON.stringify(body) },
+      ),
+    async (headers) => {
+      await smokeUrl(`${base}/.well-known/eixu-release.json`, {
+        expectedReleaseId: release.id,
+        headers,
+      });
+      for (const path of paths.length ? paths : ['/']) {
+        const response = await smokeUrl(`${base}${path}`, { headers });
+        const type = response.headers.get('content-type') ?? '';
+        if (!type.includes('text/html'))
+          throw new Error(`A rota ${path} não retornou HTML.`);
+      }
+    },
+  );
   await db()`
     update studio_releases set status = 'ready',
       manifest = manifest || ${JSON.stringify({

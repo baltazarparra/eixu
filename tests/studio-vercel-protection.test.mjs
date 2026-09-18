@@ -1,32 +1,23 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  createStudioVercelBypassSecret,
   hasStudioPreviewProtection,
   hasStudioVercelBypass,
   studioSameOriginRedirect,
   studioVercelBypassHeaders,
-  studioVercelBypassSecret,
+  withTemporaryStudioVercelBypass,
 } from '../lib/studio/vercel-protection.ts';
 
-const master = '0123456789abcdef0123456789abcdef';
-
-void test('o bypass é determinístico e isolado por projeto', () => {
-  const first = studioVercelBypassSecret('prj_cliente_a', master);
-  assert.equal(first, studioVercelBypassSecret('prj_cliente_a', master));
-  assert.notEqual(first, studioVercelBypassSecret('prj_cliente_b', master));
-  assert.match(first, /^[a-f0-9]{64}$/);
-});
-
-void test('o segredo mestre curto ou o projeto vazio são recusados', () => {
-  assert.throws(
-    () => studioVercelBypassSecret('prj_cliente', 'curto'),
-    /ao menos 32 bytes/,
-  );
-  assert.throws(() => studioVercelBypassSecret(' ', master), /obrigatório/);
+void test('o bypass temporário é aleatório e aceito pela API da Vercel', () => {
+  const first = createStudioVercelBypassSecret();
+  const second = createStudioVercelBypassSecret();
+  assert.notEqual(first, second);
+  assert.match(first, /^[a-f0-9]{32}$/);
 });
 
 void test('a proteção exige preview e o bypass de automação exato', () => {
-  const secret = studioVercelBypassSecret('prj_cliente', master);
+  const secret = createStudioVercelBypassSecret();
   const project = {
     ssoProtection: { deploymentType: 'preview' },
     protectionBypass: {
@@ -35,9 +26,74 @@ void test('a proteção exige preview e o bypass de automação exato', () => {
   };
   assert.equal(hasStudioPreviewProtection(project), true);
   assert.equal(hasStudioVercelBypass(project, secret), true);
-  assert.deepEqual(studioVercelBypassHeaders('prj_cliente', master), {
+  assert.deepEqual(studioVercelBypassHeaders(secret), {
     'x-vercel-protection-bypass': secret,
   });
+  assert.throws(() => studioVercelBypassHeaders('inválido'), /inválido/);
+});
+
+void test('o bypass temporário é revogado depois do smoke', async () => {
+  const updates = [];
+  const result = await withTemporaryStudioVercelBypass(
+    async (body) => {
+      updates.push(body);
+      if ('generate' in body)
+        return {
+          protectionBypass: {
+            [body.generate.secret]: { scope: 'automation-bypass' },
+          },
+        };
+      return { protectionBypass: {} };
+    },
+    async (headers) => {
+      assert.match(headers['x-vercel-protection-bypass'], /^[a-f0-9]{32}$/);
+      return 'ok';
+    },
+  );
+  assert.equal(result, 'ok');
+  assert.equal(updates.length, 2);
+  assert.equal(updates[0].generate.secret, updates[1].revoke.secret);
+});
+
+void test('o bypass temporário também é revogado quando o smoke falha', async () => {
+  const updates = [];
+  await assert.rejects(
+    withTemporaryStudioVercelBypass(
+      async (body) => {
+        updates.push(body);
+        if ('generate' in body)
+          return {
+            protectionBypass: {
+              [body.generate.secret]: { scope: 'automation-bypass' },
+            },
+          };
+        return { protectionBypass: {} };
+      },
+      async () => {
+        throw new Error('smoke indisponível');
+      },
+    ),
+    /smoke indisponível/,
+  );
+  assert.equal(updates.length, 2);
+  assert.equal(updates[0].generate.secret, updates[1].revoke.secret);
+});
+
+void test('falha incerta ao criar o bypass dispara revogação compensatória', async () => {
+  const updates = [];
+  await assert.rejects(
+    withTemporaryStudioVercelBypass(
+      async (body) => {
+        updates.push(body);
+        if ('generate' in body) throw new Error('resposta perdida');
+        return { protectionBypass: {} };
+      },
+      async () => assert.fail('o smoke não deve iniciar'),
+    ),
+    /resposta perdida/,
+  );
+  assert.equal(updates.length, 2);
+  assert.equal(updates[0].generate.secret, updates[1].revoke.secret);
 });
 
 void test('o smoke mantém o bypass dentro da origem do deployment', () => {

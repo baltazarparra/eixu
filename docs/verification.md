@@ -115,7 +115,7 @@ npm run db:reset-sites -- --environment=preview --manifest
 npm run db:reset-sites -- --environment=production --manifest
 ```
 
-Revise timestamp, fingerprint, contagens preservadas, pares exatos de ID/nome dos projetos Vercel e inventário Blob com modo de acesso e ID de cada store. Ambos os tokens Blob são obrigatórios; os stores precisam ser distintos. Se o escopo mudar, descarte o manifesto. A execução exige `--scope-digest`, `--database-fingerprint` e `--manifest-created-at` do mesmo manifesto, confirmação do ambiente, `EIXU_RESET_PLATFORM_DEPLOYMENT_ID` READY e `EIXU_RESET_RECOVERY_REF`. O timestamp expira em 30 minutos.
+Revise timestamp, fingerprint, contagens preservadas, pares exatos de ID/nome dos projetos Vercel e inventário Blob com modo de acesso e ID de cada store. O store público exige `BLOB_READ_WRITE_TOKEN`; o privado exige `STUDIO_BLOB_STORE_ID` e OIDC válido. Os stores precisam ser distintos. Se o escopo mudar, descarte o manifesto. A execução exige `--scope-digest`, `--database-fingerprint` e `--manifest-created-at` do mesmo manifesto, confirmação do ambiente, `EIXU_RESET_PLATFORM_DEPLOYMENT_ID` READY e `EIXU_RESET_RECOVERY_REF`. O timestamp expira em 30 minutos.
 
 Depois, o recibo precisa mostrar:
 
