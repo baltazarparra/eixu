@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { posix } from 'node:path';
 import {
   STUDIO_SCAFFOLD_FILES,
   studioScaffoldContent,
@@ -15,6 +16,9 @@ export const fixtureEnv = {
 /** Só os serviços são simulados: checkpoint, restauração, paths e comandos são reais. */
 export function studioSandboxFixture({
   recreate = false,
+  missingWorkspace = false,
+  firstBuild = false,
+  directoryFailure = false,
   installFailure = false,
   corruptArchive = false,
 } = {}) {
@@ -28,11 +32,17 @@ export function studioSandboxFixture({
   const archive = Buffer.from(JSON.stringify(sources));
   const codeRevision = createHash('sha256').update(archive).digest('hex');
   const files = new Map(
-    Object.entries(recreate ? {} : sources).map(([path, content]) => [
-      `${workspace}/${path}`,
-      Buffer.from(content),
-    ]),
+    Object.entries(recreate || missingWorkspace ? {} : sources).map(
+      ([path, content]) => [`${workspace}/${path}`, Buffer.from(content)],
+    ),
   );
+  // A imagem universal começa em /vercel, sem /vercel/sandbox.
+  const directories = new Set(['/', '/vercel', '/tmp']);
+  const addDirectories = (path) => {
+    for (let current = path; current !== '/'; current = posix.dirname(current))
+      directories.add(current);
+  };
+  for (const path of files.keys()) addDirectories(posix.dirname(path));
   const calls = [];
   const events = [];
   const mutations = [];
@@ -54,18 +64,31 @@ export function studioSandboxFixture({
         !/\/(node_modules|\.next|\.git)\//.test(path),
     );
   const sandbox = {
-    async mkDir() {},
+    async mkDir(path) {
+      if (!directories.has(posix.dirname(path)))
+        throw new Error('error creating directory: No such file or directory');
+      directories.add(path);
+    },
     async readFileToBuffer({ path }) {
       return files.get(path) ?? null;
     },
     async writeFiles(items) {
-      for (const item of items) files.set(item.path, Buffer.from(item.content));
+      for (const item of items) {
+        addDirectories(posix.dirname(item.path));
+        files.set(item.path, Buffer.from(item.content));
+      }
     },
+    async delete() {},
     domain: () => 'https://fixture.sandbox.example',
     async runCommand(command, args) {
       const input =
         typeof command === 'object' ? command : { cmd: command, args };
       calls.push(input);
+      if (input.cmd === 'mkdir') {
+        if (directoryFailure) return result('', 1, 'Permission denied');
+        addDirectories(input.args.at(-1));
+        return result();
+      }
       if (input.cmd === 'realpath') return result(input.args.at(-1));
       if (input.cmd === 'pkill') {
         serverRunning = false;
@@ -77,6 +100,8 @@ export function studioSandboxFixture({
         return result();
       }
       if (input.cmd === 'find') {
+        if (!directories.has(input.args[0]))
+          return result('', 1, 'No such file or directory');
         if (input.args.includes('-exec')) {
           for (const path of files.keys())
             if (
@@ -99,8 +124,10 @@ export function studioSandboxFixture({
         const path = input.args[1];
         if (input.args[0] === '-xzf') {
           const contents = JSON.parse(files.get(path).toString());
-          for (const [name, value] of Object.entries(contents))
+          for (const [name, value] of Object.entries(contents)) {
+            addDirectories(posix.dirname(`${workspace}/${name}`));
             files.set(`${workspace}/${name}`, Buffer.from(value));
+          }
         } else {
           files.set(
             path,
@@ -120,8 +147,12 @@ export function studioSandboxFixture({
         }
         return result();
       }
-      if (input.cmd === 'test')
-        return result('', files.has(input.args.at(-1)) ? 0 : 1);
+      if (input.cmd === 'test') {
+        const paths = input.args.filter((_, index) =>
+          ['-f', '-x'].includes(input.args[index - 1]),
+        );
+        return result('', paths.every((path) => files.has(path)) ? 0 : 1);
+      }
       if (input.cmd === 'npm') {
         if (['ci', 'install'].includes(input.args[0])) {
           if (installFailure) return result('', 1, 'Instalação indisponível');
@@ -167,13 +198,15 @@ export function studioSandboxFixture({
       return [
         {
           slug: 'fixture',
-          draft_code_revision: codeRevision,
+          draft_code_revision: firstBuild ? null : codeRevision,
           storage_key: 'studio/project/code/archive.tar.gz',
           content,
         },
       ];
     if (query.includes('select artifact.storage_key, revision.content'))
       return [{ storage_key: 'studio/project/code/archive.tar.gz', content }];
+    if (query.includes('select revision.content'))
+      return firstBuild ? [] : [{ content }];
     if (query.includes('insert into studio_preview_sessions')) {
       previewSession = values;
       return [];
@@ -207,11 +240,12 @@ export function studioSandboxFixture({
       Sandbox: {
         getOrCreate: async (options) => {
           if (!created) {
-            await options.onCreate(sandbox);
             created = true;
+            await options.onCreate?.(sandbox);
           }
           return sandbox;
         },
+        create: async () => sandbox,
       },
     },
     '@vercel/blob': {
@@ -244,6 +278,7 @@ export function studioSandboxFixture({
     codeRevision,
     content,
     sources,
+    archive,
     previewSession: () => previewSession,
     load: (path) =>
       loadModuleGraph(path, mocks, {
