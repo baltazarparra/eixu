@@ -12,6 +12,8 @@ Cada projeto precisa ter uma ideia visual reconhecível. Hierarquia, contraste, 
 
 ## Anti-slop
 
+Depois da primeira geração, o pedido atual do operador prevalece sobre decisões visuais anteriores. Se ele pedir para copiar um layout, reproduza com fidelidade a estrutura observada, as proporções, o ritmo e as interações, adaptando os fatos e ativos à marca do cliente. A vibe e os defaults anti-slop preenchem somente os aspectos deixados livres pelo pedido. Uma referência nova no chat não exige editar o cadastro antes de trabalhar.
+
 O contrato visual segue a [Taste Skill v1](https://github.com/Leonxlnx/taste-skill/blob/main/skills/taste-skill-v1/SKILL.md), adaptada às restrições técnicas do projeto.
 
 Evite a aparência genérica de template de IA: gradiente roxo automático, cards repetidos sem função, excesso de glassmorphism, ícones decorativos aleatórios, texto centralizado por toda parte, slogans vazios, números inventados e seções montadas só para preencher espaço.

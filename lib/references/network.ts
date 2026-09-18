@@ -4,7 +4,10 @@ import { request as httpsRequest } from 'node:https';
 import { BlockList, isIP } from 'node:net';
 import { abortable } from '@/lib/async/abort';
 
-const blocked = new BlockList();
+// BlockList também compara IPv4 com suas formas mapeadas em IPv6. Misturar
+// ::ffff:0:0/96 na mesma lista bloquearia TODOS os endereços IPv4 públicos.
+const blockedIPv4 = new BlockList();
+const blockedIPv6 = new BlockList();
 for (const [address, prefix] of [
   ['0.0.0.0', 8],
   ['10.0.0.0', 8],
@@ -20,7 +23,7 @@ for (const [address, prefix] of [
   ['203.0.113.0', 24],
   ['224.0.0.0', 3],
 ] as const)
-  blocked.addSubnet(address, prefix, 'ipv4');
+  blockedIPv4.addSubnet(address, prefix, 'ipv4');
 for (const [address, prefix] of [
   ['::', 96],
   ['::ffff:0:0', 96],
@@ -35,11 +38,12 @@ for (const [address, prefix] of [
   ['fec0::', 10],
   ['ff00::', 8],
 ] as const)
-  blocked.addSubnet(address, prefix, 'ipv6');
+  blockedIPv6.addSubnet(address, prefix, 'ipv6');
 
 export function isPublicAddress(address: string): boolean {
   const family = isIP(address);
-  return !!family && !blocked.check(address, family === 6 ? 'ipv6' : 'ipv4');
+  if (family === 4) return !blockedIPv4.check(address, 'ipv4');
+  return family === 6 && !blockedIPv6.check(address, 'ipv6');
 }
 
 export type PublicResource = {

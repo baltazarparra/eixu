@@ -422,16 +422,148 @@ void test('o orçamento de passos continua global depois da retomada no SDK real
     sandboxName: 'fixture',
     workflowRunId: 'workflow',
   };
+  await assert.rejects(
+    streamStudioAgent(
+      {
+        role: 'assistant',
+        runId: context.runId,
+        tenantId: context.tenantId,
+        messages: [{ role: 'user', content: 'Inspecione o projeto.' }],
+      },
+      context,
+    ),
+    /limite de 12 etapas antes de concluir/,
+  );
+  assert.equal(model.doStreamCalls.length, 12);
+});
+
+void test('pedido de novo layout usa o agente de edição e passa da leitura para implementação sem onboarding', async () => {
+  const { routeStudioTurn } = loadModuleGraph('lib/studio/routing.ts');
+  const role = routeStudioTurn({
+    status: 'published',
+    draftCodeRevision: 'saved-code',
+  });
+  assert.equal(role, 'edit');
+  assert.equal(
+    routeStudioTurn({ status: 'failed', draftCodeRevision: null }),
+    'build',
+  );
+  const { studioTools: realTools, studioToolsContext } = loadModuleGraph(
+    'lib/studio/tools.ts',
+  );
+  const executed = [];
+  const tools = Object.fromEntries(
+    Object.entries(realTools).map(([name, tool]) => [
+      name,
+      {
+        ...tool,
+        toModelOutput: undefined,
+        execute: async (input) => {
+          executed.push({ name, input });
+          return { ok: true };
+        },
+      },
+    ]),
+  );
+  const reference = 'https://minatelsupermercados.com.br/brotas';
+  const calls = [
+    ['read_project_context', {}],
+    ['inspect_visual_reference', { url: reference }],
+    ...Array.from({ length: 13 }, (_, i) => [
+      'read_project_file',
+      { path: `components/Section${i}.tsx` },
+    ]),
+    [
+      'write_project_file',
+      {
+        path: 'app/page.tsx',
+        content:
+          'export default function Page() { return <main>Novo layout</main>; }',
+      },
+    ],
+    ['run_project_check', { command: 'typecheck' }],
+    ['run_project_check', { command: 'build' }],
+  ];
+  const model = new MockLanguageModelV4({
+    doStream: async (options) => {
+      const index = model.doStreamCalls.length - 1;
+      assert.deepEqual(
+        options.tools.map((tool) => tool.name),
+        Object.keys(tools),
+      );
+      assert.deepEqual(options.toolChoice, { type: 'auto' });
+      const call = calls[index];
+      assert.ok(index <= calls.length);
+      return {
+        stream: convertArrayToReadableStream([
+          { type: 'stream-start', warnings: [] },
+          ...(call
+            ? [
+                {
+                  type: 'tool-call',
+                  toolCallId: `edit-${index}`,
+                  toolName: call[0],
+                  input: JSON.stringify(call[1]),
+                },
+              ]
+            : [
+                { type: 'text-start', id: 'final' },
+                {
+                  type: 'text-delta',
+                  id: 'final',
+                  delta: 'Layout alterado na prévia.',
+                },
+                { type: 'text-end', id: 'final' },
+              ]),
+          {
+            type: 'finish',
+            finishReason: {
+              unified: call ? 'tool-calls' : 'stop',
+              raw: undefined,
+            },
+            usage: { inputTokens: { total: 1 }, outputTokens: { total: 1 } },
+          },
+        ]),
+      };
+    },
+  });
+  const { streamStudioAgent } = loadModuleGraph('lib/studio/workflow.ts', {
+    '@ai-sdk/workflow': {
+      ...workflowSdk,
+      WorkflowAgent: class extends workflowSdk.WorkflowAgent {
+        constructor(settings) {
+          super({ ...settings, model });
+        }
+      },
+    },
+    './tools': { studioTools: tools, studioToolsContext },
+    './usage': {
+      beginStudioUsage: async () => {},
+      recordStudioUsage: async () => {},
+    },
+  });
+  const context = {
+    runId: '00000000-0000-4000-8000-000000000001',
+    projectId: '00000000-0000-4000-8000-000000000002',
+    tenantId: '00000000-0000-4000-8000-000000000003',
+    sandboxName: 'fixture',
+    workflowRunId: 'workflow',
+  };
   const result = await streamStudioAgent(
     {
-      role: 'assistant',
+      role,
       runId: context.runId,
       tenantId: context.tenantId,
-      messages: [{ role: 'user', content: 'Inspecione o projeto.' }],
+      messages: [
+        { role: 'user', content: `eu quero copiar esse layout ${reference}` },
+      ],
     },
     context,
   );
-  assert.equal(result.steps.length, 12);
-  assert.equal(model.doStreamCalls.length, 12);
-  assert.equal(result.totalUsage.totalTokens, 24);
+  assert.equal(result.finishReason, 'stop');
+  assert.equal(result.steps.length, calls.length + 1);
+  assert.deepEqual(
+    executed.map(({ name, input }) => [name, input]),
+    calls,
+  );
 });

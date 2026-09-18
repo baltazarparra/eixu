@@ -166,7 +166,7 @@ export async function POST(request: Request) {
     );
 
   const history = await studioMessages(tenant.id);
-  const role = routeStudioTurn(project, messageText(userMessage));
+  const role = routeStudioTurn(project);
   const autoPublish = shouldAutoPublishInitialProject({
     requested: parsed.data.autoPublish === true,
     role,

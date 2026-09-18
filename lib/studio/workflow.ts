@@ -389,8 +389,11 @@ export async function streamStudioAgent(
 
     if ('error' in result || result.finishReason === 'content-filter')
       throw new Error('O provedor não conseguiu concluir esta geração.');
-    if (result.finishReason === 'stop' || result.finishReason === 'tool-calls')
-      return { ...result, steps, totalUsage };
+    if (result.finishReason === 'stop') return { ...result, steps, totalUsage };
+    if (result.finishReason === 'tool-calls' && steps.length >= policy.maxSteps)
+      throw new Error(
+        `O agente atingiu o limite de ${policy.maxSteps} etapas antes de concluir o pedido. Este turno não gerou uma versão validada. Peça para continuar a alteração.`,
+      );
     if (attempt === 2 || steps.length >= policy.maxSteps)
       throw new Error(
         'O modelo interrompeu a geração após as tentativas de retomada. Os arquivos e imagens já salvos foram preservados.',
