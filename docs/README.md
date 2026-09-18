@@ -39,6 +39,17 @@ publicar rascunhos de clientes são operações distintas.
 
 ## Evoluções propostas
 
+[Criação de sites por chat](plano-chat-livre.md) propõe substituir o gerador
+por projetos de código próprios, com uma única jornada de chat, preview e CMS.
+Inclui inventário datado de Vercel/Neon/Blob, reset dos dados de sites preservando
+operadores, Kanban e institucional, política Sol/Terra/Luna e marcos para execução
+como goal. É planejamento: nenhuma dessas mudanças ou exclusões foi executada
+por sua elaboração.
+
+[Estudo do AI SDK 7](estudo-ai-sdk-chat-livre.md) fundamenta esse plano com a
+comparação entre ToolLoopAgent, WorkflowAgent e HarnessAgent, os contratos de
+persistência/streaming e as provas técnicas necessárias antes da adoção.
+
 [Evolução das vibes](plano-vibes-unicas.md) reúne as propostas que ainda precisam
 de desenho e validação. Funcionalidades já entregues foram retiradas da lista de
 pendências. Propostas não são garantias do produto nem autorização para gerar,
