@@ -85,3 +85,59 @@ void test('etapas aparecem só no widget, preservando respostas e ocultando payl
     /revise os dados/,
   );
 });
+
+void test('a resposta do agente chega formatada, sem marcação crua nem HTML do modelo', () => {
+  const { Message } = loadModuleGraph(
+    'app/(admin)/admin/[tenant]/chat-parts.tsx',
+    { '@/components/admin/session': { useAdminSession: () => null } },
+  );
+  const render = (role, text) =>
+    renderToStaticMarkup(
+      createElement(Message, {
+        message: {
+          id: `fixture-${role}`,
+          role,
+          parts: [{ type: 'text', text }],
+        },
+      }),
+    );
+
+  const html = render(
+    'assistant',
+    [
+      'A imagem do **Hero** agora ocupa a **largura total da tela**.',
+      '',
+      '### O que foi alterado',
+      '',
+      '1. Composição full width (`components/Hero.tsx`)',
+      '2. Sobreposição editorial',
+      '',
+      'Primeira linha',
+      'e a continuação.',
+      '',
+      '<script>alert(1)</script>',
+      '',
+      '![captura](https://exemplo.invalido/captura.png)',
+      '',
+      '[abrir](javascript:alert)',
+    ].join('\n'),
+  );
+  assert.doesNotMatch(html, /\*\*|###|`/);
+  assert.match(html, /<strong>Hero<\/strong>/);
+  assert.match(html, /<ol>/);
+  assert.match(html, /<code>components\/Hero\.tsx<\/code>/);
+  assert.match(html, /Primeira linha<br\s*\/?>/);
+  // Título do modelo nunca compete com a estrutura da página.
+  assert.match(
+    html,
+    /<h5 class="admin-bubble-heading">O que foi alterado<\/h5>/,
+  );
+  assert.doesNotMatch(html, /<h1|<h2/);
+  // Texto do modelo não injeta HTML, não carrega imagem remota e não vira link ativo perigoso.
+  assert.doesNotMatch(html, /<script|<img|javascript:/);
+
+  // O operador escreve texto puro: a mensagem dele continua literal.
+  const typed = render('user', '**mantenha isto literal**');
+  assert.match(typed, /\*\*mantenha isto literal\*\*/);
+  assert.match(typed, /whitespace-pre-wrap/);
+});

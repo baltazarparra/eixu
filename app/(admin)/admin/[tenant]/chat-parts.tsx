@@ -1,8 +1,10 @@
 'use client';
 
 import { getToolName, isToolUIPart, type UIMessage } from 'ai';
-import { useEffect, useState } from 'react';
+import { createElement, useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import Markdown, { type Components } from 'react-markdown';
+import remarkBreaks from 'remark-breaks';
 import { useAdminSession } from '@/components/admin/session';
 
 const TOOL_LABELS: Record<string, string> = {
@@ -36,6 +38,56 @@ function describeTool(name: string, input?: unknown): string {
     (name === 'record_artifact' ? ARTIFACT_LABELS[kind] : undefined) ??
     TOOL_LABELS[name] ??
     'Trabalhando no projeto'
+  );
+}
+
+// Um título do modelo não pode competir com a estrutura da página.
+const HEADING_LEVEL: Record<string, number> = {
+  h1: 3,
+  h2: 4,
+  h3: 5,
+  h4: 6,
+  h5: 6,
+  h6: 6,
+};
+
+const MARKDOWN_COMPONENTS: Components = {
+  ...Object.fromEntries(
+    Object.entries(HEADING_LEVEL).map(([tag, level]) => [
+      tag,
+      ({ children }: { children?: React.ReactNode }) =>
+        createElement(
+          `h${level}`,
+          { className: 'admin-bubble-heading' },
+          children,
+        ),
+    ]),
+  ),
+  // href vazio é o que sobra de um protocolo recusado: vira texto, não link.
+  a: ({ href, children }) =>
+    href ? (
+      <a href={href} target="_blank" rel="noreferrer">
+        {children}
+      </a>
+    ) : (
+      children
+    ),
+};
+
+/**
+ * O agente responde em markdown. A bolha renderiza o subconjunto de conversa:
+ * sem HTML bruto, sem imagem remota disparada por texto do modelo, e quebra
+ * simples de linha preservada como o operador escreveu.
+ */
+function AgentText({ text }: { text: string }) {
+  return (
+    <Markdown
+      remarkPlugins={[remarkBreaks]}
+      disallowedElements={['img']}
+      components={MARKDOWN_COMPONENTS}
+    >
+      {text}
+    </Markdown>
   );
 }
 
@@ -93,7 +145,7 @@ export function Message({ message }: { message: UIMessage }) {
     <div className="admin-turn">
       {texts.map((text, index) => (
         <Bubble key={index} from="assistant" author={author}>
-          {chatErrorMessage(text)}
+          <AgentText text={chatErrorMessage(text)} />
         </Bubble>
       ))}
     </div>
@@ -177,7 +229,16 @@ export function Bubble({
       <span className="admin-bubble-author">
         {author ?? (isUser ? 'Você' : 'Agente')}
       </span>
-      <div className="admin-bubble-body whitespace-pre-wrap">{children}</div>
+      {/* O operador escreve texto puro; o agente entrega markdown já formatado. */}
+      <div
+        className={
+          isUser
+            ? 'admin-bubble-body whitespace-pre-wrap'
+            : 'admin-bubble-body admin-bubble-rich'
+        }
+      >
+        {children}
+      </div>
     </div>
   );
 }
