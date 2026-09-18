@@ -61,6 +61,8 @@ O prompt recebe uma visão reduzida da conversa, dados do projeto, artefatos atu
 
 Logo, uploads e screenshots são enviados como partes de arquivo/imagem compatíveis com o modelo. URLs externas são consultadas com limites de tamanho, tempo e redirects. Referências de imagem para geração precisam pertencer ao Vercel Blob autorizado.
 
+O `WorkflowAgent` usa `experimental_download` com um downloader `use step` para converter URLs de imagens em bytes, tanto nas mensagens quanto nos resultados das ferramentas. Essa conversão ocorre fora dos steps do modelo no SDK; usar seu downloader padrão ali tenta acessar o `fetch` global proibido no Workflow. O step preserva as validações de URL, redirects e tamanho do downloader do AI SDK.
+
 A leitura oficial e cada screenshot registram identidade e digest do conteúdo capturado. `/dados` e logo preservam sua procedência no projeto. Falha de leitura aparece como lacuna. O site oficial fornece fatos; a referência visual fornece decisões de design.
 
 Os artefatos não aceitam um objeto livre. `context` separa fatos com procedência, inferências com base e lacunas com impacto; `art_direction` descreve referência, logo, layout, tipografia, paleta, imagem, ritmo, motion e mobile; `validation` exige typecheck e build. O servidor compara cada check de comando com o evento e o exit code do run antes de persistir o relatório.

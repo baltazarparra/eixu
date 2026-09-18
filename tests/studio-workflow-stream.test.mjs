@@ -50,6 +50,9 @@ for (const failure of [false, true])
       '@ai-sdk/workflow': {
         ...workflowSdk,
         WorkflowAgent: class {
+          constructor(settings) {
+            assert.equal(typeof settings.experimental_download, 'function');
+          }
           async stream() {
             return {
               totalUsage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
