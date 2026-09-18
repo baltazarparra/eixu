@@ -19,6 +19,7 @@ import {
   type StudioArtifactInput,
   type StudioValidationArtifact,
 } from './artifact-contract';
+import { studioArtifactToolSchema } from './artifact-tool-schema';
 import { studioClientContext } from './context';
 import {
   studioEditorDefaults,
@@ -1038,7 +1039,7 @@ export const studioTools = {
   record_artifact: tool({
     description:
       'Registra contexto, direção de arte ou validação em seu contrato estruturado, com versão e hash. Fatos exigem procedência; comandos de validação são conferidos contra os eventos do run.',
-    inputSchema: studioArtifactInputSchema,
+    inputSchema: studioArtifactToolSchema,
     contextSchema: toolContextSchema,
     execute: (input, { context }) => recordArtifactStep(input, context),
   }),
