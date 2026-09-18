@@ -82,6 +82,8 @@ Imagens públicas em `tenants/` usam `BLOB_READ_WRITE_TOKEN`. Checkpoints e scre
 
 O Sandbox inicia o servidor do projeto com um token aleatório de alta entropia. O `proxy.ts` protegido exige o token na primeira navegação e o troca por cookie HTTP-only, Secure, SameSite=None e Partitioned.
 
+O servidor de desenvolvimento usa a API programática do Next com o hostname externo exato devolvido pelo Sandbox e escuta em `0.0.0.0:3000`. Assim, a proteção de origem reconhece scripts e HMR da própria prévia. O bootstrap fica em `/tmp`, fora do checkpoint e da release; arquivos protegidos e configurações históricas do cliente permanecem intactos.
+
 A prontidão consulta a página com o cookie e exige HTTP 200, HTML e o cabeçalho de autorização. O redirect que entrega o cookie não comprova renderização: uma página com erro 500 não pode criar uma sessão de prévia.
 
 Durante um run, a rota abre o workspace daquele run com o servidor de desenvolvimento e HMR. Escritas de arquivo aparecem na prévia sem esperar o checkpoint. Um lease de comando pausa o servidor durante typecheck/build e o reinicia depois, evitando corrida entre compilação e leitura. Essa prévia de trabalho é transitória, autenticada e nunca serve como fonte de release.

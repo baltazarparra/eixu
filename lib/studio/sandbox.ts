@@ -10,6 +10,10 @@ import {
 } from './scaffold';
 import { assertStudioPackageContract } from './package-contract.mjs';
 import {
+  STUDIO_PREVIEW_SERVER,
+  STUDIO_PREVIEW_SERVER_PATH,
+} from './preview-server';
+import {
   isEditableStudioFile,
   isReadableStudioFile,
   STUDIO_WORKSPACE_ROOT,
@@ -241,12 +245,14 @@ async function seedOrRestore(sandbox: Sandbox, name: string) {
 }
 
 async function stopStudioPreview(sandbox: Sandbox) {
+  const processPattern =
+    'next dev.*--port 3000|node /tmp/eixu-preview-server\\.cjs';
   await sandbox
-    .runCommand('pkill', ['-f', 'next dev.*--port 3000'], { timeoutMs: 5_000 })
+    .runCommand('pkill', ['-f', processPattern], { timeoutMs: 5_000 })
     .catch(() => undefined);
   await new Promise((resolve) => setTimeout(resolve, 200));
   await sandbox
-    .runCommand('pkill', ['-KILL', '-f', 'next dev.*--port 3000'], {
+    .runCommand('pkill', ['-KILL', '-f', processPattern], {
       timeoutMs: 5_000,
     })
     .catch(() => undefined);
@@ -657,16 +663,28 @@ async function previewToken(
 }
 
 async function startStudioPreviewServer(sandbox: Sandbox, token: string) {
-  if (await previewResponds(sandbox, token)) return;
+  const bootstrap = await sandbox.readFileToBuffer({
+    path: STUDIO_PREVIEW_SERVER_PATH,
+  });
+  if (
+    bootstrap?.toString('utf8') === STUDIO_PREVIEW_SERVER &&
+    (await previewResponds(sandbox, token))
+  )
+    return;
   await stopStudioPreview(sandbox);
+  await sandbox.writeFiles([
+    { path: STUDIO_PREVIEW_SERVER_PATH, content: STUDIO_PREVIEW_SERVER },
+  ]);
   await sandbox.runCommand({
-    cmd: 'npm',
-    args: ['run', 'dev', '--', '--hostname', '0.0.0.0', '--port', '3000'],
+    cmd: 'node',
+    args: [STUDIO_PREVIEW_SERVER_PATH],
     cwd: STUDIO_WORKSPACE_ROOT,
     detached: true,
     env: {
+      NODE_ENV: 'development',
       NEXT_TELEMETRY_DISABLED: '1',
       EIXU_PREVIEW_TOKEN: token,
+      EIXU_PREVIEW_HOST: new URL(sandbox.domain(3000)).hostname,
     },
   });
   for (let attempt = 0; attempt < 40; attempt += 1) {

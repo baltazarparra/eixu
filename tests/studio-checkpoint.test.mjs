@@ -182,7 +182,9 @@ for (const [options, expected] of [
     assert.equal(fixture.previewSession(), undefined);
     assert.equal(
       fixture.calls.some(
-        (call) => call.cmd === 'npm' && call.args.includes('dev'),
+        (call) =>
+          call.cmd === 'node' &&
+          call.args.includes('/tmp/eixu-preview-server.cjs'),
       ),
       false,
     );
