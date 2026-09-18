@@ -1,5 +1,6 @@
 import { launchBrowser } from './browser';
 import { publicResource } from './network';
+import { referenceOutline, type ReferenceOutline } from './outline';
 import { abortable } from '@/lib/async/abort';
 
 export type ReferenceShot = {
@@ -10,7 +11,7 @@ export type ReferenceShot = {
   truncated: boolean;
   url: string;
   unavailableResources: number;
-  styles: unknown;
+  styles: ReferenceOutline;
   jpeg: Buffer;
 };
 
@@ -132,32 +133,10 @@ export async function captureReference(
           }),
           deadline,
         );
+        // A função é serializada para a página; ela não pode depender de nada
+        // deste módulo. Ver lib/references/outline.ts.
         const metrics = await abortable(
-          page.evaluate(() => ({
-            pageHeight: document.documentElement.scrollHeight,
-            styles: [
-              ...document.querySelectorAll(
-                'body, nav, h1, h2, main > section, main > article',
-              ),
-            ]
-              .slice(0, 18)
-              .map((el) => {
-                const css = getComputedStyle(el);
-                const rect = el.getBoundingClientRect();
-                return {
-                  tag: el.tagName,
-                  text: (el.textContent ?? '').trim().slice(0, 140),
-                  font: css.fontFamily,
-                  size: css.fontSize,
-                  weight: css.fontWeight,
-                  color: css.color,
-                  background: css.backgroundColor,
-                  display: css.display,
-                  width: Math.round(rect.width),
-                  height: Math.round(rect.height),
-                };
-              }),
-          })),
+          page.evaluate(referenceOutline),
           deadline,
         );
         const height = Math.min(metrics.pageHeight, 9000);

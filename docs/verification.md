@@ -40,7 +40,11 @@ npx oxfmt --check <arquivos>
 
 Depois da primeira geração, envie uma referência diferente do cadastro e peça uma recomposição ampla. O run deve usar `edit`, ter o catálogo completo disponível e chegar a escrita/checks sem repetir o onboarding. O teste com SDK real deve ultrapassar 12 passos e concluir a edição; esgotar o orçamento ainda em ferramentas deve falhar antes de checkpoint, sem recibo de sucesso. Confirme que a prévia muda e a release pública permanece a mesma.
 
-Na captura de referências, valide IPv4 público (inclusive `104.17.57.49`, usado pelo Minatel), IPv6 público, redes privadas e IPv4 mapeado. A URL explícita deve prevalecer sobre `/dados`, duas URLs no mesmo run devem conservar screenshots próprios e as imagens precisam atravessar `toModelOutput` como partes multimodais. Faça também uma captura real desktop/mobile da referência indicada.
+Prove também a continuação do turno: um segmento que termina em `tool-calls` deve registrar `model.continuing` e abrir o próximo dentro do mesmo run, até 150 etapas na edição, sem repetir efeitos já confirmados. Dois segmentos seguidos sem escrita, remoção, imagem ou comando encerram o turno antes do teto. Cancelar durante um segmento impede o próximo. Na falha por orçamento, a mensagem do chat deve listar os arquivos alterados e o pedido seguinte deve continuar do rascunho preservado no Sandbox.
+
+Exercite `edit_project_file` com trecho ausente, repetido e único, e `delete_project_file` em uma página obsoleta, em um arquivo de integração e no contrato editorial. Um turno que só remove arquivos ainda conta como mutação e passa pelos gates; o build precisa reprovar a remoção de um arquivo ainda importado.
+
+Na captura de referências, valide IPv4 público (inclusive `104.17.57.49`, usado pelo Minatel), IPv6 público, redes privadas e IPv4 mapeado. A URL explícita deve prevalecer sobre `/dados`, duas URLs no mesmo run devem conservar screenshots próprios e as imagens precisam atravessar `toModelOutput` como partes multimodais. Faça também uma captura real desktop/mobile da referência indicada e confira a leitura estrutural: a sequência de faixas não pode colapsar em um wrapper de framework, e geometria, grid, tipografia e paleta precisam corresponder à página observada.
 
 Prove:
 

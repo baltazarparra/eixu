@@ -13,6 +13,8 @@ const TOOL_LABELS: Record<string, string> = {
   list_project_files: 'Mapeando os arquivos do projeto',
   read_project_file: 'Lendo um arquivo do projeto',
   write_project_file: 'Escrevendo o projeto',
+  edit_project_file: 'Ajustando um arquivo do projeto',
+  delete_project_file: 'Removendo um arquivo do projeto',
   write_content_contract: 'Organizando o conteúdo editável',
   generate_project_image: 'Criando uma imagem para o projeto',
   run_project_check: 'Validando o projeto',

@@ -173,3 +173,143 @@ void test('a nova URL não ignora autorização do projeto nem validação na fr
   );
   assert.equal(fixture.captured.length, 0);
 });
+
+function element({
+  tag,
+  id = '',
+  classes = [],
+  text = '',
+  top = 0,
+  height = 400,
+  width = 1200,
+  style = {},
+  children = [],
+}) {
+  const node = {
+    tagName: tag.toUpperCase(),
+    id,
+    classList: classes,
+    children,
+    style: {
+      display: 'block',
+      visibility: 'visible',
+      backgroundColor: 'rgb(255, 255, 255)',
+      color: 'rgb(17, 17, 17)',
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '16px',
+      fontWeight: '400',
+      lineHeight: '24px',
+      letterSpacing: 'normal',
+      textTransform: 'none',
+      gridTemplateColumns: 'none',
+      gap: 'normal',
+      padding: '0px',
+      ...style,
+    },
+    getBoundingClientRect: () => ({ top, height, width }),
+    get textContent() {
+      return [text, ...children.map((child) => child.textContent)].join(' ');
+    },
+    descendants() {
+      return children.flatMap((child) => [child, ...child.descendants()]);
+    },
+    querySelectorAll(selector) {
+      const tags = selector
+        .split(',')
+        .map((part) => part.trim().toUpperCase())
+        .filter((part) => /^[A-Z][A-Z0-9]*$/.test(part));
+      return this.descendants().filter((child) => tags.includes(child.tagName));
+    },
+    querySelector(selector) {
+      return this.querySelectorAll(selector)[0] ?? null;
+    },
+  };
+  return node;
+}
+
+void test('a leitura da referência entrega a sequência de faixas, tipografia e paleta', async () => {
+  const { referenceOutline } = await import('../lib/references/outline.ts');
+  const hero = element({
+    tag: 'section',
+    id: 'hero',
+    classes: ['hero', 'dark'],
+    height: 720,
+    style: {
+      backgroundColor: 'rgb(10, 10, 10)',
+      color: 'rgb(255, 255, 255)',
+      padding: '96px 64px',
+    },
+    children: [
+      element({ tag: 'h1', text: 'Fachada em primeiro plano', height: 80 }),
+      element({ tag: 'img', text: '', height: 400 }),
+      element({ tag: 'a', text: 'Fale conosco', height: 48 }),
+    ],
+  });
+  const grid = element({
+    tag: 'section',
+    classes: ['ofertas'],
+    top: 720,
+    height: 600,
+    style: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px' },
+    children: [
+      element({ tag: 'h2', text: 'Ofertas da semana', height: 40 }),
+      element({ tag: 'button', text: 'Ver todas', height: 44 }),
+    ],
+  });
+  const main = element({ tag: 'main', height: 1320, children: [hero, grid] });
+  const wrapper = element({
+    tag: 'div',
+    id: '__next',
+    height: 1320,
+    children: [main],
+  });
+  const nav = element({
+    tag: 'nav',
+    height: 72,
+    children: [
+      element({ tag: 'a', text: 'Início', height: 32 }),
+      element({ tag: 'a', text: 'Unidades', height: 32 }),
+    ],
+  });
+  const body = element({ tag: 'body', height: 1392, children: [nav, wrapper] });
+  const previous = {
+    document: globalThis.document,
+    window: globalThis.window,
+    getComputedStyle: globalThis.getComputedStyle,
+  };
+  const documentStub = {
+    body,
+    documentElement: { scrollHeight: 4200 },
+    querySelector: (selector) => body.querySelector(selector),
+    querySelectorAll: (selector) => body.querySelectorAll(selector),
+  };
+  globalThis.document = documentStub;
+  globalThis.window = { scrollY: 0, innerHeight: 900 };
+  globalThis.getComputedStyle = (node) => node.style;
+  try {
+    const { pageHeight, styles } = referenceOutline();
+    assert.equal(pageHeight, 4200);
+    // O wrapper do framework não pode virar a única faixa observada.
+    assert.deepEqual(
+      styles.sections.map((section) => section.identity),
+      ['#hero.hero.dark', '.ofertas'],
+    );
+    assert.equal(styles.sections[0].heading, 'Fachada em primeiro plano');
+    assert.equal(styles.sections[0].images, 1);
+    assert.equal(styles.sections[0].background, 'rgb(10, 10, 10)');
+    assert.equal(styles.sections[0].padding, '96px 64px');
+    assert.equal(styles.sections[1].top, 720);
+    assert.equal(styles.sections[1].columns, '1fr 1fr 1fr');
+    assert.equal(styles.sections[1].buttons, 1);
+    assert.deepEqual(styles.navigation, ['Início', 'Unidades']);
+    assert.deepEqual(
+      styles.typography.map((entry) => entry.role),
+      ['h1', 'h2', 'a', 'button'],
+    );
+    assert.equal(styles.document.contentWidth, 1200);
+    assert.ok(styles.palette.length > 0);
+    assert.ok(styles.palette.every((color) => color.uses > 0));
+  } finally {
+    Object.assign(globalThis, previous);
+  }
+});

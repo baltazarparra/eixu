@@ -47,7 +47,9 @@ export async function checkpointStudioProject(input: {
                exists(
                  select 1 from studio_events event
                  where event.run_id = ${input.runId}
-                   and event.type in ('file.written', 'content.written')
+                   and event.type in (
+                     'file.written', 'file.deleted', 'content.written'
+                   )
                ) as mutated,
                exists(
                  select 1 from studio_artifacts artifact

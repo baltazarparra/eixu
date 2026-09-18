@@ -88,6 +88,7 @@ export function createStudioAgent(
   context: StudioToolContext,
   previousSteps: unknown[] = [],
   validationRepair = false,
+  stepLimit?: number,
 ) {
   const selected = studioModelPolicy(role);
   return new WorkflowAgent({
@@ -103,6 +104,7 @@ export function createStudioAgent(
             'list_project_files',
             'read_project_file',
             'write_project_file',
+            'edit_project_file',
             'write_content_contract',
             'run_project_check',
             'record_artifact',
@@ -112,7 +114,7 @@ export function createStudioAgent(
     toolsContext: studioToolsContext(context),
     experimental_download: downloadStudioAssetsStep,
     stopWhen: isStepCount(
-      Math.max(1, selected.maxSteps - previousSteps.length),
+      Math.max(1, stepLimit ?? selected.maxSteps - previousSteps.length),
     ),
     providerOptions: {
       gateway: {
@@ -313,6 +315,22 @@ async function recordModelRecoveryStep(input: {
   });
 }
 
+async function recordModelContinuationStep(input: {
+  runId: string;
+  completedSteps: number;
+  budget: number;
+  completedSegments: number;
+}) {
+  'use step';
+  if (!(await studioRunMayContinue(input.runId)))
+    throw new Error('A execução foi cancelada antes de continuar o trabalho.');
+  await nextStudioEvent(input.runId, 'model.continuing', {
+    completedSteps: input.completedSteps,
+    budget: input.budget,
+    completedSegments: input.completedSegments,
+  });
+}
+
 async function recordValidationRecoveryStep(input: {
   runId: string;
   command: string;
@@ -328,6 +346,24 @@ async function recordValidationRecoveryStep(input: {
   });
 }
 
+/** Uma ferramenta de efeito prova que o segmento avançou o trabalho real. */
+const PROGRESS_TOOLS = new Set([
+  'write_project_file',
+  'edit_project_file',
+  'delete_project_file',
+  'write_content_contract',
+  'generate_project_image',
+  'run_project_check',
+]);
+
+function segmentProgressed(steps: unknown[]): boolean {
+  return steps.some((step) =>
+    ((step as { toolResults?: unknown[] }).toolResults ?? []).some((result) =>
+      PROGRESS_TOOLS.has((result as { toolName?: string }).toolName ?? ''),
+    ),
+  );
+}
+
 /** O SDK pode retornar finishReason=error sem lançar; isso não é conclusão. */
 export async function streamStudioAgent(
   input: Pick<StudioWorkflowInput, 'role' | 'messages' | 'tenantId' | 'runId'>,
@@ -339,14 +375,19 @@ export async function streamStudioAgent(
   const steps: WorkflowAgentStreamResult['steps'] = [];
   let totalUsage = createNullLanguageModelUsage();
   let messages = input.messages;
+  let recoveries = 0;
+  let idleSegments = 0;
+  let segment = 0;
 
-  for (let attempt = 0; attempt <= 2; attempt++) {
+  while (steps.length < policy.maxTotalSteps) {
     const offset = (options.usageStepOffset ?? 0) + steps.length;
+    segment += 1;
     const result = await createStudioAgent(
       input.role,
       context,
       steps,
       options.validationRepair,
+      Math.min(policy.maxSteps, policy.maxTotalSteps - steps.length),
     ).stream({
       messages,
       writable,
@@ -390,11 +431,36 @@ export async function streamStudioAgent(
     if ('error' in result || result.finishReason === 'content-filter')
       throw new Error('O provedor não conseguiu concluir esta geração.');
     if (result.finishReason === 'stop') return { ...result, steps, totalUsage };
-    if (result.finishReason === 'tool-calls' && steps.length >= policy.maxSteps)
-      throw new Error(
-        `O agente atingiu o limite de ${policy.maxSteps} etapas antes de concluir o pedido. Este turno não gerou uma versão validada. Peça para continuar a alteração.`,
-      );
-    if (attempt === 2 || steps.length >= policy.maxSteps)
+
+    // O agente ainda estava chamando ferramentas quando o segmento acabou.
+    // Enquanto o turno produzir efeito e houver orçamento, ele continua.
+    if (result.finishReason === 'tool-calls') {
+      if (steps.length >= policy.maxTotalSteps) break;
+      idleSegments = segmentProgressed(result.steps) ? 0 : idleSegments + 1;
+      if (idleSegments >= 2)
+        throw new Error(
+          `O agente usou ${steps.length} etapas sem escrever no projeto nem rodar uma verificação. Este turno não gerou uma versão validada. Reduza o escopo do pedido ou aponte o arquivo a alterar.`,
+        );
+      await recordModelContinuationStep({
+        runId: input.runId,
+        completedSteps: steps.length,
+        budget: policy.maxTotalSteps,
+        completedSegments: segment,
+      });
+      messages = [
+        ...result.messages.filter((message) => message.role !== 'system'),
+        {
+          role: 'user',
+          content: `Continue de onde parou, sem recomeçar nem repetir efeitos já confirmados. Você usou ${steps.length} das ${policy.maxTotalSteps} etapas deste turno. Priorize escrever as alterações que faltam e depois rodar typecheck e build; deixe leituras e refinamentos opcionais para depois. Se o orçamento ficar curto, entregue um estado coerente e validado do pedido em vez de um trabalho pela metade.`,
+        },
+      ];
+      continue;
+    }
+
+    // Em um turno longo, duas tentativas valem para uma parada real. Um
+    // segmento que escreveu e depois caiu não consome a cota dos próximos.
+    if (segmentProgressed(result.steps)) recoveries = 0;
+    if (++recoveries > 2 || steps.length >= policy.maxTotalSteps)
       throw new Error(
         'O modelo interrompeu a geração após as tentativas de retomada. Os arquivos e imagens já salvos foram preservados.',
       );
@@ -403,7 +469,7 @@ export async function streamStudioAgent(
       runId: input.runId,
       finishReason: result.finishReason,
       completedSteps: steps.length,
-      attempt: attempt + 1,
+      attempt: recoveries,
     });
     messages = [
       // O SDK devolve as instruções como system, mas não as aceita de volta
@@ -416,7 +482,9 @@ export async function streamStudioAgent(
       },
     ];
   }
-  throw new Error('A geração excedeu o limite de retomadas.');
+  throw new Error(
+    `O agente atingiu o limite de ${policy.maxTotalSteps} etapas antes de concluir o pedido. Este turno não gerou uma versão validada; o rascunho no ambiente de trabalho conserva o que já foi escrito. Peça para continuar a alteração.`,
+  );
 }
 
 async function persistWorkflowMessageStep(input: {
@@ -539,6 +607,21 @@ async function failStudioWorkflowStep(input: {
     await settleFailedProject(input.runId);
     return;
   }
+  // O rascunho do Sandbox conserva o que o turno já escreveu. Sem essa lista,
+  // o próximo pedido não sabe de onde continuar.
+  const touched = (await db()`
+    select distinct data->>'path' as path
+    from studio_events
+    where run_id = ${input.runId}
+      and type in ('file.written', 'file.deleted')
+      and data->>'path' is not null
+    order by path limit 20
+  `) as { path: string }[];
+  const partial = touched.length
+    ? ` Arquivos já alterados neste turno, preservados no rascunho: ${touched
+        .map((row) => row.path)
+        .join(', ')}.`
+    : '';
   await persistStudioMessage({
     tenantId: input.tenantId,
     message: {
@@ -547,7 +630,7 @@ async function failStudioWorkflowStep(input: {
       parts: [
         {
           type: 'text',
-          text: `Não consegui concluir este turno. ${input.message}`.slice(
+          text: `Não consegui concluir este turno. ${input.message}${partial}`.slice(
             0,
             2_400,
           ),
