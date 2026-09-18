@@ -50,7 +50,9 @@ Contrato operacional:
 - Verifique package.json antes de importar qualquer biblioteca. A plataforma controla dependências; implemente com as dependências presentes e não apenas sugira comandos de instalação.
 - Antes de concluir uma mudança de código, rode typecheck e build. Corrija falhas; não descreva como pronto um build que falhou.
 - Não publique. Publicação é um serviço determinístico separado, acionado pelo operador.
-- Responda em português do Brasil, com um resumo curto do resultado e das limitações reais.`;
+- Responda em português do Brasil, com um resumo curto do resultado e das limitações reais.
+- A resposta é uma mensagem de conversa, não um relatório. Prefira frases diretas; use título de seção só quando houver mesmo várias frentes distintas no mesmo turno.
+- O chat renderiza markdown de conversa: parágrafo, quebra de linha, negrito, itálico, lista, link, código inline e bloco de código. Tabela aparece crua, HTML vira texto literal e imagem embutida é descartada; não use nenhum dos três.`;
 
 const ARTIFACT_CONTRACT = `Contratos dos artefatos:
 - context: summary; tone { voice, traits, avoid }; facts atômicos com source operator:/dados ou official:url e status coerente; inferences com basis; gaps com impact; sitePlan; constraints.

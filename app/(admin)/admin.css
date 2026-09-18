@@ -2573,6 +2573,92 @@ div.admin-attention-item strong {
   box-shadow: var(--shadow-hairline);
   color: var(--color-ink);
 }
+/* Resposta do agente em markdown: hierarquia de leitura dentro da bolha. */
+.admin-bubble-rich > * + * {
+  margin-top: 0.8em;
+}
+/* Sobra de um nó recusado, como imagem remota, não deixa espaço em branco. */
+.admin-bubble-rich p:empty {
+  display: none;
+}
+.admin-bubble-rich > * + .admin-bubble-heading {
+  margin-top: 1.35em;
+}
+.admin-bubble-heading {
+  font-size: 1.05em;
+  font-weight: 650;
+  letter-spacing: -0.006em;
+  color: var(--color-text);
+}
+.admin-bubble-rich strong {
+  font-weight: 650;
+  color: var(--color-text);
+}
+.admin-bubble-rich em {
+  font-style: italic;
+}
+.admin-bubble-rich ul,
+.admin-bubble-rich ol {
+  padding-left: 1.35em;
+}
+.admin-bubble-rich ul {
+  list-style: disc;
+}
+.admin-bubble-rich ol {
+  list-style: decimal;
+}
+.admin-bubble-rich li::marker {
+  color: var(--color-support);
+}
+.admin-bubble-rich li + li,
+.admin-bubble-rich li > ul,
+.admin-bubble-rich li > ol {
+  margin-top: 5px;
+}
+.admin-bubble-rich a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: color-mix(
+    in srgb,
+    var(--color-accent) 45%,
+    transparent
+  );
+}
+.admin-bubble-rich a:hover {
+  text-decoration-color: currentColor;
+}
+.admin-bubble-rich code {
+  font-family: var(--font-admin-mono), ui-monospace, monospace;
+  font-size: 0.9em;
+  padding: 0.12em 0.36em;
+  border-radius: 5px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-line);
+}
+.admin-bubble-rich pre {
+  overflow-x: auto;
+  padding: 11px 12px;
+  border-radius: 9px;
+  background: var(--color-panel);
+  border: 1px solid var(--color-line);
+}
+.admin-bubble-rich pre code {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 0.88em;
+  line-height: 1.55;
+}
+.admin-bubble-rich blockquote {
+  padding-left: 11px;
+  border-left: 2px solid var(--color-line-strong);
+  color: var(--color-text-2);
+}
+.admin-bubble-rich hr {
+  border: 0;
+  border-top: 1px solid var(--color-line);
+}
 .admin-bubble-files {
   display: flex;
   flex-wrap: wrap;
