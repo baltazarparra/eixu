@@ -63,6 +63,8 @@ Ao criar por `/studio/novo`, confirme o redirecionamento para `?start=1`, um ún
 
 Tente path absoluto, `..`, symlink, arquivo excessivo, arquivo protegido e comando fora da allowlist. Todos devem falhar antes do efeito. Restaure o Sandbox do digest do checkpoint e compare os arquivos protegidos.
 
+Exercite uma VM existente sem `/vercel/sandbox`, uma inicialização parcial e a escrita em vários diretórios novos. O primeiro caso precisa criar o scaffold ou restaurar o checkpoint; o segundo deve preservar código já editado. Falha ao criar diretório interrompe o fluxo antes de executar npm. A materialização de release também deve funcionar sem a raiz pré-existente.
+
 Remova o Sandbox e restaure um checkpoint que contém lockfile, mas não `node_modules`: typecheck, build e prévia precisam funcionar após `npm ci`. `.gitignore` original deve passar no checkpoint; uma alteração deve ser recusada.
 
 ### Preview

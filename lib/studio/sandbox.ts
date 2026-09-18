@@ -3,7 +3,11 @@ import { posix } from 'node:path';
 import { Sandbox, type NetworkPolicy } from '@vercel/sandbox';
 import { db } from '@/lib/db';
 import { readStudioCheckpoint } from './checkpoint-storage';
-import { STUDIO_SCAFFOLD_FILES, studioScaffoldContent } from './scaffold';
+import {
+  STUDIO_PROTECTED_FILES,
+  STUDIO_SCAFFOLD_FILES,
+  studioScaffoldContent,
+} from './scaffold';
 import { assertStudioPackageContract } from './package-contract.mjs';
 import {
   isEditableStudioFile,
@@ -174,8 +178,17 @@ async function assertStudioPackage(sandbox: Sandbox): Promise<void> {
   assertStudioPackageContract(parsed);
 }
 
+async function createStudioDirectory(sandbox: Sandbox, path: string) {
+  const result = await sandbox.runCommand('mkdir', ['-p', '--', path], {
+    timeoutMs: 10_000,
+  });
+  if (result.exitCode !== 0)
+    throw new Error('Não foi possível criar a pasta do projeto.');
+}
+
 async function seedOrRestore(sandbox: Sandbox, name: string) {
-  await sandbox.mkDir(STUDIO_WORKSPACE_ROOT);
+  await createStudioDirectory(sandbox, STUDIO_WORKSPACE_ROOT);
+  await assertNoStudioSymlinks(sandbox);
   const rows = (await db()`
     select project.slug, project.draft_code_revision, artifact.storage_key,
            revision.content
@@ -204,12 +217,18 @@ async function seedOrRestore(sandbox: Sandbox, name: string) {
   if (!project) throw new Error('Projeto do Sandbox não encontrado.');
   const storageKey = project.storage_key;
   if (!project.draft_code_revision) {
-    await sandbox.writeFiles(
-      STUDIO_SCAFFOLD_FILES.map((file) => ({
-        path: posix.join(STUDIO_WORKSPACE_ROOT, file.path),
-        content: studioScaffoldContent(file.path, project.slug)!,
-      })),
+    // Uma tentativa de bootstrap pode ter sido interrompida após parte da escrita.
+    // Complete o scaffold sem sobrescrever arquivos já editados pelo agente.
+    const missing = await Promise.all(
+      STUDIO_SCAFFOLD_FILES.map(async (file) => {
+        const path = posix.join(STUDIO_WORKSPACE_ROOT, file.path);
+        return (await sandbox.readFileToBuffer({ path })) === null
+          ? { path, content: studioScaffoldContent(file.path, project.slug)! }
+          : null;
+      }),
     );
+    const files = missing.filter((file) => file !== null);
+    if (files.length) await sandbox.writeFiles(files);
     return;
   }
   if (!storageKey || !project.content)
@@ -294,7 +313,7 @@ async function restoreStudioCheckpoint(
 }
 
 export async function studioSandbox(name: string): Promise<Sandbox> {
-  return Sandbox.getOrCreate({
+  const sandbox = await Sandbox.getOrCreate({
     name,
     image: 'vercel/sandbox/universal:latest',
     persistent: true,
@@ -303,8 +322,22 @@ export async function studioSandbox(name: string): Promise<Sandbox> {
     resources: { vcpus: 2 },
     networkPolicy: NETWORK_POLICY,
     tags: { product: 'eixu', surface: 'studio' },
-    onCreate: (sandbox) => seedOrRestore(sandbox, name),
   });
+  // onCreate só roda uma vez, mesmo quando a inicialização falha. Confira a
+  // estrutura também ao recuperar uma VM existente ou retomar uma sessão.
+  const initialized = await sandbox.runCommand(
+    'test',
+    STUDIO_PROTECTED_FILES.flatMap((file, index) => [
+      ...(index ? ['-a'] : []),
+      '-f',
+      posix.join(STUDIO_WORKSPACE_ROOT, file),
+    ]),
+    { timeoutMs: 5_000 },
+  );
+  if (initialized.exitCode === 1) await seedOrRestore(sandbox, name);
+  else if (initialized.exitCode !== 0)
+    throw new Error('Não foi possível conferir a estrutura do projeto.');
+  return sandbox;
 }
 
 export async function syncStudioContentToSandbox(name: string): Promise<void> {
@@ -404,7 +437,7 @@ export async function writeStudioFile(
     throw new Error(`Arquivo excede o limite de ${MAX_FILE_BYTES} bytes.`);
   const sandbox = await studioSandbox(name);
   await assertSandboxPath(sandbox, path);
-  await sandbox.mkDir(posix.dirname(path));
+  await createStudioDirectory(sandbox, posix.dirname(path));
   await sandbox.writeFiles([{ path, content }]);
   return { path: posix.relative(STUDIO_WORKSPACE_ROOT, path), bytes };
 }
@@ -800,7 +833,7 @@ export async function studioDeploymentFiles(input: {
     tags: { product: 'eixu', surface: 'release' },
   });
   try {
-    await sandbox.mkDir(STUDIO_WORKSPACE_ROOT);
+    await createStudioDirectory(sandbox, STUDIO_WORKSPACE_ROOT);
     const archivePath = '/tmp/eixu-release.tar.gz';
     await sandbox.writeFiles([{ path: archivePath, content: input.archive }]);
     const extracted = await sandbox.runCommand(
