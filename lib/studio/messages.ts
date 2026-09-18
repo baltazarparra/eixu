@@ -52,6 +52,8 @@ export async function studioMessages(
     where tenant_id = ${tenantId} and channel = 'site'
     order by created_at desc, id desc limit ${limit}
   `) as MessageRow[];
+  // Antes da primeira mensagem, o histórico vazio é um estado válido do Studio.
+  if (rows.length === 0) return [];
   return validateUIMessages<StudioMessage>({
     messages: rows.reverse().map(fromRow),
   });
