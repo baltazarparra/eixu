@@ -21,6 +21,8 @@ export function studioSandboxFixture({
   directoryFailure = false,
   installFailure = false,
   corruptArchive = false,
+  checkFailure,
+  activeOperation,
 } = {}) {
   const sources = Object.fromEntries(
     STUDIO_SCAFFOLD_FILES.map((file) => [
@@ -154,6 +156,12 @@ export function studioSandboxFixture({
         return result('', paths.every((path) => files.has(path)) ? 0 : 1);
       }
       if (input.cmd === 'npm') {
+        if (input.args[0] === 'run' && input.args[1] === checkFailure)
+          return result(
+            '',
+            1,
+            'Event handlers cannot be passed to Client Component props.',
+          );
         if (['ci', 'install'].includes(input.args[0])) {
           if (installFailure) return result('', 1, 'Instalação indisponível');
           files.set(
@@ -212,6 +220,8 @@ export function studioSandboxFixture({
       return [];
     }
     if (query.includes('select 1 from studio_preview_sessions')) return [];
+    if (query.includes('select operation from studio_tool_leases'))
+      return activeOperation ? [{ operation: activeOperation }] : [];
     throw new Error(`SQL inesperado no fixture: ${query}`);
   };
   const mocks = {

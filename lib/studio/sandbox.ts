@@ -719,7 +719,10 @@ export async function ensureStudioWorkingPreview(input: {
       and expires_at > now()
     limit 1
   `) as { operation: string }[];
-  if (leases[0]?.operation.startsWith('command:'))
+  if (
+    leases[0]?.operation.startsWith('command:') ||
+    leases[0]?.operation === 'checkpoint'
+  )
     throw new Error('A prévia está pausada enquanto o projeto é validado.');
   const sandbox = await studioSandbox(input.name);
   const installed = await ensureSandboxDependencies(sandbox);

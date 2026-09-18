@@ -15,6 +15,42 @@ const input = {
   workflowRunId: 'workflow',
 };
 
+for (const command of ['typecheck', 'build'])
+  void test(`checkpoint devolve falha de ${command} sem salvar ou repetir código inválido`, async () => {
+    const fixture = studioSandboxFixture({ checkFailure: command });
+    const outcome = await fixture
+      .load('lib/studio/checkpoint.ts')
+      .checkpointStudioProject(input);
+    assert.equal(outcome.ok, false);
+    assert.equal(outcome.command, command);
+    assert.match(outcome.error, /Event handlers cannot be passed/);
+    assert.equal(fixture.blobCalls.length, 0);
+    assert.equal(fixture.mutations.length, 0);
+    assert.equal(
+      fixture.calls.filter(
+        (call) => call.cmd === 'npm' && call.args[1] === command,
+      ).length,
+      1,
+    );
+  });
+
+for (const operation of ['command:build', 'checkpoint'])
+  void test(`prévia de trabalho não reinicia o servidor durante ${operation}`, async () => {
+    const fixture = studioSandboxFixture({ activeOperation: operation });
+    await assert.rejects(
+      fixture.load('lib/studio/sandbox.ts').ensureStudioWorkingPreview({
+        name: 'fixture',
+        projectId: 'project',
+        runId: 'run',
+        contentRevisionId: null,
+        userId: 'user',
+      }),
+      /pausada enquanto/,
+    );
+    assert.equal(fixture.calls.length, 0);
+    assert.equal(fixture.previewSession(), undefined);
+  });
+
 void test('checkpoint completo aceita .gitignore original, valida e persiste artefato privado', async () => {
   const fixture = studioSandboxFixture();
   const { checkpointStudioProject } = fixture.load('lib/studio/checkpoint.ts');

@@ -144,6 +144,11 @@ export function StudioWorkspace({
   const [hasProject, setHasProject] = useState(Boolean(initialProject));
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewProblem, setPreviewProblem] = useState<string | null>(
+    initialProject?.status === 'failed'
+      ? 'A última geração não foi concluída. Peça ao agente para continuar.'
+      : null,
+  );
   const [previewNonce, setPreviewNonce] = useState(0);
   const [editor, setEditor] = useState<StudioEditorState | null>(initialEditor);
   const [editorValues, setEditorValues] = useState<Record<string, string>>(
@@ -172,6 +177,7 @@ export function StudioWorkspace({
   const threadRef = useRef<HTMLDivElement>(null);
   const autoStartSent = useRef(false);
   const automaticPublicationPending = useRef(false);
+  const previewRequest = useRef(0);
 
   const fail = useCallback((message: string) => {
     setNotice({ tone: 'err', text: chatErrorMessage(message) });
@@ -202,11 +208,13 @@ export function StudioWorkspace({
   const loadPreview = useCallback(
     async (reload = false, quiet = false) => {
       if (!hasProject && !reload) return;
+      const requestId = ++previewRequest.current;
       setPreviewLoading(true);
       try {
         let response: PreviewResponse | null = null;
         const attempts = reload ? 20 : 1;
         for (let attempt = 0; attempt < attempts; attempt += 1) {
+          if (requestId !== previewRequest.current) return;
           try {
             response = await adminFetch<PreviewResponse>(
               `/api/admin/${tenant.slug}/studio/preview`,
@@ -223,18 +231,27 @@ export function StudioWorkspace({
             await new Promise((resolve) => window.setTimeout(resolve, 750));
           }
         }
+        if (requestId !== previewRequest.current) return;
         if (!response) throw new Error('A prévia ainda não está disponível.');
         setPreviewUrl(response.url);
+        setPreviewProblem(null);
         setProjectStatus(response.status);
         setDirty(response.dirty);
         if (reload) setPreviewNonce((value) => value + 1);
       } catch (error) {
+        if (requestId !== previewRequest.current) return;
+        setPreviewUrl(null);
+        setPreviewProblem(
+          error instanceof AdminHttpError && error.status === 409
+            ? 'A prévia está pausada enquanto o projeto é validado.'
+            : 'A prévia ainda não está disponível. Ela volta quando o projeto puder ser exibido.',
+        );
         if (!quiet)
           fail(
             error instanceof Error ? error.message : 'Falha ao abrir a prévia.',
           );
       } finally {
-        setPreviewLoading(false);
+        if (requestId === previewRequest.current) setPreviewLoading(false);
       }
     },
     [fail, hasProject, tenant.slug],
@@ -253,6 +270,18 @@ export function StudioWorkspace({
       if (!isDisconnect) setActiveRun(null);
       setHasProject(true);
       const succeeded = !isAbort && !isDisconnect && !isError;
+      if (isAbort || isError) {
+        // Uma consulta de prévia iniciada antes da falha não pode recolocar
+        // no iframe o servidor que o gate acabou de parar.
+        previewRequest.current += 1;
+        setPreviewUrl(null);
+        setPreviewLoading(false);
+        setPreviewProblem(
+          isAbort
+            ? 'A geração foi interrompida. Envie uma mensagem para continuar.'
+            : 'A geração não passou na validação. Peça ao agente para corrigir e continuar.',
+        );
+      }
       if (!succeeded && automaticPublicationPending.current) {
         automaticPublicationPending.current = false;
         setPublishing(false);
@@ -488,6 +517,7 @@ export function StudioWorkspace({
       filename: item.name,
     }));
     setNotice(null);
+    setPreviewProblem(null);
     void sendMessage({
       text: text || 'Analise e use a imagem anexada no projeto.',
       files,
@@ -1000,18 +1030,22 @@ export function StudioWorkspace({
                           <Loader2 className="admin-studio-spin" size={22} />
                         ) : null}
                         <strong>
-                          {previewLoading || busy
-                            ? 'Preparando a prévia'
-                            : hasProject
-                              ? 'Ainda não há uma prévia'
-                              : 'O projeto começa na conversa'}
+                          {previewProblem
+                            ? 'Prévia indisponível'
+                            : previewLoading || busy
+                              ? 'Preparando a prévia'
+                              : hasProject
+                                ? 'Ainda não há uma prévia'
+                                : 'O projeto começa na conversa'}
                         </strong>
                         <p>
-                          {previewLoading || busy
-                            ? 'A primeira compilação pode levar alguns instantes.'
-                            : hasProject
-                              ? 'Peça uma nova versão na conversa para criar o site.'
-                              : 'Envie o briefing livre. O agente usa os dados já cadastrados.'}
+                          {previewProblem
+                            ? previewProblem
+                            : previewLoading || busy
+                              ? 'A primeira compilação pode levar alguns instantes.'
+                              : hasProject
+                                ? 'Peça uma nova versão na conversa para criar o site.'
+                                : 'Envie o briefing livre. O agente usa os dados já cadastrados.'}
                         </p>
                       </div>
                     </div>
