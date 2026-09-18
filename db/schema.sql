@@ -517,7 +517,8 @@ insert into kanban_columns (id, board_id, title, position)
 select gen_random_uuid(), board.id, defaults.title, defaults.position
 from board cross join defaults
 where not exists (
-  select 1 from kanban_columns column
-  where column.board_id = board.id and column.title = defaults.title
+  select 1 from kanban_columns kanban_column
+  where kanban_column.board_id = board.id
+    and kanban_column.title = defaults.title
 )
 on conflict do nothing;
