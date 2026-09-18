@@ -48,6 +48,26 @@ encerra quando dois segmentos seguidos não escrevem nem validam. Esgotar o
 orçamento continua sendo falha sem checkpoint, agora informando no chat quais
 arquivos ficaram alterados no rascunho.
 
+## Falhas observadas em produção no piloto Libardi
+
+Duas falhas reais em 18/09/2026, com causa confirmada nos registros:
+
+O release `afb27ba1-f022-425a-a202-542fad8f9cfb` foi promovido na Vercel às
+21:46:55 e o passo `verifyCanonicalStep` falhou três vezes até 21:47:01, em
+menos de seis segundos, com "O host não está servindo o release esperado".
+O deployment `dpl_EezrA4v893ScM8w18X26SB7FaiDJ` é o de produção do projeto
+`prj_65p30W27mmDksif60jphQ118YnA9`: a publicação aconteceu e só a confirmação
+no banco falhou, por tempo de propagação da borda. O workflow passou a sondar
+o marcador canônico antes de confirmar, e `reconcileStudioRelease` continua
+reparando releases nesse estado quando o painel é recarregado.
+
+A captura do Minatel alternou entre `observed` (20:09, 21:23 e 21:37) e
+falhas: `net::ERR_FAILED` às 19:51 e 19:56 e `The operation was aborted due to
+timeout` às 21:50. O prazo único de 55 segundos cobria abertura do navegador e
+os dois viewports. Agora cada viewport tem orçamento próprio e uma segunda
+tentativa, e um viewport entregue já basta para o turno prosseguir declarando
+o que faltou.
+
 O catálogo ganhou `edit_project_file`, para substituir um trecho exato sem
 reescrever o arquivo, e `delete_project_file`, para retirar páginas e
 componentes que saíram da composição; arquivos de integração e o contrato

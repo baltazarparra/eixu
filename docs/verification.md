@@ -44,6 +44,8 @@ Prove também a continuação do turno: um segmento que termina em `tool-calls` 
 
 Exercite `edit_project_file` com trecho ausente, repetido e único, e `delete_project_file` em uma página obsoleta, em um arquivo de integração e no contrato editorial. Um turno que só remove arquivos ainda conta como mutação e passa pelos gates; o build precisa reprovar a remoção de um arquivo ainda importado.
 
+A captura precisa sobreviver a uma referência lenta: prove um viewport que falha nas duas tentativas com o outro entregue (`status: ok` mais `missingViewports`), uma queda no documento que passa na segunda tentativa e os dois viewports falhando (`unavailable`). Um relato de layout sem screenshot correspondente é erro de fluxo, não estilo.
+
 Na captura de referências, valide IPv4 público (inclusive `104.17.57.49`, usado pelo Minatel), IPv6 público, redes privadas e IPv4 mapeado. A URL explícita deve prevalecer sobre `/dados`, duas URLs no mesmo run devem conservar screenshots próprios e as imagens precisam atravessar `toModelOutput` como partes multimodais. Faça também uma captura real desktop/mobile da referência indicada e confira a leitura estrutural: a sequência de faixas não pode colapsar em um wrapper de framework, e geometria, grid, tipografia e paleta precisam corresponder à página observada.
 
 Prove:
@@ -106,6 +108,8 @@ Confira `EIXU_VERCEL_TEAM_ID`, `EIXU_VERCEL_TOKEN` e o ID do projeto raiz no amb
 Materialize configurações atuais e históricas: a cópia de release deve compilar com `NEXT_ADAPTER_PATH`, manter regras de imagens e deixar o checkpoint intacto. Uma configuração fora do contrato deve ser recusada. Antes de promover, confirme `target: 'production'` e `autoAssignCustomDomains: false`, inclusive no primeiro deployment do projeto. O candidato deve estar protegido para acesso anônimo, e o domínio público deve continuar na versão anterior ou sem release. Depois do smoke, a promoção deve usar o mesmo ID, sem criar outro build.
 
 Simule o bypass ainda não propagado: o smoke deve repetir a URL original com o mesmo segredo até receber o marcador correto, dentro do limite. Ele nunca segue o redirect de SSO com credenciais. Redirect para outro destino e falha persistente não podem promover; em ambos os casos o bypass precisa ser revogado.
+
+Depois de promover, a borda ainda serve o deployment anterior por alguns segundos. A sonda do host canônico precisa devolver falso nesse intervalo — sem lançar e sem gastar as tentativas do step — e o workflow só confirma quando o marcador for o do release. Prove com o marcador antigo, com o correto e com o host inacessível; uma publicação promovida não pode terminar como `failed` por tempo de propagação.
 
 1. confirme team e root project IDs;
 2. crie o projeto dedicado;

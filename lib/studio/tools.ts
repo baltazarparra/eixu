@@ -265,11 +265,11 @@ async function inspectVisualReferenceStep(
     .digest('hex')
     .slice(0, 16);
   try {
-    const shots = await captureReference(visualReferenceUrl, undefined, {
-      signal: AbortSignal.timeout(90_000),
+    const capture = await captureReference(visualReferenceUrl, undefined, {
+      signal: AbortSignal.timeout(150_000),
     });
     const stored = await Promise.all(
-      shots.map(async (shot) => {
+      capture.shots.map(async (shot) => {
         const pathname = `studio/${context.projectId}/references/${context.runId}-${referenceKey}-${shot.viewport}.jpg`;
         await put(pathname, shot.jpeg, {
           ...(await privateBlobOptions()),
@@ -306,18 +306,24 @@ async function inspectVisualReferenceStep(
         source: visualReferenceSource,
         viewports: stored.map((shot) => shot.viewport),
         contentHashes: stored.map((shot) => shot.contentHash),
+        ...(capture.failures.length ? { missing: capture.failures } : {}),
       },
     });
     await nextStudioEvent(context.runId, 'visual.checked', {
       status: 'ok',
       source: visualReferenceSource,
       viewports: stored.map((shot) => shot.viewport),
+      ...(capture.failures.length
+        ? { missing: capture.failures.map((failure) => failure.viewport) }
+        : {}),
     });
     return {
       status: 'ok' as const,
       url: visualReferenceUrl,
       source: visualReferenceSource,
       shots: stored,
+      // Um viewport ausente é limitação a relatar, nunca layout a supor.
+      missingViewports: capture.failures,
     };
   } catch (error) {
     await recordSourceEvidence({
@@ -1024,6 +1030,7 @@ export const studioTools = {
               status: result.status,
               url: result.url,
               source: result.source,
+              missingViewports: result.missingViewports,
               shots: result.shots.map(
                 ({ storageKey: _storageKey, ...shot }) => shot,
               ),

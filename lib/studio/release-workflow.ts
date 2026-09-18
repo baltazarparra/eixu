@@ -34,6 +34,12 @@ async function activateStep(releaseId: string) {
   return activateStudioDeployment(releaseId);
 }
 
+async function canonicalServedStep(releaseId: string) {
+  'use step';
+  const { studioCanonicalReleaseServed } = await import('./releases');
+  return studioCanonicalReleaseServed(releaseId);
+}
+
 async function verifyCanonicalStep(releaseId: string) {
   'use step';
   const { verifyAndCommitStudioRelease } = await import('./releases');
@@ -74,6 +80,12 @@ export async function studioPublishWorkflow(releaseId: string) {
       throw new Error('O build não ficou pronto dentro de 10 minutos.');
     await verifyCandidateStep(releaseId);
     await activateStep(releaseId);
+    // A borda leva alguns segundos para servir o deployment promovido. Sondar
+    // antes de confirmar evita falhar uma publicação que só estava em trânsito.
+    for (let attempt = 0; attempt < 24; attempt += 1) {
+      if (await canonicalServedStep(releaseId)) break;
+      await sleep('5s');
+    }
     const result = await verifyCanonicalStep(releaseId);
     return { releaseId, status: 'active' as const, ...result };
   } catch (error) {

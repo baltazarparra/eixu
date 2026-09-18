@@ -897,6 +897,28 @@ export async function verifyAndCommitStudioRelease(releaseId: string) {
 }
 
 /**
+ * A promoção na Vercel responde antes de a borda servir o deployment novo.
+ * Sondar sem lançar evita gastar as tentativas do step numa corrida de
+ * propagação e transformar uma publicação concluída em release falhado.
+ */
+export async function studioCanonicalReleaseServed(
+  releaseId: string,
+): Promise<boolean> {
+  const release = await studioReleaseById(releaseId);
+  if (!release) return false;
+  if (release.status === 'active') return true;
+  try {
+    await smokeUrl(
+      `https://${release.canonicalHost}/.well-known/eixu-release.json`,
+      { expectedReleaseId: release.id },
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Repara a janela entre promover na Vercel e confirmar o release no banco.
  * O marcador servido pelo host canônico é a prova externa da versão ativa.
  */

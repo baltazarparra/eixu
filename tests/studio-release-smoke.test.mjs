@@ -126,3 +126,51 @@ for (const scenario of ['propagates', 'foreign-redirect', 'never-propagates'])
       ),
     );
   });
+
+for (const scenario of ['stale', 'served', 'unreachable'])
+  void test(`sonda do domínio canônico com marcador ${scenario} não gasta tentativas do step`, async () => {
+    const sql = async () => [];
+    sql.query = async () => [
+      {
+        id: 'release',
+        project_id: 'project',
+        tenant_id: 'tenant',
+        slug: 'fixture',
+        canonical_host: 'fixture.eixu.com.br',
+        deployment_id: 'dpl_fixture',
+        deployment_url: 'https://fixture.vercel.app',
+        vercel_project_id: 'prj_fixture',
+        content_revision_id: 'content',
+        status: 'ready',
+        manifest: { promotedAt: '2026-09-18T21:46:55.091Z' },
+      },
+    ];
+    const { studioCanonicalReleaseServed } = loadModuleGraph(
+      'lib/studio/releases.ts',
+      {
+        '@/lib/db': { db: () => sql },
+        './checkpoint-storage': {},
+        './sandbox': {},
+      },
+      {
+        process: {
+          env: {
+            EIXU_VERCEL_TOKEN: 'fixture',
+            EIXU_VERCEL_TEAM_ID: 'team_fixture',
+            EIXU_VERCEL_ROOT_PROJECT_ID: 'prj_root',
+          },
+        },
+        fetch: async () => {
+          if (scenario === 'unreachable') throw new Error('socket hang up');
+          // A borda ainda responde com o release anterior logo após promover.
+          return Response.json({
+            releaseId: scenario === 'served' ? 'release' : 'release-anterior',
+          });
+        },
+      },
+    );
+    assert.equal(
+      await studioCanonicalReleaseServed('release'),
+      scenario === 'served',
+    );
+  });

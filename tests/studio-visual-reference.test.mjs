@@ -42,7 +42,11 @@ void test('captura aceita IPv4 público sem liberar redes privadas, reservadas o
     );
 });
 
-function referenceFixture({ denied = false, unavailable = false } = {}) {
+function referenceFixture({
+  denied = false,
+  unavailable = false,
+  partial = false,
+} = {}) {
   const captured = [],
     stored = new Map(),
     events = [];
@@ -73,17 +77,24 @@ function referenceFixture({ denied = false, unavailable = false } = {}) {
       captureReference: async (url) => {
         captured.push(url);
         if (unavailable) throw new Error('Referência não acessível');
-        return ['desktop', 'mobile'].map((viewport) => ({
-          viewport,
-          width: 390,
-          height: 844,
-          pageHeight: 844,
-          truncated: false,
-          url,
-          unavailableResources: 0,
-          styles: [],
-          jpeg: Buffer.from(`${url}:${viewport}`),
-        }));
+        return {
+          shots: (partial ? ['desktop'] : ['desktop', 'mobile']).map(
+            (viewport) => ({
+              viewport,
+              width: 390,
+              height: 844,
+              pageHeight: 844,
+              truncated: false,
+              url,
+              unavailableResources: 0,
+              styles: [],
+              jpeg: Buffer.from(`${url}:${viewport}`),
+            }),
+          ),
+          failures: partial
+            ? [{ viewport: 'mobile', message: 'Tempo limite do viewport.' }]
+            : [],
+        };
       },
     },
     '@vercel/blob': {
@@ -312,4 +323,116 @@ void test('a leitura da referência entrega a sequência de faixas, tipografia e
   } finally {
     Object.assign(globalThis, previous);
   }
+});
+
+void test('captura parcial entrega o viewport obtido e declara o que faltou', async () => {
+  const fixture = referenceFixture({ partial: true });
+  const result = await fixture.tool.execute(
+    { url: 'https://new-reference.example/layout' },
+    { context },
+  );
+  assert.equal(result.status, 'ok');
+  assert.deepEqual(
+    result.shots.map((shot) => shot.viewport),
+    ['desktop'],
+  );
+  assert.deepEqual(result.missingViewports, [
+    { viewport: 'mobile', message: 'Tempo limite do viewport.' },
+  ]);
+  assert.deepEqual(fixture.events[0].missing, ['mobile']);
+  const output = await fixture.tool.toModelOutput({ output: result });
+  assert.match(
+    JSON.parse(output.value[0].text).missingViewports[0].viewport,
+    /mobile/,
+  );
+  assert.equal(output.value.filter((part) => part.type === 'file').length, 1);
+});
+
+function captureFixture(gotoResults) {
+  const outline = () => ({});
+  const attempts = [];
+  const page = (viewportName) => {
+    let width = 0;
+    return {
+      async setViewport(viewport) {
+        width = viewport.width;
+      },
+      async setBypassServiceWorker() {},
+      async setRequestInterception() {},
+      on() {},
+      async goto() {
+        const outcome = gotoResults.shift();
+        attempts.push({ viewport: viewportName(width), outcome });
+        if (outcome === 'throw') throw new Error('net::ERR_FAILED');
+        if (outcome === 'error') return { ok: () => false, status: () => 503 };
+        return { ok: () => true, status: () => 200 };
+      },
+      async evaluate(fn) {
+        return fn === outline
+          ? { pageHeight: 2400, styles: { sections: [] } }
+          : undefined;
+      },
+      async screenshot() {
+        return new Uint8Array([1, 2, 3]);
+      },
+      url: () => 'https://reference.example/',
+      async close() {},
+    };
+  };
+  const viewportName = (width) => (width === 1440 ? 'desktop' : 'mobile');
+  let pages = 0;
+  const browser = {
+    async newPage() {
+      pages += 1;
+      return page(viewportName);
+    },
+    process: () => null,
+    async close() {},
+  };
+  const { captureReference } = loadModuleGraph('lib/references/capture.ts', {
+    './browser': { launchBrowser: async () => browser },
+    './outline': { referenceOutline: outline },
+    './network': { publicResource: async () => ({}) },
+  });
+  return { captureReference, browser, attempts, pages: () => pages };
+}
+
+void test('um viewport que falha não apaga a captura inteira e a navegação tenta de novo', async () => {
+  // Desktop cai nas duas tentativas; mobile responde.
+  const partial = captureFixture(['throw', 'throw', 'ok']);
+  const result = await partial.captureReference(
+    'https://reference.example/',
+    undefined,
+    { launch: async () => partial.browser },
+  );
+  assert.deepEqual(
+    result.shots.map((shot) => shot.viewport),
+    ['mobile'],
+  );
+  assert.equal(result.failures.length, 1);
+  assert.equal(result.failures[0].viewport, 'desktop');
+  assert.match(result.failures[0].message, /ERR_FAILED/);
+  assert.equal(partial.pages(), 3);
+
+  // Uma queda momentânea no documento passa na segunda tentativa.
+  const retried = captureFixture(['error', 'ok', 'ok']);
+  const recovered = await retried.captureReference(
+    'https://reference.example/',
+    undefined,
+    { launch: async () => retried.browser },
+  );
+  assert.deepEqual(
+    recovered.shots.map((shot) => shot.viewport),
+    ['desktop', 'mobile'],
+  );
+  assert.deepEqual(recovered.failures, []);
+
+  // Sem nenhum viewport, a captura continua sendo uma falha declarada.
+  const failed = captureFixture(['throw', 'throw', 'throw', 'throw']);
+  await assert.rejects(
+    failed.captureReference('https://reference.example/', undefined, {
+      launch: async () => failed.browser,
+    }),
+    /ERR_FAILED/,
+  );
 });
