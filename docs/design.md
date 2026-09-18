@@ -13,6 +13,11 @@ integrada ao hero; hero sobre a fachada; apresentação da unidade; seis setores
 ofertas; redes sociais; faixa fotográfica; história; segunda faixa fotográfica;
 carreira; galeria; convite de contato; formulário; todas as unidades; rodapé.
 
+A cor da marca é o padrão da barra, não uma trava: uma cor escrita pelo operador
+prevalece, global por `presentation.background` ou recortada por tela em
+`presentation.elements`, e o texto do menu passa a seguir o contraste calculado
+em vez do branco fixo. Sem escolha explícita a barra continua na cor da marca.
+
 A navegação compõe a fachada: na home ela é sobreposta ao hero, sem reservar
 cabeçalho próprio, e rola junto com a página. Isso vale apenas onde a abertura
 é a fachada — nas internas a barra flui como cabeçalho, com fio de fechamento,
@@ -328,6 +333,13 @@ corpo, ações, lista, item indexado, mídia, imagem, formulário, ação e camp
 Regras independentes para mobile e desktop controlam flex, grid, dimensões,
 espaçamento, ordem, posição e acabamento. O schema recebe somente enums, números
 limitados e cores validadas; o renderer produz CSS escopado ao bloco.
+
+No cabeçalho, o alvo `section` alcança a barra através do quadro que a mede:
+o `<header>` não é filho direto do bloco, e sem esse caminho um ajuste de seção
+seria salvo sem aparecer. Uma cor de seção escrita pelo operador é publicada no
+bloco como `data-element-surface`, com o viewport que ela cobre, para a regra de
+superfície da vibe sair da frente apenas nessa largura em vez de disputar
+especificidade. Um ajuste sem cor não marca o atributo e preserva a cor da vibe.
 
 `sectionBackgrounds` e `fieldBackgrounds` compartilham tokens com o renderer,
 incluindo tons, fundos locais, cartões, painéis, superfícies modernas e

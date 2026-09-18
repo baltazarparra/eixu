@@ -353,6 +353,22 @@ function renderList(
           elementScope,
           presentation?.elements,
         );
+        // Uma cor de seção escrita pelo operador perde por especificidade para
+        // a regra de superfície da vibe, e o ajuste é salvo sem aparecer. O
+        // fato é resolvido aqui e publicado para a vibe poder sair da frente,
+        // em vez de disputar cascata com um seletor cada vez mais longo. O
+        // viewport vai junto: sem ele a vibe sairia da frente também nas
+        // larguras que o ajuste do operador nem cobre.
+        const surfaceViewports = [
+          ...new Set(
+            (presentation?.elements ?? [])
+              .filter((style) => style.target === 'section' && style.background)
+              .map((style) => style.viewport ?? 'all'),
+          ),
+        ];
+        const elementSurface = surfaceViewports.length
+          ? surfaceViewports.join(' ')
+          : undefined;
         // `data-layout` precisa da mesma leitura do pre-flight: um hero que
         // herda a composição do perfil não traz `layout` nas props, e o CSS
         // que mira a variação pelo wrapper ficaria sem alvo.
@@ -382,6 +398,7 @@ function renderList(
             }
             data-block-id={block.id}
             data-tone={presentation?.background ? 'custom' : presentation?.tone}
+            data-element-surface={elementSurface}
             data-scrim={sectionScrim(presentation)}
             data-decoration={presentation?.decoration}
             style={sectionColorVars(

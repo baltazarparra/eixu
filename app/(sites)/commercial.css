@@ -88,10 +88,68 @@
   margin-inline: auto;
   border: 0;
   border-radius: 0;
-  background: color-mix(in oklab, var(--commercial-blue) 94%, black);
-  color: white;
   box-shadow: 0 1rem 2rem rgb(0 0 0 / 0.24);
   backdrop-filter: none;
+}
+
+/*
+ * A cor da marca é o padrão da barra, e só o padrão: a regra sai da frente
+ * onde o operador escreveu uma cor, seja global (data-tone) ou recortada por
+ * tela (data-element-surface). Antes ela vencia as duas por especificidade, e
+ * o chat confirmava uma troca que a tela descartava. A geometria acima não
+ * depende da cor e continua valendo em todos os casos. O recorte é por
+ * largura: uma cor só do mobile não pode apagar a marca no desktop.
+ */
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-block[data-block='nav.bar']:not([data-tone='custom']):not(
+    [data-element-surface]
+  )
+  .site-nav {
+  background: color-mix(in oklab, var(--commercial-blue) 94%, black);
+  color: white;
+}
+
+@media (min-width: 768px) {
+  .site-theme[data-profile-version='8'][data-vibe='comercial']
+    .site-block[data-block='nav.bar'][data-element-surface~='mobile']:not(
+      [data-element-surface~='all']
+    ):not([data-element-surface~='desktop']):not([data-tone='custom'])
+    .site-nav {
+    background: color-mix(in oklab, var(--commercial-blue) 94%, black);
+    color: white;
+  }
+}
+
+@media (max-width: 767px) {
+  .site-theme[data-profile-version='8'][data-vibe='comercial']
+    .site-block[data-block='nav.bar'][data-element-surface~='desktop']:not(
+      [data-element-surface~='all']
+    ):not([data-element-surface~='mobile']):not([data-tone='custom'])
+    .site-nav {
+    background: color-mix(in oklab, var(--commercial-blue) 94%, black);
+    color: white;
+  }
+}
+
+/*
+ * A cor da marca é o padrão da v8, não uma trava. Uma cor escolhida pelo
+ * operador chega ao bloco como --paper, e a regra acima a descartava por ler
+ * --commercial-blue do tema: o chat confirmava "fundo #xxxxxx, contraste x:1"
+ * e a barra continuava igual. operator.css já declara que a escolha explícita
+ * prevalece sobre a vibe; aqui a v8 passa a cumprir isso. O texto acompanha
+ * --ink, calculado com o contraste da cor escolhida, em vez do branco fixo.
+ */
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-block[data-block='nav.bar'][data-tone='custom']
+  .site-nav {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-block[data-block='nav.bar'][data-tone='custom']
+  .site-nav-link {
+  color: var(--ink);
 }
 
 .site-theme[data-profile-version='8'][data-vibe='comercial']
@@ -121,9 +179,24 @@
 }
 
 .site-theme[data-profile-version='8'][data-vibe='comercial'] .site-nav-link {
-  color: white;
   letter-spacing: 0;
   text-transform: none;
+}
+
+/* O branco é o par da cor da marca; com cor do operador os destinos seguem a
+ * barra, para não sobrar texto branco sobre um fundo claro escolhido no chat. */
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-block[data-block='nav.bar']:not([data-tone='custom']):not(
+    [data-element-surface]
+  )
+  .site-nav-link {
+  color: white;
+}
+
+.site-theme[data-profile-version='8'][data-vibe='comercial']
+  .site-block[data-block='nav.bar'][data-element-surface]
+  .site-nav-link {
+  color: inherit;
 }
 
 .site-theme[data-profile-version='8'][data-vibe='comercial'] .site-nav-cta,

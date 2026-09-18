@@ -245,9 +245,22 @@ export function Bubble({
   );
 }
 
-/** Erro do gateway em linguagem de gente. */
+/**
+ * Uma requisição que falha no transporte rejeita com o texto do navegador —
+ * "Load failed" no WebKit, "Failed to fetch" no Chromium —, que chegava cru à
+ * tela. Sem tradução o operador lê uma frase sem ação e, pior, sem saber se a
+ * edição chegou a ser salva: o servidor pode ter concluído a escrita depois de
+ * a conexão cair. A mensagem passa a dizer o que fazer e a não afirmar nem que
+ * salvou nem que perdeu, o mesmo contrato do CHAT_INTERRUPTED do servidor.
+ */
+const TRANSPORT_FAILURE =
+  /load failed|failed to fetch|networkerror|network request failed|err_(?:network|connection|internet)|the operation (?:timed out|was aborted)|timeouterror|aborterror/i;
+
+/** Erro do gateway e queda de conexão em linguagem de gente. */
 export function chatErrorMessage(message: string): string {
-  return /rate.?limit|429|free tier|not have access/i.test(message)
-    ? 'O AI Gateway recusou a chamada. Verifique créditos e o modelo em EIXU_MODEL.'
-    : message;
+  if (/rate.?limit|429|free tier|not have access/i.test(message))
+    return 'O AI Gateway recusou a chamada. Verifique créditos e o modelo em EIXU_MODEL.';
+  if (TRANSPORT_FAILURE.test(message))
+    return 'A conexão com o painel caiu antes da resposta. A alteração pode ter sido salva mesmo assim: recarregue a página e confira a prévia antes de pedir de novo.';
+  return message;
 }

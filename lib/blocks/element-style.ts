@@ -183,7 +183,14 @@ function relativeSelectors(style: ElementStyle): string[] {
     style.index === undefined ? '*' : `:nth-child(${style.index + 1})`;
   switch (style.target) {
     case 'section':
-      return ['> :is(section, article, header, footer, nav)'];
+      // O filho direto do bloco é a seção em todo bloco menos a navegação,
+      // onde o quadro que mede a barra interpõe duas divs. Sem o segundo
+      // caminho, um ajuste de seção no cabeçalho não casa com nada e some
+      // sem aviso; `container` acertaria a linha interna, não a barra.
+      return [
+        '> :is(section, article, header, footer, nav)',
+        '> .site-navigation-frame > .site-navigation-content > :is(header, nav)',
+      ];
     case 'container':
       return ['.site-shell'];
     case 'content':

@@ -408,6 +408,7 @@ export function editPolicyFor(
               'presentation.gradient',
               'presentation.decoration',
               'presentation.foreground',
+              'presentation.elements',
             ]
           : []),
       ],
@@ -516,6 +517,25 @@ function changedPaths(before: unknown, after: unknown, prefix = ''): string[] {
   return [prefix];
 }
 
+/**
+ * Só `presentation.elements` recorta um ajuste por tela, então sem ele um
+ * pedido de cabeçalho restrito ao mobile não tinha caminho: os demais campos
+ * valem em qualquer largura e o operador recebia "campos fora do pedido".
+ * A entrada é por folha, não por prefixo: cor, recorte e alvo passam; medidas,
+ * colunas e disposição continuam fora, porque o pedido é de estilo, não de
+ * reconstrução do cabeçalho.
+ */
+const NAVIGATION_ELEMENT_PATH =
+  /^presentation\.elements\.\d+\.(?:target|index|viewport|background|foreground|borderColor)$/;
+
+function allowedNavigationPath(path: string, paths: string[] | undefined) {
+  if (paths?.includes(path)) return true;
+  return (
+    paths?.includes('presentation.elements') &&
+    NAVIGATION_ELEMENT_PATH.test(path)
+  );
+}
+
 /** Verifica os campos efetivamente alterados antes da escrita, inclusive após uma crítica. */
 export function scopedUpdateError(
   policy: EditPolicy | undefined,
@@ -534,7 +554,7 @@ export function scopedUpdateError(
     )
       return 'Este pedido permite alterar somente os cabeçalhos identificados. Preserve os demais blocos e relate pendências externas ao pedido.';
     const outside = changedPaths(block.props, props).filter(
-      (path) => !policy.paths?.includes(path),
+      (path) => !allowedNavigationPath(path, policy.paths),
     );
     return outside.length
       ? `Campos fora do pedido: ${outside.join(', ')}. Altere somente ${policy.paths?.join(', ')}.`
