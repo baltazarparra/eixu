@@ -16,7 +16,7 @@ function baseForm() {
   form.set('constraints', 'Não prometer prazo sem confirmação');
   form.set('currentSiteUrl', 'https://cliente.example/');
   form.set('reference', 'https://referencia.example/');
-  form.set('direction', 'moderno');
+  form.set('direction', 'referencia');
   form.set('primary', '#112233');
   form.set('secondary', '#f0f1f2');
   form.set('highlight', '#ff5500');
@@ -43,7 +43,7 @@ void test('/dados preserva fatos, contatos e uma referência visual', () => {
   assert.equal(intake.data.references.length, 1);
   assert.equal(intake.data.evidence.length, 2);
   assert.match(intake.data.socialUrl, /instagram\.com\/cliente/);
-  assert.equal(directionFromForm(form).data, 'moderno');
+  assert.equal(directionFromForm(form).data, 'referencia');
   assert.deepEqual(brandColorsFromForm(form).data, {
     primary: '#112233',
     secondary: '#f0f1f2',

@@ -38,11 +38,13 @@ export type StudioWorkflowInput = {
   runId: string;
   projectId: string;
   tenantId: string;
+  tenant: { slug: string; name: string };
   sandboxName: string;
   responseMessageUid: string;
   role: StudioModelRole;
   messages: ModelMessage[];
   operator: { id: string; name: string; login: string };
+  autoPublish: boolean;
 };
 
 function hasToolResult(steps: unknown[], toolName: string): boolean {
@@ -406,6 +408,56 @@ async function failStudioWorkflowStep(input: {
   });
 }
 
+async function autoPublishInitialProjectStep(input: {
+  runId: string;
+  projectId: string;
+  tenantId: string;
+  tenant: StudioWorkflowInput['tenant'];
+  operator: StudioWorkflowInput['operator'];
+}) {
+  'use step';
+  try {
+    const { startStudioPublication } = await import('./publish');
+    const publication = await startStudioPublication({
+      projectId: input.projectId,
+      tenant: { id: input.tenantId, ...input.tenant },
+      operator: input.operator,
+      automatic: true,
+    });
+    await db()`
+      update studio_runs set
+        result = result || ${JSON.stringify({
+          automaticPublication: {
+            releaseId: publication.release.id,
+            workflowRunId: publication.workflowRunId,
+            status: publication.release.status,
+          },
+        })}::jsonb,
+        updated_at = now()
+      where id = ${input.runId}
+    `;
+    return {
+      ok: true as const,
+      releaseId: publication.release.id,
+      workflowRunId: publication.workflowRunId,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'A primeira publicação não pôde ser iniciada.';
+    await db()`
+      update studio_runs set
+        result = result || ${JSON.stringify({
+          automaticPublication: { status: 'failed', error: message },
+        })}::jsonb,
+        updated_at = now()
+      where id = ${input.runId}
+    `;
+    return { ok: false as const, error: message };
+  }
+}
+
 export async function studioTurnWorkflow(input: StudioWorkflowInput) {
   'use workflow';
   const started = Date.now();
@@ -486,7 +538,20 @@ export async function studioTurnWorkflow(input: StudioWorkflowInput) {
       },
       usageReceipts: stepUsageReceipts(input.role, result.steps),
     });
-    return { runId: input.runId, status: 'succeeded' as const };
+    const automaticPublication = input.autoPublish
+      ? await autoPublishInitialProjectStep({
+          runId: input.runId,
+          projectId: input.projectId,
+          tenantId: input.tenantId,
+          tenant: input.tenant,
+          operator: input.operator,
+        })
+      : null;
+    return {
+      runId: input.runId,
+      status: 'succeeded' as const,
+      automaticPublication,
+    };
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Falha inesperada.';

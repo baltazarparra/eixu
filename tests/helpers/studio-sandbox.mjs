@@ -71,6 +71,11 @@ export function studioSandboxFixture({
         serverRunning = false;
         return result();
       }
+      if (input.cmd === 'rm') {
+        for (const path of files.keys())
+          if (path.startsWith(`${workspace}/.next`)) files.delete(path);
+        return result();
+      }
       if (input.cmd === 'find') {
         if (input.args.includes('-exec')) {
           for (const path of files.keys())

@@ -32,6 +32,7 @@ import {
 import type { StudioMessage } from '@/lib/studio/types';
 import { sitesWriteGuard } from '@/lib/sites-maintenance';
 import { studioUIMessageStream } from '@/lib/studio/ui-stream';
+import { shouldAutoPublishInitialProject } from '@/lib/studio/initial-publication';
 import {
   parseBoundedPublicJson,
   PublicInputTooLargeError,
@@ -47,6 +48,7 @@ const requestSchema = z
       .max(80)
       .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
     messages: z.array(z.unknown()).length(1),
+    autoPublish: z.boolean().optional(),
   })
   .strict();
 
@@ -165,6 +167,12 @@ export async function POST(request: Request) {
 
   const history = await studioMessages(tenant.id);
   const role = routeStudioTurn(project, messageText(userMessage));
+  const autoPublish = shouldAutoPublishInitialProject({
+    requested: parsed.data.autoPublish === true,
+    role,
+    draftCodeRevision: project.draftCodeRevision,
+    historyLength: history.length,
+  });
   const run = await createStudioRun({
     projectId: project.id,
     tenantId: tenant.id,
@@ -224,6 +232,7 @@ export async function POST(request: Request) {
       runId: run.id,
       projectId: project.id,
       tenantId: tenant.id,
+      tenant: { slug: tenant.slug, name: tenant.name },
       sandboxName: project.sandboxName,
       responseMessageUid: randomUUID(),
       role,
@@ -233,6 +242,7 @@ export async function POST(request: Request) {
         name: operator.name,
         login: operator.login,
       },
+      autoPublish,
     };
   } catch (error) {
     const message =

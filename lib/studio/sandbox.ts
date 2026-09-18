@@ -414,6 +414,14 @@ export async function runStudioCommand(
   commandName: StudioCommand,
 ): Promise<StudioCommandResult> {
   const sandbox = await studioSandbox(name);
+  await stopStudioPreview(sandbox);
+  const cleaned = await sandbox.runCommand(
+    'rm',
+    ['-rf', posix.join(STUDIO_WORKSPACE_ROOT, '.next')],
+    { timeoutMs: 10_000 },
+  );
+  if (cleaned.exitCode !== 0)
+    throw new Error('Não foi possível preparar o projeto para validação.');
   if (commandName === 'install') return installSandboxDependencies(sandbox);
   const installed = await ensureSandboxDependencies(sandbox);
   if (installed && installed.exitCode !== 0) return installed;
@@ -610,6 +618,97 @@ async function previewToken(
   return token;
 }
 
+async function startStudioPreviewServer(sandbox: Sandbox, token: string) {
+  if (await previewResponds(sandbox, token)) return;
+  await stopStudioPreview(sandbox);
+  await sandbox.runCommand({
+    cmd: 'npm',
+    args: ['run', 'dev', '--', '--hostname', '0.0.0.0', '--port', '3000'],
+    cwd: STUDIO_WORKSPACE_ROOT,
+    detached: true,
+    env: {
+      NEXT_TELEMETRY_DISABLED: '1',
+      EIXU_PREVIEW_TOKEN: token,
+    },
+  });
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    if (await previewResponds(sandbox, token)) return;
+  }
+  throw new Error('A prévia não iniciou dentro do tempo esperado.');
+}
+
+async function persistPreviewSession(input: {
+  sandbox: Sandbox;
+  token: string;
+  projectId: string;
+  codeRevision: string;
+  contentRevisionId: string | null;
+  userId: string;
+}) {
+  const url = new URL(input.sandbox.domain(3000));
+  url.searchParams.set('__eixu_preview', input.token);
+  const tokenHash = createHash('sha256').update(input.token).digest('hex');
+  await db()`
+    insert into studio_preview_sessions (
+      project_id, token_hash, code_revision, content_revision_id,
+      preview_url, created_by, expires_at
+    ) values (
+      ${input.projectId}, ${tokenHash}, ${input.codeRevision},
+      ${input.contentRevisionId}, ${input.sandbox.domain(3000)}, ${input.userId},
+      now() + interval '45 minutes'
+    )
+    on conflict (token_hash) do update set
+      code_revision = excluded.code_revision,
+      content_revision_id = excluded.content_revision_id,
+      preview_url = excluded.preview_url,
+      created_by = excluded.created_by,
+      expires_at = excluded.expires_at
+  `;
+  return url.toString();
+}
+
+/**
+ * Abre o diretório vivo do run sem restaurar um checkpoint. O dev server usa
+ * HMR para refletir cada escrita; checks param o processo antes de tocar em
+ * `.next` e a rota volta a iniciá-lo quando o lease do comando termina.
+ */
+export async function ensureStudioWorkingPreview(input: {
+  name: string;
+  projectId: string;
+  runId: string;
+  contentRevisionId: string | null;
+  userId: string;
+}): Promise<string> {
+  const leases = (await db()`
+    select operation from studio_tool_leases
+    where project_id = ${input.projectId} and run_id = ${input.runId}
+      and expires_at > now()
+    limit 1
+  `) as { operation: string }[];
+  if (leases[0]?.operation.startsWith('command:'))
+    throw new Error('A prévia está pausada enquanto o projeto é validado.');
+  const sandbox = await studioSandbox(input.name);
+  const installed = await ensureSandboxDependencies(sandbox);
+  if (installed && installed.exitCode !== 0)
+    throw new Error(
+      `A prévia não pôde instalar o projeto. ${installed.stderr}`.slice(
+        0,
+        4_000,
+      ),
+    );
+  const token = await previewToken(sandbox, input.projectId);
+  await startStudioPreviewServer(sandbox, token);
+  return persistPreviewSession({
+    sandbox,
+    token,
+    projectId: input.projectId,
+    codeRevision: `working:${input.runId}`,
+    contentRevisionId: input.contentRevisionId,
+    userId: input.userId,
+  });
+}
+
 export async function ensureStudioPreview(input: {
   name: string;
   projectId: string;
@@ -638,49 +737,15 @@ export async function ensureStudioPreview(input: {
     content: snapshot.content,
   });
   const token = await previewToken(sandbox, input.projectId);
-  if (!(await previewResponds(sandbox, token))) {
-    await sandbox
-      .runCommand('pkill', ['-f', 'next dev.*--port 3000'], {
-        timeoutMs: 5_000,
-      })
-      .catch(() => undefined);
-    await sandbox.runCommand({
-      cmd: 'npm',
-      args: ['run', 'dev', '--', '--hostname', '0.0.0.0', '--port', '3000'],
-      cwd: STUDIO_WORKSPACE_ROOT,
-      detached: true,
-      env: {
-        NEXT_TELEMETRY_DISABLED: '1',
-        EIXU_PREVIEW_TOKEN: token,
-      },
-    });
-    for (let attempt = 0; attempt < 30; attempt += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      if (await previewResponds(sandbox, token)) break;
-      if (attempt === 29)
-        throw new Error('A prévia não iniciou dentro do tempo esperado.');
-    }
-  }
-  const url = new URL(sandbox.domain(3000));
-  url.searchParams.set('__eixu_preview', token);
-  const tokenHash = createHash('sha256').update(token).digest('hex');
-  await db()`
-    insert into studio_preview_sessions (
-      project_id, token_hash, code_revision, content_revision_id,
-      preview_url, created_by, expires_at
-    ) values (
-      ${input.projectId}, ${tokenHash}, ${input.codeRevision},
-      ${input.contentRevisionId}, ${sandbox.domain(3000)}, ${input.userId},
-      now() + interval '45 minutes'
-    )
-    on conflict (token_hash) do update set
-      code_revision = excluded.code_revision,
-      content_revision_id = excluded.content_revision_id,
-      preview_url = excluded.preview_url,
-      created_by = excluded.created_by,
-      expires_at = excluded.expires_at
-  `;
-  return url.toString();
+  await startStudioPreviewServer(sandbox, token);
+  return persistPreviewSession({
+    sandbox,
+    token,
+    projectId: input.projectId,
+    codeRevision: input.codeRevision,
+    contentRevisionId: input.contentRevisionId,
+    userId: input.userId,
+  });
 }
 
 export async function archiveStudioProject(name: string): Promise<Buffer> {

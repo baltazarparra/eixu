@@ -20,9 +20,11 @@ type LibraryState = {
 export function ImagesLibrary({
   tenant,
   initial,
+  basePath = '/admin',
 }: {
   tenant: { slug: string; name: string };
   initial: LibraryState;
+  basePath?: '/admin' | '/studio';
 }) {
   const [library, setLibrary] = useState(initial);
   const [filter, setFilter] = useState<'todas' | 'foto' | 'logo'>('todas');
@@ -121,7 +123,7 @@ export function ImagesLibrary({
     [filter, library.images],
   );
   const chatLink = (message: string) =>
-    `/admin/${tenant.slug}?pedido=${encodeURIComponent(message)}`;
+    `${basePath}/${tenant.slug}?pedido=${encodeURIComponent(message)}`;
 
   return (
     <main className="admin-page admin-images-page">

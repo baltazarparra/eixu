@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { loadModuleGraph } from './helpers/load-module.mjs';
 
-void test('prévia usa as revisões lidas sob o lock e recusa run ativo', async () => {
+void test('prévia estável usa revisões sob lock e run ativo abre o diretório vivo', async () => {
   let active = false;
   let locked = false;
   const previews = [];
+  const workingPreviews = [];
   const rows = {
     id: 'project',
     tenant_id: 'tenant',
@@ -24,11 +25,19 @@ void test('prévia usa as revisões lidas sob o lock e recusa run ativo', async 
       },
       '@/lib/sites-maintenance': { sitesWriteGuard: async () => null },
       '@/lib/studio/releases': { hasStudioDraftChanges: async () => true },
+      '@/lib/studio/runs': {
+        activeStudioRun: async () =>
+          active ? { id: 'run', status: 'running' } : null,
+      },
       '@/lib/studio/sandbox': {
         ensureStudioPreview: async (input) => {
           assert.equal(locked, true);
           previews.push(input);
           return 'https://fixture.sandbox.example';
+        },
+        ensureStudioWorkingPreview: async (input) => {
+          workingPreviews.push(input);
+          return 'https://fixture-live.sandbox.example';
         },
       },
       '@/lib/db': {
@@ -68,6 +77,9 @@ void test('prévia usa as revisões lidas sob o lock e recusa run ativo', async 
   assert.equal(previews[0].contentRevisionId, 'new-content');
   assert.equal((await response.json()).codeRevision, 'new-code');
   active = true;
-  assert.equal((await request()).status, 409);
+  const working = await request();
+  assert.equal(working.status, 200);
+  assert.equal((await working.json()).codeRevision, 'working:run');
   assert.equal(previews.length, 1);
+  assert.equal(workingPreviews[0].runId, 'run');
 });

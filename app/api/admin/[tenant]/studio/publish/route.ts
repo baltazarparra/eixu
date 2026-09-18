@@ -1,15 +1,14 @@
-import { start } from 'workflow/api';
 import { currentUser } from '@/lib/auth';
 import { recordActivity } from '@/lib/admin/activity';
 import { getTenantBySlug } from '@/lib/tenant-queries';
 import { studioProjectByTenant } from '@/lib/studio/projects';
-import { studioPublishWorkflow } from '@/lib/studio/release-workflow';
 import {
-  attachReleaseWorkflow,
+  startStudioPublication,
+  startStudioReleaseWorkflow,
+} from '@/lib/studio/publish';
+import {
   createStudioRollbackRelease,
-  createStudioRelease,
   currentStudioRelease,
-  failStudioRelease,
   hasStudioDraftChanges,
   latestStudioRelease,
   reconcileStudioRelease,
@@ -71,44 +70,6 @@ function releaseResponse(
     dirty,
     rollbackCandidate: rollback,
   };
-}
-
-async function startReleaseWorkflow(input: {
-  release: NonNullable<Awaited<ReturnType<typeof studioReleaseById>>>;
-  tenantId: string;
-  projectId: string;
-}) {
-  const workflow = await start(studioPublishWorkflow, [input.release.id], {
-    attributes: {
-      product: 'eixu',
-      kind: 'studio-publish',
-      tenant: input.tenantId,
-      project: input.projectId,
-      release: input.release.id,
-    },
-  }).catch(async (error) => {
-    await failStudioRelease(
-      input.release.id,
-      'O workflow de publicação não pôde ser iniciado.',
-    ).catch(() => undefined);
-    throw error;
-  });
-  try {
-    if (!(await attachReleaseWorkflow(input.release.id, workflow.runId)))
-      throw new Error('O release não aceitou o vínculo do workflow.');
-  } catch (error) {
-    await workflow
-      .cancel({
-        cancelReason: 'O release não aceitou o vínculo do workflow.',
-      })
-      .catch(() => undefined);
-    await failStudioRelease(
-      input.release.id,
-      error instanceof Error ? error.message : 'Falha ao vincular o workflow.',
-    ).catch(() => undefined);
-    throw error;
-  }
-  return workflow.runId;
 }
 
 export async function GET(
@@ -176,17 +137,22 @@ export async function POST(
       typeof body.rollbackReleaseId === 'string'
         ? body.rollbackReleaseId
         : null;
-    const release = rollbackReleaseId
-      ? await createStudioRollbackRelease({
-          projectId: resolved.project.id,
-          sourceReleaseId: rollbackReleaseId,
-          requestedBy: resolved.operator.id,
-        })
-      : await createStudioRelease({
-          projectId: resolved.project.id,
-          requestedBy: resolved.operator.id,
-        });
-    const workflowRunId = await startReleaseWorkflow({
+    if (!rollbackReleaseId) {
+      const publication = await startStudioPublication({
+        projectId: resolved.project.id,
+        tenant: resolved.tenant,
+        operator: resolved.operator,
+      });
+      return Response.json(releaseResponse(publication.release, true), {
+        status: 202,
+      });
+    }
+    const release = await createStudioRollbackRelease({
+      projectId: resolved.project.id,
+      sourceReleaseId: rollbackReleaseId,
+      requestedBy: resolved.operator.id,
+    });
+    const workflowRunId = await startStudioReleaseWorkflow({
       release,
       tenantId: resolved.tenant.id,
       projectId: resolved.project.id,
@@ -194,12 +160,8 @@ export async function POST(
     await recordActivity({
       actor: resolved.operator,
       tenant: resolved.tenant,
-      action: rollbackReleaseId
-        ? 'studio.release.rollback'
-        : 'studio.release.start',
-      summary: rollbackReleaseId
-        ? `${resolved.operator.name} iniciou o rollback de uma publicação`
-        : `${resolved.operator.name} iniciou uma publicação`,
+      action: 'studio.release.rollback',
+      summary: `${resolved.operator.name} iniciou o rollback de uma publicação`,
       resourceType: 'studio_release',
       resourceId: release.id,
       operationId: `studio-release:${release.id}`,

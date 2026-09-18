@@ -22,8 +22,29 @@ create table if not exists site_folders (
 create unique index if not exists site_folders_name_unique_idx
   on site_folders (lower(btrim(name)));
 
+create table if not exists studio_workspaces (
+  id         uuid primary key default gen_random_uuid(),
+  slug       text not null unique
+    check (slug ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'),
+  name       text not null,
+  kind       text not null default 'agency'
+    check (kind in ('internal', 'agency')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+insert into studio_workspaces (id, slug, name, kind)
+values (
+  '00000000-0000-4000-8000-000000000001',
+  'eixu',
+  'EIXU',
+  'internal'
+)
+on conflict (id) do nothing;
+
 create table if not exists tenants (
   id            uuid primary key default gen_random_uuid(),
+  workspace_id  uuid not null default '00000000-0000-4000-8000-000000000001'
+    references studio_workspaces(id) on delete restrict,
   slug          text not null unique
     check (slug ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'),
   name          text not null,
@@ -41,8 +62,12 @@ create table if not exists tenants (
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
 );
+alter table tenants add column if not exists workspace_id uuid not null
+  default '00000000-0000-4000-8000-000000000001'
+  references studio_workspaces(id) on delete restrict;
 alter table tenants add column if not exists contacts jsonb not null default '{}'::jsonb;
 alter table tenants add column if not exists folder_id uuid references site_folders(id) on delete set null;
+create index if not exists tenants_workspace_idx on tenants (workspace_id, updated_at desc);
 create index if not exists tenants_folder_idx on tenants (folder_id);
 
 create table if not exists admin_users (

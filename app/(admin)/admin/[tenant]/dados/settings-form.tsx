@@ -11,7 +11,11 @@ import { DeleteTenantDialog } from '@/components/admin/delete-tenant-dialog';
 import { FormSection, StatusDot } from '@/components/admin/primitives';
 import { HelpHint, HelpNote } from '@/components/admin/help';
 import { adminFetch } from '@/lib/admin/http';
-import { contactsFromForm, intakeFromForm } from '@/lib/admin/tenant-input';
+import {
+  brandColorsFromForm,
+  contactsFromForm,
+  intakeFromForm,
+} from '@/lib/admin/tenant-input';
 import { formatTokens } from '@/lib/admin/usage-summary';
 import type { UsageCardSummary } from '@/lib/admin/usage-history';
 import type { Contacts } from '@/lib/tenant-contacts';
@@ -36,6 +40,9 @@ type TenantSettings = {
   contactEmail: string | null;
   logoUrl?: string;
   direction: StudioDirection;
+  primary: string;
+  secondary: string;
+  highlight: string;
   pageCount: number;
   leadCount: number;
   imageCount: number;
@@ -51,11 +58,13 @@ export function SettingsForm({
   intake,
   contacts,
   usage,
+  basePath = '/admin',
 }: {
   tenant: TenantSettings;
   intake: Partial<Intake>;
   contacts: Contacts;
   usage: UsageCardSummary;
+  basePath?: '/admin' | '/studio';
 }) {
   const router = useRouter();
   const [saved, setSaved] = useState({ tenant, intake, contacts });
@@ -71,10 +80,12 @@ export function SettingsForm({
     const data = new FormData(form);
     const nextContacts = contactsFromForm(data);
     const nextIntake = intakeFromForm(data);
-    if (!nextContacts.success || !nextIntake.success) {
+    const nextColors = brandColorsFromForm(data);
+    if (!nextContacts.success || !nextIntake.success || !nextColors.success) {
       setNotice(
         nextContacts.error?.issues[0]?.message ??
           nextIntake.error?.issues[0]?.message ??
+          nextColors.error?.issues[0]?.message ??
           'Confira os dados do cliente.',
       );
       return;
@@ -94,6 +105,7 @@ export function SettingsForm({
           contacts: nextContacts.data,
           intake: nextIntake.data,
           direction,
+          colors: nextColors.data,
         }),
       });
       setSaved({
@@ -102,6 +114,9 @@ export function SettingsForm({
           name: name.trim(),
           contactEmail: contactEmail.trim() || null,
           direction,
+          primary: nextColors.data.primary,
+          secondary: nextColors.data.secondary,
+          highlight: nextColors.data.highlight,
         },
         intake: nextIntake.data,
         contacts: nextContacts.data,
@@ -155,7 +170,10 @@ export function SettingsForm({
   }
 
   const closeDelete = useCallback(() => setDeleting(false), []);
-  const afterDelete = useCallback(() => router.push('/admin'), [router]);
+  const afterDelete = useCallback(
+    () => router.push(basePath),
+    [basePath, router],
+  );
 
   return (
     <>
@@ -186,18 +204,20 @@ export function SettingsForm({
               </a>
             ))}
           </nav>
-          <Link
-            className="admin-consumo-card"
-            href={`/admin/${tenant.slug}/consumo`}
-          >
-            <span>Consumo · {usage.days} dias →</span>
-            <span>
-              <strong>
-                {usage.costUsd === null ? '—' : money.format(usage.costUsd)}
-              </strong>
-              <span>{formatTokens(usage.totalTokens ?? undefined)}</span>
-            </span>
-          </Link>
+          {basePath === '/admin' ? (
+            <Link
+              className="admin-consumo-card"
+              href={`/admin/${tenant.slug}/consumo`}
+            >
+              <span>Consumo · {usage.days} dias →</span>
+              <span>
+                <strong>
+                  {usage.costUsd === null ? '—' : money.format(usage.costUsd)}
+                </strong>
+                <span>{formatTokens(usage.totalTokens ?? undefined)}</span>
+              </span>
+            </Link>
+          ) : null}
         </aside>
 
         <div className="admin-settings-body">
@@ -245,6 +265,63 @@ export function SettingsForm({
                     </label>
                   ))}
                 </div>
+                <div className="admin-field-grid mt-5">
+                  <label className="admin-field">
+                    <span>Cor primária</span>
+                    <span className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        className="admin-color"
+                        aria-label="Escolher cor primária"
+                        defaultValue={saved.tenant.primary}
+                        onChange={(event) => {
+                          const field = event.currentTarget.nextElementSibling;
+                          if (field instanceof HTMLInputElement)
+                            field.value = event.currentTarget.value;
+                          setDirty(true);
+                        }}
+                      />
+                      <input
+                        name="primary"
+                        className="admin-input admin-numeric"
+                        defaultValue={saved.tenant.primary}
+                        pattern="#[0-9A-Fa-f]{6}"
+                        maxLength={7}
+                        required
+                      />
+                    </span>
+                  </label>
+                  <label className="admin-field">
+                    <span>Cor secundária</span>
+                    <span className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        className="admin-color"
+                        aria-label="Escolher cor secundária"
+                        defaultValue={saved.tenant.secondary}
+                        onChange={(event) => {
+                          const field = event.currentTarget.nextElementSibling;
+                          if (field instanceof HTMLInputElement)
+                            field.value = event.currentTarget.value;
+                          setDirty(true);
+                        }}
+                      />
+                      <input
+                        name="secondary"
+                        className="admin-input admin-numeric"
+                        defaultValue={saved.tenant.secondary}
+                        pattern="#[0-9A-Fa-f]{6}"
+                        maxLength={7}
+                        required
+                      />
+                    </span>
+                  </label>
+                  <input
+                    type="hidden"
+                    name="highlight"
+                    value={saved.tenant.highlight}
+                  />
+                </div>
               </FormSection>
 
               <FormSection
@@ -286,7 +363,7 @@ export function SettingsForm({
                     </button>
                     <Link
                       className="admin-compact-button"
-                      href={`/admin/${tenant.slug}/imagens`}
+                      href={`${basePath}/${tenant.slug}/imagens`}
                     >
                       Escolher no acervo
                     </Link>

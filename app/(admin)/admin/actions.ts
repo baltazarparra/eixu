@@ -16,6 +16,7 @@ import {
   tenantDetailsSchema,
   tenantSlugSchema,
   directionFromForm,
+  directionHasRequiredReference,
 } from '@/lib/admin/tenant-input';
 import { primaryWhatsapp } from '@/lib/tenant-contacts';
 import { spendSchema } from '@/lib/admin/traffic';
@@ -43,6 +44,7 @@ import {
   deleteStudioVercelProject,
   restoreStudioVercelProject,
 } from '@/lib/studio/releases';
+import { EIXU_STUDIO_WORKSPACE_ID } from '@/lib/studio/workspaces';
 
 const maintenanceMessage =
   'A gestão de sites está em manutenção. O institucional e o Kanban continuam disponíveis.';
@@ -72,13 +74,16 @@ export async function loginAction(
     summary: `${result.user.name} entrou no painel`,
   });
   const returnTo = text(formData, 'returnTo');
-  redirect(
-    returnTo.startsWith('/admin') &&
-      !returnTo.startsWith('//') &&
-      !returnTo.startsWith('/admin/login')
+  const safeReturn =
+    (returnTo === '/studio' || returnTo.startsWith('/studio/')) &&
+    !returnTo.startsWith('//')
       ? returnTo
-      : '/admin',
-  );
+      : returnTo.startsWith('/admin') &&
+          !returnTo.startsWith('//') &&
+          !returnTo.startsWith('/admin/login')
+        ? returnTo
+        : '/admin';
+  redirect(safeReturn);
 }
 
 export async function logoutAction() {
@@ -124,6 +129,13 @@ export async function createTenantAction(
   if (!colors.success)
     return colors.error.issues[0]?.message ?? 'Confira as cores da marca.';
   if (!direction.success) return 'Escolha uma direção visual para o site.';
+  if (
+    !directionHasRequiredReference({
+      direction: direction.data,
+      references: intake.data.references,
+    })
+  )
+    return 'Na vibe Referência, informe o link visual que deve orientar o projeto.';
   if (!folderIdResult.success) return 'A pasta selecionada é inválida.';
   if (folderIdResult.data && !(await siteFolderExists(folderIdResult.data)))
     return 'Essa pasta não existe mais. Escolha outra pasta ou crie o site sem pasta.';
@@ -160,8 +172,8 @@ export async function createTenantAction(
   let tenantId: string;
   try {
     const rows = (await db()`
-      insert into tenants (slug, name, whatsapp, contact_email, brief, brand, contacts, folder_id)
-      values (${slug}, ${name}, ${whatsapp}, ${contactEmail},
+      insert into tenants (workspace_id, slug, name, whatsapp, contact_email, brief, brand, contacts, folder_id)
+      values (${EIXU_STUDIO_WORKSPACE_ID}, ${slug}, ${name}, ${whatsapp}, ${contactEmail},
               ${JSON.stringify({ intake: intake.data })}::jsonb,
               ${JSON.stringify(brand)}::jsonb,
               ${JSON.stringify(contacts.data)}::jsonb,
@@ -187,8 +199,10 @@ export async function createTenantAction(
     resourceType: 'tenant',
     resourceId: tenantId,
   });
+  const studioSurface = text(formData, 'surface') === 'studio';
   revalidatePath('/admin');
-  redirect(`/admin/${slug}`);
+  revalidatePath('/studio');
+  redirect(studioSurface ? `/studio/${slug}?start=1` : `/admin/${slug}`);
 }
 
 export type FolderActionResult = {
@@ -536,6 +550,8 @@ export async function setTenantArchivedAction(
     });
     revalidatePath('/admin');
     revalidatePath(`/admin/${slugResult.data}`);
+    revalidatePath('/studio');
+    revalidatePath(`/studio/${slugResult.data}`);
     return {
       ok: true,
       message:

@@ -6,7 +6,11 @@ import {
   withIdleStudioProject,
 } from '@/lib/studio/projects';
 import { hasStudioDraftChanges } from '@/lib/studio/releases';
-import { ensureStudioPreview } from '@/lib/studio/sandbox';
+import { activeStudioRun } from '@/lib/studio/runs';
+import {
+  ensureStudioPreview,
+  ensureStudioWorkingPreview,
+} from '@/lib/studio/sandbox';
 import { sitesWriteGuard } from '@/lib/sites-maintenance';
 
 export const maxDuration = 800;
@@ -28,6 +32,34 @@ export async function POST(
       { error: 'Envie a primeira mensagem para criar o projeto.' },
       { status: 409 },
     );
+  const run = await activeStudioRun(project.id);
+  if (run) {
+    try {
+      const url = await ensureStudioWorkingPreview({
+        name: project.sandboxName,
+        projectId: project.id,
+        runId: run.id,
+        contentRevisionId: project.activeContentRevisionId,
+        userId: user.id,
+      });
+      return Response.json({
+        url,
+        codeRevision: `working:${run.id}`,
+        status: 'building',
+        dirty: true,
+        working: true,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'A prévia de trabalho ainda não está disponível.';
+      return Response.json(
+        { error: message },
+        { status: /pausada enquanto/i.test(message) ? 409 : 503 },
+      );
+    }
+  }
   try {
     return await withIdleStudioProject(project.id, async (locked) => {
       if (

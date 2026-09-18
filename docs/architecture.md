@@ -6,7 +6,7 @@ A EIXU separa a plataforma de gestão dos projetos entregues aos clientes.
 
 ```mermaid
 flowchart TD
-  U[Operador autenticado] --> A[Admin Next.js]
+  U[Operador autenticado] --> A[Studio Next.js]
   A --> DB[(Neon)]
   A --> WF[Vercel Workflow]
   WF --> GW[AI Gateway]
@@ -20,19 +20,19 @@ flowchart TD
   HOST --> API[Form, eventos e WhatsApp centrais]
 ```
 
-O projeto raiz hospeda institucional, painel, autenticação, APIs, Workflow e dados compartilhados. Cada cliente publicado tem um projeto Vercel dedicado. Não existe renderer central de blocos nem conversão Premium.
+O projeto raiz hospeda institucional, `/studio`, `/admin`, autenticação, APIs, Workflow e dados compartilhados. Cada cliente publicado tem um projeto Vercel dedicado. Não existe renderer central de blocos nem conversão Premium.
 
 ## Fronteiras de confiança
 
 - A sessão resolve o operador no servidor.
-- O tenant é carregado pelo slug e vinculado ao projeto antes de qualquer ação.
+- O tenant é carregado pelo slug, vinculado ao workspace da EIXU e ao projeto antes de qualquer ação.
 - Mensagens, anexos e metadata vindos do navegador são entrada não confiável.
 - O modelo recebe um `toolsContext` criado pelo servidor e não escolhe tenant, Sandbox, credenciais ou projeto Vercel.
 - Ferramentas de arquivo aplicam raiz fixa, normalização, limites de tamanho e rejeição de symlink.
 - Comandos são nomes enumerados (`typecheck`, `build` e verificações previstas), nunca shell arbitrário fornecido pelo modelo.
 - Publicação e reset são serviços determinísticos separados do agente.
 
-O admin continua global para operadores ativos. Isolamento impede cruzar tenants acidentalmente; não representa papéis granulares por cliente.
+O piloto usa um workspace interno estável e o admin continua global para operadores ativos. `tenants.workspace_id` é a fronteira preparada para separar agências; a fase futura deve resolver o workspace pela sessão e aplicar papéis em todas as consultas e efeitos. O vínculo atual não representa RBAC por workspace ou cliente.
 
 ## Modelo de dados
 
@@ -40,6 +40,7 @@ O admin continua global para operadores ativos. Isolamento impede cruzar tenants
 
 | Tabela                          | Papel                                                           |
 | ------------------------------- | --------------------------------------------------------------- |
+| `studio_workspaces`             | Organização dona dos tenants; EIXU é o workspace do piloto.     |
 | `tenants`                       | Cadastro, contatos, marca e status do cliente.                  |
 | `images`                        | Acervo numerado; uploads e gerações do Studio.                  |
 | `studio_projects`               | Um projeto por tenant, Sandbox, host e ponteiros de revisão.    |
@@ -53,7 +54,7 @@ O admin continua global para operadores ativos. Isolamento impede cruzar tenants
 | `studio_releases`               | Código, conteúdo, deployment e estado de ativação.              |
 | `ai_usage`                      | Recibos por passo e por imagem, modelo servido, tokens e custo. |
 
-IDs e constraints ligam cada recurso ao tenant/projeto. Revisões de conteúdo e artefatos são append-only. Ponteiros em `studio_projects` indicam o draft e a release ativa.
+IDs e constraints ligam workspace, tenant e projeto. Revisões de conteúdo e artefatos são append-only. Ponteiros em `studio_projects` indicam o draft e a release ativa. O reset remove os dados dos clientes, mas preserva `studio_workspaces` para manter a identidade organizacional.
 
 ## Conversa e execução
 
@@ -75,9 +76,11 @@ Imagens públicas em `tenants/` usam `BLOB_READ_WRITE_TOKEN`. Checkpoints e scre
 
 ## Preview
 
-A prévia só nasce de checkpoint válido. O Sandbox inicia o servidor do projeto com um token aleatório de alta entropia. O `proxy.ts` protegido exige o token na primeira navegação e o troca por cookie HTTP-only, Secure, SameSite=None e Partitioned.
+O Sandbox inicia o servidor do projeto com um token aleatório de alta entropia. O `proxy.ts` protegido exige o token na primeira navegação e o troca por cookie HTTP-only, Secure, SameSite=None e Partitioned.
 
-A rota relê código e conteúdo sob o lock do projeto e recusa runs ativos. Antes de abrir a prévia, encerra o dev server, remove fontes/cache do rascunho anterior, restaura o checkpoint verificado e sobrepõe exatamente a revisão de conteúdo solicitada. Arquivos de turnos falhos ou cancelados não podem aparecer como parte de um checkpoint anterior.
+Durante um run, a rota abre o workspace daquele run com o servidor de desenvolvimento e HMR. Escritas de arquivo aparecem na prévia sem esperar o checkpoint. Um lease de comando pausa o servidor durante typecheck/build e o reinicia depois, evitando corrida entre compilação e leitura. Essa prévia de trabalho é transitória, autenticada e nunca serve como fonte de release.
+
+Sem run ativo, a rota usa a prévia estável: relê código e conteúdo sob o lock do projeto, encerra o servidor anterior, remove cache do rascunho, restaura o checkpoint verificado e sobrepõe exatamente a revisão de conteúdo solicitada. Arquivos de turnos falhos ou cancelados não entram no checkpoint anterior.
 
 O banco armazena apenas o hash, a URL sem query e uma expiração curta. A resposta recebe `noindex`, política de referrer e `frame-ancestors` limitado à plataforma. Expiração gira o token e reinicia o servidor quando necessário.
 
@@ -105,6 +108,8 @@ Fluxo:
 8. repetir o smoke no host canônico;
 9. ativar release e ponteiros em transação.
 
+Quando o primeiro build de um projeto termina com checkpoint válido, o Workflow inicia essa release automaticamente em um step durável. Se a publicação falhar, o checkpoint permanece disponível e a falha fica registrada. Depois da primeira versão, chat e CMS alteram somente rascunho e prévia; uma nova release exige o botão **Publicar**.
+
 O bypass existe apenas durante o smoke do candidato e é revogado também quando a verificação falha. O domínio canônico público nunca recebe o bypass: seu smoke comprova acesso real depois da promoção. O reconciliador registra a intenção antes da promoção e cobre a janela em que a Vercel pode ter promovido o deployment antes de a gravação no banco terminar. O marcador servido pelo host canônico é a prova final. Rollback cria uma nova release pelo mesmo pipeline. Arquivar remove o domínio; restaurar promove a release ativa e verifica o host; excluir remove somente o projeto dedicado comprovado.
 
 ## Integrações públicas
@@ -129,7 +134,7 @@ Cada chamada registra primeiro um recibo `pending`; sucesso grava `recorded`, me
 
 `scripts/reset-sites.mjs` opera em modo manifesto por padrão. O escopo inclui dados de sites, prefixo Blob `tenants/` no store público, `studio/` no store privado e projetos Vercel identificados no banco ou pelos prefixos `eixu-site-` e `eixu-premium-`. O manifesto v2 inclui o modo de acesso e ID de cada store no digest, sem tokens; mudar de store invalida o aceite. O projeto raiz é excluído do conjunto e cada ID/nome remoto é conferido novamente antes da remoção.
 
-Execução requer ambiente explícito, confirmação textual, digest do manifesto, fingerprint do banco, timestamp de manifesto com no máximo 30 minutos, deployment raiz READY e referência de recuperação. A manutenção é ativada antes da primeira remoção. Em falha após esse ponto, permanece ativa para evitar recriação até intervenção. Operadores, autenticação, Kanban e atividade de acesso/Kanban são preservados; referências de cards a tenants viram nulas.
+Execução requer ambiente explícito, confirmação textual, digest do manifesto, fingerprint do banco, timestamp de manifesto com no máximo 30 minutos, deployment raiz READY e referência de recuperação. A manutenção é ativada antes da primeira remoção. Em falha após esse ponto, permanece ativa para evitar recriação até intervenção. Workspace da EIXU, operadores, autenticação, Kanban e atividade de acesso/Kanban são preservados; referências de cards a tenants viram nulas.
 
 Como Neon, Blob e Vercel não compartilham transação, todas as etapas produzem recibos e a verificação final prova contagem zero e ausência dos recursos inventariados.
 

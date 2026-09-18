@@ -6,11 +6,13 @@ A EIXU cria sites de agência com clareza comercial, identidade própria e acaba
 
 O site nasce do cliente. Antes de desenhar, leia os dados cadastrados, reúna fatos, contatos, história, produtos, serviços e linguagem recorrente. O site atual do cliente é a fonte oficial para informação pública; conflito ou lacuna vira pergunta ou omissão, nunca invenção.
 
-Logo, cores, imagens e referências formam a direção de arte. A referência visual principal controla layout, tipografia, densidade, ritmo, proporção, tratamento de imagens e movimento. A direção Comercial, Moderno, Ousado, Artístico ou Landing Page oferece um ponto de partida quando a referência não resolve um eixo. Inspiração não é cópia.
+Logo, cores, imagens e referências formam a direção de arte. Em **Referência**, o link informado controla layout, tipografia, densidade, ritmo, proporção, tratamento de imagens e movimento. **Comercial** favorece clareza, confiança e ação; **Ousado** permite escala, contraste e composição mais expressivos. Os rótulos orientam, mas nunca substituem a leitura do cliente. Inspiração não é cópia.
 
 Cada projeto precisa ter uma ideia visual reconhecível. Hierarquia, contraste, escala, espaço, grid e imagem devem trabalhar juntos. O refinamento final adiciona motion, scroll, reveal e fades quando ajudam a leitura; animação não esconde conteúdo nem atrasa a ação principal.
 
 ## Anti-slop
+
+O contrato visual segue a [Taste Skill v1](https://github.com/Leonxlnx/taste-skill/blob/main/skills/taste-skill-v1/SKILL.md), adaptada às restrições técnicas do projeto.
 
 Evite a aparência genérica de template de IA: gradiente roxo automático, cards repetidos sem função, excesso de glassmorphism, ícones decorativos aleatórios, texto centralizado por toda parte, slogans vazios, números inventados e seções montadas só para preencher espaço.
 

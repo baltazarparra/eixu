@@ -5,7 +5,12 @@ import { db } from '@/lib/db';
 import { getTenantBySlug, setBrandLogo } from '@/lib/tenant-queries';
 import { intakeWriteSchema } from '@/lib/tenant-intake';
 import { contactsSchema, primaryWhatsapp } from '@/lib/tenant-contacts';
-import { tenantDetailsSchema } from '@/lib/admin/tenant-input';
+import {
+  brandColorsSchema,
+  directionHasRequiredReference,
+  tenantDetailsSchema,
+} from '@/lib/admin/tenant-input';
+import { intakeForForm } from '@/lib/tenant-intake';
 import {
   studioDirectionOf,
   studioDirectionSchema,
@@ -25,6 +30,7 @@ const patch = z
     logoUrl: z.url().nullable().optional(),
     intake: intakeWriteSchema.optional(),
     direction: studioDirectionSchema.optional(),
+    colors: brandColorsSchema.optional(),
   })
   .strict()
   .refine(
@@ -87,6 +93,22 @@ export async function PATCH(
 
   const contacts = input.contacts;
   const currentDirection = studioDirectionOf(tenant.brand);
+  const nextDirection = input.direction ?? currentDirection;
+  const nextIntake = input.intake ??
+    intakeForForm(tenant.brief.intake) ?? { references: [] };
+  if (
+    !directionHasRequiredReference({
+      direction: nextDirection,
+      references: nextIntake.references,
+    })
+  )
+    return Response.json(
+      {
+        error:
+          'Na vibe Referência, informe o link visual que deve orientar o projeto.',
+      },
+      { status: 400 },
+    );
   await db()`
     update tenants set
       name = case
@@ -113,11 +135,22 @@ export async function PATCH(
           then jsonb_build_object('intake', ${JSON.stringify(input.intake ?? {})}::jsonb)
         else '{}'::jsonb
       end,
-      brand = case
-        when ${input.direction !== undefined}
-          then (brand - 'vibe') || jsonb_build_object('direction', ${input.direction ?? currentDirection}::text)
-        else brand
-      end,
+      brand = (brand - case when ${input.direction !== undefined} then 'vibe' else '__none__' end)
+        || case
+          when ${input.direction !== undefined}
+            then jsonb_build_object('direction', ${input.direction ?? currentDirection}::text)
+          else '{}'::jsonb
+        end
+        || case
+          when ${input.colors !== undefined}
+            then jsonb_build_object(
+              'accent', ${input.colors?.primary ?? null}::text,
+              'accentAlt', ${input.colors?.secondary ?? null}::text,
+              'highlight', ${input.colors?.highlight ?? null}::text,
+              'paletteSource', 'operador'
+            )
+          else '{}'::jsonb
+        end,
       updated_at = now()
     where id = ${tenant.id}
   `;

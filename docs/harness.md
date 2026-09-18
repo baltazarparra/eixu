@@ -10,19 +10,19 @@ Documentação oficial relevante: [WorkflowAgent](https://ai-sdk.dev/docs/agents
 
 ## Política de modelos
 
-`lib/studio/models.ts` é a fonte única da política `studio-gpt-5.6-v1`.
+`lib/studio/models.ts` é a fonte única da política `studio-gemini-3.8-flash-v1`.
 
-| Papel           | Modelo        | Reasoning | Passos máx. | Uso                                    |
-| --------------- | ------------- | --------- | ----------- | -------------------------------------- |
-| `assistant`     | GPT-5.6 Terra | medium    | 12          | Conversa e pedido geral.               |
-| `batch`         | GPT-5.6 Luna  | low       | 4           | Extração/classificação curta.          |
-| `context`       | GPT-5.6 Terra | high      | 12          | Fontes, fatos, tom e lacunas.          |
-| `art_direction` | GPT-5.6 Sol   | high      | 16          | Leitura visual e direção de arte.      |
-| `build`         | GPT-5.6 Sol   | high      | 32          | Primeiro projeto e recomposição ampla. |
-| `edit`          | GPT-5.6 Terra | medium    | 20          | Alteração localizada.                  |
-| `refine`        | GPT-5.6 Sol   | high      | 24          | Responsividade, motion e acabamento.   |
-| `critic`        | GPT-5.6 Sol   | high      | 12          | Crítica vinculada a evidência atual.   |
-| `diagnostic`    | GPT-5.6 Sol   | xhigh     | 20          | Falhas complexas de código/build.      |
+| Papel           | Modelo                  | Reasoning | Passos máx. | Uso                                    |
+| --------------- | ----------------------- | --------- | ----------- | -------------------------------------- |
+| `assistant`     | google/gemini-3.8-flash | high      | 12          | Conversa e pedido geral.               |
+| `batch`         | google/gemini-3.8-flash | high      | 4           | Extração/classificação curta.          |
+| `context`       | google/gemini-3.8-flash | high      | 12          | Fontes, fatos, tom e lacunas.          |
+| `art_direction` | google/gemini-3.8-flash | high      | 16          | Leitura visual e direção de arte.      |
+| `build`         | google/gemini-3.8-flash | high      | 32          | Primeiro projeto e recomposição ampla. |
+| `edit`          | google/gemini-3.8-flash | high      | 20          | Alteração localizada.                  |
+| `refine`        | google/gemini-3.8-flash | high      | 24          | Responsividade, motion e acabamento.   |
+| `critic`        | google/gemini-3.8-flash | high      | 12          | Crítica vinculada a evidência atual.   |
+| `diagnostic`    | google/gemini-3.8-flash | high      | 20          | Falhas complexas de código/build.      |
 
 CMS e publicação são determinísticos e não consomem inferência. O role nasce do classificador de intenção do servidor e fica registrado no run. O modelo efetivamente servido, reasoning, tokens, cache, custo e `generationId` são armazenados por passo.
 
@@ -30,10 +30,10 @@ CMS e publicação são determinísticos e não consomem inferência. O role nas
 
 `prepareStep` impõe pré-condições em vez de depender apenas do prompt:
 
-1. força `read_project_context` com Terra/high;
-2. força `read_official_site` com Terra/high;
+1. força `read_project_context` com Gemini/high;
+2. força `read_official_site` com Gemini/high;
 3. força `record_artifact(kind=context)`;
-4. força `inspect_visual_reference` com Sol/high;
+4. força `inspect_visual_reference` com Gemini/high;
 5. força `record_artifact(kind=art_direction)`;
 6. libera as ferramentas de projeto.
 
@@ -103,11 +103,13 @@ O agente pode terminar texto antes de cumprir um trabalho. O Workflow só cria c
 - arquiva a revisão em Blob privado;
 - atualiza `draft_code_revision` somente no sucesso.
 
-A resposta deve relatar o que realmente foi concluído. Publicação nunca é uma ferramenta do modelo.
+A resposta deve relatar o que realmente foi concluído. Publicação nunca é uma ferramenta do modelo. No primeiro build, o servidor inicia a release depois do checkpoint por um step durável; nos turnos seguintes, somente uma ação explícita do operador inicia publicação.
 
 ## Anti-slop no harness
 
-O prompt carrega [SOUL.md](../SOUL.md) em forma operacional: conteúdo específico, hierarquia real, uso intencional de imagem, mobile deliberado e motion com função. Proíbe métricas e depoimentos inventados e defaults visuais recorrentes sem vínculo com a marca.
+O prompt carrega [SOUL.md](../SOUL.md) e a [Taste Skill v1](https://github.com/Leonxlnx/taste-skill/blob/main/skills/taste-skill-v1/SKILL.md) em forma operacional: conteúdo específico, hierarquia real, uso intencional de imagem, mobile deliberado e motion com função. Proíbe métricas e depoimentos inventados e defaults visuais recorrentes sem vínculo com a marca.
+
+Geração e edição visual usam `openai/gpt-image-2.5-sunburst` por padrão. A ferramenta aceita referências visuais autorizadas, registra modelo, prompt e recibo e guarda o resultado no acervo do tenant. Trocar `EIXU_IMAGE_MODEL` exige repetir os testes reais de geração, edição, proporção, custo e idempotência.
 
 Prompt não basta. O fluxo exige leitura de fontes, artefatos, contrato editável, build e preview. A crítica visual só vale para screenshots da revisão atual e não substitui o julgamento do operador.
 

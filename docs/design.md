@@ -14,17 +14,15 @@ O Studio não escolhe uma página em um catálogo. Ele transforma conteúdo real
 
 A referência não fornece fatos nem ativos reutilizáveis. Copiar marca, texto, imagens, código ou uma página inteira é proibido.
 
-## Direções de fallback
+## Vibes
 
-| Direção      | Referência                                                   | Leitura inicial                                          |
-| ------------ | ------------------------------------------------------------ | -------------------------------------------------------- |
-| Comercial    | [Minatel Brotas](https://minatelsupermercados.com.br/brotas) | Direta, acessível, orientada a oferta e confiança.       |
-| Moderno      | [Reflect](https://reflect.app/)                              | Precisa, silenciosa, produto em primeiro plano.          |
-| Ousado       | [Manesco](https://manesco.com.br/)                           | Contraste alto, escala forte e cortes inesperados.       |
-| Artístico    | [Actionline](https://actionline.io/)                         | Composição autoral, ritmo expressivo e imagem narrativa. |
-| Landing Page | [Nubank Ultravioleta](https://nubank.com.br/ultravioleta)    | Jornada concentrada, prova e uma ação principal.         |
+| Vibe       | Leitura inicial                                                                                |
+| ---------- | ---------------------------------------------------------------------------------------------- |
+| Comercial  | Direta, acessível, orientada a confiança, oferta e ação principal.                             |
+| Ousado     | Contraste, escala e ritmo mais expressivos, sem transformar ousadia em neon ou ruído gratuito. |
+| Referência | Prioriza estrutura, tipografia, densidade, imagem e movimento do link visual informado.        |
 
-A Landing Page descreve também objetivo e forma. Ela não impede que outra linguagem visual seja cadastrada.
+Referência exige um link. Nas demais vibes, o link continua sendo a fonte visual mais específica quando existe; a vibe resolve os eixos que ele não deixa claros.
 
 ## Método de direção de arte
 
@@ -44,6 +42,8 @@ O artefato `art_direction` deve converter observação em decisões aplicáveis:
 “Moderno”, “premium” ou “bonito” isolados não formam direção de arte.
 
 ## Anti-slop
+
+O contrato segue a [Taste Skill v1](https://github.com/Leonxlnx/taste-skill/blob/main/skills/taste-skill-v1/SKILL.md). Seus exemplos orientam a crítica, mas o resultado deve continuar preso ao conteúdo, à marca e às restrições técnicas do projeto.
 
 Evite defaults recorrentes sem relação com o cliente: hero centralizado, gradiente violeta, cards arredondados em todas as seções, glassmorphism, bento grid decorativo, pills excessivas, ícones aleatórios, métricas e depoimentos inventados.
 

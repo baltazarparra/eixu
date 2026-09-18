@@ -1741,6 +1741,34 @@ div.admin-attention-item strong {
   height: 9px;
   background: #ff3d00;
 }
+.admin-vibe-preview[data-vibe='referencia'] {
+  color: #302f2b;
+  background: #e6e1d7;
+}
+.admin-vibe-preview[data-vibe='referencia'] .admin-vibe-nav {
+  width: 34%;
+  height: 2px;
+}
+.admin-vibe-preview[data-vibe='referencia'] .admin-vibe-copy {
+  inset: 28px 47% auto 10px;
+}
+.admin-vibe-preview[data-vibe='referencia']
+  .admin-vibe-copy
+  > span:first-child {
+  height: 12px;
+  border-radius: 0;
+}
+.admin-vibe-preview[data-vibe='referencia'] .admin-vibe-image {
+  inset: 18px 8px 8px 58%;
+  border-radius: 0;
+  background: linear-gradient(145deg, #536d63 0 54%, #b88664 54%);
+}
+.admin-vibe-preview[data-vibe='referencia'] .admin-vibe-accent {
+  inset: auto auto 9px 10px;
+  width: 34%;
+  height: 2px;
+  background: #536d63;
+}
 .admin-vibe-preview[data-vibe='artistico'] {
   color: #35271e;
   background: #efe4d4;

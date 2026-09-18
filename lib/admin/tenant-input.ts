@@ -9,6 +9,7 @@ export const RESERVED_TENANTS = new Set([
   'admin',
   'api',
   'app',
+  'studio',
   'kanban',
   'atividade',
   's',
@@ -79,6 +80,13 @@ export function directionFromForm(form: FormData) {
   return studioDirectionSchema.safeParse(
     text(form, 'direction', 'comercial') || 'comercial',
   );
+}
+
+export function directionHasRequiredReference(input: {
+  direction: string;
+  references: string[];
+}): boolean {
+  return input.direction !== 'referencia' || input.references.length > 0;
 }
 
 export function intakeFromForm(form: FormData) {

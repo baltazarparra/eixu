@@ -1,30 +1,28 @@
 # EIXU
 
-A EIXU reúne o site institucional e uma plataforma interna para criar e manter sites de clientes por conversa. O operador trabalha em uma única jornada em `/admin/[tenant]`: dados do cliente, chat, prévia desktop/mobile, CMS leve, acervo de imagens e publicação em `cliente.eixu.com.br`.
+A EIXU reúne o site institucional e uma plataforma interna para criar e manter sites de clientes por conversa. O operador entra em `/studio`, cria, edita ou arquiva projetos e trabalha em uma única jornada de briefing, chat, prévia ao vivo, CMS leve, imagens e publicação em `cliente.eixu.com.br`.
 
 O Studio gera projetos Next.js independentes. Cada cliente tem código, conteúdo versionado, Sandbox, projeto Vercel e histórico de releases próprios. A plataforma central conserva autenticação, gestão, leads, eventos, WhatsApp e o Kanban.
 
-A implementação desta branch ainda não foi publicada nem usada para limpar ambientes remotos. O estado e os limites da entrega estão em [Execução do chat livre](docs/execucao-chat-livre.md).
+O piloto pertence ao workspace interno da EIXU. Cada tenant já carrega esse vínculo para permitir a separação futura por agência; autenticação e papéis por workspace ainda não fazem parte do piloto. O estado validado e publicado de cada entrega fica em [Execução do chat livre](docs/execucao-chat-livre.md).
 
 ## Jornada do operador
 
-1. Cadastre fatos, contatos, história, links, logo, cores e referências em `/admin/[tenant]/dados`.
-2. Abra `/admin/[tenant]` e descreva livremente o site ou a alteração no chat.
-3. O harness lê primeiro os dados do cliente e a fonte oficial, depois inspeciona a referência visual e registra direção de arte.
-4. O agente trabalha no projeto isolado, valida código e conteúdo e cria um checkpoint.
-5. A prévia autenticada abre no painel em desktop ou mobile.
-6. Textos e imagens declarados em `content/schema.json` podem ser editados pelo CMS leve.
-7. Publicar congela código e conteúdo, executa os gates e promove a mesma revisão no projeto Vercel do cliente.
+1. Em `/studio/novo`, cadastre nome, domínio, briefing, contatos, redes, site atual, referência, logo, cores e vibe.
+2. Ao criar, o Studio abre o projeto e inicia sozinho o primeiro build.
+3. O harness lê os dados e a fonte oficial, inspeciona a referência e registra contexto e direção de arte antes de escrever código.
+4. O agente trabalha no Sandbox isolado; a prévia autenticada acompanha o workspace durante a execução e fixa o último checkpoint válido ao terminar.
+5. A primeira versão que passa por typecheck, build e smoke é publicada automaticamente no subdomínio escolhido.
+6. Pedidos posteriores no mesmo chat atualizam apenas o rascunho e a prévia. O domínio público muda quando o operador clica em **Publicar**.
+7. Textos e imagens declarados em `content/schema.json` também podem ser mantidos no CMS leve e na aba de imagens.
 
 A referência visual comanda composição, tipografia, ritmo, superfícies e movimento. A direção escolhida serve como fallback:
 
-| Direção      | Referência principal                                         |
-| ------------ | ------------------------------------------------------------ |
-| Comercial    | [Minatel Brotas](https://minatelsupermercados.com.br/brotas) |
-| Moderno      | [Reflect](https://reflect.app/)                              |
-| Ousado       | [Manesco](https://manesco.com.br/)                           |
-| Artístico    | [Actionline](https://actionline.io/)                         |
-| Landing Page | [Nubank Ultravioleta](https://nubank.com.br/ultravioleta)    |
+| Vibe       | Uso                                                                                        |
+| ---------- | ------------------------------------------------------------------------------------------ |
+| Comercial  | Clareza, confiança e ação principal visível, sem transformar o site em um template.        |
+| Ousado     | Escala, contraste e ritmo mais expressivos, sempre sustentados pelo conteúdo e pela marca. |
+| Referência | Prioriza o link informado para estrutura, tipografia, ritmo, imagem e movimento.           |
 
 Essas referências orientam a leitura visual; não autorizam copiar marca, texto, imagens ou código.
 
@@ -32,19 +30,13 @@ Essas referências orientam a leitura visual; não autorizam copiar marca, texto
 
 O chat usa AI SDK 7, `WorkflowAgent`, Vercel Workflow, AI Gateway e Vercel Sandbox. O catálogo de ferramentas é pequeno e tipado: leitura do contexto, inspeção de fontes, arquivos, comandos permitidos, artefatos, screenshots, imagens e checkpoints. Banco, Vercel e publicação ficam fora da autonomia do modelo e passam por serviços determinísticos.
 
-A política de modelos é definida por tarefa:
-
-- **GPT-5.6 Terra:** conversa, síntese do contexto e decisões editoriais;
-- **GPT-5.6 Sol:** direção de arte, implementação, refinamento, crítica e diagnóstico de maior risco;
-- **GPT-5.6 Luna:** tarefas curtas e mecânicas de apoio.
-
-Os níveis de reasoning são aplicados no servidor. O operador não escolhe modelo ou effort. Consulte [Harness e modelos](docs/harness.md) e o [estudo do AI SDK](docs/estudo-ai-sdk-chat-livre.md).
+A política `studio-gemini-3.8-flash-v1` usa `google/gemini-3.8-flash` pelo AI Gateway com reasoning `high`, o maior nível aceito pelo modelo, em todos os papéis. Geração e edição visual usam `openai/gpt-image-2.5-sunburst` por padrão. O operador não escolhe modelo ou effort. Consulte [Harness e modelos](docs/harness.md) e o [estudo do AI SDK](docs/estudo-ai-sdk-chat-livre.md).
 
 ## Arquitetura
 
 ```mermaid
 flowchart LR
-  A[Admin EIXU] --> B[API autenticada]
+  A[Studio EIXU] --> B[API autenticada]
   B --> N[(Neon)]
   B --> W[Vercel Workflow]
   W --> G[AI Gateway]
@@ -57,7 +49,8 @@ flowchart LR
 ```
 
 - `app/(main)`: institucional da EIXU;
-- `app/(admin)`: gestão, Studio, dados, imagens e Kanban;
+- `app/(admin)/studio`: gerenciador e jornada principal do Studio;
+- `app/(admin)/admin`: operação legada, relatórios e Kanban;
 - `app/api/chat` e `lib/studio`: conversa durável e harness;
 - `db/schema.sql`: tenants, mensagens, runs, artefatos, conteúdo e releases;
 - `app/api/form`, `app/api/e` e `app/go/wa`: integrações públicas centrais;
@@ -77,7 +70,7 @@ ADMIN_INITIAL_PIN='<pin-inicial>' npm run db:provision-admins
 npm run dev:vercel
 ```
 
-A tela de login fica em [localhost:3000/admin](http://localhost:3000/admin). Não copie credenciais ou dados pessoais de produção para o ambiente local.
+A tela principal fica em [localhost:3000/studio](http://localhost:3000/studio) e usa o login administrativo existente. Não copie credenciais ou dados pessoais de produção para o ambiente local.
 
 Variáveis principais:
 
@@ -88,7 +81,7 @@ Variáveis principais:
 | `AI_GATEWAY_API_KEY`                                  | Opcional fora da Vercel; deployments usam OIDC automaticamente. |
 | `BLOB_READ_WRITE_TOKEN`                               | Store público: logos, uploads e imagens em `tenants/`.          |
 | `STUDIO_BLOB_STORE_ID`                                | ID do store privado usado por OIDC para artefatos em `studio/`. |
-| `EIXU_IMAGE_MODEL`                                    | Modelo de imagem; padrão `openai/gpt-image-2`.                  |
+| `EIXU_IMAGE_MODEL`                                    | Modelo de imagem; padrão `openai/gpt-image-2.5-sunburst`.       |
 | `EIXU_VERCEL_TOKEN`                                   | API de projetos, deployments, domínios e promoção.              |
 | `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID`                 | IDs nativos, expostos automaticamente pela Vercel.              |
 | `EIXU_VERCEL_TEAM_ID` / `EIXU_VERCEL_ROOT_PROJECT_ID` | Overrides opcionais somente fora da Vercel.                     |
@@ -112,7 +105,7 @@ npm run build:vercel
 
 ## Reset dos sites antigos
 
-O reset preserva operadores, autenticação, Kanban e institucional. Ele remove tenants, projetos, imagens, conversas, leads, métricas, assets e projetos Vercel de clientes nos ambientes explicitamente selecionados.
+O reset preserva o workspace da EIXU, operadores, autenticação, Kanban e institucional. Ele remove tenants, projetos, imagens, conversas, leads, métricas, assets e projetos Vercel de clientes nos ambientes explicitamente selecionados.
 
 O comando normal gera somente um manifesto. A execução exige o digest e o fingerprint desse manifesto, um deployment saudável do projeto raiz e uma referência de recuperação:
 

@@ -12,10 +12,9 @@ import {
 const COLORS = [
   ['primary', 'Cor primária', 'Seções e superfícies com a cor da marca.'],
   ['secondary', 'Cor secundária', 'Tom complementar para o ritmo das seções.'],
-  ['highlight', 'Cor de acento', 'Botões, links e destaques.'],
 ] as const;
 
-/** A mesma microcomposição torna as quatro linguagens comparáveis. */
+/** A mesma microcomposição torna as três linguagens comparáveis. */
 export function DirectionPreview({
   direction,
 }: {
@@ -44,7 +43,11 @@ export function DirectionPreview({
  * operador quando ele edita uma cor; assim o agente pode adaptar o ponto de
  * partida ao negócio sem sobrescrever uma escolha consciente.
  */
-export function BrandFields() {
+export function BrandFields({
+  onDirectionChange,
+}: {
+  onDirectionChange?: (direction: StudioDirection) => void;
+} = {}) {
   const [direction, setDirection] = useState<StudioDirection>('comercial');
   const [values, setValues] = useState<Record<string, string>>(
     STUDIO_DIRECTION_PALETTE.comercial,
@@ -53,6 +56,7 @@ export function BrandFields() {
 
   function chooseDirection(next: StudioDirection) {
     setDirection(next);
+    onDirectionChange?.(next);
     if (!paletteEdited) setValues(STUDIO_DIRECTION_PALETTE[next]);
   }
 
@@ -69,13 +73,11 @@ export function BrandFields() {
   return (
     <>
       <fieldset className="mt-7 border-t pt-6">
-        <legend className="text-base font-semibold">Direção visual</legend>
+        <legend className="text-base font-semibold">Vibe do projeto</legend>
         <p className="mt-1 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
-          Compare as cinco direções. A escolha coordena tipografia, navegação,
-          escala, ícones, imagens e ritmo quando não houver referência. Com um
-          link visual verificado, a referência comanda o layout e a direção
-          passa a definir a voz e completar apenas o que a fonte não resolver.
-          Landing Page mantém uma única página, mesmo com referência.
+          Comercial prioriza clareza e conversão. Ousado abre espaço para uma
+          composição mais expressiva. Em Referência, o link visual informado é
+          obrigatório e passa a comandar estrutura, tipografia e ritmo.
         </p>
         <div className="admin-vibe-grid">
           {STUDIO_DIRECTIONS.map((option) => (
@@ -96,8 +98,8 @@ export function BrandFields() {
           ))}
         </div>
       </fieldset>
-      <details className="admin-optional-fields mt-7 border-t pt-6">
-        <summary>Marca, logo e cores</summary>
+      <fieldset className="mt-7 border-t pt-6">
+        <legend className="text-base font-semibold">Marca, logo e cores</legend>
         <p className="mt-2 mb-5 max-w-2xl text-sm text-[var(--color-muted)]">
           A sugestão muda com a direção visual. Edite apenas quando houver uma
           cor oficial; a partir daí o agente preserva sua escolha.
@@ -107,6 +109,7 @@ export function BrandFields() {
           name="paletteSource"
           value={paletteEdited ? 'operador' : 'sugerida'}
         />
+        <input type="hidden" name="highlight" value={values.highlight} />
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="admin-field">
             <span>Logo do cliente</span>
@@ -170,7 +173,7 @@ export function BrandFields() {
             </label>
           ))}
         </div>
-      </details>
+      </fieldset>
     </>
   );
 }
