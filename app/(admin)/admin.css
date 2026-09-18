@@ -2585,45 +2585,6 @@ div.admin-attention-item strong {
   border-radius: 8px;
   object-fit: cover;
 }
-.admin-tools {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  padding: 10px 12px;
-  border: 1px solid var(--color-line);
-  border-radius: 10px;
-  background: color-mix(in oklab, var(--color-surface) 70%, transparent);
-  font-size: 12.5px;
-  line-height: 1.45;
-}
-.admin-tools li {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
-  gap: 9px;
-  color: var(--color-muted);
-  overflow-wrap: anywhere;
-}
-.admin-tools li[data-state='pending'] {
-  color: var(--color-text);
-}
-.admin-tools-mark {
-  display: grid;
-  place-items: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-}
-.admin-tools li[data-state='done'] .admin-tools-mark {
-  color: var(--color-ok);
-}
-.admin-tools li[data-state='failed'] .admin-tools-mark {
-  color: var(--color-err);
-}
-.admin-tools li[data-state='pending'] .admin-tools-mark {
-  color: var(--color-accent);
-  animation: eixuPulse 1.6s ease-in-out infinite;
-}
 .admin-activity {
   display: block;
   padding: 10px 12px;
