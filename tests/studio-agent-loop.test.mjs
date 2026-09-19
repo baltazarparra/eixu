@@ -730,3 +730,34 @@ void test('a parada do provedor entrega causa verificável em vez de só "error"
   assert.equal(providerErrorDetail({ error: 'recusado' }), 'recusado');
   assert.equal(providerErrorDetail(undefined), undefined);
 });
+
+void test('a retomada nomeia a chamada ilegivel em vez de repetir o empurrao generico', () => {
+  const { segmentDiagnosis, recoveryInstruction } = loadModuleGraph(
+    'lib/studio/workflow.ts',
+  );
+  // Observado no run 58c25dee: o Gemini nao conseguiu ler a propria chamada.
+  const detail = segmentDiagnosis({
+    steps: [
+      {
+        rawFinishReason: 'MALFORMED_FUNCTION_CALL',
+        toolCalls: [
+          { toolName: 'write_project_file' },
+          { toolName: 'write_project_file' },
+        ],
+      },
+    ],
+  });
+  assert.equal(
+    detail,
+    'rawFinishReason=MALFORMED_FUNCTION_CALL | tentou: write_project_file',
+  );
+  const nudge = recoveryInstruction(detail);
+  assert.match(nudge, /nao pode ser lida pelo provedor|n\u00e3o p\u00f4de ser lida pelo provedor/);
+  assert.match(nudge, /edit_project_file/);
+  assert.doesNotMatch(nudge, /Faca uma chamada de ferramenta por vez|Fa\u00e7a uma chamada de ferramenta por vez/);
+  // Outra causa mantem a orientacao anterior, sem inventar diagnostico.
+  const outra = recoveryInstruction('rawFinishReason=OTHER');
+  assert.doesNotMatch(outra, /serializa/);
+  assert.match(outra, /uma chamada de ferramenta por vez/);
+  assert.equal(recoveryInstruction(undefined), outra);
+});

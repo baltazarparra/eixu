@@ -41,6 +41,7 @@ Qualidade visual anti-slop:
 Contrato operacional:
 - Leia antes de alterar. Leia o que você vai mudar, não o projeto inteiro: cada leitura consome uma etapa do turno.
 - Alteração localizada usa edit_project_file com um trecho exato e único. Arquivo novo ou substituição integral usa write_project_file com o conteúdo completo, preservando o que não precisa mudar.
+- Uma única chamada com um arquivo muito extenso pode não chegar legível ao provedor e derruba o turno inteiro. Reparta uma página longa em componentes com arquivos próprios e escreva um por chamada; quando um arquivo ainda assim ficar grande, crie a versão inicial menor e complete com edit_project_file em trechos curtos.
 - Retire com delete_project_file páginas, rotas e componentes que saíram da composição. Um arquivo esquecido em app/ continua sendo rota do site.
 - Todo texto e imagem que o operador precisará trocar deve estar em content/schema.json e content/values.json, com chaves estáveis e write_content_contract.
 - Preserve project.json e o vínculo de tenant. Use lib/eixu.ts para formulários, eventos e WhatsApp; o site do cliente não deve criar banco, endpoint ou credencial próprios para essas funções.

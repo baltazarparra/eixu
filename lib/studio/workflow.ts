@@ -327,6 +327,7 @@ export function segmentDiagnosis(result: {
   steps: readonly {
     rawFinishReason?: string;
     warnings?: readonly unknown[];
+    toolCalls?: readonly { toolName?: string }[];
   }[];
 }): string | undefined {
   if ('error' in result) {
@@ -342,11 +343,35 @@ export function segmentDiagnosis(result: {
       return typeof record.type === 'string' ? record.type : '';
     })
     .filter(Boolean);
+  // Saber qual ferramenta o modelo tentou separa "chamada ilegível" de
+  // "resposta vazia" sem abrir o conteúdo da chamada.
+  const attempted = [
+    ...new Set(
+      (last?.toolCalls ?? [])
+        .map((call) => call.toolName)
+        .filter((name): name is string => Boolean(name)),
+    ),
+  ];
   const parts = [
     last?.rawFinishReason ? `rawFinishReason=${last.rawFinishReason}` : '',
+    attempted.length ? `tentou: ${attempted.join(', ')}` : '',
     warnings.length ? `warnings: ${warnings.join('; ')}` : '',
   ].filter(Boolean);
   return parts.length ? parts.join(' | ').slice(0, 500) : undefined;
+}
+
+/**
+ * `MALFORMED_FUNCTION_CALL` é o Gemini falhando em ler a própria chamada de
+ * ferramenta, quase sempre por argumento longo e cheio de escape. Repetir o
+ * mesmo empurrão genérico reproduz a falha; a retomada precisa nomear o que
+ * deu errado para o modelo mudar de tática.
+ */
+export function recoveryInstruction(detail: string | undefined): string {
+  const base =
+    'A última resposta do modelo foi interrompida antes de concluir. Retome do ponto atual usando os resultados das ferramentas já presentes nesta conversa. Não repita efeitos já confirmados nem gere novamente as imagens disponíveis.';
+  if (detail && /MALFORMED_FUNCTION_CALL/i.test(detail))
+    return `${base} A chamada de ferramenta anterior não pôde ser lida pelo provedor: ela era longa demais ou o conteúdo quebrou a serialização. Não repita a mesma chamada. Escreva um arquivo por vez e, se o arquivo for extenso, crie-o menor e complete com edit_project_file em trechos curtos, ou divida a página em componentes separados. Prefira edit_project_file a reescrever um arquivo inteiro. Conclua somente o pedido original e suas validações, respeitando o escopo deste turno.`;
+  return `${base} Faça uma chamada de ferramenta por vez. Se o pedido exigir código, divida arquivos extensos em componentes menores. Conclua somente o pedido original e suas validações, respeitando o escopo deste turno.`;
 }
 
 async function recordModelRecoveryStep(input: {
@@ -538,11 +563,7 @@ export async function streamStudioAgent(
       // O SDK devolve as instruções como system, mas não as aceita de volta
       // em messages. createStudioAgent reaplica as mesmas instruções do papel.
       ...result.messages.filter((message) => message.role !== 'system'),
-      {
-        role: 'user',
-        content:
-          'A última resposta do modelo foi interrompida antes de concluir. Retome do ponto atual usando os resultados das ferramentas já presentes nesta conversa. Não repita efeitos já confirmados nem gere novamente as imagens disponíveis. Faça uma chamada de ferramenta por vez. Se o pedido exigir código, divida arquivos extensos em componentes menores. Conclua somente o pedido original e suas validações, respeitando o escopo deste turno.',
-      },
+      { role: 'user', content: recoveryInstruction(lastProviderDetail) },
     ];
   }
   throw new Error(
