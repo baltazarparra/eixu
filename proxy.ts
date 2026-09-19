@@ -2,10 +2,28 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 /**
- * 404 de verdade. Reescrever para uma rota inexistente devolveria a página de
- * erro com status 200, e um soft 404 confunde tanto rastreador quanto operador.
+ * Hosts que servem o institucional. O projeto raiz na Vercel tem o domínio
+ * wildcard `*.eixu.com.br` atribuído: qualquer subdomínio sem projeto próprio
+ * cai aqui e não deve receber conteúdo.
  */
-function notFound(): NextResponse {
+const ALLOWED_HOSTS = new Set([
+  'eixu.com.br',
+  'www.eixu.com.br',
+  'localhost',
+  '127.0.0.1',
+]);
+
+function isAllowedHost(host: string): boolean {
+  const hostname = host.toLowerCase().split(':')[0];
+  if (ALLOWED_HOSTS.has(hostname)) return true;
+  // Produção, preview e URLs de deployment da Vercel.
+  return hostname === 'vercel.app' || hostname.endsWith('.vercel.app');
+}
+
+export function proxy(request: NextRequest) {
+  if (isAllowedHost(request.headers.get('host') ?? '')) return NextResponse.next();
+  // 404 de verdade. Reescrever para uma rota inexistente devolveria a página de
+  // erro com status 200, e um soft 404 confunde tanto rastreador quanto operador.
   return new NextResponse('Not Found', {
     status: 404,
     headers: {
@@ -15,19 +33,8 @@ function notFound(): NextResponse {
   });
 }
 
-import { tenantFromHost } from '@/lib/tenant-host';
-
-export function proxy(request: NextRequest) {
-  const host = request.headers.get('host') ?? '';
-  // Cada site publicado pertence ao próprio projeto Vercel. Se o wildcard do
-  // projeto raiz receber um subdomínio sem vínculo, nunca sirva um renderer ou
-  // conteúdo residual da plataforma.
-  if (tenantFromHost(host)) return notFound();
-  return NextResponse.next();
-}
-
 export const config = {
-  // Workflow expõe seus handlers em `/.well-known/workflow/`. Eles precisam
-  // chegar diretamente ao runtime, sem resolução de tenant ou rewrite.
-  matcher: ['/((?!_next/static|_next/image|og.png|[.]well-known/workflow/).*)'],
+  // Os assets de `public/` não passam pelo proxy: em host não autorizado não há
+  // documento para acompanhá-los, e cada invocação evitada é uma a menos.
+  matcher: ['/((?!_next/static|_next/image|favicon[.]svg|og[.]png|cases/[^/]+[.]webp).*)'],
 };

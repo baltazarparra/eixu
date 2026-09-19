@@ -1,4 +1,4 @@
-export const SITE_URL = 'https://eixu-product-engineering.baltazarparra.chatgpt.site';
+export const SITE_URL = 'https://eixu.com.br';
 
 export const SITE_NAME = 'EIXU';
 
