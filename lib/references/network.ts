@@ -52,13 +52,22 @@ export type PublicResource = {
   body: Buffer;
 };
 
+/** Sub-recurso atrasado não pode consumir o orçamento da página inteira. */
+export const PUBLIC_RESOURCE_TIMEOUT_MS = 8000;
+/**
+ * O documento de navegação é serial: sem ele não há captura nenhuma. Precisa
+ * caber dentro do prazo do `goto`, senão o navegador desiste antes do fetch.
+ */
+export const PUBLIC_DOCUMENT_TIMEOUT_MS = 12_000;
+
 /** GET sem credenciais, IP validado fixado ao socket; redirects voltam ao guard. */
 export async function publicResource(
   url: string,
   signal?: AbortSignal,
+  timeoutMs = PUBLIC_RESOURCE_TIMEOUT_MS,
 ): Promise<PublicResource> {
   const deadline = AbortSignal.any([
-    AbortSignal.timeout(8000),
+    AbortSignal.timeout(timeoutMs),
     ...(signal ? [signal] : []),
   ]);
   deadline.throwIfAborted();
@@ -89,8 +98,12 @@ export async function publicResource(
         agent: false,
         signal: deadline,
         // O navegador nunca envia seus cookies/headers ao proxy de leitura.
+        // O agente continua se identificando; `accept` existe porque origem
+        // sem ele responde erro ou encerra a conexão, não para disfarçar.
         headers: {
           'user-agent': 'EIXU-SiteAgent/1.0',
+          accept: '*/*',
+          'accept-language': 'pt-BR,pt;q=0.9,en;q=0.8',
           'accept-encoding': 'identity',
         },
         lookup: (_hostname, options, callback) => {

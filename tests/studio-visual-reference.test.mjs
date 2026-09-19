@@ -157,6 +157,32 @@ void test('referência indisponível não é substituída silenciosamente pelo c
   assert.equal(result.status, 'unavailable');
   assert.equal(fixture.stored.size, 0);
   assert.equal(fixture.events[0].status, 'unavailable');
+  // A ferramenta classifica a falha; o agente não precisa inferir a causa.
+  assert.ok(result.reason);
+  assert.equal(fixture.events[0].reason, result.reason);
+});
+
+void test('a falha de captura vira causa verificável, não narrativa sobre a origem', () => {
+  const { referenceFailure } = loadModuleGraph('lib/references/failure.ts');
+  // Erros que a produção registrou para a mesma URL no mesmo dia, entre
+  // capturas bem-sucedidas: nenhum deles prova origem fora do ar.
+  const observados = [
+    ['net::ERR_FAILED at https://exemplo.test/brotas', 'rede'],
+    ['The operation was aborted due to timeout', 'tempo'],
+    [
+      'Protocol error (Page.captureScreenshot): Unable to capture screenshot',
+      'captura',
+    ],
+    ['Referência respondeu 403', 'resposta'],
+    ['Rede não pública', 'rede'],
+  ];
+  for (const [message, reason] of observados) {
+    const failure = referenceFailure(new Error(message));
+    assert.equal(failure.reason, reason, message);
+    assert.equal(failure.detail, message);
+    assert.doesNotMatch(failure.summary, /fora do ar|bloqueia captura/i);
+  }
+  assert.equal(referenceFailure('quebrou').reason, 'desconhecido');
 });
 
 void test('a nova URL não ignora autorização do projeto nem validação na fronteira do Workflow', async () => {
