@@ -1,1 +1,0 @@
-export const MAX_CARD_DESCRIPTION = 12_000;

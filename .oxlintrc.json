@@ -27,7 +27,6 @@
     ".claude/**",
     ".ds-sync/**",
     "ds-bundle/**",
-    "app/.well-known/workflow/**",
     "out/**",
     "build/**",
     "dist/**",
