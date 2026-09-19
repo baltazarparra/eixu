@@ -1,5 +1,5 @@
 import { launchBrowser } from './browser';
-import { publicResource } from './network';
+import { PUBLIC_DOCUMENT_TIMEOUT_MS, publicResource } from './network';
 import { referenceOutline, type ReferenceOutline } from './outline';
 import { abortable } from '@/lib/async/abort';
 
@@ -15,13 +15,33 @@ export type ReferenceShot = {
   jpeg: Buffer;
 };
 
-export const REFERENCE_CAPTURE_TIMEOUT_MS = 55_000;
+export const REFERENCE_CAPTURE_TIMEOUT_MS = 100_000;
+
+/** Tentativas por viewport: origens atrás de CDN recusam de forma alternada. */
+const NAVIGATION_ATTEMPTS = 2;
+/** Maior que PUBLIC_DOCUMENT_TIMEOUT_MS para o documento esgotar o seu prazo. */
+const NAVIGATION_TIMEOUT_MS = 16_000;
 
 type CaptureOptions = {
   signal?: AbortSignal;
   timeoutMs?: number;
   launch?: typeof launchBrowser;
 };
+
+function delay(ms: number, signal: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', abort);
+      resolve();
+    }, ms);
+    function abort() {
+      clearTimeout(timer);
+      reject(signal.reason);
+    }
+    if (signal.aborted) abort();
+    else signal.addEventListener('abort', abort, { once: true });
+  });
+}
 
 /** Navegador isolado: toda rede direta falha; só GETs públicos validados são atendidos. */
 export async function captureReference(
@@ -88,7 +108,13 @@ export async function captureReference(
                 return;
               }
               const resource = await abortable(
-                request(incoming.url(), deadline),
+                request(
+                  incoming.url(),
+                  deadline,
+                  incoming.isNavigationRequest()
+                    ? PUBLIC_DOCUMENT_TIMEOUT_MS
+                    : undefined,
+                ),
                 deadline,
               );
               bytes += resource.body.length;
@@ -105,14 +131,40 @@ export async function captureReference(
             }
           })();
         });
-        const response = await abortable(
-          page.goto(url, {
-            waitUntil: 'networkidle2',
-            timeout: 20_000,
-          }),
-          deadline,
-        );
-        if (!response?.ok()) throw new Error('Referência não acessível');
+        // Uma recusa pontual da origem não pode descartar o run inteiro. Na
+        // repetição o critério de espera cede: página que nunca fica ociosa
+        // ainda rende screenshot utilizável.
+        let navigationError: unknown = new Error('Referência não acessível');
+        let loaded = false;
+        for (let attempt = 0; attempt < NAVIGATION_ATTEMPTS; attempt++) {
+          deadline.throwIfAborted();
+          // O orçamento descreve a carga que sobrou de pé, não a soma das
+          // tentativas: sem zerar, a repetição começa sem cota e falha sozinha.
+          count = 0;
+          bytes = 0;
+          unavailableResources = 0;
+          try {
+            const response = await abortable(
+              page.goto(url, {
+                waitUntil: attempt === 0 ? 'networkidle2' : 'domcontentloaded',
+                timeout: NAVIGATION_TIMEOUT_MS,
+              }),
+              deadline,
+            );
+            if (response?.ok()) {
+              loaded = true;
+              break;
+            }
+            navigationError = new Error(
+              `Referência respondeu ${response?.status() ?? 'sem status'}`,
+            );
+          } catch (error) {
+            navigationError = error;
+          }
+          if (attempt + 1 < NAVIGATION_ATTEMPTS)
+            await delay(500 * (attempt + 1), deadline);
+        }
+        if (!loaded) throw navigationError;
         // Limite explícito: páginas infinitas não podem prender o briefing.
         await abortable(
           page.evaluate(async () => {
@@ -139,18 +191,38 @@ export async function captureReference(
           page.evaluate(referenceOutline),
           deadline,
         );
-        const height = Math.min(metrics.pageHeight, 9000);
-        const jpeg = Buffer.from(
-          await abortable(
-            page.screenshot({
-              type: 'jpeg',
-              quality: 80,
-              clip: { x: 0, y: 0, width: viewport.width, height },
-              captureBeyondViewport: true,
-            }),
-            deadline,
-          ),
+        // pageHeight zerado ou absurdo faz o clip virar erro de protocolo e
+        // perder a página já carregada; o viewport é o piso utilizável.
+        let height = Math.min(
+          Math.max(metrics.pageHeight || viewport.height, 1),
+          9000,
         );
+        let jpeg: Buffer;
+        try {
+          jpeg = Buffer.from(
+            await abortable(
+              page.screenshot({
+                type: 'jpeg',
+                quality: 80,
+                clip: { x: 0, y: 0, width: viewport.width, height },
+                captureBeyondViewport: true,
+              }),
+              deadline,
+            ),
+          );
+        } catch (error) {
+          deadline.throwIfAborted();
+          if (!/captureScreenshot|Protocol error/i.test(String(error)))
+            throw error;
+          // Página inteira recusada: a dobra observada vale mais que nada.
+          height = viewport.height;
+          jpeg = Buffer.from(
+            await abortable(
+              page.screenshot({ type: 'jpeg', quality: 80 }),
+              deadline,
+            ),
+          );
+        }
         shots.push({
           viewport: viewport.name,
           width: viewport.width,

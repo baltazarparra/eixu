@@ -12,6 +12,7 @@ import {
   insertImage,
 } from '@/lib/images/queries';
 import { captureReference } from '@/lib/references/capture';
+import { referenceFailure } from '@/lib/references/failure';
 import { intakeSchema } from '@/lib/tenant-intake';
 import { STUDIO_DIRECTION_REFERENCE, studioDirectionOf } from './directions';
 import {
@@ -266,7 +267,9 @@ async function inspectVisualReferenceStep(
     .slice(0, 16);
   try {
     const shots = await captureReference(visualReferenceUrl, undefined, {
-      signal: AbortSignal.timeout(90_000),
+      // Folga sobre REFERENCE_CAPTURE_TIMEOUT_MS: a captura repete a navegação
+      // e precisa esgotar o próprio prazo antes de a ferramenta interrompê-la.
+      signal: AbortSignal.timeout(120_000),
     });
     const stored = await Promise.all(
       shots.map(async (shot) => {
@@ -320,32 +323,34 @@ async function inspectVisualReferenceStep(
       shots: stored,
     };
   } catch (error) {
+    const failure = referenceFailure(error);
     await recordSourceEvidence({
       context,
       role: 'visual_reference',
       url: visualReferenceUrl,
       title: 'Referência visual inacessível',
       status: 'unavailable',
+      // A causa precisa sobreviver fora do jsonb: sem excerpt a evidência
+      // aparecia vazia e a falha virava narrativa no chat.
+      excerpt: failure.summary.slice(0, 500),
       identity: {
         source: visualReferenceSource,
-        error:
-          error instanceof Error
-            ? error.message.slice(0, 500)
-            : 'Falha desconhecida',
+        reason: failure.reason,
+        error: failure.detail.slice(0, 500),
       },
     });
     await nextStudioEvent(context.runId, 'visual.checked', {
       status: 'unavailable',
       source: visualReferenceSource,
+      reason: failure.reason,
     });
     return {
       status: 'unavailable' as const,
       url: visualReferenceUrl,
       source: visualReferenceSource,
-      message:
-        error instanceof Error
-          ? error.message
-          : 'Não foi possível capturar a referência visual.',
+      reason: failure.reason,
+      message: failure.summary,
+      detail: failure.detail,
       shots: [],
     };
   }
