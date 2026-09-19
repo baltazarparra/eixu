@@ -21,7 +21,8 @@ function isAllowedHost(host: string): boolean {
 }
 
 export function proxy(request: NextRequest) {
-  if (isAllowedHost(request.headers.get('host') ?? '')) return NextResponse.next();
+  if (isAllowedHost(request.headers.get('host') ?? ''))
+    return NextResponse.next();
   // 404 de verdade. Reescrever para uma rota inexistente devolveria a página de
   // erro com status 200, e um soft 404 confunde tanto rastreador quanto operador.
   return new NextResponse('Not Found', {
@@ -36,5 +37,7 @@ export function proxy(request: NextRequest) {
 export const config = {
   // Os assets de `public/` não passam pelo proxy: em host não autorizado não há
   // documento para acompanhá-los, e cada invocação evitada é uma a menos.
-  matcher: ['/((?!_next/static|_next/image|favicon[.]svg|og[.]png|cases/[^/]+[.]webp).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon[.]svg|og[.]png|cases/[^/]+[.]webp).*)',
+  ],
 };
