@@ -697,3 +697,36 @@ void test('dois segmentos sem escrita nem verificação encerram o turno antes d
   assert.equal(fixture.model.doStreamCalls.length, 96);
   assert.equal(fixture.events.length, 1);
 });
+
+void test('a parada do provedor entrega causa verificável em vez de só "error"', () => {
+  const { segmentDiagnosis, providerErrorDetail } = loadModuleGraph(
+    'lib/studio/workflow.ts',
+  );
+  // Caso observado: o provedor emitiu parte de erro com a mensagem do Gemini.
+  assert.equal(
+    segmentDiagnosis({
+      error: new Error('Invalid thought signature.'),
+      steps: [{}],
+    }),
+    'Invalid thought signature.',
+  );
+  // Caso observado no run 6d97da97: finishReason=error sem parte de erro.
+  // O rastro do provedor no último passo é a única pista restante.
+  assert.equal(
+    segmentDiagnosis({
+      steps: [
+        { rawFinishReason: 'MALFORMED_FUNCTION_CALL', warnings: undefined },
+        {
+          rawFinishReason: 'OTHER',
+          warnings: [{ type: 'other', message: 'thought signature missing' }],
+        },
+      ],
+    }),
+    'rawFinishReason=OTHER | warnings: thought signature missing',
+  );
+  // Sem rastro nenhum, não inventa causa.
+  assert.equal(segmentDiagnosis({ steps: [{}] }), undefined);
+  assert.equal(segmentDiagnosis({ steps: [] }), undefined);
+  assert.equal(providerErrorDetail({ error: 'recusado' }), 'recusado');
+  assert.equal(providerErrorDetail(undefined), undefined);
+});

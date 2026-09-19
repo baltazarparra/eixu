@@ -297,11 +297,64 @@ async function recordWorkflowStepUsageStep(input: {
   });
 }
 
+/**
+ * O erro do provedor é a única pista de por que o turno parou. Descartá-lo
+ * transforma uma falha diagnosticável em "o modelo interrompeu a geração".
+ */
+export function providerErrorDetail(error: unknown): string | undefined {
+  if (error == null) return undefined;
+  if (typeof error === 'string') return error.slice(0, 500) || undefined;
+  if (error instanceof Error) return error.message.slice(0, 500) || undefined;
+  const record = error as { message?: unknown; error?: unknown };
+  if (typeof record.message === 'string')
+    return record.message.slice(0, 500) || undefined;
+  if (typeof record.error === 'string')
+    return record.error.slice(0, 500) || undefined;
+  try {
+    return JSON.stringify(error).slice(0, 500);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * `finishReason: 'error'` sem parte de erro no stream não diz nada sozinho. O
+ * provedor ainda deixa rastro no último passo; é o que separa assinatura
+ * inválida de recusa, corte de contexto ou filtro.
+ */
+export function segmentDiagnosis(result: {
+  error?: unknown;
+  steps: readonly {
+    rawFinishReason?: string;
+    warnings?: readonly unknown[];
+  }[];
+}): string | undefined {
+  if ('error' in result) {
+    const detail = providerErrorDetail(result.error);
+    if (detail) return detail;
+  }
+  const last = result.steps.at(-1);
+  const warnings = (last?.warnings ?? [])
+    .map((warning) => {
+      if (typeof warning === 'string') return warning;
+      const record = warning as { message?: unknown; type?: unknown };
+      if (typeof record.message === 'string') return record.message;
+      return typeof record.type === 'string' ? record.type : '';
+    })
+    .filter(Boolean);
+  const parts = [
+    last?.rawFinishReason ? `rawFinishReason=${last.rawFinishReason}` : '',
+    warnings.length ? `warnings: ${warnings.join('; ')}` : '',
+  ].filter(Boolean);
+  return parts.length ? parts.join(' | ').slice(0, 500) : undefined;
+}
+
 async function recordModelRecoveryStep(input: {
   runId: string;
   finishReason: string;
   completedSteps: number;
   attempt: number;
+  detail?: string;
 }) {
   'use step';
   if (!(await studioRunMayContinue(input.runId)))
@@ -310,6 +363,7 @@ async function recordModelRecoveryStep(input: {
     finishReason: input.finishReason,
     completedSteps: input.completedSteps,
     attempt: input.attempt,
+    ...(input.detail ? { detail: input.detail } : {}),
   });
 }
 
@@ -376,6 +430,7 @@ export async function streamStudioAgent(
   let recoveries = 0;
   let idleSegments = 0;
   let segment = 0;
+  let lastProviderDetail: string | undefined;
 
   while (steps.length < policy.maxTotalSteps) {
     const offset = (options.usageStepOffset ?? 0) + steps.length;
@@ -422,8 +477,14 @@ export async function streamStudioAgent(
     steps.push(...result.steps);
     totalUsage = addLanguageModelUsage(totalUsage, result.totalUsage);
 
+    const providerDetail = segmentDiagnosis(result);
+    if (providerDetail) lastProviderDetail = providerDetail;
     if ('error' in result || result.finishReason === 'content-filter')
-      throw new Error('O provedor não conseguiu concluir esta geração.');
+      throw new Error(
+        providerDetail
+          ? `O provedor não conseguiu concluir esta geração: ${providerDetail}`
+          : 'O provedor não conseguiu concluir esta geração.',
+      );
     if (result.finishReason === 'stop') return { ...result, steps, totalUsage };
 
     // O agente ainda estava chamando ferramentas quando o segmento acabou.
@@ -456,7 +517,14 @@ export async function streamStudioAgent(
     if (segmentProgressed(result.steps)) recoveries = 0;
     if (++recoveries > 2 || steps.length >= policy.maxTotalSteps)
       throw new Error(
-        'O modelo interrompeu a geração após as tentativas de retomada. Os arquivos e imagens já salvos foram preservados.',
+        [
+          'O modelo interrompeu a geração após as tentativas de retomada.',
+          `Última parada: ${result.finishReason}.`,
+          lastProviderDetail ? `Provedor: ${lastProviderDetail}.` : '',
+          'Os arquivos e imagens já salvos foram preservados.',
+        ]
+          .filter(Boolean)
+          .join(' '),
       );
 
     await recordModelRecoveryStep({
@@ -464,6 +532,7 @@ export async function streamStudioAgent(
       finishReason: result.finishReason,
       completedSteps: steps.length,
       attempt: recoveries,
+      detail: lastProviderDetail,
     });
     messages = [
       // O SDK devolve as instruções como system, mas não as aceita de volta
